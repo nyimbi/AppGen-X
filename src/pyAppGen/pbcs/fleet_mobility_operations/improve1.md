@@ -1,418 +1,416 @@
-# Fleet and Mobility Operations PBC Better-Than-World-Class Improvement Backlog
-
-## Purpose
-
-This file identifies, justifies, and describes 50 high-impact improvements for `fleet_mobility_operations`. The backlog is specific to vehicles, drivers, telematics, routing, maintenance, utilization, fuel, safety, and fleet compliance and is intended to move the PBC from release-auditable scaffolding toward complete, specialist-grade domain coverage.
+# Improvement Backlog for `fleet_mobility_operations`
 
 ## Current Domain Evidence Used
 
-- Stable PBC key: `fleet_mobility_operations`.
-- Domain purpose: Vehicles, drivers, telematics, routing, maintenance, utilization, fuel, safety, and fleet compliance.
-- Owned domain tables: `vehicle`, `driver_assignment`, `telematics_event`, `route_plan`, `fuel_transaction`, `maintenance_schedule`, `safety_event`, `fleet_mobility_operations_policy_rule`, `fleet_mobility_operations_runtime_parameter`, `fleet_mobility_operations_schema_extension`, `fleet_mobility_operations_control_assertion`, `fleet_mobility_operations_governed_model`.
+- Manifest key: `fleet_mobility_operations`.
+- Declared domain description: vehicles, drivers, telematics, routing, maintenance, utilization, fuel, safety, and fleet compliance.
+- Owned tables: `vehicle`, `driver_assignment`, `telematics_event`, `route_plan`, `fuel_transaction`, `maintenance_schedule`, `safety_event`, `fleet_mobility_operations_policy_rule`, `fleet_mobility_operations_runtime_parameter`, `fleet_mobility_operations_schema_extension`, `fleet_mobility_operations_control_assertion`, `fleet_mobility_operations_governed_model`.
 - Public APIs: `POST /vehicles`, `POST /driver-assignments`, `POST /telematics-events`, `POST /route-plans`, `POST /fuel-transactions`, `GET /fleet-mobility-operations-workbench`.
-- Emitted AppGen-X events: `FleetMobilityOperationsCreated`, `FleetMobilityOperationsUpdated`, `FleetMobilityOperationsApproved`, `FleetMobilityOperationsExceptionOpened`.
-- Consumed AppGen-X events: `PolicyChanged`, `AuditEventSealed`, `OperationalKpiChanged`.
-- Current standard surfaces include: `vehicle_management`, `fleet_mobility_operations_workflow`, `fleet_mobility_operations_analytics`, `configuration_schema`, `rule_engine`, `parameter_engine`, `owned_schema_migrations_models`, `appgen_x_outbox_inbox_eventing`, `idempotent_handlers`, `retry_dead_letter_evidence`.
-- Current advanced surfaces include: `fleet_mobility_operations_event_sourced_operational_history`, `fleet_mobility_operations_multi_tenant_policy_isolation`, `fleet_mobility_operations_schema_evolution_resilience`, `fleet_mobility_operations_autonomous_anomaly_detection`, `fleet_mobility_operations_semantic_document_instruction_understanding`, `fleet_mobility_operations_predictive_risk_scoring`, `fleet_mobility_operations_counterfactual_scenario_simulation`, `fleet_mobility_operations_cryptographic_audit_proofs`.
+- Workflows: `fleet_mobility_operations_create_vehicle_workflow`, `fleet_mobility_operations_record_driver_assignment_workflow`.
+- UI fragments: `FleetMobilityOperationsWorkbench`, `FleetMobilityOperationsDetail`, `FleetMobilityOperationsAssistantPanel`.
+- Emitted events: `FleetMobilityOperationsCreated`, `FleetMobilityOperationsUpdated`, `FleetMobilityOperationsApproved`, `FleetMobilityOperationsExceptionOpened`.
+- Consumed events: `PolicyChanged`, `AuditEventSealed`, `OperationalKpiChanged`.
+- Advanced capabilities already declared in the manifest include event-sourced operational history, predictive risk scoring, counterfactual scenario simulation, autonomous anomaly detection, cryptographic audit proofs, continuous control testing, cross-PBC event federation, carbon and sustainability awareness, and governed AI agent execution.
+- Evidence documents named in the manifest: `SPECIFICATION.md` and `RELEASE_EVIDENCE.md`.
 
-## 50 High-Impact Improvements
+## Backlog
 
-### 1. Canonical lifecycle state model for Vehicle
+### 1. Vehicle dispatch-readiness ledger
 
-**Justification:** This closes shallow CRUD gaps by making every fleet and mobility operations transition explainable and testable instead of implicit in free-form status values.
+**Justification:** Dispatch needs a single readiness answer before a vehicle is assigned, but the manifest only shows `vehicle`, `maintenance_schedule`, and `safety_event` as separate surfaces.
 
-**Improvement:** Define a complete state machine for `vehicle` with explicit draft, validated, blocked, approved, active, suspended, corrected, closed, archived, and reopened states. Tie the behavior to `fleet_mobility_operations_create_vehicle_workflow` where applicable, and make it visible in `FleetMobilityOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Introduce a readiness projection that combines registration status, open maintenance, unresolved safety events, current assignment state, fuel or state-of-charge thresholds, and telematics freshness into one dispatchable verdict per vehicle.
 
-**Acceptance evidence:** State-transition tests, invalid-transition fixtures, workbench state badges, and emitted AppGen-X transition events for FleetMobilityOperationsCreated, FleetMobilityOperationsUpdated, FleetMobilityOperationsApproved. The evidence should be package-local in `src/pyAppGen/pbcs/fleet_mobility_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Workbench readiness badges on `GET /fleet-mobility-operations-workbench`, projection tests covering ready and blocked cases, and release evidence showing why a blocked vehicle cannot enter a route plan.
 
-### 2. Domain intake and normalization for Driver Assignment
+### 2. Assignment overlap and rest-window enforcement
 
-**Justification:** The PBC cannot reach complete domain coverage unless it handles the messy front door of vehicles, drivers, telematics, routing, maintenance, utilization, fuel, safety, and fleet compliance, not only already-clean records.
+**Justification:** `driver_assignment` without overlap, shift, and rest checks will produce unsafe dispatches and unreliable utilization figures.
 
-**Improvement:** Build a typed intake pipeline for `driver_assignment` that accepts structured API payloads, document-derived instructions, batch loads, and assistant-generated drafts while normalizing identifiers, dates, units, parties, and jurisdictional context. Tie the behavior to `fleet_mobility_operations_record_driver_assignment_workflow` where applicable, and make it visible in `FleetMobilityOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add assignment validation that blocks overlapping shifts, enforces minimum rest windows, flags missing handoff acknowledgements, and records the exact reason an assignment was accepted or refused.
 
-**Acceptance evidence:** Golden intake fixtures, rejected-record queues, field-level normalization evidence, and assistant previews before governed datastore mutation. The evidence should be package-local in `src/pyAppGen/pbcs/fleet_mobility_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** API contract tests for `POST /driver-assignments`, rule-evaluation evidence for overlap and rest scenarios, and workbench exception queues showing blocked assignments with operator-resolvable actions.
 
-### 3. Specialist validation rules for Telematics Event
+### 3. Dispatch board for live reallocation
 
-**Justification:** World-class Fleet and Mobility Operations requires rules that domain experts can reason about, version, test, and roll back without code edits.
+**Justification:** Fleet operators need to rebalance vehicles and drivers when absences, breakdowns, or route slippage occur, and the current manifest exposes only a generic workbench surface.
 
-**Improvement:** Add a domain rule compiler for `telematics_event` that supports threshold rules, eligibility rules, dependency rules, temporal windows, conflicting-instruction detection, and override justification. Tie the behavior to `fleet_mobility_operations_create_vehicle_workflow` where applicable, and make it visible in `FleetMobilityOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add a dispatch board to `FleetMobilityOperationsWorkbench` that shows unassigned vehicles, unassigned drivers, route-plan gaps, late departures, and one-click reassignment flows with policy checks.
 
-**Acceptance evidence:** Rule simulation tests, versioned rule manifests, rule impact reports, and UI rule editors linked to `FLEET_MOBILITY_OPERATIONS_DATABASE_URL, FLEET_MOBILITY_OPERATIONS_EVENT_TOPIC, FLEET_MOBILITY_OPERATIONS_RETRY_LIMIT`. The evidence should be package-local in `src/pyAppGen/pbcs/fleet_mobility_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** UI interaction coverage for drag-and-drop or action-button reassignment, audit events for each reassignment, and release evidence with before-and-after dispatch snapshots.
 
-### 4. Parameter governance and tuning for Route Plan
+### 4. Stop-level route ETA projection
 
-**Justification:** Parameters are where operations teams tune fleet and mobility operations; unbounded constants would make the PBC brittle and unsafe in real deployments.
+**Justification:** `route_plan` is present, but operators also need projected arrival, dwell, delay, and completion risk at each stop rather than only a plan header.
 
-**Improvement:** Expose bounded runtime parameters for `route_plan` covering risk thresholds, SLA windows, confidence floors, escalation cutoffs, batch sizes, retry limits, and human-confirmation requirements. Tie the behavior to `fleet_mobility_operations_record_driver_assignment_workflow` where applicable, and make it visible in `FleetMobilityOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Build a stop-level projection that combines route plans with the latest telematics event stream to show live ETA drift, missed-stop risk, dwell overrun, and route completion confidence.
 
-**Acceptance evidence:** Parameter schema validation, tenant overrides, approval history, rollback controls, and workbench diff views. The evidence should be package-local in `src/pyAppGen/pbcs/fleet_mobility_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Projection tests using delayed and on-time telematics samples, workbench timeline views for route progress, and release evidence proving ETA recalculation after new telemetry arrives.
 
-### 5. Deep owned schema expansion for Fuel Transaction
+### 5. Telematics quarantine for malformed device traffic
 
-**Justification:** A single payload column cannot express the full surface of vehicles, drivers, telematics, routing, maintenance, utilization, fuel, safety, and fleet compliance or prove cross-PBC boundaries are respected.
+**Justification:** `POST /telematics-events` will receive duplicated, delayed, out-of-order, and malformed messages in production.
 
-**Improvement:** Extend the owned schema around `fuel_transaction` with normalized child tables for line-level evidence, party roles, approvals, attachments, comments, metrics, exception reasons, and control assertions. Tie the behavior to `fleet_mobility_operations_create_vehicle_workflow` where applicable, and make it visible in `FleetMobilityOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Split telematics ingestion into accept, quarantine, and reject paths with schema validation, device identity checks, timestamp sanity windows, and replay-safe idempotency keys.
 
-**Acceptance evidence:** Migrations, models, relationship tests, schema contract snapshots, and no shared-table access outside the `fleet_mobility_operations_` namespace. The evidence should be package-local in `src/pyAppGen/pbcs/fleet_mobility_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Ingestion tests for duplicates, future-dated events, stale payloads, and unknown devices; dead-letter evidence for quarantined traffic; and workbench visibility into quarantine backlog size.
 
-### 6. Event-sourced operational history for Maintenance Schedule
+### 6. Trip reconstruction from event streams
 
-**Justification:** Temporal reconstruction is essential for better-than-world-class auditability and dispute resolution in fleet and mobility operations.
+**Justification:** The manifest declares event-sourced operational history, but fleet investigations also need reconstructed trips, not just raw event logs.
 
-**Improvement:** Capture every material mutation of `maintenance_schedule` as immutable AppGen-X events with actor, tenant, command, policy version, idempotency key, before/after summary, and projection checkpoint. Tie the behavior to `fleet_mobility_operations_record_driver_assignment_workflow` where applicable, and make it visible in `FleetMobilityOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Derive trip sessions from `telematics_event` so operators can see ignition windows, route deviation, idle segments, excessive dwell, and unscheduled stops for each completed movement.
 
-**Acceptance evidence:** Replay tests, projection checksums, event ordering evidence, and point-in-time workbench views. The evidence should be package-local in `src/pyAppGen/pbcs/fleet_mobility_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Replay tests that rebuild trip segments from ordered events, detail views that link a trip to its vehicle and assignment, and release evidence showing reconstructed versus planned movement.
 
-### 7. Projection and read-model strategy for Safety Event
+### 7. Maintenance readiness horizon
 
-**Justification:** The workbench should not force users to infer domain truth from raw tables; each projection should answer a real operating question.
+**Justification:** `maintenance_schedule` exists, but dispatchers need forward-looking readiness, not only a list of scheduled services.
 
-**Improvement:** Create purpose-built projections for `safety_event`: operational queue, executive KPI rollup, exception aging, compliance evidence, agent task context, and external dependency health. Tie the behavior to `fleet_mobility_operations_create_vehicle_workflow` where applicable, and make it visible in `FleetMobilityOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add a maintenance horizon projection showing services due in the next 7, 14, and 30 days using odometer, engine hours, telematics-derived wear signals, and route commitments.
 
-**Acceptance evidence:** Projection contracts, freshness SLAs, backfill tests, and visible stale-projection warnings. The evidence should be package-local in `src/pyAppGen/pbcs/fleet_mobility_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Projection tests for mileage-triggered and date-triggered maintenance, readiness warnings inside the workbench, and release evidence demonstrating that high-risk vehicles are withheld from new assignments.
 
-### 8. Exception taxonomy and remediation for Fleet Mobility Operations Policy Rule
+### 8. Roadside breakdown incident command view
 
-**Justification:** High-value PBCs win on exception throughput; generic “failed” states hide the details operators need.
+**Justification:** `safety_event` covers incidents, but roadside failures need a coordinated workflow across dispatch, maintenance, and driver support.
 
-**Improvement:** Model the full exception taxonomy for `fleet_mobility_operations_policy_rule`, including severity, root cause, blocking dependency, remediation owner, due date, retry eligibility, escalation path, and closure evidence. Tie the behavior to `fleet_mobility_operations_record_driver_assignment_workflow` where applicable, and make it visible in `FleetMobilityOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Create an incident command view that records incident location, driver status, towing need, replacement vehicle action, rerouting action, and service return criteria.
 
-**Acceptance evidence:** Exception queues, aging metrics, remediation playbooks, dead-letter linkage, and closure test fixtures for weather or traffic disruption. The evidence should be package-local in `src/pyAppGen/pbcs/fleet_mobility_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Incident lifecycle tests, workbench incident drill-down with status transitions, and release evidence linking incident closure to reopened route or replacement dispatch decisions.
 
-### 9. Predictive risk scoring for Fleet Mobility Operations Runtime Parameter
+### 9. Fuel fraud and abnormal burn detection
 
-**Justification:** The package should warn users before fleet and mobility operations work fails, breaches policy, or creates downstream cost.
+**Justification:** `fuel_transaction` alone cannot explain whether fuel spend aligns with telematics distance, idling, or route conditions.
 
-**Improvement:** Add predictive risk scoring for `fleet_mobility_operations_runtime_parameter` using domain features from owned tables, consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, rule outcomes, aging, anomaly signals, and historical corrections. Tie the behavior to `fleet_mobility_operations_create_vehicle_workflow` where applicable, and make it visible in `FleetMobilityOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add reconciliation between fuel transactions, telematics odometer deltas, idle time, and route-plan distance to detect siphoning, duplicate fills, inefficient burn, and fueling outside approved geofences.
 
-**Acceptance evidence:** Feature manifests, score explanations, calibration reports, drift alerts, and tests for low/medium/high-risk scenarios. The evidence should be package-local in `src/pyAppGen/pbcs/fleet_mobility_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Detection tests for duplicate fuel card swipes and abnormal consumption, exception records with investigation notes, and release evidence showing resolved versus unresolved fuel anomalies.
 
-### 10. Counterfactual simulation for Fleet Mobility Operations Schema Extension
+### 10. EV charging readiness planner
 
-**Justification:** Advanced users need to ask “what would happen if” before committing changes to live vehicles, drivers, telematics, routing, maintenance, utilization, fuel, safety, and fleet compliance operations.
+**Justification:** The manifest covers fuel transactions but the domain description includes fleet mobility more broadly, which should include electric vehicle dispatch readiness.
 
-**Improvement:** Provide scenario simulation for `fleet_mobility_operations_schema_extension`: policy change, capacity constraint, deadline shift, price/rate change, eligibility change, disruption, and manual override outcomes. Tie the behavior to `fleet_mobility_operations_record_driver_assignment_workflow` where applicable, and make it visible in `FleetMobilityOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Extend energy management so vehicles can be blocked or prioritized based on state of charge, charger availability, charging-window fit, and route energy requirement.
 
-**Acceptance evidence:** Simulation APIs, non-mutating sandbox state, comparison reports, and workbench side-by-side scenario panels. The evidence should be package-local in `src/pyAppGen/pbcs/fleet_mobility_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Readiness rules for low-charge scenarios, workbench energy queue views, and release evidence proving that an EV with insufficient charge cannot be dispatched to an energy-intensive route.
 
-### 11. Autonomous anomaly triage for Fleet Mobility Operations Control Assertion
+### 11. Utilization heatmap by depot, class, and shift
 
-**Justification:** A world-class PBC should reduce analyst burden without hiding the reasoning behind automated triage.
+**Justification:** The manifest names utilization in the description, but operators need to see underused and overused assets at a glance.
 
-**Improvement:** Implement anomaly detection for `fleet_mobility_operations_control_assertion` that identifies outliers, duplicate submissions, impossible sequences, stale dependencies, unusual amounts/counts/durations, and contradictory fields. Tie the behavior to `fleet_mobility_operations_create_vehicle_workflow` where applicable, and make it visible in `FleetMobilityOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add utilization analytics that break down vehicle active hours, idle hours, route occupancy, assignment gaps, and maintenance downtime by depot, vehicle class, and shift window.
 
-**Acceptance evidence:** Explainable anomaly cards, reviewer feedback loops, false-positive tracking, and suppression governance. The evidence should be package-local in `src/pyAppGen/pbcs/fleet_mobility_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Metric definitions behind `fleet_mobility_operations_workbench_metric`, analytical tests for utilization percentages, and workbench heatmaps that drill into the drivers of low utilization.
 
-### 12. Semantic document understanding for Fleet Mobility Operations Governed Model
+### 12. Geofence arrival, dwell, and exit controls
 
-**Justification:** Document-heavy work in Fleet and Mobility Operations cannot be complete if the assistant only answers questions and cannot prepare accurate governed changes.
+**Justification:** Routing and telematics are both declared, and geofencing is the operational boundary that ties them together for dispatch and compliance.
 
-**Improvement:** Train the package assistant to parse domain documents and instructions for `fleet_mobility_operations_governed_model`, extract obligations, dates, parties, quantities, identifiers, and exceptions, then map them to safe draft mutations. Tie the behavior to `fleet_mobility_operations_record_driver_assignment_workflow` where applicable, and make it visible in `FleetMobilityOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add managed geofences for depots, yards, customer sites, fueling stations, no-go zones, and charging sites, with arrival, dwell, and exit events derived from telematics movement.
 
-**Acceptance evidence:** Document extraction tests, confidence thresholds, redaction handling, source span citations, and human confirmation workflows. The evidence should be package-local in `src/pyAppGen/pbcs/fleet_mobility_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Geofence entry and exit tests, dwell-threshold exceptions in the workbench, and release evidence showing a route deviation triggered by an unauthorized geofence visit.
 
-### 13. Agent-safe CRUD execution for Vehicle
+### 13. Driver license, certification, and medical expiry controls
 
-**Justification:** The PBC agent must be a first-class operator but never a hidden bypass around RBAC, rules, or owned datastore boundaries.
+**Justification:** Fleet compliance is explicitly in scope, and assignment quality depends on driver credentials being current before dispatch.
 
-**Improvement:** Add a professional chatbot skill for `vehicle` that can create, update, correct, close, and annotate records only through policy-checked commands, approval gates, and previewed diffs. Tie the behavior to `fleet_mobility_operations_create_vehicle_workflow` where applicable, and make it visible in `FleetMobilityOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Extend `driver_assignment` validation to check license class, endorsements, medical certificate validity, training completion, and jurisdiction-specific compliance before a driver can accept a vehicle or route.
 
-**Acceptance evidence:** Skill manifests, permission tests, preview/confirm flows, blocked-action evidence, and audit events for every assistant mutation. The evidence should be package-local in `src/pyAppGen/pbcs/fleet_mobility_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Assignment rejection tests for expired credentials, compliance cards in the detail view, and release evidence proving that blocked drivers cannot be scheduled until evidence is refreshed.
 
-### 14. Workbench persona coverage for Driver Assignment
+### 14. Driver behavior scoring from telematics
 
-**Justification:** A generic detail page underserves the domain; each role needs the exact controls and evidence they use daily.
+**Justification:** Safety outcomes improve when speeding, harsh braking, rapid acceleration, seat-belt gaps, and excessive idle behavior are turned into action, not just stored as raw telemetry.
 
-**Improvement:** Design dedicated workbench panels for `driver_assignment`: operator queue, supervisor approvals, analyst exceptions, auditor evidence, configuration owner, and agent-assistance review. Tie the behavior to `fleet_mobility_operations_record_driver_assignment_workflow` where applicable, and make it visible in `FleetMobilityOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Build a driver-behavior score that turns telematics events into coaching queues, route risk alerts, and supervisor review tasks without mutating source telemetry.
 
-**Acceptance evidence:** UI contract entries, route tests, empty/error/loading states, and permission-aware action availability. The evidence should be package-local in `src/pyAppGen/pbcs/fleet_mobility_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Scoring model tests with explainable component weights, supervisor workbench views for coaching actions, and release evidence linking score changes to subsequent incident reduction.
 
-### 15. Cross-PBC dependency contracts for Telematics Event
+### 15. Dispatch exception SLA engine
 
-**Justification:** Composable packages fail when hidden table coupling enters the domain model.
+**Justification:** `FleetMobilityOperationsExceptionOpened` exists, but operators still need timing expectations for assignment, route, maintenance, and safety exceptions.
 
-**Improvement:** Represent dependencies for `telematics_event` through declared APIs, consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, and projections rather than shared tables, with explicit freshness, ownership, and fallback behavior. Tie the behavior to `fleet_mobility_operations_create_vehicle_workflow` where applicable, and make it visible in `FleetMobilityOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add SLA clocks for unassigned routes, blocked vehicles, overdue incident follow-up, stale telematics feeds, and unresolved compliance gaps, with pause and escalation rules by exception type.
 
-**Acceptance evidence:** Dependency manifests, contract tests, stale dependency alerts, and no foreign-table references in generated artifacts. The evidence should be package-local in `src/pyAppGen/pbcs/fleet_mobility_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Timer tests for pause and resume logic, workbench aging buckets, and release evidence showing automatic escalation when an exception breaches its service window.
 
-### 16. API completeness and versioning for Route Plan
+### 16. Fleet control tower workbench
 
-**Justification:** Complete domain coverage requires both command and query surfaces, not only happy-path create endpoints.
+**Justification:** One generic workbench page is insufficient for dispatchers managing live vehicle movement, assignment changes, and route risk.
 
-**Improvement:** Expand APIs beyond POST /vehicles, POST /driver-assignments, POST /telematics-events to cover search, validation-only commands, simulation, bulk intake, exception closure, evidence export, projection reads, and idempotent corrections. Tie the behavior to `fleet_mobility_operations_record_driver_assignment_workflow` where applicable, and make it visible in `FleetMobilityOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Turn `FleetMobilityOperationsWorkbench` into a control tower with dispatch board, live route map, blocked-asset queue, telematics freshness indicators, and high-risk exception panels.
 
-**Acceptance evidence:** OpenAPI-style route manifests, backward-compatible version tests, deprecation metadata, and idempotency assertions. The evidence should be package-local in `src/pyAppGen/pbcs/fleet_mobility_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** UI route coverage for control-tower views, permission-aware action controls, and release evidence with screenshots demonstrating the live operational posture in one place.
 
-### 17. Typed emitted-event expansion for Fuel Transaction
+### 17. Workshop planner workbench
 
-**Justification:** Consumers should understand what happened in Fleet and Mobility Operations without parsing opaque payloads.
+**Justification:** Maintenance teams need a different operational surface from dispatch teams even though both rely on the same `maintenance_schedule` and `vehicle` tables.
 
-**Improvement:** Replace generic lifecycle emissions with typed events for each meaningful `fuel_transaction` transition, exception, approval, correction, simulation result, and downstream handoff. Tie the behavior to `fleet_mobility_operations_create_vehicle_workflow` where applicable, and make it visible in `FleetMobilityOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add a workshop planning view that shows due services, parts readiness, workshop bay capacity, replacement-vehicle need, and service return-to-road decisions.
 
-**Acceptance evidence:** Event schema tests, event examples, compatibility checks, and emitted-event coverage in release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/fleet_mobility_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** UI coverage for workshop queues, readiness calculations for pending parts and open defects, and release evidence showing a vehicle moving from due-service to cleared-for-dispatch.
 
-### 18. Consumed-event handlers for Maintenance Schedule
+### 18. Safety and compliance workbench
 
-**Justification:** A PBC is composable only when incoming events affect its own domain state predictably and safely.
+**Justification:** `safety_event` and compliance checks need a dedicated operator surface so incidents, driver issues, and audit tasks are not buried in dispatch screens.
 
-**Improvement:** Implement idempotent handlers for consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged that update projections, open dependency exceptions, recalculate risk, and preserve source event lineage. Tie the behavior to `fleet_mobility_operations_record_driver_assignment_workflow` where applicable, and make it visible in `FleetMobilityOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add a safety and compliance workbench view for incident queues, driver credential gaps, policy breaches, coaching actions, and audit-ready evidence exports.
 
-**Acceptance evidence:** Duplicate-event tests, handler side-effect boundaries, dead-letter fixtures, and lineage links back to source events. The evidence should be package-local in `src/pyAppGen/pbcs/fleet_mobility_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Permission-aware UI tests for safety roles, exception drill-downs tied to source records, and release evidence showing a closed-loop investigation from incident open to evidence export.
 
-### 19. Retry and dead-letter operations for Safety Event
+### 19. Dispatch replanning agent skill
 
-**Justification:** Dead letters are not just plumbing; they are domain work queues that can block vehicles, drivers, telematics, routing, maintenance, utilization, fuel, safety, and fleet compliance.
+**Justification:** The manifest declares `ai_agent_task_assistance` and governed AI execution, so the assistant should help dispatch without bypassing fleet controls.
 
-**Improvement:** Create operational tools for retrying, quarantining, explaining, and resolving dead-lettered `safety_event` events with max-attempt policy, poison-message detection, and replay safety. Tie the behavior to `fleet_mobility_operations_create_vehicle_workflow` where applicable, and make it visible in `FleetMobilityOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add an assistant skill in `FleetMobilityOperationsAssistantPanel` that proposes replacement vehicles, alternative drivers, and revised route priorities after a breakdown or delay, always as previewed actions.
 
-**Acceptance evidence:** Dead-letter workbench, retry eligibility tests, replay audit proof, and operator action logs. The evidence should be package-local in `src/pyAppGen/pbcs/fleet_mobility_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Skill tests proving preview-only behavior before approval, audit traces showing user confirmation, and release evidence demonstrating a suggested replan after a route disruption.
 
-### 20. RBAC and attribute policy for Fleet Mobility Operations Policy Rule
+### 20. Maintenance triage agent skill
 
-**Justification:** High-impact domain operations need finer controls than generic RBAC grants.
+**Justification:** Maintenance planners spend time sorting symptoms, service history, and telematics alerts into repair priorities.
 
-**Improvement:** Extend permissions for `fleet_mobility_operations_policy_rule` from coarse read/create/update/admin to action-level and attribute-aware policies based on role, tenant, jurisdiction, monetary/materiality threshold, and exception severity. Tie the behavior to `fleet_mobility_operations_record_driver_assignment_workflow` where applicable, and make it visible in `FleetMobilityOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add an assistant skill that summarizes fault evidence, proposes repair sequencing, highlights repeat failures, and suggests whether a vehicle should be removed from dispatch rotation.
 
-**Acceptance evidence:** Permission matrix docs, ABAC policy tests, denied-action UI states, and assistant skill permission checks. The evidence should be package-local in `src/pyAppGen/pbcs/fleet_mobility_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Assistant output with source citations to maintenance and telematics records, approval gates before any status change, and release evidence showing a triage summary used to block a risky vehicle.
 
-### 21. Continuous control testing for Fleet Mobility Operations Runtime Parameter
+### 21. Assignment command boundary expansion
 
-**Justification:** Controls should run during operations, not only during release audit or manual review.
+**Justification:** The manifest exposes `POST /driver-assignments`, but production dispatch needs validate, confirm, cancel, handoff, and close commands with explicit intent.
 
-**Improvement:** Embed control assertions for `fleet_mobility_operations_runtime_parameter` that continuously test segregation of duties, required approvals, stale exceptions, policy drift, duplicate records, and boundary violations. Tie the behavior to `fleet_mobility_operations_create_vehicle_workflow` where applicable, and make it visible in `FleetMobilityOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand the assignment API boundary to include validation-only checks, driver acknowledgement capture, reassignment commands, cancellation reasons, and closeout of completed assignments.
 
-**Acceptance evidence:** Control dashboards, failing-control events, test fixtures, and release evidence tied to `fleet_mobility_operations_control_assertion` records. The evidence should be package-local in `src/pyAppGen/pbcs/fleet_mobility_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Route-level contract tests for each command, idempotency checks for repeated calls, and release evidence showing API usage mapped to workbench actions rather than direct table edits.
 
-### 22. Cryptographic audit proofing for Fleet Mobility Operations Schema Extension
+### 22. Query boundary for route and telematics read models
 
-**Justification:** Better-than-world-class auditability requires proof of integrity, not merely logs stored in mutable tables.
+**Justification:** Operators should not rely on raw table inspection to answer live dispatch questions.
 
-**Improvement:** Hash-chain material `fleet_mobility_operations_schema_extension` decisions, documents, emitted events, and release-evidence snapshots to make tampering visible without exposing sensitive payloads. Tie the behavior to `fleet_mobility_operations_record_driver_assignment_workflow` where applicable, and make it visible in `FleetMobilityOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add explicit read-model endpoints for route progress, telematics freshness, geofence activity, utilization summaries, and maintenance readiness rather than overloading `GET /fleet-mobility-operations-workbench`.
 
-**Acceptance evidence:** Proof manifests, verification APIs, redacted proof exports, and audit-ledger handoff events. The evidence should be package-local in `src/pyAppGen/pbcs/fleet_mobility_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Read-model contract tests, freshness metadata in responses, and release evidence showing UI workbenches served by API projections instead of ad hoc joins.
 
-### 23. Privacy, consent, and secrecy controls for Fleet Mobility Operations Control Assertion
+### 23. Vehicle readiness change event contract
 
-**Justification:** Complete domain coverage must account for protected data and restricted operational evidence.
+**Justification:** Readiness changes affect dispatch, maintenance, and downstream operations and should be visible through typed events.
 
-**Improvement:** Add field-level privacy classifications for `fleet_mobility_operations_control_assertion`, consent checks, masking rules, retention schedules, legal holds, and assistant redaction policies. Tie the behavior to `fleet_mobility_operations_create_vehicle_workflow` where applicable, and make it visible in `FleetMobilityOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Introduce emitted events for readiness-blocked, readiness-restored, and readiness-risk-raised states so downstream consumers can react without reading fleet tables.
 
-**Acceptance evidence:** Retention tests, masked UI snapshots, consent-blocked mutation fixtures, and export controls. The evidence should be package-local in `src/pyAppGen/pbcs/fleet_mobility_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Event schema tests, outbox evidence for readiness transitions, and release evidence showing a blocked vehicle state emitted after a critical safety event.
 
-### 24. Multi-tenant operating model for Fleet Mobility Operations Governed Model
+### 24. Route reprojection event contract
 
-**Justification:** The PBC should scale across organizations while preserving independent policy and compliance boundaries.
+**Justification:** ETA drift and route deviation matter beyond the workbench and should be broadcast as operational state changes.
 
-**Improvement:** Support tenant-specific `fleet_mobility_operations_governed_model` rules, data residency, encryption context, configuration, seed data, and release evidence without allowing cross-tenant leakage. Tie the behavior to `fleet_mobility_operations_record_driver_assignment_workflow` where applicable, and make it visible in `FleetMobilityOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Emit events when a route is materially reprojected due to telematics delay, reassignment, geofence deviation, or maintenance withdrawal of a planned vehicle.
 
-**Acceptance evidence:** Tenant isolation tests, tenant-scoped parameters, key-rotation evidence, and cross-tenant negative fixtures. The evidence should be package-local in `src/pyAppGen/pbcs/fleet_mobility_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Event emission tests tied to projection changes, event payload examples with old and new ETA windows, and release evidence showing downstream notification triggered by a reprojection event.
 
-### 25. Schema evolution and extension registry for Vehicle
+### 25. Incident lifecycle event contract
 
-**Justification:** Domain teams will add fields; the PBC must evolve without breaking APIs, events, or workbench projections.
+**Justification:** `FleetMobilityOperationsExceptionOpened` is too broad to capture the operational detail of crashes, breakdowns, compliance breaches, and roadside failures.
 
-**Improvement:** Make schema extensions for `vehicle` first-class with compatibility checks, migration previews, projection backfills, field ownership, and rollback metadata. Tie the behavior to `fleet_mobility_operations_create_vehicle_workflow` where applicable, and make it visible in `FleetMobilityOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add typed incident events for opened, escalated, contained, reassigned, and closed states, with actor, asset, route, and evidence references.
 
-**Acceptance evidence:** Extension registry UI, compatibility tests, migration dry-runs, and backfill release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/fleet_mobility_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Event schema snapshots, replay tests for incident lifecycle ordering, and release evidence showing an incident closure event linked to restored dispatch readiness.
 
-### 26. Master data quality gates for Driver Assignment
+### 26. Idempotent device-message handling
 
-**Justification:** Many fleet and mobility operations errors begin as bad reference data; the PBC should catch them before workflow execution.
+**Justification:** Device retries and reconnect storms will send the same telematics payload more than once.
 
-**Improvement:** Define reference-data contracts for `driver_assignment`: canonical codes, parties, locations, classifications, calendars, units, currencies, products, assets, or service categories as relevant to the domain. Tie the behavior to `fleet_mobility_operations_record_driver_assignment_workflow` where applicable, and make it visible in `FleetMobilityOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Make telematics ingestion idempotent by device identifier, source timestamp, event hash, and receive window so projections do not double-count movement or violations.
 
-**Acceptance evidence:** Reference validation fixtures, stale-code warnings, mapping tables, and dependency freshness indicators. The evidence should be package-local in `src/pyAppGen/pbcs/fleet_mobility_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Duplicate-message tests proving a single stored effect, dead-letter evidence for conflicting duplicates, and release evidence showing stable trip totals after replay.
 
-### 27. Bulk operations and correction workflows for Telematics Event
+### 27. Unified fuel and charging ledger
 
-**Justification:** Enterprise-scale Fleet and Mobility Operations users cannot operate one record at a time.
+**Justification:** Mixed fleets need one energy-consumption picture across diesel, petrol, and electric assets.
 
-**Improvement:** Add bulk load, bulk validate, bulk approve, and bulk correction workflows for `telematics_event` with partial success, row-level errors, resumability, and rollback. Tie the behavior to `fleet_mobility_operations_create_vehicle_workflow` where applicable, and make it visible in `FleetMobilityOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Extend `fuel_transaction` handling to support charging sessions, energy units, charger source, charging loss, and cost normalization while preserving a single utilization and cost view.
 
-**Acceptance evidence:** CSV/API batch fixtures, resumable job state, row-level audit evidence, and assistant-generated correction suggestions. The evidence should be package-local in `src/pyAppGen/pbcs/fleet_mobility_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Ledger tests for liquid fuel and charging sessions, workbench filters by energy type, and release evidence showing comparable cost-per-kilometer analytics across vehicle classes.
 
-### 28. Lifecycle collaboration and tasking for Route Plan
+### 28. Odometer and engine-hour service trigger calibration
 
-**Justification:** Domain collaboration should live inside the PBC boundary and remain auditable with the record it affects.
+**Justification:** Maintenance readiness becomes unreliable when service triggers drift from actual usage.
 
-**Improvement:** Attach tasks, comments, ownership, due dates, handoffs, and escalation threads to `route_plan` without leaking into external shared task tables. Tie the behavior to `fleet_mobility_operations_record_driver_assignment_workflow` where applicable, and make it visible in `FleetMobilityOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Calibrate service triggers using telematics-derived odometer and engine-hour projections so `maintenance_schedule` alerts reflect true wear rather than stale manual updates.
 
-**Acceptance evidence:** Task tables, comment audit history, notification events, escalation SLAs, and role-specific task queues. The evidence should be package-local in `src/pyAppGen/pbcs/fleet_mobility_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Calibration tests for corrected odometer drift, detail views showing trigger source, and release evidence proving that a service due date moved earlier after heavy usage telemetry.
 
-### 29. SLA and service-level governance for Fuel Transaction
+### 29. Shift handoff log for dispatch continuity
 
-**Justification:** Users need to know when vehicles, drivers, telematics, routing, maintenance, utilization, fuel, safety, and fleet compliance is late, blocked, or at risk before customer or regulator impact.
+**Justification:** Fleet control depends on clear handoff between dispatch teams, especially when vehicles remain active across shifts.
 
-**Improvement:** Define SLAs for `fuel_transaction` across intake, validation, approval, exception resolution, event handling, downstream projection refresh, and release-evidence generation. Tie the behavior to `fleet_mobility_operations_create_vehicle_workflow` where applicable, and make it visible in `FleetMobilityOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add structured shift handoff notes that capture blocked assets, open incidents, at-risk routes, pending reassignment decisions, and telematics gaps inside the workbench.
 
-**Acceptance evidence:** SLA breach events, timers, configurable calendars, workbench aging buckets, and tests for pause/resume behavior. The evidence should be package-local in `src/pyAppGen/pbcs/fleet_mobility_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Handoff entry and retrieval tests, audit history by shift owner, and release evidence showing continuity of unresolved issues across dispatcher changeover.
 
-### 30. Operational analytics cockpit for Maintenance Schedule
+### 30. Dead-letter operations for telematics and fleet events
 
-**Justification:** World-class operations require leading indicators, not only record counts.
+**Justification:** The manifest already includes retry and dead-letter evidence, but operators need domain-specific recovery workflows for movement and assignment data.
 
-**Improvement:** Build analytics for `maintenance_schedule`: throughput, backlog, aging, approval latency, exception rate, risk distribution, automation acceptance, correction rate, and downstream dependency health. Tie the behavior to `fleet_mobility_operations_record_driver_assignment_workflow` where applicable, and make it visible in `FleetMobilityOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Create dead-letter views for telematics, route, and assignment events with root-cause tags, replay eligibility, suppression controls, and operator notes.
 
-**Acceptance evidence:** Metric definitions, projection tests, drill-through routes, export APIs, and anomaly overlays. The evidence should be package-local in `src/pyAppGen/pbcs/fleet_mobility_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Retry tests for recoverable messages, quarantine behavior for poison messages, and release evidence showing successful replay of delayed telemetry without corrupting projections.
 
-### 31. Decision intelligence and recommendations for Safety Event
+### 31. Route-plan versus actual variance analytics
 
-**Justification:** The PBC should help expert users decide faster while showing evidence and uncertainty.
+**Justification:** The declared analytics surface should explain whether routes are performing as planned, not only report generic risk.
 
-**Improvement:** Generate ranked recommendations for `safety_event` such as next best action, likely resolution, required evidence, policy adjustment, staffing/capacity response, or downstream handoff. Tie the behavior to `fleet_mobility_operations_create_vehicle_workflow` where applicable, and make it visible in `FleetMobilityOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add route variance analytics for late departures, missed stops, unscheduled dwell, excess distance, geofence detours, and completion reliability by route type and dispatcher.
 
-**Acceptance evidence:** Recommendation explanations, confidence intervals, feedback capture, model governance records, and rejection reasons. The evidence should be package-local in `src/pyAppGen/pbcs/fleet_mobility_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Analytical tests for variance calculations, workbench drill-through to route detail, and release evidence showing a route class with persistent dwell overruns.
 
-### 32. Quality and completeness scoring for Fleet Mobility Operations Policy Rule
+### 32. Vehicle downtime and replacement-cost forecasting
 
-**Justification:** Operators should see whether a record is truly ready, not just technically saved.
+**Justification:** Predictive risk scoring should help operators decide when a vehicle is likely to go unavailable and what that will cost.
 
-**Improvement:** Score each `fleet_mobility_operations_policy_rule` record for completeness, consistency, policy readiness, dependency readiness, evidence sufficiency, and downstream composability. Tie the behavior to `fleet_mobility_operations_record_driver_assignment_workflow` where applicable, and make it visible in `FleetMobilityOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Build a forecast using maintenance readiness, incident frequency, utilization intensity, and telematics stress indicators to estimate downtime probability and replacement-dispatch cost.
 
-**Acceptance evidence:** Scoring rules, missing-evidence lists, readiness badges, and blocking criteria in command handlers. The evidence should be package-local in `src/pyAppGen/pbcs/fleet_mobility_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Forecast evaluation on historical vehicle records, explainable factors in the workbench, and release evidence comparing predicted and realized downtime on sampled assets.
 
-### 33. End-to-end scenario library for Fleet Mobility Operations Runtime Parameter
+### 33. Counterfactual dispatch simulation
 
-**Justification:** Release evidence is stronger when every important fleet and mobility operations behavior has executable examples.
+**Justification:** The manifest already declares counterfactual scenario simulation, and dispatch teams need it for disruptions before they commit changes.
 
-**Improvement:** Create seeded scenarios for `fleet_mobility_operations_runtime_parameter`: normal flow, urgent path, exception path, corrected path, duplicate path, late event path, and audit export path. Tie the behavior to `fleet_mobility_operations_create_vehicle_workflow` where applicable, and make it visible in `FleetMobilityOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add simulation scenarios for driver absence, depot closure, vehicle breakdown, fuel shortage, charger outage, and traffic-heavy route swaps, returning the projected effect on service coverage and utilization.
 
-**Acceptance evidence:** Scenario seed data, runtime smoke coverage, generated-app fixtures, and story-level workbench screenshots/contracts. The evidence should be package-local in `src/pyAppGen/pbcs/fleet_mobility_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Simulation test fixtures for each disruption type, side-by-side workbench comparison views, and release evidence proving the simulator does not mutate live assignments or route plans.
 
-### 34. Domain ontology and terminology model for Fleet Mobility Operations Schema Extension
+### 34. Multi-tenant depot and policy isolation
 
-**Justification:** Precise vocabulary prevents the PBC from misclassifying specialist documents or user instructions.
+**Justification:** Multi-tenant policy isolation is declared, but fleet operations also require tenant-safe depots, routes, devices, and evidence handling.
 
-**Improvement:** Add an ontology for `fleet_mobility_operations_schema_extension` terms, synonyms, classifications, relationships, allowed values, and phrase mappings used by the assistant and UI. Tie the behavior to `fleet_mobility_operations_record_driver_assignment_workflow` where applicable, and make it visible in `FleetMobilityOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Enforce tenant scoping across vehicle pools, driver assignments, geofences, telematics devices, maintenance queues, and workbench filters so one tenant cannot infer another tenant's operations.
 
-**Acceptance evidence:** Ontology files, assistant parsing tests, UI glossary, and mapping evidence for domain-specific abbreviations. The evidence should be package-local in `src/pyAppGen/pbcs/fleet_mobility_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tenant isolation tests across APIs and read models, negative tests for cross-tenant access, and release evidence showing tenant-specific policy rules applied to the same operational scenario.
 
-### 35. Advanced search and investigation for Fleet Mobility Operations Control Assertion
+### 35. Override reason capture with audit proofs
 
-**Justification:** Investigators and operators need fast, explainable retrieval across the whole domain surface.
+**Justification:** Dispatch and maintenance supervisors will sometimes override policy, and those decisions need more than a generic update event.
 
-**Improvement:** Provide search across `fleet_mobility_operations_control_assertion` records, events, documents, exceptions, tasks, comments, and audit proofs with filters for tenant, status, risk, date, party, and dependency. Tie the behavior to `fleet_mobility_operations_create_vehicle_workflow` where applicable, and make it visible in `FleetMobilityOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Require structured override reasons, supporting evidence attachments, approver identity, and cryptographic proof links whenever a blocked vehicle, driver, or route is manually forced through.
 
-**Acceptance evidence:** Search index contracts, result provenance, permission-filtered queries, and stale-index warnings. The evidence should be package-local in `src/pyAppGen/pbcs/fleet_mobility_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Approval-path tests for required override fields, proof verification examples tied to `AuditEventSealed`, and release evidence showing an override trail from decision to audit proof.
 
-### 36. Reconciliation and closure controls for Fleet Mobility Operations Governed Model
+### 36. Release evidence pack for fleet scenarios
 
-**Justification:** Closure is not complete until the PBC can prove no material domain work remains unresolved.
+**Justification:** `RELEASE_EVIDENCE.md` is listed in the manifest, so releases should show domain behavior, not only generic test output.
 
-**Improvement:** Add reconciliation workflows that compare `fleet_mobility_operations_governed_model` state against consumed events, external projections, expected totals/counts, approvals, and release evidence before closure. Tie the behavior to `fleet_mobility_operations_record_driver_assignment_workflow` where applicable, and make it visible in `FleetMobilityOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Produce a release evidence pack that demonstrates dispatch readiness, telematics projection accuracy, route replanning, maintenance blocking, compliance rejection, fuel anomaly detection, and incident closure.
 
-**Acceptance evidence:** Reconciliation reports, variance thresholds, closure blockers, and AppGen-X closure events. The evidence should be package-local in `src/pyAppGen/pbcs/fleet_mobility_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Updated `RELEASE_EVIDENCE.md` content expectations captured in the backlog, reproducible scenario outputs for each named flow, and sign-off traces linking evidence to release candidates.
 
-### 37. Regulatory and policy reporting for Vehicle
+### 37. Configuration workbench for geofences, thresholds, and depot calendars
 
-**Justification:** World-class PBCs turn operational evidence into credible reporting without spreadsheet reconstruction.
+**Justification:** The manifest includes `configuration_workbench`, but fleet operations require domain-specific runtime controls rather than only generic parameters.
 
-**Improvement:** Generate domain reporting packs for `vehicle` covering statutory, contractual, operational, board, customer, or regulator evidence depending on real-time movement control, capacity commitments, disruptions, asset readiness, safety windows, route constraints, and operational handoff integrity. Tie the behavior to `fleet_mobility_operations_create_vehicle_workflow` where applicable, and make it visible in `FleetMobilityOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add configuration screens for geofence definitions, telematics staleness thresholds, fuel anomaly thresholds, rest-window rules, depot operating calendars, and charging readiness limits.
 
-**Acceptance evidence:** Report schemas, redaction rules, traceable metric sources, and approval/export audit events. The evidence should be package-local in `src/pyAppGen/pbcs/fleet_mobility_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Parameter validation tests, approval history for risky threshold changes, and release evidence showing a controlled threshold update taking effect without redeploying the PBC.
 
-### 38. Carbon and resource awareness for Driver Assignment
+### 38. Policy-change impact preview
 
-**Justification:** Sustainability evidence should be embedded in operations instead of treated as an after-the-fact report.
+**Justification:** The PBC consumes `PolicyChanged`, and operators need to know what changes before a new policy starts blocking live work.
 
-**Improvement:** Where relevant, attach carbon, energy, water, travel, capacity, compute, or resource-footprint metadata to `driver_assignment` decisions and batch operations. Tie the behavior to `fleet_mobility_operations_record_driver_assignment_workflow` where applicable, and make it visible in `FleetMobilityOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** When a policy update arrives, calculate which vehicles, assignments, routes, maintenance plans, or incidents would become non-compliant and present that preview before enforcement.
 
-**Acceptance evidence:** Footprint fields, scheduling parameters, exception rules, and dashboards that expose operational tradeoffs. The evidence should be package-local in `src/pyAppGen/pbcs/fleet_mobility_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Event-handler tests for `PolicyChanged`, workbench impact summaries grouped by object type, and release evidence showing a policy change that newly blocks a set of drivers from hazardous assignments.
 
-### 39. Resilience and offline behavior for Telematics Event
+### 39. Operational KPI-driven reprioritization
 
-**Justification:** Real operations keep moving during outages; the PBC must preserve correctness when dependencies are unavailable.
+**Justification:** The PBC consumes `OperationalKpiChanged`, so fleet queues should react when service-level metrics move materially.
 
-**Improvement:** Define resilience modes for `telematics_event`: degraded dependency mode, offline draft capture, delayed event replay, conflict detection, and safe recovery after partial failure. Tie the behavior to `fleet_mobility_operations_create_vehicle_workflow` where applicable, and make it visible in `FleetMobilityOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Reprioritize dispatch, maintenance, and incident queues when KPIs indicate worsening on-time departure, rising downtime, telematics lag, or escalating safety exceptions.
 
-**Acceptance evidence:** Offline fixtures, replay tests, conflict queues, recovery logs, and user-visible degraded-mode warnings. The evidence should be package-local in `src/pyAppGen/pbcs/fleet_mobility_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Event-consumption tests for KPI-driven queue shifts, workbench ordering changes with rationale, and release evidence showing queue reprioritization after a KPI breach.
 
-### 40. Human-in-the-loop automation for Route Plan
+### 40. Governed schema extension registry for fleet metadata
 
-**Justification:** Automation should accelerate vehicles, drivers, telematics, routing, maintenance, utilization, fuel, safety, and fleet compliance while preserving accountability for high-risk decisions.
+**Justification:** Fleet operators will need custom attributes such as depot group, body type, refrigeration status, or charger connector fit without breaking owned boundaries.
 
-**Improvement:** Set explicit automation boundaries for `route_plan`: auto-approve, auto-reject, suggest-only, require-review, and block-until-evidence states with policy-based routing. Tie the behavior to `fleet_mobility_operations_record_driver_assignment_workflow` where applicable, and make it visible in `FleetMobilityOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Use `fleet_mobility_operations_schema_extension` to register governed custom fields for vehicles, assignments, routes, and incidents with validation, UI rendering rules, and event compatibility checks.
 
-**Acceptance evidence:** Automation policy tests, reviewer queues, override reasons, and assistant action audit trails. The evidence should be package-local in `src/pyAppGen/pbcs/fleet_mobility_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Extension registration tests, projection compatibility checks, and release evidence proving a new fleet-specific attribute appears in the workbench without direct schema surgery.
 
-### 41. Package discovery and fit scoring for Fuel Transaction
+### 41. Driver acknowledgement and exception handback
 
-**Justification:** Users selecting PBCs need transparent fit reasoning, especially when domains are adjacent but not overlapping.
+**Justification:** Assignment is incomplete until the driver has accepted or rejected the task and explained why.
 
-**Improvement:** Improve package metadata so composition can explain when `fleet_mobility_operations` fits a prompt, what entities it owns, what APIs/events it exposes, and what adjacent PBCs it depends on. Tie the behavior to `fleet_mobility_operations_create_vehicle_workflow` where applicable, and make it visible in `FleetMobilityOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Extend assignment flow so drivers can acknowledge, decline, or request clarification on dispatches, with decline reasons feeding back into dispatch replanning and supervisor queues.
 
-**Acceptance evidence:** Discovery manifests, prompt-selection tests, overlap rationale links, and composition DSL examples. The evidence should be package-local in `src/pyAppGen/pbcs/fleet_mobility_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Assignment lifecycle tests for accept and decline paths, workbench visibility into unacknowledged dispatches, and release evidence showing a declined job automatically reopened for reassignment.
 
-### 42. Configuration deployment pipeline for Maintenance Schedule
+### 42. Idle-time and standby utilization controls
 
-**Justification:** Configuration changes can materially alter fleet and mobility operations; they need the same discipline as code releases.
+**Justification:** Utilization is not just route occupancy; excessive standby time and depot idling burn cost and energy.
 
-**Improvement:** Add configuration promotion for `maintenance_schedule` across draft, test, approved, active, deprecated, and rollback states with impact analysis before activation. Tie the behavior to `fleet_mobility_operations_record_driver_assignment_workflow` where applicable, and make it visible in `FleetMobilityOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add analytics and exception thresholds for excessive idle time, standby time, and engine-on dwell by vehicle, depot, route family, and dispatcher action.
 
-**Acceptance evidence:** Config diff views, approval workflows, simulation before activation, and rollback tests. The evidence should be package-local in `src/pyAppGen/pbcs/fleet_mobility_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Analytical tests for idle ratios, exception cards for excessive idle behavior, and release evidence showing utilization improvement after idle-policy enforcement.
 
-### 43. Workbench command completeness for Safety Event
+### 43. Seasonal maintenance campaign planning
 
-**Justification:** A PBC does not fully surface its capabilities if users must call hidden APIs for core work.
+**Justification:** Fleet readiness often depends on seasonal service bursts such as tire changes, cooling checks, or rainy-season inspections.
 
-**Improvement:** Expose every high-value operation for `safety_event` in the UI: create, validate, approve, simulate, correct, assign, export, retry, close, and audit-proof verification. Tie the behavior to `fleet_mobility_operations_create_vehicle_workflow` where applicable, and make it visible in `FleetMobilityOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add campaign planning to `maintenance_schedule` so operators can schedule grouped service windows, reserve workshop capacity, and forecast vehicle availability impact.
 
-**Acceptance evidence:** UI action coverage tests, permission-aware disabled states, keyboard paths, and assistant handoff links. The evidence should be package-local in `src/pyAppGen/pbcs/fleet_mobility_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Campaign scheduling tests, workshop capacity views tied to maintenance demand, and release evidence showing campaign-driven service planning without assignment collisions.
 
-### 44. Document packet and evidence vault for Fleet Mobility Operations Policy Rule
+### 44. Depot arrival-to-dispatch turnaround metric
 
-**Justification:** Documents often carry the legal or operational truth behind vehicles, drivers, telematics, routing, maintenance, utilization, fuel, safety, and fleet compliance.
+**Justification:** Operations teams need to know how quickly a vehicle returns to ready state after reaching a depot or workshop.
 
-**Improvement:** Create a governed evidence vault for `fleet_mobility_operations_policy_rule` documents, attachments, source spans, extracted fields, signatures, approvals, and retention labels. Tie the behavior to `fleet_mobility_operations_record_driver_assignment_workflow` where applicable, and make it visible in `FleetMobilityOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Measure turnaround from geofence arrival to dispatch-ready clearance, breaking the delay into fueling or charging, inspection, maintenance, documentation, and assignment preparation stages.
 
-**Acceptance evidence:** Evidence models, source-to-field lineage, signature validation, retention policies, and proof exports. The evidence should be package-local in `src/pyAppGen/pbcs/fleet_mobility_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Metric derivation tests combining geofence events and readiness changes, workbench breakdown charts, and release evidence showing the slowest turnaround stage for a sampled depot.
 
-### 45. Data correction and amendment history for Fleet Mobility Operations Runtime Parameter
+### 45. Incident root-cause catalog and repeat-failure detection
 
-**Justification:** World-class systems correct mistakes without rewriting history or confusing downstream consumers.
+**Justification:** Safety and roadside events become more valuable when repeat causes are clustered and fed back into policy or maintenance changes.
 
-**Improvement:** Support formal amendments for `fleet_mobility_operations_runtime_parameter` that preserve original values, correction reason, approving actor, effective date, downstream event impacts, and replay behavior. Tie the behavior to `fleet_mobility_operations_create_vehicle_workflow` where applicable, and make it visible in `FleetMobilityOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add a controlled catalog for incident root causes, corrective actions, and repeat-failure grouping across vehicles, depots, drivers, and route families.
 
-**Acceptance evidence:** Amendment tables, correction events, projection replay tests, and side-by-side before/after UI. The evidence should be package-local in `src/pyAppGen/pbcs/fleet_mobility_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Incident classification tests, repeat-failure analytics in the safety workbench, and release evidence showing a recurring brake-related issue identified across multiple vehicles.
 
-### 46. External participant collaboration for Fleet Mobility Operations Schema Extension
+### 46. Offline telematics resilience and freshness warnings
 
-**Justification:** Many fleet and mobility operations workflows require outside parties, but they must not gain direct access to internal tables.
+**Justification:** Field connectivity is unreliable, and stale telemetry can silently degrade dispatch decisions if freshness is not surfaced.
 
-**Improvement:** Add controlled collaboration portals or API views for external participants related to `fleet_mobility_operations_schema_extension`, limited to scoped evidence submission, status checks, comments, and dispute responses. Tie the behavior to `fleet_mobility_operations_record_driver_assignment_workflow` where applicable, and make it visible in `FleetMobilityOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Track device heartbeat freshness, delayed upload windows, and last-known-position age so operators can distinguish truly stationary vehicles from disconnected devices.
 
-**Acceptance evidence:** Participant role policies, scoped tokens, submission audit trails, and inbound evidence validation. The evidence should be package-local in `src/pyAppGen/pbcs/fleet_mobility_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Freshness tests for connected and disconnected devices, workbench warnings for stale feeds, and release evidence showing dispatch blocked because a vehicle's telemetry was too old to trust.
 
-### 47. Advanced dependency freshness scoring for Fleet Mobility Operations Control Assertion
+### 47. Fuel-card versus odometer reconciliation workflow
 
-**Justification:** A record may be valid locally but unsafe if dependency evidence is stale or incomplete.
+**Justification:** Fuel controls improve when odometer capture is checked against telematics rather than trusted as entered.
 
-**Improvement:** Score freshness and reliability of dependencies used by `fleet_mobility_operations_control_assertion`, including consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, referenced projections, configuration versions, and external submissions. Tie the behavior to `fleet_mobility_operations_create_vehicle_workflow` where applicable, and make it visible in `FleetMobilityOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add a reconciliation workflow that compares transaction odometer readings to telematics-derived odometer movement and routes suspicious mismatches into investigation.
 
-**Acceptance evidence:** Freshness indicators, blocking rules, stale-event simulations, and workbench dependency health panels. The evidence should be package-local in `src/pyAppGen/pbcs/fleet_mobility_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Reconciliation tests with valid and manipulated odometer inputs, investigation queue evidence in the workbench, and release evidence showing a flagged mismatch resolved with operator commentary.
 
-### 48. Model governance and explainability for Fleet Mobility Operations Governed Model
+### 48. Charger occupancy and queue projection
 
-**Justification:** Governed AI is mandatory for professional-grade automation in Fleet and Mobility Operations.
+**Justification:** Charging readiness depends on charger congestion, not just battery state.
 
-**Improvement:** For every predictive or agentic feature around `fleet_mobility_operations_governed_model`, record model version, prompt or ruleset version, training/evaluation evidence, confidence, explanation, and human feedback. Tie the behavior to `fleet_mobility_operations_record_driver_assignment_workflow` where applicable, and make it visible in `FleetMobilityOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Model charging-site occupancy, expected wait time, session duration, and route departure commitments so dispatch can choose between charging now, swapping assets, or delaying assignment.
 
-**Acceptance evidence:** Model cards, prompt/version manifests, feedback loops, drift tests, and audit proof for recommendations. The evidence should be package-local in `src/pyAppGen/pbcs/fleet_mobility_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Queue-projection tests for overlapping charging sessions, energy workbench views showing charger contention, and release evidence demonstrating a route reassigned because charger wait time would miss departure.
 
-### 49. High-scale partitioning and archival for Vehicle
+### 49. Carbon and energy intensity reporting
 
-**Justification:** Better-than-world-class packages must remain operable after years of high-volume domain history.
+**Justification:** Carbon and sustainability awareness is declared in the manifest, and fleet leaders need route and asset decisions tied to energy intensity.
 
-**Improvement:** Plan scale behavior for `vehicle`: tenant partitioning, archival policies, cold storage, retention-aware search, projection compaction, and large-batch replay. Tie the behavior to `fleet_mobility_operations_create_vehicle_workflow` where applicable, and make it visible in `FleetMobilityOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add reporting for fuel burn, charging mix, idle emissions, and route-level energy intensity so dispatch and maintenance decisions can balance cost, readiness, and sustainability.
 
-**Acceptance evidence:** Partition tests, archive/retrieve fixtures, retention enforcement, and replay benchmarks. The evidence should be package-local in `src/pyAppGen/pbcs/fleet_mobility_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Calculation tests for energy-intensity metrics, workbench views filtered by depot and vehicle class, and release evidence showing how route or charging choices changed the energy profile.
 
-### 50. Release gate expansion for Driver Assignment
+### 50. Release gate for operational proof, not only build proof
 
-**Justification:** The PBC should not claim domain coverage unless release evidence proves the claim end to end.
+**Justification:** Fleet releases should be blocked when domain-critical scenarios cannot be demonstrated, even if the code compiles.
 
-**Improvement:** Expand release gates for `fleet_mobility_operations` so every schema, service, API, event, handler, UI, rule, parameter, agent skill, seed scenario, and improvement backlog item maps to executable evidence. Tie the behavior to `fleet_mobility_operations_record_driver_assignment_workflow` where applicable, and make it visible in `FleetMobilityOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Define a release gate that requires scenario evidence for vehicle readiness, assignment validation, telematics projection, route variance, maintenance blocking, compliance rejection, incident handling, fuel or charging reconciliation, and event emission integrity.
 
-**Acceptance evidence:** Release audit checks, manifest traceability, generated-app smoke tests, and missing-capability blockers. The evidence should be package-local in `src/pyAppGen/pbcs/fleet_mobility_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** A release checklist linked to `RELEASE_EVIDENCE.md`, automated verification summaries for each required scenario, and a documented fail condition when any fleet-operational proof is missing.

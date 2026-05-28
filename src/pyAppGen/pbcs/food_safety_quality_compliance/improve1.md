@@ -1,8 +1,8 @@
-# Food Safety Quality Compliance PBC Better-Than-World-Class Improvement Backlog
+# Food Safety Quality Compliance PBC Manual Improvement Backlog
 
 ## Purpose
 
-This file identifies, justifies, and describes 50 high-impact improvements for `food_safety_quality_compliance`. The backlog is specific to haccp plans, inspections, nonconformance, recalls, supplier audits, food quality, and regulatory evidence and is intended to move the PBC from release-auditable scaffolding toward complete, specialist-grade domain coverage.
+This strict backlog replaces scaffold-derived roadmap material for `food_safety_quality_compliance` with a hand-curated food safety and quality roadmap. The PBC owns HACCP plans, critical control points, inspections, nonconformance, recall events, supplier audits, quality holds, governed rules, agent assistance, and release evidence without owning manufacturing execution, inventory, supplier master data, or external regulatory filing systems.
 
 ## Current Domain Evidence Used
 
@@ -12,407 +12,405 @@ This file identifies, justifies, and describes 50 high-impact improvements for `
 - Public APIs: `POST /haccp-plans`, `POST /critical-control-points`, `POST /inspections`, `POST /nonconformances`, `POST /recall-events`, `GET /food-safety-quality-compliance-workbench`.
 - Emitted AppGen-X events: `FoodSafetyQualityComplianceCreated`, `FoodSafetyQualityComplianceUpdated`, `FoodSafetyQualityComplianceApproved`, `FoodSafetyQualityComplianceExceptionOpened`.
 - Consumed AppGen-X events: `PolicyChanged`, `AuditEventSealed`, `OperationalKpiChanged`.
-- Current standard surfaces include: `haccp_plan_management`, `food_safety_quality_compliance_workflow`, `food_safety_quality_compliance_analytics`, `configuration_schema`, `rule_engine`, `parameter_engine`, `owned_schema_migrations_models`, `appgen_x_outbox_inbox_eventing`, `idempotent_handlers`, `retry_dead_letter_evidence`.
-- Current advanced surfaces include: `food_safety_quality_compliance_event_sourced_operational_history`, `food_safety_quality_compliance_multi_tenant_policy_isolation`, `food_safety_quality_compliance_schema_evolution_resilience`, `food_safety_quality_compliance_autonomous_anomaly_detection`, `food_safety_quality_compliance_semantic_document_instruction_understanding`, `food_safety_quality_compliance_predictive_risk_scoring`, `food_safety_quality_compliance_counterfactual_scenario_simulation`, `food_safety_quality_compliance_cryptographic_audit_proofs`.
 
 ## 50 High-Impact Improvements
 
-### 1. Canonical lifecycle state model for Haccp Plan
+### 1. HACCP Plan Version Governance
 
-**Justification:** This closes shallow CRUD gaps by making every food safety quality compliance transition explainable and testable instead of implicit in free-form status values.
+**Justification:** Hazard analysis and control plans change by product, facility, line, ingredient, process, and regulation.
 
-**Improvement:** Define a complete state machine for `haccp_plan` with explicit draft, validated, blocked, approved, active, suspended, corrected, closed, archived, and reopened states. Tie the behavior to `food_safety_quality_compliance_create_haccp_plan_workflow` where applicable, and make it visible in `FoodSafetyQualityComplianceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add HACCP plan versions with product scope, process flow, hazard analysis, approved controls, effective window, reviewer, and supersession reason.
 
-**Acceptance evidence:** State-transition tests, invalid-transition fixtures, workbench state badges, and emitted AppGen-X transition events for FoodSafetyQualityComplianceCreated, FoodSafetyQualityComplianceUpdated, FoodSafetyQualityComplianceApproved. The evidence should be package-local in `src/pyAppGen/pbcs/food_safety_quality_compliance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must prove historical inspections and holds reference the active plan version at the time.
 
-### 2. Domain intake and normalization for Critical Control Point
+### 2. Process Flow and Hazard Mapping
 
-**Justification:** The PBC cannot reach complete domain coverage unless it handles the messy front door of haccp plans, inspections, nonconformance, recalls, supplier audits, food quality, and regulatory evidence, not only already-clean records.
+**Justification:** Food safety controls depend on the exact process step where biological, chemical, physical, or allergen hazards arise.
 
-**Improvement:** Build a typed intake pipeline for `critical_control_point` that accepts structured API payloads, document-derived instructions, batch loads, and assistant-generated drafts while normalizing identifiers, dates, units, parties, and jurisdictional context. Tie the behavior to `food_safety_quality_compliance_record_critical_control_point_workflow` where applicable, and make it visible in `FoodSafetyQualityComplianceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add process-step maps with hazard type, likelihood, severity, preventive control, prerequisite program, and linked critical control point.
 
-**Acceptance evidence:** Golden intake fixtures, rejected-record queues, field-level normalization evidence, and assistant previews before governed datastore mutation. The evidence should be package-local in `src/pyAppGen/pbcs/food_safety_quality_compliance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must reject critical-control definitions that lack a mapped hazard and process step.
 
-### 3. Specialist validation rules for Inspection
+### 3. Critical Control Point Limits
 
-**Justification:** World-class Food Safety Quality Compliance requires rules that domain experts can reason about, version, test, and roll back without code edits.
+**Justification:** CCPs need measurable critical limits, monitoring frequency, responsibility, and corrective action.
 
-**Improvement:** Add a domain rule compiler for `inspection` that supports threshold rules, eligibility rules, dependency rules, temporal windows, conflicting-instruction detection, and override justification. Tie the behavior to `food_safety_quality_compliance_create_haccp_plan_workflow` where applicable, and make it visible in `FoodSafetyQualityComplianceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand `critical_control_point` with limit type, minimum/maximum, unit, monitoring method, frequency, responsible role, and verification requirement.
 
-**Acceptance evidence:** Rule simulation tests, versioned rule manifests, rule impact reports, and UI rule editors linked to `FOOD_SAFETY_QUALITY_COMPLIANCE_DATABASE_URL, FOOD_SAFETY_QUALITY_COMPLIANCE_EVENT_TOPIC, FOOD_SAFETY_QUALITY_COMPLIANCE_RETRY_LIMIT`. The evidence should be package-local in `src/pyAppGen/pbcs/food_safety_quality_compliance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must detect out-of-limit readings and open required corrective actions.
 
-### 4. Parameter governance and tuning for Nonconformance
+### 4. Monitoring Record Intake
 
-**Justification:** Parameters are where operations teams tune food safety quality compliance; unbounded constants would make the PBC brittle and unsafe in real deployments.
+**Justification:** Temperature, pH, metal detection, cook time, chlorine, and sanitation monitoring are the daily proof of control.
 
-**Improvement:** Expose bounded runtime parameters for `nonconformance` covering risk thresholds, SLA windows, confidence floors, escalation cutoffs, batch sizes, retry limits, and human-confirmation requirements. Tie the behavior to `food_safety_quality_compliance_record_critical_control_point_workflow` where applicable, and make it visible in `FoodSafetyQualityComplianceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add monitoring records with value, unit, timestamp, device, operator, source evidence, pass/fail, and review state.
 
-**Acceptance evidence:** Parameter schema validation, tenant overrides, approval history, rollback controls, and workbench diff views. The evidence should be package-local in `src/pyAppGen/pbcs/food_safety_quality_compliance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must validate units, missing checks, late checks, and failed checks.
 
-### 5. Deep owned schema expansion for Recall Event
+### 5. Corrective Action for CCP Failure
 
-**Justification:** A single payload column cannot express the full surface of haccp plans, inspections, nonconformance, recalls, supplier audits, food quality, and regulatory evidence or prove cross-PBC boundaries are respected.
+**Justification:** A failed critical control point can require product hold, rework, disposal, equipment check, and root-cause review.
 
-**Improvement:** Extend the owned schema around `recall_event` with normalized child tables for line-level evidence, party roles, approvals, attachments, comments, metrics, exception reasons, and control assertions. Tie the behavior to `food_safety_quality_compliance_create_haccp_plan_workflow` where applicable, and make it visible in `FoodSafetyQualityComplianceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add corrective action records with affected product, immediate action, disposition, root cause, verifier, and restart criteria.
 
-**Acceptance evidence:** Migrations, models, relationship tests, schema contract snapshots, and no shared-table access outside the `food_safety_quality_compliance_` namespace. The evidence should be package-local in `src/pyAppGen/pbcs/food_safety_quality_compliance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must block release of affected lots until corrective action and disposition evidence are complete.
 
-### 6. Event-sourced operational history for Supplier Audit
+### 6. Quality Hold Lifecycle
 
-**Justification:** Temporal reconstruction is essential for better-than-world-class auditability and dispute resolution in food safety quality compliance.
+**Justification:** Product holds protect consumers and brands but must be traceable and dispositioned.
 
-**Improvement:** Capture every material mutation of `supplier_audit` as immutable AppGen-X events with actor, tenant, command, policy version, idempotency key, before/after summary, and projection checkpoint. Tie the behavior to `food_safety_quality_compliance_record_critical_control_point_workflow` where applicable, and make it visible in `FoodSafetyQualityComplianceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand `quality_hold` with hold reason, affected lot projection, quantity, location, release criteria, disposition, approver, and release event.
 
-**Acceptance evidence:** Replay tests, projection checksums, event ordering evidence, and point-in-time workbench views. The evidence should be package-local in `src/pyAppGen/pbcs/food_safety_quality_compliance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must prevent release without approved disposition and preserve quantity reconciliation.
 
-### 7. Projection and read-model strategy for Quality Hold
+### 7. Lot Genealogy Boundary
 
-**Justification:** The workbench should not force users to infer domain truth from raw tables; each projection should answer a real operating question.
+**Justification:** Food safety requires traceability across ingredients, batches, packaging, storage, shipment, and customers.
 
-**Improvement:** Create purpose-built projections for `quality_hold`: operational queue, executive KPI rollup, exception aging, compliance evidence, agent task context, and external dependency health. Tie the behavior to `food_safety_quality_compliance_create_haccp_plan_workflow` where applicable, and make it visible in `FoodSafetyQualityComplianceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Store genealogy projections with source lot, finished lot, transformation step, quantity, location, and freshness from declared inventory/manufacturing events.
 
-**Acceptance evidence:** Projection contracts, freshness SLAs, backfill tests, and visible stale-projection warnings. The evidence should be package-local in `src/pyAppGen/pbcs/food_safety_quality_compliance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Boundary tests must fail on direct inventory table reads and pass on declared AppGen-X projections.
 
-### 8. Exception taxonomy and remediation for Food Safety Quality Compliance Policy Rule
+### 8. Allergen Control Program
 
-**Justification:** High-value PBCs win on exception throughput; generic “failed” states hide the details operators need.
+**Justification:** Allergen cross-contact is a leading safety risk.
 
-**Improvement:** Model the full exception taxonomy for `food_safety_quality_compliance_policy_rule`, including severity, root cause, blocking dependency, remediation owner, due date, retry eligibility, escalation path, and closure evidence. Tie the behavior to `food_safety_quality_compliance_record_critical_control_point_workflow` where applicable, and make it visible in `FoodSafetyQualityComplianceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add allergen profiles, line clearance checks, changeover validation, label verification, rework restrictions, and cross-contact risk.
 
-**Acceptance evidence:** Exception queues, aging metrics, remediation playbooks, dead-letter linkage, and closure test fixtures for yield variance. The evidence should be package-local in `src/pyAppGen/pbcs/food_safety_quality_compliance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must open nonconformance for failed allergen clearance or label mismatch.
 
-### 9. Predictive risk scoring for Food Safety Quality Compliance Runtime Parameter
+### 9. Sanitation Verification
 
-**Justification:** The package should warn users before food safety quality compliance work fails, breaches policy, or creates downstream cost.
+**Justification:** Sanitation is a prerequisite program that affects release and inspection readiness.
 
-**Improvement:** Add predictive risk scoring for `food_safety_quality_compliance_runtime_parameter` using domain features from owned tables, consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, rule outcomes, aging, anomaly signals, and historical corrections. Tie the behavior to `food_safety_quality_compliance_create_haccp_plan_workflow` where applicable, and make it visible in `FoodSafetyQualityComplianceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add sanitation schedule, method, chemical, concentration, swab result, visual check, pre-op approval, and failed-cleaning actions.
 
-**Acceptance evidence:** Feature manifests, score explanations, calibration reports, drift alerts, and tests for low/medium/high-risk scenarios. The evidence should be package-local in `src/pyAppGen/pbcs/food_safety_quality_compliance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must block production start or product release when required sanitation verification fails.
 
-### 10. Counterfactual simulation for Food Safety Quality Compliance Schema Extension
+### 10. Environmental Monitoring
 
-**Justification:** Advanced users need to ask “what would happen if” before committing changes to live haccp plans, inspections, nonconformance, recalls, supplier audits, food quality, and regulatory evidence operations.
+**Justification:** Pathogen or indicator organisms in facilities can trigger investigations and product risk review.
 
-**Improvement:** Provide scenario simulation for `food_safety_quality_compliance_schema_extension`: policy change, capacity constraint, deadline shift, price/rate change, eligibility change, disruption, and manual override outcomes. Tie the behavior to `food_safety_quality_compliance_record_critical_control_point_workflow` where applicable, and make it visible in `FoodSafetyQualityComplianceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add zone, site, sample type, organism, result, trend, corrective action, and product impact assessment.
 
-**Acceptance evidence:** Simulation APIs, non-mutating sandbox state, comparison reports, and workbench side-by-side scenario panels. The evidence should be package-local in `src/pyAppGen/pbcs/food_safety_quality_compliance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must escalate positives by zone and require risk review for linked product lots.
 
-### 11. Autonomous anomaly triage for Food Safety Quality Compliance Control Assertion
+### 11. Inspection Program
 
-**Justification:** A world-class PBC should reduce analyst burden without hiding the reasoning behind automated triage.
+**Justification:** Inspections cover facility hygiene, GMP, process controls, foreign material, labeling, storage, and documentation.
 
-**Improvement:** Implement anomaly detection for `food_safety_quality_compliance_control_assertion` that identifies outliers, duplicate submissions, impossible sequences, stale dependencies, unusual amounts/counts/durations, and contradictory fields. Tie the behavior to `food_safety_quality_compliance_create_haccp_plan_workflow` where applicable, and make it visible in `FoodSafetyQualityComplianceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand `inspection` with checklist, area, inspector, severity, finding, score, action required, and repeat finding marker.
 
-**Acceptance evidence:** Explainable anomaly cards, reviewer feedback loops, false-positive tracking, and suppression governance. The evidence should be package-local in `src/pyAppGen/pbcs/food_safety_quality_compliance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must create findings, due corrective actions, and trend repeat failures.
 
-### 12. Semantic document understanding for Food Safety Quality Compliance Governed Model
+### 12. Supplier Audit Program
 
-**Justification:** Document-heavy work in Food Safety Quality Compliance cannot be complete if the assistant only answers questions and cannot prepare accurate governed changes.
+**Justification:** Ingredient and packaging safety depends on supplier controls and audit outcomes.
 
-**Improvement:** Train the package assistant to parse domain documents and instructions for `food_safety_quality_compliance_governed_model`, extract obligations, dates, parties, quantities, identifiers, and exceptions, then map them to safe draft mutations. Tie the behavior to `food_safety_quality_compliance_record_critical_control_point_workflow` where applicable, and make it visible in `FoodSafetyQualityComplianceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand `supplier_audit` with supplier projection, commodity, audit type, finding, risk rating, corrective action, approval status, and expiry.
 
-**Acceptance evidence:** Document extraction tests, confidence thresholds, redaction handling, source span citations, and human confirmation workflows. The evidence should be package-local in `src/pyAppGen/pbcs/food_safety_quality_compliance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must block high-risk supplier use through declared events when audit approval is missing or expired.
 
-### 13. Agent-safe CRUD execution for Haccp Plan
+### 13. Certificate and Specification Compliance
 
-**Justification:** The PBC agent must be a first-class operator but never a hidden bypass around RBAC, rules, or owned datastore boundaries.
+**Justification:** Incoming lots often require certificates, microbiological limits, chemical limits, and quality specifications.
 
-**Improvement:** Add a professional chatbot skill for `haccp_plan` that can create, update, correct, close, and annotate records only through policy-checked commands, approval gates, and previewed diffs. Tie the behavior to `food_safety_quality_compliance_create_haccp_plan_workflow` where applicable, and make it visible in `FoodSafetyQualityComplianceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add certificate evidence, specification version, tested attributes, pass/fail, deviation, and waiver approval.
 
-**Acceptance evidence:** Skill manifests, permission tests, preview/confirm flows, blocked-action evidence, and audit events for every assistant mutation. The evidence should be package-local in `src/pyAppGen/pbcs/food_safety_quality_compliance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must hold lots with missing or failed specification evidence.
 
-### 14. Workbench persona coverage for Critical Control Point
+### 14. Nonconformance Taxonomy
 
-**Justification:** A generic detail page underserves the domain; each role needs the exact controls and evidence they use daily.
+**Justification:** Food quality failures need specific categories for corrective action and trend analysis.
 
-**Improvement:** Design dedicated workbench panels for `critical_control_point`: operator queue, supervisor approvals, analyst exceptions, auditor evidence, configuration owner, and agent-assistance review. Tie the behavior to `food_safety_quality_compliance_record_critical_control_point_workflow` where applicable, and make it visible in `FoodSafetyQualityComplianceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand `nonconformance` with category, severity, product impact, process step, root cause, containment, corrective action, and recurrence flag.
 
-**Acceptance evidence:** UI contract entries, route tests, empty/error/loading states, and permission-aware action availability. The evidence should be package-local in `src/pyAppGen/pbcs/food_safety_quality_compliance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must route microbiological, allergen, foreign material, label, supplier, sanitation, and documentation failures.
 
-### 15. Cross-PBC dependency contracts for Inspection
+### 15. Root Cause and CAPA Linkage
 
-**Justification:** Composable packages fail when hidden table coupling enters the domain model.
+**Justification:** Recurrent food safety issues require root cause analysis and preventive action.
 
-**Improvement:** Represent dependencies for `inspection` through declared APIs, consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, and projections rather than shared tables, with explicit freshness, ownership, and fallback behavior. Tie the behavior to `food_safety_quality_compliance_create_haccp_plan_workflow` where applicable, and make it visible in `FoodSafetyQualityComplianceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add root cause method, confirmed cause, corrective action, preventive action, owner, due date, effectiveness check, and closure evidence.
 
-**Acceptance evidence:** Dependency manifests, contract tests, stale dependency alerts, and no foreign-table references in generated artifacts. The evidence should be package-local in `src/pyAppGen/pbcs/food_safety_quality_compliance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must prevent major nonconformance closure without root cause and effectiveness evidence.
 
-### 16. API completeness and versioning for Nonconformance
+### 16. Recall Event Classification
 
-**Justification:** Complete domain coverage requires both command and query surfaces, not only happy-path create endpoints.
+**Justification:** Recalls and withdrawals vary by consumer risk, regulatory class, voluntary action, and market scope.
 
-**Improvement:** Expand APIs beyond POST /haccp-plans, POST /critical-control-points, POST /inspections to cover search, validation-only commands, simulation, bulk intake, exception closure, evidence export, projection reads, and idempotent corrections. Tie the behavior to `food_safety_quality_compliance_record_critical_control_point_workflow` where applicable, and make it visible in `FoodSafetyQualityComplianceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand `recall_event` with classification, reason, affected lots, distribution scope, consumer risk, regulator notification, and communication plan.
 
-**Acceptance evidence:** OpenAPI-style route manifests, backward-compatible version tests, deprecation metadata, and idempotency assertions. The evidence should be package-local in `src/pyAppGen/pbcs/food_safety_quality_compliance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must classify recall, withdrawal, market correction, and mock recall events.
 
-### 17. Typed emitted-event expansion for Recall Event
+### 17. Recall Impact Analysis
 
-**Justification:** Consumers should understand what happened in Food Safety Quality Compliance without parsing opaque payloads.
+**Justification:** Fast and accurate affected-lot identification is central to food safety response.
 
-**Improvement:** Replace generic lifecycle emissions with typed events for each meaningful `recall_event` transition, exception, approval, correction, simulation result, and downstream handoff. Tie the behavior to `food_safety_quality_compliance_create_haccp_plan_workflow` where applicable, and make it visible in `FoodSafetyQualityComplianceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add impact analysis from genealogy projections, supplier lots, production windows, holds, shipments, and customer projections.
 
-**Acceptance evidence:** Event schema tests, event examples, compatibility checks, and emitted-event coverage in release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/food_safety_quality_compliance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must produce affected-lot lists and prove no direct external table access.
 
-### 18. Consumed-event handlers for Supplier Audit
+### 18. Mock Recall Drill
 
-**Justification:** A PBC is composable only when incoming events affect its own domain state predictably and safely.
+**Justification:** Organizations must prove recall readiness before real incidents.
 
-**Improvement:** Implement idempotent handlers for consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged that update projections, open dependency exceptions, recalculate risk, and preserve source event lineage. Tie the behavior to `food_safety_quality_compliance_record_critical_control_point_workflow` where applicable, and make it visible in `FoodSafetyQualityComplianceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add side-effect-free recall drills with selected product, trace start, elapsed time, completeness, gaps, and corrective actions.
 
-**Acceptance evidence:** Duplicate-event tests, handler side-effect boundaries, dead-letter fixtures, and lineage links back to source events. The evidence should be package-local in `src/pyAppGen/pbcs/food_safety_quality_compliance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must produce mock recall metrics and evidence packets without mutating live recall state.
 
-### 19. Retry and dead-letter operations for Quality Hold
+### 19. Product Disposition Controls
 
-**Justification:** Dead letters are not just plumbing; they are domain work queues that can block haccp plans, inspections, nonconformance, recalls, supplier audits, food quality, and regulatory evidence.
+**Justification:** Held or nonconforming product may be released, reworked, downgraded, donated, destroyed, or returned.
 
-**Improvement:** Create operational tools for retrying, quarantining, explaining, and resolving dead-lettered `quality_hold` events with max-attempt policy, poison-message detection, and replay safety. Tie the behavior to `food_safety_quality_compliance_create_haccp_plan_workflow` where applicable, and make it visible in `FoodSafetyQualityComplianceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add disposition options, approval authority, quantity reconciliation, destination, destruction proof, and event emission.
 
-**Acceptance evidence:** Dead-letter workbench, retry eligibility tests, replay audit proof, and operator action logs. The evidence should be package-local in `src/pyAppGen/pbcs/food_safety_quality_compliance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must reject unauthorized disposition and preserve full quantity accounting.
 
-### 20. RBAC and attribute policy for Food Safety Quality Compliance Policy Rule
+### 20. Label and Packaging Verification
 
-**Justification:** High-impact domain operations need finer controls than generic RBAC grants.
+**Justification:** Incorrect labels can create allergen, ingredient, nutrition, date, and market compliance risks.
 
-**Improvement:** Extend permissions for `food_safety_quality_compliance_policy_rule` from coarse read/create/update/admin to action-level and attribute-aware policies based on role, tenant, jurisdiction, monetary/materiality threshold, and exception severity. Tie the behavior to `food_safety_quality_compliance_record_critical_control_point_workflow` where applicable, and make it visible in `FoodSafetyQualityComplianceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add label version, packaging line check, barcode check, allergen statement, date code, market language, and reconciliation.
 
-**Acceptance evidence:** Permission matrix docs, ABAC policy tests, denied-action UI states, and assistant skill permission checks. The evidence should be package-local in `src/pyAppGen/pbcs/food_safety_quality_compliance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must open holds for mismatched labels or unreconciled packaging counts.
 
-### 21. Continuous control testing for Food Safety Quality Compliance Runtime Parameter
+### 21. Foreign Material Control
 
-**Justification:** Controls should run during operations, not only during release audit or manual review.
+**Justification:** Metal, glass, plastic, stone, and wood contamination requires prevention and evidence.
 
-**Improvement:** Embed control assertions for `food_safety_quality_compliance_runtime_parameter` that continuously test segregation of duties, required approvals, stale exceptions, policy drift, duplicate records, and boundary violations. Tie the behavior to `food_safety_quality_compliance_create_haccp_plan_workflow` where applicable, and make it visible in `FoodSafetyQualityComplianceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add detector checks, sieve/magnet inspections, brittle-material register, findings, affected lots, and corrective actions.
 
-**Acceptance evidence:** Control dashboards, failing-control events, test fixtures, and release evidence tied to `food_safety_quality_compliance_control_assertion` records. The evidence should be package-local in `src/pyAppGen/pbcs/food_safety_quality_compliance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must block release after failed foreign-material control checks until disposition is complete.
 
-### 22. Cryptographic audit proofing for Food Safety Quality Compliance Schema Extension
+### 22. Shelf-Life and Stability Verification
 
-**Justification:** Better-than-world-class auditability requires proof of integrity, not merely logs stored in mutable tables.
+**Justification:** Product quality depends on stability, storage, sensory, microbiological, and date-code evidence.
 
-**Improvement:** Hash-chain material `food_safety_quality_compliance_schema_extension` decisions, documents, emitted events, and release-evidence snapshots to make tampering visible without exposing sensitive payloads. Tie the behavior to `food_safety_quality_compliance_record_critical_control_point_workflow` where applicable, and make it visible in `FoodSafetyQualityComplianceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add shelf-life protocol, sample pulls, test results, sensory outcomes, storage condition, date-code rule, and extension approval.
 
-**Acceptance evidence:** Proof manifests, verification APIs, redacted proof exports, and audit-ledger handoff events. The evidence should be package-local in `src/pyAppGen/pbcs/food_safety_quality_compliance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must reject shelf-life extension without supporting evidence.
 
-### 23. Privacy, consent, and secrecy controls for Food Safety Quality Compliance Control Assertion
+### 23. Sensory and Quality Attribute Panels
 
-**Justification:** Complete domain coverage must account for protected data and restricted operational evidence.
+**Justification:** Food quality includes taste, texture, appearance, aroma, and packaging integrity.
 
-**Improvement:** Add field-level privacy classifications for `food_safety_quality_compliance_control_assertion`, consent checks, masking rules, retention schedules, legal holds, and assistant redaction policies. Tie the behavior to `food_safety_quality_compliance_create_haccp_plan_workflow` where applicable, and make it visible in `FoodSafetyQualityComplianceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add sensory panel records, attribute scores, trained panelist evidence, defect type, release recommendation, and trend.
 
-**Acceptance evidence:** Retention tests, masked UI snapshots, consent-blocked mutation fixtures, and export controls. The evidence should be package-local in `src/pyAppGen/pbcs/food_safety_quality_compliance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must route quality defects and link them to holds or nonconformance cases.
 
-### 24. Multi-tenant operating model for Food Safety Quality Compliance Governed Model
+### 24. Temperature and Cold Chain Compliance
 
-**Justification:** The PBC should scale across organizations while preserving independent policy and compliance boundaries.
+**Justification:** Temperature excursions can compromise safety and quality.
 
-**Improvement:** Support tenant-specific `food_safety_quality_compliance_governed_model` rules, data residency, encryption context, configuration, seed data, and release evidence without allowing cross-tenant leakage. Tie the behavior to `food_safety_quality_compliance_record_critical_control_point_workflow` where applicable, and make it visible in `FoodSafetyQualityComplianceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add temperature profile projections, excursion duration, product tolerance, corrective action, and disposition review.
 
-**Acceptance evidence:** Tenant isolation tests, tenant-scoped parameters, key-rotation evidence, and cross-tenant negative fixtures. The evidence should be package-local in `src/pyAppGen/pbcs/food_safety_quality_compliance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must hold product when temperature evidence is missing or out of tolerance.
 
-### 25. Schema evolution and extension registry for Haccp Plan
+### 25. Regulatory Obligation Register
 
-**Justification:** Domain teams will add fields; the PBC must evolve without breaking APIs, events, or workbench projections.
+**Justification:** Food safety obligations vary by product, market, claim, facility, and process.
 
-**Improvement:** Make schema extensions for `haccp_plan` first-class with compatibility checks, migration previews, projection backfills, field ownership, and rollback metadata. Tie the behavior to `food_safety_quality_compliance_create_haccp_plan_workflow` where applicable, and make it visible in `FoodSafetyQualityComplianceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add obligation records with jurisdiction, requirement, evidence, due date, owner, status, and noncompliance consequence.
 
-**Acceptance evidence:** Extension registry UI, compatibility tests, migration dry-runs, and backfill release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/food_safety_quality_compliance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must open tasks for overdue regulatory obligations and link evidence packets.
 
-### 26. Master data quality gates for Critical Control Point
+### 26. Audit Evidence Room
 
-**Justification:** Many food safety quality compliance errors begin as bad reference data; the PBC should catch them before workflow execution.
+**Justification:** Food safety audits require focused evidence across HACCP, sanitation, training, suppliers, inspections, recalls, and CAPA.
 
-**Improvement:** Define reference-data contracts for `critical_control_point`: canonical codes, parties, locations, classifications, calendars, units, currencies, products, assets, or service categories as relevant to the domain. Tie the behavior to `food_safety_quality_compliance_record_critical_control_point_workflow` where applicable, and make it visible in `FoodSafetyQualityComplianceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add evidence packet generation by facility, product, lot, period, audit type, and finding.
 
-**Acceptance evidence:** Reference validation fixtures, stale-code warnings, mapping tables, and dependency freshness indicators. The evidence should be package-local in `src/pyAppGen/pbcs/food_safety_quality_compliance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must generate scoped, redacted, source-linked audit packets.
 
-### 27. Bulk operations and correction workflows for Inspection
+### 27. Training and Competency Boundary
 
-**Justification:** Enterprise-scale Food Safety Quality Compliance users cannot operate one record at a time.
+**Justification:** Food handlers and inspectors need training, but HR or learning systems may own training records.
 
-**Improvement:** Add bulk load, bulk validate, bulk approve, and bulk correction workflows for `inspection` with partial success, row-level errors, resumability, and rollback. Tie the behavior to `food_safety_quality_compliance_create_haccp_plan_workflow` where applicable, and make it visible in `FoodSafetyQualityComplianceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Store training projections with role, course, expiry, competency status, freshness, and task authorization effect.
 
-**Acceptance evidence:** CSV/API batch fixtures, resumable job state, row-level audit evidence, and assistant-generated correction suggestions. The evidence should be package-local in `src/pyAppGen/pbcs/food_safety_quality_compliance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Boundary tests must fail on training table reads and pass on declared projections.
 
-### 28. Lifecycle collaboration and tasking for Nonconformance
+### 28. Food Safety Workbench
 
-**Justification:** Domain collaboration should live inside the PBC boundary and remain auditable with the record it affects.
+**Justification:** Quality teams need queues by risk and deadline.
 
-**Improvement:** Attach tasks, comments, ownership, due dates, handoffs, and escalation threads to `nonconformance` without leaking into external shared task tables. Tie the behavior to `food_safety_quality_compliance_record_critical_control_point_workflow` where applicable, and make it visible in `FoodSafetyQualityComplianceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add views for CCP failures, holds, inspections, nonconformances, supplier audit gaps, recall tasks, sanitation failures, and expiring obligations.
 
-**Acceptance evidence:** Task tables, comment audit history, notification events, escalation SLAs, and role-specific task queues. The evidence should be package-local in `src/pyAppGen/pbcs/food_safety_quality_compliance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** UI tests must prove each queue maps to owned records or declared projections with permission-aware actions.
 
-### 29. SLA and service-level governance for Recall Event
+### 29. Agent-Assisted Food Safety Review
 
-**Justification:** Users need to know when haccp plans, inspections, nonconformance, recalls, supplier audits, food quality, and regulatory evidence is late, blocked, or at risk before customer or regulator impact.
+**Justification:** The assistant can summarize evidence but must not invent safety conclusions.
 
-**Improvement:** Define SLAs for `recall_event` across intake, validation, approval, exception resolution, event handling, downstream projection refresh, and release-evidence generation. Tie the behavior to `food_safety_quality_compliance_create_haccp_plan_workflow` where applicable, and make it visible in `FoodSafetyQualityComplianceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add skills for HACCP summary, recall impact draft, nonconformance root-cause outline, audit evidence checklist, and hold disposition summary.
 
-**Acceptance evidence:** SLA breach events, timers, configurable calendars, workbench aging buckets, and tests for pause/resume behavior. The evidence should be package-local in `src/pyAppGen/pbcs/food_safety_quality_compliance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must require citations and human approval before release-impacting actions.
 
-### 30. Operational analytics cockpit for Supplier Audit
+### 30. Governed Agent CRUD Commands
 
-**Justification:** World-class operations require leading indicators, not only record counts.
+**Justification:** Chat-driven quality actions must be previewed and approved.
 
-**Improvement:** Build analytics for `supplier_audit`: throughput, backlog, aging, approval latency, exception rate, risk distribution, automation acceptance, correction rate, and downstream dependency health. Tie the behavior to `food_safety_quality_compliance_record_critical_control_point_workflow` where applicable, and make it visible in `FoodSafetyQualityComplianceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add command previews for open hold, record CCP reading, close inspection finding, open nonconformance, start recall, approve disposition, and add supplier audit finding.
 
-**Acceptance evidence:** Metric definitions, projection tests, drill-through routes, export APIs, and anomaly overlays. The evidence should be package-local in `src/pyAppGen/pbcs/food_safety_quality_compliance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Intent tests must require entity identity, evidence, preview, confirmation, authority, and audit trail.
 
-### 31. Decision intelligence and recommendations for Quality Hold
+### 31. HACCP Change Impact Simulation
 
-**Justification:** The PBC should help expert users decide faster while showing evidence and uncertainty.
+**Justification:** Changing critical limits, monitoring frequency, or hazard controls can affect many products and lines.
 
-**Improvement:** Generate ranked recommendations for `quality_hold` such as next best action, likely resolution, required evidence, policy adjustment, staffing/capacity response, or downstream handoff. Tie the behavior to `food_safety_quality_compliance_create_haccp_plan_workflow` where applicable, and make it visible in `FoodSafetyQualityComplianceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add side-effect-free simulations over product families, CCP records, holds, nonconformances, and supplier lots.
 
-**Acceptance evidence:** Recommendation explanations, confidence intervals, feedback capture, model governance records, and rejection reasons. The evidence should be package-local in `src/pyAppGen/pbcs/food_safety_quality_compliance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must produce impact reports before high-risk HACCP changes activate.
 
-### 32. Quality and completeness scoring for Food Safety Quality Compliance Policy Rule
+### 32. Predictive Food Safety Risk
 
-**Justification:** Operators should see whether a record is truly ready, not just technically saved.
+**Justification:** Early warning can prevent incidents from recurring sanitation failures, supplier risk, temperature trends, and inspection findings.
 
-**Improvement:** Score each `food_safety_quality_compliance_policy_rule` record for completeness, consistency, policy readiness, dependency readiness, evidence sufficiency, and downstream composability. Tie the behavior to `food_safety_quality_compliance_record_critical_control_point_workflow` where applicable, and make it visible in `FoodSafetyQualityComplianceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add explainable risk scores by product, line, supplier, facility, and process step.
 
-**Acceptance evidence:** Scoring rules, missing-evidence lists, readiness badges, and blocking criteria in command handlers. The evidence should be package-local in `src/pyAppGen/pbcs/food_safety_quality_compliance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must generate risk factors and require human review before automated holds.
 
-### 33. End-to-end scenario library for Food Safety Quality Compliance Runtime Parameter
+### 33. Quality Trend Analytics
 
-**Justification:** Release evidence is stronger when every important food safety quality compliance behavior has executable examples.
+**Justification:** Recurrent quality issues need trend detection and prevention.
 
-**Improvement:** Create seeded scenarios for `food_safety_quality_compliance_runtime_parameter`: normal flow, urgent path, exception path, corrected path, duplicate path, late event path, and audit export path. Tie the behavior to `food_safety_quality_compliance_create_haccp_plan_workflow` where applicable, and make it visible in `FoodSafetyQualityComplianceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add analytics for complaints, holds, nonconformances, CCP failures, supplier findings, environmental positives, and recall drill gaps.
 
-**Acceptance evidence:** Scenario seed data, runtime smoke coverage, generated-app fixtures, and story-level workbench screenshots/contracts. The evidence should be package-local in `src/pyAppGen/pbcs/food_safety_quality_compliance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must generate tenant-scoped metrics with drilldown to evidence.
 
-### 34. Domain ontology and terminology model for Food Safety Quality Compliance Schema Extension
+### 34. Complaint and Adverse Feedback Boundary
 
-**Justification:** Precise vocabulary prevents the PBC from misclassifying specialist documents or user instructions.
+**Justification:** Consumer complaints may be owned by service systems but can drive recalls and investigations.
 
-**Improvement:** Add an ontology for `food_safety_quality_compliance_schema_extension` terms, synonyms, classifications, relationships, allowed values, and phrase mappings used by the assistant and UI. Tie the behavior to `food_safety_quality_compliance_record_critical_control_point_workflow` where applicable, and make it visible in `FoodSafetyQualityComplianceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Store complaint projections with product, lot, allegation, severity, source, freshness, and linked investigation.
 
-**Acceptance evidence:** Ontology files, assistant parsing tests, UI glossary, and mapping evidence for domain-specific abbreviations. The evidence should be package-local in `src/pyAppGen/pbcs/food_safety_quality_compliance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Boundary tests must fail on service table reads and pass on declared event/API projections.
 
-### 35. Advanced search and investigation for Food Safety Quality Compliance Control Assertion
+### 35. Incident Escalation Matrix
 
-**Justification:** Investigators and operators need fast, explainable retrieval across the whole domain surface.
+**Justification:** Food safety incidents need escalation by severity, product risk, market, regulator duty, and media exposure.
 
-**Improvement:** Provide search across `food_safety_quality_compliance_control_assertion` records, events, documents, exceptions, tasks, comments, and audit proofs with filters for tenant, status, risk, date, party, and dependency. Tie the behavior to `food_safety_quality_compliance_create_haccp_plan_workflow` where applicable, and make it visible in `FoodSafetyQualityComplianceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add escalation rules, notification list, deadlines, required approvals, and unresolved escalation queue.
 
-**Acceptance evidence:** Search index contracts, result provenance, permission-filtered queries, and stale-index warnings. The evidence should be package-local in `src/pyAppGen/pbcs/food_safety_quality_compliance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must escalate high-severity events and capture acknowledgement evidence.
 
-### 36. Reconciliation and closure controls for Food Safety Quality Compliance Governed Model
+### 36. Multi-Facility and Market Localization
 
-**Justification:** Closure is not complete until the PBC can prove no material domain work remains unresolved.
+**Justification:** Food safety rules vary by facility, product, customer, and jurisdiction.
 
-**Improvement:** Add reconciliation workflows that compare `food_safety_quality_compliance_governed_model` state against consumed events, external projections, expected totals/counts, approvals, and release evidence before closure. Tie the behavior to `food_safety_quality_compliance_record_critical_control_point_workflow` where applicable, and make it visible in `FoodSafetyQualityComplianceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add facility-specific HACCP variants, market restrictions, language/label requirements, and jurisdictional recall workflows.
 
-**Acceptance evidence:** Reconciliation reports, variance thresholds, closure blockers, and AppGen-X closure events. The evidence should be package-local in `src/pyAppGen/pbcs/food_safety_quality_compliance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must evaluate identical product facts differently by market policy.
 
-### 37. Regulatory and policy reporting for Haccp Plan
+### 37. Continuous Control Assertions
 
-**Justification:** World-class PBCs turn operational evidence into credible reporting without spreadsheet reconstruction.
+**Justification:** Food safety systems need continuous controls over CCP monitoring, holds, recalls, inspections, supplier audits, and evidence completeness.
 
-**Improvement:** Generate domain reporting packs for `haccp_plan` covering statutory, contractual, operational, board, customer, or regulator evidence depending on production traceability, safety permits, batch genealogy, field conditions, quality evidence, environmental constraints, and asset-intensive operations. Tie the behavior to `food_safety_quality_compliance_create_haccp_plan_workflow` where applicable, and make it visible in `FoodSafetyQualityComplianceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add controls with population, threshold, failing records, owner, remediation, recurrence, and closure evidence.
 
-**Acceptance evidence:** Report schemas, redaction rules, traceable metric sources, and approval/export audit events. The evidence should be package-local in `src/pyAppGen/pbcs/food_safety_quality_compliance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must open control failures and require remediation proof.
 
-### 38. Carbon and resource awareness for Critical Control Point
+### 38. Dead-Letter and Retry Operations
 
-**Justification:** Sustainability evidence should be embedded in operations instead of treated as an after-the-fact report.
+**Justification:** Sensor events, inspection imports, supplier updates, genealogy projections, and recall communications can fail.
 
-**Improvement:** Where relevant, attach carbon, energy, water, travel, capacity, compute, or resource-footprint metadata to `critical_control_point` decisions and batch operations. Tie the behavior to `food_safety_quality_compliance_record_critical_control_point_workflow` where applicable, and make it visible in `FoodSafetyQualityComplianceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add retry reason, risk, idempotency key, replay checkpoint, remediation action, and dead-letter queue.
 
-**Acceptance evidence:** Footprint fields, scheduling parameters, exception rules, and dashboards that expose operational tradeoffs. The evidence should be package-local in `src/pyAppGen/pbcs/food_safety_quality_compliance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must replay failed events without duplicate holds, recalls, or disposition records.
 
-### 39. Resilience and offline behavior for Inspection
+### 39. Cryptographic Food Safety Evidence
 
-**Justification:** Real operations keep moving during outages; the PBC must preserve correctness when dependencies are unavailable.
+**Justification:** Recalls, audits, and inspections need tamper-evident records.
 
-**Improvement:** Define resilience modes for `inspection`: degraded dependency mode, offline draft capture, delayed event replay, conflict detection, and safe recovery after partial failure. Tie the behavior to `food_safety_quality_compliance_create_haccp_plan_workflow` where applicable, and make it visible in `FoodSafetyQualityComplianceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add hash chains for HACCP approval, CCP monitoring, holds, inspections, nonconformance, supplier audits, recall actions, and dispositions.
 
-**Acceptance evidence:** Offline fixtures, replay tests, conflict queues, recovery logs, and user-visible degraded-mode warnings. The evidence should be package-local in `src/pyAppGen/pbcs/food_safety_quality_compliance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must verify proof chains and detect altered payloads or reordered events.
 
-### 40. Human-in-the-loop automation for Nonconformance
+### 40. Role-Based Permission Model
 
-**Justification:** Automation should accelerate haccp plans, inspections, nonconformance, recalls, supplier audits, food quality, and regulatory evidence while preserving accountability for high-risk decisions.
+**Justification:** Operators, QA technicians, food safety managers, plant managers, supplier auditors, compliance users, and executives need different authority.
 
-**Improvement:** Set explicit automation boundaries for `nonconformance`: auto-approve, auto-reject, suggest-only, require-review, and block-until-evidence states with policy-based routing. Tie the behavior to `food_safety_quality_compliance_record_critical_control_point_workflow` where applicable, and make it visible in `FoodSafetyQualityComplianceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add permissions for record monitoring, open hold, release product, approve disposition, close nonconformance, start recall, and approve HACCP change.
 
-**Acceptance evidence:** Automation policy tests, reviewer queues, override reasons, and assistant action audit trails. The evidence should be package-local in `src/pyAppGen/pbcs/food_safety_quality_compliance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Permission tests must block unauthorized commands and show disabled UI actions.
 
-### 41. Package discovery and fit scoring for Recall Event
+### 41. Supplier Corrective Action Workflow
 
-**Justification:** Users selecting PBCs need transparent fit reasoning, especially when domains are adjacent but not overlapping.
+**Justification:** Supplier findings need corrective action, response review, effectiveness checks, and approval impact.
 
-**Improvement:** Improve package metadata so composition can explain when `food_safety_quality_compliance` fits a prompt, what entities it owns, what APIs/events it exposes, and what adjacent PBCs it depends on. Tie the behavior to `food_safety_quality_compliance_create_haccp_plan_workflow` where applicable, and make it visible in `FoodSafetyQualityComplianceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add supplier corrective action, due date, response, evidence, effectiveness, repeat finding, and supplier approval status impact.
 
-**Acceptance evidence:** Discovery manifests, prompt-selection tests, overlap rationale links, and composition DSL examples. The evidence should be package-local in `src/pyAppGen/pbcs/food_safety_quality_compliance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must suspend supplier approval according to policy when corrective actions are overdue.
 
-### 42. Configuration deployment pipeline for Supplier Audit
+### 42. Product Release Gate
 
-**Justification:** Configuration changes can materially alter food safety quality compliance; they need the same discipline as code releases.
+**Justification:** Product release should prove HACCP, CCP, inspection, quality, label, and hold status.
 
-**Improvement:** Add configuration promotion for `supplier_audit` across draft, test, approved, active, deprecated, and rollback states with impact analysis before activation. Tie the behavior to `food_safety_quality_compliance_record_critical_control_point_workflow` where applicable, and make it visible in `FoodSafetyQualityComplianceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add release gate with required checks, blocking exceptions, approver, release event, and evidence packet.
 
-**Acceptance evidence:** Config diff views, approval workflows, simulation before activation, and rollback tests. The evidence should be package-local in `src/pyAppGen/pbcs/food_safety_quality_compliance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must block release when any configured safety or quality requirement is unresolved.
 
-### 43. Workbench command completeness for Quality Hold
+### 43. Regulatory Reporting Triggers
 
-**Justification:** A PBC does not fully surface its capabilities if users must call hidden APIs for core work.
+**Justification:** Some food safety events require regulator or customer reporting.
 
-**Improvement:** Expose every high-value operation for `quality_hold` in the UI: create, validate, approve, simulate, correct, assign, export, retry, close, and audit-proof verification. Tie the behavior to `food_safety_quality_compliance_create_haccp_plan_workflow` where applicable, and make it visible in `FoodSafetyQualityComplianceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add report trigger, jurisdiction, recipient, deadline, required fields, submission status, and correction history.
 
-**Acceptance evidence:** UI action coverage tests, permission-aware disabled states, keyboard paths, and assistant handoff links. The evidence should be package-local in `src/pyAppGen/pbcs/food_safety_quality_compliance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must create report candidates and track submission evidence.
 
-### 44. Document packet and evidence vault for Food Safety Quality Compliance Policy Rule
+### 44. Waste and Disposal Evidence
 
-**Justification:** Documents often carry the legal or operational truth behind haccp plans, inspections, nonconformance, recalls, supplier audits, food quality, and regulatory evidence.
+**Justification:** Dispositioned product must be destroyed or diverted with proof.
 
-**Improvement:** Create a governed evidence vault for `food_safety_quality_compliance_policy_rule` documents, attachments, source spans, extracted fields, signatures, approvals, and retention labels. Tie the behavior to `food_safety_quality_compliance_record_critical_control_point_workflow` where applicable, and make it visible in `FoodSafetyQualityComplianceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add disposal method, quantity, vendor projection, witness, certificate, environmental category, and reconciliation.
 
-**Acceptance evidence:** Evidence models, source-to-field lineage, signature validation, retention policies, and proof exports. The evidence should be package-local in `src/pyAppGen/pbcs/food_safety_quality_compliance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must reconcile disposed quantity to original held quantity.
 
-### 45. Data correction and amendment history for Food Safety Quality Compliance Runtime Parameter
+### 45. Seeded Food Safety Scenario Library
 
-**Justification:** World-class systems correct mistakes without rewriting history or confusing downstream consumers.
+**Justification:** Release audits need realistic safety and quality stories.
 
-**Improvement:** Support formal amendments for `food_safety_quality_compliance_runtime_parameter` that preserve original values, correction reason, approving actor, effective date, downstream event impacts, and replay behavior. Tie the behavior to `food_safety_quality_compliance_create_haccp_plan_workflow` where applicable, and make it visible in `FoodSafetyQualityComplianceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add seeds for CCP failure, allergen label mismatch, supplier audit finding, environmental positive, quality hold, mock recall, product disposition, and audit evidence request.
 
-**Acceptance evidence:** Amendment tables, correction events, projection replay tests, and side-by-side before/after UI. The evidence should be package-local in `src/pyAppGen/pbcs/food_safety_quality_compliance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Scenario tests must load side-effect-free and create expected queues, events, and evidence packets.
 
-### 46. External participant collaboration for Food Safety Quality Compliance Schema Extension
+### 46. Product Claim and Certification Evidence
 
-**Justification:** Many food safety quality compliance workflows require outside parties, but they must not gain direct access to internal tables.
+**Justification:** Organic, halal, kosher, gluten-free, non-GMO, origin, and sustainability claims need controlled evidence.
 
-**Improvement:** Add controlled collaboration portals or API views for external participants related to `food_safety_quality_compliance_schema_extension`, limited to scoped evidence submission, status checks, comments, and dispute responses. Tie the behavior to `food_safety_quality_compliance_record_critical_control_point_workflow` where applicable, and make it visible in `FoodSafetyQualityComplianceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add claim type, certification scope, certificate, expiry, product/lot applicability, and label linkage.
 
-**Acceptance evidence:** Participant role policies, scoped tokens, submission audit trails, and inbound evidence validation. The evidence should be package-local in `src/pyAppGen/pbcs/food_safety_quality_compliance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must block label release when required claim evidence is expired or missing.
 
-### 47. Advanced dependency freshness scoring for Food Safety Quality Compliance Control Assertion
+### 47. Customer Specification Compliance
 
-**Justification:** A record may be valid locally but unsafe if dependency evidence is stale or incomplete.
+**Justification:** Customers can impose stricter specs than regulations.
 
-**Improvement:** Score freshness and reliability of dependencies used by `food_safety_quality_compliance_control_assertion`, including consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, referenced projections, configuration versions, and external submissions. Tie the behavior to `food_safety_quality_compliance_create_haccp_plan_workflow` where applicable, and make it visible in `FoodSafetyQualityComplianceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add customer spec projection, required attributes, effective period, tested result, waiver, and shipment eligibility.
 
-**Acceptance evidence:** Freshness indicators, blocking rules, stale-event simulations, and workbench dependency health panels. The evidence should be package-local in `src/pyAppGen/pbcs/food_safety_quality_compliance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must evaluate product release by customer-specific specs without owning customer master data.
 
-### 48. Model governance and explainability for Food Safety Quality Compliance Governed Model
+### 48. Full Food Safety Release Simulation
 
-**Justification:** Governed AI is mandatory for professional-grade automation in Food Safety Quality Compliance.
+**Justification:** A complete PBC must prove HACCP-to-recall behavior end to end.
 
-**Improvement:** For every predictive or agentic feature around `food_safety_quality_compliance_governed_model`, record model version, prompt or ruleset version, training/evaluation evidence, confidence, explanation, and human feedback. Tie the behavior to `food_safety_quality_compliance_record_critical_control_point_workflow` where applicable, and make it visible in `FoodSafetyQualityComplianceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add a simulation where a HACCP plan activates, CCP monitoring records, inspection finds a defect, product is held, nonconformance opens, supplier evidence is reviewed, recall drill runs, and product disposition closes.
 
-**Acceptance evidence:** Model cards, prompt/version manifests, feedback loops, drift tests, and audit proof for recommendations. The evidence should be package-local in `src/pyAppGen/pbcs/food_safety_quality_compliance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** The simulation must validate owned schema, APIs, services, AppGen-X events, handlers, workbench views, agent skills, permissions, and release evidence.
 
-### 49. High-scale partitioning and archival for Haccp Plan
+### 49. Package Overlap Guardrails
 
-**Justification:** Better-than-world-class packages must remain operable after years of high-volume domain history.
+**Justification:** This PBC must not duplicate manufacturing execution, inventory, supplier management, customer service, logistics, or regulatory filing ownership.
 
-**Improvement:** Plan scale behavior for `haccp_plan`: tenant partitioning, archival policies, cold storage, retention-aware search, projection compaction, and large-batch replay. Tie the behavior to `food_safety_quality_compliance_create_haccp_plan_workflow` where applicable, and make it visible in `FoodSafetyQualityComplianceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add overlap checks and dependency contracts for lot genealogy, production events, supplier status, complaint signals, shipment scope, and filings.
 
-**Acceptance evidence:** Partition tests, archive/retrieve fixtures, retention enforcement, and replay benchmarks. The evidence should be package-local in `src/pyAppGen/pbcs/food_safety_quality_compliance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must fail on undeclared external table references and pass on declared AppGen-X dependency usage.
 
-### 50. Release gate expansion for Critical Control Point
+### 50. Composition DSL and Unified Agent Exposure
 
-**Justification:** The PBC should not claim domain coverage unless release evidence proves the claim end to end.
+**Justification:** Generated applications must expose food safety capabilities through DSL, UI, APIs, and the composed application agent.
 
-**Improvement:** Expand release gates for `food_safety_quality_compliance` so every schema, service, API, event, handler, UI, rule, parameter, agent skill, seed scenario, and improvement backlog item maps to executable evidence. Tie the behavior to `food_safety_quality_compliance_record_critical_control_point_workflow` where applicable, and make it visible in `FoodSafetyQualityComplianceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Extend composition metadata for HACCP plans, CCPs, inspections, nonconformances, recalls, supplier audits, quality holds, controls, workbench fragments, and agent skills.
 
-**Acceptance evidence:** Release audit checks, manifest traceability, generated-app smoke tests, and missing-capability blockers. The evidence should be package-local in `src/pyAppGen/pbcs/food_safety_quality_compliance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** DSL tests must prove generated apps include food safety models, routes, services, event contracts, UI artifacts, and assistant skills without stream-engine picker exposure.

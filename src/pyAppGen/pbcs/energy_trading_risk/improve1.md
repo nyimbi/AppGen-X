@@ -1,418 +1,614 @@
-# Energy Trading and Risk PBC Better-Than-World-Class Improvement Backlog
+# Energy Trading and Risk PBC Improvement Backlog
 
-## Purpose
-
-This file identifies, justifies, and describes 50 high-impact improvements for `energy_trading_risk`. The backlog is specific to energy contracts, positions, nominations, settlement, mark-to-market, exposure, and risk limits and is intended to move the PBC from release-auditable scaffolding toward complete, specialist-grade domain coverage.
+Built from `manifest.py` and the current package boundary for `energy_trading_risk`. Every item is specific to energy trading and risk operations and includes explicit acceptance evidence.
 
 ## Current Domain Evidence Used
 
-- Stable PBC key: `energy_trading_risk`.
-- Domain purpose: Energy contracts, positions, nominations, settlement, mark-to-market, exposure, and risk limits.
-- Owned domain tables: `energy_contract`, `trade_position`, `nomination`, `schedule`, `settlement`, `exposure_limit`, `market_price_curve`, `energy_trading_risk_policy_rule`, `energy_trading_risk_runtime_parameter`, `energy_trading_risk_schema_extension`, `energy_trading_risk_control_assertion`, `energy_trading_risk_governed_model`.
-- Public APIs: `POST /energy-contracts`, `POST /trade-positions`, `POST /nominations`, `POST /schedules`, `POST /settlements`, `GET /energy-trading-risk-workbench`.
-- Emitted AppGen-X events: `EnergyTradingRiskCreated`, `EnergyTradingRiskUpdated`, `EnergyTradingRiskApproved`, `EnergyTradingRiskExceptionOpened`.
-- Consumed AppGen-X events: `PolicyChanged`, `AuditEventSealed`, `OperationalKpiChanged`.
-- Current standard surfaces include: `energy_contract_management`, `energy_trading_risk_workflow`, `energy_trading_risk_analytics`, `configuration_schema`, `rule_engine`, `parameter_engine`, `owned_schema_migrations_models`, `appgen_x_outbox_inbox_eventing`, `idempotent_handlers`, `retry_dead_letter_evidence`.
-- Current advanced surfaces include: `energy_trading_risk_event_sourced_operational_history`, `energy_trading_risk_multi_tenant_policy_isolation`, `energy_trading_risk_schema_evolution_resilience`, `energy_trading_risk_autonomous_anomaly_detection`, `energy_trading_risk_semantic_document_instruction_understanding`, `energy_trading_risk_predictive_risk_scoring`, `energy_trading_risk_counterfactual_scenario_simulation`, `energy_trading_risk_cryptographic_audit_proofs`.
+- PBC key: `energy_trading_risk`
+- Description: energy contracts, positions, nominations, settlement, mark-to-market, exposure, and risk limits
+- Owned tables: `energy_contract`, `trade_position`, `nomination`, `schedule`, `settlement`, `exposure_limit`, `market_price_curve`, `energy_trading_risk_policy_rule`, `energy_trading_risk_runtime_parameter`, `energy_trading_risk_schema_extension`, `energy_trading_risk_control_assertion`, `energy_trading_risk_governed_model`
+- APIs: `POST /energy-contracts`, `POST /trade-positions`, `POST /nominations`, `POST /schedules`, `POST /settlements`, `GET /energy-trading-risk-workbench`
+- Emits: `EnergyTradingRiskCreated`, `EnergyTradingRiskUpdated`, `EnergyTradingRiskApproved`, `EnergyTradingRiskExceptionOpened`
+- Consumes: `PolicyChanged`, `AuditEventSealed`, `OperationalKpiChanged`
+- UI fragments: `EnergyTradingRiskWorkbench`, `EnergyTradingRiskDetail`, `EnergyTradingRiskAssistantPanel`
+- Docs: `SPECIFICATION.md`, `RELEASE_EVIDENCE.md`
 
-## 50 High-Impact Improvements
+### 1. Trade capture safety case
 
-### 1. Canonical lifecycle state model for Energy Contract
+**Key:** `energy_trading_risk_trade_capture_safety_case`
 
-**Justification:** This closes shallow CRUD gaps by making every energy trading and risk transition explainable and testable instead of implicit in free-form status values.
+**Justification:** Energy trades should not enter the book without proving trader intent, product shape, delivery window, pricing terms, counterparty, and approval context; otherwise downstream P&L, VaR, scheduling, and settlement are corrupted at source.
 
-**Improvement:** Define a complete state machine for `energy_contract` with explicit draft, validated, blocked, approved, active, suspended, corrected, closed, archived, and reopened states. Tie the behavior to `energy_trading_risk_create_energy_contract_workflow` where applicable, and make it visible in `EnergyTradingRiskWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add a trade capture safety case that blocks final creation until the package has validated book, strategy, buy or sell side, volume, price formula, delivery profile, optionality flags, and whether the trade is physical, financial, or linked.
 
-**Acceptance evidence:** State-transition tests, invalid-transition fixtures, workbench state badges, and emitted AppGen-X transition events for EnergyTradingRiskCreated, EnergyTradingRiskUpdated, EnergyTradingRiskApproved. The evidence should be package-local in `src/pyAppGen/pbcs/energy_trading_risk` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** `POST /trade-positions` fixtures showing accepted and rejected trade captures, visible safety-case badges in `EnergyTradingRiskWorkbench`, and release evidence tying each approved capture to `EnergyTradingRiskCreated` or `EnergyTradingRiskExceptionOpened`.
 
-### 2. Domain intake and normalization for Trade Position
+**Current Domain Evidence Used:** `trade_position`, `energy_contract`, `POST /trade-positions`, `EnergyTradingRiskWorkbench`, `EnergyTradingRiskCreated`, `EnergyTradingRiskExceptionOpened`
 
-**Justification:** The PBC cannot reach complete domain coverage unless it handles the messy front door of energy contracts, positions, nominations, settlement, mark-to-market, exposure, and risk limits, not only already-clean records.
+### 2. Trade amendment and cancel lineage
 
-**Improvement:** Build a typed intake pipeline for `trade_position` that accepts structured API payloads, document-derived instructions, batch loads, and assistant-generated drafts while normalizing identifiers, dates, units, parties, and jurisdictional context. Tie the behavior to `energy_trading_risk_record_trade_position_workflow` where applicable, and make it visible in `EnergyTradingRiskWorkbench` so operators do not need hidden scripts or raw table access.
+**Key:** `energy_trading_risk_trade_amend_cancel_lineage`
 
-**Acceptance evidence:** Golden intake fixtures, rejected-record queues, field-level normalization evidence, and assistant previews before governed datastore mutation. The evidence should be package-local in `src/pyAppGen/pbcs/energy_trading_risk` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Justification:** Energy desks backdate corrections, split deals, cancel stale tickets, and restate economics; the package needs an auditable lineage instead of overwriting prior trade facts.
 
-### 3. Specialist validation rules for Nomination
+**Improvement:** Record amendment, cancel, recapture, and correction chains on `trade_position` so every live position can be traced back to the original ticket and every superseded ticket remains visible for audit and P&L explain.
 
-**Justification:** World-class Energy Trading and Risk requires rules that domain experts can reason about, version, test, and roll back without code edits.
+**Acceptance evidence:** Lineage graphs in `EnergyTradingRiskDetail`, tests proving cancelled trades stop contributing to exposure while preserved history still replays, and emitted update evidence through `EnergyTradingRiskUpdated`.
 
-**Improvement:** Add a domain rule compiler for `nomination` that supports threshold rules, eligibility rules, dependency rules, temporal windows, conflicting-instruction detection, and override justification. Tie the behavior to `energy_trading_risk_create_energy_contract_workflow` where applicable, and make it visible in `EnergyTradingRiskWorkbench` so operators do not need hidden scripts or raw table access.
+**Current Domain Evidence Used:** `trade_position`, `EnergyTradingRiskDetail`, `EnergyTradingRiskUpdated`, `energy_trading_risk_event_sourced_operational_history`
 
-**Acceptance evidence:** Rule simulation tests, versioned rule manifests, rule impact reports, and UI rule editors linked to `ENERGY_TRADING_RISK_DATABASE_URL, ENERGY_TRADING_RISK_EVENT_TOPIC, ENERGY_TRADING_RISK_RETRY_LIMIT`. The evidence should be package-local in `src/pyAppGen/pbcs/energy_trading_risk` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 3. Position netting and exposure buckets
 
-### 4. Parameter governance and tuning for Schedule
+**Key:** `energy_trading_risk_position_netting_buckets`
 
-**Justification:** Parameters are where operations teams tune energy trading and risk; unbounded constants would make the PBC brittle and unsafe in real deployments.
+**Justification:** Gross trade counts do not tell risk operators what the desk actually carries; energy risk is managed by net exposures across commodity, location, tenor, and strategy buckets.
 
-**Improvement:** Expose bounded runtime parameters for `schedule` covering risk thresholds, SLA windows, confidence floors, escalation cutoffs, batch sizes, retry limits, and human-confirmation requirements. Tie the behavior to `energy_trading_risk_record_trade_position_workflow` where applicable, and make it visible in `EnergyTradingRiskWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Build netting logic that aggregates `trade_position` into configurable exposure buckets by commodity, hub, delivery period, book, trader, strategy, and physical versus financial status.
 
-**Acceptance evidence:** Parameter schema validation, tenant overrides, approval history, rollback controls, and workbench diff views. The evidence should be package-local in `src/pyAppGen/pbcs/energy_trading_risk` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Net and gross position snapshots on the workbench, tests for bucket rollups after new trade loads, and release evidence showing bucket definitions used in risk reports.
 
-### 5. Deep owned schema expansion for Settlement
+**Current Domain Evidence Used:** `trade_position`, `exposure_limit`, `GET /energy-trading-risk-workbench`, `energy_trading_risk_analytics`
 
-**Justification:** A single payload column cannot express the full surface of energy contracts, positions, nominations, settlement, mark-to-market, exposure, and risk limits or prove cross-PBC boundaries are respected.
+### 4. Effective-dated revaluation calendar
 
-**Improvement:** Extend the owned schema around `settlement` with normalized child tables for line-level evidence, party roles, approvals, attachments, comments, metrics, exception reasons, and control assertions. Tie the behavior to `energy_trading_risk_create_energy_contract_workflow` where applicable, and make it visible in `EnergyTradingRiskWorkbench` so operators do not need hidden scripts or raw table access.
+**Key:** `energy_trading_risk_revaluation_calendar_control`
 
-**Acceptance evidence:** Migrations, models, relationship tests, schema contract snapshots, and no shared-table access outside the `energy_trading_risk_` namespace. The evidence should be package-local in `src/pyAppGen/pbcs/energy_trading_risk` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Justification:** Valuation mistakes frequently come from using the wrong market date, settlement date, or cutover calendar for a position set.
 
-### 6. Event-sourced operational history for Exposure Limit
+**Improvement:** Add an effective-dated valuation calendar for `trade_position` that pins each position run to a market close, timezone, holiday calendar, and valuation cut timestamp.
 
-**Justification:** Temporal reconstruction is essential for better-than-world-class auditability and dispute resolution in energy trading and risk.
+**Acceptance evidence:** Revaluation runs showing the chosen market date and close time, negative tests for late price use after cutoff, and `RELEASE_EVIDENCE.md` entries for official close processing.
 
-**Improvement:** Capture every material mutation of `exposure_limit` as immutable AppGen-X events with actor, tenant, command, policy version, idempotency key, before/after summary, and projection checkpoint. Tie the behavior to `energy_trading_risk_record_trade_position_workflow` where applicable, and make it visible in `EnergyTradingRiskWorkbench` so operators do not need hidden scripts or raw table access.
+**Current Domain Evidence Used:** `trade_position`, `market_price_curve`, `RELEASE_EVIDENCE.md`, `energy_trading_risk_runtime_parameter`
 
-**Acceptance evidence:** Replay tests, projection checksums, event ordering evidence, and point-in-time workbench views. The evidence should be package-local in `src/pyAppGen/pbcs/energy_trading_risk` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 5. Nomination versioning and cutoff governance
 
-### 7. Projection and read-model strategy for Market Price Curve
+**Key:** `energy_trading_risk_nomination_cutoff_governance`
 
-**Justification:** The workbench should not force users to infer domain truth from raw tables; each projection should answer a real operating question.
+**Justification:** Nominations change repeatedly before gate closure; without versioned cutoff handling the package cannot explain which nomination was valid when operators or pipelines acted.
 
-**Improvement:** Create purpose-built projections for `market_price_curve`: operational queue, executive KPI rollup, exception aging, compliance evidence, agent task context, and external dependency health. Tie the behavior to `energy_trading_risk_create_energy_contract_workflow` where applicable, and make it visible in `EnergyTradingRiskWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add versioned `nomination` lifecycle states for draft, submitted, accepted, superseded, blocked, and post-cutoff exception, with explicit market or transport cutoff timestamps and operator reason codes.
 
-**Acceptance evidence:** Projection contracts, freshness SLAs, backfill tests, and visible stale-projection warnings. The evidence should be package-local in `src/pyAppGen/pbcs/energy_trading_risk` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Multi-version nomination timelines, cutoff breach alerts in the UI, and regression tests proving post-cutoff changes require exception evidence before approval.
 
-### 8. Exception taxonomy and remediation for Energy Trading Risk Policy Rule
+**Current Domain Evidence Used:** `nomination`, `POST /nominations`, `EnergyTradingRiskApproved`, `EnergyTradingRiskExceptionOpened`, `EnergyTradingRiskWorkbench`
 
-**Justification:** High-value PBCs win on exception throughput; generic “failed” states hide the details operators need.
+### 6. Nomination versus schedule reconciliation
 
-**Improvement:** Model the full exception taxonomy for `energy_trading_risk_policy_rule`, including severity, root cause, blocking dependency, remediation owner, due date, retry eligibility, escalation path, and closure evidence. Tie the behavior to `energy_trading_risk_record_trade_position_workflow` where applicable, and make it visible in `EnergyTradingRiskWorkbench` so operators do not need hidden scripts or raw table access.
+**Key:** `energy_trading_risk_nomination_schedule_reconciliation`
 
-**Acceptance evidence:** Exception queues, aging metrics, remediation playbooks, dead-letter linkage, and closure test fixtures for crew safety lockouts. The evidence should be package-local in `src/pyAppGen/pbcs/energy_trading_risk` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Justification:** Energy operations fail when nominated volumes and scheduled volumes drift silently across hours, locations, or counterparties.
 
-### 9. Predictive risk scoring for Energy Trading Risk Runtime Parameter
+**Improvement:** Reconcile `nomination` and `schedule` by interval, delivery point, counterparty, and product so mismatches create actionable exceptions before physical operations or settlement are affected.
 
-**Justification:** The package should warn users before energy trading and risk work fails, breaches policy, or creates downstream cost.
+**Acceptance evidence:** Reconciliation grids with interval-level differences, automatic exception creation when tolerances are breached, and release evidence for same-day repair workflows.
 
-**Improvement:** Add predictive risk scoring for `energy_trading_risk_runtime_parameter` using domain features from owned tables, consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, rule outcomes, aging, anomaly signals, and historical corrections. Tie the behavior to `energy_trading_risk_create_energy_contract_workflow` where applicable, and make it visible in `EnergyTradingRiskWorkbench` so operators do not need hidden scripts or raw table access.
+**Current Domain Evidence Used:** `nomination`, `schedule`, `POST /nominations`, `POST /schedules`, `EnergyTradingRiskExceptionOpened`
 
-**Acceptance evidence:** Feature manifests, score explanations, calibration reports, drift alerts, and tests for low/medium/high-risk scenarios. The evidence should be package-local in `src/pyAppGen/pbcs/energy_trading_risk` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 7. Schedule feasibility and pathing checks
 
-### 10. Counterfactual simulation for Energy Trading Risk Schema Extension
+**Key:** `energy_trading_risk_schedule_feasibility_checks`
 
-**Justification:** Advanced users need to ask “what would happen if” before committing changes to live energy contracts, positions, nominations, settlement, mark-to-market, exposure, and risk limits operations.
+**Justification:** A schedule that ignores capacity, delivery path, or operational constraints is unusable no matter how clean the data entry looks.
 
-**Improvement:** Provide scenario simulation for `energy_trading_risk_schema_extension`: policy change, capacity constraint, deadline shift, price/rate change, eligibility change, disruption, and manual override outcomes. Tie the behavior to `energy_trading_risk_record_trade_position_workflow` where applicable, and make it visible in `EnergyTradingRiskWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add schedule feasibility checks for capacity limits, delivery path consistency, start and end continuity, ramp changes, and prohibited delivery combinations across `schedule`.
 
-**Acceptance evidence:** Simulation APIs, non-mutating sandbox state, comparison reports, and workbench side-by-side scenario panels. The evidence should be package-local in `src/pyAppGen/pbcs/energy_trading_risk` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Pre-submit failures for impossible schedules, approved exception paths for operator overrides, and workbench evidence showing the exact feasibility rule hit.
 
-### 11. Autonomous anomaly triage for Energy Trading Risk Control Assertion
+**Current Domain Evidence Used:** `schedule`, `POST /schedules`, `energy_trading_risk_policy_rule`, `EnergyTradingRiskWorkbench`
 
-**Justification:** A world-class PBC should reduce analyst burden without hiding the reasoning behind automated triage.
+### 8. Imbalance exposure estimation
 
-**Improvement:** Implement anomaly detection for `energy_trading_risk_control_assertion` that identifies outliers, duplicate submissions, impossible sequences, stale dependencies, unusual amounts/counts/durations, and contradictory fields. Tie the behavior to `energy_trading_risk_create_energy_contract_workflow` where applicable, and make it visible in `EnergyTradingRiskWorkbench` so operators do not need hidden scripts or raw table access.
+**Key:** `energy_trading_risk_imbalance_exposure_estimation`
 
-**Acceptance evidence:** Explainable anomaly cards, reviewer feedback loops, false-positive tracking, and suppression governance. The evidence should be package-local in `src/pyAppGen/pbcs/energy_trading_risk` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Justification:** Imbalance is a direct energy-trading risk surface; if nominated, scheduled, and actual expected flows diverge, exposure appears before settlement does.
 
-### 12. Semantic document understanding for Energy Trading Risk Governed Model
+**Improvement:** Estimate imbalance exposure from trade commitments, latest `nomination`, active `schedule`, and price assumptions so operators can see likely imbalance cost before closeout.
 
-**Justification:** Document-heavy work in Energy Trading and Risk cannot be complete if the assistant only answers questions and cannot prepare accurate governed changes.
+**Acceptance evidence:** Interval-level imbalance estimates on the workbench, variance thresholds that open exceptions, and release evidence comparing estimates against realized settlement outcomes.
 
-**Improvement:** Train the package assistant to parse domain documents and instructions for `energy_trading_risk_governed_model`, extract obligations, dates, parties, quantities, identifiers, and exceptions, then map them to safe draft mutations. Tie the behavior to `energy_trading_risk_record_trade_position_workflow` where applicable, and make it visible in `EnergyTradingRiskWorkbench` so operators do not need hidden scripts or raw table access.
+**Current Domain Evidence Used:** `trade_position`, `nomination`, `schedule`, `settlement`, `market_price_curve`, `GET /energy-trading-risk-workbench`
 
-**Acceptance evidence:** Document extraction tests, confidence thresholds, redaction handling, source span citations, and human confirmation workflows. The evidence should be package-local in `src/pyAppGen/pbcs/energy_trading_risk` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 9. Market price staleness and boundary checks
 
-### 13. Agent-safe CRUD execution for Energy Contract
+**Key:** `energy_trading_risk_market_price_boundary_checks`
 
-**Justification:** The PBC agent must be a first-class operator but never a hidden bypass around RBAC, rules, or owned datastore boundaries.
+**Justification:** Mark-to-market and risk numbers are unsafe when the package cannot detect stale, missing, duplicated, or out-of-bound market curves.
 
-**Improvement:** Add a professional chatbot skill for `energy_contract` that can create, update, correct, close, and annotate records only through policy-checked commands, approval gates, and previewed diffs. Tie the behavior to `energy_trading_risk_create_energy_contract_workflow` where applicable, and make it visible in `EnergyTradingRiskWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add validation on `market_price_curve` for as-of timestamp freshness, duplicate strips, negative or implausible price intervals, missing hub points, and unexpected day-over-day jumps.
 
-**Acceptance evidence:** Skill manifests, permission tests, preview/confirm flows, blocked-action evidence, and audit events for every assistant mutation. The evidence should be package-local in `src/pyAppGen/pbcs/energy_trading_risk` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Curve validation reports, blocked valuation runs when mandatory strips are stale, and release evidence showing which curve set fed each approved valuation.
 
-### 14. Workbench persona coverage for Trade Position
+**Current Domain Evidence Used:** `market_price_curve`, `energy_trading_risk_analytics`, `EnergyTradingRiskExceptionOpened`, `RELEASE_EVIDENCE.md`
 
-**Justification:** A generic detail page underserves the domain; each role needs the exact controls and evidence they use daily.
+### 10. Market price gap fill governance
 
-**Improvement:** Design dedicated workbench panels for `trade_position`: operator queue, supervisor approvals, analyst exceptions, auditor evidence, configuration owner, and agent-assistance review. Tie the behavior to `energy_trading_risk_record_trade_position_workflow` where applicable, and make it visible in `EnergyTradingRiskWorkbench` so operators do not need hidden scripts or raw table access.
+**Key:** `energy_trading_risk_market_price_gap_fill_governance`
 
-**Acceptance evidence:** UI contract entries, route tests, empty/error/loading states, and permission-aware action availability. The evidence should be package-local in `src/pyAppGen/pbcs/energy_trading_risk` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Justification:** Price gaps occur in real operations, but silent interpolation turns an operational shortcut into an untraceable valuation assumption.
 
-### 15. Cross-PBC dependency contracts for Nomination
+**Improvement:** Support governed gap-fill policies for `market_price_curve`, including carry-forward, neighboring strip interpolation, proxy hub substitution, and hard stop, with approval requirements by materiality.
 
-**Justification:** Composable packages fail when hidden table coupling enters the domain model.
+**Acceptance evidence:** Gap-fill decision logs, side-by-side valuation explain before and after fill, and tests proving high-materiality gaps cannot auto-fill without exception approval.
 
-**Improvement:** Represent dependencies for `nomination` through declared APIs, consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, and projections rather than shared tables, with explicit freshness, ownership, and fallback behavior. Tie the behavior to `energy_trading_risk_create_energy_contract_workflow` where applicable, and make it visible in `EnergyTradingRiskWorkbench` so operators do not need hidden scripts or raw table access.
+**Current Domain Evidence Used:** `market_price_curve`, `energy_trading_risk_policy_rule`, `energy_trading_risk_runtime_parameter`, `EnergyTradingRiskApproved`
 
-**Acceptance evidence:** Dependency manifests, contract tests, stale dependency alerts, and no foreign-table references in generated artifacts. The evidence should be package-local in `src/pyAppGen/pbcs/energy_trading_risk` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 11. Mark-to-market explain pack
 
-### 16. API completeness and versioning for Schedule
+**Key:** `energy_trading_risk_mark_to_market_explain_pack`
 
-**Justification:** Complete domain coverage requires both command and query surfaces, not only happy-path create endpoints.
+**Justification:** Traders and controllers need to see why MTM moved, not just that it moved.
 
-**Improvement:** Expand APIs beyond POST /energy-contracts, POST /trade-positions, POST /nominations to cover search, validation-only commands, simulation, bulk intake, exception closure, evidence export, projection reads, and idempotent corrections. Tie the behavior to `energy_trading_risk_record_trade_position_workflow` where applicable, and make it visible in `EnergyTradingRiskWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Produce an explain pack for each valuation run that decomposes MTM by trade, bucket, price curve, volume, time decay, location basis, and amendments since the last official run.
 
-**Acceptance evidence:** OpenAPI-style route manifests, backward-compatible version tests, deprecation metadata, and idempotency assertions. The evidence should be package-local in `src/pyAppGen/pbcs/energy_trading_risk` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Drill-through explain views from `EnergyTradingRiskWorkbench`, signed valuation snapshots in `RELEASE_EVIDENCE.md`, and regression tests on known MTM cases.
 
-### 17. Typed emitted-event expansion for Settlement
+**Current Domain Evidence Used:** `trade_position`, `market_price_curve`, `GET /energy-trading-risk-workbench`, `RELEASE_EVIDENCE.md`
 
-**Justification:** Consumers should understand what happened in Energy Trading and Risk without parsing opaque payloads.
+### 12. Realized versus unrealized P&L split
 
-**Improvement:** Replace generic lifecycle emissions with typed events for each meaningful `settlement` transition, exception, approval, correction, simulation result, and downstream handoff. Tie the behavior to `energy_trading_risk_create_energy_contract_workflow` where applicable, and make it visible in `EnergyTradingRiskWorkbench` so operators do not need hidden scripts or raw table access.
+**Key:** `energy_trading_risk_realized_unrealized_pnl_split`
 
-**Acceptance evidence:** Event schema tests, event examples, compatibility checks, and emitted-event coverage in release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/energy_trading_risk` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Justification:** Risk and finance decisions diverge when the package mixes realized settlement outcomes with open-position valuation.
 
-### 18. Consumed-event handlers for Exposure Limit
+**Improvement:** Separate realized and unrealized P&L across `trade_position` and `settlement`, with clear transitions when delivery periods close, invoices land, or settlement is finalized.
 
-**Justification:** A PBC is composable only when incoming events affect its own domain state predictably and safely.
+**Acceptance evidence:** P&L statements showing both views side by side, tests proving closed delivery intervals roll from unrealized to realized, and release evidence for period-end close.
 
-**Improvement:** Implement idempotent handlers for consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged that update projections, open dependency exceptions, recalculate risk, and preserve source event lineage. Tie the behavior to `energy_trading_risk_record_trade_position_workflow` where applicable, and make it visible in `EnergyTradingRiskWorkbench` so operators do not need hidden scripts or raw table access.
+**Current Domain Evidence Used:** `trade_position`, `settlement`, description mentions mark-to-market, `energy_trading_risk_analytics`
 
-**Acceptance evidence:** Duplicate-event tests, handler side-effect boundaries, dead-letter fixtures, and lineage links back to source events. The evidence should be package-local in `src/pyAppGen/pbcs/energy_trading_risk` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 13. P&L attribution by risk driver
 
-### 19. Retry and dead-letter operations for Market Price Curve
+**Key:** `energy_trading_risk_pnl_attribution_by_driver`
 
-**Justification:** Dead letters are not just plumbing; they are domain work queues that can block energy contracts, positions, nominations, settlement, mark-to-market, exposure, and risk limits.
+**Justification:** Energy desks need to explain whether daily P&L came from curve moves, volume changes, basis changes, time decay, or booking corrections.
 
-**Improvement:** Create operational tools for retrying, quarantining, explaining, and resolving dead-lettered `market_price_curve` events with max-attempt policy, poison-message detection, and replay safety. Tie the behavior to `energy_trading_risk_create_energy_contract_workflow` where applicable, and make it visible in `EnergyTradingRiskWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add daily P&L attribution that tags changes by risk driver and links each attribution component back to the contributing `trade_position`, curve points, and operational edits.
 
-**Acceptance evidence:** Dead-letter workbench, retry eligibility tests, replay audit proof, and operator action logs. The evidence should be package-local in `src/pyAppGen/pbcs/energy_trading_risk` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Attribution views with drill-through, back-to-front reconciliation between attribution and total P&L, and exception evidence when unexplained residuals exceed thresholds.
 
-### 20. RBAC and attribute policy for Energy Trading Risk Policy Rule
+**Current Domain Evidence Used:** `trade_position`, `market_price_curve`, `EnergyTradingRiskUpdated`, `EnergyTradingRiskWorkbench`
 
-**Justification:** High-impact domain operations need finer controls than generic RBAC grants.
+### 14. VaR model coverage across books and tenors
 
-**Improvement:** Extend permissions for `energy_trading_risk_policy_rule` from coarse read/create/update/admin to action-level and attribute-aware policies based on role, tenant, jurisdiction, monetary/materiality threshold, and exception severity. Tie the behavior to `energy_trading_risk_record_trade_position_workflow` where applicable, and make it visible in `EnergyTradingRiskWorkbench` so operators do not need hidden scripts or raw table access.
+**Key:** `energy_trading_risk_var_coverage_matrix`
 
-**Acceptance evidence:** Permission matrix docs, ABAC policy tests, denied-action UI states, and assistant skill permission checks. The evidence should be package-local in `src/pyAppGen/pbcs/energy_trading_risk` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Justification:** A VaR number is misleading if portions of the book, illiquid tenors, or bespoke structures are excluded without visibility.
 
-### 21. Continuous control testing for Energy Trading Risk Runtime Parameter
+**Improvement:** Create a VaR coverage matrix showing which books, products, delivery horizons, and curve points are included, proxied, or excluded from VaR calculations.
 
-**Justification:** Controls should run during operations, not only during release audit or manual review.
+**Acceptance evidence:** Coverage reports linked from the workbench, failed approval when excluded exposure breaches materiality, and release evidence capturing the coverage snapshot used for official VaR.
 
-**Improvement:** Embed control assertions for `energy_trading_risk_runtime_parameter` that continuously test segregation of duties, required approvals, stale exceptions, policy drift, duplicate records, and boundary violations. Tie the behavior to `energy_trading_risk_create_energy_contract_workflow` where applicable, and make it visible in `EnergyTradingRiskWorkbench` so operators do not need hidden scripts or raw table access.
+**Current Domain Evidence Used:** `trade_position`, `market_price_curve`, `EnergyTradingRiskWorkbench`, `RELEASE_EVIDENCE.md`
 
-**Acceptance evidence:** Control dashboards, failing-control events, test fixtures, and release evidence tied to `energy_trading_risk_control_assertion` records. The evidence should be package-local in `src/pyAppGen/pbcs/energy_trading_risk` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 15. Stress scenario library for energy books
 
-### 22. Cryptographic audit proofing for Energy Trading Risk Schema Extension
+**Key:** `energy_trading_risk_stress_scenario_library`
 
-**Justification:** Better-than-world-class auditability requires proof of integrity, not merely logs stored in mutable tables.
+**Justification:** Energy portfolios break on transport outages, hub dislocations, curve shocks, and volatility spikes that a single VaR view will not capture.
 
-**Improvement:** Hash-chain material `energy_trading_risk_schema_extension` decisions, documents, emitted events, and release-evidence snapshots to make tampering visible without exposing sensitive payloads. Tie the behavior to `energy_trading_risk_record_trade_position_workflow` where applicable, and make it visible in `EnergyTradingRiskWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add a governed stress library with price shock, basis shock, shape shock, volume curtailment, counterparty downgrade, and settlement delay scenarios, each versioned and reviewable.
 
-**Acceptance evidence:** Proof manifests, verification APIs, redacted proof exports, and audit-ledger handoff events. The evidence should be package-local in `src/pyAppGen/pbcs/energy_trading_risk` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Scenario catalogs in the UI, repeatable stress outputs tied to a scenario version, and release evidence proving that official stress packs used approved scenarios only.
 
-### 23. Privacy, consent, and secrecy controls for Energy Trading Risk Control Assertion
+**Current Domain Evidence Used:** `trade_position`, `market_price_curve`, `energy_trading_risk_counterfactual_scenario_simulation`, `EnergyTradingRiskAssistantPanel`
 
-**Justification:** Complete domain coverage must account for protected data and restricted operational evidence.
+### 16. VaR backtesting and breach analysis
 
-**Improvement:** Add field-level privacy classifications for `energy_trading_risk_control_assertion`, consent checks, masking rules, retention schedules, legal holds, and assistant redaction policies. Tie the behavior to `energy_trading_risk_create_energy_contract_workflow` where applicable, and make it visible in `EnergyTradingRiskWorkbench` so operators do not need hidden scripts or raw table access.
+**Key:** `energy_trading_risk_var_backtesting_exceptions`
 
-**Acceptance evidence:** Retention tests, masked UI snapshots, consent-blocked mutation fixtures, and export controls. The evidence should be package-local in `src/pyAppGen/pbcs/energy_trading_risk` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Justification:** VaR without backtesting drifts into ritual; operators need evidence that actual P&L behavior is still consistent with the configured model.
 
-### 24. Multi-tenant operating model for Energy Trading Risk Governed Model
+**Improvement:** Compare daily realized P&L against prior VaR, classify exceptions, store explanatory context, and route repeated exceptions into model review and release gating.
 
-**Justification:** The PBC should scale across organizations while preserving independent policy and compliance boundaries.
+**Acceptance evidence:** Backtesting exception tables, streak alerts in the workbench, and release evidence blocking new model approval when unresolved exception counts exceed policy.
 
-**Improvement:** Support tenant-specific `energy_trading_risk_governed_model` rules, data residency, encryption context, configuration, seed data, and release evidence without allowing cross-tenant leakage. Tie the behavior to `energy_trading_risk_record_trade_position_workflow` where applicable, and make it visible in `EnergyTradingRiskWorkbench` so operators do not need hidden scripts or raw table access.
+**Current Domain Evidence Used:** `trade_position`, `settlement`, `energy_trading_risk_predictive_risk_scoring`, `energy_trading_risk_governed_model`
 
-**Acceptance evidence:** Tenant isolation tests, tenant-scoped parameters, key-rotation evidence, and cross-tenant negative fixtures. The evidence should be package-local in `src/pyAppGen/pbcs/energy_trading_risk` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 17. Limit hierarchy by desk, book, and trader
 
-### 25. Schema evolution and extension registry for Energy Contract
+**Key:** `energy_trading_risk_limit_hierarchy`
 
-**Justification:** Domain teams will add fields; the PBC must evolve without breaking APIs, events, or workbench projections.
+**Justification:** Energy trading limits are applied at several levels; a flat limit table cannot show whether a breach belongs to a trader, desk, book, commodity, or counterparty slice.
 
-**Improvement:** Make schema extensions for `energy_contract` first-class with compatibility checks, migration previews, projection backfills, field ownership, and rollback metadata. Tie the behavior to `energy_trading_risk_create_energy_contract_workflow` where applicable, and make it visible in `EnergyTradingRiskWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand `exposure_limit` into hierarchical limits with inheritance, overrides, emergency reductions, and separate treatment for gross, net, VaR, stress loss, and concentration limits.
 
-**Acceptance evidence:** Extension registry UI, compatibility tests, migration dry-runs, and backfill release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/energy_trading_risk` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Hierarchy views in `EnergyTradingRiskWorkbench`, tests proving inherited limits resolve deterministically, and exception logs for manual overrides.
 
-### 26. Master data quality gates for Trade Position
+**Current Domain Evidence Used:** `exposure_limit`, `trade_position`, description mentions risk limits, `GET /energy-trading-risk-workbench`
 
-**Justification:** Many energy trading and risk errors begin as bad reference data; the PBC should catch them before workflow execution.
+### 18. Pre-book limit checks
 
-**Improvement:** Define reference-data contracts for `trade_position`: canonical codes, parties, locations, classifications, calendars, units, currencies, products, assets, or service categories as relevant to the domain. Tie the behavior to `energy_trading_risk_record_trade_position_workflow` where applicable, and make it visible in `EnergyTradingRiskWorkbench` so operators do not need hidden scripts or raw table access.
+**Key:** `energy_trading_risk_prebook_limit_checks`
 
-**Acceptance evidence:** Reference validation fixtures, stale-code warnings, mapping tables, and dependency freshness indicators. The evidence should be package-local in `src/pyAppGen/pbcs/energy_trading_risk` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Justification:** Catching limit breaches after a trade is already booked creates unnecessary reversals and exposure spikes.
 
-### 27. Bulk operations and correction workflows for Nomination
+**Improvement:** Add a pre-book risk check on `POST /trade-positions` that evaluates proposed trade impact on net position, VaR, stress loss, and counterparty concentration before final acceptance.
 
-**Justification:** Enterprise-scale Energy Trading and Risk users cannot operate one record at a time.
+**Acceptance evidence:** Dry-run responses for proposed trades, blocked submissions with reason codes, and audit evidence showing who approved any override path.
 
-**Improvement:** Add bulk load, bulk validate, bulk approve, and bulk correction workflows for `nomination` with partial success, row-level errors, resumability, and rollback. Tie the behavior to `energy_trading_risk_create_energy_contract_workflow` where applicable, and make it visible in `EnergyTradingRiskWorkbench` so operators do not need hidden scripts or raw table access.
+**Current Domain Evidence Used:** `POST /trade-positions`, `trade_position`, `exposure_limit`, `EnergyTradingRiskApproved`
 
-**Acceptance evidence:** CSV/API batch fixtures, resumable job state, row-level audit evidence, and assistant-generated correction suggestions. The evidence should be package-local in `src/pyAppGen/pbcs/energy_trading_risk` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 19. Limit breach case management
 
-### 28. Lifecycle collaboration and tasking for Schedule
+**Key:** `energy_trading_risk_limit_breach_case_management`
 
-**Justification:** Domain collaboration should live inside the PBC boundary and remain auditable with the record it affects.
+**Justification:** A breach needs controlled triage, not only a flag on a dashboard.
 
-**Improvement:** Attach tasks, comments, ownership, due dates, handoffs, and escalation threads to `schedule` without leaking into external shared task tables. Tie the behavior to `energy_trading_risk_record_trade_position_workflow` where applicable, and make it visible in `EnergyTradingRiskWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Open structured cases for limit breaches with owner, severity, required action, temporary waiver window, remediation plan, and closure evidence linked to the breached position set.
 
-**Acceptance evidence:** Task tables, comment audit history, notification events, escalation SLAs, and role-specific task queues. The evidence should be package-local in `src/pyAppGen/pbcs/energy_trading_risk` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Breach case boards in the workbench, timed escalation tests, and release evidence proving aged critical breaches block approval cycles.
 
-### 29. SLA and service-level governance for Settlement
+**Current Domain Evidence Used:** `exposure_limit`, `EnergyTradingRiskExceptionOpened`, `EnergyTradingRiskWorkbench`, `energy_trading_risk_workflow`
 
-**Justification:** Users need to know when energy contracts, positions, nominations, settlement, mark-to-market, exposure, and risk limits is late, blocked, or at risk before customer or regulator impact.
+### 20. Credit exposure aggregation
 
-**Improvement:** Define SLAs for `settlement` across intake, validation, approval, exception resolution, event handling, downstream projection refresh, and release-evidence generation. Tie the behavior to `energy_trading_risk_create_energy_contract_workflow` where applicable, and make it visible in `EnergyTradingRiskWorkbench` so operators do not need hidden scripts or raw table access.
+**Key:** `energy_trading_risk_credit_exposure_aggregation`
 
-**Acceptance evidence:** SLA breach events, timers, configurable calendars, workbench aging buckets, and tests for pause/resume behavior. The evidence should be package-local in `src/pyAppGen/pbcs/energy_trading_risk` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Justification:** Counterparty risk is not visible if open trades, unsettled amounts, and concentration are reviewed in different places with different timing.
 
-### 30. Operational analytics cockpit for Exposure Limit
+**Improvement:** Aggregate current credit exposure across open `trade_position`, pending `settlement`, and contract-level thresholds so operators can see counterparty risk in one view.
 
-**Justification:** World-class operations require leading indicators, not only record counts.
+**Acceptance evidence:** Counterparty exposure ladders, breached-threshold exceptions, and release evidence showing the exposure snapshot used in daily credit review.
 
-**Improvement:** Build analytics for `exposure_limit`: throughput, backlog, aging, approval latency, exception rate, risk distribution, automation acceptance, correction rate, and downstream dependency health. Tie the behavior to `energy_trading_risk_record_trade_position_workflow` where applicable, and make it visible in `EnergyTradingRiskWorkbench` so operators do not need hidden scripts or raw table access.
+**Current Domain Evidence Used:** `trade_position`, `settlement`, `energy_contract`, `exposure_limit`, `EnergyTradingRiskWorkbench`
 
-**Acceptance evidence:** Metric definitions, projection tests, drill-through routes, export APIs, and anomaly overlays. The evidence should be package-local in `src/pyAppGen/pbcs/energy_trading_risk` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 21. Collateral and margin evidence
 
-### 31. Decision intelligence and recommendations for Market Price Curve
+**Key:** `energy_trading_risk_collateral_margin_evidence`
 
-**Justification:** The PBC should help expert users decide faster while showing evidence and uncertainty.
+**Justification:** When exposure rises, the package should show whether margin was called, posted, disputed, or overdue rather than leaving credit control outside the workflow.
 
-**Improvement:** Generate ranked recommendations for `market_price_curve` such as next best action, likely resolution, required evidence, policy adjustment, staffing/capacity response, or downstream handoff. Tie the behavior to `energy_trading_risk_create_energy_contract_workflow` where applicable, and make it visible in `EnergyTradingRiskWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add collateral status, margin call records, disputes, and due dates to the counterparty risk flow so exposure decisions can distinguish covered and uncovered exposure.
 
-**Acceptance evidence:** Recommendation explanations, confidence intervals, feedback capture, model governance records, and rejection reasons. The evidence should be package-local in `src/pyAppGen/pbcs/energy_trading_risk` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Margin status views, overdue call alerts, and release evidence showing how collateral changed the reported net credit exposure.
 
-### 32. Quality and completeness scoring for Energy Trading Risk Policy Rule
+**Current Domain Evidence Used:** `energy_contract`, `settlement`, description mentions exposure, `EnergyTradingRiskAssistantPanel`
 
-**Justification:** Operators should see whether a record is truly ready, not just technically saved.
+### 22. Counterparty terms linkage
 
-**Improvement:** Score each `energy_trading_risk_policy_rule` record for completeness, consistency, policy readiness, dependency readiness, evidence sufficiency, and downstream composability. Tie the behavior to `energy_trading_risk_record_trade_position_workflow` where applicable, and make it visible in `EnergyTradingRiskWorkbench` so operators do not need hidden scripts or raw table access.
+**Key:** `energy_trading_risk_counterparty_terms_linkage`
 
-**Acceptance evidence:** Scoring rules, missing-evidence lists, readiness badges, and blocking criteria in command handlers. The evidence should be package-local in `src/pyAppGen/pbcs/energy_trading_risk` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Justification:** Pricing optionality, nomination rules, settlement timelines, and credit triggers often live in the contract terms, not in the trade ticket alone.
 
-### 33. End-to-end scenario library for Energy Trading Risk Runtime Parameter
+**Improvement:** Link `energy_contract` terms directly to `trade_position`, `nomination`, and `settlement` behavior so the package can enforce contract-specific cutoffs, tolerance bands, pricing formulas, and payment terms.
 
-**Justification:** Release evidence is stronger when every important energy trading and risk behavior has executable examples.
+**Acceptance evidence:** Contract-term drill-through in the detail view, tests showing contract-specific rules change downstream behavior, and approval evidence for manual term overrides.
 
-**Improvement:** Create seeded scenarios for `energy_trading_risk_runtime_parameter`: normal flow, urgent path, exception path, corrected path, duplicate path, late event path, and audit export path. Tie the behavior to `energy_trading_risk_create_energy_contract_workflow` where applicable, and make it visible in `EnergyTradingRiskWorkbench` so operators do not need hidden scripts or raw table access.
+**Current Domain Evidence Used:** `energy_contract`, `trade_position`, `nomination`, `settlement`, `POST /energy-contracts`
 
-**Acceptance evidence:** Scenario seed data, runtime smoke coverage, generated-app fixtures, and story-level workbench screenshots/contracts. The evidence should be package-local in `src/pyAppGen/pbcs/energy_trading_risk` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 23. Confirmation lifecycle management
 
-### 34. Domain ontology and terminology model for Energy Trading Risk Schema Extension
+**Key:** `energy_trading_risk_confirmation_lifecycle`
 
-**Justification:** Precise vocabulary prevents the PBC from misclassifying specialist documents or user instructions.
+**Justification:** Unconfirmed trades are a direct operational and legal risk for energy desks.
 
-**Improvement:** Add an ontology for `energy_trading_risk_schema_extension` terms, synonyms, classifications, relationships, allowed values, and phrase mappings used by the assistant and UI. Tie the behavior to `energy_trading_risk_record_trade_position_workflow` where applicable, and make it visible in `EnergyTradingRiskWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Track confirmation drafted, sent, acknowledged, disputed, repaired, and fully matched states, with linkage back to trade economics and amendment history.
 
-**Acceptance evidence:** Ontology files, assistant parsing tests, UI glossary, and mapping evidence for domain-specific abbreviations. The evidence should be package-local in `src/pyAppGen/pbcs/energy_trading_risk` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Confirmation status queues, aging reports for unconfirmed trades, and release evidence proving material open confirmations are reviewed before close.
 
-### 35. Advanced search and investigation for Energy Trading Risk Control Assertion
+**Current Domain Evidence Used:** `trade_position`, `energy_contract`, `EnergyTradingRiskWorkbench`, `EnergyTradingRiskUpdated`
 
-**Justification:** Investigators and operators need fast, explainable retrieval across the whole domain surface.
+### 24. Confirmation break matching
 
-**Improvement:** Provide search across `energy_trading_risk_control_assertion` records, events, documents, exceptions, tasks, comments, and audit proofs with filters for tenant, status, risk, date, party, and dependency. Tie the behavior to `energy_trading_risk_create_energy_contract_workflow` where applicable, and make it visible in `EnergyTradingRiskWorkbench` so operators do not need hidden scripts or raw table access.
+**Key:** `energy_trading_risk_confirmation_break_matching`
 
-**Acceptance evidence:** Search index contracts, result provenance, permission-filtered queries, and stale-index warnings. The evidence should be package-local in `src/pyAppGen/pbcs/energy_trading_risk` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Justification:** Breaks on volume, price, delivery point, delivery period, or settlement terms need structured matching rather than manual email searches.
 
-### 36. Reconciliation and closure controls for Energy Trading Risk Governed Model
+**Improvement:** Add break classification and side-by-side compare flows that show which economic fields differ between internal position data and the external confirmation view.
 
-**Justification:** Closure is not complete until the PBC can prove no material domain work remains unresolved.
+**Acceptance evidence:** Break dashboards, field-level difference views, and exception records opened automatically for unmatched economic terms.
 
-**Improvement:** Add reconciliation workflows that compare `energy_trading_risk_governed_model` state against consumed events, external projections, expected totals/counts, approvals, and release evidence before closure. Tie the behavior to `energy_trading_risk_record_trade_position_workflow` where applicable, and make it visible in `EnergyTradingRiskWorkbench` so operators do not need hidden scripts or raw table access.
+**Current Domain Evidence Used:** `trade_position`, `EnergyTradingRiskDetail`, `EnergyTradingRiskExceptionOpened`, `energy_trading_risk_semantic_document_instruction_understanding`
 
-**Acceptance evidence:** Reconciliation reports, variance thresholds, closure blockers, and AppGen-X closure events. The evidence should be package-local in `src/pyAppGen/pbcs/energy_trading_risk` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 25. Settlement statement validation
 
-### 37. Regulatory and policy reporting for Energy Contract
+**Key:** `energy_trading_risk_settlement_statement_validation`
 
-**Justification:** World-class PBCs turn operational evidence into credible reporting without spreadsheet reconstruction.
+**Justification:** Settlement disputes are expensive when the package cannot prove the path from scheduled or delivered volume to billed amount.
 
-**Improvement:** Generate domain reporting packs for `energy_contract` covering statutory, contractual, operational, board, customer, or regulator evidence depending on network reliability, safety switching, metered usage accuracy, outage restoration, asset constraints, emissions awareness, and regulated service obligations. Tie the behavior to `energy_trading_risk_create_energy_contract_workflow` where applicable, and make it visible in `EnergyTradingRiskWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Validate `settlement` against contracted price rules, scheduled or nominated quantities, applicable fees, imbalance adjustments, and prior-period corrections before final approval.
 
-**Acceptance evidence:** Report schemas, redaction rules, traceable metric sources, and approval/export audit events. The evidence should be package-local in `src/pyAppGen/pbcs/energy_trading_risk` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Settlement variance reports, blocked approvals for unexplained deltas, and signed close packs in `RELEASE_EVIDENCE.md`.
 
-### 38. Carbon and resource awareness for Trade Position
+**Current Domain Evidence Used:** `settlement`, `schedule`, `nomination`, `energy_contract`, `POST /settlements`, `RELEASE_EVIDENCE.md`
 
-**Justification:** Sustainability evidence should be embedded in operations instead of treated as an after-the-fact report.
+### 26. Settlement hold reason codes
 
-**Improvement:** Where relevant, attach carbon, energy, water, travel, capacity, compute, or resource-footprint metadata to `trade_position` decisions and batch operations. Tie the behavior to `energy_trading_risk_record_trade_position_workflow` where applicable, and make it visible in `EnergyTradingRiskWorkbench` so operators do not need hidden scripts or raw table access.
+**Key:** `energy_trading_risk_settlement_hold_reason_codes`
 
-**Acceptance evidence:** Footprint fields, scheduling parameters, exception rules, and dashboards that expose operational tradeoffs. The evidence should be package-local in `src/pyAppGen/pbcs/energy_trading_risk` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Justification:** Operators need a consistent explanation for why cash cannot move, especially across dispute, missing price, missing schedule, missing approval, or counterparty documentation issues.
 
-### 39. Resilience and offline behavior for Nomination
+**Improvement:** Add governed hold codes and release codes on `settlement` so every blocked settlement can be routed, aged, and reported consistently.
 
-**Justification:** Real operations keep moving during outages; the PBC must preserve correctness when dependencies are unavailable.
+**Acceptance evidence:** Hold aging buckets, release workflows with dual evidence, and exception metrics showing top recurring hold causes.
 
-**Improvement:** Define resilience modes for `nomination`: degraded dependency mode, offline draft capture, delayed event replay, conflict detection, and safe recovery after partial failure. Tie the behavior to `energy_trading_risk_create_energy_contract_workflow` where applicable, and make it visible in `EnergyTradingRiskWorkbench` so operators do not need hidden scripts or raw table access.
+**Current Domain Evidence Used:** `settlement`, `EnergyTradingRiskExceptionOpened`, `EnergyTradingRiskWorkbench`, `energy_trading_risk_policy_rule`
 
-**Acceptance evidence:** Offline fixtures, replay tests, conflict queues, recovery logs, and user-visible degraded-mode warnings. The evidence should be package-local in `src/pyAppGen/pbcs/energy_trading_risk` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 27. Timezone and market-calendar control
 
-### 40. Human-in-the-loop automation for Schedule
+**Key:** `energy_trading_risk_timezone_calendar_control`
 
-**Justification:** Automation should accelerate energy contracts, positions, nominations, settlement, mark-to-market, exposure, and risk limits while preserving accountability for high-risk decisions.
+**Justification:** Energy delivery, nomination, and settlement windows cross market calendars and daylight-saving changes that routinely create silent hour mismatches.
 
-**Improvement:** Set explicit automation boundaries for `schedule`: auto-approve, auto-reject, suggest-only, require-review, and block-until-evidence states with policy-based routing. Tie the behavior to `energy_trading_risk_record_trade_position_workflow` where applicable, and make it visible in `EnergyTradingRiskWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Centralize timezone and market-calendar logic for `trade_position`, `nomination`, `schedule`, and `settlement`, including DST transitions, market holidays, and hour-ending conventions.
 
-**Acceptance evidence:** Automation policy tests, reviewer queues, override reasons, and assistant action audit trails. The evidence should be package-local in `src/pyAppGen/pbcs/energy_trading_risk` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Calendar test packs for spring and fall cutovers, UI display of authoritative market timezone per record, and release evidence for calendar updates.
 
-### 41. Package discovery and fit scoring for Settlement
+**Current Domain Evidence Used:** `trade_position`, `nomination`, `schedule`, `settlement`, `energy_trading_risk_runtime_parameter`
 
-**Justification:** Users selecting PBCs need transparent fit reasoning, especially when domains are adjacent but not overlapping.
+### 28. Unit and currency conversion audit
 
-**Improvement:** Improve package metadata so composition can explain when `energy_trading_risk` fits a prompt, what entities it owns, what APIs/events it exposes, and what adjacent PBCs it depends on. Tie the behavior to `energy_trading_risk_create_energy_contract_workflow` where applicable, and make it visible in `EnergyTradingRiskWorkbench` so operators do not need hidden scripts or raw table access.
+**Key:** `energy_trading_risk_unit_currency_conversion_audit`
 
-**Acceptance evidence:** Discovery manifests, prompt-selection tests, overlap rationale links, and composition DSL examples. The evidence should be package-local in `src/pyAppGen/pbcs/energy_trading_risk` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Justification:** Energy books break when MWh, therm, barrel, or currency conversions are applied inconsistently across capture, valuation, and settlement.
 
-### 42. Configuration deployment pipeline for Exposure Limit
+**Improvement:** Record governed conversion factors, effective dates, rounding rules, and source evidence for every unit or currency transformation used by the package.
 
-**Justification:** Configuration changes can materially alter energy trading and risk; they need the same discipline as code releases.
+**Acceptance evidence:** Conversion explain views, tests on canonical cross-unit cases, and settlement close evidence showing the exact conversion set applied.
 
-**Improvement:** Add configuration promotion for `exposure_limit` across draft, test, approved, active, deprecated, and rollback states with impact analysis before activation. Tie the behavior to `energy_trading_risk_record_trade_position_workflow` where applicable, and make it visible in `EnergyTradingRiskWorkbench` so operators do not need hidden scripts or raw table access.
+**Current Domain Evidence Used:** `trade_position`, `market_price_curve`, `settlement`, `energy_trading_risk_runtime_parameter`, `RELEASE_EVIDENCE.md`
 
-**Acceptance evidence:** Config diff views, approval workflows, simulation before activation, and rollback tests. The evidence should be package-local in `src/pyAppGen/pbcs/energy_trading_risk` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 29. Physical and financial linkage
 
-### 43. Workbench command completeness for Market Price Curve
+**Key:** `energy_trading_risk_physical_financial_linkage`
 
-**Justification:** A PBC does not fully surface its capabilities if users must call hidden APIs for core work.
+**Justification:** Hedging, proxy pricing, and operational exposure cannot be understood if physical positions and financial hedges live as unrelated rows.
 
-**Improvement:** Expose every high-value operation for `market_price_curve` in the UI: create, validate, approve, simulate, correct, assign, export, retry, close, and audit-proof verification. Tie the behavior to `energy_trading_risk_create_energy_contract_workflow` where applicable, and make it visible in `EnergyTradingRiskWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Allow linked position groups that tie physical and financial `trade_position` records together for hedge explain, risk offset visibility, and exception routing when the relationship breaks.
 
-**Acceptance evidence:** UI action coverage tests, permission-aware disabled states, keyboard paths, and assistant handoff links. The evidence should be package-local in `src/pyAppGen/pbcs/energy_trading_risk` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Linked-position views, residual exposure reports after hedge pairing, and tests proving broken links open exceptions before official risk approval.
 
-### 44. Document packet and evidence vault for Energy Trading Risk Policy Rule
+**Current Domain Evidence Used:** `trade_position`, description mentions positions and exposure, `EnergyTradingRiskExceptionOpened`, `EnergyTradingRiskDetail`
 
-**Justification:** Documents often carry the legal or operational truth behind energy contracts, positions, nominations, settlement, mark-to-market, exposure, and risk limits.
+### 30. Hedge offset explain
 
-**Improvement:** Create a governed evidence vault for `energy_trading_risk_policy_rule` documents, attachments, source spans, extracted fields, signatures, approvals, and retention labels. Tie the behavior to `energy_trading_risk_record_trade_position_workflow` where applicable, and make it visible in `EnergyTradingRiskWorkbench` so operators do not need hidden scripts or raw table access.
+**Key:** `energy_trading_risk_hedge_offset_explain`
 
-**Acceptance evidence:** Evidence models, source-to-field lineage, signature validation, retention policies, and proof exports. The evidence should be package-local in `src/pyAppGen/pbcs/energy_trading_risk` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Justification:** A hedge only helps if operators can see how much risk it actually offsets and where basis or timing mismatch remains.
 
-### 45. Data correction and amendment history for Energy Trading Risk Runtime Parameter
+**Improvement:** Add hedge offset explain that quantifies remaining basis, timing, volume, and price risk after linked positions are combined.
 
-**Justification:** World-class systems correct mistakes without rewriting history or confusing downstream consumers.
+**Acceptance evidence:** Offset dashboards by book and delivery month, residual-risk alerts, and release evidence for approved hedge effectiveness review packs.
 
-**Improvement:** Support formal amendments for `energy_trading_risk_runtime_parameter` that preserve original values, correction reason, approving actor, effective date, downstream event impacts, and replay behavior. Tie the behavior to `energy_trading_risk_create_energy_contract_workflow` where applicable, and make it visible in `EnergyTradingRiskWorkbench` so operators do not need hidden scripts or raw table access.
+**Current Domain Evidence Used:** `trade_position`, `market_price_curve`, `GET /energy-trading-risk-workbench`, `RELEASE_EVIDENCE.md`
 
-**Acceptance evidence:** Amendment tables, correction events, projection replay tests, and side-by-side before/after UI. The evidence should be package-local in `src/pyAppGen/pbcs/energy_trading_risk` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 31. Location basis risk surfaces
 
-### 46. External participant collaboration for Energy Trading Risk Schema Extension
+**Key:** `energy_trading_risk_location_basis_surfaces`
 
-**Justification:** Many energy trading and risk workflows require outside parties, but they must not gain direct access to internal tables.
+**Justification:** Hub-to-node and location spread risk is a core energy-specific risk that generic mark-to-market views hide.
 
-**Improvement:** Add controlled collaboration portals or API views for external participants related to `energy_trading_risk_schema_extension`, limited to scoped evidence submission, status checks, comments, and dispute responses. Tie the behavior to `energy_trading_risk_record_trade_position_workflow` where applicable, and make it visible in `EnergyTradingRiskWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Model basis surfaces on top of `market_price_curve` so positions are exposed to both outright curve moves and location differential moves.
 
-**Acceptance evidence:** Participant role policies, scoped tokens, submission audit trails, and inbound evidence validation. The evidence should be package-local in `src/pyAppGen/pbcs/energy_trading_risk` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Basis decomposition in MTM and stress outputs, visible source hubs and nodes in explain packs, and tests on basis-only shock cases.
 
-### 47. Advanced dependency freshness scoring for Energy Trading Risk Control Assertion
+**Current Domain Evidence Used:** `market_price_curve`, `trade_position`, `energy_trading_risk_counterfactual_scenario_simulation`, `energy_trading_risk_analytics`
 
-**Justification:** A record may be valid locally but unsafe if dependency evidence is stale or incomplete.
+### 32. Liquidity horizon and concentration view
 
-**Improvement:** Score freshness and reliability of dependencies used by `energy_trading_risk_control_assertion`, including consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, referenced projections, configuration versions, and external submissions. Tie the behavior to `energy_trading_risk_create_energy_contract_workflow` where applicable, and make it visible in `EnergyTradingRiskWorkbench` so operators do not need hidden scripts or raw table access.
+**Key:** `energy_trading_risk_liquidity_concentration_view`
 
-**Acceptance evidence:** Freshness indicators, blocking rules, stale-event simulations, and workbench dependency health panels. The evidence should be package-local in `src/pyAppGen/pbcs/energy_trading_risk` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Justification:** Long-dated or thinly traded energy positions deserve different escalation than near-term liquid exposures.
 
-### 48. Model governance and explainability for Energy Trading Risk Governed Model
+**Improvement:** Add liquidity horizon, concentration, and exit difficulty dimensions to risk views so operators can separate easily unwound exposure from sticky or concentrated risk.
 
-**Justification:** Governed AI is mandatory for professional-grade automation in Energy Trading and Risk.
+**Acceptance evidence:** Concentration heatmaps, approval gates for concentrated exposures, and release evidence showing concentration review before risk signoff.
 
-**Improvement:** For every predictive or agentic feature around `energy_trading_risk_governed_model`, record model version, prompt or ruleset version, training/evaluation evidence, confidence, explanation, and human feedback. Tie the behavior to `energy_trading_risk_record_trade_position_workflow` where applicable, and make it visible in `EnergyTradingRiskWorkbench` so operators do not need hidden scripts or raw table access.
+**Current Domain Evidence Used:** `trade_position`, `exposure_limit`, `EnergyTradingRiskWorkbench`, `EnergyTradingRiskApproved`
 
-**Acceptance evidence:** Model cards, prompt/version manifests, feedback loops, drift tests, and audit proof for recommendations. The evidence should be package-local in `src/pyAppGen/pbcs/energy_trading_risk` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 33. Market-data and policy event boundary
 
-### 49. High-scale partitioning and archival for Energy Contract
+**Key:** `energy_trading_risk_market_policy_event_boundary`
 
-**Justification:** Better-than-world-class packages must remain operable after years of high-volume domain history.
+**Justification:** Price refreshes and policy changes should enter through declared event boundaries, not hidden table reads or ad hoc scripts.
 
-**Improvement:** Plan scale behavior for `energy_contract`: tenant partitioning, archival policies, cold storage, retention-aware search, projection compaction, and large-batch replay. Tie the behavior to `energy_trading_risk_create_energy_contract_workflow` where applicable, and make it visible in `EnergyTradingRiskWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Harden event handling so market-data refresh decisions, policy changes, and operational KPI impacts are captured through inbox flows, idempotent handlers, and boundary evidence before they affect risk outputs.
 
-**Acceptance evidence:** Partition tests, archive/retrieve fixtures, retention enforcement, and replay benchmarks. The evidence should be package-local in `src/pyAppGen/pbcs/energy_trading_risk` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Event replay tests, idempotency proofs for repeated boundary events, and release evidence mapping each official risk run to the consumed policy and KPI events.
 
-### 50. Release gate expansion for Trade Position
+**Current Domain Evidence Used:** `PolicyChanged`, `OperationalKpiChanged`, `appgen_x_outbox_inbox_eventing`, `idempotent_handlers`, `retry_dead_letter_evidence`
 
-**Justification:** The PBC should not claim domain coverage unless release evidence proves the claim end to end.
+### 34. API contract versioning and idempotency
 
-**Improvement:** Expand release gates for `energy_trading_risk` so every schema, service, API, event, handler, UI, rule, parameter, agent skill, seed scenario, and improvement backlog item maps to executable evidence. Tie the behavior to `energy_trading_risk_record_trade_position_workflow` where applicable, and make it visible in `EnergyTradingRiskWorkbench` so operators do not need hidden scripts or raw table access.
+**Key:** `energy_trading_risk_api_contract_idempotency`
 
-**Acceptance evidence:** Release audit checks, manifest traceability, generated-app smoke tests, and missing-capability blockers. The evidence should be package-local in `src/pyAppGen/pbcs/energy_trading_risk` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Justification:** Trade, nomination, schedule, and settlement loads are often retried by upstream orchestrators; duplicate writes and silent contract drift are unacceptable in a risk package.
+
+**Improvement:** Add explicit idempotency keys, request fingerprints, schema version evidence, and replay-safe response handling across the write APIs.
+
+**Acceptance evidence:** API tests proving safe retries for all five write endpoints, schema-version checks in release packs, and exception evidence when a caller reuses a key with changed payload content.
+
+**Current Domain Evidence Used:** `POST /energy-contracts`, `POST /trade-positions`, `POST /nominations`, `POST /schedules`, `POST /settlements`, `idempotent_handlers`
+
+### 35. Dead-letter replay for risk operations
+
+**Key:** `energy_trading_risk_dead_letter_replay`
+
+**Justification:** When event handlers fail, operators need controlled replay that preserves auditability and avoids duplicate risk actions.
+
+**Improvement:** Expose a replay console for energy-trading dead letters with root-cause tagging, safe retry windows, payload redaction, and post-replay verification of projection consistency.
+
+**Acceptance evidence:** Replay runbooks in the UI, tests for duplicate-event defense after replay, and release evidence summarizing unresolved dead letters before approval.
+
+**Current Domain Evidence Used:** `retry_dead_letter_evidence`, `EnergyTradingRiskAssistantPanel`, `EnergyTradingRiskWorkbench`, `EnergyTradingRiskUpdated`
+
+### 36. Trader position workbench
+
+**Key:** `energy_trading_risk_trader_position_workbench`
+
+**Justification:** Traders need a focused surface for intraday position, P&L, limit headroom, and confirmation status rather than a generic all-purpose screen.
+
+**Improvement:** Extend `EnergyTradingRiskWorkbench` with a trader-focused view that emphasizes live net position, daily P&L, upcoming nominations, confirmation breaks, and headroom to key limits.
+
+**Acceptance evidence:** Role-specific workbench screenshots, navigation tests, and release evidence showing the trader surface in the shipped package.
+
+**Current Domain Evidence Used:** `EnergyTradingRiskWorkbench`, `EnergyTradingRiskDetail`, `trade_position`, `nomination`, `exposure_limit`
+
+### 37. Risk control tower workbench
+
+**Key:** `energy_trading_risk_control_tower_workbench`
+
+**Justification:** Risk controllers need a different lens than traders: VaR, stress, concentration, model coverage, and unresolved exceptions.
+
+**Improvement:** Add a risk-control workbench centered on official risk runs, model coverage, limit hierarchy, VaR backtesting, stress outputs, and open breach cases.
+
+**Acceptance evidence:** Controller dashboard coverage in the UI, filtered evidence drilldown by risk date, and release screenshots included in `RELEASE_EVIDENCE.md`.
+
+**Current Domain Evidence Used:** `EnergyTradingRiskWorkbench`, `exposure_limit`, `energy_trading_risk_governed_model`, `RELEASE_EVIDENCE.md`
+
+### 38. Scheduling operations workbench
+
+**Key:** `energy_trading_risk_scheduling_operations_workbench`
+
+**Justification:** Scheduling teams need interval-level visibility into nomination, schedule, cutoff, and imbalance issues, not only financial summaries.
+
+**Improvement:** Add a scheduling workbench for hourly or interval views, cutoff timers, mismatches, path feasibility issues, and pending operator repairs.
+
+**Acceptance evidence:** Scheduler queue screenshots, interval drill-through tests, and release evidence showing unresolved cutoff or mismatch counts before deploy signoff.
+
+**Current Domain Evidence Used:** `schedule`, `nomination`, `EnergyTradingRiskWorkbench`, `EnergyTradingRiskDetail`, `POST /schedules`
+
+### 39. Credit and settlement operations workbench
+
+**Key:** `energy_trading_risk_credit_settlement_workbench`
+
+**Justification:** Credit and settlement operators need aged disputes, unpaid amounts, collateral status, and counterparty concentration in one place.
+
+**Improvement:** Add a combined credit and settlement surface for unsettled cash, disputed items, collateral coverage, payment term breaches, and pending release actions.
+
+**Acceptance evidence:** Operator views with aging ladders, linked dispute detail, and release evidence proving that critical aged items are visible before package release.
+
+**Current Domain Evidence Used:** `settlement`, `energy_contract`, `exposure_limit`, `EnergyTradingRiskWorkbench`, `GET /energy-trading-risk-workbench`
+
+### 40. Trade capture assistant skill
+
+**Key:** `energy_trading_risk_trade_capture_agent_skill`
+
+**Justification:** Agent assistance is useful only if it can help prepare complex trade capture while staying inside domain permissions and previewing its mutations.
+
+**Improvement:** Define a trade-capture assistant skill that can draft trade inputs, normalize structured tickets, flag missing economics, and preview the exact write it would submit.
+
+**Acceptance evidence:** Skill metadata surfaced in `EnergyTradingRiskAssistantPanel`, permission-aware mutation previews, and tests proving the assistant cannot post a trade without explicit operator action.
+
+**Current Domain Evidence Used:** `ai_agent_task_assistance`, `agentic_document_instruction_intake`, `EnergyTradingRiskAssistantPanel`, `trade_position`
+
+### 41. Nomination repair assistant skill
+
+**Key:** `energy_trading_risk_nomination_repair_agent_skill`
+
+**Justification:** Nomination repair is repetitive and time-sensitive; an assistant should accelerate operator work without hiding cutoff risk.
+
+**Improvement:** Add an assistant skill that suggests repaired `nomination` payloads, highlights interval mismatches, and prepares exception narratives for post-cutoff edits.
+
+**Acceptance evidence:** Side-by-side proposed versus current nomination views, operator-accepted repair flows, and tests proving the assistant cites the rule or cutoff it is working around.
+
+**Current Domain Evidence Used:** `nomination`, `EnergyTradingRiskAssistantPanel`, `energy_trading_risk_policy_rule`, `EnergyTradingRiskExceptionOpened`
+
+### 42. Limit triage assistant skill
+
+**Key:** `energy_trading_risk_limit_triage_agent_skill`
+
+**Justification:** Limit breaches need fast triage, but an assistant must explain whether the problem is position growth, curve movement, concentration, or missing offsets.
+
+**Improvement:** Add a limit-triage assistant that prepares breach summaries, proposes investigation paths, and drafts waiver requests with explicit impacted books, traders, and exposure types.
+
+**Acceptance evidence:** Assistant-generated triage packets, operator approval logs, and tests proving the assistant cannot close a breach case or grant a waiver by itself.
+
+**Current Domain Evidence Used:** `exposure_limit`, `trade_position`, `EnergyTradingRiskAssistantPanel`, `EnergyTradingRiskApproved`
+
+### 43. Settlement break resolution assistant skill
+
+**Key:** `energy_trading_risk_settlement_break_agent_skill`
+
+**Justification:** Settlement analysts often spend hours matching lines and explaining deltas that the package already knows how to calculate.
+
+**Improvement:** Add a settlement-break assistant that summarizes disputed amounts, traces price and volume deltas, and prepares a repair or dispute package for operator review.
+
+**Acceptance evidence:** Assistant trace output linked from settlement detail, accepted repair drafts, and tests proving the assistant references the underlying schedule or nomination evidence before recommending action.
+
+**Current Domain Evidence Used:** `settlement`, `schedule`, `nomination`, `EnergyTradingRiskAssistantPanel`, `energy_trading_risk_semantic_document_instruction_understanding`
+
+### 44. Agent action preview and dual control
+
+**Key:** `energy_trading_risk_agent_action_dual_control`
+
+**Justification:** High-impact actions in a risk package require human review; assistant convenience cannot bypass approvals.
+
+**Improvement:** Enforce preview, approval, and second-eyes rules for assistant actions that touch trades, nominations after cutoff, settlements on hold, or official risk approvals.
+
+**Acceptance evidence:** UI previews for every governed assistant action, tests for blocked assistant commits without approval, and release evidence listing all assistant actions that require dual control.
+
+**Current Domain Evidence Used:** `ai_agent_task_assistance`, `permissions`, `EnergyTradingRiskAssistantPanel`, `EnergyTradingRiskApproved`
+
+### 45. Override approval evidence
+
+**Key:** `energy_trading_risk_override_approval_evidence`
+
+**Justification:** Price-gap overrides, limit waivers, post-cutoff nomination changes, and settlement releases must be explainable long after the urgent decision has passed.
+
+**Improvement:** Standardize override evidence across the package with reason code, approver, validity window, impacted objects, compensating controls, and follow-up tasks.
+
+**Acceptance evidence:** Override registers, expiry alerts, and release evidence proving no expired override was active during an official approval or close run.
+
+**Current Domain Evidence Used:** `EnergyTradingRiskApproved`, `EnergyTradingRiskExceptionOpened`, `energy_trading_risk_control_assertion`, `RELEASE_EVIDENCE.md`
+
+### 46. Valuation and risk release pack
+
+**Key:** `energy_trading_risk_valuation_risk_release_pack`
+
+**Justification:** Official risk output should ship with the evidence needed to defend prices, positions, P&L, VaR, stress, and open exceptions.
+
+**Improvement:** Extend `RELEASE_EVIDENCE.md` generation so every official run includes position snapshot ID, price set ID, scenario set version, limit status, unresolved exception counts, and approver evidence.
+
+**Acceptance evidence:** A complete release pack in `RELEASE_EVIDENCE.md`, links back to underlying run artifacts, and tests proving incomplete packs fail release checks.
+
+**Current Domain Evidence Used:** `RELEASE_EVIDENCE.md`, `trade_position`, `market_price_curve`, `exposure_limit`, `energy_trading_risk_governed_model`
+
+### 47. Owned-boundary proof for operational data
+
+**Key:** `energy_trading_risk_owned_boundary_proof`
+
+**Justification:** Risk packages are prone to direct reads into adjacent domains for credit, logistics, or finance shortcuts; that creates hidden coupling and unverifiable results.
+
+**Improvement:** Add release checks proving trading and risk workflows touch only owned tables and declared API or event boundaries, with failures when direct foreign-table dependencies are introduced.
+
+**Acceptance evidence:** Static checks, runtime guard tests, and boundary proof attached to each package release.
+
+**Current Domain Evidence Used:** `energy_contract`, `trade_position`, `nomination`, `schedule`, `settlement`, `market_price_curve`, `appgen_x_outbox_inbox_eventing`
+
+### 48. Event schema release evidence
+
+**Key:** `energy_trading_risk_event_schema_release_evidence`
+
+**Justification:** External consumers of trading and risk events need stability; otherwise release regressions show up in downstream controls after the package is deployed.
+
+**Improvement:** Version emitted event schemas, record compatibility evidence for each release, and prove that `EnergyTradingRiskCreated`, `EnergyTradingRiskUpdated`, `EnergyTradingRiskApproved`, and `EnergyTradingRiskExceptionOpened` still meet declared contracts.
+
+**Acceptance evidence:** Event schema snapshots, compatibility test runs, and release entries linking emitted event versions to the package version.
+
+**Current Domain Evidence Used:** `EnergyTradingRiskCreated`, `EnergyTradingRiskUpdated`, `EnergyTradingRiskApproved`, `EnergyTradingRiskExceptionOpened`, `RELEASE_EVIDENCE.md`
+
+### 49. Resilience drills for price and settlement outages
+
+**Key:** `energy_trading_risk_price_settlement_resilience_drills`
+
+**Justification:** Energy operations need a practiced response when prices arrive late, settlement feeds fail, or a critical handler backlog forms near market close.
+
+**Improvement:** Add resilience drills for stale price curves, failed settlement loads, delayed policy events, and dead-letter spikes, with explicit degraded-mode procedures and recovery evidence.
+
+**Acceptance evidence:** Drill run summaries, degraded-mode workbench indicators, and release evidence showing the latest successful drill before production signoff.
+
+**Current Domain Evidence Used:** `market_price_curve`, `settlement`, `retry_dead_letter_evidence`, `OperationalKpiChanged`, `RELEASE_EVIDENCE.md`
+
+### 50. End-to-end trade-to-settlement control test
+
+**Key:** `energy_trading_risk_trade_to_settlement_control_test`
+
+**Justification:** The package should prove that a realistic trade can flow through capture, positioning, nomination, scheduling, valuation, limit evaluation, confirmation, and settlement with evidence at each step.
+
+**Improvement:** Create a release-gated end-to-end control test that runs a representative energy trade through the full lifecycle, including P&L, VaR, stress, credit exposure, limits, confirmations, and settlement checkpoints.
+
+**Acceptance evidence:** One reproducible control-test pack per release, linked screenshots from the workbench surfaces, emitted event traces, and a final signoff entry in `RELEASE_EVIDENCE.md`.
+
+**Current Domain Evidence Used:** `trade_position`, `nomination`, `schedule`, `settlement`, `market_price_curve`, `exposure_limit`, `EnergyTradingRiskWorkbench`, `RELEASE_EVIDENCE.md`

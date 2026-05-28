@@ -1,418 +1,317 @@
-# Environment Health and Safety PBC Better-Than-World-Class Improvement Backlog
-
-## Purpose
-
-This file identifies, justifies, and describes 50 high-impact improvements for `environment_health_safety`. The backlog is specific to ehs incidents, inspections, permits, hazards, corrective actions, training, audits, and compliance evidence and is intended to move the PBC from release-auditable scaffolding toward complete, specialist-grade domain coverage.
+# Environment Health and Safety Improvement Backlog
 
 ## Current Domain Evidence Used
 
-- Stable PBC key: `environment_health_safety`.
-- Domain purpose: EHS incidents, inspections, permits, hazards, corrective actions, training, audits, and compliance evidence.
-- Owned domain tables: `ehs_incident`, `hazard`, `inspection`, `permit`, `corrective_action`, `safety_training`, `audit_finding`, `environment_health_safety_policy_rule`, `environment_health_safety_runtime_parameter`, `environment_health_safety_schema_extension`, `environment_health_safety_control_assertion`, `environment_health_safety_governed_model`.
-- Public APIs: `POST /ehs-incidents`, `POST /hazards`, `POST /inspections`, `POST /permits`, `POST /corrective-actions`, `GET /environment-health-safety-workbench`.
-- Emitted AppGen-X events: `EnvironmentHealthSafetyCreated`, `EnvironmentHealthSafetyUpdated`, `EnvironmentHealthSafetyApproved`, `EnvironmentHealthSafetyExceptionOpened`.
-- Consumed AppGen-X events: `PolicyChanged`, `AuditEventSealed`, `OperationalKpiChanged`.
-- Current standard surfaces include: `ehs_incident_management`, `environment_health_safety_workflow`, `environment_health_safety_analytics`, `configuration_schema`, `rule_engine`, `parameter_engine`, `owned_schema_migrations_models`, `appgen_x_outbox_inbox_eventing`, `idempotent_handlers`, `retry_dead_letter_evidence`.
-- Current advanced surfaces include: `environment_health_safety_event_sourced_operational_history`, `environment_health_safety_multi_tenant_policy_isolation`, `environment_health_safety_schema_evolution_resilience`, `environment_health_safety_autonomous_anomaly_detection`, `environment_health_safety_semantic_document_instruction_understanding`, `environment_health_safety_predictive_risk_scoring`, `environment_health_safety_counterfactual_scenario_simulation`, `environment_health_safety_cryptographic_audit_proofs`.
-
-## 50 High-Impact Improvements
-
-### 1. Canonical lifecycle state model for Ehs Incident
-
-**Justification:** This closes shallow CRUD gaps by making every environment health and safety transition explainable and testable instead of implicit in free-form status values.
-
-**Improvement:** Define a complete state machine for `ehs_incident` with explicit draft, validated, blocked, approved, active, suspended, corrected, closed, archived, and reopened states. Tie the behavior to `environment_health_safety_create_ehs_incident_workflow` where applicable, and make it visible in `EnvironmentHealthSafetyWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** State-transition tests, invalid-transition fixtures, workbench state badges, and emitted AppGen-X transition events for EnvironmentHealthSafetyCreated, EnvironmentHealthSafetyUpdated, EnvironmentHealthSafetyApproved. The evidence should be package-local in `src/pyAppGen/pbcs/environment_health_safety` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 2. Domain intake and normalization for Hazard
-
-**Justification:** The PBC cannot reach complete domain coverage unless it handles the messy front door of ehs incidents, inspections, permits, hazards, corrective actions, training, audits, and compliance evidence, not only already-clean records.
-
-**Improvement:** Build a typed intake pipeline for `hazard` that accepts structured API payloads, document-derived instructions, batch loads, and assistant-generated drafts while normalizing identifiers, dates, units, parties, and jurisdictional context. Tie the behavior to `environment_health_safety_record_hazard_workflow` where applicable, and make it visible in `EnvironmentHealthSafetyWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Golden intake fixtures, rejected-record queues, field-level normalization evidence, and assistant previews before governed datastore mutation. The evidence should be package-local in `src/pyAppGen/pbcs/environment_health_safety` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 3. Specialist validation rules for Inspection
-
-**Justification:** World-class Environment Health and Safety requires rules that domain experts can reason about, version, test, and roll back without code edits.
-
-**Improvement:** Add a domain rule compiler for `inspection` that supports threshold rules, eligibility rules, dependency rules, temporal windows, conflicting-instruction detection, and override justification. Tie the behavior to `environment_health_safety_create_ehs_incident_workflow` where applicable, and make it visible in `EnvironmentHealthSafetyWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Rule simulation tests, versioned rule manifests, rule impact reports, and UI rule editors linked to `ENVIRONMENT_HEALTH_SAFETY_DATABASE_URL, ENVIRONMENT_HEALTH_SAFETY_EVENT_TOPIC, ENVIRONMENT_HEALTH_SAFETY_RETRY_LIMIT`. The evidence should be package-local in `src/pyAppGen/pbcs/environment_health_safety` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 4. Parameter governance and tuning for Permit
-
-**Justification:** Parameters are where operations teams tune environment health and safety; unbounded constants would make the PBC brittle and unsafe in real deployments.
-
-**Improvement:** Expose bounded runtime parameters for `permit` covering risk thresholds, SLA windows, confidence floors, escalation cutoffs, batch sizes, retry limits, and human-confirmation requirements. Tie the behavior to `environment_health_safety_record_hazard_workflow` where applicable, and make it visible in `EnvironmentHealthSafetyWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Parameter schema validation, tenant overrides, approval history, rollback controls, and workbench diff views. The evidence should be package-local in `src/pyAppGen/pbcs/environment_health_safety` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 5. Deep owned schema expansion for Corrective Action
-
-**Justification:** A single payload column cannot express the full surface of ehs incidents, inspections, permits, hazards, corrective actions, training, audits, and compliance evidence or prove cross-PBC boundaries are respected.
-
-**Improvement:** Extend the owned schema around `corrective_action` with normalized child tables for line-level evidence, party roles, approvals, attachments, comments, metrics, exception reasons, and control assertions. Tie the behavior to `environment_health_safety_create_ehs_incident_workflow` where applicable, and make it visible in `EnvironmentHealthSafetyWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Migrations, models, relationship tests, schema contract snapshots, and no shared-table access outside the `environment_health_safety_` namespace. The evidence should be package-local in `src/pyAppGen/pbcs/environment_health_safety` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 6. Event-sourced operational history for Safety Training
-
-**Justification:** Temporal reconstruction is essential for better-than-world-class auditability and dispute resolution in environment health and safety.
-
-**Improvement:** Capture every material mutation of `safety_training` as immutable AppGen-X events with actor, tenant, command, policy version, idempotency key, before/after summary, and projection checkpoint. Tie the behavior to `environment_health_safety_record_hazard_workflow` where applicable, and make it visible in `EnvironmentHealthSafetyWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Replay tests, projection checksums, event ordering evidence, and point-in-time workbench views. The evidence should be package-local in `src/pyAppGen/pbcs/environment_health_safety` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 7. Projection and read-model strategy for Audit Finding
-
-**Justification:** The workbench should not force users to infer domain truth from raw tables; each projection should answer a real operating question.
-
-**Improvement:** Create purpose-built projections for `audit_finding`: operational queue, executive KPI rollup, exception aging, compliance evidence, agent task context, and external dependency health. Tie the behavior to `environment_health_safety_create_ehs_incident_workflow` where applicable, and make it visible in `EnvironmentHealthSafetyWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Projection contracts, freshness SLAs, backfill tests, and visible stale-projection warnings. The evidence should be package-local in `src/pyAppGen/pbcs/environment_health_safety` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 8. Exception taxonomy and remediation for Environment Health Safety Policy Rule
-
-**Justification:** High-value PBCs win on exception throughput; generic “failed” states hide the details operators need.
-
-**Improvement:** Model the full exception taxonomy for `environment_health_safety_policy_rule`, including severity, root cause, blocking dependency, remediation owner, due date, retry eligibility, escalation path, and closure evidence. Tie the behavior to `environment_health_safety_record_hazard_workflow` where applicable, and make it visible in `EnvironmentHealthSafetyWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Exception queues, aging metrics, remediation playbooks, dead-letter linkage, and closure test fixtures for conflicting clinical instructions. The evidence should be package-local in `src/pyAppGen/pbcs/environment_health_safety` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 9. Predictive risk scoring for Environment Health Safety Runtime Parameter
-
-**Justification:** The package should warn users before environment health and safety work fails, breaches policy, or creates downstream cost.
-
-**Improvement:** Add predictive risk scoring for `environment_health_safety_runtime_parameter` using domain features from owned tables, consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, rule outcomes, aging, anomaly signals, and historical corrections. Tie the behavior to `environment_health_safety_create_ehs_incident_workflow` where applicable, and make it visible in `EnvironmentHealthSafetyWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Feature manifests, score explanations, calibration reports, drift alerts, and tests for low/medium/high-risk scenarios. The evidence should be package-local in `src/pyAppGen/pbcs/environment_health_safety` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 10. Counterfactual simulation for Environment Health Safety Schema Extension
-
-**Justification:** Advanced users need to ask “what would happen if” before committing changes to live ehs incidents, inspections, permits, hazards, corrective actions, training, audits, and compliance evidence operations.
-
-**Improvement:** Provide scenario simulation for `environment_health_safety_schema_extension`: policy change, capacity constraint, deadline shift, price/rate change, eligibility change, disruption, and manual override outcomes. Tie the behavior to `environment_health_safety_record_hazard_workflow` where applicable, and make it visible in `EnvironmentHealthSafetyWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Simulation APIs, non-mutating sandbox state, comparison reports, and workbench side-by-side scenario panels. The evidence should be package-local in `src/pyAppGen/pbcs/environment_health_safety` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 11. Autonomous anomaly triage for Environment Health Safety Control Assertion
-
-**Justification:** A world-class PBC should reduce analyst burden without hiding the reasoning behind automated triage.
-
-**Improvement:** Implement anomaly detection for `environment_health_safety_control_assertion` that identifies outliers, duplicate submissions, impossible sequences, stale dependencies, unusual amounts/counts/durations, and contradictory fields. Tie the behavior to `environment_health_safety_create_ehs_incident_workflow` where applicable, and make it visible in `EnvironmentHealthSafetyWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Explainable anomaly cards, reviewer feedback loops, false-positive tracking, and suppression governance. The evidence should be package-local in `src/pyAppGen/pbcs/environment_health_safety` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 12. Semantic document understanding for Environment Health Safety Governed Model
-
-**Justification:** Document-heavy work in Environment Health and Safety cannot be complete if the assistant only answers questions and cannot prepare accurate governed changes.
-
-**Improvement:** Train the package assistant to parse domain documents and instructions for `environment_health_safety_governed_model`, extract obligations, dates, parties, quantities, identifiers, and exceptions, then map them to safe draft mutations. Tie the behavior to `environment_health_safety_record_hazard_workflow` where applicable, and make it visible in `EnvironmentHealthSafetyWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Document extraction tests, confidence thresholds, redaction handling, source span citations, and human confirmation workflows. The evidence should be package-local in `src/pyAppGen/pbcs/environment_health_safety` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 13. Agent-safe CRUD execution for Ehs Incident
-
-**Justification:** The PBC agent must be a first-class operator but never a hidden bypass around RBAC, rules, or owned datastore boundaries.
-
-**Improvement:** Add a professional chatbot skill for `ehs_incident` that can create, update, correct, close, and annotate records only through policy-checked commands, approval gates, and previewed diffs. Tie the behavior to `environment_health_safety_create_ehs_incident_workflow` where applicable, and make it visible in `EnvironmentHealthSafetyWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Skill manifests, permission tests, preview/confirm flows, blocked-action evidence, and audit events for every assistant mutation. The evidence should be package-local in `src/pyAppGen/pbcs/environment_health_safety` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 14. Workbench persona coverage for Hazard
-
-**Justification:** A generic detail page underserves the domain; each role needs the exact controls and evidence they use daily.
-
-**Improvement:** Design dedicated workbench panels for `hazard`: operator queue, supervisor approvals, analyst exceptions, auditor evidence, configuration owner, and agent-assistance review. Tie the behavior to `environment_health_safety_record_hazard_workflow` where applicable, and make it visible in `EnvironmentHealthSafetyWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** UI contract entries, route tests, empty/error/loading states, and permission-aware action availability. The evidence should be package-local in `src/pyAppGen/pbcs/environment_health_safety` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 15. Cross-PBC dependency contracts for Inspection
-
-**Justification:** Composable packages fail when hidden table coupling enters the domain model.
-
-**Improvement:** Represent dependencies for `inspection` through declared APIs, consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, and projections rather than shared tables, with explicit freshness, ownership, and fallback behavior. Tie the behavior to `environment_health_safety_create_ehs_incident_workflow` where applicable, and make it visible in `EnvironmentHealthSafetyWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Dependency manifests, contract tests, stale dependency alerts, and no foreign-table references in generated artifacts. The evidence should be package-local in `src/pyAppGen/pbcs/environment_health_safety` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 16. API completeness and versioning for Permit
-
-**Justification:** Complete domain coverage requires both command and query surfaces, not only happy-path create endpoints.
-
-**Improvement:** Expand APIs beyond POST /ehs-incidents, POST /hazards, POST /inspections to cover search, validation-only commands, simulation, bulk intake, exception closure, evidence export, projection reads, and idempotent corrections. Tie the behavior to `environment_health_safety_record_hazard_workflow` where applicable, and make it visible in `EnvironmentHealthSafetyWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** OpenAPI-style route manifests, backward-compatible version tests, deprecation metadata, and idempotency assertions. The evidence should be package-local in `src/pyAppGen/pbcs/environment_health_safety` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 17. Typed emitted-event expansion for Corrective Action
-
-**Justification:** Consumers should understand what happened in Environment Health and Safety without parsing opaque payloads.
-
-**Improvement:** Replace generic lifecycle emissions with typed events for each meaningful `corrective_action` transition, exception, approval, correction, simulation result, and downstream handoff. Tie the behavior to `environment_health_safety_create_ehs_incident_workflow` where applicable, and make it visible in `EnvironmentHealthSafetyWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Event schema tests, event examples, compatibility checks, and emitted-event coverage in release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/environment_health_safety` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 18. Consumed-event handlers for Safety Training
-
-**Justification:** A PBC is composable only when incoming events affect its own domain state predictably and safely.
-
-**Improvement:** Implement idempotent handlers for consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged that update projections, open dependency exceptions, recalculate risk, and preserve source event lineage. Tie the behavior to `environment_health_safety_record_hazard_workflow` where applicable, and make it visible in `EnvironmentHealthSafetyWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Duplicate-event tests, handler side-effect boundaries, dead-letter fixtures, and lineage links back to source events. The evidence should be package-local in `src/pyAppGen/pbcs/environment_health_safety` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 19. Retry and dead-letter operations for Audit Finding
-
-**Justification:** Dead letters are not just plumbing; they are domain work queues that can block ehs incidents, inspections, permits, hazards, corrective actions, training, audits, and compliance evidence.
-
-**Improvement:** Create operational tools for retrying, quarantining, explaining, and resolving dead-lettered `audit_finding` events with max-attempt policy, poison-message detection, and replay safety. Tie the behavior to `environment_health_safety_create_ehs_incident_workflow` where applicable, and make it visible in `EnvironmentHealthSafetyWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Dead-letter workbench, retry eligibility tests, replay audit proof, and operator action logs. The evidence should be package-local in `src/pyAppGen/pbcs/environment_health_safety` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 20. RBAC and attribute policy for Environment Health Safety Policy Rule
-
-**Justification:** High-impact domain operations need finer controls than generic RBAC grants.
-
-**Improvement:** Extend permissions for `environment_health_safety_policy_rule` from coarse read/create/update/admin to action-level and attribute-aware policies based on role, tenant, jurisdiction, monetary/materiality threshold, and exception severity. Tie the behavior to `environment_health_safety_record_hazard_workflow` where applicable, and make it visible in `EnvironmentHealthSafetyWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Permission matrix docs, ABAC policy tests, denied-action UI states, and assistant skill permission checks. The evidence should be package-local in `src/pyAppGen/pbcs/environment_health_safety` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 21. Continuous control testing for Environment Health Safety Runtime Parameter
-
-**Justification:** Controls should run during operations, not only during release audit or manual review.
-
-**Improvement:** Embed control assertions for `environment_health_safety_runtime_parameter` that continuously test segregation of duties, required approvals, stale exceptions, policy drift, duplicate records, and boundary violations. Tie the behavior to `environment_health_safety_create_ehs_incident_workflow` where applicable, and make it visible in `EnvironmentHealthSafetyWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Control dashboards, failing-control events, test fixtures, and release evidence tied to `environment_health_safety_control_assertion` records. The evidence should be package-local in `src/pyAppGen/pbcs/environment_health_safety` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 22. Cryptographic audit proofing for Environment Health Safety Schema Extension
-
-**Justification:** Better-than-world-class auditability requires proof of integrity, not merely logs stored in mutable tables.
-
-**Improvement:** Hash-chain material `environment_health_safety_schema_extension` decisions, documents, emitted events, and release-evidence snapshots to make tampering visible without exposing sensitive payloads. Tie the behavior to `environment_health_safety_record_hazard_workflow` where applicable, and make it visible in `EnvironmentHealthSafetyWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Proof manifests, verification APIs, redacted proof exports, and audit-ledger handoff events. The evidence should be package-local in `src/pyAppGen/pbcs/environment_health_safety` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 23. Privacy, consent, and secrecy controls for Environment Health Safety Control Assertion
-
-**Justification:** Complete domain coverage must account for protected data and restricted operational evidence.
-
-**Improvement:** Add field-level privacy classifications for `environment_health_safety_control_assertion`, consent checks, masking rules, retention schedules, legal holds, and assistant redaction policies. Tie the behavior to `environment_health_safety_create_ehs_incident_workflow` where applicable, and make it visible in `EnvironmentHealthSafetyWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Retention tests, masked UI snapshots, consent-blocked mutation fixtures, and export controls. The evidence should be package-local in `src/pyAppGen/pbcs/environment_health_safety` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 24. Multi-tenant operating model for Environment Health Safety Governed Model
-
-**Justification:** The PBC should scale across organizations while preserving independent policy and compliance boundaries.
-
-**Improvement:** Support tenant-specific `environment_health_safety_governed_model` rules, data residency, encryption context, configuration, seed data, and release evidence without allowing cross-tenant leakage. Tie the behavior to `environment_health_safety_record_hazard_workflow` where applicable, and make it visible in `EnvironmentHealthSafetyWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Tenant isolation tests, tenant-scoped parameters, key-rotation evidence, and cross-tenant negative fixtures. The evidence should be package-local in `src/pyAppGen/pbcs/environment_health_safety` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 25. Schema evolution and extension registry for Ehs Incident
-
-**Justification:** Domain teams will add fields; the PBC must evolve without breaking APIs, events, or workbench projections.
-
-**Improvement:** Make schema extensions for `ehs_incident` first-class with compatibility checks, migration previews, projection backfills, field ownership, and rollback metadata. Tie the behavior to `environment_health_safety_create_ehs_incident_workflow` where applicable, and make it visible in `EnvironmentHealthSafetyWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Extension registry UI, compatibility tests, migration dry-runs, and backfill release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/environment_health_safety` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 26. Master data quality gates for Hazard
-
-**Justification:** Many environment health and safety errors begin as bad reference data; the PBC should catch them before workflow execution.
-
-**Improvement:** Define reference-data contracts for `hazard`: canonical codes, parties, locations, classifications, calendars, units, currencies, products, assets, or service categories as relevant to the domain. Tie the behavior to `environment_health_safety_record_hazard_workflow` where applicable, and make it visible in `EnvironmentHealthSafetyWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Reference validation fixtures, stale-code warnings, mapping tables, and dependency freshness indicators. The evidence should be package-local in `src/pyAppGen/pbcs/environment_health_safety` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 27. Bulk operations and correction workflows for Inspection
-
-**Justification:** Enterprise-scale Environment Health and Safety users cannot operate one record at a time.
-
-**Improvement:** Add bulk load, bulk validate, bulk approve, and bulk correction workflows for `inspection` with partial success, row-level errors, resumability, and rollback. Tie the behavior to `environment_health_safety_create_ehs_incident_workflow` where applicable, and make it visible in `EnvironmentHealthSafetyWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** CSV/API batch fixtures, resumable job state, row-level audit evidence, and assistant-generated correction suggestions. The evidence should be package-local in `src/pyAppGen/pbcs/environment_health_safety` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 28. Lifecycle collaboration and tasking for Permit
-
-**Justification:** Domain collaboration should live inside the PBC boundary and remain auditable with the record it affects.
-
-**Improvement:** Attach tasks, comments, ownership, due dates, handoffs, and escalation threads to `permit` without leaking into external shared task tables. Tie the behavior to `environment_health_safety_record_hazard_workflow` where applicable, and make it visible in `EnvironmentHealthSafetyWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Task tables, comment audit history, notification events, escalation SLAs, and role-specific task queues. The evidence should be package-local in `src/pyAppGen/pbcs/environment_health_safety` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 29. SLA and service-level governance for Corrective Action
-
-**Justification:** Users need to know when ehs incidents, inspections, permits, hazards, corrective actions, training, audits, and compliance evidence is late, blocked, or at risk before customer or regulator impact.
-
-**Improvement:** Define SLAs for `corrective_action` across intake, validation, approval, exception resolution, event handling, downstream projection refresh, and release-evidence generation. Tie the behavior to `environment_health_safety_create_ehs_incident_workflow` where applicable, and make it visible in `EnvironmentHealthSafetyWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** SLA breach events, timers, configurable calendars, workbench aging buckets, and tests for pause/resume behavior. The evidence should be package-local in `src/pyAppGen/pbcs/environment_health_safety` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 30. Operational analytics cockpit for Safety Training
-
-**Justification:** World-class operations require leading indicators, not only record counts.
-
-**Improvement:** Build analytics for `safety_training`: throughput, backlog, aging, approval latency, exception rate, risk distribution, automation acceptance, correction rate, and downstream dependency health. Tie the behavior to `environment_health_safety_record_hazard_workflow` where applicable, and make it visible in `EnvironmentHealthSafetyWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Metric definitions, projection tests, drill-through routes, export APIs, and anomaly overlays. The evidence should be package-local in `src/pyAppGen/pbcs/environment_health_safety` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 31. Decision intelligence and recommendations for Audit Finding
-
-**Justification:** The PBC should help expert users decide faster while showing evidence and uncertainty.
-
-**Improvement:** Generate ranked recommendations for `audit_finding` such as next best action, likely resolution, required evidence, policy adjustment, staffing/capacity response, or downstream handoff. Tie the behavior to `environment_health_safety_create_ehs_incident_workflow` where applicable, and make it visible in `EnvironmentHealthSafetyWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Recommendation explanations, confidence intervals, feedback capture, model governance records, and rejection reasons. The evidence should be package-local in `src/pyAppGen/pbcs/environment_health_safety` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 32. Quality and completeness scoring for Environment Health Safety Policy Rule
-
-**Justification:** Operators should see whether a record is truly ready, not just technically saved.
-
-**Improvement:** Score each `environment_health_safety_policy_rule` record for completeness, consistency, policy readiness, dependency readiness, evidence sufficiency, and downstream composability. Tie the behavior to `environment_health_safety_record_hazard_workflow` where applicable, and make it visible in `EnvironmentHealthSafetyWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Scoring rules, missing-evidence lists, readiness badges, and blocking criteria in command handlers. The evidence should be package-local in `src/pyAppGen/pbcs/environment_health_safety` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 33. End-to-end scenario library for Environment Health Safety Runtime Parameter
-
-**Justification:** Release evidence is stronger when every important environment health and safety behavior has executable examples.
-
-**Improvement:** Create seeded scenarios for `environment_health_safety_runtime_parameter`: normal flow, urgent path, exception path, corrected path, duplicate path, late event path, and audit export path. Tie the behavior to `environment_health_safety_create_ehs_incident_workflow` where applicable, and make it visible in `EnvironmentHealthSafetyWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Scenario seed data, runtime smoke coverage, generated-app fixtures, and story-level workbench screenshots/contracts. The evidence should be package-local in `src/pyAppGen/pbcs/environment_health_safety` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 34. Domain ontology and terminology model for Environment Health Safety Schema Extension
-
-**Justification:** Precise vocabulary prevents the PBC from misclassifying specialist documents or user instructions.
-
-**Improvement:** Add an ontology for `environment_health_safety_schema_extension` terms, synonyms, classifications, relationships, allowed values, and phrase mappings used by the assistant and UI. Tie the behavior to `environment_health_safety_record_hazard_workflow` where applicable, and make it visible in `EnvironmentHealthSafetyWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Ontology files, assistant parsing tests, UI glossary, and mapping evidence for domain-specific abbreviations. The evidence should be package-local in `src/pyAppGen/pbcs/environment_health_safety` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 35. Advanced search and investigation for Environment Health Safety Control Assertion
-
-**Justification:** Investigators and operators need fast, explainable retrieval across the whole domain surface.
-
-**Improvement:** Provide search across `environment_health_safety_control_assertion` records, events, documents, exceptions, tasks, comments, and audit proofs with filters for tenant, status, risk, date, party, and dependency. Tie the behavior to `environment_health_safety_create_ehs_incident_workflow` where applicable, and make it visible in `EnvironmentHealthSafetyWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Search index contracts, result provenance, permission-filtered queries, and stale-index warnings. The evidence should be package-local in `src/pyAppGen/pbcs/environment_health_safety` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 36. Reconciliation and closure controls for Environment Health Safety Governed Model
-
-**Justification:** Closure is not complete until the PBC can prove no material domain work remains unresolved.
-
-**Improvement:** Add reconciliation workflows that compare `environment_health_safety_governed_model` state against consumed events, external projections, expected totals/counts, approvals, and release evidence before closure. Tie the behavior to `environment_health_safety_record_hazard_workflow` where applicable, and make it visible in `EnvironmentHealthSafetyWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Reconciliation reports, variance thresholds, closure blockers, and AppGen-X closure events. The evidence should be package-local in `src/pyAppGen/pbcs/environment_health_safety` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 37. Regulatory and policy reporting for Ehs Incident
-
-**Justification:** World-class PBCs turn operational evidence into credible reporting without spreadsheet reconstruction.
-
-**Improvement:** Generate domain reporting packs for `ehs_incident` covering statutory, contractual, operational, board, customer, or regulator evidence depending on patient safety, clinical traceability, consent boundaries, eligibility nuance, coding accuracy, care continuity, and regulated health evidence. Tie the behavior to `environment_health_safety_create_ehs_incident_workflow` where applicable, and make it visible in `EnvironmentHealthSafetyWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Report schemas, redaction rules, traceable metric sources, and approval/export audit events. The evidence should be package-local in `src/pyAppGen/pbcs/environment_health_safety` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 38. Carbon and resource awareness for Hazard
-
-**Justification:** Sustainability evidence should be embedded in operations instead of treated as an after-the-fact report.
-
-**Improvement:** Where relevant, attach carbon, energy, water, travel, capacity, compute, or resource-footprint metadata to `hazard` decisions and batch operations. Tie the behavior to `environment_health_safety_record_hazard_workflow` where applicable, and make it visible in `EnvironmentHealthSafetyWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Footprint fields, scheduling parameters, exception rules, and dashboards that expose operational tradeoffs. The evidence should be package-local in `src/pyAppGen/pbcs/environment_health_safety` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 39. Resilience and offline behavior for Inspection
-
-**Justification:** Real operations keep moving during outages; the PBC must preserve correctness when dependencies are unavailable.
-
-**Improvement:** Define resilience modes for `inspection`: degraded dependency mode, offline draft capture, delayed event replay, conflict detection, and safe recovery after partial failure. Tie the behavior to `environment_health_safety_create_ehs_incident_workflow` where applicable, and make it visible in `EnvironmentHealthSafetyWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Offline fixtures, replay tests, conflict queues, recovery logs, and user-visible degraded-mode warnings. The evidence should be package-local in `src/pyAppGen/pbcs/environment_health_safety` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 40. Human-in-the-loop automation for Permit
-
-**Justification:** Automation should accelerate ehs incidents, inspections, permits, hazards, corrective actions, training, audits, and compliance evidence while preserving accountability for high-risk decisions.
-
-**Improvement:** Set explicit automation boundaries for `permit`: auto-approve, auto-reject, suggest-only, require-review, and block-until-evidence states with policy-based routing. Tie the behavior to `environment_health_safety_record_hazard_workflow` where applicable, and make it visible in `EnvironmentHealthSafetyWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Automation policy tests, reviewer queues, override reasons, and assistant action audit trails. The evidence should be package-local in `src/pyAppGen/pbcs/environment_health_safety` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 41. Package discovery and fit scoring for Corrective Action
-
-**Justification:** Users selecting PBCs need transparent fit reasoning, especially when domains are adjacent but not overlapping.
-
-**Improvement:** Improve package metadata so composition can explain when `environment_health_safety` fits a prompt, what entities it owns, what APIs/events it exposes, and what adjacent PBCs it depends on. Tie the behavior to `environment_health_safety_create_ehs_incident_workflow` where applicable, and make it visible in `EnvironmentHealthSafetyWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Discovery manifests, prompt-selection tests, overlap rationale links, and composition DSL examples. The evidence should be package-local in `src/pyAppGen/pbcs/environment_health_safety` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 42. Configuration deployment pipeline for Safety Training
-
-**Justification:** Configuration changes can materially alter environment health and safety; they need the same discipline as code releases.
-
-**Improvement:** Add configuration promotion for `safety_training` across draft, test, approved, active, deprecated, and rollback states with impact analysis before activation. Tie the behavior to `environment_health_safety_record_hazard_workflow` where applicable, and make it visible in `EnvironmentHealthSafetyWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Config diff views, approval workflows, simulation before activation, and rollback tests. The evidence should be package-local in `src/pyAppGen/pbcs/environment_health_safety` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 43. Workbench command completeness for Audit Finding
-
-**Justification:** A PBC does not fully surface its capabilities if users must call hidden APIs for core work.
-
-**Improvement:** Expose every high-value operation for `audit_finding` in the UI: create, validate, approve, simulate, correct, assign, export, retry, close, and audit-proof verification. Tie the behavior to `environment_health_safety_create_ehs_incident_workflow` where applicable, and make it visible in `EnvironmentHealthSafetyWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** UI action coverage tests, permission-aware disabled states, keyboard paths, and assistant handoff links. The evidence should be package-local in `src/pyAppGen/pbcs/environment_health_safety` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 44. Document packet and evidence vault for Environment Health Safety Policy Rule
-
-**Justification:** Documents often carry the legal or operational truth behind ehs incidents, inspections, permits, hazards, corrective actions, training, audits, and compliance evidence.
-
-**Improvement:** Create a governed evidence vault for `environment_health_safety_policy_rule` documents, attachments, source spans, extracted fields, signatures, approvals, and retention labels. Tie the behavior to `environment_health_safety_record_hazard_workflow` where applicable, and make it visible in `EnvironmentHealthSafetyWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Evidence models, source-to-field lineage, signature validation, retention policies, and proof exports. The evidence should be package-local in `src/pyAppGen/pbcs/environment_health_safety` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 45. Data correction and amendment history for Environment Health Safety Runtime Parameter
-
-**Justification:** World-class systems correct mistakes without rewriting history or confusing downstream consumers.
-
-**Improvement:** Support formal amendments for `environment_health_safety_runtime_parameter` that preserve original values, correction reason, approving actor, effective date, downstream event impacts, and replay behavior. Tie the behavior to `environment_health_safety_create_ehs_incident_workflow` where applicable, and make it visible in `EnvironmentHealthSafetyWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Amendment tables, correction events, projection replay tests, and side-by-side before/after UI. The evidence should be package-local in `src/pyAppGen/pbcs/environment_health_safety` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 46. External participant collaboration for Environment Health Safety Schema Extension
-
-**Justification:** Many environment health and safety workflows require outside parties, but they must not gain direct access to internal tables.
-
-**Improvement:** Add controlled collaboration portals or API views for external participants related to `environment_health_safety_schema_extension`, limited to scoped evidence submission, status checks, comments, and dispute responses. Tie the behavior to `environment_health_safety_record_hazard_workflow` where applicable, and make it visible in `EnvironmentHealthSafetyWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Participant role policies, scoped tokens, submission audit trails, and inbound evidence validation. The evidence should be package-local in `src/pyAppGen/pbcs/environment_health_safety` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 47. Advanced dependency freshness scoring for Environment Health Safety Control Assertion
-
-**Justification:** A record may be valid locally but unsafe if dependency evidence is stale or incomplete.
-
-**Improvement:** Score freshness and reliability of dependencies used by `environment_health_safety_control_assertion`, including consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, referenced projections, configuration versions, and external submissions. Tie the behavior to `environment_health_safety_create_ehs_incident_workflow` where applicable, and make it visible in `EnvironmentHealthSafetyWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Freshness indicators, blocking rules, stale-event simulations, and workbench dependency health panels. The evidence should be package-local in `src/pyAppGen/pbcs/environment_health_safety` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 48. Model governance and explainability for Environment Health Safety Governed Model
-
-**Justification:** Governed AI is mandatory for professional-grade automation in Environment Health and Safety.
-
-**Improvement:** For every predictive or agentic feature around `environment_health_safety_governed_model`, record model version, prompt or ruleset version, training/evaluation evidence, confidence, explanation, and human feedback. Tie the behavior to `environment_health_safety_record_hazard_workflow` where applicable, and make it visible in `EnvironmentHealthSafetyWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Model cards, prompt/version manifests, feedback loops, drift tests, and audit proof for recommendations. The evidence should be package-local in `src/pyAppGen/pbcs/environment_health_safety` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 49. High-scale partitioning and archival for Ehs Incident
-
-**Justification:** Better-than-world-class packages must remain operable after years of high-volume domain history.
-
-**Improvement:** Plan scale behavior for `ehs_incident`: tenant partitioning, archival policies, cold storage, retention-aware search, projection compaction, and large-batch replay. Tie the behavior to `environment_health_safety_create_ehs_incident_workflow` where applicable, and make it visible in `EnvironmentHealthSafetyWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Partition tests, archive/retrieve fixtures, retention enforcement, and replay benchmarks. The evidence should be package-local in `src/pyAppGen/pbcs/environment_health_safety` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 50. Release gate expansion for Hazard
-
-**Justification:** The PBC should not claim domain coverage unless release evidence proves the claim end to end.
-
-**Improvement:** Expand release gates for `environment_health_safety` so every schema, service, API, event, handler, UI, rule, parameter, agent skill, seed scenario, and improvement backlog item maps to executable evidence. Tie the behavior to `environment_health_safety_record_hazard_workflow` where applicable, and make it visible in `EnvironmentHealthSafetyWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Release audit checks, manifest traceability, generated-app smoke tests, and missing-capability blockers. The evidence should be package-local in `src/pyAppGen/pbcs/environment_health_safety` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+- `pbc`: `environment_health_safety`
+- `label`: `Environment Health and Safety`
+- `description`: `EHS incidents, inspections, permits, hazards, corrective actions, training, audits, and compliance evidence`
+- `tables`: `ehs_incident`, `hazard`, `inspection`, `permit`, `corrective_action`, `safety_training`, `audit_finding`, `environment_health_safety_policy_rule`, `environment_health_safety_runtime_parameter`, `environment_health_safety_schema_extension`, `environment_health_safety_control_assertion`, `environment_health_safety_governed_model`
+- `apis`: `POST /ehs-incidents`, `POST /hazards`, `POST /inspections`, `POST /permits`, `POST /corrective-actions`, `GET /environment-health-safety-workbench`
+- `workflows`: `environment_health_safety_create_ehs_incident_workflow`, `environment_health_safety_record_hazard_workflow`
+- `ui_fragments`: `EnvironmentHealthSafetyWorkbench`, `EnvironmentHealthSafetyDetail`, `EnvironmentHealthSafetyAssistantPanel`
+- `analytics`: `environment_health_safety_risk_score`, `environment_health_safety_workbench_metric`
+- `emits`: `EnvironmentHealthSafetyCreated`, `EnvironmentHealthSafetyUpdated`, `EnvironmentHealthSafetyApproved`, `EnvironmentHealthSafetyExceptionOpened`
+- `consumes`: `PolicyChanged`, `AuditEventSealed`, `OperationalKpiChanged`
+- `advanced_capabilities`: `environment_health_safety_event_sourced_operational_history`, `environment_health_safety_multi_tenant_policy_isolation`, `environment_health_safety_schema_evolution_resilience`, `environment_health_safety_autonomous_anomaly_detection`, `environment_health_safety_semantic_document_instruction_understanding`, `environment_health_safety_predictive_risk_scoring`, `environment_health_safety_counterfactual_scenario_simulation`, `environment_health_safety_cryptographic_audit_proofs`, `environment_health_safety_continuous_control_testing`, `environment_health_safety_carbon_and_sustainability_awareness`, `environment_health_safety_cross_pbc_event_federation`, `environment_health_safety_governed_ai_agent_execution`
+- `docs`: `SPECIFICATION.md`, `RELEASE_EVIDENCE.md`
+- `configuration`: `ENVIRONMENT_HEALTH_SAFETY_DATABASE_URL`, `ENVIRONMENT_HEALTH_SAFETY_EVENT_TOPIC`, `ENVIRONMENT_HEALTH_SAFETY_RETRY_LIMIT`, `ENVIRONMENT_HEALTH_SAFETY_DEFAULT_POLICY`
+
+### 1. Recordable incident lifecycle and severity gates
+**Exact key:** `ehs_incident`
+**Justification:** First aid, medical treatment, lost time, restricted work, fatality, environmental release, and near miss need different handling, escalation, and closure rules.
+**Improvement:** Add an incident lifecycle that separates draft, triaged, recordability-review, regulator-notified, investigation-open, corrective-action-open, closed, and reopened states, with explicit severity and recordability codes.
+**Acceptance evidence:** Transition tests block invalid closures, and `EnvironmentHealthSafetyWorkbench` shows severity, recordability, and notification status on one incident queue card.
+
+### 2. Serious-incident notification clocks and escalation paths
+**Exact key:** `ehs_incident`
+**Justification:** Fatalities, hospitalizations, major releases, and fire events carry clock-based reporting duties that cannot depend on manual reminders.
+**Improvement:** Add jurisdiction-aware timers, escalation rules, regulator contact packs, and acknowledgement evidence for serious-incident notifications.
+**Acceptance evidence:** Seeded incidents show countdown timers, overdue notifications open exceptions automatically, and approval history captures who sent each notice and when.
+
+### 3. Investigation dossier with barrier and cause analysis
+**Exact key:** `ehs_incident`
+**Justification:** Investigations need more than a narrative; they need failed barriers, contributing conditions, and a defensible causal chain.
+**Improvement:** Build an investigation dossier with chronology, witness statements, equipment state, immediate cause, basic cause, root cause, and failed-control mapping.
+**Acceptance evidence:** `EnvironmentHealthSafetyDetail` renders a causal chain for seeded incidents, and closure is blocked until mandatory investigation fields and evidence links are complete.
+
+### 4. Near-miss to hazard promotion rules
+**Exact key:** `hazard`
+**Justification:** Repeated near misses should strengthen prevention before harm occurs, not disappear into closed incident logs.
+**Improvement:** Add promotion rules that open or update `hazard` records when incident patterns show repeated unsafe conditions, similar tasks, or repeated control failures.
+**Acceptance evidence:** Policy simulations show why a near-miss cluster becomes a hazard entry, and duplicate-hazard handling keeps lineage back to the triggering incidents.
+
+### 5. Corrective action effectiveness verification
+**Exact key:** `corrective_action`
+**Justification:** Closing a CAPA on date alone does not prove the risk was reduced or the failed control was replaced with something stronger.
+**Improvement:** Require owner, due date, hierarchy-of-controls classification, verification step, effectiveness review window, and re-open logic when a corrective action fails to hold.
+**Acceptance evidence:** Actions cannot close without verifier evidence, failed effectiveness reviews reopen the action, and linked incidents reflect the reopened control gap.
+
+### 6. Hazard register by site, area, task, and energy source
+**Exact key:** `hazard`
+**Justification:** Operators need to see chemical, physical, biological, ergonomic, and stored-energy hazards in the context where work actually happens.
+**Improvement:** Build a hierarchical hazard register keyed by site, area, process, task step, exposed population, energy source, existing controls, and residual risk.
+**Acceptance evidence:** Workbench filters return hazards by site, area, or task, and seeded data shows duplicate detection across overlapping hazard descriptions.
+
+### 7. Dynamic risk assessment before non-routine work
+**Exact key:** `hazard`
+**Justification:** Static hazards do not account for weather, occupancy, temporary bypasses, shutdown conditions, or concurrent work.
+**Improvement:** Add pre-job dynamic risk assessments that pull active hazards, temporary controls, permit conditions, isolation state, and site alerts into one risk decision.
+**Acceptance evidence:** High-risk work cannot proceed without a signed dynamic assessment, and the detail view shows which live conditions changed the residual risk.
+
+### 8. Inspection program by asset, area, theme, and frequency
+**Exact key:** `inspection`
+**Justification:** Housekeeping rounds, confined-space inspections, environmental rounds, and behavior observations need different cadence and scope.
+**Improvement:** Define inspection templates with recurrence rules, mandatory evidence, route or area scope, finding severity, and overdue escalation behavior.
+**Acceptance evidence:** Scheduled inspections appear in due queues automatically, skipped inspections require reason codes, and overdue inspections escalate according to policy.
+
+### 9. Offline and mobile inspection capture with governed sync
+**Exact key:** `inspection`
+**Justification:** Many inspections happen in plants, yards, and remote locations where connectivity is intermittent.
+**Improvement:** Support offline answers, photos, measurements, signatures, and later sync through idempotent handlers with stale-form warnings and conflict resolution.
+**Acceptance evidence:** Sync tests show no duplicate findings on reconnect, and replayed submissions preserve original capture time and inspector identity.
+
+### 10. Permit-to-work conflict matrix
+**Exact key:** `permit`
+**Justification:** Hot work, line break, excavation, confined space, and energized work can invalidate each other when they overlap in time or location.
+**Improvement:** Enforce permit conflict rules by area, time window, energy source, gas test status, rescue readiness, simultaneous operations, and linked isolation boundaries.
+**Acceptance evidence:** Conflicting permit issuance is blocked with a named rule, and the workbench shows the dependency chain that caused the block.
+
+### 11. Permit suspension, extension, and handback control
+**Exact key:** `permit`
+**Justification:** Permits often drift across shift changes, weather delays, and maintenance interruptions unless suspension and return-to-service are explicit.
+**Improvement:** Add suspended, extended, handed-back, cancelled, and expired states with required revalidation, supervisor acknowledgement, and return-to-service evidence.
+**Acceptance evidence:** Expired permits disappear from active boards, and handback requires completed isolation removal evidence plus area acceptance before closure.
+
+### 12. High-risk permit prerequisites and competency gates
+**Exact key:** `permit`
+**Justification:** Confined-space and energized-work permits should prove testing, rescue readiness, and qualified personnel before issue, not after an incident.
+**Improvement:** Bind permit validation to gas-test windows, lockout verification, role coverage, equipment readiness, and linked training validity for the assigned crew.
+**Acceptance evidence:** Validation-only permit requests list missing prerequisites before issue, and permit cards show which specific preconditions are still unmet.
+
+### 13. Training matrix linked to hazards, roles, and permits
+**Exact key:** `safety_training`
+**Justification:** Training records only matter if they map to the hazards people face and the permits they are allowed to work under.
+**Improvement:** Map each training or competency record to hazard families, permit types, emergency roles, contractor categories, and refresher intervals.
+**Acceptance evidence:** The detail view explains why a worker is or is not qualified for a task, and permit issue checks the linked training matrix automatically.
+
+### 14. Expiry, retraining, and grace-period governance
+**Exact key:** `safety_training`
+**Justification:** Lapsed qualifications are a leading risk indicator and should not remain buried in a separate export or spreadsheet.
+**Improvement:** Add expiry logic, grace windows, restricted-duty flags, and site or jurisdiction overrides for mandatory retraining and reassessment.
+**Acceptance evidence:** Expired training opens exceptions, and active permits can be auto-flagged when a required qualification lapses mid-job.
+
+### 15. Exposure monitoring for chemical, noise, dust, and ergonomic load
+**Exact key:** `environment_health_safety_schema_extension`
+**Justification:** EHS needs owned exposure facts even though the current manifest has no dedicated exposure table.
+**Improvement:** Extend the schema with exposure samples, similar exposure groups, dose calculations, task duration, control type, and action thresholds while keeping the boundary operational rather than clinical.
+**Acceptance evidence:** Migrations and projections show sample histories and exceedances, and the workbench can filter open exposure issues by agent, area, and hazard family.
+
+### 16. Medical-surveillance trigger boundary inside EHS
+**Exact key:** `environment_health_safety_policy_rule`
+**Justification:** EHS must know when surveillance is required without becoming the system of record for diagnosis or treatment.
+**Improvement:** Express policy rules that open surveillance-required tasks from exposure thresholds, respirator enrollment, and hazardous-substance categories while storing only bounded operational status.
+**Acceptance evidence:** Tests prove only trigger status and completion evidence are retained, and assistant output never exposes sensitive health details beyond that boundary.
+
+### 17. Spill, waste, and emissions boundary accounting
+**Exact key:** `environment_health_safety_carbon_and_sustainability_awareness`
+**Justification:** Releases, waste streams, and fugitive emissions often begin as EHS events and later feed environmental reporting, so the handoff boundary must be explicit.
+**Improvement:** Capture release type, quantity estimate, containment status, reportability, waste classification, and downstream environmental-report handoff status on incidents and permits.
+**Acceptance evidence:** Seeded spill cases show EHS containment evidence, regulator notification status, and a federated handoff record without duplicate manual entry.
+
+### 18. Permit and incident linkage for release and spill events
+**Exact key:** `ehs_incident`
+**Justification:** A release during maintenance or line breaking should trace back to the authorizing permit and the controls that failed.
+**Improvement:** Require incidents involving fires, spills, or loss of containment to link the active permit, isolation step, task owner, and area conditions at the time of the event.
+**Acceptance evidence:** Investigation pages can navigate from incident to permit and back, and incident closure is blocked if the initiating permit context is missing.
+
+### 19. Compliance obligation register with due dates and evidence owners
+**Exact key:** `environment_health_safety_policy_rule`
+**Justification:** Compliance work fails when obligations live outside the package that already owns inspections, permits, incidents, and audits.
+**Improvement:** Create obligation records for inspections, reports, monitoring, training, permit renewals, and notices with jurisdiction, recurrence, owner, due date, and evidence expectation.
+**Acceptance evidence:** The workbench shows upcoming and overdue obligations by site, and each obligation record links to its submitted evidence or open exception.
+
+### 20. Jurisdiction-aware policy packs
+**Exact key:** `environment_health_safety_policy_rule`
+**Justification:** One organization can operate under different rules for recordability, waste handling, inspection cadence, and permit conditions across sites.
+**Improvement:** Version policy packs by jurisdiction, site class, contractor presence, and hazard profile, with effective dates and comparison views before approval.
+**Acceptance evidence:** Policy simulations show exactly which incidents, permits, and training requirements change under a proposed policy pack revision.
+
+### 21. Runtime parameters for risk thresholds and escalation timing
+**Exact key:** `environment_health_safety_runtime_parameter`
+**Justification:** Field operations need bounded tuning for risk bands, gas-test windows, overdue tolerances, and escalation timing without code edits.
+**Improvement:** Expose approved parameters for risk-score bands, notification countdowns, inspection grace periods, permit extension limits, and CAPA aging.
+**Acceptance evidence:** Parameter history shows who changed what, unsafe ranges are rejected, and affected queues re-score immediately after approval.
+
+### 22. Role-based workbench lanes for EHS operations
+**Exact key:** `EnvironmentHealthSafetyWorkbench`
+**Justification:** Permit issuers, investigators, supervisors, and compliance leads do not all need the same operational view.
+**Improvement:** Provide separate lanes for active incidents, open permits, overdue inspections, at-risk corrective actions, training expiries, exposure exceedances, and regulator obligations.
+**Acceptance evidence:** Persona tests show the right lane mix per role, and every card drills directly into the required next action.
+
+### 23. Evidence-first detail view for incidents, permits, and audits
+**Exact key:** `EnvironmentHealthSafetyDetail`
+**Justification:** Detail pages should explain what happened, which control failed, and what evidence exists instead of pushing users to raw tables.
+**Improvement:** Redesign detail views around chronology, linked hazards, linked permits, corrective actions, attachments, approvals, and event provenance.
+**Acceptance evidence:** Traceability checks prove each badge or metric links to a source record or emitted event, and seeded screenshots can be reproduced from package data.
+
+### 24. Assistant skill for shift-ready incident summaries
+**Exact key:** `EnvironmentHealthSafetyAssistantPanel`
+**Justification:** Supervisors need fast, grounded handover summaries for open incidents and active controls.
+**Improvement:** Add a summarization skill that drafts incident status, open actions, affected area, controls in place, and unanswered questions with citations to incident, permit, and inspection records.
+**Acceptance evidence:** Regression tests show every assistant paragraph cites source records, and unsupported claims are refused rather than invented.
+
+### 25. Assistant skill for permit review and field coaching
+**Exact key:** `ai_agent_task_assistance`
+**Justification:** Permit issuers need guided review for complex work involving testing, isolation, rescue, and contractor competence.
+**Improvement:** Add a bounded assistant skill that reviews draft permit packages, highlights missing prerequisites, and proposes pre-start briefing points without auto-issuing the permit.
+**Acceptance evidence:** Preview and confirm flows prove no record mutation happens before human approval, and the review output lists the exact missing evidence.
+
+### 26. Document intake for SDS, procedures, and permit attachments
+**Exact key:** `agentic_document_instruction_intake`
+**Justification:** EHS instructions arrive in safety data sheets, method statements, work packs, and regulator letters, not only in typed forms.
+**Improvement:** Parse attached documents into structured hazard controls, PPE requirements, inspection criteria, and permit prerequisites while preserving source excerpts and confidence.
+**Acceptance evidence:** Golden document fixtures show extracted controls in review state first, and accepted extracts retain links back to the original source passages.
+
+### 27. Assistant skill for investigation evidence gaps
+**Exact key:** `ai_agent_task_assistance`
+**Justification:** Investigations often miss witness statements, photos, barrier checks, or training links that later matter in audits and litigation.
+**Improvement:** Add a skill that inspects an open investigation dossier and flags missing evidence, contradictory timestamps, and likely next interviews or documents.
+**Acceptance evidence:** Seeded investigation cases show the assistant identifying true gaps with citations, and no direct mutation of the incident record is allowed.
+
+### 28. API expansion for search, dry-run, bulk close, and evidence export
+**Exact key:** `POST /ehs-incidents`
+**Justification:** Create-only endpoints do not cover operational search, regulator-ready exports, or safe validation of complex incident and permit payloads.
+**Improvement:** Extend the API surface with search and read models, validation-only commands for incidents and permits, bulk governed close or reopen paths, and evidence export routes.
+**Acceptance evidence:** API fixtures show dry-run responses with rule failures, idempotency tests cover retries, and exported evidence matches the detail view for the same record set.
+
+### 29. Bulk intake for hazards, inspections, and training completions
+**Exact key:** `POST /hazards`
+**Justification:** Mobilizations and contractor onboarding often require large-volume loading of hazards, inspection findings, and course completions.
+**Improvement:** Support batch ingest with row-level validation, row-level idempotency, resumable failures, and governed correction workflows.
+**Acceptance evidence:** Batch tests preserve accepted rows while isolating rejected rows with clear error explanations and retry eligibility.
+
+### 30. Typed emitted events for real EHS facts
+**Exact key:** `emits`
+**Justification:** Generic created and updated events are too coarse for downstream safety reporting and operational automation.
+**Improvement:** Emit typed facts for incident severity changed, permit issued, permit suspended, inspection failed, corrective action overdue, exposure exceeded, training lapsed, and audit finding reopened.
+**Acceptance evidence:** Event-schema tests and example payloads show consumers can act without reading internal tables or ambiguous free text.
+
+### 31. Policy-change consumption with targeted re-evaluation
+**Exact key:** `PolicyChanged`
+**Justification:** When a policy pack changes, open permits, incidents, training obligations, and inspection schedules need re-evaluation rather than a blind configuration swap.
+**Improvement:** Implement an idempotent `PolicyChanged` handler that recomputes affected records, opens exceptions where new rules are violated, and preserves the prior policy version used at the original decision point.
+**Acceptance evidence:** Duplicate-event tests show safe replay, and changed records display both the old and new policy versions that influenced their state.
+
+### 32. Audit-seal consumption for locked evidence bundles
+**Exact key:** `AuditEventSealed`
+**Justification:** Once an investigation or audit package is sealed, edits should be constrained and visible.
+**Improvement:** Consume `AuditEventSealed` to mark evidence bundles, audit findings, and release packs as sealed, read-only, or amendment-required based on their lifecycle state.
+**Acceptance evidence:** Handler tests prove sealed evidence cannot be silently edited, and amendment flows retain the original sealed bundle alongside the new revision.
+
+### 33. KPI feedback loops into risk prioritization
+**Exact key:** `OperationalKpiChanged`
+**Justification:** Rising minor injuries, inspection drift, or repeated permit suspensions should alter queue priority before a severe event happens.
+**Improvement:** Handle `OperationalKpiChanged` by recalculating risk scores, anomaly baselines, and escalation priority for affected sites, tasks, and hazard clusters.
+**Acceptance evidence:** Before-and-after fixtures show queue reprioritization with lineage back to the incoming KPI event.
+
+### 34. Dead-letter, retry, and replay operations for EHS eventing
+**Exact key:** `retry_dead_letter_evidence`
+**Justification:** Failed event handling can leave stale permit views, missing CAPA escalations, or out-of-date incident queues.
+**Improvement:** Create an operator queue for failed EHS messages with reason, last attempt, replay safety, domain impact, and required remediation notes.
+**Acceptance evidence:** Replay tests show idempotent recovery, poison messages stay quarantined, and every operator retry decision is logged in the workbench.
+
+### 35. Event-sourced operating timeline for investigations and audits
+**Exact key:** `environment_health_safety_event_sourced_operational_history`
+**Justification:** Investigators and auditors need to reconstruct what changed, in what order, and under which policy version.
+**Improvement:** Build a time-travel timeline across incidents, hazards, inspections, permits, actions, and audit findings with actor, command, event, and projection checkpoints.
+**Acceptance evidence:** Replay tests rebuild seeded scenarios exactly, and the detail view can step through the sequence that led to closure or escalation.
+
+### 36. Predictive risk scoring from leading indicators
+**Exact key:** `environment_health_safety_risk_score`
+**Justification:** Severe events are often preceded by inspection drift, repeated near misses, overdue corrective actions, training gaps, and permit churn.
+**Improvement:** Score sites, tasks, and hazard clusters using those leading indicators and expose interpretable drivers rather than opaque weights.
+**Acceptance evidence:** Model-evaluation fixtures show the top drivers for each score, and supervisors can drill from a score to the records that created it.
+
+### 37. Autonomous anomaly detection for exposure, waste, and permit behavior
+**Exact key:** `environment_health_safety_autonomous_anomaly_detection`
+**Justification:** Sudden noise spikes, unusual spill quantities, repeated permit extensions, or inspection finding surges should surface automatically.
+**Improvement:** Detect anomalies across exposure readings, release quantities, permit duration patterns, CAPA aging, and inspection failure rates using site-specific baselines.
+**Acceptance evidence:** Seeded outlier scenarios open explainable alerts that cite the baseline window, observed deviation, and affected record set.
+
+### 38. Counterfactual simulation for control selection
+**Exact key:** `environment_health_safety_counterfactual_scenario_simulation`
+**Justification:** EHS teams need to compare ventilation, guarding, scheduling, and training interventions before committing capital or shutting down work.
+**Improvement:** Simulate alternative controls against expected incident likelihood, permit restrictions, exposure reduction, and operational disruption for a defined hazard cluster.
+**Acceptance evidence:** Simulation views compare options side by side and clearly mark modeled outcomes as non-authoritative until a change is approved.
+
+### 39. Continuous control tests for stale risk and overdue obligations
+**Exact key:** `environment_health_safety_continuous_control_testing`
+**Justification:** A package that waits for manual audit has already missed the point of operational safety control.
+**Improvement:** Run continuous assertions for overdue serious-incident notification, expired permits, overdue corrective actions, lapsed training on active high-risk work, and unresolved exposure exceedances.
+**Acceptance evidence:** Failing assertions open `EnvironmentHealthSafetyExceptionOpened` records with the exact breached control and affected record identifiers.
+
+### 40. Cryptographic proof bundles for investigations and submissions
+**Exact key:** `environment_health_safety_cryptographic_audit_proofs`
+**Justification:** Regulator submissions and serious-incident investigations need integrity proof beyond mutable attachments.
+**Improvement:** Hash-chain evidence packages, approvals, event payloads, and release bundles so tampering is detectable without exposing restricted content.
+**Acceptance evidence:** Verification commands succeed on seeded bundles, and redacted exports still validate against the stored proof chain.
+
+### 41. Tenant, site, and jurisdiction isolation
+**Exact key:** `environment_health_safety_multi_tenant_policy_isolation`
+**Justification:** Contractors, business units, and regulated sites may share infrastructure but cannot share rules, evidence, or queue visibility by accident.
+**Improvement:** Isolate policy packs, runtime parameters, workbench filters, assistant context, and evidence storage by tenant and site or jurisdiction scope.
+**Acceptance evidence:** Negative tests prove one scope cannot read or apply another scope's incidents, permits, or policy overrides.
+
+### 42. Controlled schema evolution for site-specific forms
+**Exact key:** `environment_health_safety_schema_evolution_resilience`
+**Justification:** Sites will request local fields on permits and inspections, but ad hoc columns break APIs, analytics, and release evidence.
+**Improvement:** Add a schema-extension registry for approved local fields, validation rules, migration previews, projection impact checks, and rollback metadata.
+**Acceptance evidence:** Dry-run migrations show downstream effects before approval, and backfill evidence proves old records remain readable after an extension rollout.
+
+### 43. Guardrails for governed AI models and autonomous actions
+**Exact key:** `environment_health_safety_governed_ai_agent_execution`
+**Justification:** AI can help draft and triage, but it should never issue permits, downgrade severity, or close incidents without human approval.
+**Improvement:** Define approved agent skills, blocked decisions, required human checkpoints, prompt provenance, and model-version capture for every AI-assisted action.
+**Acceptance evidence:** Policy tests show the agent can draft and recommend but cannot issue permits, close incidents, or suppress exceptions autonomously.
+
+### 44. Audit program planning and repeat-finding memory
+**Exact key:** `audit_finding`
+**Justification:** Audits matter when they show recurrence, aging, and control weakness across sites and time periods.
+**Improvement:** Model audit plans, finding taxonomy, recurrence clustering, owner escalation, and linkage from audit findings to incidents, hazards, and corrective actions.
+**Acceptance evidence:** The workbench shows repeat findings by site and control family, and closure requires evidence that the underlying condition changed rather than only the wording.
+
+### 45. Compliance calendar and regulator submission evidence
+**Exact key:** `environment_health_safety_policy_rule`
+**Justification:** Recurring reports, notice postings, and permit renewals need the same rigor as incident response and CAPA management.
+**Improvement:** Add a compliance calendar that tracks submission due dates, draft status, approver, submitted artifact, regulator acknowledgement, and late-filing justification.
+**Acceptance evidence:** Overdue submissions raise exceptions, and each reporting cycle links directly to the filed artifact and acknowledgement evidence.
+
+### 46. Cross-PBC event federation at EHS boundaries
+**Exact key:** `environment_health_safety_cross_pbc_event_federation`
+**Justification:** EHS decisions often depend on maintenance, workforce, or environmental signals, but the package must integrate through events rather than shared tables.
+**Improvement:** Formalize federation contracts for incoming operational signals and outgoing spill, waste, emissions, and exposure events with freshness and ownership rules.
+**Acceptance evidence:** Contract tests show no foreign-table references, and federated event lineage is visible from the originating EHS record.
+
+### 47. Release evidence packs for incidents, permits, audits, and controls
+**Exact key:** `RELEASE_EVIDENCE.md`
+**Justification:** Package release should prove that serious workflows and evidence bundles work, not merely that the file exists.
+**Improvement:** Generate release packs that include an incident investigation, a permit issue-suspend-handback cycle, an overdue-training block, an inspection failure, an audit finding, and the resulting emitted events.
+**Acceptance evidence:** `RELEASE_EVIDENCE.md` contains reproducible artifacts, route traces, and verifier notes tied to the package version.
+
+### 48. Specification-backed contract checks for declared surfaces
+**Exact key:** `SPECIFICATION.md`
+**Justification:** Manifest-declared tables, APIs, workflows, UI fragments, analytics, docs, and tests should not drift from implementation silently.
+**Improvement:** Add contract checks that compare `SPECIFICATION.md`, manifest surfaces, route registration, event schemas, and UI workbench routes.
+**Acceptance evidence:** Intentionally broken declarations fail validation, and normal runs produce a pass/fail matrix across declared surfaces.
+
+### 49. End-to-end release assurance scenario
+**Exact key:** `continuous_release_assurance`
+**Justification:** Incidents, hazards, inspections, permits, corrective actions, training, and audits should be proven together in one package-local story.
+**Improvement:** Build an end-to-end scenario that records a hazard, issues a permit, fails an inspection, opens an incident, assigns a corrective action, blocks a worker with lapsed training, and closes with sealed evidence.
+**Acceptance evidence:** One release gate exercises the full path with deterministic outputs and fails if any declared workflow, event, or UI projection breaks.
+
+### 50. Workbench metrics for operational safety and compliance
+**Exact key:** `environment_health_safety_workbench_metric`
+**Justification:** EHS leaders need metrics that show exposure and control health, not just record counts.
+**Improvement:** Define workbench metrics for high-risk permits active, inspection overdue rate, serious-incident notification timeliness, corrective-action aging, training expiry exposure, exposure exceedance count, repeat audit findings, and open compliance obligations.
+**Acceptance evidence:** Metric definitions are traceable to source records, dashboard values match fixture calculations, and supervisors can drill from each metric to the queue that produced it.
