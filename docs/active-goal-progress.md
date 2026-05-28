@@ -3264,3 +3264,13 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   entrypoints, focused doctor/audit tests, `tests/test_dsl_tooling_contracts.py
   -q`, tooling-audit JSON proof, scoped diff whitespace check, and
   restricted-name scan. Commit: `bb60af87`.
+- Current formatter contract audit pass closes the formatter evidence gap in
+  `docs/tooling.md`. `appgen.formatter-contract-audit.v1` now proves
+  formatter idempotency, file-level comments, declaration comments, inline
+  comments, canonical field modifier ordering, relationship modifier ordering,
+  organize-mode table-body ordering, and top-level declaration order
+  preservation. `appgen.tooling-audit.v1` embeds this formatter contract under
+  the formatter section. Verification passed: Python compile for touched
+  tooling entrypoints, focused formatter/audit tests,
+  `tests/test_dsl_tooling_contracts.py -q`, tooling-audit JSON proof, scoped
+  diff whitespace check, and restricted-name scan. Commit: `ef136d32`.
