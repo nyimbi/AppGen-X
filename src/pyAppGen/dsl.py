@@ -16,6 +16,9 @@ from antlr4.error.ErrorListener import ErrorListener
 from .schema import AppSchema
 from .schema import AgentSchema
 from .schema import ColumnSchema
+from .schema import DeploymentHealthSchema
+from .schema import DeploymentScaleSchema
+from .schema import DeploymentUnitSchema
 from .schema import EnumSchema
 from .schema import EnterpriseContractSchema
 from .schema import EnterpriseStatementSchema
@@ -1225,7 +1228,7 @@ def schema_from_dsl(text: str, *, source_name: str | None = None) -> AppSchema:
         elif element.auditDecl():
             platform_blocks.append(_agentic_platform_block("audit", element.auditDecl()))
         elif element.deploymentDecl():
-            platform_blocks.append(_agentic_platform_block("deploy", element.deploymentDecl()))
+            platform_blocks.append(_deployment_block(element.deploymentDecl()))
         elif element.versionDecl():
             platform_blocks.append(_agentic_platform_block("version", element.versionDecl()))
         elif element.operationDecl():
@@ -1528,8 +1531,20 @@ KEYWORD_FREE_SYNTAX = (
     "generic app options",
     "PBC composition, audit, deployment, versioning, operations, and security blocks",
     "API, event, job, report, menu, component, package, and test contract blocks",
+    "deployment unit/scale/health/check topology inside deploy blocks",
     "entity/model/form/screen/workflow authoring aliases",
     "hide/searchable modifier aliases",
+)
+_DEPLOYMENT_PATTERNS = (
+    "embedded",
+    "function",
+    "job",
+    "microservice",
+    "module",
+    "monolith",
+    "process",
+    "sidecar",
+    "worker",
 )
 LEARNING_PATH = (
     {"step": 1, "goal": "Model data", "constructs": ("app", "table", "enum", "->")},
@@ -1654,6 +1669,11 @@ def dsl_antlr_integrity_report() -> dict:
         "compositionDecl",
         "auditDecl",
         "deploymentDecl",
+        "deploymentItem",
+        "deployUnit",
+        "deployScale",
+        "deployHealth",
+        "deployCheck",
         "versionDecl",
         "operationDecl",
         "securityDecl",
@@ -1940,10 +1960,29 @@ def _validate_schema(schema: AppSchema) -> None:
     operation_names.update(block.name for block in schema.platform_blocks if block.kind == "operation")
     handler_targets = set(operation_names)
     handler_targets.update(contract.name for contract in _enterprise_contracts(schema))
+    deployable_targets = set(handler_targets)
+    deployable_targets.update(block.name for block in schema.platform_blocks if block.kind == "pbc")
     for view in schema.views:
         for handler in view.handlers:
             if handler.target not in handler_targets:
                 errors.append(f"Unknown handler target: {view.name}.{handler.target}")
+    for block in schema.platform_blocks:
+        if block.kind != "deploy":
+            continue
+        for unit in block.deployment_units:
+            if unit.target not in deployable_targets:
+                errors.append(f"Unknown deployment unit target: {block.name}.{unit.target}")
+            if unit.pattern not in _DEPLOYMENT_PATTERNS:
+                patterns = ", ".join(sorted(_DEPLOYMENT_PATTERNS))
+                errors.append(f"Unknown deployment pattern: {block.name}.{unit.pattern}. Supported: {patterns}")
+        for scale in block.deployment_scales:
+            if scale.target not in deployable_targets:
+                errors.append(f"Unknown deployment scale target: {block.name}.{scale.target}")
+            if scale.minimum > scale.maximum:
+                errors.append(f"Invalid deployment scale range: {block.name}.{scale.target}")
+        for health in block.deployment_health:
+            if health.target not in deployable_targets:
+                errors.append(f"Unknown deployment health target: {block.name}.{health.target}")
     for contract in _enterprise_contracts(schema):
         for handler in contract.handlers:
             if handler.target not in handler_targets:
@@ -2334,6 +2373,63 @@ def _enterprise_contract(kind: str, ctx) -> EnterpriseContractSchema:
         handlers=tuple(handlers),
         permissions=tuple(permissions),
     )
+
+
+def _deployment_block(ctx) -> PlatformBlockSchema:
+    options: dict[str, tuple[str, ...]] = {}
+    units: list[DeploymentUnitSchema] = []
+    scales: list[DeploymentScaleSchema] = []
+    health_checks: list[DeploymentHealthSchema] = []
+    for item in ctx.deploymentItem():
+        if item.deployUnit():
+            units.append(_deploy_unit(item.deployUnit()))
+        elif item.deployScale():
+            scales.append(_deploy_scale(item.deployScale()))
+        elif item.deployHealth():
+            health_checks.append(_deploy_health(item.deployHealth()))
+        elif item.deployCheck():
+            health_checks.append(_deploy_check(item.deployCheck()))
+        elif item.agenticOption():
+            option = item.agenticOption()
+            values = tuple(_agentic_value(value) for value in option.agenticValue())
+            options[option.IDENT().getText()] = values
+    return PlatformBlockSchema(
+        kind="deploy",
+        name=ctx.IDENT().getText(),
+        options=options,
+        deployment_units=tuple(units),
+        deployment_scales=tuple(scales),
+        deployment_health=tuple(health_checks),
+    )
+
+
+def _deploy_unit(ctx) -> DeploymentUnitSchema:
+    keyword, target, separator, pattern = [token.getText() for token in ctx.IDENT()]
+    if keyword != "unit" or separator != "as":
+        raise AppGenSyntaxError("Deployment units use: unit Target as microservice")
+    return DeploymentUnitSchema(target=target, pattern=pattern)
+
+
+def _deploy_scale(ctx) -> DeploymentScaleSchema:
+    keyword, target, min_word, max_word = [token.getText() for token in ctx.IDENT()]
+    if keyword != "scale" or min_word != "min" or max_word != "max":
+        raise AppGenSyntaxError("Deployment scale uses: scale Target min 1 max 3")
+    minimum, maximum = [int(token.getText()) for token in ctx.INT()]
+    return DeploymentScaleSchema(target=target, minimum=minimum, maximum=maximum)
+
+
+def _deploy_health(ctx) -> DeploymentHealthSchema:
+    keyword, target = [token.getText() for token in ctx.IDENT()]
+    if keyword != "health":
+        raise AppGenSyntaxError("Deployment health checks use: health Target \"/healthz\"")
+    return DeploymentHealthSchema(target=target, path=_literal_text(ctx.STRING().getText()))
+
+
+def _deploy_check(ctx) -> DeploymentHealthSchema:
+    keyword, target, kind = [token.getText() for token in ctx.IDENT()]
+    if keyword != "check":
+        raise AppGenSyntaxError("Deployment checks use: check Target readiness \"/readyz\"")
+    return DeploymentHealthSchema(target=target, path=_literal_text(ctx.STRING().getText()), kind=kind)
 
 
 def _handler(ctx) -> HandlerSchema:

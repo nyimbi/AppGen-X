@@ -372,6 +372,40 @@ The linter validates handler and contract arrow targets against declared flows,
 operations, and enterprise contracts. Package targets must normalize to
 supported platform targets.
 
+## Deployment Topology
+
+`deploy` blocks can describe whether each PBC or operation runs as a
+microservice, process, worker, function, module, sidecar, embedded unit, or
+monolith. Deployment topology words are contextual statements inside `deploy`;
+they do not add new global keywords.
+
+```appgen
+deploy Production {
+  runtime: kubernetes
+  mesh: mtls
+  unit gl_core as microservice
+  unit CloseBooks as process
+  unit NightlyClose as worker
+  scale gl_core min 2 max 10
+  health gl_core "/healthz"
+  check gl_core readiness "/readyz"
+}
+```
+
+```antlr
+deploymentDecl : DEPLOY IDENT LBRACE deploymentItem* RBRACE ;
+deploymentItem : deployUnit | deployScale | deployHealth | deployCheck | agenticOption ;
+deployUnit     : IDENT IDENT IDENT IDENT SEMI? ;
+deployScale    : IDENT IDENT IDENT INT IDENT INT SEMI? ;
+deployHealth   : IDENT IDENT STRING SEMI? ;
+deployCheck    : IDENT IDENT IDENT STRING SEMI? ;
+```
+
+Semantic validation checks that deployment unit, scale, health, and check
+targets resolve to declared PBCs, operations, flows, or enterprise contracts.
+Supported deployment patterns are `microservice`, `process`, `worker`, `job`,
+`function`, `module`, `sidecar`, `embedded`, and `monolith`.
+
 ## LLMs And Agents
 
 ```appgen
@@ -458,4 +492,5 @@ Parsing is only the first gate. The package linter also validates:
 - agent provider names when LLM providers are declared;
 - relation cardinality values;
 - handler and contract targets;
-- package targets.
+- package targets;
+- deployment topology targets, scale ranges, and supported deployment patterns.

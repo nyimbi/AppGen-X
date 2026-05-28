@@ -172,7 +172,31 @@ auditDecl
   ;
 
 deploymentDecl
-  : DEPLOY IDENT LBRACE agenticOption* RBRACE
+  : DEPLOY IDENT LBRACE deploymentItem* RBRACE
+  ;
+
+deploymentItem
+  : deployUnit
+  | deployScale
+  | deployHealth
+  | deployCheck
+  | agenticOption
+  ;
+
+deployUnit
+  : IDENT IDENT IDENT IDENT SEMI?
+  ;
+
+deployScale
+  : IDENT IDENT IDENT INT IDENT INT SEMI?
+  ;
+
+deployHealth
+  : IDENT IDENT STRING SEMI?
+  ;
+
+deployCheck
+  : IDENT IDENT IDENT STRING SEMI?
   ;
 
 versionDecl

@@ -174,6 +174,31 @@ class appgenVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
+    # Visit a parse tree produced by appgenParser#deploymentItem.
+    def visitDeploymentItem(self, ctx:appgenParser.DeploymentItemContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by appgenParser#deployUnit.
+    def visitDeployUnit(self, ctx:appgenParser.DeployUnitContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by appgenParser#deployScale.
+    def visitDeployScale(self, ctx:appgenParser.DeployScaleContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by appgenParser#deployHealth.
+    def visitDeployHealth(self, ctx:appgenParser.DeployHealthContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by appgenParser#deployCheck.
+    def visitDeployCheck(self, ctx:appgenParser.DeployCheckContext):
+        return self.visitChildren(ctx)
+
+
     # Visit a parse tree produced by appgenParser#versionDecl.
     def visitVersionDecl(self, ctx:appgenParser.VersionDeclContext):
         return self.visitChildren(ctx)

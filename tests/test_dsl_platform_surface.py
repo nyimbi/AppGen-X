@@ -33,6 +33,16 @@ def test_dsl_accepts_pbc_composition_operations_security_surface() -> None:
     }
     audit ReleaseAudit { evidence: migrations, tests, "security"; gate: release }
     deploy Production { target: kubernetes; strategy: rolling }
+    deploy Services {
+      runtime: kubernetes
+      mesh: mtls
+      unit gl_core as microservice
+      unit CloseBooks as process
+      unit NightlyClose as worker
+      scale gl_core min 2 max 10
+      health gl_core "/healthz"
+      check gl_core readiness "/readyz"
+    }
     version Release2026 { semver: "1.0.0"; compatibility: backward }
     operation CloseBooks {
       draft -> reviewed
@@ -84,7 +94,7 @@ def test_dsl_accepts_pbc_composition_operations_security_surface() -> None:
 
     report = lint_dsl(source)
     assert report["ok"] is True
-    assert report["summary"]["platform_blocks"] == 7
+    assert report["summary"]["platform_blocks"] == 8
     assert report["summary"]["enterprise_contracts"] == 8
 
     schema = schema_from_dsl(source)
@@ -97,6 +107,14 @@ def test_dsl_accepts_pbc_composition_operations_security_surface() -> None:
         "operation",
         "security",
     }
+    service_deploy = next(block for block in schema.platform_blocks if block.name == "Services")
+    assert [unit.pattern for unit in service_deploy.deployment_units] == [
+        "microservice",
+        "process",
+        "worker",
+    ]
+    assert service_deploy.deployment_scales[0].maximum == 10
+    assert service_deploy.deployment_health[1].kind == "readiness"
     assert len(schema.api_contracts) == 1
     assert len(schema.event_contracts) == 1
     assert len(schema.job_contracts) == 1
@@ -121,3 +139,24 @@ def test_dsl_rejects_unknown_enterprise_contract_references() -> None:
     assert report["ok"] is False
     assert any("Unknown contract target: BadApi.MissingOperation" in error for error in report["errors"])
     assert any("Unknown package target: BadPackage.toaster" in error for error in report["errors"])
+
+
+def test_dsl_rejects_invalid_deployment_topology() -> None:
+    source = """
+    app BadDeploy { targets: web }
+    table Journal { id: int pk; status: string }
+    pbc gl_core { owns: Journal }
+    deploy Production {
+      unit missing_pbc as microservice
+      unit gl_core as spaceship
+      scale gl_core min 5 max 2
+      health missing_pbc "/healthz"
+    }
+    """
+
+    report = lint_dsl(source)
+    assert report["ok"] is False
+    assert any("Unknown deployment unit target: Production.missing_pbc" in error for error in report["errors"])
+    assert any("Unknown deployment pattern: Production.spaceship" in error for error in report["errors"])
+    assert any("Invalid deployment scale range: Production.gl_core" in error for error in report["errors"])
+    assert any("Unknown deployment health target: Production.missing_pbc" in error for error in report["errors"])

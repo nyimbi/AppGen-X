@@ -150,6 +150,24 @@ test JournalSmoke {
 
 Handlers and arrow statements must target an existing flow, operation, or
 enterprise contract. Package targets must be one of the supported app targets.
+Use typed deployment topology in `deploy` blocks when PBCs need separate
+runtime units:
+
+```appgen
+deploy Production {
+  runtime: kubernetes
+  unit gl_core as microservice
+  unit CloseBooks as process
+  unit NightlyClose as worker
+  scale gl_core min 2 max 10
+  health gl_core "/healthz"
+  check gl_core readiness "/readyz"
+}
+```
+
+Deployment units can be `microservice`, `process`, `worker`, `job`, `function`,
+`module`, `sidecar`, `embedded`, or `monolith`. Targets must resolve to a PBC,
+flow, operation, or enterprise contract.
 Run `appgen --schema-source-audit` to emit the same release proof as JSON from
 the command line.
 Run `appgen --source-intake-release-audit` to promote DBML, SQL, PonyORM,

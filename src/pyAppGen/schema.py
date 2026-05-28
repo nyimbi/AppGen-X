@@ -276,6 +276,9 @@ class PlatformBlockSchema:
     options: dict[str, tuple[str, ...]] = field(default_factory=dict)
     steps: tuple[FlowStepSchema, ...] = field(default_factory=tuple)
     permissions: tuple[PermissionSchema, ...] = field(default_factory=tuple)
+    deployment_units: tuple[DeploymentUnitSchema, ...] = field(default_factory=tuple)
+    deployment_scales: tuple[DeploymentScaleSchema, ...] = field(default_factory=tuple)
+    deployment_health: tuple[DeploymentHealthSchema, ...] = field(default_factory=tuple)
 
 
 @dataclass(frozen=True)
@@ -306,6 +309,32 @@ class EnterpriseContractSchema:
     statements: tuple[EnterpriseStatementSchema, ...] = field(default_factory=tuple)
     handlers: tuple[HandlerSchema, ...] = field(default_factory=tuple)
     permissions: tuple[PermissionSchema, ...] = field(default_factory=tuple)
+
+
+@dataclass(frozen=True)
+class DeploymentUnitSchema:
+    """A deployable unit for PBCs, operations, contracts, workers, or functions."""
+
+    target: str
+    pattern: str
+
+
+@dataclass(frozen=True)
+class DeploymentScaleSchema:
+    """Scaling bounds for one deployable unit."""
+
+    target: str
+    minimum: int
+    maximum: int
+
+
+@dataclass(frozen=True)
+class DeploymentHealthSchema:
+    """Health, readiness, liveness, or startup check for one deployable unit."""
+
+    target: str
+    path: str
+    kind: str = "health"
 
 
 @dataclass(frozen=True)
