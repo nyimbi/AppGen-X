@@ -1,315 +1,314 @@
-# Inventory Positioning and State PBC Improvement Backlog
+# Inventory Positioning PBC Improvement Backlog
 
 ## Purpose
 
-This backlog identifies 50 high-impact, high-value improvements for `inventory_positioning`. Each item is specific to the domain surface currently declared by the PBC and is intended to move the package beyond world-class breadth toward complete specialist-grade coverage.
+This backlog identifies 50 high-impact, high-value improvements for `inventory_positioning`. The items are specific to inventory truth and positioning operations: item governance, node topology, lots, serials, balances, receipts, adjustments, cycle counts, reservations, ATP/CTP, allocations, quality holds, in-transit stock, traceability, backorders, replenishment, reconciliation, channel protection, stock risk, and agent-assisted inventory work.
 
 ## Current Domain Evidence Used
 
-- Domain purpose: Inventory truth for items, nodes, lots, positions, receipts, adjustments, reservations, allocations, holds, in-transit projections, replenishment, and stock risk.
-- Representative owned tables: `inventory_positioning_item`, `inventory_positioning_item_attribute`, `inventory_positioning_item_substitution`, `inventory_positioning_lot`, `inventory_positioning_serial`, `inventory_positioning_node`, `inventory_positioning_node_calendar`, `inventory_positioning_node_capacity`, `inventory_positioning_node_identity`, `inventory_positioning_inventory_position`, `inventory_positioning_position_snapshot`, `inventory_positioning_receipt`, ...
-- Representative operations/APIs: `command_inventory_items`, `command_inventory_nodes`, `command_inventory_receipts`, `command_inventory_adjustments`, `query_inventory_availability`, `command_inventory_allocations`, `command_inventory_allocations_id_release`, `command_inventory_quality_holds`, `command_inventory_events_inbox`, `query_inventory_workbench`.
-- Representative events: `ItemRegistered`, `InventoryNodeRegistered`, `GoodsReceiptPosted`, `InventoryAdjusted`, `InventoryAllocated`, `InventoryReleased`, `QualityHoldApplied`.
-- Representative advanced capabilities: `event_sourced_inventory_lifecycle`, `graph_relational_inventory_topology`, `multi_tenant_stock_isolation`, `schema_evolution_resilient_inventory_schema`, `probabilistic_availability_projection`, `real_time_atp_ctp_convergence`, `counterfactual_allocation_policy_simulation`, `temporal_demand_stockout_forecasting`, `autonomous_inventory_reconciliation`, `semantic_inventory_event_parsing`, ...
+- Domain purpose: enterprise inventory truth for item masters, attributes, substitutions, lots, serials, nodes, calendars, capacity, positions, receipts, adjustments, reservations, allocations, releases, quality holds, in-transit projections, traceability, backorders, replenishment, reconciliation, policy screening, stock proofs, federation, carbon fulfillment, competing channel allocation, anomaly signals, stock risk models, rules, parameters, configuration, UI fragments, and release evidence.
+- Owned boundary: items, attributes, substitutions, lots, serials, nodes, node calendars/capacity/identity, inventory positions, position snapshots, receipts and receipt lines, adjustments, cycle counts, reservations, allocations and lines, allocation expiry, quality holds/releases, in-transit projections, traceability events, backorders, replenishment signals/plans, reconciliations, policy screenings, stock proofs, cross-node federation, carbon fulfillment, channel allocation, anomaly signals, stock risk models, rules, parameters, configuration, inbox/outbox, and dead-letter evidence.
+- Existing command/query surface: item registration, node registration, receipts, adjustments, availability, allocations, allocation release, quality holds, AppGen-X inbox handling, workbench, rules, parameters, schema extensions, and configuration.
+- Existing events and dependencies: emits `ItemRegistered`, `InventoryNodeRegistered`, `GoodsReceiptPosted`, `InventoryAdjusted`, `InventoryAllocated`, `InventoryReleased`, and `QualityHoldApplied`; consumes order, shipment, quality, purchase receipt, demand forecast, and access-policy events through declared APIs/projections only.
 
 ## 50 Better-Than-World-Class Improvements
 
-### 1. Deep specialist lifecycle semantics for `inventory_positioning_item`
+### 1. Item master readiness gate
 
-**Justification:** This owned table is part of the Inventory Positioning and State operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Inventory truth for items, nodes, lots, positions, receipts, adjustments, reservations, allocations, holds, in-transit projections, replenishment, and stock risk.
+**Justification:** Inventory accuracy begins with item setup. Items without UOM, tracking flags, substitution rules, shelf-life, hazard, and allocation eligibility create downstream stock errors.
 
-**Improvement:** Extend `inventory_positioning_item` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `item_master`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add item readiness checks for SKU identity, base UOM, conversion policy, lot/serial tracking, shelf-life, quality policy, substitution group, fulfillment eligibility, and release approval. Block receipts and allocations for incomplete controlled items.
 
-### 2. Deep specialist lifecycle semantics for `inventory_positioning_item_attribute`
+### 2. Unit-of-measure conversion governance
 
-**Justification:** This owned table is part of the Inventory Positioning and State operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Inventory truth for items, nodes, lots, positions, receipts, adjustments, reservations, allocations, holds, in-transit projections, replenishment, and stock risk.
+**Justification:** Quantity errors often arise from inconsistent pack, each, case, pallet, weight, or variable-measure conversions.
 
-**Improvement:** Extend `inventory_positioning_item_attribute` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `item_attributes`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add UOM conversion records with item scope, conversion precision, effective dates, catch-weight behavior, rounding, and validation fixtures. Availability and allocation should cite the conversion rule used.
 
-### 3. Deep specialist lifecycle semantics for `inventory_positioning_item_substitution`
+### 3. Item attribute taxonomy controls
 
-**Justification:** This owned table is part of the Inventory Positioning and State operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Inventory truth for items, nodes, lots, positions, receipts, adjustments, reservations, allocations, holds, in-transit projections, replenishment, and stock risk.
+**Justification:** Attributes drive allocation, storage, quality, substitution, tax, shipping, and replenishment decisions.
 
-**Improvement:** Extend `inventory_positioning_item_substitution` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `item_substitution`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Define governed attribute schemas with allowed values, inheritance, validation, sensitivity, and operational use. Workbench views should show missing attributes that block stock movement or allocation.
 
-### 4. Deep specialist lifecycle semantics for `inventory_positioning_lot`
+### 4. Substitution eligibility engine
 
-**Justification:** This owned table is part of the Inventory Positioning and State operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Inventory truth for items, nodes, lots, positions, receipts, adjustments, reservations, allocations, holds, in-transit projections, replenishment, and stock risk.
+**Justification:** Substitutions affect customer promise, safety, compliance, margin, and channel rules.
 
-**Improvement:** Extend `inventory_positioning_lot` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `lot_master`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add substitution rules with priority, equivalence class, customer/channel eligibility, regulatory restrictions, margin impact, expiration constraints, and approval evidence. ATP should explain when a substitute is proposed or rejected.
 
-### 5. Deep specialist lifecycle semantics for `inventory_positioning_serial`
+### 5. Lot lifecycle governance
 
-**Justification:** This owned table is part of the Inventory Positioning and State operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Inventory truth for items, nodes, lots, positions, receipts, adjustments, reservations, allocations, holds, in-transit projections, replenishment, and stock risk.
+**Justification:** Lot-controlled inventory requires manufacture/receipt date, expiry, quarantine, release, recall, and traceability evidence.
 
-**Improvement:** Extend `inventory_positioning_serial` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `serial_tracking`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Model lot states from created to received, quarantined, released, blocked, expired, recalled, consumed, and closed. Store shelf-life, potency/grade, supplier lot, quality release, and recall scope.
 
-### 6. Deep specialist lifecycle semantics for `inventory_positioning_node`
+### 6. Serial custody and uniqueness controls
 
-**Justification:** This owned table is part of the Inventory Positioning and State operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Inventory truth for items, nodes, lots, positions, receipts, adjustments, reservations, allocations, holds, in-transit projections, replenishment, and stock risk.
+**Justification:** Serial-controlled goods require one physical unit, one status, one location, and complete custody history.
 
-**Improvement:** Extend `inventory_positioning_node` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `inventory_node_master`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add serial uniqueness checks, current node, lot, custodian, status, reservation link, shipment link, return status, and trace chain. Prevent duplicate on-hand serial positions across nodes.
 
-### 7. Deep specialist lifecycle semantics for `inventory_positioning_node_calendar`
+### 7. Node master operating model
 
-**Justification:** This owned table is part of the Inventory Positioning and State operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Inventory truth for items, nodes, lots, positions, receipts, adjustments, reservations, allocations, holds, in-transit projections, replenishment, and stock risk.
+**Justification:** Warehouses, stores, vendors, virtual nodes, in-transit nodes, and cross-docks behave differently.
 
-**Improvement:** Extend `inventory_positioning_node_calendar` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `node_calendar`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add node types with allowed inventory states, allocation eligibility, receiving rules, shipping cutoff, ownership model, tenant scope, and capacity profile. Workbench views should distinguish physical, virtual, vendor, and in-transit stock.
 
-### 8. Deep specialist lifecycle semantics for `inventory_positioning_node_capacity`
+### 8. Node calendar and cutoff logic
 
-**Justification:** This owned table is part of the Inventory Positioning and State operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Inventory truth for items, nodes, lots, positions, receipts, adjustments, reservations, allocations, holds, in-transit projections, replenishment, and stock risk.
+**Justification:** Availability depends on working days, receiving windows, shipping cutoffs, holidays, and carrier handoff times.
 
-**Improvement:** Extend `inventory_positioning_node_capacity` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `node_capacity`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add calendar policies with local timezone, receiving/shipping windows, holidays, blackout periods, and cutoff handling. ATP/CTP should use calendar evidence to calculate promise dates.
 
-### 9. Deep specialist lifecycle semantics for `inventory_positioning_node_identity`
+### 9. Node capacity by item and handling class
 
-**Justification:** This owned table is part of the Inventory Positioning and State operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Inventory truth for items, nodes, lots, positions, receipts, adjustments, reservations, allocations, holds, in-transit projections, replenishment, and stock risk.
+**Justification:** A node can have units available but no capacity to receive, store, pick, or handle certain stock.
 
-**Improvement:** Extend `inventory_positioning_node_identity` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `node_identity`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add capacity constraints by item class, temperature zone, hazard class, cubic volume, weight, labor window, and receiving dock. Allocation and replenishment should flag capacity conflicts.
 
-### 10. Deep specialist lifecycle semantics for `inventory_positioning_inventory_position`
+### 10. Inventory position invariant engine
 
-**Justification:** This owned table is part of the Inventory Positioning and State operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Inventory truth for items, nodes, lots, positions, receipts, adjustments, reservations, allocations, holds, in-transit projections, replenishment, and stock risk.
+**Justification:** Inventory truth depends on on-hand, reserved, allocated, quarantine, in-transit, and available quantities balancing correctly.
 
-**Improvement:** Extend `inventory_positioning_inventory_position` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `inventory_position`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add invariants proving non-negative balances, state transitions, reservation <= on-hand, allocation <= available, quarantine exclusions, and serial/lot consistency. Store invariant proof with every position mutation.
 
-### 11. Make `command_inventory_items` a complete command lifecycle
+### 11. Event-sourced stock ledger
 
-**Justification:** High-value users need `command_inventory_items` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Stock positions must be reconstructable from receipts, adjustments, holds, releases, reservations, allocations, shipments, and returns.
 
-**Improvement:** Implement `command_inventory_items` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `ItemRegistered`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add stock ledger events with sequence, item, node, lot/serial, quantity delta, state, source, previous hash, and idempotency key. Position snapshots should be rebuildable and verifiable from this ledger.
 
-### 12. Make `command_inventory_nodes` a complete command lifecycle
+### 12. Receipt quality and tolerance workflow
 
-**Justification:** High-value users need `command_inventory_nodes` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Receipts can have overages, shortages, damage, wrong item, unknown lot, expired lot, or quality hold requirements.
 
-**Improvement:** Implement `command_inventory_nodes` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `InventoryNodeRegistered`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add receipt validation against purchase receipt projections, expected quantity, tolerance, lot/serial requirements, expiry, quality inspection, and damage codes. Generate exception cases and quality holds where required.
 
-### 13. Make `command_inventory_receipts` a complete command lifecycle
+### 13. Putaway eligibility signal
 
-**Justification:** High-value users need `command_inventory_receipts` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Even if WMS performs physical putaway, inventory positioning must know whether stock is usable, staged, quarantined, or pending receipt.
 
-**Improvement:** Implement `command_inventory_receipts` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `GoodsReceiptPosted`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add receipt-to-position states for staged, inspected, accepted, quarantined, available, and rejected. Expose availability only after policy-defined usable state is reached.
 
-### 14. Make `command_inventory_adjustments` a complete command lifecycle
+### 14. Adjustment reason governance
 
-**Justification:** High-value users need `command_inventory_adjustments` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Adjustments change stock truth and can hide shrink, damage, theft, counting error, or integration failure.
 
-**Improvement:** Implement `command_inventory_adjustments` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `InventoryAdjusted`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add adjustment reason taxonomy, required evidence, approval thresholds, root cause, financial impact, lot/serial impact, and recurrence detection. High-risk adjustments should trigger control assertions.
 
-### 15. Turn `query_inventory_availability` into an expert read-model experience
+### 15. Cycle count program design
 
-**Justification:** Domain experts rely on `query_inventory_availability` for operational decisions; a world-class read path must be explainable, filterable, temporally accurate, and safe under stale projections.
+**Justification:** Inventory accuracy requires risk-based counting, not only ad hoc corrections.
 
-**Improvement:** Build `query_inventory_availability` as a dedicated query contract with projection freshness, filter validation, pagination, saved views, temporal/as-of reads, row-level permissions, traceable source records, and UI drilldowns. Add agent explanations for how the answer was produced, what events like `InventoryAllocated` last changed the projection, and where uncertainty or missing data affects confidence.
+**Improvement:** Add count programs by item velocity, value, shrink risk, location, lot expiry, serial sensitivity, and prior variance. Generate count tasks, blind-count rules, recount thresholds, and approval workflows.
 
-### 16. Make `command_inventory_allocations` a complete command lifecycle
+### 16. Count variance resolution
 
-**Justification:** High-value users need `command_inventory_allocations` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Variances should create auditable corrections and root-cause learning.
 
-**Improvement:** Implement `command_inventory_allocations` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `InventoryReleased`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add variance records with expected quantity, counted quantity, recount result, cause, approver, adjustment linkage, financial impact, and prevention action. Release controls should track unresolved material variances.
 
-### 17. Make `command_inventory_allocations_id_release` a complete command lifecycle
+### 17. Reservation lifecycle and expiry
 
-**Justification:** High-value users need `command_inventory_allocations_id_release` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Reservations can starve channels if they never expire or are not tied to demand priority.
 
-**Improvement:** Implement `command_inventory_allocations_id_release` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `QualityHoldApplied`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Model reservations with demand source, priority, item/node/lot, expiry, renewal rule, partial reservation, substitution allowance, and release reason. Expiry should emit evidence and update availability.
 
-### 18. Make `command_inventory_quality_holds` a complete command lifecycle
+### 18. Allocation policy compiler
 
-**Justification:** High-value users need `command_inventory_quality_holds` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Allocation must respect customer priority, channel protection, node eligibility, lot rules, expiration, fulfillment cost, and service levels.
 
-**Improvement:** Implement `command_inventory_quality_holds` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `ItemRegistered`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Compile allocation policies with demand class, node ranking, lot strategy, partial allocation, substitution, safety stock, and override rules. Store policy version and decision trace for every allocation.
 
-### 19. Make `command_inventory_events_inbox` a complete command lifecycle
+### 19. ATP and CTP convergence
 
-**Justification:** High-value users need `command_inventory_events_inbox` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Availability-to-promise is incomplete without capacity-to-promise, node calendars, in-transit supply, replenishment, and quality holds.
 
-**Improvement:** Implement `command_inventory_events_inbox` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `InventoryNodeRegistered`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add ATP/CTP calculation traces combining current position, reservations, capacity, calendars, in-transit projections, replenishment plans, and holds. Return promise confidence, earliest date, and limiting constraint.
 
-### 20. Turn `query_inventory_workbench` into an expert read-model experience
+### 20. Allocation release and reallocation safety
 
-**Justification:** Domain experts rely on `query_inventory_workbench` for operational decisions; a world-class read path must be explainable, filterable, temporally accurate, and safe under stale projections.
+**Justification:** Releasing or reallocating inventory can break orders, channels, or compliance promises.
 
-**Improvement:** Build `query_inventory_workbench` as a dedicated query contract with projection freshness, filter validation, pagination, saved views, temporal/as-of reads, row-level permissions, traceable source records, and UI drilldowns. Add agent explanations for how the answer was produced, what events like `GoodsReceiptPosted` last changed the projection, and where uncertainty or missing data affects confidence.
+**Improvement:** Add release workflows with original demand, reason, downstream notification, reallocation candidates, customer impact, and audit proof. Require approval for protected or high-priority demand.
 
-### 21. Operationalize `event_sourced_inventory_lifecycle` as a governed decision system
+### 21. Quality hold and release governance
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Inventory Positioning and State and measurably improves availability accuracy without hiding assumptions.
+**Justification:** Quality holds must remove stock from availability until release evidence is present.
 
-**Improvement:** Promote `event_sourced_inventory_lifecycle` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `availability_accuracy`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add hold categories, source inspection, affected lot/serial/position, release criteria, partial release, expiry, and disposition. Availability must explicitly exclude held stock and explain hold reasons.
 
-### 22. Operationalize `graph_relational_inventory_topology` as a governed decision system
+### 22. Expiry and FEFO management
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Inventory Positioning and State and measurably improves cycle time without hiding assumptions.
+**Justification:** Perishable and regulated stock require first-expiry-first-out, minimum shelf life, and expiry risk visibility.
 
-**Improvement:** Promote `graph_relational_inventory_topology` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `cycle_time`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add expiry rules by item/customer/channel, minimum remaining shelf life, FEFO allocation strategy, expiry alerts, and disposal/markdown recommendations. ATP should reject lots that violate customer shelf-life rules.
 
-### 23. Operationalize `multi_tenant_stock_isolation` as a governed decision system
+### 23. Recall traceability engine
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Inventory Positioning and State and measurably improves service level without hiding assumptions.
+**Justification:** Lot and serial recalls need rapid forward and backward traceability across receipts, holds, shipments, adjustments, and allocations.
 
-**Improvement:** Promote `multi_tenant_stock_isolation` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `service_level`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Build trace queries that show supplier lot, receipt, nodes, current positions, shipped demand, affected customers, open allocations, and quarantine state. Generate recall hold plans and proof bundles.
 
-### 24. Operationalize `schema_evolution_resilient_inventory_schema` as a governed decision system
+### 24. In-transit inventory confidence model
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Inventory Positioning and State and measurably improves exception backlog without hiding assumptions.
+**Justification:** In-transit stock can be delayed, damaged, split, or diverted, so it should not be treated like on-hand stock.
 
-**Improvement:** Promote `schema_evolution_resilient_inventory_schema` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `exception_backlog`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add in-transit confidence based on carrier milestone, ETA, route risk, ASN quality, receiving capacity, and delay signals. ATP should use confidence bands and distinguish firm versus probable supply.
 
-### 25. Operationalize `probabilistic_availability_projection` as a governed decision system
+### 25. Backorder prioritization
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Inventory Positioning and State and measurably improves item registered throughput without hiding assumptions.
+**Justification:** Scarce inventory must be assigned to backorders by policy, customer value, SLA, age, margin, and fairness.
 
-**Improvement:** Promote `probabilistic_availability_projection` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `item_registered_throughput`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add backorder queues with priority, promise date, substitution eligibility, split-shipment policy, customer impact, and escalation. Allocation simulations should show who gains and loses under each policy.
 
-### 26. Operationalize `real_time_atp_ctp_convergence` as a governed decision system
+### 26. Replenishment signal quality
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Inventory Positioning and State and measurably improves inventory node registered throughput without hiding assumptions.
+**Justification:** Replenishment depends on safety stock, forecast, lead time, MOQ, pack size, shelf life, and capacity.
 
-**Improvement:** Promote `real_time_atp_ctp_convergence` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `inventory_node_registered_throughput`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add replenishment signals with trigger reason, forecast source, lead-time confidence, supplier/node constraints, MOQ, economic order quantity, expiry risk, and approval status.
 
-### 27. Operationalize `counterfactual_allocation_policy_simulation` as a governed decision system
+### 27. Replenishment plan simulation
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Inventory Positioning and State and measurably improves availability accuracy without hiding assumptions.
+**Justification:** Plans can overstock, understock, violate capacity, or miss demand if assumptions are hidden.
 
-**Improvement:** Promote `counterfactual_allocation_policy_simulation` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `availability_accuracy`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Simulate replenishment plans against demand forecasts, open orders, capacity, in-transit supply, safety stock, and spoilage risk. Persist rejected plans and scenario assumptions.
 
-### 28. Operationalize `temporal_demand_stockout_forecasting` as a governed decision system
+### 28. Safety stock policy governance
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Inventory Positioning and State and measurably improves cycle time without hiding assumptions.
+**Justification:** Safety stock is a capital/service-level tradeoff that must be explicit.
 
-**Improvement:** Promote `temporal_demand_stockout_forecasting` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `cycle_time`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add safety stock rules by item/node/channel with target service level, demand variability, lead-time variability, seasonality, shelf-life, and override approval. Show working-capital impact.
 
-### 29. Operationalize `autonomous_inventory_reconciliation` as a governed decision system
+### 29. Channel protection and fair allocation
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Inventory Positioning and State and measurably improves service level without hiding assumptions.
+**Justification:** Retail, wholesale, ecommerce, marketplace, and strategic customers often compete for constrained inventory.
 
-**Improvement:** Promote `autonomous_inventory_reconciliation` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `service_level`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add channel allocation policies with quotas, floors, caps, fairness rules, priority windows, and release conditions. Decision traces should explain channel tradeoffs.
 
-### 30. Operationalize `semantic_inventory_event_parsing` as a governed decision system
+### 30. Negative inventory prevention and recovery
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Inventory Positioning and State and measurably improves exception backlog without hiding assumptions.
+**Justification:** Negative inventory corrupts availability, costing, and fulfillment.
 
-**Improvement:** Promote `semantic_inventory_event_parsing` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `exception_backlog`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add pre-mutation screening for negative positions by item/node/lot/serial, with emergency override, cause, expiry, and recovery plan. Reconciliation should track negative-inventory closure evidence.
 
-### 31. Create simulation-grade governance for `INVENTORY_POSITIONING_DATABASE_URL` and `INVENTORY_POSITIONING_DATABASE_URL`
+### 31. Inventory reconciliation with external projections
 
-**Justification:** Complete Inventory Positioning and State coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Stock truth must reconcile with WMS, order, procurement, quality, transportation, and audit projections without sharing tables.
 
-**Improvement:** Add a policy cockpit where `INVENTORY_POSITIONING_DATABASE_URL` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `INVENTORY_POSITIONING_DATABASE_URL` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add reconciliation runs comparing owned positions to declared projections, with variance type, stale projection warning, root cause, and correction plan.
 
-### 32. Create simulation-grade governance for `INVENTORY_POSITIONING_EVENT_TOPIC` and `INVENTORY_POSITIONING_EVENT_TOPIC`
+### 32. Stock proof for external promises
 
-**Justification:** Complete Inventory Positioning and State coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Partners or customers may need proof that stock was available without seeing full inventory details.
 
-**Improvement:** Add a policy cockpit where `INVENTORY_POSITIONING_EVENT_TOPIC` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `INVENTORY_POSITIONING_EVENT_TOPIC` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Generate disclosure-minimized stock proofs with item, quantity, node class, expiry, reservation, and proof hash. Include verifier instructions and expiry time.
 
-### 33. Create simulation-grade governance for `INVENTORY_POSITIONING_RETRY_LIMIT` and `INVENTORY_POSITIONING_RETRY_LIMIT`
+### 33. Inventory anomaly taxonomy
 
-**Justification:** Complete Inventory Positioning and State coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Inventory anomalies need domain-specific categories rather than generic risk scores.
 
-**Improvement:** Add a policy cockpit where `INVENTORY_POSITIONING_RETRY_LIMIT` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `INVENTORY_POSITIONING_RETRY_LIMIT` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Classify anomalies as shrink spike, receipt variance, allocation churn, reservation hoarding, serial duplication, lot expiry surge, stale in-transit, negative position, quality-hold leakage, or forecast mismatch.
 
-### 34. Create simulation-grade governance for `INVENTORY_POSITIONING_DATABASE_URL` and `INVENTORY_POSITIONING_DATABASE_URL`
+### 34. Stockout and spoilage risk governance
 
-**Justification:** Complete Inventory Positioning and State coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Risk models affect purchasing, allocation, markdown, and customer promise.
 
-**Improvement:** Add a policy cockpit where `INVENTORY_POSITIONING_DATABASE_URL` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `INVENTORY_POSITIONING_DATABASE_URL` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Govern risk models with feature lineage, forecast source, drift, confidence, deterministic fallback, and action thresholds. Workbench recommendations should show risk contributors.
 
-### 35. Create simulation-grade governance for `INVENTORY_POSITIONING_EVENT_TOPIC` and `INVENTORY_POSITIONING_EVENT_TOPIC`
+### 35. Carbon-aware fulfillment signals
 
-**Justification:** Complete Inventory Positioning and State coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Inventory positioning can steer demand toward lower-carbon nodes when service and policy permit.
 
-**Improvement:** Add a policy cockpit where `INVENTORY_POSITIONING_EVENT_TOPIC` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `INVENTORY_POSITIONING_EVENT_TOPIC` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add carbon fulfillment records with node energy profile, transport projection, service impact, customer policy, and carbon score. Allocation should show carbon-aware alternatives where eligible.
 
-### 36. Upgrade `InventoryPositioningWorkbench` into a full specialist command center
+### 36. Node identity and trust verification
 
-**Justification:** The PBC UI must expose the complete Inventory Positioning and State surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Virtual, vendor-managed, third-party, and in-transit nodes need identity and trust evidence before their stock can be promised.
 
-**Improvement:** Expand `InventoryPositioningWorkbench` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add node credentials with issuer, validity, service scope, revocation, and trust level. ATP should degrade or block stock from untrusted nodes.
 
-### 37. Upgrade `InventoryPositioningDetail` into a full specialist command center
+### 37. Cross-node federation contracts
 
-**Justification:** The PBC UI must expose the complete Inventory Positioning and State surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Enterprise inventory may include external nodes and partner stock, but direct table access violates PBC boundaries.
 
-**Improvement:** Expand `InventoryPositioningDetail` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add federation contracts with source, refresh SLA, trust score, allowed use, quantity confidence, and stale-data behavior. Show federated stock separately from owned confirmed stock.
 
-### 38. Upgrade `InventoryPositioningWorkbench` into a full specialist command center
+### 38. Inventory ownership and consignment handling
 
-**Justification:** The PBC UI must expose the complete Inventory Positioning and State surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Stock may be owned, consigned, vendor-owned, customer-owned, or reserved under contract.
 
-**Improvement:** Expand `InventoryPositioningWorkbench` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add ownership status, title transfer rules, consignment terms, billing trigger, and availability eligibility. Prevent owned-stock calculations from including third-party stock incorrectly.
 
-### 39. Upgrade `InventoryPositioningDetail` into a full specialist command center
+### 39. Kitting and bundle availability
 
-**Justification:** The PBC UI must expose the complete Inventory Positioning and State surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Availability for kits and bundles depends on component stock, substitutions, capacity, and assembly lead time.
 
-**Improvement:** Expand `InventoryPositioningDetail` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add kit composition, component availability, substitute components, assembly node, capacity, and promise confidence. ATP should explain bundle bottlenecks.
 
-### 40. Upgrade `InventoryPositioningWorkbench` into a full specialist command center
+### 40. Serialized lifecycle trace
 
-**Justification:** The PBC UI must expose the complete Inventory Positioning and State surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** High-value serialized goods require exact lifecycle trace from receipt through allocation, shipment, return, repair, and retirement.
 
-**Improvement:** Expand `InventoryPositioningWorkbench` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add serial timeline views with all owned events, projections, status changes, custody, location, quality holds, and customer/order references where declared.
 
-### 41. Prove cross-PBC federation for `POST /inventory/items` and `OrderVerified`
+### 41. Inventory close and control cockpit
 
-**Justification:** Inventory Positioning and State must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Period close needs inventory movement, adjustments, counts, holds, negative positions, and reconciliation visibility.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /inventory/items` and consumed event `OrderVerified` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Add close cockpit panels for unposted receipts, unresolved adjustments, count variances, stale in-transit, negative positions, quality leakage, and reconciliation blockers.
 
-### 42. Prove cross-PBC federation for `POST /inventory/nodes` and `ShipmentDelivered`
+### 42. Agent-safe availability explanation
 
-**Justification:** Inventory Positioning and State must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** The inventory chatbot should answer availability questions but avoid overpromising stock.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /inventory/nodes` and consumed event `ShipmentDelivered` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Require agent answers to include position freshness, reservations, holds, in-transit confidence, capacity constraints, substitutions, and policy caveats. Low-confidence availability should be marked as tentative.
 
-### 43. Prove cross-PBC federation for `POST /inventory/receipts` and `QualityHoldReleased`
+### 43. Agent-safe allocation planning
 
-**Justification:** Inventory Positioning and State must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Allocations affect customer promises and channel fairness, so AI must not silently move stock.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /inventory/receipts` and consumed event `QualityHoldReleased` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Add allocation previews with impacted orders, node choices, lot/serial choices, substitutions, fairness impact, stockout risk, and reversal path. Require human approval for protected stock or low-confidence decisions.
 
-### 44. Prove cross-PBC federation for `POST /inventory/adjustments` and `PurchaseReceiptPosted`
+### 44. Agent-safe adjustment and count support
 
-**Justification:** Inventory Positioning and State must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Adjustments change inventory truth and can hide shrink or process failure.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /inventory/adjustments` and consumed event `PurchaseReceiptPosted` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** The agent should draft adjustment/count remediation plans with reason, evidence, expected quantity, variance, financial impact, control risk, and approval route. It should not post material adjustments autonomously.
 
-### 45. Temporal reconstruction and bitemporal audit for Inventory Positioning and State
+### 45. Rule and parameter simulation
 
-**Justification:** Regulated and operationally complex domains need to answer what was known, valid, processed, and visible at any point in time.
+**Justification:** Safety stock, reservation TTL, partial allocation thresholds, reconciliation tolerance, and stockout risk thresholds materially change operations.
 
-**Improvement:** Add transaction-time, valid-time, and processing-time fields to core records, temporal query APIs, projection rebuild tooling, and UI time travel so specialists can reconstruct decisions, reports, and automation outcomes.
+**Improvement:** Simulate rule/parameter changes against historical and open inventory activity, showing availability, stockouts, backorders, allocation churn, replenishment workload, and exception impact.
 
-### 46. Bulk operations and migration-grade controls for Inventory Positioning and State
+### 46. Workbench coverage for all inventory capabilities
 
-**Justification:** World-class deployments must handle imports, mass corrections, high-volume operating days, and cutovers without bypassing governance.
+**Justification:** Inventory specialists need operational access to every lifecycle surface, not hidden backend commands.
 
-**Improvement:** Add staged bulk upload, duplicate detection, chunked validation, approval sampling, partial failure handling, retry dashboards, reconciliation summaries, and agent-generated remediation plans for large batches.
+**Improvement:** Expand UI into item governance, node topology, position viewer, receipt console, adjustment board, cycle count, availability trace, allocation workbench, holds, traceability, in-transit, backorder, replenishment, reconciliation, anomaly, close, and agent panels.
 
-### 47. Specialist edge-case playbooks for Inventory Positioning and State
+### 47. Continuous inventory controls
 
-**Justification:** Rare cases often carry the highest financial, legal, safety, service, or compliance risk.
+**Justification:** Inventory controls should run continuously across position integrity, reservations, allocations, lots, serials, and reconciliation.
 
-**Improvement:** Create a playbook catalog with detection rules, required evidence, escalation paths, fallback actions, owner roles, and release-audited tests for high-severity edge cases and exception queues.
+**Improvement:** Add control assertions for negative stock, stale reservations, expired lots, serial duplication, quality-hold leakage, unreconciled projections, count variance aging, and stock proof integrity.
 
-### 48. Pre-mutation simulation and blast-radius analysis for Inventory Positioning and State
+### 48. Boundary proof for inventory-only ownership
 
-**Justification:** Users should understand consequences before committing irreversible, customer-visible, operationally disruptive, or financially material changes.
+**Justification:** Inventory must integrate with order, WMS, procurement, quality, transportation, commerce, identity, schema, and audit without reading their tables.
 
-**Improvement:** Add what-if simulation for every material command, showing impacted records, emitted events, dependent projections, rule outcomes, approvals, downstream PBC dependencies, and rollback limits.
+**Improvement:** Add static/runtime checks proving commands use only inventory-owned tables plus declared APIs/events/projections. Include failing fixtures for direct foreign-table references.
 
-### 49. Continuous control testing and operational assurance for Inventory Positioning and State
+### 49. Inventory readiness score
 
-**Justification:** Better-than-world-class PBCs prove controls continuously, not only at release or during periodic audits.
+**Justification:** Users need a concise measure of whether inventory positioning is ready for production stock truth.
 
-**Improvement:** Add executable control assertions, sampled evidence checks, anomaly thresholds, control-owner dashboards, breach/recovery events, and release gates that fail when domain controls lose evidence.
+**Improvement:** Compute readiness from item completeness, node trust, position invariants, receipt quality, allocation traceability, holds, lot/serial trace, in-transit confidence, reconciliation, UI coverage, boundary proof, and agent safety.
 
-### 50. Human-in-the-loop domain agent execution for Inventory Positioning and State
+### 50. End-to-end stock trace
 
-**Justification:** The PBC chatbot must help specialists perform real work while preventing unsafe autonomous mutation.
+**Justification:** Inventory excellence depends on tracing stock from item setup through receipt, status changes, reservation, allocation, release, hold, shipment, adjustment, count, and reconciliation.
 
-**Improvement:** Add domain-specific skills, document parsing, task planning, CRUD previews, confidence/risk scoring, confirmation gates, redaction, policy explanations, and post-action evidence packets for every supported command and query.
+**Improvement:** Build an end-to-end stock trace using inventory-owned records and declared projections. The agent should answer stock state questions from this trace with evidence and confidence.
