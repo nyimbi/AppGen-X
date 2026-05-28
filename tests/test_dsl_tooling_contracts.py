@@ -7,7 +7,9 @@ from pyAppGen.dsl import format_report_dsl
 from pyAppGen.dsl import designer_sync_report_dsl
 from pyAppGen.dsl import diagnostic_catalog_dsl
 from pyAppGen.dsl import diagnostic_fixture_audit_dsl
+from pyAppGen.dsl import doctor_report_dsl
 from pyAppGen.dsl import graph_report_dsl
+from pyAppGen.dsl import generate_report_dsl
 from pyAppGen.dsl import lint_report_dsl
 from pyAppGen.dsl import lsp_service_dsl
 from pyAppGen.dsl import migration_plan_dsl
@@ -574,3 +576,77 @@ def test_appgen_drift_subcommand_emits_json_contract(tmp_path: Path) -> None:
     payload = json.loads(result.stdout)
     assert payload["format"] == "appgen.semantic-drift-audit.v1"
     assert payload["surface_evidence"]["lsp_service"] == "appgen.lsp-service.v1"
+
+
+def test_doctor_report_checks_parser_catalog_generator_and_ide_hooks() -> None:
+    report = doctor_report_dsl()
+
+    assert report["format"] == "appgen.doctor-report.v1"
+    assert report["ok"] is True
+    assert {
+        "grammar_file",
+        "generated_parser",
+        "parser_sync",
+        "pbc_catalog",
+        "template_writers",
+        "generator_backends",
+        "lsp_semantic_service",
+        "studio_semantic_service",
+    } <= {check["check"] for check in report["checks"]}
+
+
+def test_generate_report_writes_validated_dsl_app_and_blocks_lint_errors(tmp_path: Path) -> None:
+    output_dir = tmp_path / "generated_app"
+    report = generate_report_dsl(RELEASE_SAMPLE, source_name="release.appgen", output_dir=output_dir, targets=("web",))
+    blocked = generate_report_dsl(
+        "app Bad { targets: web } table Invoice { total: galaxy }",
+        source_name="bad.appgen",
+        output_dir=tmp_path / "blocked_app",
+    )
+
+    assert report["format"] == "appgen.generate-report.v1"
+    assert report["ok"] is True
+    assert report["generated"] is True
+    assert (output_dir / "appgen.json").exists()
+    assert {"appgen.json", "models.py", "views.py"} <= {item["path"] for item in report["artifacts"]}
+    assert blocked["ok"] is False
+    assert blocked["generated"] is False
+    assert "lint_errors" in blocked["blocking_gaps"]
+
+
+def test_appgen_doctor_and_generate_subcommands_emit_json_contracts(tmp_path: Path) -> None:
+    source_path = tmp_path / "release.appgen"
+    output_dir = tmp_path / "app"
+    source_path.write_text(RELEASE_SAMPLE, encoding="utf-8")
+
+    doctor_result = subprocess.run(
+        [sys.executable, "-m", "pyAppGen", "doctor", "--json"],
+        check=False,
+        cwd=Path(__file__).resolve().parents[1],
+        text=True,
+        capture_output=True,
+    )
+    generate_result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pyAppGen",
+            "generate",
+            str(source_path),
+            "--target",
+            "web",
+            "--out",
+            str(output_dir),
+            "--json",
+        ],
+        check=False,
+        cwd=Path(__file__).resolve().parents[1],
+        text=True,
+        capture_output=True,
+    )
+
+    assert doctor_result.returncode == 0, doctor_result.stderr
+    assert generate_result.returncode == 0, generate_result.stderr
+    assert json.loads(doctor_result.stdout)["format"] == "appgen.doctor-report.v1"
+    assert json.loads(generate_result.stdout)["format"] == "appgen.generate-report.v1"
+    assert (output_dir / "appgen.json").exists()

@@ -817,6 +817,13 @@ def dsl_tooling_cli(argv: Iterable[str] | None = None) -> int:
     validate_parser.add_argument("--targets")
     validate_parser.add_argument("--json", action="store_true")
 
+    generate_parser = subparsers.add_parser("generate")
+    generate_parser.add_argument("path")
+    generate_parser.add_argument("--out", required=True)
+    generate_parser.add_argument("--target", action="append", default=[])
+    generate_parser.add_argument("--allow-warnings", action="store_true")
+    generate_parser.add_argument("--json", action="store_true")
+
     graph_parser = subparsers.add_parser("graph")
     graph_parser.add_argument("path")
     graph_parser.add_argument("--kind", default="er")
@@ -882,6 +889,9 @@ def dsl_tooling_cli(argv: Iterable[str] | None = None) -> int:
     drift_parser.add_argument("path")
     drift_parser.add_argument("--json", action="store_true")
 
+    doctor_parser = subparsers.add_parser("doctor")
+    doctor_parser.add_argument("--json", action="store_true")
+
     args = parser.parse_args(tuple(argv or ()))
     path = Path(args.path) if hasattr(args, "path") else None
     source = path.read_text(encoding="utf-8") if path is not None else ""
@@ -901,6 +911,16 @@ def dsl_tooling_cli(argv: Iterable[str] | None = None) -> int:
         return 0 if not any(item["severity"] == "error" for item in report["diagnostics"]) else 1
     if args.command == "validate":
         report = validate_report_dsl(source, source_name=str(path))
+        _emit_tooling_payload(report, as_json=args.json)
+        return 0 if report["ok"] else 1
+    if args.command == "generate":
+        report = generate_report_dsl(
+            source,
+            source_name=str(path),
+            output_dir=args.out,
+            targets=args.target,
+            allow_warnings=args.allow_warnings,
+        )
         _emit_tooling_payload(report, as_json=args.json)
         return 0 if report["ok"] else 1
     if args.command == "graph":
@@ -988,6 +1008,10 @@ def dsl_tooling_cli(argv: Iterable[str] | None = None) -> int:
         return 0 if report["ok"] else 1
     if args.command == "drift":
         report = semantic_drift_audit_dsl(source, source_name=str(path))
+        _emit_tooling_payload(report, as_json=args.json)
+        return 0 if report["ok"] else 1
+    if args.command == "doctor":
+        report = doctor_report_dsl()
         _emit_tooling_payload(report, as_json=args.json)
         return 0 if report["ok"] else 1
     return 2
@@ -1080,6 +1104,186 @@ def validate_report_dsl(text: str, *, source_name: str | None = None) -> dict:
         "lint": lint,
         "semantic_model": semantic,
     }
+
+
+def generate_report_dsl(
+    text: str,
+    *,
+    source_name: str | None = None,
+    output_dir: str | Path,
+    targets: Iterable[str] | None = None,
+    allow_warnings: bool = False,
+) -> dict:
+    """Validate and generate an app from DSL with machine-readable evidence."""
+    source = text or ""
+    output_path = Path(output_dir)
+    requested_targets = tuple(targets or ())
+    validation = validate_report_dsl(source, source_name=source_name)
+    lint = validation["lint"]
+    errors = tuple(item for item in lint["diagnostics"] if item["severity"] == "error")
+    warnings = tuple(item for item in lint["diagnostics"] if item["severity"] == "warning")
+    if errors:
+        return {
+            "format": "appgen.generate-report.v1",
+            "ok": False,
+            "source": source_name,
+            "output_dir": str(output_path),
+            "targets": requested_targets,
+            "allow_warnings": allow_warnings,
+            "validation": validation,
+            "generated": False,
+            "artifacts": (),
+            "diagnostics": tuple(lint["diagnostics"]),
+            "blocking_gaps": ("lint_errors",),
+        }
+    try:
+        from .gen import generate_app_from_schema
+
+        schema = schema_from_dsl(source, source_name=source_name)
+        generated_path = generate_app_from_schema(schema, output_path)
+    except Exception as exc:  # pragma: no cover - defensive CLI boundary
+        diagnostic = _spec_diagnostic(
+            source,
+            "AGX9000",
+            "error",
+            f"Internal generation error: {exc}",
+        )
+        return {
+            "format": "appgen.generate-report.v1",
+            "ok": False,
+            "source": source_name,
+            "output_dir": str(output_path),
+            "targets": requested_targets,
+            "validation": validation,
+            "generated": False,
+            "artifacts": (),
+            "diagnostics": (diagnostic,),
+            "blocking_gaps": ("generation_error",),
+        }
+    artifacts = _generated_artifact_summary(generated_path)
+    manifest_path = generated_path / "appgen.json"
+    return {
+        "format": "appgen.generate-report.v1",
+        "ok": validation["ok"] and bool(artifacts) and manifest_path.exists(),
+        "source": source_name,
+        "output_dir": str(generated_path),
+        "targets": requested_targets or validation["semantic_model"]["app"].get("targets", ()),
+        "allow_warnings": allow_warnings,
+        "validation": validation,
+        "semantic_model_format": validation["semantic_model"].get("format"),
+        "generated": True,
+        "artifacts": artifacts,
+        "manifest": str(manifest_path) if manifest_path.exists() else None,
+        "diagnostics": tuple(lint["diagnostics"]),
+        "blocking_gaps": () if manifest_path.exists() else ("manifest_missing",),
+    }
+
+
+def doctor_report_dsl() -> dict:
+    """Check parser generation, imports, catalog, templates, backends, and IDE hooks."""
+    root = Path(__file__).resolve().parents[2]
+    checks = (
+        _doctor_check(
+            "grammar_file",
+            (root / "lang" / "appgen.g4").exists(),
+            "ANTLR grammar exists at lang/appgen.g4.",
+            {"path": "lang/appgen.g4"},
+        ),
+        _doctor_check(
+            "generated_parser",
+            (_GENERATED_DIR / "appgenParser.py").exists() and (_GENERATED_DIR / "appgenLexer.py").exists(),
+            "Generated parser and lexer are present.",
+            {"path": str(_GENERATED_DIR)},
+        ),
+        _doctor_check(
+            "parser_sync",
+            dsl_antlr_integrity_report()["ok"],
+            "Generated ANTLR artifacts are synchronized with the grammar contract.",
+            {"report_format": "appgen.dsl-antlr-integrity.v1"},
+        ),
+        _doctor_import_check("python_package_import", "pyAppGen"),
+        _doctor_import_check("sqlalchemy_import", "sqlalchemy"),
+        _doctor_check(
+            "pbc_catalog",
+            bool(_pbc_catalog_by_key()),
+            "Registered PBC catalog is available.",
+            {"count": len(_pbc_catalog_by_key())},
+        ),
+        _doctor_check(
+            "template_writers",
+            _doctor_template_writers_available(),
+            "Generator template writer functions are importable.",
+            {"writers": ("write_generated_home", "write_studio_template", "write_form_designer_template")},
+        ),
+        _doctor_check(
+            "generator_backends",
+            {"postgresql", "mysql", "mariadb"} <= set(migration_plan_dsl("", "", backend="postgresql")["allowed_backends"]),
+            "Migration/generation backend policy is constrained to PostgreSQL and MySQL-compatible profiles.",
+            {"allowed": ("postgresql", "mysql", "mariadb")},
+        ),
+        _doctor_check(
+            "lsp_semantic_service",
+            lsp_capabilities_dsl()["source_of_truth"] == "appgen.semantic-model.v1",
+            "Language-server adapter is bound to the shared semantic model.",
+            {"report_format": "appgen.lsp-capabilities.v1"},
+        ),
+        _doctor_check(
+            "studio_semantic_service",
+            designer_sync_report_dsl(_doctor_sample_dsl(), source_name="doctor.appgen")["semantic_model_format"] == "appgen.semantic-model.v1",
+            "Studio designer service is bound to the shared semantic model.",
+            {"report_format": "appgen.designer-sync-report.v1"},
+        ),
+    )
+    return {
+        "format": "appgen.doctor-report.v1",
+        "ok": all(check["ok"] for check in checks),
+        "checks": checks,
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }
+
+
+def _generated_artifact_summary(output_path: Path) -> tuple[dict, ...]:
+    if not output_path.exists():
+        return ()
+    artifacts = []
+    for path in sorted(item for item in output_path.rglob("*") if item.is_file()):
+        rel = path.relative_to(output_path).as_posix()
+        if rel.startswith("__pycache__/"):
+            continue
+        artifacts.append({"path": rel, "bytes": path.stat().st_size})
+    return tuple(artifacts)
+
+
+def _doctor_check(check: str, ok: bool, message: str, detail: dict | None = None) -> dict:
+    return {
+        "check": check,
+        "ok": bool(ok),
+        "message": message,
+        "detail": detail or {},
+    }
+
+
+def _doctor_import_check(check: str, module: str) -> dict:
+    try:
+        __import__(module)
+    except Exception as exc:  # pragma: no cover - environment-dependent
+        return _doctor_check(check, False, f"Cannot import {module}: {exc}", {"module": module})
+    return _doctor_check(check, True, f"Imported {module}.", {"module": module})
+
+
+def _doctor_template_writers_available() -> bool:
+    try:
+        from . import gen
+    except Exception:
+        return False
+    return all(
+        callable(getattr(gen, name, None))
+        for name in ("write_generated_home", "write_studio_template", "write_form_designer_template")
+    )
+
+
+def _doctor_sample_dsl() -> str:
+    return "app Doctor { targets: web }\n\ntable Thing { id: int pk; name: string }\n\nview ThingForm for Thing { Main: name }\n"
 
 
 def graph_report_dsl(text: str, *, source_name: str | None = None, kind: str = "er") -> dict:

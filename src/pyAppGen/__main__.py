@@ -11,6 +11,7 @@ _TOOLING_SUBCOMMANDS = {
     "lint",
     "format",
     "validate",
+    "generate",
     "graph",
     "explain",
     "migration-plan",
@@ -22,6 +23,7 @@ _TOOLING_SUBCOMMANDS = {
     "designer-sync",
     "diagnostics",
     "drift",
+    "doctor",
 }
 _legacy_click_main = main.main
 
