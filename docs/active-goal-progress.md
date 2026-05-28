@@ -3040,3 +3040,12 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   `tests/test_dsl_tooling_contracts.py -q`, focused DSL platform/CLI regression
   tests, staged diff whitespace check, and restricted-name scan. Commit:
   `13ed368a`.
+- Current Studio designer-sync pass makes visual edit round trips more
+  concrete. `appgen designer-sync` now applies database, form, workflow, and
+  PBC composition visual edits into patched DSL, returns unified diff previews,
+  exposes the after-edit semantic model, changed designer surfaces, and
+  refreshed projections, and still rejects edits whose patched DSL fails
+  semantic validation. Verification passed: Python compile for touched DSL
+  modules, `tests/test_dsl_tooling_contracts.py -q`, focused DSL platform/CLI
+  regression tests, scoped diff whitespace check, and restricted-name scan.
+  Commit: `64a06340`.
