@@ -2067,6 +2067,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
         source_name="bad-handler.appgen",
         action_id="create_operation_from_handler",
     )
+    code_action_apply_audit = lsp_code_action_apply_audit_dsl()
     designer = designer_sync_report_dsl(
         source,
         source_name="tooling-audit.appgen",
@@ -2245,10 +2246,17 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
         ),
         _tooling_audit_check(
             "lsp_quick_fix_application",
-            quick_fix["ok"] and quick_fix["changed"] and "operation SubmitInvoice" in quick_fix["patched_source"],
-            "LSP code actions are executable through a deterministic DSL patch application contract.",
+            quick_fix["ok"]
+            and quick_fix["changed"]
+            and "operation SubmitInvoice" in quick_fix["patched_source"]
+            and code_action_apply_audit["ok"],
+            "LSP code actions are executable through deterministic DSL patch application contracts.",
             "docs/tooling.md#code-actions",
-            {"format": quick_fix.get("format"), "action": quick_fix.get("action_id")},
+            {
+                "format": quick_fix.get("format"),
+                "action": quick_fix.get("action_id"),
+                "application_audit": code_action_apply_audit,
+            },
         ),
         _tooling_audit_check(
             "ide_visual_designer_round_trip",
@@ -4374,6 +4382,112 @@ def apply_lsp_code_action_dsl(
     }
 
 
+def lsp_code_action_apply_audit_dsl() -> dict:
+    """Prove required LSP quick fixes apply through linted DSL patches."""
+    case_specs = (
+        (
+            "create_missing_table",
+            "create_missing_table",
+            "app A { targets: web }\ntable Invoice { id: int pk }\nview MissingForm for Missing { Main: id }\n",
+            "table Missing",
+        ),
+        (
+            "create_missing_field",
+            "create_missing_field",
+            "app A { targets: web }\ntable Invoice { id: int pk }\nview InvoiceForm for Invoice { Main: total }\n",
+            "total: string",
+        ),
+        (
+            "create_calculated_field_for_binding",
+            "create_calculated_field_for_binding",
+            "app A { targets: web }\ntable Customer { id: int pk; name: string }\ntable Invoice { id: int pk; customer_id: int -> Customer.id }\nview InvoiceForm for Invoice { Main: customer.missing_name }\n",
+            "missing_name: string = name",
+        ),
+        (
+            "create_operation_from_handler",
+            "create_operation_from_handler",
+            "app A { targets: web }\ntable Invoice { id: int pk }\nview InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }\n",
+            "operation SubmitInvoice",
+        ),
+        (
+            "create_flow_from_handler",
+            "create_flow_from_handler",
+            "app A { targets: web }\ntable Invoice { id: int pk }\nview InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }\n",
+            "flow SubmitInvoice",
+        ),
+        (
+            "add_lookup_directive",
+            "add_lookup_directive",
+            "app A { targets: web }\ntable Customer { id: int pk; name: string }\ntable Invoice { id: int pk; customer_id: int -> Customer.id }\nview InvoiceForm for Invoice { Main: customer_name }\n",
+            "lookup customer_name (customer.name)",
+        ),
+        (
+            "add_relationship_for_lookup_path",
+            "add_relationship_for_lookup_path",
+            "app A { targets: web }\ntable Customer { id: int pk; name: string }\ntable Invoice { id: int pk }\nview InvoiceForm for Invoice { Main: customer.name }\n",
+            "customer_id: int -> Customer.id",
+        ),
+        (
+            "replace_typo_with_nearest_symbol",
+            "replace_typo_with_nearest_symbol",
+            "app A { targets: web }\ntable Invoice { id: int pk; total: decimal }\nview InvoiceForm for Invoice { Main: totl }\n",
+            "Main: total",
+        ),
+        (
+            "replace_secret_literal_with_env",
+            "replace_secret_literal_with_env",
+            "app A { targets: web }\ntable T { id: int pk }\nview TForm for T { Main: id }\nllm ApiModel { provider: openai; api_key: \"sk-secret\" }\n",
+            "api_key: OPENAI_API_KEY",
+        ),
+        (
+            "register_or_import_pbc_manifest",
+            "register_or_import_pbc_manifest",
+            "app A { targets: web }\ntable T { id: int pk }\nview TForm for T { Main: id }\ncomposition Suite { include pbc missing_pbc version 1.0.0 }\n",
+            "pbc missing_pbc",
+        ),
+        (
+            "add_missing_permission_for_agent_skill",
+            "add_missing_permission_for_agent_skill",
+            "app A { targets: web }\ntable T { id: int pk }\nview TForm for T { Main: id }\nllm LocalModel { provider: ollama; mode: local }\nagent Writer { provider: LocalModel; tools: write }\n",
+            "GeneratedResource: write",
+        ),
+        (
+            "add_package_for_app_target",
+            "add_package_for_app_target",
+            "app A { targets: web }\ntable T { id: int pk }\nview TForm for T { Main: id }\n",
+            "package WebPackage",
+        ),
+        (
+            "create_smoke_test_declaration",
+            "create_smoke_test_declaration",
+            "app A { targets: web }\ntable T { id: int pk }\nview TForm for T { Main: id }\nflow Publish { draft -> live }\n",
+            "test PublishSmoke",
+        ),
+    )
+    cases = []
+    for case_id, action_id, source, expected_text in case_specs:
+        result = apply_lsp_code_action_dsl(source, source_name=f"{case_id}.appgen", action_id=action_id)
+        ok = result["ok"] and result["changed"] and expected_text in result["patched_source"] and bool(result["applied_edits"])
+        cases.append(
+            {
+                "id": case_id,
+                "action_id": action_id,
+                "ok": ok,
+                "expected_text": expected_text,
+                "diagnostic_codes": tuple(item.get("code") for item in result.get("diagnostics", ())),
+                "applied_edit_count": len(result.get("applied_edits", ())),
+                "lint_ok": result.get("lint", {}).get("ok"),
+            }
+        )
+    return {
+        "format": "appgen.lsp-code-action-apply-audit.v1",
+        "ok": all(case["ok"] for case in cases),
+        "cases": tuple(cases),
+        "required_actions": tuple(case[1] for case in case_specs),
+        "blocking_gaps": tuple(case["id"] for case in cases if not case["ok"]),
+    }
+
+
 def _apply_lsp_text_edits(source: str, edits: Iterable[dict]) -> str:
     patched = source or ""
     ordered = sorted(
@@ -4756,12 +4870,28 @@ def _lsp_required_actions_for_diagnostic(source: str, diagnostic: dict, *, sourc
                         f"  {alias}_id: int -> {target_table}.id\n",
                     )
                 )
+        alias_table, alias_name, alias_path = _view_lookup_alias_from_message(message, source)
+        if alias_table and alias_name and alias_path:
+            actions.append(
+                _lsp_insert_in_block_action(
+                    source,
+                    source_name,
+                    diagnostic,
+                    "add_lookup_directive",
+                    f"Add lookup directive for {alias_name}",
+                    "table",
+                    alias_table,
+                    f"  lookup {alias_name} ({alias_path})\n",
+                )
+            )
     if code == "AGX0303":
         view, binding = _view_binding_from_message(message)
         table = _view_table_for_view(source, view)
         field = binding.rsplit(".", 1)[-1] if binding else "display_value"
         if table:
-            actions.append(_lsp_insert_in_block_action(source, source_name, diagnostic, "create_calculated_field_for_binding", f"Create calculated field {table}.{field}", "table", table, f"  {field}: string = \"TODO\"\n"))
+            calculated_table = _calculated_field_table_for_binding(source, table, binding) or table
+            expression = "name" if _source_table_has_field(source, calculated_table, "name") and field != "name" else "id"
+            actions.append(_lsp_insert_in_block_action(source, source_name, diagnostic, "create_calculated_field_for_binding", f"Create calculated field {calculated_table}.{field}", "table", calculated_table, f"  {field}: string = {expression}\n"))
             actions.append(_lsp_insert_in_block_action(source, source_name, diagnostic, "add_lookup_directive", f"Add lookup directive for {binding}", "table", table, f"  lookup {field} ({binding})\n"))
     if code == "AGX0403":
         target = _handler_target_from_message(message)
@@ -4901,8 +5031,59 @@ def _view_lookup_binding_from_message(message: str, source: str) -> tuple[str | 
     return _view_table_for_view(source, view), binding
 
 
+def _view_lookup_alias_from_message(message: str, source: str) -> tuple[str | None, str | None, str | None]:
+    match = re.search(r"Unknown (?:view|component) field: ([A-Za-z_][A-Za-z0-9_]*)\.([a-z][a-z0-9_]*_[a-z][a-z0-9_]*)", message)
+    if not match:
+        return None, None, None
+    view, alias_name = match.groups()
+    table = _view_table_for_view(source, view)
+    if not table:
+        return None, None, None
+    relationship_alias, target_field = alias_name.split("_", 1)
+    target_table = _source_relationship_target_for_alias(source, table, relationship_alias)
+    if not target_table or not _source_table_has_field(source, target_table, target_field):
+        return None, None, None
+    return table, alias_name, f"{relationship_alias}.{target_field}"
+
+
+def _calculated_field_table_for_binding(source: str, table: str, binding: str | None) -> str | None:
+    if not binding or "." not in binding:
+        return table
+    first, *_rest = binding.split(".")
+    return _source_relationship_target_for_alias(source, table, first)
+
+
 def _source_declares_block(source: str, kind: str, name: str) -> bool:
     return bool(re.search(rf"\b{re.escape(kind)}\s+{re.escape(name)}\b", source or ""))
+
+
+def _source_relationship_target_for_alias(source: str, table: str, alias: str) -> str | None:
+    body = _source_block_body(source, "table", table)
+    if body is None:
+        return None
+    match = re.search(rf"\b{re.escape(alias)}_id\s*:\s*[A-Za-z_][A-Za-z0-9_]*(?:\([^)]*\))?(?:\s+\w+)*\s*->\s*([A-Za-z_][A-Za-z0-9_]*)\.[A-Za-z_][A-Za-z0-9_]*", body)
+    return match.group(1) if match else None
+
+
+def _source_table_has_field(source: str, table: str, field: str) -> bool:
+    body = _source_block_body(source, "table", table)
+    return bool(body and re.search(rf"\b{re.escape(field)}\s*:", body))
+
+
+def _source_block_body(source: str, kind: str, name: str) -> str | None:
+    pattern = re.compile(rf"\b{re.escape(kind)}\s+{re.escape(name)}\b[^\{{]*\{{")
+    match = pattern.search(source or "")
+    if not match:
+        return None
+    depth = 1
+    for index in range(match.end(), len(source)):
+        if source[index] == "{":
+            depth += 1
+        elif source[index] == "}":
+            depth -= 1
+            if depth == 0:
+                return source[match.end() : index]
+    return None
 
 
 def _handler_target_from_message(message: str) -> str | None:
@@ -7116,6 +7297,12 @@ def _semantic_lookup_paths(
             }
     for directive in table.directives:
         if directive.verb.lower() == "lookup":
+            if directive.name:
+                value = directive.values[0] if directive.values else directive.name
+                paths[directive.name] = {
+                    "chain": (value,),
+                    "valid": _valid_lookup_path(table.name, value, table_map, field_map),
+                }
             for value in directive.values:
                 paths.setdefault(
                     value,
@@ -10031,6 +10218,7 @@ def _tooling_policy_diagnostics(
     field_map = {table.name: _field_names(table) for table in schema.tables}
     handler_targets = _handler_target_names(schema)
     pbc_catalog = _pbc_catalog_by_key()
+    local_pbcs = {block.name for block in schema.platform_blocks if block.kind == "pbc"}
     local_contracts = _local_contract_names_by_kind(schema)
     errors: list[str] = []
     warnings: list[str] = []
@@ -10063,13 +10251,13 @@ def _tooling_policy_diagnostics(
             continue
         included = {_composition_include_key(include) for include in block.options.get("include", ())}
         for key in tuple(included):
-            if key and key not in pbc_catalog:
+            if key and key not in pbc_catalog and key not in local_pbcs:
                 errors.append(f"Unknown PBC catalog entry: {block.name}.{key}")
         for raw_connection in block.options.get("connect", ()):
             connection = _semantic_composition_connection(raw_connection)
             for side in ("from", "to"):
                 key = connection.get(f"{side}_pbc")
-                if key and key not in pbc_catalog:
+                if key and key not in pbc_catalog and key not in local_pbcs:
                     errors.append(f"Unknown PBC catalog entry: {block.name}.{key}")
             if str(connection.get("from_kind") or "").endswith("table") or str(connection.get("to_kind") or "").endswith("table"):
                 errors.append(f"Private PBC table access: {block.name}.{raw_connection}")
@@ -10248,6 +10436,9 @@ def _field_names(table: TableSchema) -> set[str]:
     for column in table.columns:
         if column.references and column.name.endswith("_id"):
             names.add(column.name[:-3])
+    for directive in table.directives:
+        if directive.verb.lower() == "lookup" and directive.name:
+            names.add(directive.name)
     return names
 
 

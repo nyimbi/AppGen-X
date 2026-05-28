@@ -3319,4 +3319,17 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   missing agent permissions. Verification passed: Python compile for touched
   tooling entrypoints, focused LSP/code-action tests (`3 passed`), scoped diff
   whitespace check, and restricted-name scan outside archive, Git internals,
+  and active PBC paths. Commit: `466a61bb`.
+- Current LSP code-action audit pass turns the required quick-fix application
+  surface into explicit release evidence. `appgen.lsp-code-action-apply-audit.v1`
+  now proves deterministic patched DSL and post-apply lint results for missing
+  tables, missing fields, calculated fields for unresolved lookup bindings,
+  operation/flow creation from handlers, lookup directives, lookup relationship
+  repair, typo replacement, secret literal cleanup, local PBC manifest
+  declaration, agent permission repair, package creation, and smoke-test
+  declaration. The pass also makes lookup directive aliases valid
+  database-backed form bindings and lets locally declared PBCs satisfy
+  composition includes. Verification passed: Python compile for touched
+  tooling entrypoints, focused LSP/audit tests (`5 passed`), scoped diff
+  whitespace check, and restricted-name scan outside archive, Git internals,
   and active PBC paths. Commit: pending.

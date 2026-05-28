@@ -32,6 +32,7 @@ from pyAppGen.dsl import tooling_audit_report_dsl
 from pyAppGen.dsl import validate_report_dsl
 from pyAppGen.dsl import completion_coverage_dsl
 from pyAppGen.dsl import apply_lsp_code_action_dsl
+from pyAppGen.dsl import lsp_code_action_apply_audit_dsl
 
 
 TOOLING_SAMPLE = """
@@ -1030,7 +1031,7 @@ def test_lsp_code_action_apply_patches_missing_operation_and_lookup_directive(tm
     app BadLookup { targets: web }
     table Customer { id: int pk; name: string }
     table Invoice { id: int pk; customer_id: int -> Customer.id }
-    view InvoiceForm for Invoice { Main: customer.missing_name }
+    view InvoiceForm for Invoice { Main: customer_name }
     """
     lookup = apply_lsp_code_action_dsl(
         missing_lookup,
@@ -1039,7 +1040,8 @@ def test_lsp_code_action_apply_patches_missing_operation_and_lookup_directive(tm
     )
 
     assert lookup["changed"] is True
-    assert "lookup missing_name (customer.missing_name)" in lookup["patched_source"]
+    assert "lookup customer_name (customer.name)" in lookup["patched_source"]
+    assert lookup["lint"]["ok"] is True
     assert lookup["applied_edits"]
 
     missing_relationship = """
@@ -1206,6 +1208,29 @@ def test_lsp_code_actions_add_package_and_smoke_test_for_valid_sources() -> None
 
     assert "add_package_for_app_target" in action_ids
     assert "create_smoke_test_declaration" in action_ids
+
+
+def test_lsp_code_action_apply_audit_proves_required_quick_fixes() -> None:
+    audit = lsp_code_action_apply_audit_dsl()
+
+    assert audit["format"] == "appgen.lsp-code-action-apply-audit.v1"
+    assert audit["ok"] is True
+    assert audit["blocking_gaps"] == ()
+    assert {
+        "create_missing_table",
+        "create_missing_field",
+        "create_calculated_field_for_binding",
+        "create_operation_from_handler",
+        "create_flow_from_handler",
+        "add_lookup_directive",
+        "add_relationship_for_lookup_path",
+        "replace_typo_with_nearest_symbol",
+        "replace_secret_literal_with_env",
+        "register_or_import_pbc_manifest",
+        "add_missing_permission_for_agent_skill",
+        "add_package_for_app_target",
+        "create_smoke_test_declaration",
+    } <= set(audit["required_actions"])
 
 
 def test_appgen_lsp_subcommand_emits_json_contract(tmp_path: Path) -> None:
