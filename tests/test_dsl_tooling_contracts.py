@@ -5,6 +5,8 @@ from pathlib import Path
 
 from pyAppGen.dsl import format_report_dsl
 from pyAppGen.dsl import designer_sync_report_dsl
+from pyAppGen.dsl import diagnostic_catalog_dsl
+from pyAppGen.dsl import diagnostic_fixture_audit_dsl
 from pyAppGen.dsl import graph_report_dsl
 from pyAppGen.dsl import lint_report_dsl
 from pyAppGen.dsl import lsp_service_dsl
@@ -142,8 +144,8 @@ def test_lint_report_maps_existing_linter_errors_to_stable_agx_diagnostics() -> 
     assert report["format"] == "appgen.lint-report.v1"
     assert report["ok"] is False
     assert report["severity_counts"]["error"] >= 1
-    assert any(item["code"] == "AGX0402" for item in report["diagnostics"])
-    assert any(item["legacy_code"] == "unknown_view_field" for item in report["diagnostics"])
+    assert any(item["code"] == "AGX0303" for item in report["diagnostics"])
+    assert any(item["legacy_code"] == "unresolved_lookup_path" for item in report["diagnostics"])
 
 
 def test_format_validate_and_graph_reports_follow_tooling_contracts() -> None:
@@ -490,3 +492,47 @@ def test_appgen_designer_sync_subcommand_emits_json_contract(tmp_path: Path) -> 
     payload = json.loads(result.stdout)
     assert payload["format"] == "appgen.designer-sync-report.v1"
     assert payload["projections"]["dsl_editor"]["semantic_model_format"] == "appgen.semantic-model.v1"
+
+
+def test_diagnostic_catalog_and_fixture_audit_cover_required_agx_codes() -> None:
+    catalog = diagnostic_catalog_dsl()
+    audit = diagnostic_fixture_audit_dsl()
+
+    assert catalog["format"] == "appgen.diagnostic-catalog.v1"
+    assert audit["format"] == "appgen.diagnostic-fixture-audit.v1"
+    assert catalog["ok"] is True
+    assert audit["ok"] is True
+    assert set(catalog["required_codes"]) <= set(audit["covered_codes"])
+    assert {
+        "AGX0201",
+        "AGX0304",
+        "AGX0404",
+        "AGX0602",
+        "AGX0903",
+        "AGX1002",
+        "AGX1101",
+        "AGX1201",
+    } <= set(audit["covered_codes"])
+
+
+def test_appgen_diagnostics_subcommand_emits_catalog_and_fixture_audit() -> None:
+    base_command = [sys.executable, "-m", "pyAppGen", "diagnostics", "--json"]
+    catalog_result = subprocess.run(
+        base_command,
+        check=False,
+        cwd=Path(__file__).resolve().parents[1],
+        text=True,
+        capture_output=True,
+    )
+    audit_result = subprocess.run(
+        [*base_command[:-1], "--audit-fixtures", "--json"],
+        check=False,
+        cwd=Path(__file__).resolve().parents[1],
+        text=True,
+        capture_output=True,
+    )
+
+    assert catalog_result.returncode == 0, catalog_result.stderr
+    assert audit_result.returncode == 0, audit_result.stderr
+    assert json.loads(catalog_result.stdout)["format"] == "appgen.diagnostic-catalog.v1"
+    assert json.loads(audit_result.stdout)["format"] == "appgen.diagnostic-fixture-audit.v1"

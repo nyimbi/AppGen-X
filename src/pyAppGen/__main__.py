@@ -20,6 +20,7 @@ _TOOLING_SUBCOMMANDS = {
     "package",
     "pbc",
     "designer-sync",
+    "diagnostics",
 }
 _legacy_click_main = main.main
 

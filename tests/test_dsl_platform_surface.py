@@ -220,5 +220,4 @@ def test_dsl_rejects_invalid_table_directives_and_lookup_paths() -> None:
     assert any("Unknown table directive field: Invoice.lookup.customer.missing_name" in error for error in report["errors"])
     assert any("Unknown table directive field: Invoice.index.missing_field" in error for error in report["errors"])
     assert any("Unknown table directive target: Invoice.fk.Customer.missing_id" in error for error in report["errors"])
-    assert any("Unknown view field: InvoiceForm.customer.missing_name" in error for error in report["errors"])
-    assert any("Unknown component field: InvoiceForm.customer.missing_name" in error for error in report["errors"])
+    assert any("Unresolved lookup path: InvoiceForm.customer.missing_name" in error for error in report["errors"])

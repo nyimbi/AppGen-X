@@ -118,6 +118,7 @@ def lint_dsl(text: str, *, source_name: str | None = None) -> dict:
         suggestions.append(
             "Use compact DSL constructs such as table, view, flow, rule, llm, and agent."
         )
+    errors.extend(_preparse_tooling_errors(source))
 
     if not errors:
         try:
@@ -127,6 +128,9 @@ def lint_dsl(text: str, *, source_name: str | None = None) -> dict:
             suggestions.extend(_semantic_suggestions(source, errors))
 
     if schema is not None:
+        policy_errors, policy_warnings = _tooling_policy_diagnostics(schema)
+        errors.extend(policy_errors)
+        warnings.extend(policy_warnings)
         if not schema.tables:
             errors.append("Add at least one table block so the generator has a data model.")
         if not schema.app_name:
@@ -549,6 +553,99 @@ def lint_report_dsl_file(path: str | Path) -> dict:
     return lint_report_dsl(path.read_text(encoding="utf-8"), source_name=str(path))
 
 
+def diagnostic_catalog_dsl() -> dict:
+    """Return the stable diagnostic registry required by docs/tooling.md."""
+    specs = tuple(
+        {
+            "code": spec["code"],
+            "severity": spec["severity"],
+            "title": spec["title"],
+            "trigger": spec["trigger"],
+            "example_fix": spec["example_fix"],
+            "docs_url": _spec_docs_url(spec["code"]),
+            "fixture": _diagnostic_fixture_for_code(spec["code"]) is not None,
+        }
+        for spec in DIAGNOSTIC_SPECS
+    )
+    ranges = tuple(
+        {
+            "range": item[0],
+            "area": item[1],
+        }
+        for item in DIAGNOSTIC_RANGES
+    )
+    return {
+        "format": "appgen.diagnostic-catalog.v1",
+        "ok": all(item["fixture"] for item in specs),
+        "ranges": ranges,
+        "diagnostics": specs,
+        "required_codes": tuple(item["code"] for item in specs),
+        "fixture_count": len(DIAGNOSTIC_FIXTURES),
+        "missing_fixtures": tuple(item["code"] for item in specs if not item["fixture"]),
+    }
+
+
+def diagnostic_fixture_audit_dsl() -> dict:
+    """Run diagnostic golden fixtures through their authoritative tooling path."""
+    results = tuple(_run_diagnostic_fixture(fixture) for fixture in DIAGNOSTIC_FIXTURES)
+    covered = {code for result in results for code in result["observed_codes"]}
+    required = tuple(item["code"] for item in DIAGNOSTIC_SPECS)
+    missing = tuple(code for code in required if code not in covered)
+    return {
+        "format": "appgen.diagnostic-fixture-audit.v1",
+        "ok": not missing and all(result["ok"] for result in results),
+        "required_codes": required,
+        "covered_codes": tuple(sorted(covered)),
+        "missing_codes": missing,
+        "fixtures": results,
+        "blocking_gaps": tuple(result for result in results if not result["ok"]),
+    }
+
+
+def _diagnostic_fixture_for_code(code: str) -> dict | None:
+    for fixture in DIAGNOSTIC_FIXTURES:
+        if code in fixture["expected_codes"]:
+            return fixture
+    return None
+
+
+def _run_diagnostic_fixture(fixture: dict) -> dict:
+    runner = fixture["runner"]
+    if runner == "lint":
+        report = lint_report_dsl(fixture["source"], source_name=fixture["name"])
+        diagnostics = report["diagnostics"]
+    elif runner == "migration":
+        report = migration_plan_dsl(
+            fixture["previous_source"],
+            fixture["source"],
+            previous_name=f"{fixture['name']}.previous",
+            current_name=fixture["name"],
+        )
+        diagnostics = report["diagnostics"]
+    elif runner == "nl-plan":
+        report = nl_plan_dsl(
+            fixture["source"],
+            source_name=fixture["name"],
+            prompt=fixture["prompt"],
+        )
+        diagnostics = report["diagnostics"]
+    else:
+        report = {"format": "appgen.unknown-diagnostic-fixture.v1", "ok": False}
+        diagnostics = ()
+    observed = tuple(dict.fromkeys(item["code"] for item in diagnostics))
+    expected = tuple(fixture["expected_codes"])
+    missing = tuple(code for code in expected if code not in observed)
+    return {
+        "name": fixture["name"],
+        "runner": runner,
+        "expected_codes": expected,
+        "observed_codes": observed,
+        "ok": not missing,
+        "missing_codes": missing,
+        "report_format": report.get("format"),
+    }
+
+
 def dsl_tooling_cli(argv: Iterable[str] | None = None) -> int:
     """Run docs/tooling.md subcommands without disturbing legacy flags."""
     parser = argparse.ArgumentParser(prog="appgen")
@@ -627,6 +724,10 @@ def dsl_tooling_cli(argv: Iterable[str] | None = None) -> int:
     designer_parser.add_argument("path")
     designer_parser.add_argument("--edit-json")
     designer_parser.add_argument("--json", action="store_true")
+
+    diagnostics_parser = subparsers.add_parser("diagnostics")
+    diagnostics_parser.add_argument("--audit-fixtures", action="store_true")
+    diagnostics_parser.add_argument("--json", action="store_true")
 
     args = parser.parse_args(tuple(argv or ()))
     path = Path(args.path) if hasattr(args, "path") else None
@@ -726,6 +827,10 @@ def dsl_tooling_cli(argv: Iterable[str] | None = None) -> int:
     if args.command == "designer-sync":
         edit = json.loads(args.edit_json) if args.edit_json else None
         report = designer_sync_report_dsl(source, source_name=str(path), visual_edit=edit)
+        _emit_tooling_payload(report, as_json=args.json)
+        return 0 if report["ok"] else 1
+    if args.command == "diagnostics":
+        report = diagnostic_fixture_audit_dsl() if args.audit_fixtures else diagnostic_catalog_dsl()
         _emit_tooling_payload(report, as_json=args.json)
         return 0 if report["ok"] else 1
     return 2
@@ -3024,12 +3129,12 @@ def _semantic_compositions(schema: AppSchema) -> dict:
 
 
 def _composition_include_key(value: str) -> str | None:
-    match = re.match(r"(?P<key>[A-Za-z_][A-Za-z0-9_]*)(?:version(?P<version>.+))?$", value or "")
+    match = re.match(r"(?P<key>[A-Za-z_][A-Za-z0-9_]*)(?:\s*version\s*(?P<version>.+))?$", value or "")
     return match.group("key") if match else None
 
 
 def _composition_include_version(value: str) -> str | None:
-    match = re.match(r"(?P<key>[A-Za-z_][A-Za-z0-9_]*)(?:version(?P<version>.+))?$", value or "")
+    match = re.match(r"(?P<key>[A-Za-z_][A-Za-z0-9_]*)(?:\s*version\s*(?P<version>.+))?$", value or "")
     if not match:
         return None
     version = match.group("version")
@@ -3328,16 +3433,35 @@ def _spec_diagnostic_code(legacy_code: str, message: str) -> str:
         "unbalanced_braces": "AGX0001",
         "duplicate_declaration": "AGX0101",
         "unknown_derived_field": "AGX0202",
+        "unknown_field_type": "AGX0201",
         "unknown_relation_target_table": "AGX0301",
         "unknown_reference_target_table": "AGX0301",
         "unknown_relation_target_field": "AGX0302",
         "unknown_reference_target_field": "AGX0302",
+        "unknown_view_table": "AGX0401",
         "unknown_view_field": "AGX0402",
         "unknown_component_field": "AGX0402",
+        "unknown_visual_component": "AGX0404",
+        "rule_single_equals": "AGX0501",
+        "strict_flow_state": "AGX0601",
+        "unassigned_human_task": "AGX0602",
+        "unknown_pbc_catalog_entry": "AGX0901",
+        "unknown_cross_pbc_contract": "AGX0902",
+        "private_pbc_table_access": "AGX0903",
         "unknown_agent_provider": "AGX1001",
+        "unknown_agent_skill_target": "AGX1001",
+        "agent_write_skill_permission": "AGX1002",
         "literal_api_key": "AGX0702",
         "unknown_app_target": "AGX0802",
     }
+    if message.startswith("Unresolved lookup path"):
+        return "AGX0303"
+    if message.startswith("Unknown field type"):
+        return "AGX0201"
+    if message.startswith("Multi-hop lookup chain breaks"):
+        return "AGX0304"
+    if message.startswith("Unknown view table"):
+        return "AGX0401"
     if message.startswith("Unknown table directive field"):
         return "AGX0303"
     if message.startswith("Unknown table directive target"):
@@ -3356,6 +3480,22 @@ def _spec_diagnostic_code(legacy_code: str, message: str) -> str:
         return "AGX0701"
     if message.startswith("Unknown rule"):
         return "AGX0502"
+    if message.startswith("Rule expression uses single ="):
+        return "AGX0501"
+    if message.startswith("Flow strict state"):
+        return "AGX0601"
+    if message.startswith("Human task has no assignee"):
+        return "AGX0602"
+    if message.startswith("Unknown PBC catalog entry"):
+        return "AGX0901"
+    if message.startswith("Unknown cross-PBC contract"):
+        return "AGX0902"
+    if message.startswith("Private PBC table access"):
+        return "AGX0903"
+    if message.startswith("Unknown agent skill target"):
+        return "AGX1001"
+    if message.startswith("Agent write-capable skill"):
+        return "AGX1002"
     return mapping.get(legacy_code, "AGX0000" if legacy_code == "dsl_feedback" else "AGX0100")
 
 
@@ -3363,18 +3503,31 @@ def _spec_diagnostic_title(code: str) -> str:
     titles = {
         "AGX0001": "Source cannot be parsed",
         "AGX0101": "Duplicate declaration",
+        "AGX0201": "Unknown field type",
         "AGX0202": "Unknown calculated-field reference",
         "AGX0301": "Unknown relationship table",
         "AGX0302": "Unknown relationship field",
         "AGX0303": "Unresolved lookup path",
+        "AGX0304": "Broken multi-hop lookup chain",
+        "AGX0401": "Unknown view table",
         "AGX0402": "Invalid database-backed view binding",
         "AGX0403": "Unknown handler target",
+        "AGX0404": "Unknown visual component",
+        "AGX0501": "Invalid rule equality operator",
         "AGX0502": "Unknown rule field",
+        "AGX0601": "Invalid strict workflow state",
+        "AGX0602": "Unassigned human task",
         "AGX0701": "Unknown permission resource",
         "AGX0702": "Secret literal in source",
         "AGX0801": "Invalid deployment or contract reference",
         "AGX0802": "Invalid package or target reference",
+        "AGX0901": "Unknown PBC catalog entry",
+        "AGX0902": "Unknown cross-PBC contract",
+        "AGX0903": "Private PBC table access",
         "AGX1001": "Unknown agent reference",
+        "AGX1002": "Write-capable agent skill lacks permission",
+        "AGX1101": "Destructive migration",
+        "AGX1201": "Unsupported natural-language plan",
         "AGX9000": "Internal tooling error",
         "AGX9001": "Unknown graph kind",
     }
@@ -3401,6 +3554,9 @@ def _diagnostic_explanation(code: str) -> dict:
             "AGX0402": "A database-backed form binding must resolve to a field, calculated field, or lookup path.",
             "AGX0403": "A handler must target a declared operation, flow, agent, or contract.",
             "AGX0901": "A composition can include only locally declared or registered PBC keys.",
+            "AGX0902": "Cross-PBC links must reference exposed catalog APIs, events, or commands.",
+            "AGX0903": "PBC composition cannot read or mutate another PBC's private tables.",
+            "AGX1002": "Write-capable agent skills require an explicit permission grant.",
         }.get(code, "See the tooling diagnostic specification for this code."),
     }
 
@@ -3984,6 +4140,16 @@ def _lint_quick_fixes(source: str, errors: Iterable[str], warnings: Iterable[str
                 "replacement": "api_key: OPENAI_API_KEY",
             }
         )
+    if _preparse_tooling_errors(source):
+        fixes.append(
+            {
+                "id": "replace_rule_equals_with_eqeq",
+                "title": "Use == for rule equality",
+                "kind": "regex_replace",
+                "pattern": r"(?<![!<>=])=(?!=)",
+                "replacement": "==",
+            }
+        )
     if _uses_authoring_aliases(source):
         fixes.append(
             {
@@ -4070,10 +4236,36 @@ def _diagnostic_code(message: str) -> str:
         return "unbalanced_braces"
     if message.startswith("Unknown app targets"):
         return "unknown_app_target"
+    if message.startswith("Unknown field type"):
+        return "unknown_field_type"
+    if message.startswith("Multi-hop lookup chain breaks"):
+        return "multi_hop_lookup_break"
+    if message.startswith("Unresolved lookup path"):
+        return "unresolved_lookup_path"
+    if message.startswith("Unknown view table"):
+        return "unknown_view_table"
     if message.startswith("Unknown view field"):
         return "unknown_view_field"
     if message.startswith("Unknown component field"):
         return "unknown_component_field"
+    if message.startswith("Unknown visual component"):
+        return "unknown_visual_component"
+    if message.startswith("Rule expression uses single ="):
+        return "rule_single_equals"
+    if message.startswith("Flow strict state"):
+        return "strict_flow_state"
+    if message.startswith("Human task has no assignee"):
+        return "unassigned_human_task"
+    if message.startswith("Unknown PBC catalog entry"):
+        return "unknown_pbc_catalog_entry"
+    if message.startswith("Unknown cross-PBC contract"):
+        return "unknown_cross_pbc_contract"
+    if message.startswith("Private PBC table access"):
+        return "private_pbc_table_access"
+    if message.startswith("Unknown agent skill target"):
+        return "unknown_agent_skill_target"
+    if message.startswith("Agent write-capable skill"):
+        return "agent_write_skill_permission"
     if message.startswith("Unknown agent provider"):
         return "unknown_agent_provider"
     if message.startswith("Unknown relation target table"):
@@ -4110,9 +4302,18 @@ def _diagnostic_code(message: str) -> str:
 def _diagnostic_token(message: str) -> str | None:
     for pattern in (
         r"Unknown app targets: ([^.]+)\.",
+        r"Unknown field type: [^.]+\.([A-Za-z_][A-Za-z0-9_]*)",
+        r"Multi-hop lookup chain breaks: [^.]+\.([A-Za-z_][A-Za-z0-9_.]*)",
+        r"Unresolved lookup path: [^.]+\.([A-Za-z_][A-Za-z0-9_.]*)",
+        r"Unknown view table: [^.]+ for ([A-Za-z_][A-Za-z0-9_]*)",
         r"Unknown view field: [^.]+\.([A-Za-z_][A-Za-z0-9_]*)",
         r"Unknown component field: [^.]+\.([A-Za-z_][A-Za-z0-9_]*)",
+        r"Unknown visual component: [^.]+\.([A-Za-z_][A-Za-z0-9_]*)",
+        r"Flow strict state is undeclared: [^.]+\.([A-Za-z_][A-Za-z0-9_]*)",
+        r"Human task has no assignee: [^.]+\.([A-Za-z_][A-Za-z0-9_]*)",
+        r"Unknown PBC catalog entry: [^.]+\.([A-Za-z_][A-Za-z0-9_]*)",
         r"Unknown agent provider: [^.]+\.([A-Za-z_][A-Za-z0-9_]*)",
+        r"Unknown agent skill target: [^.]+\.([A-Za-z_][A-Za-z0-9_]*)",
         r"Unknown (?:relation|reference) target table: ([A-Za-z_][A-Za-z0-9_]*)",
         r"Unknown (?:relation|reference) target field: [^.]+\.([A-Za-z_][A-Za-z0-9_]*)",
         r"Duplicate [^:]+ declaration: ([A-Za-z_][A-Za-z0-9_]*)",
@@ -4144,6 +4345,8 @@ def _diagnostic_fix_ids(code: str) -> tuple[str, ...]:
         "authoring_alias": ("normalize_authoring_aliases",),
         "modifier_alias": ("normalize_modifier_aliases",),
         "unknown_app_target": ("normalize_targets",),
+        "rule_single_equals": ("replace_rule_equals_with_eqeq",),
+        "literal_api_key": ("use_api_key_env",),
     }
     return fixes.get(code, ())
 
@@ -4596,6 +4799,102 @@ CORE_KEYWORDS = (
     "agent",
 )
 KEYWORD_LIMIT = 32
+DIAGNOSTIC_RANGES = (
+    ("AGX0000-AGX0099", "Syntax and parser errors."),
+    ("AGX0100-AGX0199", "Naming, duplicates, reserved words, and style."),
+    ("AGX0200-AGX0299", "Tables, fields, types, defaults, calculated fields, and directives."),
+    ("AGX0300-AGX0399", "Relationships, foreign keys, lookup paths, and multi-hop traversal."),
+    ("AGX0400-AGX0499", "Views, visual components, handlers, menus, and UI binding."),
+    ("AGX0500-AGX0599", "Rules, expressions, required checks, and policy actions."),
+    ("AGX0600-AGX0699", "Flows, workflow states, timers, human tasks, and compensation."),
+    ("AGX0700-AGX0799", "Roles, permissions, security, tenancy, and secrets."),
+    ("AGX0800-AGX0899", "APIs, events, jobs, reports, packages, deployment, audit, and versioning."),
+    ("AGX0900-AGX0999", "PBC catalog, composition, cross-PBC contracts, and package manifests."),
+    ("AGX1000-AGX1099", "LLMs, agents, skills, tools, and model/provider configuration."),
+    ("AGX1100-AGX1199", "Migration planning and destructive-change detection."),
+    ("AGX1200-AGX1299", "Natural-language change plans and agent safety."),
+    ("AGX9000-AGX9999", "Internal tooling errors and unsupported parser states."),
+)
+DIAGNOSTIC_SPECS = (
+    {"code": "AGX0001", "severity": "error", "title": "Source cannot be parsed", "trigger": "Source cannot be parsed.", "example_fix": "Show syntax location and nearest valid construct."},
+    {"code": "AGX0101", "severity": "error", "title": "Duplicate declaration", "trigger": "Duplicate top-level declaration in the same namespace.", "example_fix": "Rename one symbol."},
+    {"code": "AGX0201", "severity": "error", "title": "Unknown field type", "trigger": "Field references unknown type where no custom type is allowed.", "example_fix": "Create enum/table/type or choose known scalar."},
+    {"code": "AGX0202", "severity": "error", "title": "Unknown calculated-field reference", "trigger": "Calculated field references unknown field.", "example_fix": "Create field or fix expression."},
+    {"code": "AGX0301", "severity": "error", "title": "Unknown relationship table", "trigger": "Relationship target table does not exist.", "example_fix": "Create table or correct target."},
+    {"code": "AGX0302", "severity": "error", "title": "Unknown relationship field", "trigger": "Relationship target field does not exist.", "example_fix": "Create field or correct target."},
+    {"code": "AGX0303", "severity": "error", "title": "Unresolved lookup path", "trigger": "Lookup path cannot be resolved.", "example_fix": "Add relationship or change binding."},
+    {"code": "AGX0304", "severity": "error", "title": "Broken multi-hop lookup chain", "trigger": "Multi-hop lookup chain breaks at an intermediate segment.", "example_fix": "Add missing relationship."},
+    {"code": "AGX0401", "severity": "error", "title": "Unknown view table", "trigger": "View subject table does not exist.", "example_fix": "Create table or correct for target."},
+    {"code": "AGX0402", "severity": "error", "title": "Invalid database-backed view binding", "trigger": "Database-backed view binding is not a field, calculated field, or lookup path.", "example_fix": "Replace binding or create valid field/path."},
+    {"code": "AGX0403", "severity": "error", "title": "Unknown handler target", "trigger": "Handler target does not resolve.", "example_fix": "Create operation/flow/agent/contract target."},
+    {"code": "AGX0404", "severity": "warning", "title": "Unknown visual component", "trigger": "Component is unknown to the registered component catalog.", "example_fix": "Use known component or register one."},
+    {"code": "AGX0501", "severity": "error", "title": "Invalid rule equality operator", "trigger": "Rule expression uses single = instead of ==.", "example_fix": "Rewrite equality operator."},
+    {"code": "AGX0502", "severity": "error", "title": "Unknown rule field", "trigger": "Rule references unknown field.", "example_fix": "Correct field or lookup path."},
+    {"code": "AGX0601", "severity": "error", "title": "Invalid strict workflow state", "trigger": "Flow transition references undeclared or unreachable state where strict mode is enabled.", "example_fix": "Add transition or state directive."},
+    {"code": "AGX0602", "severity": "warning", "title": "Unassigned human task", "trigger": "Human task has no assignee/participant.", "example_fix": "Add participant or assignment."},
+    {"code": "AGX0701", "severity": "error", "title": "Unknown permission resource", "trigger": "Permission references unknown resource.", "example_fix": "Create resource or correct permission subject."},
+    {"code": "AGX0702", "severity": "error", "title": "Secret literal in source", "trigger": "Secret literal appears in source.", "example_fix": "Replace with env/secret binding."},
+    {"code": "AGX0801", "severity": "error", "title": "Invalid deployment or contract reference", "trigger": "Deployment unit target is unknown.", "example_fix": "Use supported unit kind."},
+    {"code": "AGX0802", "severity": "error", "title": "Invalid package or target reference", "trigger": "Package target does not match app targets.", "example_fix": "Add app target or change package target."},
+    {"code": "AGX0901", "severity": "error", "title": "Unknown PBC catalog entry", "trigger": "Composition includes unknown PBC key.", "example_fix": "Register PBC or correct key."},
+    {"code": "AGX0902", "severity": "error", "title": "Unknown cross-PBC contract", "trigger": "Cross-PBC connection references unknown event/API/command.", "example_fix": "Declare contract or correct reference."},
+    {"code": "AGX0903", "severity": "error", "title": "Private PBC table access", "trigger": "PBC attempts shared private-table access.", "example_fix": "Use API/event/projection contract."},
+    {"code": "AGX1001", "severity": "error", "title": "Unknown agent reference", "trigger": "Agent skill target does not resolve.", "example_fix": "Create operation/flow/contract target."},
+    {"code": "AGX1002", "severity": "error", "title": "Write-capable agent skill lacks permission", "trigger": "Agent has write-capable skill with no permission.", "example_fix": "Add permission or remove skill."},
+    {"code": "AGX1101", "severity": "warning", "title": "Destructive migration", "trigger": "Migration plan contains destructive drop.", "example_fix": "Require explicit migration approval."},
+    {"code": "AGX1201", "severity": "error", "title": "Unsupported natural-language plan", "trigger": "Natural-language plan cannot be represented as DSL diff.", "example_fix": "Ask for narrower DSL-scoped change."},
+)
+_DIAGNOSTIC_BASE_SOURCE = """
+app DiagnosticDemo { targets: web }
+
+table Customer {
+  id: int pk
+  name: string
+}
+
+table Invoice {
+  id: int pk
+  customer_id: int -> Customer.id
+  total: decimal
+}
+
+view InvoiceForm for Invoice {
+  Main: customer.name, total
+}
+
+operation SubmitInvoice {
+  draft -> done
+}
+"""
+DIAGNOSTIC_FIXTURES = (
+    {"name": "agx0001_parse.appgen", "runner": "lint", "expected_codes": ("AGX0001",), "source": "app Broken { table Missing { id: int pk "},
+    {"name": "agx0101_duplicate.appgen", "runner": "lint", "expected_codes": ("AGX0101",), "source": "app D { targets: web } table Customer { id: int pk } table Customer { id: int pk }"},
+    {"name": "agx0201_unknown_type.appgen", "runner": "lint", "expected_codes": ("AGX0201",), "source": "app D { targets: web } table Customer { id: int pk; name: galaxy }"},
+    {"name": "agx0202_calculated.appgen", "runner": "lint", "expected_codes": ("AGX0202",), "source": "app D { targets: web } table Invoice { id: int pk; total: decimal = subtotal + tax }"},
+    {"name": "agx0301_relation_table.appgen", "runner": "lint", "expected_codes": ("AGX0301",), "source": "app D { targets: web } table Invoice { id: int pk; customer_id: int -> Missing.id }"},
+    {"name": "agx0302_relation_field.appgen", "runner": "lint", "expected_codes": ("AGX0302",), "source": "app D { targets: web } table Customer { id: int pk } table Invoice { id: int pk; customer_id: int -> Customer.missing }"},
+    {"name": "agx0303_lookup.appgen", "runner": "lint", "expected_codes": ("AGX0303",), "source": "app D { targets: web } table Customer { id: int pk; name: string } table Invoice { id: int pk; customer_id: int -> Customer.id } view InvoiceForm for Invoice { Main: customer.missing }"},
+    {"name": "agx0304_multihop.appgen", "runner": "lint", "expected_codes": ("AGX0304",), "source": "app D { targets: web } table City { id: int pk; name: string } table Customer { id: int pk; city_id: int } table Invoice { id: int pk; customer_id: int -> Customer.id } view InvoiceForm for Invoice { Main: customer.city.name }"},
+    {"name": "agx0401_view_table.appgen", "runner": "lint", "expected_codes": ("AGX0401",), "source": "app D { targets: web } table Customer { id: int pk } view MissingForm for Missing { Main: id }"},
+    {"name": "agx0402_view_binding.appgen", "runner": "lint", "expected_codes": ("AGX0402",), "source": "app D { targets: web } table Customer { id: int pk } view CustomerForm for Customer { Main: missing }"},
+    {"name": "agx0403_handler.appgen", "runner": "lint", "expected_codes": ("AGX0403",), "source": "app D { targets: web } table Customer { id: int pk } view CustomerForm for Customer { Main: id; on Save -> MissingOperation }"},
+    {"name": "agx0404_component.appgen", "runner": "lint", "expected_codes": ("AGX0404",), "source": "app D { targets: web } table Customer { id: int pk; name: string } view CustomerForm for Customer { Main: name; @ name UnknownWidget 0 0 4 1 }"},
+    {"name": "agx0501_rule_operator.appgen", "runner": "lint", "expected_codes": ("AGX0501",), "source": "app D { targets: web } table Customer { id: int pk; status: string } rule CustomerPolicy for Customer { status = active }"},
+    {"name": "agx0502_rule_field.appgen", "runner": "lint", "expected_codes": ("AGX0502",), "source": "app D { targets: web } table Customer { id: int pk; status: string } rule CustomerPolicy for Customer { missing == active }"},
+    {"name": "agx0601_flow_strict.appgen", "runner": "lint", "expected_codes": ("AGX0601",), "source": "app D { targets: web } table Customer { id: int pk } flow Review { draft -> approved; strict on; timer missing \"P1D\" -> escalated }"},
+    {"name": "agx0602_human_task.appgen", "runner": "lint", "expected_codes": ("AGX0602",), "source": "app D { targets: web } table Customer { id: int pk } flow Review { draft -> approved; human Review -> approved }"},
+    {"name": "agx0701_permission.appgen", "runner": "lint", "expected_codes": ("AGX0701",), "source": "app D { targets: web } table Customer { id: int pk } role Clerk { Missing: read }"},
+    {"name": "agx0702_secret.appgen", "runner": "lint", "expected_codes": ("AGX0702",), "source": "app D { targets: web } table Customer { id: int pk } llm ApiModel { provider: openai; api_key: \"sk-secret\" }"},
+    {"name": "agx0801_deploy.appgen", "runner": "lint", "expected_codes": ("AGX0801",), "source": "app D { targets: web } table Customer { id: int pk } deploy Production { unit Missing as microservice }"},
+    {"name": "agx0802_package.appgen", "runner": "lint", "expected_codes": ("AGX0802",), "source": "app D { targets: web } table Customer { id: int pk } package MobileRelease { target: satellite }"},
+    {"name": "agx0901_pbc.appgen", "runner": "lint", "expected_codes": ("AGX0901",), "source": "app D { targets: web } table Customer { id: int pk } composition Suite { include pbc missing_pbc version 1.0.0 }"},
+    {"name": "agx0902_pbc_contract.appgen", "runner": "lint", "expected_codes": ("AGX0902",), "source": "app D { targets: web } table Customer { id: int pk } composition Suite { include pbc gl_core version 1.0.0; include pbc ap_automation version 1.0.0; connect ap_automation domain_event MissingEvent -> gl_core domain_event MissingCommand }"},
+    {"name": "agx0903_pbc_table.appgen", "runner": "lint", "expected_codes": ("AGX0903",), "source": "app D { targets: web } table Customer { id: int pk } composition Suite { include pbc gl_core version 1.0.0; include pbc ap_automation version 1.0.0; connect ap_automation private_table invoice -> gl_core private_table journal_entry }"},
+    {"name": "agx1001_agent_target.appgen", "runner": "lint", "expected_codes": ("AGX1001",), "source": "app D { targets: web } table Customer { id: int pk } llm LocalModel { provider: ollama; mode: local } agent Assistant { provider: LocalModel; on Run -> MissingOperation }"},
+    {"name": "agx1002_agent_permission.appgen", "runner": "lint", "expected_codes": ("AGX1002",), "source": "app D { targets: web } table Customer { id: int pk } llm LocalModel { provider: ollama; mode: local } agent Assistant { provider: LocalModel; tools: write }"},
+    {"name": "agx1101_migration.appgen", "runner": "migration", "expected_codes": ("AGX1101",), "previous_source": _DIAGNOSTIC_BASE_SOURCE, "source": "app DiagnosticDemo { targets: web }\n\ntable Customer { id: int pk; name: string }\n"},
+    {"name": "agx1201_nl.appgen", "runner": "nl-plan", "expected_codes": ("AGX1201",), "prompt": "Replace the runtime with hand-written generated code outside the DSL", "source": _DIAGNOSTIC_BASE_SOURCE},
+)
 LEGACY_CONTEXTUAL_TOKENS = ("ref", "include", "require", "expose", "connect")
 KEYWORD_FREE_SYNTAX = (
     "-> references",
@@ -4972,6 +5271,7 @@ def _validate_app_options(app_options: dict[str, str]) -> None:
 def _validate_schema(schema: AppSchema) -> None:
     table_map = {table.name: table for table in schema.tables}
     field_map = {table.name: _field_names(table) for table in schema.tables}
+    enum_names = {enum.name for enum in schema.enums}
     errors: list[str] = []
 
     errors.extend(_duplicate_name_errors("table", (table.name for table in schema.tables)))
@@ -5005,6 +5305,8 @@ def _validate_schema(schema: AppSchema) -> None:
 
     for table in schema.tables:
         for column in table.columns:
+            if not _known_field_type(column.type_name, table_map, enum_names):
+                errors.append(f"Unknown field type: {table.name}.{column.name} uses {column.type_name}")
             if column.references:
                 target_table, target_column = column.references
                 if target_table not in table_map:
@@ -5026,12 +5328,22 @@ def _validate_schema(schema: AppSchema) -> None:
         allowed = field_map[view.table]
         for field_name in view.fields:
             if field_name not in allowed and not _valid_lookup_path(view.table, field_name, table_map, field_map):
-                errors.append(f"Unknown view field: {view.name}.{field_name}")
+                if _lookup_breaks_mid_chain(view.table, field_name, table_map, field_map):
+                    errors.append(f"Multi-hop lookup chain breaks: {view.name}.{field_name}")
+                elif _lookup_starts_with_relationship(view.table, field_name, table_map):
+                    errors.append(f"Unresolved lookup path: {view.name}.{field_name}")
+                else:
+                    errors.append(f"Unknown view field: {view.name}.{field_name}")
         for component in view.components:
             if component.field and component.field not in allowed and not _valid_lookup_path(
                 view.table, component.field, table_map, field_map
             ):
-                errors.append(f"Unknown component field: {view.name}.{component.field}")
+                if _lookup_breaks_mid_chain(view.table, component.field, table_map, field_map):
+                    errors.append(f"Multi-hop lookup chain breaks: {view.name}.{component.field}")
+                elif _lookup_starts_with_relationship(view.table, component.field, table_map):
+                    errors.append(f"Unresolved lookup path: {view.name}.{component.field}")
+                else:
+                    errors.append(f"Unknown component field: {view.name}.{component.field}")
 
     for role in schema.roles:
         for permission in role.permissions:
@@ -5125,6 +5437,190 @@ def _explicit_rls_targets(app_options: dict[str, str]) -> tuple[tuple[str, str],
         table_name, field_name = target.split(".", 1)
         targets.append((table_name, field_name))
     return tuple(targets)
+
+
+def _preparse_tooling_errors(source: str) -> tuple[str, ...]:
+    errors: list[str] = []
+    for block in re.finditer(r"\brule\s+[A-Za-z_][A-Za-z0-9_]*\s+for\s+[A-Za-z_][A-Za-z0-9_]*\s*\{(?P<body>.*?)\}", source, re.S):
+        body = block.group("body")
+        if re.search(r"(?<![!<>=])=(?!=)", body):
+            errors.append("Rule expression uses single = instead of ==.")
+    return tuple(errors)
+
+
+def _tooling_policy_diagnostics(schema: AppSchema) -> tuple[tuple[str, ...], tuple[str, ...]]:
+    table_map = {table.name: table for table in schema.tables}
+    field_map = {table.name: _field_names(table) for table in schema.tables}
+    handler_targets = _handler_target_names(schema)
+    pbc_catalog = _pbc_catalog_by_key()
+    errors: list[str] = []
+    warnings: list[str] = []
+
+    for view in schema.views:
+        for component in view.components:
+            if component.component not in _known_component_names(schema):
+                warnings.append(f"Unknown visual component: {view.name}.{component.component}")
+            if component.x < 0 or component.y < 0 or component.w <= 0 or component.h <= 0:
+                errors.append(f"Invalid component placement: {view.name}.{component.field}")
+
+    for flow in schema.flows:
+        states = {state for step in flow.steps for state in (step.source, step.target)}
+        strict = any(
+            directive.verb == "strict" and any(value.lower() in {"on", "true", "yes"} for value in directive.values)
+            for directive in flow.directives
+        )
+        for directive in flow.directives:
+            if directive.verb == "human" and "assigned" not in directive.values:
+                warnings.append(f"Human task has no assignee: {flow.name}.{_first_or_none(directive.values) or 'task'}")
+            if strict and directive.verb in {"timer", "compensate"}:
+                state = _first_or_none(directive.values)
+                if state and state not in states:
+                    errors.append(f"Flow strict state is undeclared: {flow.name}.{state}")
+                if directive.target and directive.target not in states:
+                    errors.append(f"Flow strict state is undeclared: {flow.name}.{directive.target}")
+
+    for block in schema.platform_blocks:
+        if block.kind != "composition":
+            continue
+        included = {_composition_include_key(include) for include in block.options.get("include", ())}
+        for key in tuple(included):
+            if key and key not in pbc_catalog:
+                errors.append(f"Unknown PBC catalog entry: {block.name}.{key}")
+        for raw_connection in block.options.get("connect", ()):
+            connection = _semantic_composition_connection(raw_connection)
+            for side in ("from", "to"):
+                key = connection.get(f"{side}_pbc")
+                if key and key not in pbc_catalog:
+                    errors.append(f"Unknown PBC catalog entry: {block.name}.{key}")
+            if str(connection.get("from_kind") or "").endswith("table") or str(connection.get("to_kind") or "").endswith("table"):
+                errors.append(f"Private PBC table access: {block.name}.{raw_connection}")
+                continue
+            if not _pbc_connection_contract_resolves(connection, pbc_catalog):
+                errors.append(f"Unknown cross-PBC contract: {block.name}.{raw_connection}")
+
+    for agent in schema.agents:
+        for handler in agent.handlers:
+            if handler.target not in handler_targets:
+                errors.append(f"Unknown agent skill target: {agent.name}.{handler.target}")
+        for skill in agent.competencies:
+            if skill.target and skill.target not in handler_targets:
+                errors.append(f"Unknown agent skill target: {agent.name}.{skill.target}")
+            if skill.verb.lower() in {"write", "create", "update", "delete", "mutate", "post"} and not agent.permissions:
+                errors.append(f"Agent write-capable skill has no permission: {agent.name}.{skill.verb}")
+        if any(tool.lower() in {"write", "create", "update", "delete", "mutate"} for tool in agent.tools) and not agent.permissions:
+            errors.append(f"Agent write-capable skill has no permission: {agent.name}.tools")
+
+    return tuple(errors), tuple(warnings)
+
+
+def _known_field_type(type_name: str, table_map: dict[str, TableSchema], enum_names: set[str]) -> bool:
+    base = re.sub(r"\(.*\)$", "", type_name or "").removesuffix("[]")
+    known = {
+        "bool",
+        "boolean",
+        "date",
+        "datetime",
+        "decimal",
+        "email",
+        "file",
+        "float",
+        "image",
+        "int",
+        "integer",
+        "json",
+        "jsonb",
+        "money",
+        "number",
+        "string",
+        "text",
+        "time",
+        "uuid",
+    }
+    return base in known or base in table_map or base in enum_names
+
+
+def _lookup_breaks_mid_chain(
+    table_name: str,
+    path: str,
+    table_map: dict[str, TableSchema],
+    field_map: dict[str, set[str]],
+) -> bool:
+    parts = path.split(".")
+    if len(parts) < 3 or table_name not in table_map:
+        return False
+    current_table = table_name
+    for index, part in enumerate(parts[:-1]):
+        if part not in field_map.get(current_table, set()):
+            return index > 0
+        reference = _reference_for_lookup_part(table_map[current_table], part)
+        if reference is None:
+            return True
+        current_table = reference[0]
+    return False
+
+
+def _lookup_starts_with_relationship(
+    table_name: str,
+    path: str,
+    table_map: dict[str, TableSchema],
+) -> bool:
+    first, dot, _rest = path.partition(".")
+    if not dot or table_name not in table_map:
+        return False
+    return _reference_for_lookup_part(table_map[table_name], first) is not None
+
+
+def _known_component_names(schema: AppSchema) -> set[str]:
+    names = {
+        "Button",
+        "Checkbox",
+        "DatePicker",
+        "EmailInput",
+        "FileUpload",
+        "Grid",
+        "GroupBox",
+        "Label",
+        "ListBox",
+        "Lookup",
+        "NumberInput",
+        "Panel",
+        "RadioButton",
+        "RadioGroup",
+        "Select",
+        "TextArea",
+        "TextBox",
+        "TreeView",
+    }
+    names.update(contract.name for contract in schema.component_contracts)
+    return names
+
+
+def _handler_target_names(schema: AppSchema) -> set[str]:
+    targets = {flow.name for flow in schema.flows}
+    targets.update(agent.name for agent in schema.agents)
+    targets.update(block.name for block in schema.platform_blocks if block.kind == "operation")
+    targets.update(contract.name for contract in _enterprise_contracts(schema))
+    return targets
+
+
+def _pbc_connection_contract_resolves(connection: dict, catalog: dict[str, dict]) -> bool:
+    for side in ("from", "to"):
+        key = connection.get(f"{side}_pbc")
+        kind = connection.get(f"{side}_kind")
+        contract = connection.get(f"{side}_contract")
+        if not key or key not in catalog or not kind or not contract:
+            return False
+        pbc = catalog[key]
+        if kind in {"event", "emits", "consumes"} and contract not in set(pbc.get("emits", ())) | set(pbc.get("consumes", ())):
+            return False
+        if kind in {"api", "command"}:
+            api_names = set(pbc.get("apis", ()))
+            api_tokens = {token for api in api_names for token in re.findall(r"[A-Za-z_][A-Za-z0-9_]*", api)}
+            if contract not in api_names and contract not in api_tokens:
+                return False
+        if kind not in {"api", "command", "event", "emits", "consumes"}:
+            return False
+    return True
 
 
 def _duplicate_name_errors(kind: str, names: Iterable[str]) -> list[str]:
@@ -5748,13 +6244,21 @@ def _composition_block(ctx) -> PlatformBlockSchema:
             values = tuple(_agentic_value(value) for value in item.agenticOption().agenticValue())
             options[item.agenticOption().IDENT().getText()] = values
         elif text.startswith("includepbc"):
-            options["include"] = (*options.get("include", ()), text.replace("includepbc", "", 1))
+            key = item.IDENT(0).getText()
+            version_values = tuple(_agentic_value(value) for value in item.agenticValue())
+            version = version_values[0] if version_values else ""
+            options["include"] = (*options.get("include", ()), f"{key} version {version}".strip())
         elif text.startswith("require"):
             options["require"] = (*options.get("require", ()), text.replace("require", "", 1))
         elif text.startswith("expose"):
             options["expose"] = (*options.get("expose", ()), text.replace("expose", "", 1))
         elif text.startswith("connect"):
-            options["connect"] = (*options.get("connect", ()), text.replace("connect", "", 1))
+            identifiers = [token.getText() for token in item.IDENT()]
+            if len(identifiers) == 6:
+                connection = f"{identifiers[0]} {identifiers[1]} {identifiers[2]} -> {identifiers[3]} {identifiers[4]} {identifiers[5]}"
+            else:
+                connection = text.replace("connect", "", 1)
+            options["connect"] = (*options.get("connect", ()), connection)
     return PlatformBlockSchema(kind="composition", name=ctx.IDENT().getText(), options=options)
 
 
