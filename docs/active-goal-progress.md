@@ -2955,3 +2955,12 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   touched CLI/parser modules, `tests/test_dsl_tooling_contracts.py -q`, focused
   DSL platform/CLI regression tests, scoped diff whitespace check, and
   restricted-name scan. Commit: `8f874012`.
+- Current package evidence pass makes the documented `appgen package --out`
+  release-evidence generation durable. Package verification now materializes
+  `appgen-release-evidence.json` under the requested output directory with the
+  selected target reports, release checks, and `appgen.release-evidence-bundle.v1`
+  payload, while keeping the CLI JSON report stable for automation. Verification
+  passed: Python compile for touched CLI/parser modules,
+  `tests/test_dsl_tooling_contracts.py -q`, focused DSL platform/CLI regression
+  tests, scoped diff whitespace check, and restricted-name scan. Commit:
+  `09006a04`.
