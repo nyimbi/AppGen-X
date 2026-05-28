@@ -1,3 +1,7 @@
+from hashlib import sha256
+
+from .defense_app import OWNED_TABLES as APP_OWNED_TABLES, document_instruction_mutation_plan
+
 PBC_KEY = 'defense_readiness_logistics'
 OWNED_TABLES = ('defense_readiness_logistics_unit_readiness',
  'defense_readiness_logistics_mission_asset',
@@ -14,6 +18,7 @@ OWNED_TABLES = ('defense_readiness_logistics_unit_readiness',
  'defense_readiness_logistics_appgen_outbox_event',
  'defense_readiness_logistics_appgen_inbox_event',
  'defense_readiness_logistics_appgen_dead_letter_event')
+OWNED_TABLES = APP_OWNED_TABLES + tuple(table for table in OWNED_TABLES if table not in APP_OWNED_TABLES)
 
 def agent_skill_manifest():
     skills = tuple({'name': name, 'scope': PBC_KEY, 'description': f'{name} for {PBC_KEY}', 'requires_confirmation_for_mutation': True, 'uses_appgen_event_contract': True, 'stream_engine_picker_visible': False} for name in (f'{PBC_KEY}_guide_user', f'{PBC_KEY}_read_records', f'{PBC_KEY}_create_record', f'{PBC_KEY}_update_record'))
@@ -22,8 +27,12 @@ def agent_skill_manifest():
 def chatbot_interface_contract():
     return {'ok': True, 'pbc': PBC_KEY, 'entrypoint': f'/assistant/pbc/{PBC_KEY}', 'single_agent_contribution': f'{PBC_KEY}_skills', 'capabilities': ('task_guidance','document_instruction_intake','governed_datastore_crud','mutation_preview'), 'side_effects': ()}
 
+def _stable_digest(value):
+    return sha256(repr(value).encode('utf-8')).hexdigest()
+
 def document_instruction_plan(document, instruction):
-    return {'ok': True, 'pbc': PBC_KEY, 'document_digest': str(abs(hash(document))), 'instruction': instruction, 'candidate_tables': OWNED_TABLES[:3], 'requires_human_confirmation': True, 'crud_preview': {'operation': 'create', 'event_contract': 'AppGen-X'}, 'side_effects': ()}
+    domain_plan = document_instruction_mutation_plan(document, instruction)
+    return {'ok': True, 'pbc': PBC_KEY, 'document_digest': _stable_digest(document), 'instruction': instruction, 'candidate_tables': (domain_plan['target_table'],), 'requires_human_confirmation': True, 'requires_citations': True, 'domain_plan': domain_plan, 'crud_preview': {'operation': domain_plan['proposed_operation'], 'target_table': domain_plan['target_table'], 'event_contract': 'AppGen-X'}, 'side_effects': ()}
 
 def datastore_crud_plan(action, table=None, payload=None):
     target = table or OWNED_TABLES[0]
