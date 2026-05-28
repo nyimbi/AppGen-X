@@ -3017,3 +3017,14 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   `tests/test_dsl_tooling_contracts.py -q`, focused DSL platform/CLI regression
   tests, scoped diff whitespace check, and restricted-name scan. Commit:
   `e035c0dd`.
+- Current VS Code extension pass makes the first documented editor integration
+  surface executable. The repository now ships `extensions/vscode-appgen-x`
+  with an AppGen-X language contribution for `.appgen`, `.ag`, and `.ags`
+  files, syntax highlighting, language configuration, command palette actions,
+  and a dependency-free JSON-RPC client that launches `appgen lsp --stdio` and
+  registers diagnostics, completion, hover, definition, references, document
+  symbols, workspace symbols, rename, code actions, and formatting providers.
+  Verification passed: JavaScript syntax check, JSON manifest/config/grammar
+  validation, `tests/test_dsl_tooling_contracts.py -q`, focused DSL
+  platform/CLI regression tests, staged diff whitespace check, and
+  restricted-name scan. Commit: `96621bc0`.
