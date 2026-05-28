@@ -27,6 +27,7 @@ from pyAppGen.dsl import semantic_model_dsl
 from pyAppGen.dsl import symbol_coverage_dsl
 from pyAppGen.dsl import validate_report_dsl
 from pyAppGen.dsl import completion_coverage_dsl
+from pyAppGen.dsl import apply_lsp_code_action_dsl
 
 
 TOOLING_SAMPLE = """
@@ -844,6 +845,65 @@ def test_lsp_service_exposes_code_action_for_missing_handler_target() -> None:
     assert report["ok"] is False
     assert any(item["code"] == "AGX0403" for item in report["publishDiagnostics"]["source_report"]["diagnostics"])
     assert any(action["data"]["id"] == "create_operation_from_handler" for action in report["codeAction"]["actions"])
+
+
+def test_lsp_code_action_apply_patches_missing_operation_and_lookup_directive(tmp_path: Path) -> None:
+    missing_operation = """
+    app Bad { targets: web }
+    table Invoice { id: int pk }
+    view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
+    """
+    operation = apply_lsp_code_action_dsl(
+        missing_operation,
+        source_name="bad.appgen",
+        action_id="create_operation_from_handler",
+    )
+
+    assert operation["format"] == "appgen.lsp-code-action-apply.v1"
+    assert operation["ok"] is True
+    assert operation["changed"] is True
+    assert "operation SubmitInvoice" in operation["patched_source"]
+    assert operation["lint"]["ok"] is True
+
+    missing_lookup = """
+    app BadLookup { targets: web }
+    table Customer { id: int pk; name: string }
+    table Invoice { id: int pk; customer_id: int -> Customer.id }
+    view InvoiceForm for Invoice { Main: customer.missing_name }
+    """
+    lookup = apply_lsp_code_action_dsl(
+        missing_lookup,
+        source_name="lookup.appgen",
+        action_id="add_lookup_directive",
+    )
+
+    assert lookup["changed"] is True
+    assert "lookup missing_name (customer.missing_name)" in lookup["patched_source"]
+    assert lookup["applied_edits"]
+
+    source_path = tmp_path / "bad.appgen"
+    source_path.write_text(missing_operation, encoding="utf-8")
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pyAppGen",
+            "lsp",
+            str(source_path),
+            "--apply-code-action",
+            "create_operation_from_handler",
+            "--json",
+        ],
+        check=False,
+        cwd=Path(__file__).resolve().parents[1],
+        text=True,
+        capture_output=True,
+    )
+    payload = json.loads(result.stdout)
+
+    assert result.returncode == 0, result.stderr
+    assert payload["format"] == "appgen.lsp-code-action-apply.v1"
+    assert "operation SubmitInvoice" in payload["patched_source"]
 
 
 def test_lsp_code_actions_cover_required_tooling_quick_fixes() -> None:

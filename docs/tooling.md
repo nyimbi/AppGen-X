@@ -733,6 +733,13 @@ Required code actions:
 - add package for app target;
 - create smoke test declaration for operation/flow/PBC.
 
+Code-action application is executable through
+`appgen.lsp-code-action-apply.v1`. The CLI supports
+`appgen lsp app.appgen --apply-code-action <id> --json`, returning patched DSL,
+applied text edits, and the lint result after applying the selected quick fix.
+This is the evidence path for missing-operation and lookup-directive quick
+fixes used by IDEs and agents.
+
 ## IDE Integration
 
 Two editor surfaces are required.

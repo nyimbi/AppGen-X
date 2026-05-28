@@ -1128,6 +1128,7 @@ def dsl_tooling_cli(argv: Iterable[str] | None = None) -> int:
     lsp_parser.add_argument("--position")
     lsp_parser.add_argument("--prefix", default="")
     lsp_parser.add_argument("--rename")
+    lsp_parser.add_argument("--apply-code-action")
     lsp_parser.add_argument("--stdio", action="store_true")
     lsp_parser.add_argument("--json", action="store_true")
 
@@ -1251,6 +1252,14 @@ def dsl_tooling_cli(argv: Iterable[str] | None = None) -> int:
     if args.command == "lsp":
         if args.stdio:
             return lsp_stdio_server()
+        if args.apply_code_action:
+            report = apply_lsp_code_action_dsl(
+                source,
+                action_id=args.apply_code_action,
+                source_name=str(path),
+            )
+            _emit_tooling_payload(report, as_json=args.json)
+            return 0 if report["ok"] else 1
         report = lsp_service_dsl(
             source,
             source_name=str(path),
@@ -2848,6 +2857,71 @@ def lsp_code_actions_dsl(text: str, *, source_name: str | None = None) -> dict:
         )
     actions.extend(_lsp_required_quick_actions(text, source_name=source_name))
     return {"format": "appgen.lsp-code-actions.v1", "ok": True, "actions": tuple(actions)}
+
+
+def apply_lsp_code_action_dsl(
+    text: str,
+    *,
+    action_id: str,
+    source_name: str | None = None,
+) -> dict:
+    """Apply one generated LSP quick-fix edit and return patched DSL evidence."""
+    source = text or ""
+    actions = lsp_code_actions_dsl(source, source_name=source_name)["actions"]
+    matches = tuple(action for action in actions if action.get("data", {}).get("id") == action_id)
+    if not matches:
+        return {
+            "format": "appgen.lsp-code-action-apply.v1",
+            "ok": False,
+            "action_id": action_id,
+            "changed": False,
+            "patched_source": source,
+            "diagnostics": (
+                _spec_diagnostic(source, "AGX0100", "error", f"Unknown code action: {action_id}"),
+            ),
+            "available_actions": tuple(action.get("data", {}).get("id") for action in actions),
+        }
+    action = matches[0]
+    uri = source_name or "memory://appgen"
+    edits = tuple(action.get("edit", {}).get("changes", {}).get(uri, ()))
+    patched = _apply_lsp_text_edits(source, edits)
+    lint = lint_report_dsl(patched, source_name=source_name)
+    return {
+        "format": "appgen.lsp-code-action-apply.v1",
+        "ok": bool(edits) and lint["ok"],
+        "action_id": action_id,
+        "title": action.get("title"),
+        "changed": patched != source,
+        "source": source_name,
+        "patched_source": patched,
+        "applied_edits": edits,
+        "lint": lint,
+        "diagnostics": lint["diagnostics"],
+    }
+
+
+def _apply_lsp_text_edits(source: str, edits: Iterable[dict]) -> str:
+    patched = source or ""
+    ordered = sorted(
+        tuple(edits or ()),
+        key=lambda edit: _lsp_position_to_index(patched, edit.get("range", {}).get("start", {})),
+        reverse=True,
+    )
+    for edit in ordered:
+        edit_range = edit.get("range", {})
+        start = _lsp_position_to_index(patched, edit_range.get("start", {}))
+        end = _lsp_position_to_index(patched, edit_range.get("end", {}))
+        patched = patched[:start] + str(edit.get("newText", "")) + patched[end:]
+    return patched
+
+
+def _lsp_position_to_index(source: str, position: dict) -> int:
+    line = max(int(position.get("line", 0)), 0)
+    character = max(int(position.get("character", 0)), 0)
+    lines = (source or "").splitlines(keepends=True)
+    if line >= len(lines):
+        return len(source or "")
+    return sum(len(item) for item in lines[:line]) + min(character, len(lines[line].rstrip("\r\n")))
 
 
 def lsp_formatting_dsl(text: str, *, source_name: str | None = None) -> dict:
