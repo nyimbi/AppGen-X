@@ -559,8 +559,9 @@ appgen generate app.appgen --out generated/app
 appgen generate app.appgen --target web --target mobile --out generated/app
 ```
 
-Generation must fail if lint has errors unless `--allow-warnings` only affects
-warnings.
+Generation fails before writing artifacts when lint has errors. Lint warnings
+also block generation by default; `--allow-warnings` permits warning-only
+sources and does not permit errors.
 
 ### `appgen graph`
 

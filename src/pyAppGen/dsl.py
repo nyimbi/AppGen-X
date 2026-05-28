@@ -1671,6 +1671,20 @@ def generate_report_dsl(
             "diagnostics": tuple(lint["diagnostics"]),
             "blocking_gaps": ("lint_errors",),
         }
+    if warnings and not allow_warnings:
+        return {
+            "format": "appgen.generate-report.v1",
+            "ok": False,
+            "source": source_name,
+            "output_dir": str(output_path),
+            "targets": requested_targets,
+            "allow_warnings": allow_warnings,
+            "validation": validation,
+            "generated": False,
+            "artifacts": (),
+            "diagnostics": tuple(lint["diagnostics"]),
+            "blocking_gaps": ("lint_warnings",),
+        }
     try:
         from .gen import generate_app_from_schema
 
@@ -1919,6 +1933,17 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             targets=("web", "mobile", "desktop", "pbc", "deployment"),
             output_dir=str(Path(tmp) / "package"),
         )
+        warning_generation_blocked = generate_report_dsl(
+            _tooling_audit_warning_generation_sample(),
+            source_name="warning.appgen",
+            output_dir=Path(tmp) / "warning-blocked",
+        )
+        warning_generation_allowed = generate_report_dsl(
+            _tooling_audit_warning_generation_sample(),
+            source_name="warning.appgen",
+            output_dir=Path(tmp) / "warning-allowed",
+            allow_warnings=True,
+        )
 
     diagnostics = diagnostic_catalog_dsl()
     diagnostic_fixtures = diagnostic_fixture_audit_dsl()
@@ -1971,10 +1996,20 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
         ),
         _tooling_audit_check(
             "cli_validation_and_generation_contracts",
-            validation["ok"] and generation["ok"] and generation["generated"],
-            "Validation and generation reports gate lint/semantic readiness before writing generated artifacts.",
+            validation["ok"]
+            and generation["ok"]
+            and generation["generated"]
+            and not warning_generation_blocked["ok"]
+            and "lint_warnings" in warning_generation_blocked["blocking_gaps"]
+            and warning_generation_allowed["ok"],
+            "Validation and generation reports gate lint/semantic readiness, block warnings by default, and allow warnings only when requested.",
             "docs/tooling.md#command-line-interface",
-            {"validate": validation.get("format"), "generate": generation.get("format")},
+            {
+                "validate": validation.get("format"),
+                "generate": generation.get("format"),
+                "warning_block": warning_generation_blocked.get("blocking_gaps"),
+                "allow_warnings": warning_generation_allowed.get("allow_warnings"),
+            },
         ),
         _tooling_audit_check(
             "graph_and_explain_tooling",
@@ -2612,6 +2647,22 @@ table Customer {
 view CustomerForm for Customer {
   Main: name
   @ name CustomGauge 0 0 4 1
+}
+"""
+
+
+def _tooling_audit_warning_generation_sample() -> str:
+    return """
+app WarningDemo { targets: web }
+
+table Customer {
+  id: int pk
+  name: string
+}
+
+view CustomerForm for Customer {
+  Main: name
+  @ name UnknownWidget 0 0 4 1
 }
 """
 

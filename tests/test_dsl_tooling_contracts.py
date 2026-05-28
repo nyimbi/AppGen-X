@@ -1904,6 +1904,45 @@ def test_generate_report_writes_validated_dsl_app_and_blocks_lint_errors(tmp_pat
     assert "lint_errors" in blocked["blocking_gaps"]
 
 
+def test_generate_report_blocks_warnings_unless_allow_warnings_is_set(tmp_path: Path) -> None:
+    warning_source = """
+app WarningDemo { targets: web }
+table Customer { id: int pk; name: string }
+view CustomerForm for Customer {
+  Main: name
+  @ name UnknownWidget 0 0 4 1
+}
+"""
+    blocked = generate_report_dsl(
+        warning_source,
+        source_name="warning.appgen",
+        output_dir=tmp_path / "blocked",
+    )
+    allowed = generate_report_dsl(
+        warning_source,
+        source_name="warning.appgen",
+        output_dir=tmp_path / "allowed",
+        allow_warnings=True,
+    )
+    error_blocked = generate_report_dsl(
+        "app Bad { targets: web } table Invoice { total: galaxy }",
+        source_name="bad.appgen",
+        output_dir=tmp_path / "error-blocked",
+        allow_warnings=True,
+    )
+
+    assert blocked["ok"] is False
+    assert blocked["generated"] is False
+    assert "lint_warnings" in blocked["blocking_gaps"]
+    assert any(item["severity"] == "warning" for item in blocked["diagnostics"])
+    assert allowed["ok"] is True
+    assert allowed["generated"] is True
+    assert (tmp_path / "allowed" / "appgen.json").exists()
+    assert error_blocked["ok"] is False
+    assert error_blocked["generated"] is False
+    assert "lint_errors" in error_blocked["blocking_gaps"]
+
+
 def test_appgen_doctor_and_generate_subcommands_emit_json_contracts(tmp_path: Path) -> None:
     source_path = tmp_path / "release.appgen"
     output_dir = tmp_path / "app"
@@ -1940,6 +1979,64 @@ def test_appgen_doctor_and_generate_subcommands_emit_json_contracts(tmp_path: Pa
     assert json.loads(doctor_result.stdout)["format"] == "appgen.doctor-report.v1"
     assert json.loads(generate_result.stdout)["format"] == "appgen.generate-report.v1"
     assert (output_dir / "appgen.json").exists()
+
+
+def test_appgen_generate_subcommand_requires_allow_warnings_for_lint_warnings(tmp_path: Path) -> None:
+    source_path = tmp_path / "warning.appgen"
+    blocked_dir = tmp_path / "blocked"
+    allowed_dir = tmp_path / "allowed"
+    source_path.write_text(
+        """
+app WarningDemo { targets: web }
+table Customer { id: int pk; name: string }
+view CustomerForm for Customer {
+  Main: name
+  @ name UnknownWidget 0 0 4 1
+}
+""",
+        encoding="utf-8",
+    )
+    root = Path(__file__).resolve().parents[1]
+
+    blocked = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pyAppGen",
+            "generate",
+            str(source_path),
+            "--out",
+            str(blocked_dir),
+            "--json",
+        ],
+        check=False,
+        cwd=root,
+        text=True,
+        capture_output=True,
+    )
+    allowed = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pyAppGen",
+            "generate",
+            str(source_path),
+            "--out",
+            str(allowed_dir),
+            "--allow-warnings",
+            "--json",
+        ],
+        check=False,
+        cwd=root,
+        text=True,
+        capture_output=True,
+    )
+
+    assert blocked.returncode == 1, blocked.stderr
+    assert "lint_warnings" in json.loads(blocked.stdout)["blocking_gaps"]
+    assert allowed.returncode == 0, allowed.stderr
+    assert json.loads(allowed.stdout)["allow_warnings"] is True
+    assert (allowed_dir / "appgen.json").exists()
 
 
 def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
