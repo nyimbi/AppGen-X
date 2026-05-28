@@ -3209,3 +3209,13 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   entrypoints, focused stdio/audit tests, `tests/test_dsl_tooling_contracts.py
   -q`, tooling-audit JSON proof, scoped diff whitespace check, and
   restricted-name scan. Commit: `8552e35a`.
+- Current designer-sync CLI pass makes visual edit ingestion executable at the
+  command boundary. `appgen designer-sync --edit-json` now parses edit payloads
+  as validated JSON objects, rejects malformed payloads as argparse
+  configuration errors with exit code `2`, and the test suite proves a real
+  visual edit round-trips through the subprocess command. `appgen.tooling-audit
+  --json` now embeds `appgen.designer-sync-cli-audit.v1` covering valid edit
+  application and invalid JSON rejection. Verification passed: Python compile
+  for touched tooling entrypoints, focused designer-sync/audit tests,
+  `tests/test_dsl_tooling_contracts.py -q`, tooling-audit JSON proof, scoped
+  diff whitespace check, and restricted-name scan. Commit: `a17aa45f`.
