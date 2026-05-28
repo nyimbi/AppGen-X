@@ -2,314 +2,314 @@
 
 ## Purpose
 
-This backlog identifies 50 high-impact, high-value improvements for `sustainability_esg_reporting`. Each item is specific to the domain surface currently declared by the PBC and is intended to move the package beyond world-class breadth toward complete specialist-grade coverage.
+This backlog identifies 50 high-impact, high-value improvements for `sustainability_esg_reporting`. Each improvement is specific to ESG metrics, activity data, emissions factors, carbon accounting, scope boundaries, supplier inputs, sustainability targets, framework mapping, disclosure reporting, assurance evidence, climate risk, offsets, controls, and sustainability operations so the PBC can move toward complete specialist-grade domain coverage.
 
 ## Current Domain Evidence Used
 
-- Domain purpose: Owns ESG metrics, activity data, emissions factors, calculations, targets, supplier inputs, assurance evidence, disclosure packs, and sustainability reporting controls.
-- Representative owned tables: `sustainability_esg_reporting_esg_metric`, `sustainability_esg_reporting_esg_activity_record`, `sustainability_esg_reporting_emissions_factor`, `sustainability_esg_reporting_emissions_calculation`, `sustainability_esg_reporting_scope_boundary`, `sustainability_esg_reporting_supplier_esg_input`, `sustainability_esg_reporting_sustainability_target`, `sustainability_esg_reporting_target_progress`, `sustainability_esg_reporting_framework_mapping`, `sustainability_esg_reporting_disclosure_packet`, `sustainability_esg_reporting_assurance_evidence`, `sustainability_esg_reporting_assurance_exception`, ...
-- Representative operations/APIs: `define_esg_metric`, `capture_activity_record`, `register_emissions_factor`, `calculate_emissions`, `define_scope_boundary`, `ingest_supplier_esg_input`, `create_sustainability_target`, `measure_target_progress`, `map_reporting_framework`, `build_disclosure_packet`, `attach_assurance_evidence`, `open_assurance_exception`, ...
-- Representative events: `EsgMetricDefined`, `ActivityRecordCaptured`, `EmissionsCalculated`, `TargetProgressMeasured`, `DisclosurePacketBuilt`, `AssuranceExceptionOpened`.
-- Representative advanced capabilities: `carbon calculation lineage`, `supplier ESG confidence scoring`, `climate scenario simulation`, `assurance anomaly detection`, `framework semantic mapping`, `cryptographic disclosure proof`.
+- Domain scope: ESG metrics, activity records, emissions factors, emissions calculations, scope boundaries, supplier ESG inputs, sustainability targets, target progress, framework mappings, disclosure packets, assurance evidence, assurance exceptions, data quality checks, carbon offsets, climate risk scenarios, ESG exception cases, policy rules, runtime parameters, schema extensions, control assertions, governed models, and AI-assisted ESG reporting.
+- Owned operational surface: `esg_metric`, `esg_activity_record`, `emissions_factor`, `emissions_calculation`, `scope_boundary`, `supplier_esg_input`, `sustainability_target`, `target_progress`, `framework_mapping`, `disclosure_packet`, `assurance_evidence`, `assurance_exception`, `data_quality_check`, `carbon_offset_record`, `climate_risk_scenario`, `esg_exception_case`, `esg_policy_rule`, `esg_runtime_parameter`, `esg_schema_extension`, `esg_control_assertion`, and `esg_governed_model`.
+- Declared operations: define ESG metrics, capture activity records, register emissions factors, calculate emissions, define scope boundaries, ingest supplier ESG inputs, create targets, measure progress, map reporting frameworks, build disclosure packets, attach assurance evidence, open assurance exceptions, run data quality checks, record offsets, simulate climate risk, resolve ESG exceptions, compile rules, and simulate emissions reduction.
+- Declared integrations: consumed `SupplierQualified`, `ShipmentDelivered`, `EnergyUsageRecorded`, and `PolicyChanged` events plus emitted `EsgMetricDefined`, `ActivityRecordCaptured`, `EmissionsCalculated`, `TargetProgressMeasured`, `DisclosurePacketBuilt`, and `AssuranceExceptionOpened`.
+- Declared advanced posture: carbon calculation lineage, supplier ESG confidence scoring, climate scenario simulation, assurance anomaly detection, framework semantic mapping, cryptographic disclosure proof, AppGen-X eventing, owned boundaries, UI workbenches, agent skills, configuration, rules, parameters, release evidence, and runtime smoke checks.
 
 ## 50 Better-Than-World-Class Improvements
 
-### 1. Deep specialist lifecycle semantics for `sustainability_esg_reporting_esg_metric`
+### 1. ESG metric ontology and materiality taxonomy
 
-**Justification:** This owned table is part of the Sustainability ESG Reporting operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns ESG metrics, activity data, emissions factors, calculations, targets, supplier inputs, assurance evidence, disclosure packs, and sustainability reporting controls.
+**Justification:** ESG reporting fails when metrics are treated as generic fields rather than governed concepts with scope, unit, framework meaning, materiality, owner, and assurance expectations.
 
-**Improvement:** Extend `sustainability_esg_reporting_esg_metric` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `emissions_factor_management`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Expand `esg_metric` into a versioned ontology with environmental, social, governance, climate, workforce, supplier, product, and financial-impact categories; materiality linkage; units; boundaries; owner; disclosure frameworks; and assurance level. The workbench should prevent duplicate or conflicting metrics and show every metric's reporting purpose.
 
-### 2. Deep specialist lifecycle semantics for `sustainability_esg_reporting_esg_activity_record`
+### 2. Activity data source registry
 
-**Justification:** This owned table is part of the Sustainability ESG Reporting operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns ESG metrics, activity data, emissions factors, calculations, targets, supplier inputs, assurance evidence, disclosure packs, and sustainability reporting controls.
+**Justification:** Activity records come from meters, invoices, travel, shipments, assets, suppliers, facilities, manual uploads, and operational events with different reliability and auditability.
 
-**Improvement:** Extend `sustainability_esg_reporting_esg_activity_record` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `sustainability_esg_reporting_workflow`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add source-system registration for activity data with source type, expected cadence, data owner, collection method, evidence requirements, quality profile, privacy level, and AppGen-X dependency. Data quality checks should score activity records against their source contract.
 
-### 3. Deep specialist lifecycle semantics for `sustainability_esg_reporting_emissions_factor`
+### 3. Activity record completeness and estimation workflow
 
-**Justification:** This owned table is part of the Sustainability ESG Reporting operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns ESG metrics, activity data, emissions factors, calculations, targets, supplier inputs, assurance evidence, disclosure packs, and sustainability reporting controls.
+**Justification:** ESG reports frequently contain missing or partial activity data that must be estimated transparently rather than ignored.
 
-**Improvement:** Extend `sustainability_esg_reporting_emissions_factor` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `sustainability_esg_reporting_analytics`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Extend `esg_activity_record` with completeness score, missing interval, estimation method, estimation confidence, source gap reason, approval requirement, and replacement policy. The UI should separate measured, estimated, extrapolated, supplier-provided, and corrected activity data.
 
-### 4. Deep specialist lifecycle semantics for `sustainability_esg_reporting_emissions_calculation`
+### 4. Emissions factor governance and expiry controls
 
-**Justification:** This owned table is part of the Sustainability ESG Reporting operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns ESG metrics, activity data, emissions factors, calculations, targets, supplier inputs, assurance evidence, disclosure packs, and sustainability reporting controls.
+**Justification:** Emissions calculations are only credible when factors have valid geography, year, source, unit, methodology, uncertainty, and expiry evidence.
 
-**Improvement:** Extend `sustainability_esg_reporting_emissions_calculation` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `configuration_schema`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Extend `emissions_factor` with factor source, jurisdiction, vintage year, unit basis, methodology, uncertainty range, applicability rules, expiry date, supersession link, and approval state. Calculations should reject expired or incompatible factors unless an explicit exception is approved.
 
-### 5. Deep specialist lifecycle semantics for `sustainability_esg_reporting_scope_boundary`
+### 5. Factor selection explainability
 
-**Justification:** This owned table is part of the Sustainability ESG Reporting operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns ESG metrics, activity data, emissions factors, calculations, targets, supplier inputs, assurance evidence, disclosure packs, and sustainability reporting controls.
+**Justification:** Auditors and sustainability teams need to know why a specific emissions factor was applied to an activity record.
 
-**Improvement:** Extend `sustainability_esg_reporting_scope_boundary` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `rule_engine`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add factor-selection evidence to `emissions_calculation`, including candidate factors, matching rules, rejected factors, conversion logic, uncertainty impact, and policy justification. The agent should explain factor choice in plain language and cite the governing factor record.
 
-### 6. Deep specialist lifecycle semantics for `sustainability_esg_reporting_supplier_esg_input`
+### 6. Unit conversion and physical quantity validation
 
-**Justification:** This owned table is part of the Sustainability ESG Reporting operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns ESG metrics, activity data, emissions factors, calculations, targets, supplier inputs, assurance evidence, disclosure packs, and sustainability reporting controls.
+**Justification:** Carbon calculations are distorted when activity quantities, energy units, mass, distance, spend, and fuel volumes are mixed incorrectly.
 
-**Improvement:** Extend `sustainability_esg_reporting_supplier_esg_input` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `parameter_engine`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add unit normalization, conversion factors, precision rules, dimensional analysis, rounding evidence, and invalid-unit quarantine to activity capture and emissions calculation. Quality checks should fail records whose unit cannot be reconciled to the metric methodology.
 
-### 7. Deep specialist lifecycle semantics for `sustainability_esg_reporting_sustainability_target`
+### 7. Scope boundary legal-entity and facility modeling
 
-**Justification:** This owned table is part of the Sustainability ESG Reporting operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns ESG metrics, activity data, emissions factors, calculations, targets, supplier inputs, assurance evidence, disclosure packs, and sustainability reporting controls.
+**Justification:** Scope 1, Scope 2, Scope 3, social, governance, and regulatory disclosures depend on organizational and operational boundaries.
 
-**Improvement:** Extend `sustainability_esg_reporting_sustainability_target` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `owned_schema_migrations_models`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Extend `scope_boundary` with legal entity, facility, asset, business unit, ownership percentage, operational control, equity share, consolidation method, effective dates, and exclusion rationale. Disclosure packets should show exactly which entities and facilities are inside each boundary.
 
-### 8. Deep specialist lifecycle semantics for `sustainability_esg_reporting_target_progress`
+### 8. Scope 1 direct emissions coverage
 
-**Justification:** This owned table is part of the Sustainability ESG Reporting operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns ESG metrics, activity data, emissions factors, calculations, targets, supplier inputs, assurance evidence, disclosure packs, and sustainability reporting controls.
+**Justification:** Direct emissions require detailed treatment of stationary combustion, mobile combustion, fugitive emissions, process emissions, and refrigerants.
 
-**Improvement:** Extend `sustainability_esg_reporting_target_progress` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `appgen_x_outbox_inbox_eventing`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add Scope 1 activity subtypes, required evidence, calculation methods, factor applicability, leakage treatment, refrigerant global-warming-potential versions, and uncertainty fields. Workbench views should show direct-emissions coverage gaps by facility and activity type.
 
-### 9. Deep specialist lifecycle semantics for `sustainability_esg_reporting_framework_mapping`
+### 9. Scope 2 market-based and location-based accounting
 
-**Justification:** This owned table is part of the Sustainability ESG Reporting operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns ESG metrics, activity data, emissions factors, calculations, targets, supplier inputs, assurance evidence, disclosure packs, and sustainability reporting controls.
+**Justification:** Electricity emissions require parallel market-based and location-based calculations with certificate, contract, grid, and residual mix evidence.
 
-**Improvement:** Extend `sustainability_esg_reporting_framework_mapping` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `idempotent_handlers`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add Scope 2 dual-method calculations, energy attribute certificate records, renewable contract evidence, residual mix factors, grid region mapping, and certificate retirement checks. Reports should reconcile market-based and location-based totals side by side.
 
-### 10. Deep specialist lifecycle semantics for `sustainability_esg_reporting_disclosure_packet`
+### 10. Scope 3 category coverage matrix
 
-**Justification:** This owned table is part of the Sustainability ESG Reporting operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns ESG metrics, activity data, emissions factors, calculations, targets, supplier inputs, assurance evidence, disclosure packs, and sustainability reporting controls.
+**Justification:** Scope 3 reporting spans purchased goods, capital goods, fuel and energy, transport, waste, business travel, commuting, leased assets, product use, end-of-life, franchises, and investments.
 
-**Improvement:** Extend `sustainability_esg_reporting_disclosure_packet` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `retry_dead_letter_evidence`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add a Scope 3 category matrix with category owner, data source, estimation method, supplier dependency, materiality, assurance level, and coverage status. UI should highlight missing categories, low-confidence estimates, and categories excluded with rationale.
 
-### 11. Make `define_esg_metric` a complete command lifecycle
+### 11. Supplier ESG input confidence scoring
 
-**Justification:** High-value users need `define_esg_metric` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Supplier-provided ESG data varies widely in completeness, methodology, recency, assurance, and comparability.
 
-**Improvement:** Implement `define_esg_metric` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `EsgMetricDefined`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Extend `supplier_esg_input` with methodology quality, reporting boundary, assurance level, data vintage, source evidence, supplier confidence, discrepancy score, and acceptance decision. Supplier inputs should be weighted or rejected based on confidence and policy.
 
-### 12. Make `capture_activity_record` a complete command lifecycle
+### 12. Supplier engagement and remediation workflow
 
-**Justification:** High-value users need `capture_activity_record` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Low-quality supplier ESG inputs require follow-up, education, deadlines, escalation, and substitute estimation.
 
-**Improvement:** Implement `capture_activity_record` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `ActivityRecordCaptured`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add supplier remediation cases with requested evidence, due dates, communications, escalation path, temporary estimates, supplier commitments, and closure proof. The agent should draft supplier data requests and explain missing or inconsistent data.
 
-### 13. Make `register_emissions_factor` a complete command lifecycle
+### 13. Product and service carbon attribution
 
-**Justification:** High-value users need `register_emissions_factor` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Many organizations need emissions by product, service, customer, project, shipment, or channel, not only enterprise totals.
 
-**Improvement:** Implement `register_emissions_factor` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `EmissionsCalculated`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add allocation rules that attribute emissions to products, services, customers, shipments, projects, or channels through declared projections. Allocation should store basis, denominator, confidence, and double-counting safeguards while preserving owned boundaries.
 
-### 14. Make `calculate_emissions` a complete command lifecycle
+### 14. Carbon ledger with immutable calculation lineage
 
-**Justification:** High-value users need `calculate_emissions` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Reported emissions must trace from activity data through factor selection, conversions, boundary rules, calculations, adjustments, and disclosures.
 
-**Improvement:** Implement `calculate_emissions` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `TargetProgressMeasured`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add a carbon ledger view over `emissions_calculation` with immutable calculation lineage, hashes, versioned factors, source activity links, adjustment links, and disclosure references. Auditors should be able to reconstruct any reported number.
 
-### 15. Make `define_scope_boundary` a complete command lifecycle
+### 15. Calculation uncertainty propagation
 
-**Justification:** High-value users need `define_scope_boundary` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** ESG figures can imply false precision when activity data, factors, estimates, and allocations all carry uncertainty.
 
-**Improvement:** Implement `define_scope_boundary` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `DisclosurePacketBuilt`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add uncertainty ranges to activity records, factors, calculations, and disclosures, then propagate uncertainty into totals and target progress. Reports should disclose confidence bands and identify top uncertainty contributors.
 
-### 16. Make `ingest_supplier_esg_input` a complete command lifecycle
+### 16. Data-quality rule library for ESG
 
-**Justification:** High-value users need `ingest_supplier_esg_input` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** ESG data requires domain-specific checks for completeness, outliers, unit compatibility, factor age, supplier quality, double counting, and boundary consistency.
 
-**Improvement:** Implement `ingest_supplier_esg_input` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `AssuranceExceptionOpened`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Expand `data_quality_check` with ESG rule types, affected metric, severity, failed value, expected behavior, remediation owner, disclosure impact, and assurance status. Quality failures should block disclosure packets when material.
 
-### 17. Make `create_sustainability_target` a complete command lifecycle
+### 17. Duplicate and double-count prevention
 
-**Justification:** High-value users need `create_sustainability_target` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Emissions can be double-counted across invoices, meters, shipments, suppliers, estimates, and manual uploads.
 
-**Improvement:** Implement `create_sustainability_target` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `EsgMetricDefined`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add duplicate detection using source identity, activity period, facility, supplier, spend category, quantity, and evidence hash. The workbench should show suspected overlaps and let reviewers merge, exclude, supersede, or approve duplicates with rationale.
 
-### 18. Make `measure_target_progress` a complete command lifecycle
+### 18. Target taxonomy and science-alignment evidence
 
-**Justification:** High-value users need `measure_target_progress` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Sustainability targets differ by absolute reduction, intensity, renewable energy, supplier engagement, waste, water, social, governance, and climate-transition commitments.
 
-**Improvement:** Implement `measure_target_progress` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `ActivityRecordCaptured`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Extend `sustainability_target` with target type, baseline, boundary, methodology, science-alignment evidence, interim milestones, owner, materiality, allowed adjustments, and external commitment status. Target creation should require evidence proportional to materiality.
 
-### 19. Make `map_reporting_framework` a complete command lifecycle
+### 19. Target progress decomposition
 
-**Justification:** High-value users need `map_reporting_framework` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Progress should explain whether improvement came from real reductions, activity decline, factor changes, boundary changes, offsets, renewable certificates, or estimation changes.
 
-**Improvement:** Implement `map_reporting_framework` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `EmissionsCalculated`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Expand `target_progress` with decomposition of operational reduction, structural change, factor update, methodology change, offset contribution, certificate contribution, and uncertainty. UI should show progress that is real versus accounting-driven.
 
-### 20. Make `build_disclosure_packet` a complete command lifecycle
+### 20. Decarbonization initiative tracking
 
-**Justification:** High-value users need `build_disclosure_packet` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Targets need executable reduction plans, owners, budgets, timelines, risks, and measured outcomes.
 
-**Improvement:** Implement `build_disclosure_packet` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `TargetProgressMeasured`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add decarbonization initiative records linked to targets, expected abatement, cost, owner, timing, dependency, status, achieved abatement, and evidence. The agent should identify target gaps and recommend initiative portfolios without writing foreign project tables.
 
-### 21. Operationalize `carbon calculation lineage` as a governed decision system
+### 21. Emissions reduction simulation
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Sustainability ESG Reporting and measurably improves sustainability esg reporting risk score without hiding assumptions.
+**Justification:** Sustainability teams need to test renewable procurement, logistics changes, supplier switching, facility retrofits, travel reduction, and product redesign before committing.
 
-**Improvement:** Promote `carbon calculation lineage` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `sustainability_esg_reporting_risk_score`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Expand `simulate_emissions_reduction` into side-effect-free scenarios with changed activity assumptions, factor changes, supplier shifts, investment costs, abatement, target impact, uncertainty, and implementation risk. Results should compare cost per unit reduced and target contribution.
 
-### 22. Operationalize `supplier ESG confidence scoring` as a governed decision system
+### 22. Climate risk scenario modeling
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Sustainability ESG Reporting and measurably improves sustainability esg reporting workbench metric without hiding assumptions.
+**Justification:** Climate risk reporting requires physical and transition risk scenarios, time horizons, assumptions, exposures, and financial/operational impact.
 
-**Improvement:** Promote `supplier ESG confidence scoring` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `sustainability_esg_reporting_workbench_metric`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Extend `climate_risk_scenario` with scenario family, temperature pathway, transition assumptions, physical hazards, exposed assets, time horizon, risk drivers, impact metrics, confidence, and adaptation actions. Workbench views should separate physical, transition, liability, and opportunity impacts.
 
-### 23. Operationalize `climate scenario simulation` as a governed decision system
+### 23. Physical climate hazard exposure
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Sustainability ESG Reporting and measurably improves sustainability esg reporting risk score without hiding assumptions.
+**Justification:** Facilities, assets, suppliers, routes, and operations can face flood, heat, wildfire, storm, drought, and sea-level risks.
 
-**Improvement:** Promote `climate scenario simulation` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `sustainability_esg_reporting_risk_score`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add hazard exposure records linked to scope boundaries and declared facility/asset projections, with geospatial confidence, hazard type, severity, time horizon, adaptation status, and business impact. Disclosure packets should summarize material exposures and mitigation evidence.
 
-### 24. Operationalize `assurance anomaly detection` as a governed decision system
+### 24. Transition risk and carbon price sensitivity
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Sustainability ESG Reporting and measurably improves sustainability esg reporting workbench metric without hiding assumptions.
+**Justification:** Carbon pricing, regulation, market demand, technology shifts, and energy costs can materially alter financial outlook and strategy.
 
-**Improvement:** Promote `assurance anomaly detection` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `sustainability_esg_reporting_workbench_metric`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add carbon price scenarios, policy assumptions, sector exposure, cost sensitivity, stranded-asset indicators, and mitigation options. Climate scenarios should quantify emissions cost exposure and transition-opportunity value.
 
-### 25. Operationalize `framework semantic mapping` as a governed decision system
+### 25. Framework semantic mapping studio
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Sustainability ESG Reporting and measurably improves sustainability esg reporting risk score without hiding assumptions.
+**Justification:** ESG metrics must be mapped to multiple disclosure frameworks without losing semantic meaning or duplicating work.
 
-**Improvement:** Promote `framework semantic mapping` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `sustainability_esg_reporting_risk_score`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Expand `framework_mapping` with framework, topic, disclosure requirement, metric mapping, narrative requirement, calculation method, evidence requirement, applicability, version, and gap status. The mapping studio should show shared data elements and framework-specific differences.
 
-### 26. Operationalize `cryptographic disclosure proof` as a governed decision system
+### 26. Regulatory change impact analysis
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Sustainability ESG Reporting and measurably improves sustainability esg reporting workbench metric without hiding assumptions.
+**Justification:** Disclosure requirements evolve, and organizations need to know which metrics, evidence, controls, and reports are affected.
 
-**Improvement:** Promote `cryptographic disclosure proof` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `sustainability_esg_reporting_workbench_metric`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add regulatory change records that compare framework versions, identify new/changed/retired disclosure requirements, affected metrics, data gaps, assurance needs, and deadlines. The agent should create an impact summary and remediation plan.
 
-### 27. Operationalize `carbon calculation lineage` as a governed decision system
+### 27. Disclosure packet assembly workflow
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Sustainability ESG Reporting and measurably improves sustainability esg reporting risk score without hiding assumptions.
+**Justification:** Disclosures require metrics, narratives, evidence, approvals, assurance status, and consistency checks across reporting periods and frameworks.
 
-**Improvement:** Promote `carbon calculation lineage` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `sustainability_esg_reporting_risk_score`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Extend `disclosure_packet` with report type, period, framework scope, included metrics, narrative sections, evidence links, approval workflow, assurance status, publication state, and change history. Packet build should fail when material metrics lack evidence or quality clearance.
 
-### 28. Operationalize `supplier ESG confidence scoring` as a governed decision system
+### 28. Disclosure consistency and tie-out checks
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Sustainability ESG Reporting and measurably improves sustainability esg reporting workbench metric without hiding assumptions.
+**Justification:** ESG reports must reconcile totals across tables, narratives, targets, prior years, subsidiaries, scopes, and framework disclosures.
 
-**Improvement:** Promote `supplier ESG confidence scoring` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `sustainability_esg_reporting_workbench_metric`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add tie-out checks that compare packet totals to carbon ledger entries, target progress, framework mappings, activity coverage, and prior disclosures. Exceptions should identify the exact inconsistency and required remediation.
 
-### 29. Operationalize `climate scenario simulation` as a governed decision system
+### 29. Assurance evidence room
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Sustainability ESG Reporting and measurably improves sustainability esg reporting risk score without hiding assumptions.
+**Justification:** Assurance providers need structured evidence, samples, control results, calculation lineage, approvals, and responses to findings.
 
-**Improvement:** Promote `climate scenario simulation` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `sustainability_esg_reporting_risk_score`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Expand `assurance_evidence` into an evidence room with evidence type, period, related metric, source document, control assertion, sample population, reviewer, status, and chain-of-custody proof. UI should allow evidence packs by metric, framework, and assurance request.
 
-### 30. Operationalize `assurance anomaly detection` as a governed decision system
+### 30. Assurance exception lifecycle
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Sustainability ESG Reporting and measurably improves sustainability esg reporting workbench metric without hiding assumptions.
+**Justification:** Assurance exceptions need owner, severity, remediation, retesting, disclosure impact, and closure evidence.
 
-**Improvement:** Promote `assurance anomaly detection` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `sustainability_esg_reporting_workbench_metric`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Extend `assurance_exception` with finding category, affected disclosure, materiality, root cause, remediation plan, due date, retest result, residual risk, and closure proof. Material unresolved exceptions should block disclosure approval or require documented waiver.
 
-### 31. Create simulation-grade governance for `emissions_factor_policy` and `quality_score_floor`
+### 31. ESG exception case management
 
-**Justification:** Complete Sustainability ESG Reporting coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** ESG operations produce exceptions beyond assurance, including missing supplier data, expired factors, target misses, policy breaches, and quality failures.
 
-**Improvement:** Add a policy cockpit where `emissions_factor_policy` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `quality_score_floor` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Expand `esg_exception_case` with exception type, materiality, affected metric/target/disclosure, owner, due date, remediation, escalation, recurrence, and closure evidence. Queues should prioritize by disclosure impact and deadline.
 
-### 32. Create simulation-grade governance for `scope_boundary_policy` and `target_warning_percent`
+### 32. Carbon offset quality and retirement governance
 
-**Justification:** Complete Sustainability ESG Reporting coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Offsets can be low quality, double-claimed, unretired, outside boundary, or unsuitable for the target they are used against.
 
-**Improvement:** Add a policy cockpit where `scope_boundary_policy` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `target_warning_percent` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Extend `carbon_offset_record` with project type, registry, serial number, vintage, additionality, permanence, leakage risk, verification standard, retirement status, claim type, and target linkage. Reports should clearly separate gross emissions, reductions, certificates, and offsets.
 
-### 33. Create simulation-grade governance for `assurance_policy` and `factor_expiry_days`
+### 33. Renewable energy certificate governance
 
-**Justification:** Complete Sustainability ESG Reporting coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Renewable certificates and energy contracts require retirement, vintage, region, ownership, market-boundary, and anti-double-count controls.
 
-**Improvement:** Add a policy cockpit where `assurance_policy` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `factor_expiry_days` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add certificate records and checks for certificate type, registry, generation period, consumption period, geography, retirement, residual mix effect, and Scope 2 claim eligibility. Market-based calculations should fail when certificate evidence is incomplete.
 
-### 34. Create simulation-grade governance for `target_tracking_policy` and `assurance_sample_rate`
+### 34. Social metrics coverage
 
-**Justification:** Complete Sustainability ESG Reporting coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** ESG is broader than carbon; workforce, safety, diversity, human rights, training, community, and labor practices need governed metrics and evidence.
 
-**Improvement:** Add a policy cockpit where `target_tracking_policy` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `assurance_sample_rate` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add social metric templates with population boundary, protected aggregation thresholds, evidence requirements, privacy controls, workforce projection dependencies, and assurance levels. Reports should distinguish measured workforce metrics from survey, supplier, or estimated social indicators.
 
-### 35. Create simulation-grade governance for `framework_mapping_policy` and `materiality_threshold`
+### 35. Governance metrics coverage
 
-**Justification:** Complete Sustainability ESG Reporting coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Governance disclosures require board oversight, ethics, compliance, incidents, policy adoption, control effectiveness, and accountability evidence.
 
-**Improvement:** Add a policy cockpit where `framework_mapping_policy` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `materiality_threshold` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add governance metric templates with policy linkage, accountable body, control assertion, incident relationship, training evidence, and disclosure narrative requirements. Governance metrics should integrate with assurance evidence and exception workflows.
 
-### 36. Upgrade `ESG reporting workbench` into a full specialist command center
+### 36. Biodiversity, water, and waste domain depth
 
-**Justification:** The PBC UI must expose the complete Sustainability ESG Reporting surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Sustainability reporting increasingly requires metrics beyond emissions, including water withdrawal, discharge, waste, circularity, biodiversity, and land impact.
 
-**Improvement:** Expand `ESG reporting workbench` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add domain-specific activity and metric templates for water, waste, circularity, biodiversity, land-use, and hazardous materials, with units, boundaries, quality checks, and disclosure mappings. The workbench should expose coverage gaps and materiality links.
 
-### 37. Upgrade `activity data inbox` into a full specialist command center
+### 37. Materiality assessment workflow
 
-**Justification:** The PBC UI must expose the complete Sustainability ESG Reporting surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** ESG reporting scope should be driven by double materiality, stakeholder priorities, financial impact, and operational significance.
 
-**Improvement:** Expand `activity data inbox` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add materiality assessment records with stakeholder group, impact materiality, financial materiality, evidence, scoring, thresholds, approval, and effective period. Metric and framework applicability should reference the approved materiality assessment.
 
-### 38. Upgrade `emissions calculator` into a full specialist command center
+### 38. Stakeholder and approval governance
 
-**Justification:** The PBC UI must expose the complete Sustainability ESG Reporting surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** ESG reporting requires collaboration among sustainability, finance, legal, procurement, operations, HR, risk, executives, and assurance providers.
 
-**Improvement:** Expand `emissions calculator` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add stakeholder role maps, approval matrices, review cycles, signoff responsibilities, separation-of-duties rules, and escalation. Disclosure packets should prove every required role reviewed or waived its section.
 
-### 39. Upgrade `target tracker` into a full specialist command center
+### 39. ESG policy studio
 
-**Justification:** The PBC UI must expose the complete Sustainability ESG Reporting surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Calculation, factor, boundary, assurance, target, framework, offset, supplier, and quality policies vary by region, framework, and report type.
 
-**Improvement:** Expand `target tracker` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Expand `esg_policy_rule` into a policy studio with templates, conflict detection, impact simulation, approval workflow, versioning, and historical replay. Policy changes should show affected calculations, targets, disclosures, and exceptions before activation.
 
-### 40. Upgrade `framework mapping studio` into a full specialist command center
+### 40. Runtime parameter impact simulator
 
-**Justification:** The PBC UI must expose the complete Sustainability ESG Reporting surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Changes to quality floors, factor expiry, assurance sampling, materiality thresholds, and target warnings can alter disclosure readiness and exception volume.
 
-**Improvement:** Expand `framework mapping studio` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add side-effect-free parameter simulations showing affected metrics, calculations, supplier inputs, targets, assurance samples, disclosure packets, and exception counts. The agent should explain blast radius before approval.
 
-### 41. Prove cross-PBC federation for `POST /emissions-factors` and `SupplierQualified`
+### 41. Continuous controls over ESG reporting
 
-**Justification:** Sustainability ESG Reporting must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** ESG controls need continuous operation rather than end-of-period manual sampling.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /emissions-factors` and consumed event `SupplierQualified` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Expand `esg_control_assertion` with control objective, population, automated test, sample result, failure evidence, owner, remediation, and retest date. The workbench should show control effectiveness by report period, metric, and framework.
 
-### 42. Prove cross-PBC federation for `POST /activity-data` and `ShipmentDelivered`
+### 42. Cryptographic disclosure proof packets
 
-**Justification:** Sustainability ESG Reporting must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Disclosed ESG numbers influence investors, regulators, customers, suppliers, and executives and need tamper-evident proof.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /activity-data` and consumed event `ShipmentDelivered` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Extend disclosure proofs with metric hashes, activity hashes, factor versions, boundary versions, calculation hashes, assurance evidence, approvals, and publication signatures. Verification APIs should prove integrity without revealing sensitive operational detail.
 
-### 43. Prove cross-PBC federation for `POST /carbon-ledger` and `EnergyUsageRecorded`
+### 43. ESG audit reconstruction
 
-**Justification:** Sustainability ESG Reporting must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Auditors and regulators may ask how a metric or report looked at a past filing date or decision date.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /carbon-ledger` and consumed event `EnergyUsageRecorded` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Add time-travel reconstruction for activity data, factors, calculations, boundaries, targets, disclosures, assurance evidence, policies, and approvals by transaction time and reporting period. Evidence exports should include version lineage and hashes.
 
-### 44. Prove cross-PBC federation for `POST /sustainability-reports` and `PolicyChanged`
+### 44. ESG anomaly detection and root cause
 
-**Justification:** Sustainability ESG Reporting must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Sudden changes, impossible values, factor jumps, supplier inconsistencies, target reversals, or disclosure tie-out failures can indicate data or control problems.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /sustainability-reports` and consumed event `PolicyChanged` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Add anomaly detection with domain categories, baseline comparison, severity, explanation, suspected root cause, and remediation workflow. Material anomalies should open ESG exceptions and be visible in the assurance room.
 
-### 45. Temporal reconstruction and bitemporal audit for Sustainability ESG Reporting
+### 45. Governed models for sustainability intelligence
 
-**Justification:** Regulated and operationally complex domains need to answer what was known, valid, processed, and visible at any point in time.
+**Justification:** Confidence scoring, estimates, forecasts, anomaly detection, and scenario modeling affect disclosed results and need governance.
 
-**Improvement:** Add transaction-time, valid-time, and processing-time fields to core records, temporal query APIs, projection rebuild tooling, and UI time travel so specialists can reconstruct decisions, reports, and automation outcomes.
+**Improvement:** Extend `esg_governed_model` with model purpose, training data, assumptions, evaluation metrics, drift checks, bias/fairness considerations, approval, monitoring, and rollback plan. Any model-generated estimate or scenario should carry model evidence.
 
-### 46. Bulk operations and migration-grade controls for Sustainability ESG Reporting
+### 46. Sustainability agent command skills
 
-**Justification:** World-class deployments must handle imports, mass corrections, high-volume operating days, and cutovers without bypassing governance.
+**Justification:** The PBC agent should perform ESG work safely, not only provide guidance.
 
-**Improvement:** Add staged bulk upload, duplicate detection, chunked validation, approval sampling, partial failure handling, retry dashboards, reconciliation summaries, and agent-generated remediation plans for large batches.
+**Improvement:** Define first-class skills for document intake, activity-data classification, factor selection explanation, calculation preview, target analysis, framework mapping, disclosure packet assembly, assurance evidence collection, exception triage, and supplier follow-up. Each skill should use typed previews, RBAC checks, human confirmation, and audit evidence.
 
-### 47. Specialist edge-case playbooks for Sustainability ESG Reporting
+### 47. ESG document and evidence ingestion
 
-**Justification:** Rare cases often carry the highest financial, legal, safety, service, or compliance risk.
+**Justification:** ESG inputs often arrive as utility bills, travel files, supplier disclosures, certificates, spreadsheets, policy documents, audit requests, and report drafts.
 
-**Improvement:** Create a playbook catalog with detection rules, required evidence, escalation paths, fallback actions, owner roles, and release-audited tests for high-severity edge cases and exception queues.
+**Improvement:** Add semantic document ingestion that extracts activity records, factors, supplier inputs, certificates, offsets, evidence, framework mappings, and disclosure narratives with citations and confidence. The agent must show validation errors and reversible CRUD previews.
 
-### 48. Pre-mutation simulation and blast-radius analysis for Sustainability ESG Reporting
+### 48. Cross-PBC boundary proof harness
 
-**Justification:** Users should understand consequences before committing irreversible, customer-visible, operationally disruptive, or financially material changes.
+**Justification:** ESG reporting depends on suppliers, shipments, energy usage, travel, assets, HR, finance, and procurement context while preserving PBC ownership boundaries.
 
-**Improvement:** Add what-if simulation for every material command, showing impacted records, emitted events, dependent projections, rule outcomes, approvals, downstream PBC dependencies, and rollback limits.
+**Improvement:** Add boundary tests that scan generated services, routes, models, workbench descriptors, DSL output, and agent skills for unauthorized table references. Evidence should list every external dependency, contract type, and ESG capability consuming it.
 
-### 49. Continuous control testing and operational assurance for Sustainability ESG Reporting
+### 49. Role-specific ESG workbenches
 
-**Justification:** Better-than-world-class PBCs prove controls continuously, not only at release or during periodic audits.
+**Justification:** Sustainability analysts, procurement, operations, finance, legal, executives, suppliers, assurance providers, and auditors need different views over controlled ESG state.
 
-**Improvement:** Add executable control assertions, sampled evidence checks, anomaly thresholds, control-owner dashboards, breach/recovery events, and release gates that fail when domain controls lose evidence.
+**Improvement:** Expand UI fragments into activity-data inbox, emissions calculator, supplier ESG portal, target tracker, framework mapping studio, disclosure builder, assurance evidence room, climate risk lab, control cockpit, and executive sustainability dashboard. Each view should expose relevant commands and agent skills.
 
-### 50. Human-in-the-loop domain agent execution for Sustainability ESG Reporting
+### 50. End-to-end ESG release evidence matrix
 
-**Justification:** The PBC chatbot must help specialists perform real work while preventing unsafe autonomous mutation.
+**Justification:** A world-class ESG PBC must prove every claimed capability has schema, services, APIs, events, handlers, UI, agent skills, rules, parameters, tests, and boundary evidence.
 
-**Improvement:** Add domain-specific skills, document parsing, task planning, CRUD previews, confidence/risk scoring, confirmation gates, redaction, policy explanations, and post-action evidence packets for every supported command and query.
+**Improvement:** Add a release evidence matrix mapping every Sustainability ESG Reporting capability to owned tables, commands, route descriptors, AppGen-X event contracts, idempotent handlers, workbench panels, agent skills, permissions, smoke tests, and cross-PBC boundary checks. Release audits should fail whenever any ESG capability lacks executable proof.
