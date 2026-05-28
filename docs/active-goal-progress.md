@@ -3239,3 +3239,12 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   entrypoints, focused visual-edit-matrix/audit tests,
   `tests/test_dsl_tooling_contracts.py -q`, tooling-audit JSON proof, scoped
   diff whitespace check, and restricted-name scan. Commit: `8682982f`.
+- Current doctor IDE dependency pass closes the explicit doctor coverage gap
+  for optional IDE/LSP dependencies. `appgen doctor --json` now includes the
+  `vscode_extension_surface` check, reusing `appgen.vscode-extension-audit.v1`
+  to prove the shipped editor scaffold, command palette entries, language
+  configuration, syntax grammar, and LSP provider registrations from the doctor
+  command. Verification passed: Python compile for touched tooling
+  entrypoints, focused doctor/audit tests, `tests/test_dsl_tooling_contracts.py
+  -q`, tooling-audit JSON proof, scoped diff whitespace check, and
+  restricted-name scan. Commit: `bb60af87`.
