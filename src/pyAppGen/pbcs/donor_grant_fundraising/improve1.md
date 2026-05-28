@@ -1,418 +1,419 @@
-# Donor Grant and Fundraising PBC Better-Than-World-Class Improvement Backlog
+# Donor Grant Fundraising Improvement Backlog
 
-## Purpose
-
-This file identifies, justifies, and describes 50 high-impact improvements for `donor_grant_fundraising`. The backlog is specific to donors, campaigns, pledges, restrictions, gifts, grant applications, stewardship, and impact reporting and is intended to move the PBC from release-auditable scaffolding toward complete, specialist-grade domain coverage.
+This backlog is specific to the exact key `donor_grant_fundraising` and is grounded in the current manifest surfaces for donors, campaigns, pledges, gifts, restrictions, grant applications, stewardship, analytics, assistant support, APIs, events, and release evidence.
 
 ## Current Domain Evidence Used
 
-- Stable PBC key: `donor_grant_fundraising`.
-- Domain purpose: Donors, campaigns, pledges, restrictions, gifts, grant applications, stewardship, and impact reporting.
-- Owned domain tables: `donor`, `campaign`, `pledge`, `gift`, `restriction`, `grant_application`, `stewardship_touchpoint`, `donor_grant_fundraising_policy_rule`, `donor_grant_fundraising_runtime_parameter`, `donor_grant_fundraising_schema_extension`, `donor_grant_fundraising_control_assertion`, `donor_grant_fundraising_governed_model`.
-- Public APIs: `POST /donors`, `POST /campaigns`, `POST /pledges`, `POST /gifts`, `POST /restrictions`, `GET /donor-grant-fundraising-workbench`.
-- Emitted AppGen-X events: `DonorGrantFundraisingCreated`, `DonorGrantFundraisingUpdated`, `DonorGrantFundraisingApproved`, `DonorGrantFundraisingExceptionOpened`.
-- Consumed AppGen-X events: `PolicyChanged`, `CustomerUpdated`, `SupplierQualified`.
-- Current standard surfaces include: `donor_management`, `donor_grant_fundraising_workflow`, `donor_grant_fundraising_analytics`, `configuration_schema`, `rule_engine`, `parameter_engine`, `owned_schema_migrations_models`, `appgen_x_outbox_inbox_eventing`, `idempotent_handlers`, `retry_dead_letter_evidence`.
-- Current advanced surfaces include: `donor_grant_fundraising_event_sourced_operational_history`, `donor_grant_fundraising_multi_tenant_policy_isolation`, `donor_grant_fundraising_schema_evolution_resilience`, `donor_grant_fundraising_autonomous_anomaly_detection`, `donor_grant_fundraising_semantic_document_instruction_understanding`, `donor_grant_fundraising_predictive_risk_scoring`, `donor_grant_fundraising_counterfactual_scenario_simulation`, `donor_grant_fundraising_cryptographic_audit_proofs`.
+- Exact key: `donor_grant_fundraising`
+- Manifest label: `Donor Grant and Fundraising`
+- Description: `Donors, campaigns, pledges, restrictions, gifts, grant applications, stewardship, and impact reporting`
+- Core tables: `donor`, `campaign`, `pledge`, `gift`, `restriction`, `grant_application`, `stewardship_touchpoint`
+- Governance tables: `donor_grant_fundraising_policy_rule`, `donor_grant_fundraising_runtime_parameter`, `donor_grant_fundraising_schema_extension`, `donor_grant_fundraising_control_assertion`, `donor_grant_fundraising_governed_model`
+- Current APIs: `POST /donors`, `POST /campaigns`, `POST /pledges`, `POST /gifts`, `POST /restrictions`, `GET /donor-grant-fundraising-workbench`
+- Current emitted events: `DonorGrantFundraisingCreated`, `DonorGrantFundraisingUpdated`, `DonorGrantFundraisingApproved`, `DonorGrantFundraisingExceptionOpened`
+- Current consumed events: `PolicyChanged`, `CustomerUpdated`, `SupplierQualified`
+- Current UI fragments: `DonorGrantFundraisingWorkbench`, `DonorGrantFundraisingDetail`, `DonorGrantFundraisingAssistantPanel`
+- Current workflows: `donor_grant_fundraising_create_donor_workflow`, `donor_grant_fundraising_record_campaign_workflow`
+- Current analytics: `donor_grant_fundraising_risk_score`, `donor_grant_fundraising_workbench_metric`
+- Current docs: `SPECIFICATION.md`, `RELEASE_EVIDENCE.md`
+- Current package test entry: `tests/test_contract.py`
 
-## 50 High-Impact Improvements
+### 1. Unified donor profile with fundraising and grant context
 
-### 1. Canonical lifecycle state model for Donor
+**Justification:** Fundraising teams need one governed profile that combines householding, donor intent, giving history, restriction preferences, and grant-maker attributes without forcing staff to piece context together from separate records.
 
-**Justification:** This closes shallow CRUD gaps by making every donor grant and fundraising transition explainable and testable instead of implicit in free-form status values.
+**Improvement:** Expand the `donor` aggregate into a canonical profile that distinguishes individual, household, corporate, and foundation donors; stores relationship stage, preferred channels, funding interests, recognition preferences, and known compliance requirements; and presents this in `DonorGrantFundraisingDetail` and `DonorGrantFundraisingWorkbench`.
 
-**Improvement:** Define a complete state machine for `donor` with explicit draft, validated, blocked, approved, active, suspended, corrected, closed, archived, and reopened states. Tie the behavior to `donor_grant_fundraising_create_donor_workflow` where applicable, and make it visible in `DonorGrantFundraisingWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Donor profile fixtures cover each donor type, the detail view shows recognition and restriction preferences, and release evidence demonstrates create/update flows through `POST /donors` for the `donor_grant_fundraising` key.
 
-**Acceptance evidence:** State-transition tests, invalid-transition fixtures, workbench state badges, and emitted AppGen-X transition events for DonorGrantFundraisingCreated, DonorGrantFundraisingUpdated, DonorGrantFundraisingApproved. The evidence should be package-local in `src/pyAppGen/pbcs/donor_grant_fundraising` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 2. Prospect-to-donor qualification pipeline
 
-### 2. Domain intake and normalization for Campaign
+**Justification:** High-value fundraising work starts before a donor is fully active, so the package needs a governed pipeline for research, qualification, assignment, and conversion instead of treating every record as already ready for solicitation.
 
-**Justification:** The PBC cannot reach complete domain coverage unless it handles the messy front door of donors, campaigns, pledges, restrictions, gifts, grant applications, stewardship, and impact reporting, not only already-clean records.
+**Improvement:** Add a prospect pipeline on `donor` with stages for identified, researched, qualified, assigned, cultivated, solicitation-ready, and converted, plus owner assignment, next action date, and qualification evidence.
 
-**Improvement:** Build a typed intake pipeline for `campaign` that accepts structured API payloads, document-derived instructions, batch loads, and assistant-generated drafts while normalizing identifiers, dates, units, parties, and jurisdictional context. Tie the behavior to `donor_grant_fundraising_record_campaign_workflow` where applicable, and make it visible in `DonorGrantFundraisingWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Pipeline stage transitions are visible in the workbench, invalid skips are rejected by policy rules, and release evidence shows conversion from qualified prospect to active donor under `donor_grant_fundraising_create_donor_workflow`.
 
-**Acceptance evidence:** Golden intake fixtures, rejected-record queues, field-level normalization evidence, and assistant previews before governed datastore mutation. The evidence should be package-local in `src/pyAppGen/pbcs/donor_grant_fundraising` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 3. Campaign hierarchy and goal modeling
 
-### 3. Specialist validation rules for Pledge
+**Justification:** Fundraising campaigns often roll up from annual funds, capital appeals, emergency drives, and grant-backed initiatives, so campaign records need structure beyond a flat name and amount target.
 
-**Justification:** World-class Donor Grant and Fundraising requires rules that domain experts can reason about, version, test, and roll back without code edits.
+**Improvement:** Extend `campaign` to support parent-child campaigns, objective categories, goal amounts, target donor segments, start and end windows, gift counting rules, and linked grant opportunity themes.
 
-**Improvement:** Add a domain rule compiler for `pledge` that supports threshold rules, eligibility rules, dependency rules, temporal windows, conflicting-instruction detection, and override justification. Tie the behavior to `donor_grant_fundraising_create_donor_workflow` where applicable, and make it visible in `DonorGrantFundraisingWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Campaign hierarchy fixtures roll up correctly in `DonorGrantFundraisingWorkbench`, drill-in views show child totals, and release evidence includes campaign goal calculations sourced from `POST /campaigns`.
 
-**Acceptance evidence:** Rule simulation tests, versioned rule manifests, rule impact reports, and UI rule editors linked to `DONOR_GRANT_FUNDRAISING_DATABASE_URL, DONOR_GRANT_FUNDRAISING_EVENT_TOPIC, DONOR_GRANT_FUNDRAISING_RETRY_LIMIT`. The evidence should be package-local in `src/pyAppGen/pbcs/donor_grant_fundraising` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 4. Pledge lifecycle with installment discipline
 
-### 4. Parameter governance and tuning for Gift
+**Justification:** Pledges are multi-step commitments that can be verbal, written, revised, partially fulfilled, written off, or restructured, and those differences directly affect revenue planning and stewardship.
 
-**Justification:** Parameters are where operations teams tune donor grant and fundraising; unbounded constants would make the PBC brittle and unsafe in real deployments.
+**Improvement:** Model `pledge` states for draft, pending confirmation, active, partially paid, fulfilled, overdue, amended, cancelled, and written off, with installment schedules, reminder dates, and amendment reasons.
 
-**Improvement:** Expose bounded runtime parameters for `gift` covering risk thresholds, SLA windows, confidence floors, escalation cutoffs, batch sizes, retry limits, and human-confirmation requirements. Tie the behavior to `donor_grant_fundraising_record_campaign_workflow` where applicable, and make it visible in `DonorGrantFundraisingWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Installment schedules appear on the donor detail page, overdue pledges raise exceptions when milestones pass, and tests show lifecycle transitions initiated through `POST /pledges`.
 
-**Acceptance evidence:** Parameter schema validation, tenant overrides, approval history, rollback controls, and workbench diff views. The evidence should be package-local in `src/pyAppGen/pbcs/donor_grant_fundraising` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 5. Gift application against pledges and campaigns
 
-### 5. Deep owned schema expansion for Restriction
+**Justification:** Gift posting is only useful when finance and advancement staff can see exactly which pledge, campaign, appeal, or unrestricted pool received the money.
 
-**Justification:** A single payload column cannot express the full surface of donors, campaigns, pledges, restrictions, gifts, grant applications, stewardship, and impact reporting or prove cross-PBC boundaries are respected.
+**Improvement:** Link each `gift` to campaign, pledge, appeal source, restriction usage, receipt status, and posting date, and show remaining pledge balance and campaign progress immediately after gift entry.
 
-**Improvement:** Extend the owned schema around `restriction` with normalized child tables for line-level evidence, party roles, approvals, attachments, comments, metrics, exception reasons, and control assertions. Tie the behavior to `donor_grant_fundraising_create_donor_workflow` where applicable, and make it visible in `DonorGrantFundraisingWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Gift-to-pledge matching appears in workbench totals, unmatched gifts open review exceptions, and release evidence shows `POST /gifts` updating both campaign progress and pledge balance projections.
 
-**Acceptance evidence:** Migrations, models, relationship tests, schema contract snapshots, and no shared-table access outside the `donor_grant_fundraising_` namespace. The evidence should be package-local in `src/pyAppGen/pbcs/donor_grant_fundraising` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 6. Restriction catalog with usable spending rules
 
-### 6. Event-sourced operational history for Grant Application
+**Justification:** Restricted funds become operationally risky when the package stores only text descriptions rather than machine-checkable spending constraints and release conditions.
 
-**Justification:** Temporal reconstruction is essential for better-than-world-class auditability and dispute resolution in donor grant and fundraising.
+**Improvement:** Enrich `restriction` with restriction type, purpose code, geography, time window, beneficiary class, required approvals, release conditions, and sunset logic that can be evaluated by policy rules and assistant actions.
 
-**Improvement:** Capture every material mutation of `grant_application` as immutable AppGen-X events with actor, tenant, command, policy version, idempotency key, before/after summary, and projection checkpoint. Tie the behavior to `donor_grant_fundraising_record_campaign_workflow` where applicable, and make it visible in `DonorGrantFundraisingWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Restriction summaries display machine-readable conditions, prohibited gift applications are blocked with explicit reasons, and release evidence includes policy evaluation traces for `POST /restrictions`.
 
-**Acceptance evidence:** Replay tests, projection checksums, event ordering evidence, and point-in-time workbench views. The evidence should be package-local in `src/pyAppGen/pbcs/donor_grant_fundraising` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 7. Grant opportunity pipeline before application
 
-### 7. Projection and read-model strategy for Stewardship Touchpoint
+**Justification:** Grant fundraising success depends on disciplined opportunity management long before an application exists, including qualification, fit scoring, deadlines, and relationship readiness.
 
-**Justification:** The workbench should not force users to infer domain truth from raw tables; each projection should answer a real operating question.
+**Improvement:** Add a pre-application pipeline on `grant_application` for identified, researching, qualified, drafting, internal review, submitted, declined, awarded, and closed, with funder fit, strategic priority, and deadline confidence fields.
 
-**Improvement:** Create purpose-built projections for `stewardship_touchpoint`: operational queue, executive KPI rollup, exception aging, compliance evidence, agent task context, and external dependency health. Tie the behavior to `donor_grant_fundraising_create_donor_workflow` where applicable, and make it visible in `DonorGrantFundraisingWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Opportunity aging and stage metrics appear on the workbench, expiring opportunities trigger alerts, and release evidence demonstrates stage movement and fit scoring for the `donor_grant_fundraising` package.
 
-**Acceptance evidence:** Projection contracts, freshness SLAs, backfill tests, and visible stale-projection warnings. The evidence should be package-local in `src/pyAppGen/pbcs/donor_grant_fundraising` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 8. Proposal composition workspace
 
-### 8. Exception taxonomy and remediation for Donor Grant Fundraising Policy Rule
+**Justification:** Proposal development requires narrative, budget, attachments, approvals, and submission packaging, which should remain inside the package boundary rather than living in scattered operator notes.
 
-**Justification:** High-value PBCs win on exception throughput; generic “failed” states hide the details operators need.
+**Improvement:** Give `grant_application` a proposal workspace with sections for narrative status, budget completeness, attachment checklist, reviewer comments, submission package version, and final sign-off.
 
-**Improvement:** Model the full exception taxonomy for `donor_grant_fundraising_policy_rule`, including severity, root cause, blocking dependency, remediation owner, due date, retry eligibility, escalation path, and closure evidence. Tie the behavior to `donor_grant_fundraising_record_campaign_workflow` where applicable, and make it visible in `DonorGrantFundraisingWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Proposal completeness is visible in `DonorGrantFundraisingDetail`, incomplete submission attempts are blocked, and release evidence includes proposal readiness snapshots for grant opportunities moving to submitted.
 
-**Acceptance evidence:** Exception queues, aging metrics, remediation playbooks, dead-letter linkage, and closure test fixtures for weather or traffic disruption. The evidence should be package-local in `src/pyAppGen/pbcs/donor_grant_fundraising` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 9. Grant budget versus restriction validation
 
-### 9. Predictive risk scoring for Donor Grant Fundraising Runtime Parameter
+**Justification:** Grant proposals and awarded funds frequently carry purpose, time, and cost-category limits that must align with restriction rules before submission and before spending.
 
-**Justification:** The package should warn users before donor grant and fundraising work fails, breaches policy, or creates downstream cost.
+**Improvement:** Add validation between `grant_application` budgets and `restriction` rules so staff can see when proposed uses violate purpose codes, timing windows, or approval requirements.
 
-**Improvement:** Add predictive risk scoring for `donor_grant_fundraising_runtime_parameter` using domain features from owned tables, consumed events PolicyChanged, CustomerUpdated, SupplierQualified, rule outcomes, aging, anomaly signals, and historical corrections. Tie the behavior to `donor_grant_fundraising_create_donor_workflow` where applicable, and make it visible in `DonorGrantFundraisingWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Budget-rule mismatches create actionable exceptions, reviewers can inspect the exact violated condition, and release evidence shows a compliant proposal passing validation while a conflicting one is rejected.
 
-**Acceptance evidence:** Feature manifests, score explanations, calibration reports, drift alerts, and tests for low/medium/high-risk scenarios. The evidence should be package-local in `src/pyAppGen/pbcs/donor_grant_fundraising` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 10. Award acceptance and post-award setup
 
-### 10. Counterfactual simulation for Donor Grant Fundraising Schema Extension
+**Justification:** Winning a grant introduces award conditions, reporting obligations, and stewardship expectations that need controlled setup rather than ad hoc operator follow-up.
 
-**Justification:** Advanced users need to ask “what would happen if” before committing changes to live donors, campaigns, pledges, restrictions, gifts, grant applications, stewardship, and impact reporting operations.
+**Improvement:** Add a post-award checklist on `grant_application` for award letter review, restriction creation or update, reporting cadence, stewardship owner assignment, acknowledgement deadlines, and renewal planning.
 
-**Improvement:** Provide scenario simulation for `donor_grant_fundraising_schema_extension`: policy change, capacity constraint, deadline shift, price/rate change, eligibility change, disruption, and manual override outcomes. Tie the behavior to `donor_grant_fundraising_record_campaign_workflow` where applicable, and make it visible in `DonorGrantFundraisingWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Awarded applications cannot move to active stewardship until required setup tasks are complete, the workbench shows post-award readiness, and release evidence captures signed-off award setup records.
 
-**Acceptance evidence:** Simulation APIs, non-mutating sandbox state, comparison reports, and workbench side-by-side scenario panels. The evidence should be package-local in `src/pyAppGen/pbcs/donor_grant_fundraising` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 11. Donor acknowledgement orchestration
 
-### 11. Autonomous anomaly triage for Donor Grant Fundraising Control Assertion
+**Justification:** Acknowledgements are a core donor promise, and missing or delayed receipts damage trust, compliance posture, and renewal likelihood.
 
-**Justification:** A world-class PBC should reduce analyst burden without hiding the reasoning behind automated triage.
+**Improvement:** Add acknowledgement workflows for `gift` and `pledge` with templates by donor type, recognition preference, tax-receipt need, and channel, plus due dates and exception routing for missed service targets.
 
-**Improvement:** Implement anomaly detection for `donor_grant_fundraising_control_assertion` that identifies outliers, duplicate submissions, impossible sequences, stale dependencies, unusual amounts/counts/durations, and contradictory fields. Tie the behavior to `donor_grant_fundraising_create_donor_workflow` where applicable, and make it visible in `DonorGrantFundraisingWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Every qualifying gift shows acknowledgement status, overdue acknowledgements appear in the workbench queue, and release evidence contains receipt and acknowledgement completion metrics.
 
-**Acceptance evidence:** Explainable anomaly cards, reviewer feedback loops, false-positive tracking, and suppression governance. The evidence should be package-local in `src/pyAppGen/pbcs/donor_grant_fundraising` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 12. Stewardship playbooks by donor segment
 
-### 12. Semantic document understanding for Donor Grant Fundraising Governed Model
+**Justification:** Major donors, recurring donors, grant makers, and corporate sponsors require different follow-up patterns, evidence, and messaging.
 
-**Justification:** Document-heavy work in Donor Grant and Fundraising cannot be complete if the assistant only answers questions and cannot prepare accurate governed changes.
+**Improvement:** Extend `stewardship_touchpoint` with playbook type, expected cadence, touchpoint outcome, next ask readiness, and linked donor segment so teams can run structured stewardship instead of free-form logging.
 
-**Improvement:** Train the package assistant to parse domain documents and instructions for `donor_grant_fundraising_governed_model`, extract obligations, dates, parties, quantities, identifiers, and exceptions, then map them to safe draft mutations. Tie the behavior to `donor_grant_fundraising_record_campaign_workflow` where applicable, and make it visible in `DonorGrantFundraisingWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Playbook adherence appears as a stewardship score in the workbench, missed cadence targets open exceptions, and release evidence includes touchpoint completion by segment.
 
-**Acceptance evidence:** Document extraction tests, confidence thresholds, redaction handling, source span citations, and human confirmation workflows. The evidence should be package-local in `src/pyAppGen/pbcs/donor_grant_fundraising` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 13. Relationship timeline across gifts, pledges, and grant proposals
 
-### 13. Agent-safe CRUD execution for Donor
+**Justification:** Fundraisers need a single relationship timeline to prepare meetings, understand momentum, and avoid duplicate asks or conflicting stewardship actions.
 
-**Justification:** The PBC agent must be a first-class operator but never a hidden bypass around RBAC, rules, or owned datastore boundaries.
+**Improvement:** Build a chronological relationship timeline that merges `gift`, `pledge`, `campaign`, `grant_application`, and `stewardship_touchpoint` activity into one donor-facing operating view.
 
-**Improvement:** Add a professional chatbot skill for `donor` that can create, update, correct, close, and annotate records only through policy-checked commands, approval gates, and previewed diffs. Tie the behavior to `donor_grant_fundraising_create_donor_workflow` where applicable, and make it visible in `DonorGrantFundraisingWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** The detail page shows a unified activity stream, timeline entries link back to owned records, and release evidence demonstrates a donor history rendered from only package-owned tables and projections.
 
-**Acceptance evidence:** Skill manifests, permission tests, preview/confirm flows, blocked-action evidence, and audit events for every assistant mutation. The evidence should be package-local in `src/pyAppGen/pbcs/donor_grant_fundraising` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 14. Household and organizational relationship mapping
 
-### 14. Workbench persona coverage for Campaign
+**Justification:** Giving decisions often involve spouses, family offices, board members, and institutional contacts, so relationship mapping is necessary for accurate asks and acknowledgements.
 
-**Justification:** A generic detail page underserves the domain; each role needs the exact controls and evidence they use daily.
+**Improvement:** Add relationship structures to `donor` for households, organizational affiliations, advisor roles, and decision-maker influence, with controlled visibility and relationship validity dates.
 
-**Improvement:** Design dedicated workbench panels for `campaign`: operator queue, supervisor approvals, analyst exceptions, auditor evidence, configuration owner, and agent-assistance review. Tie the behavior to `donor_grant_fundraising_record_campaign_workflow` where applicable, and make it visible in `DonorGrantFundraisingWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Relationship maps display in the detail view, acknowledgement selection respects recognition relationships, and release evidence shows relationship-aware outreach recommendations for `donor_grant_fundraising`.
 
-**Acceptance evidence:** UI contract entries, route tests, empty/error/loading states, and permission-aware action availability. The evidence should be package-local in `src/pyAppGen/pbcs/donor_grant_fundraising` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 15. Contact role management for grant makers
 
-### 15. Cross-PBC dependency contracts for Pledge
+**Justification:** Foundation and institutional fundraising depends on accurate contacts for program officers, grants managers, finance reviewers, and signatories.
 
-**Justification:** Composable packages fail when hidden table coupling enters the domain model.
+**Improvement:** Model named contact roles on `grant_application` and linked donor records, including role type, contact window, preferred communication channel, and approval authority.
 
-**Improvement:** Represent dependencies for `pledge` through declared APIs, consumed events PolicyChanged, CustomerUpdated, SupplierQualified, and projections rather than shared tables, with explicit freshness, ownership, and fallback behavior. Tie the behavior to `donor_grant_fundraising_create_donor_workflow` where applicable, and make it visible in `DonorGrantFundraisingWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Proposal workflows surface required contact gaps, submission packages reference the right signatory and contact roles, and release evidence includes contact-role validation before submission.
 
-**Acceptance evidence:** Dependency manifests, contract tests, stale dependency alerts, and no foreign-table references in generated artifacts. The evidence should be package-local in `src/pyAppGen/pbcs/donor_grant_fundraising` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 16. Opportunity scoring and ask strategy
 
-### 16. API completeness and versioning for Gift
+**Justification:** Teams need a defendable way to prioritize donor and grant opportunities based on affinity, capacity, timing, mission fit, and compliance complexity.
 
-**Justification:** Complete domain coverage requires both command and query surfaces, not only happy-path create endpoints.
+**Improvement:** Use `donor_grant_fundraising_risk_score` and package analytics to create an opportunity score that ranks donor asks and grant pursuits by potential value, likelihood, urgency, and delivery risk.
 
-**Improvement:** Expand APIs beyond POST /donors, POST /campaigns, POST /pledges to cover search, validation-only commands, simulation, bulk intake, exception closure, evidence export, projection reads, and idempotent corrections. Tie the behavior to `donor_grant_fundraising_record_campaign_workflow` where applicable, and make it visible in `DonorGrantFundraisingWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Workbench rankings show why an opportunity is prioritized, score changes are auditable, and release evidence includes ranked pipeline snapshots with explanation fields.
 
-**Acceptance evidence:** OpenAPI-style route manifests, backward-compatible version tests, deprecation metadata, and idempotency assertions. The evidence should be package-local in `src/pyAppGen/pbcs/donor_grant_fundraising` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 17. Internal review chain for proposals and large asks
 
-### 17. Typed emitted-event expansion for Restriction
+**Justification:** Major solicitations and grant submissions often require program, finance, legal, and executive review before they should move forward.
 
-**Justification:** Consumers should understand what happened in Donor Grant and Fundraising without parsing opaque payloads.
+**Improvement:** Add review stages, reviewer roles, due dates, comments, and approval evidence to `grant_application` and selected major `pledge` or campaign asks, with enforced separation of duties from package permissions.
 
-**Improvement:** Replace generic lifecycle emissions with typed events for each meaningful `restriction` transition, exception, approval, correction, simulation result, and downstream handoff. Tie the behavior to `donor_grant_fundraising_create_donor_workflow` where applicable, and make it visible in `DonorGrantFundraisingWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Review blockers prevent submission or approval until required sign-offs exist, reviewers see pending work in the workbench, and release evidence records completed review chains.
 
-**Acceptance evidence:** Event schema tests, event examples, compatibility checks, and emitted-event coverage in release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/donor_grant_fundraising` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 18. Board and executive briefing packets
 
-### 18. Consumed-event handlers for Grant Application
+**Justification:** Leadership review is faster and less error-prone when the package can assemble current donor, campaign, and grant context into one governed briefing view.
 
-**Justification:** A PBC is composable only when incoming events affect its own domain state predictably and safely.
+**Improvement:** Create briefing packet outputs from package-owned data for campaign status, major donor readiness, grant pipeline, restricted-fund exposure, and overdue reporting obligations.
 
-**Improvement:** Implement idempotent handlers for consumed events PolicyChanged, CustomerUpdated, SupplierQualified that update projections, open dependency exceptions, recalculate risk, and preserve source event lineage. Tie the behavior to `donor_grant_fundraising_record_campaign_workflow` where applicable, and make it visible in `DonorGrantFundraisingWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Briefing views are generated from current projections, packet data links back to source records, and release evidence includes a reproducible leadership briefing snapshot.
 
-**Acceptance evidence:** Duplicate-event tests, handler side-effect boundaries, dead-letter fixtures, and lineage links back to source events. The evidence should be package-local in `src/pyAppGen/pbcs/donor_grant_fundraising` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 19. Document intake for donor instructions and grant requirements
 
-### 19. Retry and dead-letter operations for Stewardship Touchpoint
+**Justification:** Donor letters, grant guidelines, and award notices often contain operational instructions that staff need interpreted consistently and safely.
 
-**Justification:** Dead letters are not just plumbing; they are domain work queues that can block donors, campaigns, pledges, restrictions, gifts, grant applications, stewardship, and impact reporting.
+**Improvement:** Use `agentic_document_instruction_intake` and `donor_grant_fundraising_semantic_document_instruction_understanding` to parse donor correspondence, proposal guidelines, and award notices into structured tasks, restrictions, and review prompts.
 
-**Improvement:** Create operational tools for retrying, quarantining, explaining, and resolving dead-lettered `stewardship_touchpoint` events with max-attempt policy, poison-message detection, and replay safety. Tie the behavior to `donor_grant_fundraising_create_donor_workflow` where applicable, and make it visible in `DonorGrantFundraisingWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Parsed document summaries appear in `DonorGrantFundraisingAssistantPanel`, low-confidence extractions require human confirmation, and release evidence includes side-by-side document and extracted instruction traces.
 
-**Acceptance evidence:** Dead-letter workbench, retry eligibility tests, replay audit proof, and operator action logs. The evidence should be package-local in `src/pyAppGen/pbcs/donor_grant_fundraising` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 20. Assistant skill pack for grant proposal support
 
-### 20. RBAC and attribute policy for Donor Grant Fundraising Policy Rule
+**Justification:** Grant teams benefit from guided drafting help only when the assistant stays inside package boundaries, uses current records, and keeps humans in control of final submission.
 
-**Justification:** High-impact domain operations need finer controls than generic RBAC grants.
+**Improvement:** Add governed assistant skills that summarize opportunity fit, propose proposal checklists, flag missing attachments, and draft reviewer questions from `grant_application`, `restriction`, and donor history records.
 
-**Improvement:** Extend permissions for `donor_grant_fundraising_policy_rule` from coarse read/create/update/admin to action-level and attribute-aware policies based on role, tenant, jurisdiction, monetary/materiality threshold, and exception severity. Tie the behavior to `donor_grant_fundraising_record_campaign_workflow` where applicable, and make it visible in `DonorGrantFundraisingWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Assistant actions are permission-checked, every draft artifact is traceable to package data, and release evidence demonstrates accepted and rejected assistant suggestions for proposal support.
 
-**Acceptance evidence:** Permission matrix docs, ABAC policy tests, denied-action UI states, and assistant skill permission checks. The evidence should be package-local in `src/pyAppGen/pbcs/donor_grant_fundraising` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 21. Assistant skill pack for stewardship drafting
 
-### 21. Continuous control testing for Donor Grant Fundraising Runtime Parameter
+**Justification:** Stewardship messaging should reflect actual gifts, pledges, restrictions, and recent touchpoints rather than generic thank-you text.
 
-**Justification:** Controls should run during operations, not only during release audit or manual review.
+**Improvement:** Add governed assistant skills that draft acknowledgement notes, meeting prep briefs, renewal prompts, and impact updates based on `gift`, `pledge`, `stewardship_touchpoint`, and donor preferences.
 
-**Improvement:** Embed control assertions for `donor_grant_fundraising_runtime_parameter` that continuously test segregation of duties, required approvals, stale exceptions, policy drift, duplicate records, and boundary violations. Tie the behavior to `donor_grant_fundraising_create_donor_workflow` where applicable, and make it visible in `DonorGrantFundraisingWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Staff can review generated drafts in `DonorGrantFundraisingAssistantPanel`, assistant output cites supporting records, and release evidence shows approval before any draft becomes an outbound message.
 
-**Acceptance evidence:** Control dashboards, failing-control events, test fixtures, and release evidence tied to `donor_grant_fundraising_control_assertion` records. The evidence should be package-local in `src/pyAppGen/pbcs/donor_grant_fundraising` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 22. Guardrails for assistant-triggered mutations
 
-### 22. Cryptographic audit proofing for Donor Grant Fundraising Schema Extension
+**Justification:** Assistant support becomes unsafe when it can create donors, restrictions, or approvals without explicit policy checks and operator review.
 
-**Justification:** Better-than-world-class auditability requires proof of integrity, not merely logs stored in mutable tables.
+**Improvement:** Require action previews, approval routing, idempotency keys, and policy evaluation before assistant-initiated create or update actions touch `donor`, `pledge`, `gift`, `restriction`, or `grant_application`.
 
-**Improvement:** Hash-chain material `donor_grant_fundraising_schema_extension` decisions, documents, emitted events, and release-evidence snapshots to make tampering visible without exposing sensitive payloads. Tie the behavior to `donor_grant_fundraising_record_campaign_workflow` where applicable, and make it visible in `DonorGrantFundraisingWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Mutation previews display affected fields, denied assistant actions log policy reasons, and release evidence contains approved versus blocked assistant action samples for the `donor_grant_fundraising` key.
 
-**Acceptance evidence:** Proof manifests, verification APIs, redacted proof exports, and audit-ledger handoff events. The evidence should be package-local in `src/pyAppGen/pbcs/donor_grant_fundraising` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 23. Donor portfolio workbench
 
-### 23. Privacy, consent, and secrecy controls for Donor Grant Fundraising Control Assertion
+**Justification:** Relationship managers need a first-class operating surface for assigned donors, next actions, open pledges, recent gifts, and stewardship gaps.
 
-**Justification:** Complete domain coverage must account for protected data and restricted operational evidence.
+**Improvement:** Create a portfolio slice in `DonorGrantFundraisingWorkbench` that filters donors by owner, stage, next action, campaign alignment, pledge exposure, and acknowledgement backlog.
 
-**Improvement:** Add field-level privacy classifications for `donor_grant_fundraising_control_assertion`, consent checks, masking rules, retention schedules, legal holds, and assistant redaction policies. Tie the behavior to `donor_grant_fundraising_create_donor_workflow` where applicable, and make it visible in `DonorGrantFundraisingWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Portfolio queues load from package projections, managers can sort by next action and risk, and release evidence includes role-based donor portfolio screenshots tied to package data.
 
-**Acceptance evidence:** Retention tests, masked UI snapshots, consent-blocked mutation fixtures, and export controls. The evidence should be package-local in `src/pyAppGen/pbcs/donor_grant_fundraising` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 24. Grant pipeline workbench
 
-### 24. Multi-tenant operating model for Donor Grant Fundraising Governed Model
+**Justification:** Grant teams need one queue for qualification, drafting, reviews, deadlines, submissions, awards, and renewals rather than separate manual trackers.
 
-**Justification:** The PBC should scale across organizations while preserving independent policy and compliance boundaries.
+**Improvement:** Add a grant pipeline workbench slice with deadline buckets, stage counts, reviewer blockers, compliance obligations, and renewal forecast indicators driven from `grant_application`.
 
-**Improvement:** Support tenant-specific `donor_grant_fundraising_governed_model` rules, data residency, encryption context, configuration, seed data, and release evidence without allowing cross-tenant leakage. Tie the behavior to `donor_grant_fundraising_record_campaign_workflow` where applicable, and make it visible in `DonorGrantFundraisingWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Deadline risk highlights appear without leaving the package, stage counts reconcile to stored records, and release evidence includes grant pipeline metrics derived from owned projections.
 
-**Acceptance evidence:** Tenant isolation tests, tenant-scoped parameters, key-rotation evidence, and cross-tenant negative fixtures. The evidence should be package-local in `src/pyAppGen/pbcs/donor_grant_fundraising` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 25. Campaign performance workbench
 
-### 25. Schema evolution and extension registry for Donor
+**Justification:** Campaign leaders need current progress, donor movement, pledge conversion, gift pace, and segment performance in one operating view.
 
-**Justification:** Domain teams will add fields; the PBC must evolve without breaking APIs, events, or workbench projections.
+**Improvement:** Extend `DonorGrantFundraisingWorkbench` with campaign rollups, segment performance, ask conversion, average gift, pledge fulfillment trend, and linked grant-funded campaign indicators.
 
-**Improvement:** Make schema extensions for `donor` first-class with compatibility checks, migration previews, projection backfills, field ownership, and rollback metadata. Tie the behavior to `donor_grant_fundraising_create_donor_workflow` where applicable, and make it visible in `DonorGrantFundraisingWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Campaign totals reconcile to underlying gifts and pledges, trends update after new gift posting events, and release evidence shows campaign performance views for multiple campaign types.
 
-**Acceptance evidence:** Extension registry UI, compatibility tests, migration dry-runs, and backfill release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/donor_grant_fundraising` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 26. Restriction compliance workbench
 
-### 26. Master data quality gates for Campaign
+**Justification:** Restricted fund oversight needs a dedicated operational surface because violations often arise from timing, purpose, and approval mismatches that are easy to miss in generic queues.
 
-**Justification:** Many donor grant and fundraising errors begin as bad reference data; the PBC should catch them before workflow execution.
+**Improvement:** Add a compliance slice showing active restrictions, pending releases, blocked uses, expiring conditions, overdue approvals, and grant-linked obligations.
 
-**Improvement:** Define reference-data contracts for `campaign`: canonical codes, parties, locations, classifications, calendars, units, currencies, products, assets, or service categories as relevant to the domain. Tie the behavior to `donor_grant_fundraising_record_campaign_workflow` where applicable, and make it visible in `DonorGrantFundraisingWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Restriction exceptions are drillable from the workbench, blocked uses show exact policy failures, and release evidence includes compliance queue exports for auditors and operators.
 
-**Acceptance evidence:** Reference validation fixtures, stale-code warnings, mapping tables, and dependency freshness indicators. The evidence should be package-local in `src/pyAppGen/pbcs/donor_grant_fundraising` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 27. Reporting calendar and submission workspace
 
-### 27. Bulk operations and correction workflows for Pledge
+**Justification:** Grant reporting and donor impact updates are deadline-driven and should be managed as operational work, not as calendar reminders outside the package.
 
-**Justification:** Enterprise-scale Donor Grant and Fundraising users cannot operate one record at a time.
+**Improvement:** Create a reporting workspace for `grant_application` and stewardship obligations with report type, period, evidence checklist, owner, review chain, and submission status.
 
-**Improvement:** Add bulk load, bulk validate, bulk approve, and bulk correction workflows for `pledge` with partial success, row-level errors, resumability, and rollback. Tie the behavior to `donor_grant_fundraising_create_donor_workflow` where applicable, and make it visible in `DonorGrantFundraisingWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Upcoming and overdue reports appear in the workbench, missing evidence blocks submission completion, and release evidence includes report readiness snapshots and submission logs.
 
-**Acceptance evidence:** CSV/API batch fixtures, resumable job state, row-level audit evidence, and assistant-generated correction suggestions. The evidence should be package-local in `src/pyAppGen/pbcs/donor_grant_fundraising` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 28. Impact reporting tied to gifts and grants
 
-### 28. Lifecycle collaboration and tasking for Gift
+**Justification:** Donors and grant makers want credible outcome reporting that traces to funded programs, restrictions, and stewardship commitments.
 
-**Justification:** Domain collaboration should live inside the PBC boundary and remain auditable with the record it affects.
+**Improvement:** Link `gift`, `restriction`, and `grant_application` records to impact reporting statements, evidence references, outcome periods, and narrative approval status inside the package.
 
-**Improvement:** Attach tasks, comments, ownership, due dates, handoffs, and escalation threads to `gift` without leaking into external shared task tables. Tie the behavior to `donor_grant_fundraising_record_campaign_workflow` where applicable, and make it visible in `DonorGrantFundraisingWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Impact reports show traceability from funding source to reported outcome, incomplete evidence is flagged before publication, and release evidence contains outcome trace reports for sample gifts and grants.
 
-**Acceptance evidence:** Task tables, comment audit history, notification events, escalation SLAs, and role-specific task queues. The evidence should be package-local in `src/pyAppGen/pbcs/donor_grant_fundraising` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 29. API boundary for donor profile mutations
 
-### 29. SLA and service-level governance for Restriction
+**Justification:** The package needs clear contract boundaries so external callers know which mutations belong in package-owned APIs and which data must arrive through consumed events.
 
-**Justification:** Users need to know when donors, campaigns, pledges, restrictions, gifts, grant applications, stewardship, and impact reporting is late, blocked, or at risk before customer or regulator impact.
+**Improvement:** Tighten the `POST /donors` contract with required donor profile fields, source attribution, duplicate checks, and mutation rules that prevent accidental edits to fields owned by other packages.
 
-**Improvement:** Define SLAs for `restriction` across intake, validation, approval, exception resolution, event handling, downstream projection refresh, and release-evidence generation. Tie the behavior to `donor_grant_fundraising_create_donor_workflow` where applicable, and make it visible in `DonorGrantFundraisingWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Contract tests reject out-of-bound fields, accepted payloads persist only package-owned data, and release evidence includes API examples and negative cases for `POST /donors`.
 
-**Acceptance evidence:** SLA breach events, timers, configurable calendars, workbench aging buckets, and tests for pause/resume behavior. The evidence should be package-local in `src/pyAppGen/pbcs/donor_grant_fundraising` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 30. API boundary for campaign, pledge, gift, and restriction writes
 
-### 30. Operational analytics cockpit for Grant Application
+**Justification:** Write APIs are safe only when boundaries are explicit about who can create, revise, approve, and reconcile fundraising records.
 
-**Justification:** World-class operations require leading indicators, not only record counts.
+**Improvement:** Define stricter contracts for `POST /campaigns`, `POST /pledges`, `POST /gifts`, and `POST /restrictions`, including approval prerequisites, idempotency behavior, conflict handling, and source-system attribution.
 
-**Improvement:** Build analytics for `grant_application`: throughput, backlog, aging, approval latency, exception rate, risk distribution, automation acceptance, correction rate, and downstream dependency health. Tie the behavior to `donor_grant_fundraising_record_campaign_workflow` where applicable, and make it visible in `DonorGrantFundraisingWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Contract tests cover happy paths and duplicate submissions, the workbench shows source attribution on created records, and release evidence documents idempotent replay behavior for each write API.
 
-**Acceptance evidence:** Metric definitions, projection tests, drill-through routes, export APIs, and anomaly overlays. The evidence should be package-local in `src/pyAppGen/pbcs/donor_grant_fundraising` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 31. Event boundary and replay discipline
 
-### 31. Decision intelligence and recommendations for Stewardship Touchpoint
+**Justification:** Fundraising and grant operations depend on trustworthy projections, which means emitted and consumed events need clear meaning, replay behavior, and exception handling.
 
-**Justification:** The PBC should help expert users decide faster while showing evidence and uncertainty.
+**Improvement:** Document and enforce event semantics for `DonorGrantFundraisingCreated`, `DonorGrantFundraisingUpdated`, `DonorGrantFundraisingApproved`, and `DonorGrantFundraisingExceptionOpened`, plus consumed event effects from `PolicyChanged`, `CustomerUpdated`, and `SupplierQualified`.
 
-**Improvement:** Generate ranked recommendations for `stewardship_touchpoint` such as next best action, likely resolution, required evidence, policy adjustment, staffing/capacity response, or downstream handoff. Tie the behavior to `donor_grant_fundraising_create_donor_workflow` where applicable, and make it visible in `DonorGrantFundraisingWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Event replay tests rebuild core projections without drift, duplicate delivery is handled idempotently, and release evidence includes event flow diagrams and replay checksums for `donor_grant_fundraising`.
 
-**Acceptance evidence:** Recommendation explanations, confidence intervals, feedback capture, model governance records, and rejection reasons. The evidence should be package-local in `src/pyAppGen/pbcs/donor_grant_fundraising` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 32. Exception taxonomy for fundraising and grant operations
 
-### 32. Quality and completeness scoring for Donor Grant Fundraising Policy Rule
+**Justification:** Operators need to distinguish data quality errors, policy failures, deadline risks, approval gaps, and external dependency problems so remediation is immediate and accurate.
 
-**Justification:** Operators should see whether a record is truly ready, not just technically saved.
+**Improvement:** Add exception types, severity, owner, due date, retryability, linked record, and closure evidence across donor, pledge, gift, restriction, and grant application flows.
 
-**Improvement:** Score each `donor_grant_fundraising_policy_rule` record for completeness, consistency, policy readiness, dependency readiness, evidence sufficiency, and downstream composability. Tie the behavior to `donor_grant_fundraising_record_campaign_workflow` where applicable, and make it visible in `DonorGrantFundraisingWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Exception queues can be filtered by type and severity, closure requires evidence, and release evidence includes exception aging and resolution metrics from the package workbench.
 
-**Acceptance evidence:** Scoring rules, missing-evidence lists, readiness badges, and blocking criteria in command handlers. The evidence should be package-local in `src/pyAppGen/pbcs/donor_grant_fundraising` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 33. Duplicate donor and pledge resolution
 
-### 33. End-to-end scenario library for Donor Grant Fundraising Runtime Parameter
+**Justification:** Duplicate records distort campaign performance, acknowledgement status, and stewardship planning, especially when donors give through multiple channels.
 
-**Justification:** Release evidence is stronger when every important donor grant and fundraising behavior has executable examples.
+**Improvement:** Add matching and merge workflows for `donor` and duplicate-detection logic for `pledge`, with confidence scoring, operator review, and retained audit history for all merge decisions.
 
-**Improvement:** Create seeded scenarios for `donor_grant_fundraising_runtime_parameter`: normal flow, urgent path, exception path, corrected path, duplicate path, late event path, and audit export path. Tie the behavior to `donor_grant_fundraising_create_donor_workflow` where applicable, and make it visible in `DonorGrantFundraisingWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Suspected duplicates appear in a governed review queue, merge actions preserve source references, and release evidence demonstrates duplicate handling without losing gift or pledge lineage.
 
-**Acceptance evidence:** Scenario seed data, runtime smoke coverage, generated-app fixtures, and story-level workbench screenshots/contracts. The evidence should be package-local in `src/pyAppGen/pbcs/donor_grant_fundraising` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 34. Renewal forecasting for grants and recurring donors
 
-### 34. Domain ontology and terminology model for Donor Grant Fundraising Schema Extension
+**Justification:** Forecasting is stronger when the package can distinguish likely renewals, at-risk renewals, and lapsed relationships before teams miss a window.
 
-**Justification:** Precise vocabulary prevents the PBC from misclassifying specialist documents or user instructions.
+**Improvement:** Extend package analytics to forecast grant renewal probability, recurring donor retention, and campaign reactivation likelihood using prior stewardship quality, reporting timeliness, and funding history.
 
-**Improvement:** Add an ontology for `donor_grant_fundraising_schema_extension` terms, synonyms, classifications, relationships, allowed values, and phrase mappings used by the assistant and UI. Tie the behavior to `donor_grant_fundraising_record_campaign_workflow` where applicable, and make it visible in `DonorGrantFundraisingWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Forecast outputs are explainable in the workbench, score changes are auditable, and release evidence includes renewal forecast accuracy checks against held-out historical records.
 
-**Acceptance evidence:** Ontology files, assistant parsing tests, UI glossary, and mapping evidence for domain-specific abbreviations. The evidence should be package-local in `src/pyAppGen/pbcs/donor_grant_fundraising` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 35. Counterfactual ask and funding scenarios
 
-### 35. Advanced search and investigation for Donor Grant Fundraising Control Assertion
+**Justification:** Fundraising leaders need to compare ask strategies, campaign pacing, and grant pursuit choices before committing scarce staff time.
 
-**Justification:** Investigators and operators need fast, explainable retrieval across the whole domain surface.
+**Improvement:** Use `donor_grant_fundraising_counterfactual_scenario_simulation` to simulate outcomes for different ask amounts, donor assignments, campaign timing, reporting delays, and proposal submission mixes.
 
-**Improvement:** Provide search across `donor_grant_fundraising_control_assertion` records, events, documents, exceptions, tasks, comments, and audit proofs with filters for tenant, status, risk, date, party, and dependency. Tie the behavior to `donor_grant_fundraising_create_donor_workflow` where applicable, and make it visible in `DonorGrantFundraisingWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Scenario comparisons show assumptions and projected outcomes side by side, simulation inputs are preserved for review, and release evidence includes approved scenario runs tied to planning decisions.
 
-**Acceptance evidence:** Search index contracts, result provenance, permission-filtered queries, and stale-index warnings. The evidence should be package-local in `src/pyAppGen/pbcs/donor_grant_fundraising` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 36. Compliance calendar with obligation tracking
 
-### 36. Reconciliation and closure controls for Donor Grant Fundraising Governed Model
+**Justification:** Grant terms, restricted gifts, acknowledgement rules, and internal approvals all create time-bound obligations that should be monitored centrally.
 
-**Justification:** Closure is not complete until the PBC can prove no material domain work remains unresolved.
+**Improvement:** Add a compliance calendar that tracks report due dates, acknowledgement deadlines, approval expirations, stewardship commitments, and restriction sunset dates across package records.
 
-**Improvement:** Add reconciliation workflows that compare `donor_grant_fundraising_governed_model` state against consumed events, external projections, expected totals/counts, approvals, and release evidence before closure. Tie the behavior to `donor_grant_fundraising_record_campaign_workflow` where applicable, and make it visible in `DonorGrantFundraisingWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Calendar-driven alerts appear in the workbench, overdue items generate exceptions automatically, and release evidence shows compliance coverage for active grants and restricted gifts.
 
-**Acceptance evidence:** Reconciliation reports, variance thresholds, closure blockers, and AppGen-X closure events. The evidence should be package-local in `src/pyAppGen/pbcs/donor_grant_fundraising` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 37. Policy rule coverage for separation of duties
 
-### 37. Regulatory and policy reporting for Donor
+**Justification:** Sensitive fundraising actions such as approving major gifts, releasing restrictions, and finalizing award setup should not be performed by a single unchecked actor.
 
-**Justification:** World-class PBCs turn operational evidence into credible reporting without spreadsheet reconstruction.
+**Improvement:** Extend `donor_grant_fundraising_policy_rule` to encode reviewer independence, approval thresholds, large-gift controls, and restricted-fund release approvals tied to package permissions.
 
-**Improvement:** Generate domain reporting packs for `donor` covering statutory, contractual, operational, board, customer, or regulator evidence depending on real-time movement control, capacity commitments, disruptions, asset readiness, safety windows, route constraints, and operational handoff integrity. Tie the behavior to `donor_grant_fundraising_create_donor_workflow` where applicable, and make it visible in `DonorGrantFundraisingWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Policy tests prove blocked self-approval paths, approver roles display in the UI, and release evidence contains separation-of-duties control results for high-risk flows.
 
-**Acceptance evidence:** Report schemas, redaction rules, traceable metric sources, and approval/export audit events. The evidence should be package-local in `src/pyAppGen/pbcs/donor_grant_fundraising` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 38. Multi-tenant portfolio isolation
 
-### 38. Carbon and resource awareness for Campaign
+**Justification:** Organizations using the package in shared infrastructure need strict tenant separation for donor relationships, fundraising plans, and grant obligations.
 
-**Justification:** Sustainability evidence should be embedded in operations instead of treated as an after-the-fact report.
+**Improvement:** Apply `donor_grant_fundraising_multi_tenant_policy_isolation` to donor portfolios, campaign analytics, assistant actions, and release evidence access, with tenant-aware configuration and policy enforcement.
 
-**Improvement:** Where relevant, attach carbon, energy, water, travel, capacity, compute, or resource-footprint metadata to `campaign` decisions and batch operations. Tie the behavior to `donor_grant_fundraising_record_campaign_workflow` where applicable, and make it visible in `DonorGrantFundraisingWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Cross-tenant access attempts are denied, tenant-scoped workbench views show only local records, and release evidence includes isolation test results for the `donor_grant_fundraising` package.
 
-**Acceptance evidence:** Footprint fields, scheduling parameters, exception rules, and dashboards that expose operational tradeoffs. The evidence should be package-local in `src/pyAppGen/pbcs/donor_grant_fundraising` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 39. Consent, privacy, and recognition preference controls
 
-### 39. Resilience and offline behavior for Pledge
+**Justification:** Donor trust depends on honoring privacy settings, communication consent, anonymous giving requests, and recognition limitations across every downstream workflow.
 
-**Justification:** Real operations keep moving during outages; the PBC must preserve correctness when dependencies are unavailable.
+**Improvement:** Add consent and preference controls to `donor` that influence acknowledgement generation, stewardship prompts, reporting visibility, and assistant draft content.
 
-**Improvement:** Define resilience modes for `pledge`: degraded dependency mode, offline draft capture, delayed event replay, conflict detection, and safe recovery after partial failure. Tie the behavior to `donor_grant_fundraising_create_donor_workflow` where applicable, and make it visible in `DonorGrantFundraisingWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Anonymous donors are suppressed from recognition outputs, blocked channels are respected in follow-up plans, and release evidence includes consent-driven behavior tests in the donor workbench.
 
-**Acceptance evidence:** Offline fixtures, replay tests, conflict queues, recovery logs, and user-visible degraded-mode warnings. The evidence should be package-local in `src/pyAppGen/pbcs/donor_grant_fundraising` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 40. Soft credit and relationship-aware attribution
 
-### 40. Human-in-the-loop automation for Gift
+**Justification:** Campaign reporting and stewardship planning often require recognizing who influenced or facilitated a gift even when legal ownership stays with a different donor record.
 
-**Justification:** Automation should accelerate donors, campaigns, pledges, restrictions, gifts, grant applications, stewardship, and impact reporting while preserving accountability for high-risk decisions.
+**Improvement:** Add soft-credit attribution structures for gifts and pledges so households, board champions, or institutional introducers can be reflected in analytics without corrupting legal donor ownership.
 
-**Improvement:** Set explicit automation boundaries for `gift`: auto-approve, auto-reject, suggest-only, require-review, and block-until-evidence states with policy-based routing. Tie the behavior to `donor_grant_fundraising_record_campaign_workflow` where applicable, and make it visible in `DonorGrantFundraisingWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Soft-credit totals appear separately from legal totals, attribution changes preserve audit history, and release evidence demonstrates relationship-aware campaign reports.
 
-**Acceptance evidence:** Automation policy tests, reviewer queues, override reasons, and assistant action audit trails. The evidence should be package-local in `src/pyAppGen/pbcs/donor_grant_fundraising` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 41. Restricted-fund release and amendment workflow
 
-### 41. Package discovery and fit scoring for Restriction
+**Justification:** Restrictions change over time through board action, donor approval, or grant amendment, and those changes need controlled workflow rather than silent field edits.
 
-**Justification:** Users selecting PBCs need transparent fit reasoning, especially when domains are adjacent but not overlapping.
+**Improvement:** Add release and amendment workflows for `restriction` with request reason, supporting evidence, approver routing, effective date, and downstream impact preview on gifts and reports.
 
-**Improvement:** Improve package metadata so composition can explain when `donor_grant_fundraising` fits a prompt, what entities it owns, what APIs/events it exposes, and what adjacent PBCs it depends on. Tie the behavior to `donor_grant_fundraising_create_donor_workflow` where applicable, and make it visible in `DonorGrantFundraisingWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Proposed restriction changes show impact analysis before approval, unauthorized amendments are blocked, and release evidence captures completed release or amendment cases with approval history.
 
-**Acceptance evidence:** Discovery manifests, prompt-selection tests, overlap rationale links, and composition DSL examples. The evidence should be package-local in `src/pyAppGen/pbcs/donor_grant_fundraising` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 42. Grant amendment and rebudgeting workflow
 
-### 42. Configuration deployment pipeline for Grant Application
+**Justification:** Awarded grants commonly require rebudgeting, no-cost extensions, or scope adjustments, and those changes affect compliance and reporting.
 
-**Justification:** Configuration changes can materially alter donor grant and fundraising; they need the same discipline as code releases.
+**Improvement:** Add amendment paths on `grant_application` for rebudgeting, extension, scope revision, and reporting cadence changes, with reviewer roles and linked updated restrictions where necessary.
 
-**Improvement:** Add configuration promotion for `grant_application` across draft, test, approved, active, deprecated, and rollback states with impact analysis before activation. Tie the behavior to `donor_grant_fundraising_record_campaign_workflow` where applicable, and make it visible in `DonorGrantFundraisingWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Amendment requests preserve previous approved values, downstream reporting calendars update after approval, and release evidence includes amended grant cases with before-and-after comparison views.
 
-**Acceptance evidence:** Config diff views, approval workflows, simulation before activation, and rollback tests. The evidence should be package-local in `src/pyAppGen/pbcs/donor_grant_fundraising` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 43. Revenue pacing and cash forecast analytics
 
-### 43. Workbench command completeness for Stewardship Touchpoint
+**Justification:** Advancement leaders need to distinguish booked pledges, received gifts, restricted balances, and likely grant awards to manage timing and staffing decisions.
 
-**Justification:** A PBC does not fully surface its capabilities if users must call hidden APIs for core work.
+**Improvement:** Add analytics that separate committed, received, expected, restricted, and available funding across campaigns, grant opportunities, and donor portfolios using package-owned projections.
 
-**Improvement:** Expose every high-value operation for `stewardship_touchpoint` in the UI: create, validate, approve, simulate, correct, assign, export, retry, close, and audit-proof verification. Tie the behavior to `donor_grant_fundraising_create_donor_workflow` where applicable, and make it visible in `DonorGrantFundraisingWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Forecast tiles reconcile to pledge and gift states, scenario assumptions are visible, and release evidence includes monthly pacing views for campaigns and grants.
 
-**Acceptance evidence:** UI action coverage tests, permission-aware disabled states, keyboard paths, and assistant handoff links. The evidence should be package-local in `src/pyAppGen/pbcs/donor_grant_fundraising` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 44. Major donor meeting preparation workspace
 
-### 44. Document packet and evidence vault for Donor Grant Fundraising Policy Rule
+**Justification:** Fundraisers prepare better when donor history, recent touchpoints, pending pledges, restrictions, and active opportunities are assembled into one briefing surface.
 
-**Justification:** Documents often carry the legal or operational truth behind donors, campaigns, pledges, restrictions, gifts, grant applications, stewardship, and impact reporting.
+**Improvement:** Create a meeting-prep view that pulls donor profile, recent gifts, open asks, stewardship notes, proposal status, and recommended next steps into `DonorGrantFundraisingAssistantPanel` and the detail page.
 
-**Improvement:** Create a governed evidence vault for `donor_grant_fundraising_policy_rule` documents, attachments, source spans, extracted fields, signatures, approvals, and retention labels. Tie the behavior to `donor_grant_fundraising_record_campaign_workflow` where applicable, and make it visible in `DonorGrantFundraisingWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Meeting brief generation cites specific package records, stale data warnings are visible before export, and release evidence includes reproducible briefing examples for major donor visits.
 
-**Acceptance evidence:** Evidence models, source-to-field lineage, signature validation, retention policies, and proof exports. The evidence should be package-local in `src/pyAppGen/pbcs/donor_grant_fundraising` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 45. Reporting-quality controls and evidence bundles
 
-### 45. Data correction and amendment history for Donor Grant Fundraising Runtime Parameter
+**Justification:** Donor and grant reports need defendable evidence packages so reviewers can trust statements before they leave the organization.
 
-**Justification:** World-class systems correct mistakes without rewriting history or confusing downstream consumers.
+**Improvement:** Add evidence bundles for impact reporting and grant reporting that collect supporting records, versioned narrative text, reviewer sign-off, and provenance hashes from package-owned data.
 
-**Improvement:** Support formal amendments for `donor_grant_fundraising_runtime_parameter` that preserve original values, correction reason, approving actor, effective date, downstream event impacts, and replay behavior. Tie the behavior to `donor_grant_fundraising_create_donor_workflow` where applicable, and make it visible in `DonorGrantFundraisingWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Reports cannot move to complete without required evidence attached, reviewer sign-off is stored with timestamps, and `RELEASE_EVIDENCE.md` includes reporting control results for `donor_grant_fundraising`.
 
-**Acceptance evidence:** Amendment tables, correction events, projection replay tests, and side-by-side before/after UI. The evidence should be package-local in `src/pyAppGen/pbcs/donor_grant_fundraising` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 46. Control testing for fundraising operations
 
-### 46. External participant collaboration for Donor Grant Fundraising Schema Extension
+**Justification:** High-value controls should run continuously against live package behavior rather than existing only as release-time checklists.
 
-**Justification:** Many donor grant and fundraising workflows require outside parties, but they must not gain direct access to internal tables.
+**Improvement:** Use `donor_grant_fundraising_control_assertion` and `donor_grant_fundraising_continuous_control_testing` to monitor duplicate gifts, overdue acknowledgements, missing report reviews, expired restrictions, and skipped approvals.
 
-**Improvement:** Add controlled collaboration portals or API views for external participants related to `donor_grant_fundraising_schema_extension`, limited to scoped evidence submission, status checks, comments, and dispute responses. Tie the behavior to `donor_grant_fundraising_record_campaign_workflow` where applicable, and make it visible in `DonorGrantFundraisingWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Control failures raise package exceptions automatically, control results are visible in the workbench, and release evidence includes passing and failing control samples with remediation history.
 
-**Acceptance evidence:** Participant role policies, scoped tokens, submission audit trails, and inbound evidence validation. The evidence should be package-local in `src/pyAppGen/pbcs/donor_grant_fundraising` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 47. Audit-proof approval history
 
-### 47. Advanced dependency freshness scoring for Donor Grant Fundraising Control Assertion
+**Justification:** Donor approvals, proposal approvals, restriction releases, and major gift decisions need tamper-evident history to support audits and dispute resolution.
 
-**Justification:** A record may be valid locally but unsafe if dependency evidence is stale or incomplete.
+**Improvement:** Apply `donor_grant_fundraising_event_sourced_operational_history` and `donor_grant_fundraising_cryptographic_audit_proofs` to all high-risk approvals and exceptions across core records.
 
-**Improvement:** Score freshness and reliability of dependencies used by `donor_grant_fundraising_control_assertion`, including consumed events PolicyChanged, CustomerUpdated, SupplierQualified, referenced projections, configuration versions, and external submissions. Tie the behavior to `donor_grant_fundraising_create_donor_workflow` where applicable, and make it visible in `DonorGrantFundraisingWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Approval history can be replayed in order, proof verification detects tampering, and release evidence includes approval-history verification runs for selected donor and grant workflows.
 
-**Acceptance evidence:** Freshness indicators, blocking rules, stale-event simulations, and workbench dependency health panels. The evidence should be package-local in `src/pyAppGen/pbcs/donor_grant_fundraising` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 48. Schema extension governance for nonprofit-specific fields
 
-### 48. Model governance and explainability for Donor Grant Fundraising Governed Model
+**Justification:** Different organizations will need fields such as constituency tags, fiscal sponsor data, or grant classification details, and those extensions should remain governed.
 
-**Justification:** Governed AI is mandatory for professional-grade automation in Donor Grant and Fundraising.
+**Improvement:** Use `donor_grant_fundraising_schema_extension` to allow tenant-scoped schema additions with compatibility checks, migration previews, projection impact review, and assistant-awareness rules.
 
-**Improvement:** For every predictive or agentic feature around `donor_grant_fundraising_governed_model`, record model version, prompt or ruleset version, training/evaluation evidence, confidence, explanation, and human feedback. Tie the behavior to `donor_grant_fundraising_record_campaign_workflow` where applicable, and make it visible in `DonorGrantFundraisingWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Extension registration requires approval, compatibility tests run before activation, and release evidence shows one extension path added without breaking existing donor or grant projections.
 
-**Acceptance evidence:** Model cards, prompt/version manifests, feedback loops, drift tests, and audit proof for recommendations. The evidence should be package-local in `src/pyAppGen/pbcs/donor_grant_fundraising` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 49. Domain seed data and contract scenarios
 
-### 49. High-scale partitioning and archival for Donor
+**Justification:** Reliable delivery depends on package-native scenarios that reflect actual nonprofit fundraising and grant operations rather than minimal placeholder examples.
 
-**Justification:** Better-than-world-class packages must remain operable after years of high-volume domain history.
+**Improvement:** Expand `seed_data.py` and package tests to include realistic donor profiles, campaigns, pledges, restricted gifts, proposal reviews, awarded grants, stewardship touchpoints, and reporting obligations.
 
-**Improvement:** Plan scale behavior for `donor`: tenant partitioning, archival policies, cold storage, retention-aware search, projection compaction, and large-batch replay. Tie the behavior to `donor_grant_fundraising_create_donor_workflow` where applicable, and make it visible in `DonorGrantFundraisingWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Seed data creates a usable demonstration portfolio in `DonorGrantFundraisingWorkbench`, contract tests cover the main write APIs and projections, and release evidence references those package scenarios explicitly.
 
-**Acceptance evidence:** Partition tests, archive/retrieve fixtures, retention enforcement, and replay benchmarks. The evidence should be package-local in `src/pyAppGen/pbcs/donor_grant_fundraising` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 50. Release readiness scorecard for donor and grant operations
 
-### 50. Release gate expansion for Campaign
+**Justification:** The package needs a repeatable go-live view that shows whether fundraising, grant, compliance, assistant, API, and reporting capabilities are ready together.
 
-**Justification:** The PBC should not claim domain coverage unless release evidence proves the claim end to end.
+**Improvement:** Create a release readiness scorecard that summarizes API contract coverage, event replay health, workbench readiness, control status, assistant guardrails, reporting evidence, and unresolved exception counts for `donor_grant_fundraising`.
 
-**Improvement:** Expand release gates for `donor_grant_fundraising` so every schema, service, API, event, handler, UI, rule, parameter, agent skill, seed scenario, and improvement backlog item maps to executable evidence. Tie the behavior to `donor_grant_fundraising_record_campaign_workflow` where applicable, and make it visible in `DonorGrantFundraisingWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Release audit checks, manifest traceability, generated-app smoke tests, and missing-capability blockers. The evidence should be package-local in `src/pyAppGen/pbcs/donor_grant_fundraising` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** `RELEASE_EVIDENCE.md` contains the scorecard with pass/fail criteria, the scorecard links back to package artifacts and tests, and release evidence demonstrates no unreviewed blocker remains at sign-off.

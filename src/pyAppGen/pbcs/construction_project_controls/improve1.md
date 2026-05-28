@@ -1,418 +1,417 @@
-# Construction Project Controls PBC Better-Than-World-Class Improvement Backlog
-
-## Purpose
-
-This file identifies, justifies, and describes 50 high-impact improvements for `construction_project_controls`. The backlog is specific to construction budgets, schedules, rfis, submittals, change events, field progress, and site risk controls and is intended to move the PBC from release-auditable scaffolding toward complete, specialist-grade domain coverage.
+# Construction Project Controls Improvement Backlog
 
 ## Current Domain Evidence Used
 
-- Stable PBC key: `construction_project_controls`.
-- Domain purpose: Construction budgets, schedules, RFIs, submittals, change events, field progress, and site risk controls.
-- Owned domain tables: `construction_project`, `work_package`, `rfi`, `submittal`, `site_progress`, `change_event`, `schedule_risk`, `construction_project_controls_policy_rule`, `construction_project_controls_runtime_parameter`, `construction_project_controls_schema_extension`, `construction_project_controls_control_assertion`, `construction_project_controls_governed_model`.
-- Public APIs: `POST /construction-projects`, `POST /work-packages`, `POST /rfis`, `POST /submittals`, `POST /site-progresss`, `GET /construction-project-controls-workbench`.
-- Emitted AppGen-X events: `ConstructionProjectControlsCreated`, `ConstructionProjectControlsUpdated`, `ConstructionProjectControlsApproved`, `ConstructionProjectControlsExceptionOpened`.
-- Consumed AppGen-X events: `PolicyChanged`, `AuditEventSealed`, `OperationalKpiChanged`.
-- Current standard surfaces include: `construction_project_management`, `construction_project_controls_workflow`, `construction_project_controls_analytics`, `configuration_schema`, `rule_engine`, `parameter_engine`, `owned_schema_migrations_models`, `appgen_x_outbox_inbox_eventing`, `idempotent_handlers`, `retry_dead_letter_evidence`.
-- Current advanced surfaces include: `construction_project_controls_event_sourced_operational_history`, `construction_project_controls_multi_tenant_policy_isolation`, `construction_project_controls_schema_evolution_resilience`, `construction_project_controls_autonomous_anomaly_detection`, `construction_project_controls_semantic_document_instruction_understanding`, `construction_project_controls_predictive_risk_scoring`, `construction_project_controls_counterfactual_scenario_simulation`, `construction_project_controls_cryptographic_audit_proofs`.
+- Exact `pbc`: `construction_project_controls`.
+- Exact `label`: `Construction Project Controls`.
+- Exact `description`: `Construction budgets, schedules, RFIs, submittals, change events, field progress, and site risk controls`.
+- Exact `tables`: `construction_project`, `work_package`, `rfi`, `submittal`, `site_progress`, `change_event`, `schedule_risk`, `construction_project_controls_policy_rule`, `construction_project_controls_runtime_parameter`, `construction_project_controls_schema_extension`, `construction_project_controls_control_assertion`, `construction_project_controls_governed_model`.
+- Exact `apis`: `POST /construction-projects`, `POST /work-packages`, `POST /rfis`, `POST /submittals`, `POST /site-progresss`, `GET /construction-project-controls-workbench`.
+- Exact `workflows`: `construction_project_controls_create_construction_project_workflow`, `construction_project_controls_record_work_package_workflow`.
+- Exact `ui_fragments`: `ConstructionProjectControlsWorkbench`, `ConstructionProjectControlsDetail`, `ConstructionProjectControlsAssistantPanel`.
+- Exact `analytics`: `construction_project_controls_risk_score`, `construction_project_controls_workbench_metric`.
+- Exact `emits`: `ConstructionProjectControlsCreated`, `ConstructionProjectControlsUpdated`, `ConstructionProjectControlsApproved`, `ConstructionProjectControlsExceptionOpened`.
+- Exact `consumes`: `PolicyChanged`, `AuditEventSealed`, `OperationalKpiChanged`.
+- Exact `docs`: `SPECIFICATION.md`, `RELEASE_EVIDENCE.md`.
+- Exact `advanced_capabilities`: `construction_project_controls_event_sourced_operational_history`, `construction_project_controls_predictive_risk_scoring`, `construction_project_controls_counterfactual_scenario_simulation`, `construction_project_controls_cryptographic_audit_proofs`, `construction_project_controls_continuous_control_testing`, `construction_project_controls_governed_ai_agent_execution`.
+- Exact `configuration`: `CONSTRUCTION_PROJECT_CONTROLS_DATABASE_URL`, `CONSTRUCTION_PROJECT_CONTROLS_EVENT_TOPIC`, `CONSTRUCTION_PROJECT_CONTROLS_RETRY_LIMIT`, `CONSTRUCTION_PROJECT_CONTROLS_DEFAULT_POLICY`.
 
-## 50 High-Impact Improvements
+### 1. Canonical WBS and control-account hierarchy
 
-### 1. Canonical lifecycle state model for Construction Project
+**Justification:** `work_package` needs a governed WBS, control-account, and cost-code structure so baseline, progress, earned value, and change impacts roll up the same way every reporting period.
 
-**Justification:** This closes shallow CRUD gaps by making every construction project controls transition explainable and testable instead of implicit in free-form status values.
+**Improvement:** Extend `work_package` and `construction_project` so each package carries WBS code, parent/child relationships, control account, discipline, area, responsible contractor, and reporting level. Show the hierarchy in `ConstructionProjectControlsDetail` with expand/collapse, rollup totals, and orphan-package warnings.
 
-**Improvement:** Define a complete state machine for `construction_project` with explicit draft, validated, blocked, approved, active, suspended, corrected, closed, archived, and reopened states. Tie the behavior to `construction_project_controls_create_construction_project_workflow` where applicable, and make it visible in `ConstructionProjectControlsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Migration and contract tests prove WBS parentage integrity, workbench screenshots show hierarchical rollups in `GET /construction-project-controls-workbench`, and `RELEASE_EVIDENCE.md` includes a WBS navigation walkthrough for `construction_project_controls`.
 
-**Acceptance evidence:** State-transition tests, invalid-transition fixtures, workbench state badges, and emitted AppGen-X transition events for ConstructionProjectControlsCreated, ConstructionProjectControlsUpdated, ConstructionProjectControlsApproved. The evidence should be package-local in `src/pyAppGen/pbcs/construction_project_controls` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 2. Baseline schedule versioning and freeze control
 
-### 2. Domain intake and normalization for Work Package
+**Justification:** Project controls depends on a frozen baseline; without versioned baseline dates there is no defensible variance or forecast discussion.
 
-**Justification:** The PBC cannot reach complete domain coverage unless it handles the messy front door of construction budgets, schedules, rfis, submittals, change events, field progress, and site risk controls, not only already-clean records.
+**Improvement:** Add baseline revision records tied to `construction_project` and `work_package` for original baseline, current approved baseline, approval date, approver, and freeze reason. Surface baseline swaps through `construction_project_controls_create_construction_project_workflow` and make re-baselining impossible without approval evidence.
 
-**Improvement:** Build a typed intake pipeline for `work_package` that accepts structured API payloads, document-derived instructions, batch loads, and assistant-generated drafts while normalizing identifiers, dates, units, parties, and jurisdictional context. Tie the behavior to `construction_project_controls_record_work_package_workflow` where applicable, and make it visible in `ConstructionProjectControlsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Tests show one active approved baseline per project, emitted evidence links baseline approvals to `ConstructionProjectControlsApproved`, and `SPECIFICATION.md` documents baseline freeze and re-baseline rules.
 
-**Acceptance evidence:** Golden intake fixtures, rejected-record queues, field-level normalization evidence, and assistant previews before governed datastore mutation. The evidence should be package-local in `src/pyAppGen/pbcs/construction_project_controls` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 3. Quantity-based progress measurement rules
 
-### 3. Specialist validation rules for Rfi
+**Justification:** `site_progress` needs more than a free-form percent complete field; disciplined progress measurement requires quantities, units, and rule-based percent complete methods.
 
-**Justification:** World-class Construction Project Controls requires rules that domain experts can reason about, version, test, and roll back without code edits.
+**Improvement:** Add progress methods per `work_package` such as quantity installed, milestone complete, weighted steps, and level-of-effort. Capture planned quantity, installed quantity, measurement unit, and measurement date in `site_progress`, with automatic percent complete derived from the configured method.
 
-**Improvement:** Add a domain rule compiler for `rfi` that supports threshold rules, eligibility rules, dependency rules, temporal windows, conflicting-instruction detection, and override justification. Tie the behavior to `construction_project_controls_create_construction_project_workflow` where applicable, and make it visible in `ConstructionProjectControlsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Regression tests show consistent percent-complete calculations across methods, `ConstructionProjectControlsWorkbench` displays planned versus installed quantities, and release evidence includes a quantity-driven status cycle.
 
-**Acceptance evidence:** Rule simulation tests, versioned rule manifests, rule impact reports, and UI rule editors linked to `CONSTRUCTION_PROJECT_CONTROLS_DATABASE_URL, CONSTRUCTION_PROJECT_CONTROLS_EVENT_TOPIC, CONSTRUCTION_PROJECT_CONTROLS_RETRY_LIMIT`. The evidence should be package-local in `src/pyAppGen/pbcs/construction_project_controls` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 4. Earned value management engine
 
-### 4. Parameter governance and tuning for Submittal
+**Justification:** Earned value is central to construction project controls and is absent unless planned value, earned value, and actual cost are calculated from approved baseline and progress records.
 
-**Justification:** Parameters are where operations teams tune construction project controls; unbounded constants would make the PBC brittle and unsafe in real deployments.
+**Improvement:** Add periodized BCWS, BCWP, ACWP, CPI, SPI, CV, and SV calculations at `work_package`, control-account, and project levels. Tie period close to approved `site_progress` and cost records so earned value reflects governed status data rather than ad hoc spreadsheet exports.
 
-**Improvement:** Expose bounded runtime parameters for `submittal` covering risk thresholds, SLA windows, confidence floors, escalation cutoffs, batch sizes, retry limits, and human-confirmation requirements. Tie the behavior to `construction_project_controls_record_work_package_workflow` where applicable, and make it visible in `ConstructionProjectControlsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Unit tests validate CPI and SPI calculations, dashboard cards expose earned value metrics through `construction_project_controls_workbench_metric`, and `RELEASE_EVIDENCE.md` includes a monthly EV calculation example.
 
-**Acceptance evidence:** Parameter schema validation, tenant overrides, approval history, rollback controls, and workbench diff views. The evidence should be package-local in `src/pyAppGen/pbcs/construction_project_controls` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 5. Commitment, actual, and remaining-cost control
 
-### 5. Deep owned schema expansion for Site Progress
+**Justification:** Cost control requires visibility into commitments, accruals, actuals, and remaining-to-complete, not just a lump-sum project budget.
 
-**Justification:** A single payload column cannot express the full surface of construction budgets, schedules, rfis, submittals, change events, field progress, and site risk controls or prove cross-PBC boundaries are respected.
+**Improvement:** Expand `construction_project` and `work_package` cost fields to track original budget, approved budget, committed cost, accruals, invoiced cost, paid cost, and remaining cost. Add variance views that isolate scope-driven changes from production overruns.
 
-**Improvement:** Extend the owned schema around `site_progress` with normalized child tables for line-level evidence, party roles, approvals, attachments, comments, metrics, exception reasons, and control assertions. Tie the behavior to `construction_project_controls_create_construction_project_workflow` where applicable, and make it visible in `ConstructionProjectControlsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Data model tests prove period cost rollups, workbench panels show budget-versus-actual-versus-forecast by WBS, and release evidence includes a cost-control review pack for one reporting period.
 
-**Acceptance evidence:** Migrations, models, relationship tests, schema contract snapshots, and no shared-table access outside the `construction_project_controls_` namespace. The evidence should be package-local in `src/pyAppGen/pbcs/construction_project_controls` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 6. Forecast engine for ETC and EAC
 
-### 6. Event-sourced operational history for Change Event
+**Justification:** A controls package must support forward-looking cost and schedule forecast, not only current-state reporting.
 
-**Justification:** Temporal reconstruction is essential for better-than-world-class auditability and dispute resolution in construction project controls.
+**Improvement:** Add estimate-to-complete and estimate-at-completion logic using earned value trends, remaining quantities, open `change_event` exposure, and active `schedule_risk` items. Provide manual forecast override with mandatory explanation and comparison to system forecast.
 
-**Improvement:** Capture every material mutation of `change_event` as immutable AppGen-X events with actor, tenant, command, policy version, idempotency key, before/after summary, and projection checkpoint. Tie the behavior to `construction_project_controls_record_work_package_workflow` where applicable, and make it visible in `ConstructionProjectControlsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Tests cover system forecast, manual override, and variance from approved budget, `ConstructionProjectControlsDetail` shows ETC and EAC history, and `construction_project_controls_risk_score` reflects forecast deterioration scenarios.
 
-**Acceptance evidence:** Replay tests, projection checksums, event ordering evidence, and point-in-time workbench views. The evidence should be package-local in `src/pyAppGen/pbcs/construction_project_controls` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 7. Change impact chain from trend to approved event
 
-### 7. Projection and read-model strategy for Schedule Risk
+**Justification:** Change control is weak unless early trend signals, formal change events, budget impacts, and baseline impacts are linked end to end.
 
-**Justification:** The workbench should not force users to infer domain truth from raw tables; each projection should answer a real operating question.
+**Improvement:** Extend `change_event` to capture trend reference, cause category, scope impact, cost impact, schedule impact, affected WBS codes, affected submittals or RFIs, and approval state. Ensure approved changes update forecast and baseline impact views without rewriting prior-period facts.
 
-**Improvement:** Create purpose-built projections for `schedule_risk`: operational queue, executive KPI rollup, exception aging, compliance evidence, agent task context, and external dependency health. Tie the behavior to `construction_project_controls_create_construction_project_workflow` where applicable, and make it visible in `ConstructionProjectControlsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Workflow tests trace one change from trend log to approved event, workbench cards show pending versus approved impacts, and release evidence includes before/after baseline and forecast snapshots.
 
-**Acceptance evidence:** Projection contracts, freshness SLAs, backfill tests, and visible stale-projection warnings. The evidence should be package-local in `src/pyAppGen/pbcs/construction_project_controls` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 8. Trend log before formal change approval
 
-### 8. Exception taxonomy and remediation for Construction Project Controls Policy Rule
+**Justification:** Controls teams need early visibility into likely commercial movement before a formal change is approved.
 
-**Justification:** High-value PBCs win on exception throughput; generic “failed” states hide the details operators need.
+**Improvement:** Add a governed pre-change trend register under `change_event` with probability, rough-order cost range, potential schedule effect, owner, and next decision date. Show trend aging and conversion rate in `ConstructionProjectControlsWorkbench`.
 
-**Improvement:** Model the full exception taxonomy for `construction_project_controls_policy_rule`, including severity, root cause, blocking dependency, remediation owner, due date, retry eligibility, escalation path, and closure evidence. Tie the behavior to `construction_project_controls_record_work_package_workflow` where applicable, and make it visible in `ConstructionProjectControlsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Tests prove trends can convert to formal `change_event` records without losing history, dashboards show trend exposure by project, and `SPECIFICATION.md` defines the trend-to-change handoff.
 
-**Acceptance evidence:** Exception queues, aging metrics, remediation playbooks, dead-letter linkage, and closure test fixtures for schedule slippage. The evidence should be package-local in `src/pyAppGen/pbcs/construction_project_controls` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 9. Contractor progress intake quality gates
 
-### 9. Predictive risk scoring for Construction Project Controls Runtime Parameter
+**Justification:** Contractor-reported progress is often the noisiest input in project controls and needs strict validation before it affects baseline variance or payment readiness.
 
-**Justification:** The package should warn users before construction project controls work fails, breaches policy, or creates downstream cost.
+**Improvement:** Gate `POST /site-progresss` behind rules for date range validity, duplicate update detection, quantity overstatement, unsupported measurement units, missing photo or report evidence, and unauthorized contractor submissions. Route failures to a review queue instead of silently dropping them.
 
-**Improvement:** Add predictive risk scoring for `construction_project_controls_runtime_parameter` using domain features from owned tables, consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, rule outcomes, aging, anomaly signals, and historical corrections. Tie the behavior to `construction_project_controls_create_construction_project_workflow` where applicable, and make it visible in `ConstructionProjectControlsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** API tests reject invalid contractor submissions with specific reasons, dead-letter evidence is visible for failed intake attempts, and `ConstructionProjectControlsAssistantPanel` can summarize why a progress update was held.
 
-**Acceptance evidence:** Feature manifests, score explanations, calibration reports, drift alerts, and tests for low/medium/high-risk scenarios. The evidence should be package-local in `src/pyAppGen/pbcs/construction_project_controls` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 10. Schedule update quality rules
 
-### 10. Counterfactual simulation for Construction Project Controls Schema Extension
+**Justification:** Schedule variance is only useful when updates follow quality rules for logic, dates, and status consistency.
 
-**Justification:** Advanced users need to ask “what would happen if” before committing changes to live construction budgets, schedules, rfis, submittals, change events, field progress, and site risk controls operations.
+**Improvement:** Add `schedule_risk` and `work_package` validations for open-ended activities, negative float spikes, missing successors, actual dates after data date violations, and percent-complete/date contradictions. Display quality flags before a schedule update is accepted into the reporting cycle.
 
-**Improvement:** Provide scenario simulation for `construction_project_controls_schema_extension`: policy change, capacity constraint, deadline shift, price/rate change, eligibility change, disruption, and manual override outcomes. Tie the behavior to `construction_project_controls_record_work_package_workflow` where applicable, and make it visible in `ConstructionProjectControlsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Validation tests catch broken logic scenarios, the workbench exposes a schedule-quality queue, and release evidence contains one accepted and one rejected update package with reasons.
 
-**Acceptance evidence:** Simulation APIs, non-mutating sandbox state, comparison reports, and workbench side-by-side scenario panels. The evidence should be package-local in `src/pyAppGen/pbcs/construction_project_controls` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 11. Critical-path and near-critical monitoring
 
-### 11. Autonomous anomaly triage for Construction Project Controls Control Assertion
+**Justification:** Project controls users need visibility into path movement and float erosion, not just a flat list of risks.
 
-**Justification:** A world-class PBC should reduce analyst burden without hiding the reasoning behind automated triage.
+**Improvement:** Add path classification to `schedule_risk` and `work_package` for critical, near-critical, and driving-path status, including current float, prior float, and path owner. Show path movement on the main workbench and trigger exceptions when float drops past policy thresholds.
 
-**Improvement:** Implement anomaly detection for `construction_project_controls_control_assertion` that identifies outliers, duplicate submissions, impossible sequences, stale dependencies, unusual amounts/counts/durations, and contradictory fields. Tie the behavior to `construction_project_controls_create_construction_project_workflow` where applicable, and make it visible in `ConstructionProjectControlsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Tests prove float threshold exceptions open `ConstructionProjectControlsExceptionOpened`, dashboards show current and prior path status, and `construction_project_controls_policy_rule` stores configurable float limits.
 
-**Acceptance evidence:** Explainable anomaly cards, reviewer feedback loops, false-positive tracking, and suppression governance. The evidence should be package-local in `src/pyAppGen/pbcs/construction_project_controls` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 12. Four-week and twelve-week lookahead workbench
 
-### 12. Semantic document understanding for Construction Project Controls Governed Model
+**Justification:** Short-horizon execution control belongs in the package so planning, progress, and risk data stay connected.
 
-**Justification:** Document-heavy work in Construction Project Controls cannot be complete if the assistant only answers questions and cannot prepare accurate governed changes.
+**Improvement:** Add lookahead views driven by `work_package`, `submittal`, `rfi`, and `schedule_risk` data to show upcoming work, blockers, readiness constraints, and owner actions over four-week and twelve-week windows.
 
-**Improvement:** Train the package assistant to parse domain documents and instructions for `construction_project_controls_governed_model`, extract obligations, dates, parties, quantities, identifiers, and exceptions, then map them to safe draft mutations. Tie the behavior to `construction_project_controls_record_work_package_workflow` where applicable, and make it visible in `ConstructionProjectControlsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** UI tests verify lookahead filtering and drill-through in `ConstructionProjectControlsWorkbench`, API support exists for date-window queries, and release evidence includes a lookahead review session.
 
-**Acceptance evidence:** Document extraction tests, confidence thresholds, redaction handling, source span citations, and human confirmation workflows. The evidence should be package-local in `src/pyAppGen/pbcs/construction_project_controls` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 13. RFI impact linkage to WBS and schedule
 
-### 13. Agent-safe CRUD execution for Construction Project
+**Justification:** `rfi` records are operationally weak if they are not tied to affected work scope, activity windows, and decision deadlines.
 
-**Justification:** The PBC agent must be a first-class operator but never a hidden bypass around RBAC, rules, or owned datastore boundaries.
+**Improvement:** Extend `rfi` with affected WBS, affected activity or milestone, required-by date, schedule impact classification, and workaround status. Highlight overdue RFIs that threaten the current baseline or near-term lookahead.
 
-**Improvement:** Add a professional chatbot skill for `construction_project` that can create, update, correct, close, and annotate records only through policy-checked commands, approval gates, and previewed diffs. Tie the behavior to `construction_project_controls_create_construction_project_workflow` where applicable, and make it visible in `ConstructionProjectControlsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Tests validate RFI linkage to `work_package`, dashboards show open RFIs by criticality and due date, and release evidence includes one RFI-driven schedule impact trace.
 
-**Acceptance evidence:** Skill manifests, permission tests, preview/confirm flows, blocked-action evidence, and audit events for every assistant mutation. The evidence should be package-local in `src/pyAppGen/pbcs/construction_project_controls` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 14. Submittal constraint and approval tracking
 
-### 14. Workbench persona coverage for Work Package
+**Justification:** `submittal` approval timing often drives field readiness and contractor progress, so constraint management must be explicit.
 
-**Justification:** A generic detail page underserves the domain; each role needs the exact controls and evidence they use daily.
+**Improvement:** Add `submittal` fields for planned submit date, required approval date, approval cycle count, linked WBS, linked procurement or fabrication milestone, and downstream work blocked by late approval. Surface submittal aging and blocked-work views in the workbench.
 
-**Improvement:** Design dedicated workbench panels for `work_package`: operator queue, supervisor approvals, analyst exceptions, auditor evidence, configuration owner, and agent-assistance review. Tie the behavior to `construction_project_controls_record_work_package_workflow` where applicable, and make it visible in `ConstructionProjectControlsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Tests show blocked-work alerts from late submittals, workbench cards expose turnaround time and cycle count, and `SPECIFICATION.md` describes submittal readiness logic.
 
-**Acceptance evidence:** UI contract entries, route tests, empty/error/loading states, and permission-aware action availability. The evidence should be package-local in `src/pyAppGen/pbcs/construction_project_controls` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 15. Separate risk register and issue register behavior
 
-### 15. Cross-PBC dependency contracts for Rfi
+**Justification:** `schedule_risk` should not carry both uncertain future threats and already-realized issues with the same lifecycle.
 
-**Justification:** Composable packages fail when hidden table coupling enters the domain model.
+**Improvement:** Split risk and issue handling within `schedule_risk` so threats, opportunities, realized issues, mitigations, triggers, owners, and closure evidence follow distinct state models. Provide conversion from risk to issue while preserving the original trigger and mitigation history.
 
-**Improvement:** Represent dependencies for `rfi` through declared APIs, consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, and projections rather than shared tables, with explicit freshness, ownership, and fallback behavior. Tie the behavior to `construction_project_controls_create_construction_project_workflow` where applicable, and make it visible in `ConstructionProjectControlsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Tests prove risk-to-issue conversion retains lineage, dashboards show separate risk and issue counts, and release evidence includes realized-issue escalation examples.
 
-**Acceptance evidence:** Dependency manifests, contract tests, stale dependency alerts, and no foreign-table references in generated artifacts. The evidence should be package-local in `src/pyAppGen/pbcs/construction_project_controls` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 16. Recovery scenario simulation
 
-### 16. API completeness and versioning for Submittal
+**Justification:** Project controls decisions often depend on testing recovery plans before committing resources or changing the baseline.
 
-**Justification:** Complete domain coverage requires both command and query surfaces, not only happy-path create endpoints.
+**Improvement:** Use `construction_project_controls_counterfactual_scenario_simulation` to model acceleration, resequencing, crew changes, and partial scope deferral against forecast cost and finish date. Keep scenarios separate from live data until approved.
 
-**Improvement:** Expand APIs beyond POST /construction-projects, POST /work-packages, POST /rfis to cover search, validation-only commands, simulation, bulk intake, exception closure, evidence export, projection reads, and idempotent corrections. Tie the behavior to `construction_project_controls_record_work_package_workflow` where applicable, and make it visible in `ConstructionProjectControlsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Simulation tests prove no live-table mutation, the workbench compares at least two recovery scenarios side by side, and `RELEASE_EVIDENCE.md` includes a recovery-decision pack for one delayed project.
 
-**Acceptance evidence:** OpenAPI-style route manifests, backward-compatible version tests, deprecation metadata, and idempotency assertions. The evidence should be package-local in `src/pyAppGen/pbcs/construction_project_controls` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 17. Reporting period cutoff and status freeze
 
-### 17. Typed emitted-event expansion for Site Progress
+**Justification:** Monthly and weekly controls reporting needs a formal data date and freeze point so published variance numbers can be reproduced later.
 
-**Justification:** Consumers should understand what happened in Construction Project Controls without parsing opaque payloads.
+**Improvement:** Add reporting period records with data date, cutoff timestamp, freeze owner, reopen reason, and published package hash. Lock period-bound `site_progress`, cost, and forecast edits after freeze unless a controlled reopen is approved.
 
-**Improvement:** Replace generic lifecycle emissions with typed events for each meaningful `site_progress` transition, exception, approval, correction, simulation result, and downstream handoff. Tie the behavior to `construction_project_controls_create_construction_project_workflow` where applicable, and make it visible in `ConstructionProjectControlsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Tests reject edits after freeze without override approval, event history proves reopen lineage, and release evidence shows a frozen reporting pack with matching hash.
 
-**Acceptance evidence:** Event schema tests, event examples, compatibility checks, and emitted-event coverage in release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/construction_project_controls` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 18. Calendar and weighting controls for progress measurement
 
-### 18. Consumed-event handlers for Change Event
+**Justification:** Progress and forecast accuracy depend on consistent calendars, weighting rules, and period definitions across contractors and disciplines.
 
-**Justification:** A PBC is composable only when incoming events affect its own domain state predictably and safely.
+**Improvement:** Store reporting calendars, workday rules, weighting basis, and percent-complete rounding settings in `construction_project_controls_runtime_parameter`. Make the active calendar and weighting basis visible in `ConstructionProjectControlsDetail`.
 
-**Improvement:** Implement idempotent handlers for consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged that update projections, open dependency exceptions, recalculate risk, and preserve source event lineage. Tie the behavior to `construction_project_controls_record_work_package_workflow` where applicable, and make it visible in `ConstructionProjectControlsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Parameter tests show tenant-safe overrides, workbench views display active calendar settings, and `CONSTRUCTION_PROJECT_CONTROLS_DEFAULT_POLICY` is linked to default measurement rules.
 
-**Acceptance evidence:** Duplicate-event tests, handler side-effect boundaries, dead-letter fixtures, and lineage links back to source events. The evidence should be package-local in `src/pyAppGen/pbcs/construction_project_controls` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 19. Progress evidence attachments and audit trace
 
-### 19. Retry and dead-letter operations for Schedule Risk
+**Justification:** Progress claims need traceable evidence such as photos, marked drawings, reports, or inspection notes before they change earned value or payment posture.
 
-**Justification:** Dead letters are not just plumbing; they are domain work queues that can block construction budgets, schedules, rfis, submittals, change events, field progress, and site risk controls.
+**Improvement:** Extend `site_progress` with evidence bundle metadata, uploader identity, capture timestamp, inspection reference, and acceptance status. Add audit views that show which approved progress points are evidence-backed and which were manually overridden.
 
-**Improvement:** Create operational tools for retrying, quarantining, explaining, and resolving dead-lettered `schedule_risk` events with max-attempt policy, poison-message detection, and replay safety. Tie the behavior to `construction_project_controls_create_construction_project_workflow` where applicable, and make it visible in `ConstructionProjectControlsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Tests enforce evidence requirements for configured progress methods, UI shows evidence status per update, and `AuditEventSealed` linkage is visible for published progress periods.
 
-**Acceptance evidence:** Dead-letter workbench, retry eligibility tests, replay audit proof, and operator action logs. The evidence should be package-local in `src/pyAppGen/pbcs/construction_project_controls` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 20. Payment milestone and valuation readiness
 
-### 20. RBAC and attribute policy for Construction Project Controls Policy Rule
+**Justification:** Contractor payment readiness is a common controls outcome and should derive from approved progress, approved change value, and held exceptions.
 
-**Justification:** High-impact domain operations need finer controls than generic RBAC grants.
+**Improvement:** Add valuation readiness states to `work_package` and `site_progress` so approved quantities, retention, disallowed costs, and blocked items roll into a payment-readiness view without turning the package into a finance ledger.
 
-**Improvement:** Extend permissions for `construction_project_controls_policy_rule` from coarse read/create/update/admin to action-level and attribute-aware policies based on role, tenant, jurisdiction, monetary/materiality threshold, and exception severity. Tie the behavior to `construction_project_controls_record_work_package_workflow` where applicable, and make it visible in `ConstructionProjectControlsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Tests show blocked payment readiness when progress or change approvals are incomplete, dashboards expose ready/not-ready breakdowns, and release evidence includes a valuation support pack tied to one contractor.
 
-**Acceptance evidence:** Permission matrix docs, ABAC policy tests, denied-action UI states, and assistant skill permission checks. The evidence should be package-local in `src/pyAppGen/pbcs/construction_project_controls` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 21. Productivity benchmark analytics
 
-### 21. Continuous control testing for Construction Project Controls Runtime Parameter
+**Justification:** Controls teams need to spot productivity deterioration before it becomes a major forecast problem.
 
-**Justification:** Controls should run during operations, not only during release audit or manual review.
+**Improvement:** Add analytics for installed quantity per labor hour, crew-day output, and production trend versus plan at `work_package` level. Show deterioration alerts alongside cost and schedule impacts rather than as isolated charts.
 
-**Improvement:** Embed control assertions for `construction_project_controls_runtime_parameter` that continuously test segregation of duties, required approvals, stale exceptions, policy drift, duplicate records, and boundary violations. Tie the behavior to `construction_project_controls_create_construction_project_workflow` where applicable, and make it visible in `ConstructionProjectControlsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Metric definitions are published for `construction_project_controls_workbench_metric`, tests validate benchmark rollups, and dashboards show productivity trend overlays by WBS.
 
-**Acceptance evidence:** Control dashboards, failing-control events, test fixtures, and release evidence tied to `construction_project_controls_control_assertion` records. The evidence should be package-local in `src/pyAppGen/pbcs/construction_project_controls` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 22. WBS-first dashboard hierarchy
 
-### 22. Cryptographic audit proofing for Construction Project Controls Schema Extension
+**Justification:** Flat dashboards obscure whether variance sits in one control account, one contractor, or one reporting level.
 
-**Justification:** Better-than-world-class auditability requires proof of integrity, not merely logs stored in mutable tables.
+**Improvement:** Rework `ConstructionProjectControlsWorkbench` so every major dashboard can pivot by WBS, control account, contractor, area, and discipline. Default project summaries should drill from project to control account to work package without changing screens.
 
-**Improvement:** Hash-chain material `construction_project_controls_schema_extension` decisions, documents, emitted events, and release-evidence snapshots to make tampering visible without exposing sensitive payloads. Tie the behavior to `construction_project_controls_record_work_package_workflow` where applicable, and make it visible in `ConstructionProjectControlsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** UI tests verify consistent drill-down behavior, screenshots show the same metric at three hierarchy levels, and release evidence includes dashboard navigation proof.
 
-**Acceptance evidence:** Proof manifests, verification APIs, redacted proof exports, and audit-ledger handoff events. The evidence should be package-local in `src/pyAppGen/pbcs/construction_project_controls` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 23. Executive portfolio dashboard for baseline, risk, and forecast
 
-### 23. Privacy, consent, and secrecy controls for Construction Project Controls Control Assertion
+**Justification:** Senior users need concise portfolio views across multiple `construction_project` records without losing the ability to drill into troubled projects.
 
-**Justification:** Complete domain coverage must account for protected data and restricted operational evidence.
+**Improvement:** Add portfolio rollups for baseline finish variance, contingency burn, forecast EAC variance, open change exposure, critical RFIs, blocked submittals, and high `construction_project_controls_risk_score` projects.
 
-**Improvement:** Add field-level privacy classifications for `construction_project_controls_control_assertion`, consent checks, masking rules, retention schedules, legal holds, and assistant redaction policies. Tie the behavior to `construction_project_controls_create_construction_project_workflow` where applicable, and make it visible in `ConstructionProjectControlsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Query tests prove portfolio totals reconcile to project totals, workbench cards rank projects by risk and forecast variance, and release evidence includes a portfolio review snapshot.
 
-**Acceptance evidence:** Retention tests, masked UI snapshots, consent-blocked mutation fixtures, and export controls. The evidence should be package-local in `src/pyAppGen/pbcs/construction_project_controls` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 24. Detailed project-controls workbench by persona
 
-### 24. Multi-tenant operating model for Construction Project Controls Governed Model
+**Justification:** `ConstructionProjectControlsDetail` should serve planners, cost engineers, package engineers, and project managers without making each persona sift through unrelated controls.
 
-**Justification:** The PBC should scale across organizations while preserving independent policy and compliance boundaries.
+**Improvement:** Add persona-specific tabs for schedule, cost, progress, change, risk/issues, and release evidence, each with the actions and evidence that role actually needs. Preserve one shared project identity header so cross-domain context stays aligned.
 
-**Improvement:** Support tenant-specific `construction_project_controls_governed_model` rules, data residency, encryption context, configuration, seed data, and release evidence without allowing cross-tenant leakage. Tie the behavior to `construction_project_controls_record_work_package_workflow` where applicable, and make it visible in `ConstructionProjectControlsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Permission-aware UI tests show persona-specific tabs, workbench telemetry proves role-based navigation paths, and `SPECIFICATION.md` documents the persona map for `construction_project_controls`.
 
-**Acceptance evidence:** Tenant isolation tests, tenant-scoped parameters, key-rotation evidence, and cross-tenant negative fixtures. The evidence should be package-local in `src/pyAppGen/pbcs/construction_project_controls` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 25. Assistant skill for variance narratives
 
-### 25. Schema evolution and extension registry for Construction Project
+**Justification:** Controls teams spend significant time turning raw variance data into defensible explanations for reports and meetings.
 
-**Justification:** Domain teams will add fields; the PBC must evolve without breaking APIs, events, or workbench projections.
+**Improvement:** Add an assistant skill in `ConstructionProjectControlsAssistantPanel` that drafts schedule and cost variance narratives from baseline, progress, earned value, and open risk data, always citing the underlying WBS, period, and evidence records.
 
-**Improvement:** Make schema extensions for `construction_project` first-class with compatibility checks, migration previews, projection backfills, field ownership, and rollback metadata. Tie the behavior to `construction_project_controls_create_construction_project_workflow` where applicable, and make it visible in `ConstructionProjectControlsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Prompt-to-draft tests verify source citation and no silent mutation, the assistant preview shows linked records before use, and release evidence includes one AI-assisted narrative with reviewer approval.
 
-**Acceptance evidence:** Extension registry UI, compatibility tests, migration dry-runs, and backfill release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/construction_project_controls` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 26. Assistant skill for change impact analysis
 
-### 26. Master data quality gates for Work Package
+**Justification:** Change discussions are slow when users manually gather affected scope, dates, and forecast impact from multiple screens.
 
-**Justification:** Many construction project controls errors begin as bad reference data; the PBC should catch them before workflow execution.
+**Improvement:** Add an agent workflow that summarizes one `change_event` across impacted WBS elements, current baseline finish, forecast shift, affected contractor progress, and unresolved RFIs or submittals. Require human confirmation before any recommended status change is applied.
 
-**Improvement:** Define reference-data contracts for `work_package`: canonical codes, parties, locations, classifications, calendars, units, currencies, products, assets, or service categories as relevant to the domain. Tie the behavior to `construction_project_controls_record_work_package_workflow` where applicable, and make it visible in `ConstructionProjectControlsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Skill tests prove the assistant reads through governed APIs only, audit history records every recommended action, and `ConstructionProjectControlsAssistantPanel` shows cited impact chains.
 
-**Acceptance evidence:** Reference validation fixtures, stale-code warnings, mapping tables, and dependency freshness indicators. The evidence should be package-local in `src/pyAppGen/pbcs/construction_project_controls` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 27. Assistant skill for RFI and submittal triage
 
-### 27. Bulk operations and correction workflows for Rfi
+**Justification:** The package already includes `agentic_document_instruction_intake`; it should help triage high-volume RFI and submittal queues in a controls-aware way.
 
-**Justification:** Enterprise-scale Construction Project Controls users cannot operate one record at a time.
+**Improvement:** Add assistant commands that cluster overdue `rfi` and `submittal` records by impacted WBS, required-by date, contractor, and likely schedule consequence. Let users open a triage session directly from `ConstructionProjectControlsWorkbench`.
 
-**Improvement:** Add bulk load, bulk validate, bulk approve, and bulk correction workflows for `rfi` with partial success, row-level errors, resumability, and rollback. Tie the behavior to `construction_project_controls_create_construction_project_workflow` where applicable, and make it visible in `ConstructionProjectControlsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Queue-triage tests verify stable clustering, the workbench opens prefiltered queues from assistant recommendations, and release evidence contains one triage session transcript with outcomes.
 
-**Acceptance evidence:** CSV/API batch fixtures, resumable job state, row-level audit evidence, and assistant-generated correction suggestions. The evidence should be package-local in `src/pyAppGen/pbcs/construction_project_controls` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 28. API boundary for baselines, forecast, and dashboard queries
 
-### 28. Lifecycle collaboration and tasking for Submittal
+**Justification:** The manifest exposes only create-style APIs plus one workbench query, which is too narrow for a controls package that needs governed read and action surfaces.
 
-**Justification:** Domain collaboration should live inside the PBC boundary and remain auditable with the record it affects.
+**Improvement:** Add explicit read and action APIs for baseline revisions, forecast snapshots, earned-value summaries, trend logs, lookahead views, and risk/issue queues while preserving the existing `POST /construction-projects`, `POST /work-packages`, `POST /rfis`, `POST /submittals`, `POST /site-progresss`, and `GET /construction-project-controls-workbench`.
 
-**Improvement:** Attach tasks, comments, ownership, due dates, handoffs, and escalation threads to `submittal` without leaking into external shared task tables. Tie the behavior to `construction_project_controls_record_work_package_workflow` where applicable, and make it visible in `ConstructionProjectControlsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Route contract tests cover new APIs and backward compatibility for existing routes, `SPECIFICATION.md` includes API examples, and `RELEASE_EVIDENCE.md` captures one end-to-end dashboard query flow.
 
-**Acceptance evidence:** Task tables, comment audit history, notification events, escalation SLAs, and role-specific task queues. The evidence should be package-local in `src/pyAppGen/pbcs/construction_project_controls` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 29. Backward-compatible repair for `POST /site-progresss`
 
-### 29. SLA and service-level governance for Site Progress
+**Justification:** The exact manifest route `POST /site-progresss` should remain supported, but the package also needs a corrected, predictable API surface for long-term integration quality.
 
-**Justification:** Users need to know when construction budgets, schedules, rfis, submittals, change events, field progress, and site risk controls is late, blocked, or at risk before customer or regulator impact.
+**Improvement:** Keep `POST /site-progresss` working as a compatibility alias while introducing a corrected canonical route and deprecation notice in the API docs. Ensure both routes feed the same idempotent command handler and audit trail.
 
-**Improvement:** Define SLAs for `site_progress` across intake, validation, approval, exception resolution, event handling, downstream projection refresh, and release-evidence generation. Tie the behavior to `construction_project_controls_create_construction_project_workflow` where applicable, and make it visible in `ConstructionProjectControlsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** API tests prove both routes behave identically, deprecation warnings appear only on the legacy path, and `RELEASE_EVIDENCE.md` records the compatibility decision and migration note.
 
-**Acceptance evidence:** SLA breach events, timers, configurable calendars, workbench aging buckets, and tests for pause/resume behavior. The evidence should be package-local in `src/pyAppGen/pbcs/construction_project_controls` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 30. Typed event model for controls milestones
 
-### 30. Operational analytics cockpit for Change Event
+**Justification:** `ConstructionProjectControlsCreated`, `ConstructionProjectControlsUpdated`, and `ConstructionProjectControlsApproved` are too broad to express baseline moves, period freeze, forecast publication, or major exception state changes.
 
-**Justification:** World-class operations require leading indicators, not only record counts.
+**Improvement:** Add typed emitted events for baseline approved, period frozen, forecast published, change approved, risk escalated, and contractor progress accepted. Keep the existing emitted events as compatibility anchors while making downstream consumption more precise.
 
-**Improvement:** Build analytics for `change_event`: throughput, backlog, aging, approval latency, exception rate, risk distribution, automation acceptance, correction rate, and downstream dependency health. Tie the behavior to `construction_project_controls_record_work_package_workflow` where applicable, and make it visible in `ConstructionProjectControlsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Event schema tests validate payload shape and versioning, outbox tests prove ordering, and release evidence includes an event catalog tied to `CONSTRUCTION_PROJECT_CONTROLS_EVENT_TOPIC`.
 
-**Acceptance evidence:** Metric definitions, projection tests, drill-through routes, export APIs, and anomaly overlays. The evidence should be package-local in `src/pyAppGen/pbcs/construction_project_controls` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 31. Consumed-event reactions for policy and KPI changes
 
-### 31. Decision intelligence and recommendations for Schedule Risk
+**Justification:** The existing `PolicyChanged`, `AuditEventSealed`, and `OperationalKpiChanged` subscriptions should materially alter controls behavior instead of merely being acknowledged.
 
-**Justification:** The PBC should help expert users decide faster while showing evidence and uncertainty.
+**Improvement:** React to `PolicyChanged` by recalculating thresholds and permissions, to `OperationalKpiChanged` by refreshing risk and dashboard status, and to `AuditEventSealed` by locking published evidence bundles. Surface any failed reactions as operator-visible exceptions.
 
-**Improvement:** Generate ranked recommendations for `schedule_risk` such as next best action, likely resolution, required evidence, policy adjustment, staffing/capacity response, or downstream handoff. Tie the behavior to `construction_project_controls_create_construction_project_workflow` where applicable, and make it visible in `ConstructionProjectControlsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Handler tests prove idempotent event processing, exception queues show failed reactions with retry state, and audit lineage links each projection change to its source event.
 
-**Acceptance evidence:** Recommendation explanations, confidence intervals, feedback capture, model governance records, and rejection reasons. The evidence should be package-local in `src/pyAppGen/pbcs/construction_project_controls` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 32. Event-sourced revision history for baseline and forecast records
 
-### 32. Quality and completeness scoring for Construction Project Controls Policy Rule
+**Justification:** `construction_project_controls_event_sourced_operational_history` should preserve who changed baseline, forecast, or status assumptions and when.
 
-**Justification:** Operators should see whether a record is truly ready, not just technically saved.
+**Improvement:** Event-source revisions for baseline snapshots, forecast updates, reporting freezes, and approved manual overrides. Expose a timeline in `ConstructionProjectControlsDetail` that compares prior and current assumptions without requiring database inspection.
 
-**Improvement:** Score each `construction_project_controls_policy_rule` record for completeness, consistency, policy readiness, dependency readiness, evidence sufficiency, and downstream composability. Tie the behavior to `construction_project_controls_record_work_package_workflow` where applicable, and make it visible in `ConstructionProjectControlsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Replay tests rebuild the same baseline and forecast state, timeline UI proves before/after visibility, and release evidence includes one reconstructed reporting cycle.
 
-**Acceptance evidence:** Scoring rules, missing-evidence lists, readiness badges, and blocking criteria in command handlers. The evidence should be package-local in `src/pyAppGen/pbcs/construction_project_controls` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 33. Idempotent handlers for repeated contractor and schedule submissions
 
-### 33. End-to-end scenario library for Construction Project Controls Runtime Parameter
+**Justification:** Field systems and partner integrations frequently retry; project-controls logic must avoid double-counting progress or duplicate schedule updates.
 
-**Justification:** Release evidence is stronger when every important construction project controls behavior has executable examples.
+**Improvement:** Use `idempotent_handlers` and explicit submission keys on `site_progress`, `change_event`, `rfi`, and `submittal` intake so duplicates are recognized before mutating rollups or event streams.
 
-**Improvement:** Create seeded scenarios for `construction_project_controls_runtime_parameter`: normal flow, urgent path, exception path, corrected path, duplicate path, late event path, and audit export path. Tie the behavior to `construction_project_controls_create_construction_project_workflow` where applicable, and make it visible in `ConstructionProjectControlsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Duplicate-submission tests show one accepted mutation and one recognized replay, operator views show replay status, and dead-letter logs remain clean for valid retries.
 
-**Acceptance evidence:** Scenario seed data, runtime smoke coverage, generated-app fixtures, and story-level workbench screenshots/contracts. The evidence should be package-local in `src/pyAppGen/pbcs/construction_project_controls` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 34. Policy thresholds for cost, float, and approval routing
 
-### 34. Domain ontology and terminology model for Construction Project Controls Schema Extension
+**Justification:** `construction_project_controls_policy_rule` should represent real controls policy such as float erosion limits, approval levels, and contingency use thresholds.
 
-**Justification:** Precise vocabulary prevents the PBC from misclassifying specialist documents or user instructions.
+**Improvement:** Add policy rules for change approval bands, forecast deterioration triggers, progress evidence requirements, float threshold escalation, and manual-override approval routing. Make policy simulation available before publishing rule changes.
 
-**Improvement:** Add an ontology for `construction_project_controls_schema_extension` terms, synonyms, classifications, relationships, allowed values, and phrase mappings used by the assistant and UI. Tie the behavior to `construction_project_controls_record_work_package_workflow` where applicable, and make it visible in `ConstructionProjectControlsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Rule-evaluation tests cover threshold crossings, policy simulation shows before/after effect, and `PolicyChanged` events propagate visible rule updates to the workbench.
 
-**Acceptance evidence:** Ontology files, assistant parsing tests, UI glossary, and mapping evidence for domain-specific abbreviations. The evidence should be package-local in `src/pyAppGen/pbcs/construction_project_controls` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 35. Runtime parameters for calendars, currencies, and weighting logic
 
-### 35. Advanced search and investigation for Construction Project Controls Control Assertion
+**Justification:** `construction_project_controls_runtime_parameter` should hold operational tuning that varies by tenant, project, or reporting regime without code edits.
 
-**Justification:** Investigators and operators need fast, explainable retrieval across the whole domain surface.
+**Improvement:** Add parameters for reporting calendar, base currency, unit precision, weighted-step definitions, lookahead horizon, risk score weighting, and variance-color thresholds. Show active parameter values directly in the relevant workbench views.
 
-**Improvement:** Provide search across `construction_project_controls_control_assertion` records, events, documents, exceptions, tasks, comments, and audit proofs with filters for tenant, status, risk, date, party, and dependency. Tie the behavior to `construction_project_controls_create_construction_project_workflow` where applicable, and make it visible in `ConstructionProjectControlsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Parameter validation tests reject out-of-range values, tenant-scoped overrides are visible and auditable, and release evidence includes one parameter change approval and rollback.
 
-**Acceptance evidence:** Search index contracts, result provenance, permission-filtered queries, and stale-index warnings. The evidence should be package-local in `src/pyAppGen/pbcs/construction_project_controls` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 36. Continuous control testing for monthly reporting discipline
 
-### 36. Reconciliation and closure controls for Construction Project Controls Governed Model
+**Justification:** `construction_project_controls_continuous_control_testing` should continuously check whether the package is operating within agreed controls, not just whether APIs respond.
 
-**Justification:** Closure is not complete until the PBC can prove no material domain work remains unresolved.
+**Improvement:** Implement continuous assertions in `construction_project_controls_control_assertion` for missing baseline, late period freeze, negative float without escalation, forecast older than policy allows, unapproved change in active forecast, and evidence-free accepted progress.
 
-**Improvement:** Add reconciliation workflows that compare `construction_project_controls_governed_model` state against consumed events, external projections, expected totals/counts, approvals, and release evidence before closure. Tie the behavior to `construction_project_controls_record_work_package_workflow` where applicable, and make it visible in `ConstructionProjectControlsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Assertion tests produce predictable pass/fail results, failing controls open operator-visible exceptions, and `RELEASE_EVIDENCE.md` includes a control-test summary for one release candidate.
 
-**Acceptance evidence:** Reconciliation reports, variance thresholds, closure blockers, and AppGen-X closure events. The evidence should be package-local in `src/pyAppGen/pbcs/construction_project_controls` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 37. Anomaly detection on progress and cost claims
 
-### 37. Regulatory and policy reporting for Construction Project
+**Justification:** `construction_project_controls_autonomous_anomaly_detection` should help controls teams spot overstated progress, unusual unit rates, and abrupt float or cost movement.
 
-**Justification:** World-class PBCs turn operational evidence into credible reporting without spreadsheet reconstruction.
+**Improvement:** Add anomaly detection for sudden percent-complete jumps, unit-cost spikes, repeated late submittals on the same contractor, and schedule compression without supporting mitigation actions. Route anomalies to review, never directly to auto-approval.
 
-**Improvement:** Generate domain reporting packs for `construction_project` covering statutory, contractual, operational, board, customer, or regulator evidence depending on contractual obligations, site progress evidence, physical asset state, commercial controls, safety constraints, change events, and long-horizon lifecycle accountability. Tie the behavior to `construction_project_controls_create_construction_project_workflow` where applicable, and make it visible in `ConstructionProjectControlsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Calibration tests show expected anomaly classes, reviewers can mark true or false positives in the workbench, and `construction_project_controls_risk_score` incorporates confirmed anomalies only.
 
-**Acceptance evidence:** Report schemas, redaction rules, traceable metric sources, and approval/export audit events. The evidence should be package-local in `src/pyAppGen/pbcs/construction_project_controls` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 38. Schema expansion for baseline, forecast, and cutoff snapshots
 
-### 38. Carbon and resource awareness for Work Package
+**Justification:** The listed tables cover core records, but controlled reporting also needs explicit snapshot structures for reproducible baselines, forecasts, and period packs.
 
-**Justification:** Sustainability evidence should be embedded in operations instead of treated as an after-the-fact report.
+**Improvement:** Use `construction_project_controls_schema_extension` to add versioned snapshot structures for baseline schedule, cost baseline, forecast, and reporting cutoff packages, including snapshot hash and source-record range.
 
-**Improvement:** Where relevant, attach carbon, energy, water, travel, capacity, compute, or resource-footprint metadata to `work_package` decisions and batch operations. Tie the behavior to `construction_project_controls_record_work_package_workflow` where applicable, and make it visible in `ConstructionProjectControlsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Migration tests prove snapshot tables can rebuild published views, API tests retrieve prior snapshots without mutating live state, and release evidence references snapshot identifiers.
 
-**Acceptance evidence:** Footprint fields, scheduling parameters, exception rules, and dashboards that expose operational tradeoffs. The evidence should be package-local in `src/pyAppGen/pbcs/construction_project_controls` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 39. Document instruction intake for site, change, and approval records
 
-### 39. Resilience and offline behavior for Rfi
+**Justification:** Progress reports, change notices, and meeting minutes often arrive as documents first; controls users need governed extraction into draft records.
 
-**Justification:** Real operations keep moving during outages; the PBC must preserve correctness when dependencies are unavailable.
+**Improvement:** Use `agentic_document_instruction_intake` and `construction_project_controls_semantic_document_instruction_understanding` to extract WBS, dates, quantities, impacted milestones, and requested approvals from uploaded documents into draft `site_progress`, `change_event`, `rfi`, or `submittal` actions.
 
-**Improvement:** Define resilience modes for `rfi`: degraded dependency mode, offline draft capture, delayed event replay, conflict detection, and safe recovery after partial failure. Tie the behavior to `construction_project_controls_create_construction_project_workflow` where applicable, and make it visible in `ConstructionProjectControlsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Extraction tests show source-span citation, the assistant preview requires confirmation before any mutation, and release evidence includes one document-to-draft walkthrough.
 
-**Acceptance evidence:** Offline fixtures, replay tests, conflict queues, recovery logs, and user-visible degraded-mode warnings. The evidence should be package-local in `src/pyAppGen/pbcs/construction_project_controls` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 40. Multi-tenant contractor and project isolation
 
-### 40. Human-in-the-loop automation for Submittal
+**Justification:** `construction_project_controls_multi_tenant_policy_isolation` must prevent one tenant or project team from seeing another contractor’s sensitive controls data.
 
-**Justification:** Automation should accelerate construction budgets, schedules, rfis, submittals, change events, field progress, and site risk controls while preserving accountability for high-risk decisions.
+**Improvement:** Enforce tenant and project isolation across WBS hierarchies, workbench filters, assistant context, event streams, and release evidence exports. Add project-scoped and contractor-scoped access models on top of existing `permissions`.
 
-**Improvement:** Set explicit automation boundaries for `submittal`: auto-approve, auto-reject, suggest-only, require-review, and block-until-evidence states with policy-based routing. Tie the behavior to `construction_project_controls_record_work_package_workflow` where applicable, and make it visible in `ConstructionProjectControlsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Isolation tests prove no cross-tenant and no unauthorized cross-project reads, workbench queries return only allowed records, and release evidence includes an access-control verification matrix.
 
-**Acceptance evidence:** Automation policy tests, reviewer queues, override reasons, and assistant action audit trails. The evidence should be package-local in `src/pyAppGen/pbcs/construction_project_controls` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 41. Cryptographic proof for published reporting packs
 
-### 41. Package discovery and fit scoring for Site Progress
+**Justification:** Controls reporting often becomes dispute evidence, so published packs should be provably identical to what was approved at freeze time.
 
-**Justification:** Users selecting PBCs need transparent fit reasoning, especially when domains are adjacent but not overlapping.
+**Improvement:** Apply `construction_project_controls_cryptographic_audit_proofs` to frozen baseline, forecast, progress, and change bundles, storing signed hashes and publication timestamps linked to the reporting period.
 
-**Improvement:** Improve package metadata so composition can explain when `construction_project_controls` fits a prompt, what entities it owns, what APIs/events it exposes, and what adjacent PBCs it depends on. Tie the behavior to `construction_project_controls_create_construction_project_workflow` where applicable, and make it visible in `ConstructionProjectControlsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Proof-verification tests confirm published bundles have not changed, the workbench exposes verification status for each pack, and `AuditEventSealed` references the proof identifier.
 
-**Acceptance evidence:** Discovery manifests, prompt-selection tests, overlap rationale links, and composition DSL examples. The evidence should be package-local in `src/pyAppGen/pbcs/construction_project_controls` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 42. Release evidence pack automation
 
-### 42. Configuration deployment pipeline for Change Event
+**Justification:** The manifest already declares `RELEASE_EVIDENCE.md`; the package should automatically assemble release proof for controls-specific capabilities rather than relying on manual note gathering.
 
-**Justification:** Configuration changes can materially alter construction project controls; they need the same discipline as code releases.
+**Improvement:** Generate a controls release pack that includes API contracts, event contracts, baseline and forecast screenshots, control-test results, assistant-skill evidence, and known limitations for the current release.
 
-**Improvement:** Add configuration promotion for `change_event` across draft, test, approved, active, deprecated, and rollback states with impact analysis before activation. Tie the behavior to `construction_project_controls_record_work_package_workflow` where applicable, and make it visible in `ConstructionProjectControlsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** CI or local verification produces an updated release pack without hand edits to unrelated files, reviewers can trace each claimed capability to an artifact, and `RELEASE_EVIDENCE.md` lists dated evidence entries for `construction_project_controls`.
 
-**Acceptance evidence:** Config diff views, approval workflows, simulation before activation, and rollback tests. The evidence should be package-local in `src/pyAppGen/pbcs/construction_project_controls` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 43. Permissions by persona, threshold, and action
 
-### 43. Workbench command completeness for Schedule Risk
+**Justification:** The listed `permissions` are coarse for a domain where approving a baseline re-set or a major change should require more authority than viewing a dashboard.
 
-**Justification:** A PBC does not fully surface its capabilities if users must call hidden APIs for core work.
+**Improvement:** Add action-level authorization for baseline approval, period freeze, forecast override, change approval, progress acceptance, and policy editing, with monetary and schedule-impact thresholds layered over role grants.
 
-**Improvement:** Expose every high-value operation for `schedule_risk` in the UI: create, validate, approve, simulate, correct, assign, export, retry, close, and audit-proof verification. Tie the behavior to `construction_project_controls_create_construction_project_workflow` where applicable, and make it visible in `ConstructionProjectControlsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Authorization tests prove thresholds route to the correct permission path, UI controls hide or disable restricted actions, and assistant commands fail safely with explicit denial reasons.
 
-**Acceptance evidence:** UI action coverage tests, permission-aware disabled states, keyboard paths, and assistant handoff links. The evidence should be package-local in `src/pyAppGen/pbcs/construction_project_controls` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 44. Event and API boundaries to adjacent planning or cost systems
 
-### 44. Document packet and evidence vault for Construction Project Controls Policy Rule
+**Justification:** Project controls has many neighboring systems; boundary clarity prevents direct table coupling and keeps `construction_project_controls` composable.
 
-**Justification:** Documents often carry the legal or operational truth behind construction budgets, schedules, rfis, submittals, change events, field progress, and site risk controls.
+**Improvement:** Define supported inbound and outbound contracts for schedule imports, cost actual feeds, and document references using events and APIs rather than shared tables. Document which data is authoritative inside `construction_project_controls` and which remains external.
 
-**Improvement:** Create a governed evidence vault for `construction_project_controls_policy_rule` documents, attachments, source spans, extracted fields, signatures, approvals, and retention labels. Tie the behavior to `construction_project_controls_record_work_package_workflow` where applicable, and make it visible in `ConstructionProjectControlsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Boundary contract tests prove imported data enters through declared APIs or events only, architecture notes in `SPECIFICATION.md` identify authoritative records, and no code path reads foreign tables directly.
 
-**Acceptance evidence:** Evidence models, source-to-field lineage, signature validation, retention policies, and proof exports. The evidence should be package-local in `src/pyAppGen/pbcs/construction_project_controls` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 45. Forecast confidence and risk exposure scoring
 
-### 45. Data correction and amendment history for Construction Project Controls Runtime Parameter
+**Justification:** A single forecast number is misleading without a confidence view and explicit tie-back to unresolved risk and issue exposure.
 
-**Justification:** World-class systems correct mistakes without rewriting history or confusing downstream consumers.
+**Improvement:** Extend `construction_project_controls_predictive_risk_scoring` so each forecast carries confidence band, principal drivers, unresolved exposure amount, and exposure by WBS or contractor. Show the relationship between forecast movement and active risks/issues in the dashboard.
 
-**Improvement:** Support formal amendments for `construction_project_controls_runtime_parameter` that preserve original values, correction reason, approving actor, effective date, downstream event impacts, and replay behavior. Tie the behavior to `construction_project_controls_create_construction_project_workflow` where applicable, and make it visible in `ConstructionProjectControlsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Scoring tests cover low, medium, and high confidence cases, forecast cards expose confidence and top drivers, and release evidence includes one forecast confidence explanation.
 
-**Acceptance evidence:** Amendment tables, correction events, projection replay tests, and side-by-side before/after UI. The evidence should be package-local in `src/pyAppGen/pbcs/construction_project_controls` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 46. Ordered handling of compensable versus non-compensable change events
 
-### 46. External participant collaboration for Construction Project Controls Schema Extension
+**Justification:** Cost and schedule impacts need cleaner classification so downstream reporting distinguishes owner-driven scope, contractor-driven rework, and neutral coordination effects.
 
-**Justification:** Many construction project controls workflows require outside parties, but they must not gain direct access to internal tables.
+**Improvement:** Add classification and ordered approval logic in `change_event` for compensable, non-compensable, and pending-liability changes, including separate cost, time, and responsibility dimensions. Reflect these classifications in trend, change, and forecast dashboards.
 
-**Improvement:** Add controlled collaboration portals or API views for external participants related to `construction_project_controls_schema_extension`, limited to scoped evidence submission, status checks, comments, and dispute responses. Tie the behavior to `construction_project_controls_record_work_package_workflow` where applicable, and make it visible in `ConstructionProjectControlsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Tests validate classification-specific approval routes, dashboards split change exposure by responsibility, and release evidence includes a mixed-liability change log example.
 
-**Acceptance evidence:** Participant role policies, scoped tokens, submission audit trails, and inbound evidence validation. The evidence should be package-local in `src/pyAppGen/pbcs/construction_project_controls` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 47. Closeout and final-account controls
 
-### 47. Advanced dependency freshness scoring for Construction Project Controls Control Assertion
+**Justification:** Project controls does not end when physical progress reaches 100 percent; unresolved change, retention, and closeout deliverables still affect final position.
 
-**Justification:** A record may be valid locally but unsafe if dependency evidence is stale or incomplete.
+**Improvement:** Add closeout states to `construction_project` and `work_package` for substantial completion, practical completion, punch closure, final account agreement, and archive readiness. Require all critical RFIs, submittals, and change items to be dispositioned before archive.
 
-**Improvement:** Score freshness and reliability of dependencies used by `construction_project_controls_control_assertion`, including consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, referenced projections, configuration versions, and external submissions. Tie the behavior to `construction_project_controls_create_construction_project_workflow` where applicable, and make it visible in `ConstructionProjectControlsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Closeout tests prove blocking conditions work, the detail view shows remaining closeout blockers, and `RELEASE_EVIDENCE.md` includes one final-account readiness checklist.
 
-**Acceptance evidence:** Freshness indicators, blocking rules, stale-event simulations, and workbench dependency health panels. The evidence should be package-local in `src/pyAppGen/pbcs/construction_project_controls` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 48. Seed data for realistic controls demos and regression cases
 
-### 48. Model governance and explainability for Construction Project Controls Governed Model
+**Justification:** `seed_data.py` should support realistic WBS, baseline, progress, risk, and change scenarios so controls features can be demonstrated and regression-tested against coherent data.
 
-**Justification:** Governed AI is mandatory for professional-grade automation in Construction Project Controls.
+**Improvement:** Add seed scenarios for an on-track project, a delayed project, a change-heavy project, and a contractor-overstatement project, each with linked `construction_project`, `work_package`, `site_progress`, `change_event`, `rfi`, `submittal`, and `schedule_risk` records.
 
-**Improvement:** For every predictive or agentic feature around `construction_project_controls_governed_model`, record model version, prompt or ruleset version, training/evaluation evidence, confidence, explanation, and human feedback. Tie the behavior to `construction_project_controls_record_work_package_workflow` where applicable, and make it visible in `ConstructionProjectControlsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Seed-data tests prove the scenarios load cleanly, dashboards display distinct scenario signatures, and release evidence references the seeded projects used for screenshots and checks.
 
-**Acceptance evidence:** Model cards, prompt/version manifests, feedback loops, drift tests, and audit proof for recommendations. The evidence should be package-local in `src/pyAppGen/pbcs/construction_project_controls` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 49. Contract tests for APIs, events, and UI fragments
 
-### 49. High-scale partitioning and archival for Construction Project
+**Justification:** The package already declares `tests/test_contract.py`; controls-specific behavior should be locked down at the contract level so future changes do not quietly break reporting or audit flows.
 
-**Justification:** Better-than-world-class packages must remain operable after years of high-volume domain history.
+**Improvement:** Expand contract coverage to the baseline APIs, compatibility alias for `POST /site-progresss`, emitted and consumed event schemas, `ConstructionProjectControlsWorkbench`, `ConstructionProjectControlsDetail`, and `ConstructionProjectControlsAssistantPanel`.
 
-**Improvement:** Plan scale behavior for `construction_project`: tenant partitioning, archival policies, cold storage, retention-aware search, projection compaction, and large-batch replay. Tie the behavior to `construction_project_controls_create_construction_project_workflow` where applicable, and make it visible in `ConstructionProjectControlsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Contract tests pass for routes, events, and UI fragment availability, test output is referenced in `RELEASE_EVIDENCE.md`, and failures identify the broken contract by exact key.
 
-**Acceptance evidence:** Partition tests, archive/retrieve fixtures, retention enforcement, and replay benchmarks. The evidence should be package-local in `src/pyAppGen/pbcs/construction_project_controls` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 50. Go-live scorecard and release-readiness evidence
 
-### 50. Release gate expansion for Work Package
+**Justification:** A controls package should ship with explicit evidence that baseline, progress, forecast, risk, change, dashboards, agent skills, and boundaries are operationally ready.
 
-**Justification:** The PBC should not claim domain coverage unless release evidence proves the claim end to end.
+**Improvement:** Add a go-live scorecard that checks data model readiness, API readiness, event readiness, dashboard completeness, assistant-skill governance, control-test pass rate, and release evidence completeness for `construction_project_controls`.
 
-**Improvement:** Expand release gates for `construction_project_controls` so every schema, service, API, event, handler, UI, rule, parameter, agent skill, seed scenario, and improvement backlog item maps to executable evidence. Tie the behavior to `construction_project_controls_record_work_package_workflow` where applicable, and make it visible in `ConstructionProjectControlsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Release audit checks, manifest traceability, generated-app smoke tests, and missing-capability blockers. The evidence should be package-local in `src/pyAppGen/pbcs/construction_project_controls` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** The scorecard publishes a dated readiness result, missing categories block approval in the workbench, and `ConstructionProjectControlsApproved` is emitted only when the release-readiness evidence bundle is complete.

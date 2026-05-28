@@ -1,418 +1,266 @@
-# Cybersecurity Operations Center PBC Better-Than-World-Class Improvement Backlog
-
-## Purpose
-
-This file identifies, justifies, and describes 50 high-impact improvements for `cybersecurity_operations_center`. The backlog is specific to security alerts, incidents, assets, threat intelligence, playbooks, containment, and response evidence and is intended to move the PBC from release-auditable scaffolding toward complete, specialist-grade domain coverage.
+# Cybersecurity Operations Center Improvement Backlog
 
 ## Current Domain Evidence Used
 
 - Stable PBC key: `cybersecurity_operations_center`.
-- Domain purpose: Security alerts, incidents, assets, threat intelligence, playbooks, containment, and response evidence.
-- Owned domain tables: `security_alert`, `security_incident`, `asset_exposure`, `threat_intel`, `playbook_run`, `containment_action`, `response_evidence`, `cybersecurity_operations_center_policy_rule`, `cybersecurity_operations_center_runtime_parameter`, `cybersecurity_operations_center_schema_extension`, `cybersecurity_operations_center_control_assertion`, `cybersecurity_operations_center_governed_model`.
-- Public APIs: `POST /security-alerts`, `POST /security-incidents`, `POST /asset-exposures`, `POST /threat-intels`, `POST /playbook-runs`, `GET /cybersecurity-operations-center-workbench`.
-- Emitted AppGen-X events: `CybersecurityOperationsCenterCreated`, `CybersecurityOperationsCenterUpdated`, `CybersecurityOperationsCenterApproved`, `CybersecurityOperationsCenterExceptionOpened`.
-- Consumed AppGen-X events: `PolicyChanged`, `AuditEventSealed`, `OperationalKpiChanged`.
-- Current standard surfaces include: `security_alert_management`, `cybersecurity_operations_center_workflow`, `cybersecurity_operations_center_analytics`, `configuration_schema`, `rule_engine`, `parameter_engine`, `owned_schema_migrations_models`, `appgen_x_outbox_inbox_eventing`, `idempotent_handlers`, `retry_dead_letter_evidence`.
-- Current advanced surfaces include: `cybersecurity_operations_center_event_sourced_operational_history`, `cybersecurity_operations_center_multi_tenant_policy_isolation`, `cybersecurity_operations_center_schema_evolution_resilience`, `cybersecurity_operations_center_autonomous_anomaly_detection`, `cybersecurity_operations_center_semantic_document_instruction_understanding`, `cybersecurity_operations_center_predictive_risk_scoring`, `cybersecurity_operations_center_counterfactual_scenario_simulation`, `cybersecurity_operations_center_cryptographic_audit_proofs`.
-
-## 50 High-Impact Improvements
-
-### 1. Canonical lifecycle state model for Security Alert
-
-**Justification:** This closes shallow CRUD gaps by making every cybersecurity operations center transition explainable and testable instead of implicit in free-form status values.
-
-**Improvement:** Define a complete state machine for `security_alert` with explicit draft, validated, blocked, approved, active, suspended, corrected, closed, archived, and reopened states. Tie the behavior to `cybersecurity_operations_center_create_security_alert_workflow` where applicable, and make it visible in `CybersecurityOperationsCenterWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** State-transition tests, invalid-transition fixtures, workbench state badges, and emitted AppGen-X transition events for CybersecurityOperationsCenterCreated, CybersecurityOperationsCenterUpdated, CybersecurityOperationsCenterApproved. The evidence should be package-local in `src/pyAppGen/pbcs/cybersecurity_operations_center` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 2. Domain intake and normalization for Security Incident
-
-**Justification:** The PBC cannot reach complete domain coverage unless it handles the messy front door of security alerts, incidents, assets, threat intelligence, playbooks, containment, and response evidence, not only already-clean records.
-
-**Improvement:** Build a typed intake pipeline for `security_incident` that accepts structured API payloads, document-derived instructions, batch loads, and assistant-generated drafts while normalizing identifiers, dates, units, parties, and jurisdictional context. Tie the behavior to `cybersecurity_operations_center_record_security_incident_workflow` where applicable, and make it visible in `CybersecurityOperationsCenterWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Golden intake fixtures, rejected-record queues, field-level normalization evidence, and assistant previews before governed datastore mutation. The evidence should be package-local in `src/pyAppGen/pbcs/cybersecurity_operations_center` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 3. Specialist validation rules for Asset Exposure
-
-**Justification:** World-class Cybersecurity Operations Center requires rules that domain experts can reason about, version, test, and roll back without code edits.
-
-**Improvement:** Add a domain rule compiler for `asset_exposure` that supports threshold rules, eligibility rules, dependency rules, temporal windows, conflicting-instruction detection, and override justification. Tie the behavior to `cybersecurity_operations_center_create_security_alert_workflow` where applicable, and make it visible in `CybersecurityOperationsCenterWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Rule simulation tests, versioned rule manifests, rule impact reports, and UI rule editors linked to `CYBERSECURITY_OPERATIONS_CENTER_DATABASE_URL, CYBERSECURITY_OPERATIONS_CENTER_EVENT_TOPIC, CYBERSECURITY_OPERATIONS_CENTER_RETRY_LIMIT`. The evidence should be package-local in `src/pyAppGen/pbcs/cybersecurity_operations_center` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 4. Parameter governance and tuning for Threat Intel
-
-**Justification:** Parameters are where operations teams tune cybersecurity operations center; unbounded constants would make the PBC brittle and unsafe in real deployments.
-
-**Improvement:** Expose bounded runtime parameters for `threat_intel` covering risk thresholds, SLA windows, confidence floors, escalation cutoffs, batch sizes, retry limits, and human-confirmation requirements. Tie the behavior to `cybersecurity_operations_center_record_security_incident_workflow` where applicable, and make it visible in `CybersecurityOperationsCenterWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Parameter schema validation, tenant overrides, approval history, rollback controls, and workbench diff views. The evidence should be package-local in `src/pyAppGen/pbcs/cybersecurity_operations_center` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 5. Deep owned schema expansion for Playbook Run
-
-**Justification:** A single payload column cannot express the full surface of security alerts, incidents, assets, threat intelligence, playbooks, containment, and response evidence or prove cross-PBC boundaries are respected.
-
-**Improvement:** Extend the owned schema around `playbook_run` with normalized child tables for line-level evidence, party roles, approvals, attachments, comments, metrics, exception reasons, and control assertions. Tie the behavior to `cybersecurity_operations_center_create_security_alert_workflow` where applicable, and make it visible in `CybersecurityOperationsCenterWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Migrations, models, relationship tests, schema contract snapshots, and no shared-table access outside the `cybersecurity_operations_center_` namespace. The evidence should be package-local in `src/pyAppGen/pbcs/cybersecurity_operations_center` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 6. Event-sourced operational history for Containment Action
-
-**Justification:** Temporal reconstruction is essential for better-than-world-class auditability and dispute resolution in cybersecurity operations center.
-
-**Improvement:** Capture every material mutation of `containment_action` as immutable AppGen-X events with actor, tenant, command, policy version, idempotency key, before/after summary, and projection checkpoint. Tie the behavior to `cybersecurity_operations_center_record_security_incident_workflow` where applicable, and make it visible in `CybersecurityOperationsCenterWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Replay tests, projection checksums, event ordering evidence, and point-in-time workbench views. The evidence should be package-local in `src/pyAppGen/pbcs/cybersecurity_operations_center` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 7. Projection and read-model strategy for Response Evidence
-
-**Justification:** The workbench should not force users to infer domain truth from raw tables; each projection should answer a real operating question.
-
-**Improvement:** Create purpose-built projections for `response_evidence`: operational queue, executive KPI rollup, exception aging, compliance evidence, agent task context, and external dependency health. Tie the behavior to `cybersecurity_operations_center_create_security_alert_workflow` where applicable, and make it visible in `CybersecurityOperationsCenterWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Projection contracts, freshness SLAs, backfill tests, and visible stale-projection warnings. The evidence should be package-local in `src/pyAppGen/pbcs/cybersecurity_operations_center` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 8. Exception taxonomy and remediation for Cybersecurity Operations Center Policy Rule
-
-**Justification:** High-value PBCs win on exception throughput; generic “failed” states hide the details operators need.
-
-**Improvement:** Model the full exception taxonomy for `cybersecurity_operations_center_policy_rule`, including severity, root cause, blocking dependency, remediation owner, due date, retry eligibility, escalation path, and closure evidence. Tie the behavior to `cybersecurity_operations_center_record_security_incident_workflow` where applicable, and make it visible in `CybersecurityOperationsCenterWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Exception queues, aging metrics, remediation playbooks, dead-letter linkage, and closure test fixtures for conflicting incident severity. The evidence should be package-local in `src/pyAppGen/pbcs/cybersecurity_operations_center` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 9. Predictive risk scoring for Cybersecurity Operations Center Runtime Parameter
-
-**Justification:** The package should warn users before cybersecurity operations center work fails, breaches policy, or creates downstream cost.
-
-**Improvement:** Add predictive risk scoring for `cybersecurity_operations_center_runtime_parameter` using domain features from owned tables, consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, rule outcomes, aging, anomaly signals, and historical corrections. Tie the behavior to `cybersecurity_operations_center_create_security_alert_workflow` where applicable, and make it visible in `CybersecurityOperationsCenterWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Feature manifests, score explanations, calibration reports, drift alerts, and tests for low/medium/high-risk scenarios. The evidence should be package-local in `src/pyAppGen/pbcs/cybersecurity_operations_center` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 10. Counterfactual simulation for Cybersecurity Operations Center Schema Extension
-
-**Justification:** Advanced users need to ask “what would happen if” before committing changes to live security alerts, incidents, assets, threat intelligence, playbooks, containment, and response evidence operations.
-
-**Improvement:** Provide scenario simulation for `cybersecurity_operations_center_schema_extension`: policy change, capacity constraint, deadline shift, price/rate change, eligibility change, disruption, and manual override outcomes. Tie the behavior to `cybersecurity_operations_center_record_security_incident_workflow` where applicable, and make it visible in `CybersecurityOperationsCenterWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Simulation APIs, non-mutating sandbox state, comparison reports, and workbench side-by-side scenario panels. The evidence should be package-local in `src/pyAppGen/pbcs/cybersecurity_operations_center` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 11. Autonomous anomaly triage for Cybersecurity Operations Center Control Assertion
-
-**Justification:** A world-class PBC should reduce analyst burden without hiding the reasoning behind automated triage.
-
-**Improvement:** Implement anomaly detection for `cybersecurity_operations_center_control_assertion` that identifies outliers, duplicate submissions, impossible sequences, stale dependencies, unusual amounts/counts/durations, and contradictory fields. Tie the behavior to `cybersecurity_operations_center_create_security_alert_workflow` where applicable, and make it visible in `CybersecurityOperationsCenterWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Explainable anomaly cards, reviewer feedback loops, false-positive tracking, and suppression governance. The evidence should be package-local in `src/pyAppGen/pbcs/cybersecurity_operations_center` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 12. Semantic document understanding for Cybersecurity Operations Center Governed Model
-
-**Justification:** Document-heavy work in Cybersecurity Operations Center cannot be complete if the assistant only answers questions and cannot prepare accurate governed changes.
-
-**Improvement:** Train the package assistant to parse domain documents and instructions for `cybersecurity_operations_center_governed_model`, extract obligations, dates, parties, quantities, identifiers, and exceptions, then map them to safe draft mutations. Tie the behavior to `cybersecurity_operations_center_record_security_incident_workflow` where applicable, and make it visible in `CybersecurityOperationsCenterWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Document extraction tests, confidence thresholds, redaction handling, source span citations, and human confirmation workflows. The evidence should be package-local in `src/pyAppGen/pbcs/cybersecurity_operations_center` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 13. Agent-safe CRUD execution for Security Alert
-
-**Justification:** The PBC agent must be a first-class operator but never a hidden bypass around RBAC, rules, or owned datastore boundaries.
-
-**Improvement:** Add a professional chatbot skill for `security_alert` that can create, update, correct, close, and annotate records only through policy-checked commands, approval gates, and previewed diffs. Tie the behavior to `cybersecurity_operations_center_create_security_alert_workflow` where applicable, and make it visible in `CybersecurityOperationsCenterWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Skill manifests, permission tests, preview/confirm flows, blocked-action evidence, and audit events for every assistant mutation. The evidence should be package-local in `src/pyAppGen/pbcs/cybersecurity_operations_center` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 14. Workbench persona coverage for Security Incident
-
-**Justification:** A generic detail page underserves the domain; each role needs the exact controls and evidence they use daily.
-
-**Improvement:** Design dedicated workbench panels for `security_incident`: operator queue, supervisor approvals, analyst exceptions, auditor evidence, configuration owner, and agent-assistance review. Tie the behavior to `cybersecurity_operations_center_record_security_incident_workflow` where applicable, and make it visible in `CybersecurityOperationsCenterWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** UI contract entries, route tests, empty/error/loading states, and permission-aware action availability. The evidence should be package-local in `src/pyAppGen/pbcs/cybersecurity_operations_center` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 15. Cross-PBC dependency contracts for Asset Exposure
-
-**Justification:** Composable packages fail when hidden table coupling enters the domain model.
-
-**Improvement:** Represent dependencies for `asset_exposure` through declared APIs, consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, and projections rather than shared tables, with explicit freshness, ownership, and fallback behavior. Tie the behavior to `cybersecurity_operations_center_create_security_alert_workflow` where applicable, and make it visible in `CybersecurityOperationsCenterWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Dependency manifests, contract tests, stale dependency alerts, and no foreign-table references in generated artifacts. The evidence should be package-local in `src/pyAppGen/pbcs/cybersecurity_operations_center` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 16. API completeness and versioning for Threat Intel
-
-**Justification:** Complete domain coverage requires both command and query surfaces, not only happy-path create endpoints.
-
-**Improvement:** Expand APIs beyond POST /security-alerts, POST /security-incidents, POST /asset-exposures to cover search, validation-only commands, simulation, bulk intake, exception closure, evidence export, projection reads, and idempotent corrections. Tie the behavior to `cybersecurity_operations_center_record_security_incident_workflow` where applicable, and make it visible in `CybersecurityOperationsCenterWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** OpenAPI-style route manifests, backward-compatible version tests, deprecation metadata, and idempotency assertions. The evidence should be package-local in `src/pyAppGen/pbcs/cybersecurity_operations_center` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 17. Typed emitted-event expansion for Playbook Run
-
-**Justification:** Consumers should understand what happened in Cybersecurity Operations Center without parsing opaque payloads.
-
-**Improvement:** Replace generic lifecycle emissions with typed events for each meaningful `playbook_run` transition, exception, approval, correction, simulation result, and downstream handoff. Tie the behavior to `cybersecurity_operations_center_create_security_alert_workflow` where applicable, and make it visible in `CybersecurityOperationsCenterWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Event schema tests, event examples, compatibility checks, and emitted-event coverage in release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/cybersecurity_operations_center` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 18. Consumed-event handlers for Containment Action
-
-**Justification:** A PBC is composable only when incoming events affect its own domain state predictably and safely.
-
-**Improvement:** Implement idempotent handlers for consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged that update projections, open dependency exceptions, recalculate risk, and preserve source event lineage. Tie the behavior to `cybersecurity_operations_center_record_security_incident_workflow` where applicable, and make it visible in `CybersecurityOperationsCenterWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Duplicate-event tests, handler side-effect boundaries, dead-letter fixtures, and lineage links back to source events. The evidence should be package-local in `src/pyAppGen/pbcs/cybersecurity_operations_center` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 19. Retry and dead-letter operations for Response Evidence
-
-**Justification:** Dead letters are not just plumbing; they are domain work queues that can block security alerts, incidents, assets, threat intelligence, playbooks, containment, and response evidence.
-
-**Improvement:** Create operational tools for retrying, quarantining, explaining, and resolving dead-lettered `response_evidence` events with max-attempt policy, poison-message detection, and replay safety. Tie the behavior to `cybersecurity_operations_center_create_security_alert_workflow` where applicable, and make it visible in `CybersecurityOperationsCenterWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Dead-letter workbench, retry eligibility tests, replay audit proof, and operator action logs. The evidence should be package-local in `src/pyAppGen/pbcs/cybersecurity_operations_center` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 20. RBAC and attribute policy for Cybersecurity Operations Center Policy Rule
-
-**Justification:** High-impact domain operations need finer controls than generic RBAC grants.
-
-**Improvement:** Extend permissions for `cybersecurity_operations_center_policy_rule` from coarse read/create/update/admin to action-level and attribute-aware policies based on role, tenant, jurisdiction, monetary/materiality threshold, and exception severity. Tie the behavior to `cybersecurity_operations_center_record_security_incident_workflow` where applicable, and make it visible in `CybersecurityOperationsCenterWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Permission matrix docs, ABAC policy tests, denied-action UI states, and assistant skill permission checks. The evidence should be package-local in `src/pyAppGen/pbcs/cybersecurity_operations_center` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 21. Continuous control testing for Cybersecurity Operations Center Runtime Parameter
-
-**Justification:** Controls should run during operations, not only during release audit or manual review.
-
-**Improvement:** Embed control assertions for `cybersecurity_operations_center_runtime_parameter` that continuously test segregation of duties, required approvals, stale exceptions, policy drift, duplicate records, and boundary violations. Tie the behavior to `cybersecurity_operations_center_create_security_alert_workflow` where applicable, and make it visible in `CybersecurityOperationsCenterWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Control dashboards, failing-control events, test fixtures, and release evidence tied to `cybersecurity_operations_center_control_assertion` records. The evidence should be package-local in `src/pyAppGen/pbcs/cybersecurity_operations_center` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 22. Cryptographic audit proofing for Cybersecurity Operations Center Schema Extension
-
-**Justification:** Better-than-world-class auditability requires proof of integrity, not merely logs stored in mutable tables.
-
-**Improvement:** Hash-chain material `cybersecurity_operations_center_schema_extension` decisions, documents, emitted events, and release-evidence snapshots to make tampering visible without exposing sensitive payloads. Tie the behavior to `cybersecurity_operations_center_record_security_incident_workflow` where applicable, and make it visible in `CybersecurityOperationsCenterWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Proof manifests, verification APIs, redacted proof exports, and audit-ledger handoff events. The evidence should be package-local in `src/pyAppGen/pbcs/cybersecurity_operations_center` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 23. Privacy, consent, and secrecy controls for Cybersecurity Operations Center Control Assertion
-
-**Justification:** Complete domain coverage must account for protected data and restricted operational evidence.
-
-**Improvement:** Add field-level privacy classifications for `cybersecurity_operations_center_control_assertion`, consent checks, masking rules, retention schedules, legal holds, and assistant redaction policies. Tie the behavior to `cybersecurity_operations_center_create_security_alert_workflow` where applicable, and make it visible in `CybersecurityOperationsCenterWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Retention tests, masked UI snapshots, consent-blocked mutation fixtures, and export controls. The evidence should be package-local in `src/pyAppGen/pbcs/cybersecurity_operations_center` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 24. Multi-tenant operating model for Cybersecurity Operations Center Governed Model
-
-**Justification:** The PBC should scale across organizations while preserving independent policy and compliance boundaries.
-
-**Improvement:** Support tenant-specific `cybersecurity_operations_center_governed_model` rules, data residency, encryption context, configuration, seed data, and release evidence without allowing cross-tenant leakage. Tie the behavior to `cybersecurity_operations_center_record_security_incident_workflow` where applicable, and make it visible in `CybersecurityOperationsCenterWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Tenant isolation tests, tenant-scoped parameters, key-rotation evidence, and cross-tenant negative fixtures. The evidence should be package-local in `src/pyAppGen/pbcs/cybersecurity_operations_center` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 25. Schema evolution and extension registry for Security Alert
-
-**Justification:** Domain teams will add fields; the PBC must evolve without breaking APIs, events, or workbench projections.
-
-**Improvement:** Make schema extensions for `security_alert` first-class with compatibility checks, migration previews, projection backfills, field ownership, and rollback metadata. Tie the behavior to `cybersecurity_operations_center_create_security_alert_workflow` where applicable, and make it visible in `CybersecurityOperationsCenterWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Extension registry UI, compatibility tests, migration dry-runs, and backfill release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/cybersecurity_operations_center` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 26. Master data quality gates for Security Incident
-
-**Justification:** Many cybersecurity operations center errors begin as bad reference data; the PBC should catch them before workflow execution.
-
-**Improvement:** Define reference-data contracts for `security_incident`: canonical codes, parties, locations, classifications, calendars, units, currencies, products, assets, or service categories as relevant to the domain. Tie the behavior to `cybersecurity_operations_center_record_security_incident_workflow` where applicable, and make it visible in `CybersecurityOperationsCenterWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Reference validation fixtures, stale-code warnings, mapping tables, and dependency freshness indicators. The evidence should be package-local in `src/pyAppGen/pbcs/cybersecurity_operations_center` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 27. Bulk operations and correction workflows for Asset Exposure
-
-**Justification:** Enterprise-scale Cybersecurity Operations Center users cannot operate one record at a time.
-
-**Improvement:** Add bulk load, bulk validate, bulk approve, and bulk correction workflows for `asset_exposure` with partial success, row-level errors, resumability, and rollback. Tie the behavior to `cybersecurity_operations_center_create_security_alert_workflow` where applicable, and make it visible in `CybersecurityOperationsCenterWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** CSV/API batch fixtures, resumable job state, row-level audit evidence, and assistant-generated correction suggestions. The evidence should be package-local in `src/pyAppGen/pbcs/cybersecurity_operations_center` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 28. Lifecycle collaboration and tasking for Threat Intel
-
-**Justification:** Domain collaboration should live inside the PBC boundary and remain auditable with the record it affects.
-
-**Improvement:** Attach tasks, comments, ownership, due dates, handoffs, and escalation threads to `threat_intel` without leaking into external shared task tables. Tie the behavior to `cybersecurity_operations_center_record_security_incident_workflow` where applicable, and make it visible in `CybersecurityOperationsCenterWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Task tables, comment audit history, notification events, escalation SLAs, and role-specific task queues. The evidence should be package-local in `src/pyAppGen/pbcs/cybersecurity_operations_center` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 29. SLA and service-level governance for Playbook Run
-
-**Justification:** Users need to know when security alerts, incidents, assets, threat intelligence, playbooks, containment, and response evidence is late, blocked, or at risk before customer or regulator impact.
-
-**Improvement:** Define SLAs for `playbook_run` across intake, validation, approval, exception resolution, event handling, downstream projection refresh, and release-evidence generation. Tie the behavior to `cybersecurity_operations_center_create_security_alert_workflow` where applicable, and make it visible in `CybersecurityOperationsCenterWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** SLA breach events, timers, configurable calendars, workbench aging buckets, and tests for pause/resume behavior. The evidence should be package-local in `src/pyAppGen/pbcs/cybersecurity_operations_center` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 30. Operational analytics cockpit for Containment Action
-
-**Justification:** World-class operations require leading indicators, not only record counts.
-
-**Improvement:** Build analytics for `containment_action`: throughput, backlog, aging, approval latency, exception rate, risk distribution, automation acceptance, correction rate, and downstream dependency health. Tie the behavior to `cybersecurity_operations_center_record_security_incident_workflow` where applicable, and make it visible in `CybersecurityOperationsCenterWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Metric definitions, projection tests, drill-through routes, export APIs, and anomaly overlays. The evidence should be package-local in `src/pyAppGen/pbcs/cybersecurity_operations_center` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 31. Decision intelligence and recommendations for Response Evidence
-
-**Justification:** The PBC should help expert users decide faster while showing evidence and uncertainty.
-
-**Improvement:** Generate ranked recommendations for `response_evidence` such as next best action, likely resolution, required evidence, policy adjustment, staffing/capacity response, or downstream handoff. Tie the behavior to `cybersecurity_operations_center_create_security_alert_workflow` where applicable, and make it visible in `CybersecurityOperationsCenterWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Recommendation explanations, confidence intervals, feedback capture, model governance records, and rejection reasons. The evidence should be package-local in `src/pyAppGen/pbcs/cybersecurity_operations_center` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 32. Quality and completeness scoring for Cybersecurity Operations Center Policy Rule
-
-**Justification:** Operators should see whether a record is truly ready, not just technically saved.
-
-**Improvement:** Score each `cybersecurity_operations_center_policy_rule` record for completeness, consistency, policy readiness, dependency readiness, evidence sufficiency, and downstream composability. Tie the behavior to `cybersecurity_operations_center_record_security_incident_workflow` where applicable, and make it visible in `CybersecurityOperationsCenterWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Scoring rules, missing-evidence lists, readiness badges, and blocking criteria in command handlers. The evidence should be package-local in `src/pyAppGen/pbcs/cybersecurity_operations_center` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 33. End-to-end scenario library for Cybersecurity Operations Center Runtime Parameter
-
-**Justification:** Release evidence is stronger when every important cybersecurity operations center behavior has executable examples.
-
-**Improvement:** Create seeded scenarios for `cybersecurity_operations_center_runtime_parameter`: normal flow, urgent path, exception path, corrected path, duplicate path, late event path, and audit export path. Tie the behavior to `cybersecurity_operations_center_create_security_alert_workflow` where applicable, and make it visible in `CybersecurityOperationsCenterWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Scenario seed data, runtime smoke coverage, generated-app fixtures, and story-level workbench screenshots/contracts. The evidence should be package-local in `src/pyAppGen/pbcs/cybersecurity_operations_center` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 34. Domain ontology and terminology model for Cybersecurity Operations Center Schema Extension
-
-**Justification:** Precise vocabulary prevents the PBC from misclassifying specialist documents or user instructions.
-
-**Improvement:** Add an ontology for `cybersecurity_operations_center_schema_extension` terms, synonyms, classifications, relationships, allowed values, and phrase mappings used by the assistant and UI. Tie the behavior to `cybersecurity_operations_center_record_security_incident_workflow` where applicable, and make it visible in `CybersecurityOperationsCenterWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Ontology files, assistant parsing tests, UI glossary, and mapping evidence for domain-specific abbreviations. The evidence should be package-local in `src/pyAppGen/pbcs/cybersecurity_operations_center` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 35. Advanced search and investigation for Cybersecurity Operations Center Control Assertion
-
-**Justification:** Investigators and operators need fast, explainable retrieval across the whole domain surface.
-
-**Improvement:** Provide search across `cybersecurity_operations_center_control_assertion` records, events, documents, exceptions, tasks, comments, and audit proofs with filters for tenant, status, risk, date, party, and dependency. Tie the behavior to `cybersecurity_operations_center_create_security_alert_workflow` where applicable, and make it visible in `CybersecurityOperationsCenterWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Search index contracts, result provenance, permission-filtered queries, and stale-index warnings. The evidence should be package-local in `src/pyAppGen/pbcs/cybersecurity_operations_center` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 36. Reconciliation and closure controls for Cybersecurity Operations Center Governed Model
-
-**Justification:** Closure is not complete until the PBC can prove no material domain work remains unresolved.
-
-**Improvement:** Add reconciliation workflows that compare `cybersecurity_operations_center_governed_model` state against consumed events, external projections, expected totals/counts, approvals, and release evidence before closure. Tie the behavior to `cybersecurity_operations_center_record_security_incident_workflow` where applicable, and make it visible in `CybersecurityOperationsCenterWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Reconciliation reports, variance thresholds, closure blockers, and AppGen-X closure events. The evidence should be package-local in `src/pyAppGen/pbcs/cybersecurity_operations_center` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 37. Regulatory and policy reporting for Security Alert
-
-**Justification:** World-class PBCs turn operational evidence into credible reporting without spreadsheet reconstruction.
-
-**Improvement:** Generate domain reporting packs for `security_alert` covering statutory, contractual, operational, board, customer, or regulator evidence depending on threat response, identity assurance, operational resilience, evidence retention, privileged access controls, policy enforcement, and incident auditability. Tie the behavior to `cybersecurity_operations_center_create_security_alert_workflow` where applicable, and make it visible in `CybersecurityOperationsCenterWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Report schemas, redaction rules, traceable metric sources, and approval/export audit events. The evidence should be package-local in `src/pyAppGen/pbcs/cybersecurity_operations_center` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 38. Carbon and resource awareness for Security Incident
-
-**Justification:** Sustainability evidence should be embedded in operations instead of treated as an after-the-fact report.
-
-**Improvement:** Where relevant, attach carbon, energy, water, travel, capacity, compute, or resource-footprint metadata to `security_incident` decisions and batch operations. Tie the behavior to `cybersecurity_operations_center_record_security_incident_workflow` where applicable, and make it visible in `CybersecurityOperationsCenterWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Footprint fields, scheduling parameters, exception rules, and dashboards that expose operational tradeoffs. The evidence should be package-local in `src/pyAppGen/pbcs/cybersecurity_operations_center` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 39. Resilience and offline behavior for Asset Exposure
-
-**Justification:** Real operations keep moving during outages; the PBC must preserve correctness when dependencies are unavailable.
-
-**Improvement:** Define resilience modes for `asset_exposure`: degraded dependency mode, offline draft capture, delayed event replay, conflict detection, and safe recovery after partial failure. Tie the behavior to `cybersecurity_operations_center_create_security_alert_workflow` where applicable, and make it visible in `CybersecurityOperationsCenterWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Offline fixtures, replay tests, conflict queues, recovery logs, and user-visible degraded-mode warnings. The evidence should be package-local in `src/pyAppGen/pbcs/cybersecurity_operations_center` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 40. Human-in-the-loop automation for Threat Intel
-
-**Justification:** Automation should accelerate security alerts, incidents, assets, threat intelligence, playbooks, containment, and response evidence while preserving accountability for high-risk decisions.
-
-**Improvement:** Set explicit automation boundaries for `threat_intel`: auto-approve, auto-reject, suggest-only, require-review, and block-until-evidence states with policy-based routing. Tie the behavior to `cybersecurity_operations_center_record_security_incident_workflow` where applicable, and make it visible in `CybersecurityOperationsCenterWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Automation policy tests, reviewer queues, override reasons, and assistant action audit trails. The evidence should be package-local in `src/pyAppGen/pbcs/cybersecurity_operations_center` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 41. Package discovery and fit scoring for Playbook Run
-
-**Justification:** Users selecting PBCs need transparent fit reasoning, especially when domains are adjacent but not overlapping.
-
-**Improvement:** Improve package metadata so composition can explain when `cybersecurity_operations_center` fits a prompt, what entities it owns, what APIs/events it exposes, and what adjacent PBCs it depends on. Tie the behavior to `cybersecurity_operations_center_create_security_alert_workflow` where applicable, and make it visible in `CybersecurityOperationsCenterWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Discovery manifests, prompt-selection tests, overlap rationale links, and composition DSL examples. The evidence should be package-local in `src/pyAppGen/pbcs/cybersecurity_operations_center` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 42. Configuration deployment pipeline for Containment Action
-
-**Justification:** Configuration changes can materially alter cybersecurity operations center; they need the same discipline as code releases.
-
-**Improvement:** Add configuration promotion for `containment_action` across draft, test, approved, active, deprecated, and rollback states with impact analysis before activation. Tie the behavior to `cybersecurity_operations_center_record_security_incident_workflow` where applicable, and make it visible in `CybersecurityOperationsCenterWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Config diff views, approval workflows, simulation before activation, and rollback tests. The evidence should be package-local in `src/pyAppGen/pbcs/cybersecurity_operations_center` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 43. Workbench command completeness for Response Evidence
-
-**Justification:** A PBC does not fully surface its capabilities if users must call hidden APIs for core work.
-
-**Improvement:** Expose every high-value operation for `response_evidence` in the UI: create, validate, approve, simulate, correct, assign, export, retry, close, and audit-proof verification. Tie the behavior to `cybersecurity_operations_center_create_security_alert_workflow` where applicable, and make it visible in `CybersecurityOperationsCenterWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** UI action coverage tests, permission-aware disabled states, keyboard paths, and assistant handoff links. The evidence should be package-local in `src/pyAppGen/pbcs/cybersecurity_operations_center` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 44. Document packet and evidence vault for Cybersecurity Operations Center Policy Rule
-
-**Justification:** Documents often carry the legal or operational truth behind security alerts, incidents, assets, threat intelligence, playbooks, containment, and response evidence.
-
-**Improvement:** Create a governed evidence vault for `cybersecurity_operations_center_policy_rule` documents, attachments, source spans, extracted fields, signatures, approvals, and retention labels. Tie the behavior to `cybersecurity_operations_center_record_security_incident_workflow` where applicable, and make it visible in `CybersecurityOperationsCenterWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Evidence models, source-to-field lineage, signature validation, retention policies, and proof exports. The evidence should be package-local in `src/pyAppGen/pbcs/cybersecurity_operations_center` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 45. Data correction and amendment history for Cybersecurity Operations Center Runtime Parameter
-
-**Justification:** World-class systems correct mistakes without rewriting history or confusing downstream consumers.
-
-**Improvement:** Support formal amendments for `cybersecurity_operations_center_runtime_parameter` that preserve original values, correction reason, approving actor, effective date, downstream event impacts, and replay behavior. Tie the behavior to `cybersecurity_operations_center_create_security_alert_workflow` where applicable, and make it visible in `CybersecurityOperationsCenterWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Amendment tables, correction events, projection replay tests, and side-by-side before/after UI. The evidence should be package-local in `src/pyAppGen/pbcs/cybersecurity_operations_center` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 46. External participant collaboration for Cybersecurity Operations Center Schema Extension
-
-**Justification:** Many cybersecurity operations center workflows require outside parties, but they must not gain direct access to internal tables.
-
-**Improvement:** Add controlled collaboration portals or API views for external participants related to `cybersecurity_operations_center_schema_extension`, limited to scoped evidence submission, status checks, comments, and dispute responses. Tie the behavior to `cybersecurity_operations_center_record_security_incident_workflow` where applicable, and make it visible in `CybersecurityOperationsCenterWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Participant role policies, scoped tokens, submission audit trails, and inbound evidence validation. The evidence should be package-local in `src/pyAppGen/pbcs/cybersecurity_operations_center` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 47. Advanced dependency freshness scoring for Cybersecurity Operations Center Control Assertion
-
-**Justification:** A record may be valid locally but unsafe if dependency evidence is stale or incomplete.
-
-**Improvement:** Score freshness and reliability of dependencies used by `cybersecurity_operations_center_control_assertion`, including consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, referenced projections, configuration versions, and external submissions. Tie the behavior to `cybersecurity_operations_center_create_security_alert_workflow` where applicable, and make it visible in `CybersecurityOperationsCenterWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Freshness indicators, blocking rules, stale-event simulations, and workbench dependency health panels. The evidence should be package-local in `src/pyAppGen/pbcs/cybersecurity_operations_center` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 48. Model governance and explainability for Cybersecurity Operations Center Governed Model
-
-**Justification:** Governed AI is mandatory for professional-grade automation in Cybersecurity Operations Center.
-
-**Improvement:** For every predictive or agentic feature around `cybersecurity_operations_center_governed_model`, record model version, prompt or ruleset version, training/evaluation evidence, confidence, explanation, and human feedback. Tie the behavior to `cybersecurity_operations_center_record_security_incident_workflow` where applicable, and make it visible in `CybersecurityOperationsCenterWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Model cards, prompt/version manifests, feedback loops, drift tests, and audit proof for recommendations. The evidence should be package-local in `src/pyAppGen/pbcs/cybersecurity_operations_center` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 49. High-scale partitioning and archival for Security Alert
-
-**Justification:** Better-than-world-class packages must remain operable after years of high-volume domain history.
-
-**Improvement:** Plan scale behavior for `security_alert`: tenant partitioning, archival policies, cold storage, retention-aware search, projection compaction, and large-batch replay. Tie the behavior to `cybersecurity_operations_center_create_security_alert_workflow` where applicable, and make it visible in `CybersecurityOperationsCenterWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Partition tests, archive/retrieve fixtures, retention enforcement, and replay benchmarks. The evidence should be package-local in `src/pyAppGen/pbcs/cybersecurity_operations_center` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 50. Release gate expansion for Security Incident
-
-**Justification:** The PBC should not claim domain coverage unless release evidence proves the claim end to end.
-
-**Improvement:** Expand release gates for `cybersecurity_operations_center` so every schema, service, API, event, handler, UI, rule, parameter, agent skill, seed scenario, and improvement backlog item maps to executable evidence. Tie the behavior to `cybersecurity_operations_center_record_security_incident_workflow` where applicable, and make it visible in `CybersecurityOperationsCenterWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Release audit checks, manifest traceability, generated-app smoke tests, and missing-capability blockers. The evidence should be package-local in `src/pyAppGen/pbcs/cybersecurity_operations_center` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+- Exact key: `'description': 'Security alerts, incidents, assets, threat intelligence, playbooks, containment, and response evidence'`.
+- Exact key: `'apis': ('POST /security-alerts', 'POST /security-incidents', 'POST /asset-exposures', 'POST /threat-intels', 'POST /playbook-runs', 'GET /cybersecurity-operations-center-workbench')`.
+- Exact key: `'tables': ('security_alert', 'security_incident', 'asset_exposure', 'threat_intel', 'playbook_run', 'containment_action', 'response_evidence', 'cybersecurity_operations_center_policy_rule', 'cybersecurity_operations_center_runtime_parameter', 'cybersecurity_operations_center_schema_extension', 'cybersecurity_operations_center_control_assertion', 'cybersecurity_operations_center_governed_model')`.
+- Exact key: `'workflows': ('cybersecurity_operations_center_create_security_alert_workflow', 'cybersecurity_operations_center_record_security_incident_workflow')`.
+- Exact key: `'ui_fragments': ('CybersecurityOperationsCenterWorkbench', 'CybersecurityOperationsCenterDetail', 'CybersecurityOperationsCenterAssistantPanel')`.
+- Exact key: `'analytics': ('cybersecurity_operations_center_risk_score', 'cybersecurity_operations_center_workbench_metric')`.
+- Exact key: `'emits': ('CybersecurityOperationsCenterCreated', 'CybersecurityOperationsCenterUpdated', 'CybersecurityOperationsCenterApproved', 'CybersecurityOperationsCenterExceptionOpened')`.
+- Exact key: `'consumes': ('PolicyChanged', 'AuditEventSealed', 'OperationalKpiChanged')`.
+- Exact key: `'advanced_capabilities': ('cybersecurity_operations_center_event_sourced_operational_history', 'cybersecurity_operations_center_multi_tenant_policy_isolation', 'cybersecurity_operations_center_schema_evolution_resilience', 'cybersecurity_operations_center_autonomous_anomaly_detection', 'cybersecurity_operations_center_semantic_document_instruction_understanding', 'cybersecurity_operations_center_predictive_risk_scoring', 'cybersecurity_operations_center_counterfactual_scenario_simulation', 'cybersecurity_operations_center_cryptographic_audit_proofs', 'cybersecurity_operations_center_continuous_control_testing', 'cybersecurity_operations_center_carbon_and_sustainability_awareness', 'cybersecurity_operations_center_cross_pbc_event_federation', 'cybersecurity_operations_center_governed_ai_agent_execution')`.
+- Exact key: `'docs': ('SPECIFICATION.md', 'RELEASE_EVIDENCE.md')`.
+- Exact key: `'configuration': ('CYBERSECURITY_OPERATIONS_CENTER_DATABASE_URL', 'CYBERSECURITY_OPERATIONS_CENTER_EVENT_TOPIC', 'CYBERSECURITY_OPERATIONS_CENTER_RETRY_LIMIT', 'CYBERSECURITY_OPERATIONS_CENTER_DEFAULT_POLICY')`.
+
+### 1. Canonical detection-to-alert lifecycle
+**Justification:** Analysts need one shared lifecycle for detections as they become alerts, are triaged, escalated, closed, or reopened; otherwise queue metrics and handoffs are unreliable.
+**Improvement:** Define a state machine for `security_alert` that covers new, deduplicated, enriched, triaged, escalated, suppressed, contained, closed, and reopened states, with transition reasons and actor attribution exposed in `CybersecurityOperationsCenterWorkbench`.
+**Acceptance evidence:** State transition tests for `security_alert`, invalid transition rejection cases, workbench badges showing current state and prior state, and release evidence mapping lifecycle steps to `cybersecurity_operations_center_create_security_alert_workflow`.
+
+### 2. First-class detection entity model inside alert intake
+**Justification:** The manifest starts at `security_alert`, but operators still need the upstream detection context to explain why an alert exists and whether it was grouped correctly.
+**Improvement:** Add explicit detection fields to alert intake for source event ID, detection timestamp, detection rule ID, confidence, tactic tags, and raw evidence checksum without creating a new cross-domain table boundary.
+**Acceptance evidence:** `POST /security-alerts` contract examples showing detection metadata, persistence tests on `security_alert`, and detail-view traces linking alert records to immutable detection context.
+
+### 3. Alert deduplication and correlation policy
+**Justification:** SOC queues fail when duplicate alerts inflate severity and response counts, especially across repeated sensor emissions and replayed events.
+**Improvement:** Implement policy-driven deduplication on `security_alert` using asset, principal, indicator, detection rule, time window, and evidence hash keys, with explicit merge versus keep-separate reasoning.
+**Acceptance evidence:** Deduplication fixtures with merge outcomes, configurable policy entries in `cybersecurity_operations_center_policy_rule`, and workbench correlation cards that show sibling alerts and merge lineage.
+
+### 4. Triaging workbench lanes by urgency and confidence
+**Justification:** A single alert grid does not match SOC practice; analysts need differentiated lanes for urgent triage, noisy backlog, and watchlist monitoring.
+**Improvement:** Split `CybersecurityOperationsCenterWorkbench` into triage lanes based on severity, confidence, blast radius, SLA breach risk, and policy suppression status, with saved analyst filters.
+**Acceptance evidence:** UI route coverage for lane filters, analytics proving lane counts roll into `cybersecurity_operations_center_workbench_metric`, and screenshots referenced in `RELEASE_EVIDENCE.md`.
+
+### 5. Structured enrichment record on alerts
+**Justification:** Enrichment steps are often where cases become actionable, but ad hoc notes do not create reusable evidence or measurable turnaround times.
+**Improvement:** Extend `security_alert` updates to store structured enrichment facts such as asset criticality, user sensitivity, network exposure, prior incident links, and indicator freshness, plus who or what supplied each fact.
+**Acceptance evidence:** Schema and model tests for enrichment fields, audit history of enrichment sources, and detail-page evidence panels listing enrichment provenance for each alert.
+
+### 6. Incident promotion criteria tied to alert clusters
+**Justification:** Promotion from alert to incident needs a governed threshold or analysts will either over-open incidents or suppress real multi-signal attacks.
+**Improvement:** Add `security_incident` promotion rules that consider alert cluster size, asset criticality, repeated detections, containment need, and policy exceptions, with previewed impact before create.
+**Acceptance evidence:** Policy simulations for promotion thresholds, `POST /security-incidents` preview fixtures, and workflow tests showing alert-to-incident linkage under `cybersecurity_operations_center_record_security_incident_workflow`.
+
+### 7. Case timeline spanning alert, incident, containment, and evidence
+**Justification:** SOC reviews depend on a single case narrative, not separate tables that require manual reconstruction after an event.
+**Improvement:** Build a case timeline projection that unifies `security_alert`, `security_incident`, `containment_action`, and `response_evidence` into one chronological view with actor, action, and outcome summaries.
+**Acceptance evidence:** Projection replay tests from emitted and consumed events, case timeline rendering in `CybersecurityOperationsCenterDetail`, and time-ordered export samples referenced in `RELEASE_EVIDENCE.md`.
+
+### 8. Evidence chain-of-custody model
+**Justification:** Response evidence loses credibility if the system cannot show where it came from, who handled it, and whether it was altered.
+**Improvement:** Expand `response_evidence` to track collection source, hash, acquisition time, storage location reference, handling history, redaction status, and admissibility notes.
+**Acceptance evidence:** Migration coverage for custody fields, append-only handling history tests, and chain-of-custody views accessible from incident detail pages.
+
+### 9. Containment action approval boundaries
+**Justification:** Containment can disrupt business operations, so analyst autonomy must be bounded by policy, asset sensitivity, and action risk.
+**Improvement:** Classify `containment_action` types into no-approval, supervisor-approval, and exception-approval paths, with action-specific prerequisites and rollback instructions.
+**Acceptance evidence:** Permission and policy tests on `containment_action`, approval banners in the workbench, and release evidence showing blocked high-risk actions without approval.
+
+### 10. Threat intelligence boundary and provenance controls
+**Justification:** Threat intel only helps triage if analysts can distinguish between observed facts, external reports, and derived conclusions.
+**Improvement:** Segment `threat_intel` records into observed indicator, assessed relationship, campaign context, and analyst inference sections, each with provenance, confidence, and expiry controls.
+**Acceptance evidence:** Typed `threat_intel` fixtures with provenance metadata, UI provenance chips in detail views, and tests that prevent derived conclusions from overwriting observed facts.
+
+### 11. Indicator expiry and revalidation workflow
+**Justification:** Stale indicators create false positives and wasted containment work if they remain active beyond their useful horizon.
+**Improvement:** Add expiry, revalidation, and retirement logic to `threat_intel` so indicators age out or require analyst renewal based on source confidence and recent observation.
+**Acceptance evidence:** Scheduler or rule-engine tests for expiry transitions, workbench warning states for expiring intel, and KPI outputs showing active versus retired indicator counts.
+
+### 12. Asset exposure linkage to active cases
+**Justification:** Analysts need to know whether an exposed asset is already under active investigation or containment before starting parallel work.
+**Improvement:** Extend `asset_exposure` views with incident and alert linkage summaries, criticality, internet exposure context, and open containment actions relevant to the same asset.
+**Acceptance evidence:** Joined projection tests using owned tables only, asset exposure detail panels surfacing active case references, and event lineage proving linkage refresh after updates.
+
+### 13. Playbook execution stages with observable checkpoints
+**Justification:** A playbook run that is merely “running” hides where automation stalled and what a responder must do next.
+**Improvement:** Break `playbook_run` into staged checkpoints such as preconditions, evidence collection, analyst approval, containment, validation, communications, and closure verification.
+**Acceptance evidence:** `playbook_run` stage transition tests, stage-level timestamps and assignees in the workbench, and release evidence showing partial-failure visibility rather than opaque run failures.
+
+### 14. Human-in-the-loop breakpoints for risky automation
+**Justification:** SOAR-style automation is useful only when risky steps pause at the correct moment instead of executing with blind trust.
+**Improvement:** Add human confirmation breakpoints to `playbook_run` for user lockouts, host isolation, credential disablement, mass suppression, and cross-case evidence deletion.
+**Acceptance evidence:** Breakpoint configuration rules in `cybersecurity_operations_center_policy_rule`, blocked automation traces, and assistant panel previews requiring explicit human confirmation.
+
+### 15. Alert suppression governance
+**Justification:** Suppression reduces noise, but ungoverned suppression can hide attacks or make detection drift invisible.
+**Improvement:** Model suppression on `security_alert` with duration, reason, scope, owner, review date, and linked detection logic so temporary tuning does not become silent permanent blindness.
+**Acceptance evidence:** Suppression approval tests, overdue suppression review queues, and metrics showing suppression volume, expiry, and reactivation outcomes.
+
+### 16. False-positive capture and feedback loop
+**Justification:** Analysts repeatedly classify bad detections; the platform should learn from that feedback instead of burying it in comments.
+**Improvement:** Add structured false-positive causes, affected detection rule IDs, evidence references, and remediation recommendations to closed `security_alert` records.
+**Acceptance evidence:** Alert closure fixtures with false-positive taxonomies, analytics feeding `cybersecurity_operations_center_workbench_metric`, and detail views showing whether rule tuning was requested.
+
+### 17. True-positive to campaign clustering
+**Justification:** SOC operations improve when recurring alerts and incidents are grouped into campaigns or waves rather than treated as isolated records.
+**Improvement:** Create a campaign clustering projection that groups `security_alert` and `security_incident` records by actor hypothesis, infrastructure overlap, indicator reuse, timing, and target profile.
+**Acceptance evidence:** Correlation tests across alert and incident records, campaign summary widgets in the workbench, and release evidence demonstrating cluster drill-down from analyst queue to case detail.
+
+### 18. Incident severity with explainable scoring
+**Justification:** Severity must be defendable to responders and auditors; free-form labels lead to inconsistent escalation and reporting.
+**Improvement:** Calculate `security_incident` severity from business criticality, spread, credential exposure, data sensitivity, containment status, and analyst override rationale, with factor-level explanations.
+**Acceptance evidence:** Severity scoring tests, override audit history, and detail-page factor breakdowns aligned with `cybersecurity_operations_center_risk_score`.
+
+### 19. Incident commander and ownership model
+**Justification:** Major incidents fail when command responsibility is implied rather than explicitly assigned and visible.
+**Improvement:** Add incident commander, communications owner, evidence owner, and containment owner roles to `security_incident`, with handoff timestamps and pending-task indicators.
+**Acceptance evidence:** Role assignment validation tests, workbench cards showing current owners, and SLA metrics for handoff gaps and unowned incidents.
+
+### 20. Evidence request workflow from cases
+**Justification:** Investigations often depend on targeted evidence requests, and unmanaged requests cause delay, duplication, and missing artifacts.
+**Improvement:** Let analysts create evidence requests from `security_incident` or `security_alert`, track request status, due date, source system, and returned artifacts inside `response_evidence`.
+**Acceptance evidence:** Request lifecycle tests, UI request tables on incident detail, and metrics showing turnaround time from request creation to fulfilled evidence.
+
+### 21. Event-sourced operational history tuned for SOC actions
+**Justification:** The advanced capability for event-sourced history should capture SOC-specific commands, not just generic CRUD transitions.
+**Improvement:** Emit event history entries for triage changes, enrichment additions, playbook checkpoint decisions, containment approvals, evidence uploads, and suppression changes with actor and reason data.
+**Acceptance evidence:** Replay tests on SOC-specific event envelopes, event browse views in the detail page, and proof that `CybersecurityOperationsCenterUpdated` corresponds to material operational changes.
+
+### 22. Consumed event handlers with bounded side effects
+**Justification:** `PolicyChanged`, `AuditEventSealed`, and `OperationalKpiChanged` should update SOC behavior predictably without leaking into unrelated domains.
+**Improvement:** Implement handlers that recalculate policy evaluations, mark evidence bundles as sealed, refresh KPI projections, and open exceptions when dependencies become stale or contradictory.
+**Acceptance evidence:** Idempotency tests for each consumed event, dead-letter fixtures for malformed events, and workbench notices showing which incoming event changed local SOC state.
+
+### 23. API boundary for alert updates and triage commands
+**Justification:** SOC work needs command-oriented APIs, not only create endpoints, or the UI and assistant will rely on unsafe direct datastore mutation patterns.
+**Improvement:** Add bounded command surfaces for triage, enrich, suppress, promote, close, reopen, and link-to-incident operations while preserving the existing create endpoints as intake boundaries.
+**Acceptance evidence:** Route contract documentation adjacent to the manifest APIs, request/response fixtures, and tests proving commands enforce permissions and policy rules.
+
+### 24. Validation-only API mode for detection and incident intake
+**Justification:** Analysts and upstream systems need to know whether a payload would be accepted before creating noisy partial records.
+**Improvement:** Support validation-only execution for alert, incident, asset exposure, threat intel, and playbook payloads that returns rule outcomes, required fields, and policy blockers without persistence.
+**Acceptance evidence:** API fixtures showing dry-run responses, tests confirming no table mutation occurs, and assistant panel previews using the same validation-only path.
+
+### 25. Bulk intake with partial success semantics
+**Justification:** Security teams commonly import detection waves or indicator batches; all-or-nothing intake wastes time and obscures which rows failed.
+**Improvement:** Extend alert and threat intel intake to accept batches with row-level validation, row-level idempotency keys, and resumable reprocessing for failed entries.
+**Acceptance evidence:** Batch fixture coverage for `POST /security-alerts` and `POST /threat-intels`, resumable job traces, and workbench reporting on accepted, rejected, and duplicate rows.
+
+### 26. Retry and dead-letter operations for failed automations
+**Justification:** When playbooks or event handlers fail, responders need a visible remediation queue rather than opaque background retries.
+**Improvement:** Create SOC dead-letter views for failed `playbook_run` steps and event handling attempts, with failure reason, retry eligibility, required fix, and related case context.
+**Acceptance evidence:** Dead-letter queue tests tied to `retry_dead_letter_evidence`, manual retry actions in the workbench, and release evidence showing failure explanation and safe replay behavior.
+
+### 27. Analyst assistant skills for triage summaries
+**Justification:** The manifest includes `ai_agent_task_assistance`, but analysts need bounded skills that summarize evidence without fabricating unsupported claims.
+**Improvement:** Add assistant skills that draft triage summaries, list likely next steps, identify missing evidence, and suggest playbook checkpoints using only referenced alert, incident, and evidence data.
+**Acceptance evidence:** Skill manifests or configuration linked from `CybersecurityOperationsCenterAssistantPanel`, prompt-to-output regression tests, and source citation displays for every generated summary.
+
+### 28. Assistant skill for threat intel enrichment with guardrails
+**Justification:** Analysts benefit from drafted enrichment, but threat intel handling requires explicit separation between sourced facts and machine suggestions.
+**Improvement:** Add an assistant skill that proposes `threat_intel` enrichment candidates, confidence ratings, and expiry windows while forcing human confirmation before record mutation.
+**Acceptance evidence:** Preview/confirm interaction tests, blocked direct-write evidence, and audit entries recording accepted versus rejected assistant proposals.
+
+### 29. Supervisor workbench for queue balancing
+**Justification:** Supervisors need to rebalance overloaded analysts and overdue cases before response quality drops.
+**Improvement:** Build supervisor views in `CybersecurityOperationsCenterWorkbench` for queue depth, analyst assignment load, overdue triage, containment bottlenecks, and incident commander span of control.
+**Acceptance evidence:** Persona-aware UI tests, metrics rollups for work distribution, and screenshots or route traces referenced in `RELEASE_EVIDENCE.md`.
+
+### 30. Evidence reviewer workbench for redaction and release
+**Justification:** Evidence often needs review before it can be shared with stakeholders, responders, or auditors.
+**Improvement:** Add a reviewer lane that surfaces `response_evidence` requiring redaction, approval, retention tagging, or external release decisions, with side-by-side original and redacted views.
+**Acceptance evidence:** Permission-aware evidence review tests, redaction status projections, and release records showing reviewer decisions and timestamps.
+
+### 31. Metrics for mean time to triage, contain, and close
+**Justification:** Core SOC performance must be visible as time-based operational metrics rather than ad hoc spreadsheet calculations.
+**Improvement:** Define `cybersecurity_operations_center_workbench_metric` measures for mean time to triage, mean time to containment, mean time to evidence readiness, and mean time to close, segmented by severity and queue.
+**Acceptance evidence:** Metric definition artifacts, projection tests with known timestamps, and workbench charts that match fixture-based expected values.
+
+### 32. Metrics for detection quality and analyst trust
+**Justification:** Detection programs degrade if the system tracks only volume and not whether alerts deserve analyst attention.
+**Improvement:** Add detection-quality metrics for duplicate rate, suppression rate, false-positive rate, promotion-to-incident rate, reopened rate, and median analyst confidence by detection source.
+**Acceptance evidence:** Analytics tests against alert lifecycle fixtures, dashboard widgets showing trend lines, and release evidence tying metrics back to source records.
+
+### 33. Metrics for playbook automation effectiveness
+**Justification:** Automation should prove that it reduces toil without raising risk or silently failing.
+**Improvement:** Track `playbook_run` success rate, breakpoint frequency, manual override rate, rollback rate, and average time saved compared with fully manual execution.
+**Acceptance evidence:** Metric computation tests using staged playbook runs, workbench automation panels, and evidence snapshots in `RELEASE_EVIDENCE.md`.
+
+### 34. Metrics for evidence completeness and admissibility
+**Justification:** Cases are weaker when required evidence is missing, late, or unverifiable.
+**Improvement:** Score each incident for evidence completeness based on required artifact classes, custody integrity, sealing status, and unresolved redaction blockers.
+**Acceptance evidence:** Completeness scoring fixtures, UI indicators on incident detail views, and control assertions opening exceptions when evidence thresholds are missed.
+
+### 35. Detection-to-incident graph on the detail page
+**Justification:** Responders need to see how one detection expanded into multiple alerts, incidents, containment actions, and evidence branches.
+**Improvement:** Add a graph or relationship map to `CybersecurityOperationsCenterDetail` that visualizes linked `security_alert`, `security_incident`, `containment_action`, `response_evidence`, and `threat_intel` nodes.
+**Acceptance evidence:** UI rendering tests for graph data, API or projection fixtures supporting relationship edges, and screenshots included in release evidence.
+
+### 36. Threat intel to playbook recommendation boundary
+**Justification:** Threat intel should guide response options, but it must not auto-execute response steps without policy and operator review.
+**Improvement:** Introduce a recommendation layer that maps `threat_intel` patterns to candidate `playbook_run` templates and containment options while requiring explicit analyst selection.
+**Acceptance evidence:** Recommendation fixtures showing intel-to-playbook mappings, tests proving no auto-execution occurs, and assistant panel suggestions with policy rationale.
+
+### 37. Multi-tenant separation of policy, metrics, and evidence
+**Justification:** The advanced multi-tenant capability needs SOC-specific proof that one tenant's cases, indicators, and controls cannot bleed into another's.
+**Improvement:** Partition `security_alert`, `security_incident`, `threat_intel`, `response_evidence`, and derived metrics by tenant, tenant policy, and tenant retention settings, including tenant-scoped assistant context.
+**Acceptance evidence:** Tenant isolation tests across all core tables and projections, negative fixtures for cross-tenant access, and release evidence documenting tenant-specific workbench filtering.
+
+### 38. Retention and legal-hold controls for incident evidence
+**Justification:** Evidence retention rules differ from operational convenience and must survive case closure.
+**Improvement:** Add retention policy, purge eligibility, legal-hold status, and destruction approval tracking to `response_evidence` and linked `security_incident` records.
+**Acceptance evidence:** Retention scheduler tests, blocked purge cases under legal hold, and reviewer screens showing disposition decisions and future purge dates.
+
+### 39. Cryptographic proof of sealed evidence bundles
+**Justification:** The manifest's cryptographic audit proof capability should materially strengthen evidence integrity, not remain a generic platform checkbox.
+**Improvement:** Create hash-chained sealed bundles for selected `response_evidence` sets tied to `AuditEventSealed`, with verification metadata stored in owned SOC tables.
+**Acceptance evidence:** Bundle verification tests, evidence-seal detail views, and release evidence demonstrating successful proof validation for a sealed bundle.
+
+### 40. Continuous control tests for SOC process integrity
+**Justification:** Controls should detect missing approvals, evidence gaps, and overdue containment while incidents are active.
+**Improvement:** Implement `cybersecurity_operations_center_control_assertion` checks for unapproved high-risk containment, stale untriaged high-severity alerts, missing incident owners, and unresolved evidence requests beyond SLA.
+**Acceptance evidence:** Control assertion fixtures that open `CybersecurityOperationsCenterExceptionOpened`, dashboards showing active control failures, and remediation traces after fixes are applied.
+
+### 41. Counterfactual simulation for containment decisions
+**Justification:** Responders often need to compare isolate-now versus monitor-longer choices before acting on critical systems.
+**Improvement:** Use the counterfactual simulation capability to model containment options, expected operational impact, residual alert volume, and evidence collection tradeoffs before executing `containment_action`.
+**Acceptance evidence:** Simulation input/output examples, non-mutating execution tests, and workbench comparison panels attached to containment approval flows.
+
+### 42. Predictive backlog and SLA breach risk scoring
+**Justification:** Supervisors need forward-looking risk signals to prevent queue collapse, not just after-the-fact breach counts.
+**Improvement:** Apply `cybersecurity_operations_center_predictive_risk_scoring` to estimate which alerts, incidents, evidence requests, and playbook runs are likely to breach SLA or require escalation soon.
+**Acceptance evidence:** Model feature manifests derived from owned SOC data, calibration tests against historical fixtures, and risk badges visible in triage and supervisor workbench lanes.
+
+### 43. Anomaly detection on analyst and automation behavior
+**Justification:** SOC quality issues can come from process drift, not only attack activity, so the platform should flag unusual operations behavior too.
+**Improvement:** Use autonomous anomaly detection to surface suspicious spikes in suppressions, repeated rollback of playbook stages, unusual evidence deletion attempts, or abrupt severity downgrades.
+**Acceptance evidence:** Anomaly detection test cases with explainable output, review feedback capture for false positives, and workbench anomaly cards tied to affected records.
+
+### 44. Release evidence that proves SOC-specific readiness
+**Justification:** The docs surface includes `RELEASE_EVIDENCE.md`; SOC delivery should prove operational readiness, not only code completion.
+**Improvement:** Expand release evidence to include alert lifecycle coverage, incident promotion tests, containment approval traces, dead-letter remediation, assistant guardrail checks, and workbench persona screenshots.
+**Acceptance evidence:** Updated `RELEASE_EVIDENCE.md` checklist references inside this backlog item, artifact links or placeholders for each proof class, and test output summaries aligned to the SOC flows above.
+
+### 45. Specification updates for event and API boundaries
+**Justification:** SOC ownership gets blurred quickly unless the specification states exactly which commands, events, and projections belong inside this PBC.
+**Improvement:** Tighten `SPECIFICATION.md` to document alert intake, incident promotion, containment approval, evidence sealing, threat intel recommendation, and event-handling boundaries for the package.
+**Acceptance evidence:** Specification sections mapped to manifest keys, API and event examples consistent with tests, and review notes showing no vendor-specific SIEM or SOAR coupling.
+
+### 46. Policy rule test harness for SOC tuning
+**Justification:** Analysts and supervisors need a safe way to tune deduplication, suppression, escalation, and containment approval logic without code edits.
+**Improvement:** Build a simulation harness around `cybersecurity_operations_center_policy_rule` so operators can test policy changes against representative alert and incident fixtures before activation.
+**Acceptance evidence:** Policy simulation tests with before/after outcome counts, workbench previews of proposed policy effects, and activation audit trails showing which simulation run justified the change.
+
+### 47. Runtime parameter bounds for operational safety
+**Justification:** Retry counts, suppression windows, and enrichment timeouts should be constrained to values that keep the SOC stable.
+**Improvement:** Add bounded validation and tenant-safe overrides for `cybersecurity_operations_center_runtime_parameter`, especially values derived from `CYBERSECURITY_OPERATIONS_CENTER_RETRY_LIMIT` and `CYBERSECURITY_OPERATIONS_CENTER_DEFAULT_POLICY`.
+**Acceptance evidence:** Parameter validation tests, workbench forms enforcing safe ranges, and audit history showing who changed an operational parameter and why.
+
+### 48. Outbox and inbox lineage on every case-affecting change
+**Justification:** SOC debugging is faster when analysts can see which commands emitted which events and which handlers consumed them.
+**Improvement:** Expose AppGen-X inbox/outbox lineage for `security_alert`, `security_incident`, `playbook_run`, and `containment_action` changes directly from the detail page and assistant context.
+**Acceptance evidence:** Lineage projection tests, linked event views in `CybersecurityOperationsCenterDetail`, and dead-letter records referencing original inbox or outbox entries.
+
+### 49. Analyst handoff packet generation
+**Justification:** Shift changes are risky if the next analyst receives only scattered notes and partial context.
+**Improvement:** Generate structured handoff packets from active alerts and incidents with summary, open questions, pending approvals, pending evidence, next checkpoints, and cited source records.
+**Acceptance evidence:** Assistant-assisted packet generation tests, supervisor review flows, and workbench export views proving packets are sourced from current case data rather than free-form text.
+
+### 50. Closure readiness checklist for incidents and campaigns
+**Justification:** Cases should close only when evidence, containment validation, owner signoff, and follow-up tasks are complete; otherwise closure metrics become misleading.
+**Improvement:** Add a governed closure checklist for `security_incident` and clustered campaign views that requires evidence completeness, containment verification, final severity confirmation, lesson capture, and downstream ticket or task linkage where needed.
+**Acceptance evidence:** Closure gating tests, checklist completion panels in the detail page, reopened-case fixtures when required evidence is missing, and release evidence showing an end-to-end close flow.

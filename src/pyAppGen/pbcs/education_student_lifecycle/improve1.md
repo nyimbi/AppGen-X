@@ -1,418 +1,416 @@
-# Education Student Lifecycle PBC Better-Than-World-Class Improvement Backlog
+# Education Student Lifecycle PBC Manual Improvement Backlog
 
 ## Purpose
 
-This file identifies, justifies, and describes 50 high-impact improvements for `education_student_lifecycle`. The backlog is specific to admissions, enrollment, curriculum, advising, progression, assessment, credentials, and student outcomes and is intended to move the PBC from release-auditable scaffolding toward complete, specialist-grade domain coverage.
+This strict backlog replaces scaffold-derived roadmap material for `education_student_lifecycle` with a hand-curated student success and academic progression roadmap. The PBC owns student applicants, enrollments, curriculum plans, advising cases, course attempts, assessment results, credentials, governed rules, agent assistance, and release evidence without owning finance aid, learning-management content, identity master records, or alumni advancement tables.
 
 ## Current Domain Evidence Used
 
 - Stable PBC key: `education_student_lifecycle`.
-- Domain purpose: Admissions, enrollment, curriculum, advising, progression, assessment, credentials, and student outcomes.
+- Domain purpose: admissions, enrollment, curriculum, advising, progression, assessment, credentials, and student outcomes.
 - Owned domain tables: `student_applicant`, `enrollment`, `curriculum_plan`, `advising_case`, `course_attempt`, `assessment_result`, `credential`, `education_student_lifecycle_policy_rule`, `education_student_lifecycle_runtime_parameter`, `education_student_lifecycle_schema_extension`, `education_student_lifecycle_control_assertion`, `education_student_lifecycle_governed_model`.
 - Public APIs: `POST /student-applicants`, `POST /enrollments`, `POST /curriculum-plans`, `POST /advising-cases`, `POST /course-attempts`, `GET /education-student-lifecycle-workbench`.
 - Emitted AppGen-X events: `EducationStudentLifecycleCreated`, `EducationStudentLifecycleUpdated`, `EducationStudentLifecycleApproved`, `EducationStudentLifecycleExceptionOpened`.
 - Consumed AppGen-X events: `PolicyChanged`, `CustomerUpdated`, `SupplierQualified`.
-- Current standard surfaces include: `student_applicant_management`, `education_student_lifecycle_workflow`, `education_student_lifecycle_analytics`, `configuration_schema`, `rule_engine`, `parameter_engine`, `owned_schema_migrations_models`, `appgen_x_outbox_inbox_eventing`, `idempotent_handlers`, `retry_dead_letter_evidence`.
-- Current advanced surfaces include: `education_student_lifecycle_event_sourced_operational_history`, `education_student_lifecycle_multi_tenant_policy_isolation`, `education_student_lifecycle_schema_evolution_resilience`, `education_student_lifecycle_autonomous_anomaly_detection`, `education_student_lifecycle_semantic_document_instruction_understanding`, `education_student_lifecycle_predictive_risk_scoring`, `education_student_lifecycle_counterfactual_scenario_simulation`, `education_student_lifecycle_cryptographic_audit_proofs`.
 
 ## 50 High-Impact Improvements
 
-### 1. Canonical lifecycle state model for Student Applicant
+### 1. Applicant Lifecycle State Machine
 
-**Justification:** This closes shallow CRUD gaps by making every education student lifecycle transition explainable and testable instead of implicit in free-form status values.
+**Justification:** Admissions work spans inquiry, application, document review, decision, offer, acceptance, deferral, waitlist, and withdrawal states.
 
-**Improvement:** Define a complete state machine for `student_applicant` with explicit draft, validated, blocked, approved, active, suspended, corrected, closed, archived, and reopened states. Tie the behavior to `education_student_lifecycle_create_student_applicant_workflow` where applicable, and make it visible in `EducationStudentLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add applicant states with application round, program choice, required documents, decision status, offer conditions, acceptance deadline, and withdrawal reason.
 
-**Acceptance evidence:** State-transition tests, invalid-transition fixtures, workbench state badges, and emitted AppGen-X transition events for EducationStudentLifecycleCreated, EducationStudentLifecycleUpdated, EducationStudentLifecycleApproved. The evidence should be package-local in `src/pyAppGen/pbcs/education_student_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must reject invalid applicant transitions and show missing application evidence before decision.
 
-### 2. Domain intake and normalization for Enrollment
+### 2. Admissions Requirement Rules
 
-**Justification:** The PBC cannot reach complete domain coverage unless it handles the messy front door of admissions, enrollment, curriculum, advising, progression, assessment, credentials, and student outcomes, not only already-clean records.
+**Justification:** Programs have different prerequisites, documents, exams, interviews, portfolios, and minimum standards.
 
-**Improvement:** Build a typed intake pipeline for `enrollment` that accepts structured API payloads, document-derived instructions, batch loads, and assistant-generated drafts while normalizing identifiers, dates, units, parties, and jurisdictional context. Tie the behavior to `education_student_lifecycle_record_enrollment_workflow` where applicable, and make it visible in `EducationStudentLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add requirement profiles by program, intake, applicant type, residency, prior credential, and exception policy.
 
-**Acceptance evidence:** Golden intake fixtures, rejected-record queues, field-level normalization evidence, and assistant previews before governed datastore mutation. The evidence should be package-local in `src/pyAppGen/pbcs/education_student_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must evaluate complete, incomplete, exception, and rejected applicant scenarios by program.
 
-### 3. Specialist validation rules for Curriculum Plan
+### 3. Document and Transcript Intake
 
-**Justification:** World-class Education Student Lifecycle requires rules that domain experts can reason about, version, test, and roll back without code edits.
+**Justification:** Student records are document-heavy and require source traceability.
 
-**Improvement:** Add a domain rule compiler for `curriculum_plan` that supports threshold rules, eligibility rules, dependency rules, temporal windows, conflicting-instruction detection, and override justification. Tie the behavior to `education_student_lifecycle_create_student_applicant_workflow` where applicable, and make it visible in `EducationStudentLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add document evidence with type, issuing institution, received date, authenticity status, extracted fields, confidence, reviewer, and accepted values.
 
-**Acceptance evidence:** Rule simulation tests, versioned rule manifests, rule impact reports, and UI rule editors linked to `EDUCATION_STUDENT_LIFECYCLE_DATABASE_URL, EDUCATION_STUDENT_LIFECYCLE_EVENT_TOPIC, EDUCATION_STUDENT_LIFECYCLE_RETRY_LIMIT`. The evidence should be package-local in `src/pyAppGen/pbcs/education_student_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must block high-impact document-derived mutations until reviewer confirmation.
 
-### 4. Parameter governance and tuning for Advising Case
+### 4. Enrollment Lifecycle
 
-**Justification:** Parameters are where operations teams tune education student lifecycle; unbounded constants would make the PBC brittle and unsafe in real deployments.
+**Justification:** Enrollment includes admitted, matriculated, active, leave, withdrawn, suspended, completed, and graduated states.
 
-**Improvement:** Expose bounded runtime parameters for `advising_case` covering risk thresholds, SLA windows, confidence floors, escalation cutoffs, batch sizes, retry limits, and human-confirmation requirements. Tie the behavior to `education_student_lifecycle_record_enrollment_workflow` where applicable, and make it visible in `EducationStudentLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand `enrollment` with status reason, effective date, program, campus, modality, load, cohort, catalog year, and readmission link.
 
-**Acceptance evidence:** Parameter schema validation, tenant overrides, approval history, rollback controls, and workbench diff views. The evidence should be package-local in `src/pyAppGen/pbcs/education_student_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must preserve enrollment history and prevent course registration when enrollment is inactive or blocked.
 
-### 5. Deep owned schema expansion for Course Attempt
+### 5. Program and Curriculum Plan Versioning
 
-**Justification:** A single payload column cannot express the full surface of admissions, enrollment, curriculum, advising, progression, assessment, credentials, and student outcomes or prove cross-PBC boundaries are respected.
+**Justification:** Degree requirements change by catalog year, program, concentration, accreditation, and transfer rules.
 
-**Improvement:** Extend the owned schema around `course_attempt` with normalized child tables for line-level evidence, party roles, approvals, attachments, comments, metrics, exception reasons, and control assertions. Tie the behavior to `education_student_lifecycle_create_student_applicant_workflow` where applicable, and make it visible in `EducationStudentLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add curriculum plan versions with requirement groups, electives, prerequisites, substitutions, waivers, effective windows, and approval.
 
-**Acceptance evidence:** Migrations, models, relationship tests, schema contract snapshots, and no shared-table access outside the `education_student_lifecycle_` namespace. The evidence should be package-local in `src/pyAppGen/pbcs/education_student_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must evaluate students against the plan version attached to their catalog year.
 
-### 6. Event-sourced operational history for Assessment Result
+### 6. Degree Audit Engine
 
-**Justification:** Temporal reconstruction is essential for better-than-world-class auditability and dispute resolution in education student lifecycle.
+**Justification:** Students and advisors need a precise view of completed, in-progress, planned, missing, waived, and substituted requirements.
 
-**Improvement:** Capture every material mutation of `assessment_result` as immutable AppGen-X events with actor, tenant, command, policy version, idempotency key, before/after summary, and projection checkpoint. Tie the behavior to `education_student_lifecycle_record_enrollment_workflow` where applicable, and make it visible in `EducationStudentLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add audit results by requirement, course attempt, assessment result, transfer credit, waiver, substitution, and remaining credit.
 
-**Acceptance evidence:** Replay tests, projection checksums, event ordering evidence, and point-in-time workbench views. The evidence should be package-local in `src/pyAppGen/pbcs/education_student_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must produce accurate degree audit states and flag conflicting substitutions.
 
-### 7. Projection and read-model strategy for Credential
+### 7. Course Attempt Lifecycle
 
-**Justification:** The workbench should not force users to infer domain truth from raw tables; each projection should answer a real operating question.
+**Justification:** A course attempt can be registered, waitlisted, dropped, withdrawn, completed, repeated, excluded, or transferred.
 
-**Improvement:** Create purpose-built projections for `credential`: operational queue, executive KPI rollup, exception aging, compliance evidence, agent task context, and external dependency health. Tie the behavior to `education_student_lifecycle_create_student_applicant_workflow` where applicable, and make it visible in `EducationStudentLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand `course_attempt` with section projection, grade mode, attempt number, repeat rule, withdrawal date, credit earned, and transcript visibility.
 
-**Acceptance evidence:** Projection contracts, freshness SLAs, backfill tests, and visible stale-projection warnings. The evidence should be package-local in `src/pyAppGen/pbcs/education_student_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must calculate earned credits and repeat treatment correctly.
 
-### 8. Exception taxonomy and remediation for Education Student Lifecycle Policy Rule
+### 8. Prerequisite and Corequisite Checks
 
-**Justification:** High-value PBCs win on exception throughput; generic “failed” states hide the details operators need.
+**Justification:** Course registration must respect prerequisites, corequisites, placement, program restrictions, and override approvals.
 
-**Improvement:** Model the full exception taxonomy for `education_student_lifecycle_policy_rule`, including severity, root cause, blocking dependency, remediation owner, due date, retry eligibility, escalation path, and closure evidence. Tie the behavior to `education_student_lifecycle_record_enrollment_workflow` where applicable, and make it visible in `EducationStudentLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add rule evaluation with missing requirement, override request, approver, expiry, and audit trace.
 
-**Acceptance evidence:** Exception queues, aging metrics, remediation playbooks, dead-letter linkage, and closure test fixtures for records retention holds. The evidence should be package-local in `src/pyAppGen/pbcs/education_student_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must block registration without satisfied prerequisites unless a valid override exists.
 
-### 9. Predictive risk scoring for Education Student Lifecycle Runtime Parameter
+### 9. Academic Standing Calculation
 
-**Justification:** The package should warn users before education student lifecycle work fails, breaches policy, or creates downstream cost.
+**Justification:** Standing decisions affect progression, probation, suspension, honors, and graduation eligibility.
 
-**Improvement:** Add predictive risk scoring for `education_student_lifecycle_runtime_parameter` using domain features from owned tables, consumed events PolicyChanged, CustomerUpdated, SupplierQualified, rule outcomes, aging, anomaly signals, and historical corrections. Tie the behavior to `education_student_lifecycle_create_student_applicant_workflow` where applicable, and make it visible in `EducationStudentLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add standing rules for GPA, credit completion, failed attempts, progress pace, remediation terms, and appeal.
 
-**Acceptance evidence:** Feature manifests, score explanations, calibration reports, drift alerts, and tests for low/medium/high-risk scenarios. The evidence should be package-local in `src/pyAppGen/pbcs/education_student_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must compute good standing, warning, probation, suspension, and reinstatement states.
 
-### 10. Counterfactual simulation for Education Student Lifecycle Schema Extension
+### 10. GPA and Credit Calculation
 
-**Justification:** Advanced users need to ask “what would happen if” before committing changes to live admissions, enrollment, curriculum, advising, progression, assessment, credentials, and student outcomes operations.
+**Justification:** GPA and credit rules vary by grade mode, repeated courses, transfer work, withdrawals, and program policy.
 
-**Improvement:** Provide scenario simulation for `education_student_lifecycle_schema_extension`: policy change, capacity constraint, deadline shift, price/rate change, eligibility change, disruption, and manual override outcomes. Tie the behavior to `education_student_lifecycle_record_enrollment_workflow` where applicable, and make it visible in `EducationStudentLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add calculation basis, grade points, attempted credits, earned credits, included/excluded flags, and transcript period.
 
-**Acceptance evidence:** Simulation APIs, non-mutating sandbox state, comparison reports, and workbench side-by-side scenario panels. The evidence should be package-local in `src/pyAppGen/pbcs/education_student_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must calculate term, cumulative, program, and credential GPA variants.
 
-### 11. Autonomous anomaly triage for Education Student Lifecycle Control Assertion
+### 11. Advising Case Taxonomy
 
-**Justification:** A world-class PBC should reduce analyst burden without hiding the reasoning behind automated triage.
+**Justification:** Advising cases include academic planning, risk intervention, transfer, graduation, conduct referral, accessibility support, and re-enrollment.
 
-**Improvement:** Implement anomaly detection for `education_student_lifecycle_control_assertion` that identifies outliers, duplicate submissions, impossible sequences, stale dependencies, unusual amounts/counts/durations, and contradictory fields. Tie the behavior to `education_student_lifecycle_create_student_applicant_workflow` where applicable, and make it visible in `EducationStudentLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand `advising_case` with type, urgency, owner, student goal, barrier, action plan, next contact, and closure evidence.
 
-**Acceptance evidence:** Explainable anomaly cards, reviewer feedback loops, false-positive tracking, and suppression governance. The evidence should be package-local in `src/pyAppGen/pbcs/education_student_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must route cases by type and prevent closure without documented outcome.
 
-### 12. Semantic document understanding for Education Student Lifecycle Governed Model
+### 12. Student Success Risk Model
 
-**Justification:** Document-heavy work in Education Student Lifecycle cannot be complete if the assistant only answers questions and cannot prepare accurate governed changes.
+**Justification:** Early warning needs attendance, course performance, missed milestones, advising history, holds, engagement, and external support signals.
 
-**Improvement:** Train the package assistant to parse domain documents and instructions for `education_student_lifecycle_governed_model`, extract obligations, dates, parties, quantities, identifiers, and exceptions, then map them to safe draft mutations. Tie the behavior to `education_student_lifecycle_record_enrollment_workflow` where applicable, and make it visible in `EducationStudentLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add explainable risk scores with contributing factors, confidence, intervention recommendation, and review cadence.
 
-**Acceptance evidence:** Document extraction tests, confidence thresholds, redaction handling, source span citations, and human confirmation workflows. The evidence should be package-local in `src/pyAppGen/pbcs/education_student_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must generate risk cases and require human review before high-impact interventions.
 
-### 13. Agent-safe CRUD execution for Student Applicant
+### 13. Intervention Plan Tracking
 
-**Justification:** The PBC agent must be a first-class operator but never a hidden bypass around RBAC, rules, or owned datastore boundaries.
+**Justification:** Student support is effective only when interventions are assigned, followed up, and measured.
 
-**Improvement:** Add a professional chatbot skill for `student_applicant` that can create, update, correct, close, and annotate records only through policy-checked commands, approval gates, and previewed diffs. Tie the behavior to `education_student_lifecycle_create_student_applicant_workflow` where applicable, and make it visible in `EducationStudentLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add intervention records with objective, owner, due date, student commitment, resource referral, outcome, and next step.
 
-**Acceptance evidence:** Skill manifests, permission tests, preview/confirm flows, blocked-action evidence, and audit events for every assistant mutation. The evidence should be package-local in `src/pyAppGen/pbcs/education_student_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must create intervention tasks and measure completion/outcome.
 
-### 14. Workbench persona coverage for Enrollment
+### 14. Assessment Result Governance
 
-**Justification:** A generic detail page underserves the domain; each role needs the exact controls and evidence they use daily.
+**Justification:** Assessment results drive progression, competency, accreditation, and credentials.
 
-**Improvement:** Design dedicated workbench panels for `enrollment`: operator queue, supervisor approvals, analyst exceptions, auditor evidence, configuration owner, and agent-assistance review. Tie the behavior to `education_student_lifecycle_record_enrollment_workflow` where applicable, and make it visible in `EducationStudentLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand `assessment_result` with assessment type, rubric, scorer, score, competency mapping, moderation status, appeal, and finalization.
 
-**Acceptance evidence:** UI contract entries, route tests, empty/error/loading states, and permission-aware action availability. The evidence should be package-local in `src/pyAppGen/pbcs/education_student_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must block credential completion when required assessments are missing or unfinalized.
 
-### 15. Cross-PBC dependency contracts for Curriculum Plan
+### 15. Competency and Outcome Mapping
 
-**Justification:** Composable packages fail when hidden table coupling enters the domain model.
+**Justification:** Programs increasingly certify outcomes and competencies beyond course credits.
 
-**Improvement:** Represent dependencies for `curriculum_plan` through declared APIs, consumed events PolicyChanged, CustomerUpdated, SupplierQualified, and projections rather than shared tables, with explicit freshness, ownership, and fallback behavior. Tie the behavior to `education_student_lifecycle_create_student_applicant_workflow` where applicable, and make it visible in `EducationStudentLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add competency framework, mapped assessments, achievement level, evidence, remediation, and credential requirement linkage.
 
-**Acceptance evidence:** Dependency manifests, contract tests, stale dependency alerts, and no foreign-table references in generated artifacts. The evidence should be package-local in `src/pyAppGen/pbcs/education_student_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must show competency progress and identify unmet outcomes.
 
-### 16. API completeness and versioning for Advising Case
+### 16. Credential Award Lifecycle
 
-**Justification:** Complete domain coverage requires both command and query surfaces, not only happy-path create endpoints.
+**Justification:** Credentials require audits, approvals, conferral dates, honors, transcript notation, and revocation/correction handling.
 
-**Improvement:** Expand APIs beyond POST /student-applicants, POST /enrollments, POST /curriculum-plans to cover search, validation-only commands, simulation, bulk intake, exception closure, evidence export, projection reads, and idempotent corrections. Tie the behavior to `education_student_lifecycle_record_enrollment_workflow` where applicable, and make it visible in `EducationStudentLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand `credential` with credential type, audit status, approver, conferral date, honors, certificate number, correction, and revocation reason.
 
-**Acceptance evidence:** OpenAPI-style route manifests, backward-compatible version tests, deprecation metadata, and idempotency assertions. The evidence should be package-local in `src/pyAppGen/pbcs/education_student_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must block conferral until curriculum, standing, assessment, and financial/administrative hold projections satisfy policy.
 
-### 17. Typed emitted-event expansion for Course Attempt
+### 17. Graduation Clearance Workbench
 
-**Justification:** Consumers should understand what happened in Education Student Lifecycle without parsing opaque payloads.
+**Justification:** Graduation clearance involves requirements, applications, holds, advisor approval, and registrar signoff.
 
-**Improvement:** Replace generic lifecycle emissions with typed events for each meaningful `course_attempt` transition, exception, approval, correction, simulation result, and downstream handoff. Tie the behavior to `education_student_lifecycle_create_student_applicant_workflow` where applicable, and make it visible in `EducationStudentLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add queues for pending audits, missing requirements, unresolved holds, advisor review, registrar approval, and credential issuance.
 
-**Acceptance evidence:** Event schema tests, event examples, compatibility checks, and emitted-event coverage in release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/education_student_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** UI tests must prove each queue maps to owned records or declared projections.
 
-### 18. Consumed-event handlers for Assessment Result
+### 18. Student Holds Boundary
 
-**Justification:** A PBC is composable only when incoming events affect its own domain state predictably and safely.
+**Justification:** Financial, conduct, immunization, library, and administrative holds may be owned elsewhere but affect enrollment actions.
 
-**Improvement:** Implement idempotent handlers for consumed events PolicyChanged, CustomerUpdated, SupplierQualified that update projections, open dependency exceptions, recalculate risk, and preserve source event lineage. Tie the behavior to `education_student_lifecycle_record_enrollment_workflow` where applicable, and make it visible in `EducationStudentLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Store hold projections with type, source, effective date, blocking actions, freshness, and override policy.
 
-**Acceptance evidence:** Duplicate-event tests, handler side-effect boundaries, dead-letter fixtures, and lineage links back to source events. The evidence should be package-local in `src/pyAppGen/pbcs/education_student_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Boundary tests must fail on external hold table reads and pass on declared event/API projections.
 
-### 19. Retry and dead-letter operations for Credential
+### 19. Transfer Credit Evaluation
 
-**Justification:** Dead letters are not just plumbing; they are domain work queues that can block admissions, enrollment, curriculum, advising, progression, assessment, credentials, and student outcomes.
+**Justification:** Transfer work needs equivalencies, articulation, credit limits, grade rules, and program applicability.
 
-**Improvement:** Create operational tools for retrying, quarantining, explaining, and resolving dead-lettered `credential` events with max-attempt policy, poison-message detection, and replay safety. Tie the behavior to `education_student_lifecycle_create_student_applicant_workflow` where applicable, and make it visible in `EducationStudentLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add transfer evaluation records with source institution, course, credit, equivalency, applicability, evaluator, and appeal state.
 
-**Acceptance evidence:** Dead-letter workbench, retry eligibility tests, replay audit proof, and operator action logs. The evidence should be package-local in `src/pyAppGen/pbcs/education_student_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must apply transfer credit to curriculum audits and preserve evaluator evidence.
 
-### 20. RBAC and attribute policy for Education Student Lifecycle Policy Rule
+### 20. Prior Learning Assessment
 
-**Justification:** High-impact domain operations need finer controls than generic RBAC grants.
+**Justification:** Work experience, military training, certifications, and portfolios can satisfy requirements with controlled evidence.
 
-**Improvement:** Extend permissions for `education_student_lifecycle_policy_rule` from coarse read/create/update/admin to action-level and attribute-aware policies based on role, tenant, jurisdiction, monetary/materiality threshold, and exception severity. Tie the behavior to `education_student_lifecycle_record_enrollment_workflow` where applicable, and make it visible in `EducationStudentLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add prior-learning evidence, assessment method, evaluator, credit awarded, competency mapping, and expiration.
 
-**Acceptance evidence:** Permission matrix docs, ABAC policy tests, denied-action UI states, and assistant skill permission checks. The evidence should be package-local in `src/pyAppGen/pbcs/education_student_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must require approval and show how prior learning affects degree audit.
 
-### 21. Continuous control testing for Education Student Lifecycle Runtime Parameter
+### 21. Enrollment Capacity and Waitlist Boundary
 
-**Justification:** Controls should run during operations, not only during release audit or manual review.
+**Justification:** Course capacity and seat management may be owned by scheduling systems, but student lifecycle needs registration outcome evidence.
 
-**Improvement:** Embed control assertions for `education_student_lifecycle_runtime_parameter` that continuously test segregation of duties, required approvals, stale exceptions, policy drift, duplicate records, and boundary violations. Tie the behavior to `education_student_lifecycle_create_student_applicant_workflow` where applicable, and make it visible in `EducationStudentLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Store section capacity projection, waitlist position, permission code, registration result, and freshness.
 
-**Acceptance evidence:** Control dashboards, failing-control events, test fixtures, and release evidence tied to `education_student_lifecycle_control_assertion` records. The evidence should be package-local in `src/pyAppGen/pbcs/education_student_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must handle waitlist promotion and stale capacity projections safely.
 
-### 22. Cryptographic audit proofing for Education Student Lifecycle Schema Extension
+### 22. Attendance and Engagement Projection
 
-**Justification:** Better-than-world-class auditability requires proof of integrity, not merely logs stored in mutable tables.
+**Justification:** Engagement signals help advisors intervene but may originate in learning systems.
 
-**Improvement:** Hash-chain material `education_student_lifecycle_schema_extension` decisions, documents, emitted events, and release-evidence snapshots to make tampering visible without exposing sensitive payloads. Tie the behavior to `education_student_lifecycle_record_enrollment_workflow` where applicable, and make it visible in `EducationStudentLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add engagement projections with source, attendance rate, last activity, missing work flag, risk contribution, and privacy scope.
 
-**Acceptance evidence:** Proof manifests, verification APIs, redacted proof exports, and audit-ledger handoff events. The evidence should be package-local in `src/pyAppGen/pbcs/education_student_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must use engagement evidence without reading learning-management tables.
 
-### 23. Privacy, consent, and secrecy controls for Education Student Lifecycle Control Assertion
+### 23. International Student Compliance
 
-**Justification:** Complete domain coverage must account for protected data and restricted operational evidence.
+**Justification:** International students may have visa, load, address, employment, and reporting obligations.
 
-**Improvement:** Add field-level privacy classifications for `education_student_lifecycle_control_assertion`, consent checks, masking rules, retention schedules, legal holds, and assistant redaction policies. Tie the behavior to `education_student_lifecycle_create_student_applicant_workflow` where applicable, and make it visible in `EducationStudentLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add compliance profile, required load, address confirmation, leave restrictions, reporting event, and escalation.
 
-**Acceptance evidence:** Retention tests, masked UI snapshots, consent-blocked mutation fixtures, and export controls. The evidence should be package-local in `src/pyAppGen/pbcs/education_student_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must flag noncompliance and block incompatible enrollment changes when policy requires.
 
-### 24. Multi-tenant operating model for Education Student Lifecycle Governed Model
+### 24. Accessibility Accommodation Boundary
 
-**Justification:** The PBC should scale across organizations while preserving independent policy and compliance boundaries.
+**Justification:** Accommodations affect assessment and enrollment but sensitive records may be owned elsewhere.
 
-**Improvement:** Support tenant-specific `education_student_lifecycle_governed_model` rules, data residency, encryption context, configuration, seed data, and release evidence without allowing cross-tenant leakage. Tie the behavior to `education_student_lifecycle_record_enrollment_workflow` where applicable, and make it visible in `EducationStudentLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Store accommodation projection with permitted adjustments, effective window, privacy classification, and stale-data warning.
 
-**Acceptance evidence:** Tenant isolation tests, tenant-scoped parameters, key-rotation evidence, and cross-tenant negative fixtures. The evidence should be package-local in `src/pyAppGen/pbcs/education_student_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Permission tests must hide sensitive accommodation detail while enforcing allowed academic actions.
 
-### 25. Schema evolution and extension registry for Student Applicant
+### 25. Academic Petition Workflow
 
-**Justification:** Domain teams will add fields; the PBC must evolve without breaking APIs, events, or workbench projections.
+**Justification:** Students request waivers, substitutions, late drops, overloads, reinstatement, and exceptions.
 
-**Improvement:** Make schema extensions for `student_applicant` first-class with compatibility checks, migration previews, projection backfills, field ownership, and rollback metadata. Tie the behavior to `education_student_lifecycle_create_student_applicant_workflow` where applicable, and make it visible in `EducationStudentLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add petition type, requested exception, evidence, committee review, decision, conditions, appeal, and expiration.
 
-**Acceptance evidence:** Extension registry UI, compatibility tests, migration dry-runs, and backfill release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/education_student_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must apply approved petitions to curriculum and enrollment rules.
 
-### 26. Master data quality gates for Enrollment
+### 26. Student Communication Timeline
 
-**Justification:** Many education student lifecycle errors begin as bad reference data; the PBC should catch them before workflow execution.
+**Justification:** Advising, admissions, progression, and credential decisions require documented communication.
 
-**Improvement:** Define reference-data contracts for `enrollment`: canonical codes, parties, locations, classifications, calendars, units, currencies, products, assets, or service categories as relevant to the domain. Tie the behavior to `education_student_lifecycle_record_enrollment_workflow` where applicable, and make it visible in `EducationStudentLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add communication events with template, channel, recipient, purpose, linked case, delivery status, and response.
 
-**Acceptance evidence:** Reference validation fixtures, stale-code warnings, mapping tables, and dependency freshness indicators. The evidence should be package-local in `src/pyAppGen/pbcs/education_student_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must emit notification events and preserve student-lifecycle timeline evidence.
 
-### 27. Bulk operations and correction workflows for Curriculum Plan
+### 27. Enrollment and Progression Timeline
 
-**Justification:** Enterprise-scale Education Student Lifecycle users cannot operate one record at a time.
+**Justification:** Staff need a longitudinal view from applicant to credential.
 
-**Improvement:** Add bulk load, bulk validate, bulk approve, and bulk correction workflows for `curriculum_plan` with partial success, row-level errors, resumability, and rollback. Tie the behavior to `education_student_lifecycle_create_student_applicant_workflow` where applicable, and make it visible in `EducationStudentLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Build timeline projection for application, admission, enrollment, course attempts, assessments, advising, holds, petitions, and credential events.
 
-**Acceptance evidence:** CSV/API batch fixtures, resumable job state, row-level audit evidence, and assistant-generated correction suggestions. The evidence should be package-local in `src/pyAppGen/pbcs/education_student_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Replay tests must reconstruct timelines idempotently with permission-aware redaction.
 
-### 28. Lifecycle collaboration and tasking for Advising Case
+### 28. Cohort and Retention Analytics
 
-**Justification:** Domain collaboration should live inside the PBC boundary and remain auditable with the record it affects.
+**Justification:** Institutions need cohort retention, persistence, progression, completion, and outcome metrics.
 
-**Improvement:** Attach tasks, comments, ownership, due dates, handoffs, and escalation threads to `advising_case` without leaking into external shared task tables. Tie the behavior to `education_student_lifecycle_record_enrollment_workflow` where applicable, and make it visible in `EducationStudentLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add analytics projections by cohort, program, term, demographic projection, entry pathway, risk band, and intervention exposure.
 
-**Acceptance evidence:** Task tables, comment audit history, notification events, escalation SLAs, and role-specific task queues. The evidence should be package-local in `src/pyAppGen/pbcs/education_student_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must generate tenant-scoped metrics with low-count suppression.
 
-### 29. SLA and service-level governance for Course Attempt
+### 29. Equity and Access Monitoring
 
-**Justification:** Users need to know when admissions, enrollment, curriculum, advising, progression, assessment, credentials, and student outcomes is late, blocked, or at risk before customer or regulator impact.
+**Justification:** Student outcomes should be monitored for disparities without exposing unnecessary protected data.
 
-**Improvement:** Define SLAs for `course_attempt` across intake, validation, approval, exception resolution, event handling, downstream projection refresh, and release-evidence generation. Tie the behavior to `education_student_lifecycle_create_student_applicant_workflow` where applicable, and make it visible in `EducationStudentLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add equity metrics, protected-data projection boundary, disparity threshold, review task, and remediation plan.
 
-**Acceptance evidence:** SLA breach events, timers, configurable calendars, workbench aging buckets, and tests for pause/resume behavior. The evidence should be package-local in `src/pyAppGen/pbcs/education_student_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must produce disparity indicators with privacy-preserving aggregation.
 
-### 30. Operational analytics cockpit for Assessment Result
+### 30. Curriculum Change Impact
 
-**Justification:** World-class operations require leading indicators, not only record counts.
+**Justification:** Program changes can affect enrolled students, applicants, graduation timelines, and advising load.
 
-**Improvement:** Build analytics for `assessment_result`: throughput, backlog, aging, approval latency, exception rate, risk distribution, automation acceptance, correction rate, and downstream dependency health. Tie the behavior to `education_student_lifecycle_record_enrollment_workflow` where applicable, and make it visible in `EducationStudentLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add impact simulation for requirement changes, course retirements, prerequisite changes, credit changes, and substitution rules.
 
-**Acceptance evidence:** Metric definitions, projection tests, drill-through routes, export APIs, and anomaly overlays. The evidence should be package-local in `src/pyAppGen/pbcs/education_student_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must produce affected-student lists and block activation without impact evidence.
 
-### 31. Decision intelligence and recommendations for Credential
+### 31. Advising Workbench
 
-**Justification:** The PBC should help expert users decide faster while showing evidence and uncertainty.
+**Justification:** Advisors need prioritized queues rather than raw student records.
 
-**Improvement:** Generate ranked recommendations for `credential` such as next best action, likely resolution, required evidence, policy adjustment, staffing/capacity response, or downstream handoff. Tie the behavior to `education_student_lifecycle_create_student_applicant_workflow` where applicable, and make it visible in `EducationStudentLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add workbench views for high-risk students, missing requirements, upcoming registration blockers, petitions, graduation candidates, and inactive outreach.
 
-**Acceptance evidence:** Recommendation explanations, confidence intervals, feedback capture, model governance records, and rejection reasons. The evidence should be package-local in `src/pyAppGen/pbcs/education_student_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** UI tests must prove each queue maps to owned data or declared projections with permission-aware actions.
 
-### 32. Quality and completeness scoring for Education Student Lifecycle Policy Rule
+### 32. Admissions Workbench
 
-**Justification:** Operators should see whether a record is truly ready, not just technically saved.
+**Justification:** Admissions teams need actionable queues for incomplete applications, review-ready files, interviews, decisions, offers, and yield outreach.
 
-**Improvement:** Score each `education_student_lifecycle_policy_rule` record for completeness, consistency, policy readiness, dependency readiness, evidence sufficiency, and downstream composability. Tie the behavior to `education_student_lifecycle_record_enrollment_workflow` where applicable, and make it visible in `EducationStudentLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add admissions persona views with aging, requirements, reviewer assignment, decision readiness, and offer acceptance risk.
 
-**Acceptance evidence:** Scoring rules, missing-evidence lists, readiness badges, and blocking criteria in command handlers. The evidence should be package-local in `src/pyAppGen/pbcs/education_student_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** UI tests must validate queue counts and action permissions.
 
-### 33. End-to-end scenario library for Education Student Lifecycle Runtime Parameter
+### 33. Agent-Assisted Student Guidance
 
-**Justification:** Release evidence is stronger when every important education student lifecycle behavior has executable examples.
+**Justification:** The assistant should help students and staff understand progress without inventing academic advice.
 
-**Improvement:** Create seeded scenarios for `education_student_lifecycle_runtime_parameter`: normal flow, urgent path, exception path, corrected path, duplicate path, late event path, and audit export path. Tie the behavior to `education_student_lifecycle_create_student_applicant_workflow` where applicable, and make it visible in `EducationStudentLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add agent skills for degree audit explanation, registration blocker summary, advising case summary, petition draft, graduation readiness, and applicant checklist.
 
-**Acceptance evidence:** Scenario seed data, runtime smoke coverage, generated-app fixtures, and story-level workbench screenshots/contracts. The evidence should be package-local in `src/pyAppGen/pbcs/education_student_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must require citations and mark recommendations that need advisor confirmation.
 
-### 34. Domain ontology and terminology model for Education Student Lifecycle Schema Extension
+### 34. Governed Agent CRUD Commands
 
-**Justification:** Precise vocabulary prevents the PBC from misclassifying specialist documents or user instructions.
+**Justification:** Chat-driven student lifecycle changes must be previewed and authorized.
 
-**Improvement:** Add an ontology for `education_student_lifecycle_schema_extension` terms, synonyms, classifications, relationships, allowed values, and phrase mappings used by the assistant and UI. Tie the behavior to `education_student_lifecycle_record_enrollment_workflow` where applicable, and make it visible in `EducationStudentLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add command previews for create advising case, update curriculum plan, apply petition, record assessment, change enrollment status, and award credential.
 
-**Acceptance evidence:** Ontology files, assistant parsing tests, UI glossary, and mapping evidence for domain-specific abbreviations. The evidence should be package-local in `src/pyAppGen/pbcs/education_student_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Intent tests must require student identity, evidence, preview, confirmation, authority, and audit trail.
 
-### 35. Advanced search and investigation for Education Student Lifecycle Control Assertion
+### 35. Privacy and FERPA-Like Redaction
 
-**Justification:** Investigators and operators need fast, explainable retrieval across the whole domain surface.
+**Justification:** Student records require role-based minimum necessary access.
 
-**Improvement:** Provide search across `education_student_lifecycle_control_assertion` records, events, documents, exceptions, tasks, comments, and audit proofs with filters for tenant, status, risk, date, party, and dependency. Tie the behavior to `education_student_lifecycle_create_student_applicant_workflow` where applicable, and make it visible in `EducationStudentLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add redaction profiles for applicant reviewer, advisor, instructor, registrar, student self-service, auditor, and analytics user.
 
-**Acceptance evidence:** Search index contracts, result provenance, permission-filtered queries, and stale-index warnings. The evidence should be package-local in `src/pyAppGen/pbcs/education_student_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Permission tests must hide sensitive fields and block unauthorized exports.
 
-### 36. Reconciliation and closure controls for Education Student Lifecycle Governed Model
+### 36. Data Retention and Amendment
 
-**Justification:** Closure is not complete until the PBC can prove no material domain work remains unresolved.
+**Justification:** Academic records need retention, amendment history, legal hold, and transcript correction controls.
 
-**Improvement:** Add reconciliation workflows that compare `education_student_lifecycle_governed_model` state against consumed events, external projections, expected totals/counts, approvals, and release evidence before closure. Tie the behavior to `education_student_lifecycle_record_enrollment_workflow` where applicable, and make it visible in `EducationStudentLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add retention class, amendment reason, original value, corrected value, approver, legal hold, and export eligibility.
 
-**Acceptance evidence:** Reconciliation reports, variance thresholds, closure blockers, and AppGen-X closure events. The evidence should be package-local in `src/pyAppGen/pbcs/education_student_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must block deletion under retention and preserve correction history.
 
-### 37. Regulatory and policy reporting for Student Applicant
+### 37. Continuous Control Assertions
 
-**Justification:** World-class PBCs turn operational evidence into credible reporting without spreadsheet reconstruction.
+**Justification:** Student lifecycle quality needs controls over admissions decisions, enrollment status, degree audits, petitions, credentials, and privacy.
 
-**Improvement:** Generate domain reporting packs for `student_applicant` covering statutory, contractual, operational, board, customer, or regulator evidence depending on public accountability, eligibility rules, due process, protected records, transparent case history, equitable service delivery, and statutory reporting. Tie the behavior to `education_student_lifecycle_create_student_applicant_workflow` where applicable, and make it visible in `EducationStudentLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add controls with population, threshold, failing records, owner, remediation, recurrence, and closure evidence.
 
-**Acceptance evidence:** Report schemas, redaction rules, traceable metric sources, and approval/export audit events. The evidence should be package-local in `src/pyAppGen/pbcs/education_student_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must open control failures and require remediation proof.
 
-### 38. Carbon and resource awareness for Enrollment
+### 38. Dead-Letter and Retry Operations
 
-**Justification:** Sustainability evidence should be embedded in operations instead of treated as an after-the-fact report.
+**Justification:** Applicant documents, enrollment events, assessment results, holds, and credential events can fail.
 
-**Improvement:** Where relevant, attach carbon, energy, water, travel, capacity, compute, or resource-footprint metadata to `enrollment` decisions and batch operations. Tie the behavior to `education_student_lifecycle_record_enrollment_workflow` where applicable, and make it visible in `EducationStudentLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add retry reason, risk, idempotency key, replay checkpoint, remediation action, and dead-letter queue.
 
-**Acceptance evidence:** Footprint fields, scheduling parameters, exception rules, and dashboards that expose operational tradeoffs. The evidence should be package-local in `src/pyAppGen/pbcs/education_student_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must replay failed events without duplicate enrollments, credentials, or notifications.
 
-### 39. Resilience and offline behavior for Curriculum Plan
+### 39. Cryptographic Academic Record Proofs
 
-**Justification:** Real operations keep moving during outages; the PBC must preserve correctness when dependencies are unavailable.
+**Justification:** Credentials, transcripts, and decisions need tamper-evident evidence.
 
-**Improvement:** Define resilience modes for `curriculum_plan`: degraded dependency mode, offline draft capture, delayed event replay, conflict detection, and safe recovery after partial failure. Tie the behavior to `education_student_lifecycle_create_student_applicant_workflow` where applicable, and make it visible in `EducationStudentLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add hash chains for application decisions, enrollment changes, course attempts, assessments, petitions, and credentials.
 
-**Acceptance evidence:** Offline fixtures, replay tests, conflict queues, recovery logs, and user-visible degraded-mode warnings. The evidence should be package-local in `src/pyAppGen/pbcs/education_student_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must verify proof chains and detect altered payloads or reordered events.
 
-### 40. Human-in-the-loop automation for Advising Case
+### 40. Credential Verification Contract
 
-**Justification:** Automation should accelerate admissions, enrollment, curriculum, advising, progression, assessment, credentials, and student outcomes while preserving accountability for high-risk decisions.
+**Justification:** External verification should confirm credential facts without exposing full student records.
 
-**Improvement:** Set explicit automation boundaries for `advising_case`: auto-approve, auto-reject, suggest-only, require-review, and block-until-evidence states with policy-based routing. Tie the behavior to `education_student_lifecycle_record_enrollment_workflow` where applicable, and make it visible in `EducationStudentLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add verification API/event contract with credential identifier, conferral date, status, revocation flag, and proof reference.
 
-**Acceptance evidence:** Automation policy tests, reviewer queues, override reasons, and assistant action audit trails. The evidence should be package-local in `src/pyAppGen/pbcs/education_student_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Contract tests must return scoped verification evidence and preserve privacy.
 
-### 41. Package discovery and fit scoring for Course Attempt
+### 41. Student Outcome Tracking
 
-**Justification:** Users selecting PBCs need transparent fit reasoning, especially when domains are adjacent but not overlapping.
+**Justification:** Programs need evidence of completion, employment, further study, licensure, and competency outcomes.
 
-**Improvement:** Improve package metadata so composition can explain when `education_student_lifecycle` fits a prompt, what entities it owns, what APIs/events it exposes, and what adjacent PBCs it depends on. Tie the behavior to `education_student_lifecycle_create_student_applicant_workflow` where applicable, and make it visible in `EducationStudentLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add outcome records with source, date, category, confidence, linked credential/program, and aggregation scope.
 
-**Acceptance evidence:** Discovery manifests, prompt-selection tests, overlap rationale links, and composition DSL examples. The evidence should be package-local in `src/pyAppGen/pbcs/education_student_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must track outcomes without overwriting alumni or employer-system ownership.
 
-### 42. Configuration deployment pipeline for Assessment Result
+### 42. Accreditation Evidence
 
-**Justification:** Configuration changes can materially alter education student lifecycle; they need the same discipline as code releases.
+**Justification:** Accrediting bodies require proof of curriculum, assessment, progression, completion, and outcomes.
 
-**Improvement:** Add configuration promotion for `assessment_result` across draft, test, approved, active, deprecated, and rollback states with impact analysis before activation. Tie the behavior to `education_student_lifecycle_record_enrollment_workflow` where applicable, and make it visible in `EducationStudentLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add evidence packets by program, cohort, outcome, assessment, credential, and reporting period.
 
-**Acceptance evidence:** Config diff views, approval workflows, simulation before activation, and rollback tests. The evidence should be package-local in `src/pyAppGen/pbcs/education_student_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must generate scoped evidence packets with source links and redaction.
 
-### 43. Workbench command completeness for Credential
+### 43. Multi-Campus and Multi-Program Support
 
-**Justification:** A PBC does not fully surface its capabilities if users must call hidden APIs for core work.
+**Justification:** Students can move across campuses, modalities, programs, concentrations, and credentials.
 
-**Improvement:** Expose every high-value operation for `credential` in the UI: create, validate, approve, simulate, correct, assign, export, retry, close, and audit-proof verification. Tie the behavior to `education_student_lifecycle_create_student_applicant_workflow` where applicable, and make it visible in `EducationStudentLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add campus, modality, program hierarchy, dual enrollment, primary program, secondary credential, and residency transitions.
 
-**Acceptance evidence:** UI action coverage tests, permission-aware disabled states, keyboard paths, and assistant handoff links. The evidence should be package-local in `src/pyAppGen/pbcs/education_student_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must evaluate progression correctly for dual and transferred program paths.
 
-### 44. Document packet and evidence vault for Education Student Lifecycle Policy Rule
+### 44. Leave, Withdrawal, and Reinstatement
 
-**Justification:** Documents often carry the legal or operational truth behind admissions, enrollment, curriculum, advising, progression, assessment, credentials, and student outcomes.
+**Justification:** Stops and returns affect progression, billing boundaries, visa compliance, and credential timelines.
 
-**Improvement:** Create a governed evidence vault for `education_student_lifecycle_policy_rule` documents, attachments, source spans, extracted fields, signatures, approvals, and retention labels. Tie the behavior to `education_student_lifecycle_record_enrollment_workflow` where applicable, and make it visible in `EducationStudentLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add leave type, withdrawal reason, effective date, return conditions, reinstatement petition, and transcript notation.
 
-**Acceptance evidence:** Evidence models, source-to-field lineage, signature validation, retention policies, and proof exports. The evidence should be package-local in `src/pyAppGen/pbcs/education_student_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must preserve status history and enforce return conditions.
 
-### 45. Data correction and amendment history for Education Student Lifecycle Runtime Parameter
+### 45. Seeded Student Lifecycle Scenario Library
 
-**Justification:** World-class systems correct mistakes without rewriting history or confusing downstream consumers.
+**Justification:** Release audits need realistic student journeys.
 
-**Improvement:** Support formal amendments for `education_student_lifecycle_runtime_parameter` that preserve original values, correction reason, approving actor, effective date, downstream event impacts, and replay behavior. Tie the behavior to `education_student_lifecycle_create_student_applicant_workflow` where applicable, and make it visible in `EducationStudentLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add seeds for applicant admission, transfer credit, advising risk, petition approval, course repeat, graduation audit, credential conferral, and privacy-restricted record.
 
-**Acceptance evidence:** Amendment tables, correction events, projection replay tests, and side-by-side before/after UI. The evidence should be package-local in `src/pyAppGen/pbcs/education_student_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Scenario tests must load side-effect-free and create expected queues, events, and evidence packets.
 
-### 46. External participant collaboration for Education Student Lifecycle Schema Extension
+### 46. Role-Based Permission Model
 
-**Justification:** Many education student lifecycle workflows require outside parties, but they must not gain direct access to internal tables.
+**Justification:** Applicants, students, advisors, admissions staff, instructors, registrars, compliance users, and auditors need different authority.
 
-**Improvement:** Add controlled collaboration portals or API views for external participants related to `education_student_lifecycle_schema_extension`, limited to scoped evidence submission, status checks, comments, and dispute responses. Tie the behavior to `education_student_lifecycle_record_enrollment_workflow` where applicable, and make it visible in `EducationStudentLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add permissions for applicant review, enrollment change, curriculum override, advising note, assessment finalization, credential award, and export.
 
-**Acceptance evidence:** Participant role policies, scoped tokens, submission audit trails, and inbound evidence validation. The evidence should be package-local in `src/pyAppGen/pbcs/education_student_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Permission tests must block unauthorized commands and show disabled UI actions.
 
-### 47. Advanced dependency freshness scoring for Education Student Lifecycle Control Assertion
+### 47. Financial Aid and Billing Boundary
 
-**Justification:** A record may be valid locally but unsafe if dependency evidence is stale or incomplete.
+**Justification:** Student status affects aid and billing, but those domains own money and awards.
 
-**Improvement:** Score freshness and reliability of dependencies used by `education_student_lifecycle_control_assertion`, including consumed events PolicyChanged, CustomerUpdated, SupplierQualified, referenced projections, configuration versions, and external submissions. Tie the behavior to `education_student_lifecycle_create_student_applicant_workflow` where applicable, and make it visible in `EducationStudentLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Emit enrollment status, credit load, satisfactory-progress, credential, and withdrawal events with idempotency keys and evidence.
 
-**Acceptance evidence:** Freshness indicators, blocking rules, stale-event simulations, and workbench dependency health panels. The evidence should be package-local in `src/pyAppGen/pbcs/education_student_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Boundary tests must fail on finance table writes and pass on declared AppGen-X event contracts.
 
-### 48. Model governance and explainability for Education Student Lifecycle Governed Model
+### 48. Full Student Lifecycle Release Simulation
 
-**Justification:** Governed AI is mandatory for professional-grade automation in Education Student Lifecycle.
+**Justification:** A complete PBC must prove applicant-to-credential behavior end to end.
 
-**Improvement:** For every predictive or agentic feature around `education_student_lifecycle_governed_model`, record model version, prompt or ruleset version, training/evaluation evidence, confidence, explanation, and human feedback. Tie the behavior to `education_student_lifecycle_record_enrollment_workflow` where applicable, and make it visible in `EducationStudentLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add a simulation where an applicant applies, is admitted, enrolls, follows a curriculum plan, receives advising, completes assessments, earns credits, petitions a substitution, and receives a credential.
 
-**Acceptance evidence:** Model cards, prompt/version manifests, feedback loops, drift tests, and audit proof for recommendations. The evidence should be package-local in `src/pyAppGen/pbcs/education_student_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** The simulation must validate owned schema, APIs, services, AppGen-X events, handlers, workbench views, agent skills, permissions, and release evidence.
 
-### 49. High-scale partitioning and archival for Student Applicant
+### 49. Package Overlap Guardrails
 
-**Justification:** Better-than-world-class packages must remain operable after years of high-volume domain history.
+**Justification:** This PBC must not duplicate financial aid, course catalog ownership, learning content, identity master data, or alumni advancement.
 
-**Improvement:** Plan scale behavior for `student_applicant`: tenant partitioning, archival policies, cold storage, retention-aware search, projection compaction, and large-batch replay. Tie the behavior to `education_student_lifecycle_create_student_applicant_workflow` where applicable, and make it visible in `EducationStudentLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add overlap checks and dependency contracts for identity, holds, course sections, learning engagement, aid eligibility, billing status, and alumni outcomes.
 
-**Acceptance evidence:** Partition tests, archive/retrieve fixtures, retention enforcement, and replay benchmarks. The evidence should be package-local in `src/pyAppGen/pbcs/education_student_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must fail on undeclared external table references and pass on declared AppGen-X dependency usage.
 
-### 50. Release gate expansion for Enrollment
+### 50. Composition DSL and Unified Agent Exposure
 
-**Justification:** The PBC should not claim domain coverage unless release evidence proves the claim end to end.
+**Justification:** Generated applications must expose student lifecycle capabilities through DSL, UI, APIs, and the composed application agent.
 
-**Improvement:** Expand release gates for `education_student_lifecycle` so every schema, service, API, event, handler, UI, rule, parameter, agent skill, seed scenario, and improvement backlog item maps to executable evidence. Tie the behavior to `education_student_lifecycle_record_enrollment_workflow` where applicable, and make it visible in `EducationStudentLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Extend composition metadata for applicants, enrollments, curriculum plans, advising, course attempts, assessments, credentials, controls, workbench fragments, and agent skills.
 
-**Acceptance evidence:** Release audit checks, manifest traceability, generated-app smoke tests, and missing-capability blockers. The evidence should be package-local in `src/pyAppGen/pbcs/education_student_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** DSL tests must prove generated apps include student lifecycle models, routes, services, event contracts, UI artifacts, and assistant skills without stream-engine picker exposure.
