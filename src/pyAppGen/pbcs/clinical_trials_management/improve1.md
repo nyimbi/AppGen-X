@@ -1,418 +1,416 @@
-# Clinical Trials Management PBC Better-Than-World-Class Improvement Backlog
+# Clinical Trials Management PBC Manual Improvement Backlog
 
 ## Purpose
 
-This file identifies, justifies, and describes 50 high-impact improvements for `clinical_trials_management`. The backlog is specific to protocols, trial sites, subjects, consent, visits, adverse events, monitoring, and trial data operations and is intended to move the PBC from release-auditable scaffolding toward complete, specialist-grade domain coverage.
+This strict backlog replaces scaffold-derived roadmap material for `clinical_trials_management` with a hand-curated clinical research operations roadmap. The PBC owns protocols, study sites, subjects, consent records, visit schedules, adverse event operations, monitoring, trial data operations, governed rules, agent assistance, and release evidence without owning EHR source-of-truth, sponsor finance, or external regulatory submission systems.
 
 ## Current Domain Evidence Used
 
 - Stable PBC key: `clinical_trials_management`.
-- Domain purpose: Protocols, trial sites, subjects, consent, visits, adverse events, monitoring, and trial data operations.
+- Domain purpose: protocols, trial sites, subjects, consent, visits, adverse events, monitoring, and trial data operations.
 - Owned domain tables: `trial_protocol`, `study_site`, `subject`, `consent_record`, `visit_schedule`, `adverse_event`, `monitoring_finding`, `clinical_trials_management_policy_rule`, `clinical_trials_management_runtime_parameter`, `clinical_trials_management_schema_extension`, `clinical_trials_management_control_assertion`, `clinical_trials_management_governed_model`.
 - Public APIs: `POST /trial-protocols`, `POST /study-sites`, `POST /subjects`, `POST /consent-records`, `POST /visit-schedules`, `GET /clinical-trials-management-workbench`.
 - Emitted AppGen-X events: `ClinicalTrialsManagementCreated`, `ClinicalTrialsManagementUpdated`, `ClinicalTrialsManagementApproved`, `ClinicalTrialsManagementExceptionOpened`.
 - Consumed AppGen-X events: `PolicyChanged`, `CustomerUpdated`, `SupplierQualified`.
-- Current standard surfaces include: `trial_protocol_management`, `clinical_trials_management_workflow`, `clinical_trials_management_analytics`, `configuration_schema`, `rule_engine`, `parameter_engine`, `owned_schema_migrations_models`, `appgen_x_outbox_inbox_eventing`, `idempotent_handlers`, `retry_dead_letter_evidence`.
-- Current advanced surfaces include: `clinical_trials_management_event_sourced_operational_history`, `clinical_trials_management_multi_tenant_policy_isolation`, `clinical_trials_management_schema_evolution_resilience`, `clinical_trials_management_autonomous_anomaly_detection`, `clinical_trials_management_semantic_document_instruction_understanding`, `clinical_trials_management_predictive_risk_scoring`, `clinical_trials_management_counterfactual_scenario_simulation`, `clinical_trials_management_cryptographic_audit_proofs`.
 
 ## 50 High-Impact Improvements
 
-### 1. Canonical lifecycle state model for Trial Protocol
+### 1. Protocol Version Governance
 
-**Justification:** This closes shallow CRUD gaps by making every clinical trials management transition explainable and testable instead of implicit in free-form status values.
+**Justification:** Protocol amendments affect eligibility, consent, visits, assessments, safety reporting, and site activation.
 
-**Improvement:** Define a complete state machine for `trial_protocol` with explicit draft, validated, blocked, approved, active, suspended, corrected, closed, archived, and reopened states. Tie the behavior to `clinical_trials_management_create_trial_protocol_workflow` where applicable, and make it visible in `ClinicalTrialsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add protocol version states for draft, approved, active, amended, superseded, paused, closed, and archived with amendment rationale, effective date, and impacted sites/subjects.
 
-**Acceptance evidence:** State-transition tests, invalid-transition fixtures, workbench state badges, and emitted AppGen-X transition events for ClinicalTrialsManagementCreated, ClinicalTrialsManagementUpdated, ClinicalTrialsManagementApproved. The evidence should be package-local in `src/pyAppGen/pbcs/clinical_trials_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must prove historical subject visits retain the protocol version active at the time and amendments create impact worklists.
 
-### 2. Domain intake and normalization for Study Site
+### 2. Eligibility Criteria Engine
 
-**Justification:** The PBC cannot reach complete domain coverage unless it handles the messy front door of protocols, trial sites, subjects, consent, visits, adverse events, monitoring, and trial data operations, not only already-clean records.
+**Justification:** Subject enrollment depends on inclusion, exclusion, washout, laboratory, prior therapy, demographic, and disease criteria.
 
-**Improvement:** Build a typed intake pipeline for `study_site` that accepts structured API payloads, document-derived instructions, batch loads, and assistant-generated drafts while normalizing identifiers, dates, units, parties, and jurisdictional context. Tie the behavior to `clinical_trials_management_record_study_site_workflow` where applicable, and make it visible in `ClinicalTrialsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add criteria definitions with required evidence, source, threshold, exception policy, reviewer, and eligibility decision trace.
 
-**Acceptance evidence:** Golden intake fixtures, rejected-record queues, field-level normalization evidence, and assistant previews before governed datastore mutation. The evidence should be package-local in `src/pyAppGen/pbcs/clinical_trials_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must approve, screen-fail, and require review for subjects with complete, missing, and conflicting eligibility evidence.
 
-### 3. Specialist validation rules for Subject
+### 3. Screening and Enrollment Lifecycle
 
-**Justification:** World-class Clinical Trials Management requires rules that domain experts can reason about, version, test, and roll back without code edits.
+**Justification:** Subjects move through prescreening, consent, screening, randomization, treatment, follow-up, withdrawal, and completion.
 
-**Improvement:** Add a domain rule compiler for `subject` that supports threshold rules, eligibility rules, dependency rules, temporal windows, conflicting-instruction detection, and override justification. Tie the behavior to `clinical_trials_management_create_trial_protocol_workflow` where applicable, and make it visible in `ClinicalTrialsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand `subject` states with screen-fail reason, randomization status, cohort, arm, stratification factors, withdrawal reason, and end-of-study status.
 
-**Acceptance evidence:** Rule simulation tests, versioned rule manifests, rule impact reports, and UI rule editors linked to `CLINICAL_TRIALS_MANAGEMENT_DATABASE_URL, CLINICAL_TRIALS_MANAGEMENT_EVENT_TOPIC, CLINICAL_TRIALS_MANAGEMENT_RETRY_LIMIT`. The evidence should be package-local in `src/pyAppGen/pbcs/clinical_trials_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must reject enrollment without valid consent and eligibility evidence and preserve screen-fail audit history.
 
-### 4. Parameter governance and tuning for Consent Record
+### 4. Informed Consent Version Control
 
-**Justification:** Parameters are where operations teams tune clinical trials management; unbounded constants would make the PBC brittle and unsafe in real deployments.
+**Justification:** Consent must match protocol version, site language, subject capacity, and re-consent requirements.
 
-**Improvement:** Expose bounded runtime parameters for `consent_record` covering risk thresholds, SLA windows, confidence floors, escalation cutoffs, batch sizes, retry limits, and human-confirmation requirements. Tie the behavior to `clinical_trials_management_record_study_site_workflow` where applicable, and make it visible in `ClinicalTrialsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add consent form version, language, signer role, capacity assessment, witness, re-consent trigger, withdrawal, and source document evidence.
 
-**Acceptance evidence:** Parameter schema validation, tenant overrides, approval history, rollback controls, and workbench diff views. The evidence should be package-local in `src/pyAppGen/pbcs/clinical_trials_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must block study procedures when consent is missing, expired, withdrawn, or mismatched to protocol version.
 
-### 5. Deep owned schema expansion for Visit Schedule
+### 5. Site Activation Checklist
 
-**Justification:** A single payload column cannot express the full surface of protocols, trial sites, subjects, consent, visits, adverse events, monitoring, and trial data operations or prove cross-PBC boundaries are respected.
+**Justification:** Study sites cannot enroll safely until contracts, approvals, training, staff delegation, supplies, and systems are ready.
 
-**Improvement:** Extend the owned schema around `visit_schedule` with normalized child tables for line-level evidence, party roles, approvals, attachments, comments, metrics, exception reasons, and control assertions. Tie the behavior to `clinical_trials_management_create_trial_protocol_workflow` where applicable, and make it visible in `ClinicalTrialsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand `study_site` with activation checklist, investigator qualification, delegation log, ethics approval, contract status, training completion, and activation date.
 
-**Acceptance evidence:** Migrations, models, relationship tests, schema contract snapshots, and no shared-table access outside the `clinical_trials_management_` namespace. The evidence should be package-local in `src/pyAppGen/pbcs/clinical_trials_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must block site activation and subject enrollment when required checklist evidence is missing.
 
-### 6. Event-sourced operational history for Adverse Event
+### 6. Delegation of Authority
 
-**Justification:** Temporal reconstruction is essential for better-than-world-class auditability and dispute resolution in clinical trials management.
+**Justification:** Trial tasks must be performed by authorized, trained staff with dates and role scope.
 
-**Improvement:** Capture every material mutation of `adverse_event` as immutable AppGen-X events with actor, tenant, command, policy version, idempotency key, before/after summary, and projection checkpoint. Tie the behavior to `clinical_trials_management_record_study_site_workflow` where applicable, and make it visible in `ClinicalTrialsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add delegation records for investigator, coordinator, pharmacist, lab staff, monitor, and data manager with task scope, training, start/end dates, and revocation.
 
-**Acceptance evidence:** Replay tests, projection checksums, event ordering evidence, and point-in-time workbench views. The evidence should be package-local in `src/pyAppGen/pbcs/clinical_trials_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Permission tests must reject visit completion, consent, or adverse event review by unauthorized staff.
 
-### 7. Projection and read-model strategy for Monitoring Finding
+### 7. Visit Schedule Windowing
 
-**Justification:** The workbench should not force users to infer domain truth from raw tables; each projection should answer a real operating question.
+**Justification:** Trial visits have target dates, windows, assessments, missed-visit handling, and protocol deviations.
 
-**Improvement:** Create purpose-built projections for `monitoring_finding`: operational queue, executive KPI rollup, exception aging, compliance evidence, agent task context, and external dependency health. Tie the behavior to `clinical_trials_management_create_trial_protocol_workflow` where applicable, and make it visible in `ClinicalTrialsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand `visit_schedule` with visit type, target day, allowed window, required procedures, status, missed reason, reschedule reason, and deviation link.
 
-**Acceptance evidence:** Projection contracts, freshness SLAs, backfill tests, and visible stale-projection warnings. The evidence should be package-local in `src/pyAppGen/pbcs/clinical_trials_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must classify on-window, early, late, missed, skipped, and rescheduled visits with deviation evidence.
 
-### 8. Exception taxonomy and remediation for Clinical Trials Management Policy Rule
+### 8. Assessment and Procedure Checklist
 
-**Justification:** High-value PBCs win on exception throughput; generic “failed” states hide the details operators need.
+**Justification:** Each visit must complete protocol-required assessments, labs, questionnaires, dosing, and source documentation.
 
-**Improvement:** Model the full exception taxonomy for `clinical_trials_management_policy_rule`, including severity, root cause, blocking dependency, remediation owner, due date, retry eligibility, escalation path, and closure evidence. Tie the behavior to `clinical_trials_management_record_study_site_workflow` where applicable, and make it visible in `ClinicalTrialsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add visit procedure checklist with required/optional flag, performer, completion state, source evidence, result dependency, and missing item reason.
 
-**Acceptance evidence:** Exception queues, aging metrics, remediation playbooks, dead-letter linkage, and closure test fixtures for conflicting clinical instructions. The evidence should be package-local in `src/pyAppGen/pbcs/clinical_trials_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must prevent visit closure until required procedures are complete or waived with approved reason.
 
-### 9. Predictive risk scoring for Clinical Trials Management Runtime Parameter
+### 9. Randomization and Blinding Controls
 
-**Justification:** The package should warn users before clinical trials management work fails, breaches policy, or creates downstream cost.
+**Justification:** Randomization integrity and blinding are core trial controls.
 
-**Improvement:** Add predictive risk scoring for `clinical_trials_management_runtime_parameter` using domain features from owned tables, consumed events PolicyChanged, CustomerUpdated, SupplierQualified, rule outcomes, aging, anomaly signals, and historical corrections. Tie the behavior to `clinical_trials_management_create_trial_protocol_workflow` where applicable, and make it visible in `ClinicalTrialsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add randomization event evidence, arm assignment, stratification factors, blinded role restrictions, emergency unblinding reason, and unblinding audit.
 
-**Acceptance evidence:** Feature manifests, score explanations, calibration reports, drift alerts, and tests for low/medium/high-risk scenarios. The evidence should be package-local in `src/pyAppGen/pbcs/clinical_trials_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must hide arm data from blinded roles and audit emergency unblinding.
 
-### 10. Counterfactual simulation for Clinical Trials Management Schema Extension
+### 10. Investigational Product Accountability
 
-**Justification:** Advanced users need to ask “what would happen if” before committing changes to live protocols, trial sites, subjects, consent, visits, adverse events, monitoring, and trial data operations operations.
+**Justification:** Product dispensing, returns, temperature excursions, and accountability records must reconcile.
 
-**Improvement:** Provide scenario simulation for `clinical_trials_management_schema_extension`: policy change, capacity constraint, deadline shift, price/rate change, eligibility change, disruption, and manual override outcomes. Tie the behavior to `clinical_trials_management_record_study_site_workflow` where applicable, and make it visible in `ClinicalTrialsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add product lot, kit, dispensing record, return/destruction, temperature excursion, reconciliation variance, and pharmacist signoff.
 
-**Acceptance evidence:** Simulation APIs, non-mutating sandbox state, comparison reports, and workbench side-by-side scenario panels. The evidence should be package-local in `src/pyAppGen/pbcs/clinical_trials_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must detect missing kits, over-dispensing, unreturned product, and unresolved reconciliation variance.
 
-### 11. Autonomous anomaly triage for Clinical Trials Management Control Assertion
+### 11. Adverse Event Intake
 
-**Justification:** A world-class PBC should reduce analyst burden without hiding the reasoning behind automated triage.
+**Justification:** Adverse events require severity, seriousness, causality, expectedness, action taken, outcome, and reporting clocks.
 
-**Improvement:** Implement anomaly detection for `clinical_trials_management_control_assertion` that identifies outliers, duplicate submissions, impossible sequences, stale dependencies, unusual amounts/counts/durations, and contradictory fields. Tie the behavior to `clinical_trials_management_create_trial_protocol_workflow` where applicable, and make it visible in `ClinicalTrialsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand `adverse_event` with onset, resolution, grade, seriousness, relatedness, expectedness, treatment action, outcome, reporter, and source evidence.
 
-**Acceptance evidence:** Explainable anomaly cards, reviewer feedback loops, false-positive tracking, and suppression governance. The evidence should be package-local in `src/pyAppGen/pbcs/clinical_trials_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must classify non-serious and serious events and open reporting deadlines based on seriousness and expectedness.
 
-### 12. Semantic document understanding for Clinical Trials Management Governed Model
+### 12. Serious Event Reporting
 
-**Justification:** Document-heavy work in Clinical Trials Management cannot be complete if the assistant only answers questions and cannot prepare accurate governed changes.
+**Justification:** Serious events can trigger urgent sponsor, ethics, and regulatory reporting.
 
-**Improvement:** Train the package assistant to parse domain documents and instructions for `clinical_trials_management_governed_model`, extract obligations, dates, parties, quantities, identifiers, and exceptions, then map them to safe draft mutations. Tie the behavior to `clinical_trials_management_record_study_site_workflow` where applicable, and make it visible in `ClinicalTrialsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add reporting obligations, initial report deadline, follow-up report, recipient, submission proof, narrative, and unresolved query state.
 
-**Acceptance evidence:** Document extraction tests, confidence thresholds, redaction handling, source span citations, and human confirmation workflows. The evidence should be package-local in `src/pyAppGen/pbcs/clinical_trials_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must escalate overdue serious event reporting and preserve submission evidence.
 
-### 13. Agent-safe CRUD execution for Trial Protocol
+### 13. Protocol Deviation Management
 
-**Justification:** The PBC agent must be a first-class operator but never a hidden bypass around RBAC, rules, or owned datastore boundaries.
+**Justification:** Deviations affect subject safety, data integrity, and study credibility.
 
-**Improvement:** Add a professional chatbot skill for `trial_protocol` that can create, update, correct, close, and annotate records only through policy-checked commands, approval gates, and previewed diffs. Tie the behavior to `clinical_trials_management_create_trial_protocol_workflow` where applicable, and make it visible in `ClinicalTrialsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add deviation type, severity, preventability, impacted subject/visit/site, root cause, corrective action, and sponsor notification requirement.
 
-**Acceptance evidence:** Skill manifests, permission tests, preview/confirm flows, blocked-action evidence, and audit events for every assistant mutation. The evidence should be package-local in `src/pyAppGen/pbcs/clinical_trials_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must open deviations from missed visits, invalid consent, unauthorized staff action, and late safety reporting.
 
-### 14. Workbench persona coverage for Study Site
+### 14. Monitoring Visit Planning
 
-**Justification:** A generic detail page underserves the domain; each role needs the exact controls and evidence they use daily.
+**Justification:** Monitors need risk-based visit plans and follow-up evidence.
 
-**Improvement:** Design dedicated workbench panels for `study_site`: operator queue, supervisor approvals, analyst exceptions, auditor evidence, configuration owner, and agent-assistance review. Tie the behavior to `clinical_trials_management_record_study_site_workflow` where applicable, and make it visible in `ClinicalTrialsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add monitoring visit type, scope, site risk, planned dates, documents reviewed, findings, action items, and closeout status.
 
-**Acceptance evidence:** UI contract entries, route tests, empty/error/loading states, and permission-aware action availability. The evidence should be package-local in `src/pyAppGen/pbcs/clinical_trials_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must create monitoring plans and close findings only after evidence is submitted.
 
-### 15. Cross-PBC dependency contracts for Subject
+### 15. Source Data Verification Strategy
 
-**Justification:** Composable packages fail when hidden table coupling enters the domain model.
+**Justification:** Not every data point needs equal verification, but critical endpoints and safety data must be controlled.
 
-**Improvement:** Represent dependencies for `subject` through declared APIs, consumed events PolicyChanged, CustomerUpdated, SupplierQualified, and projections rather than shared tables, with explicit freshness, ownership, and fallback behavior. Tie the behavior to `clinical_trials_management_create_trial_protocol_workflow` where applicable, and make it visible in `ClinicalTrialsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add SDV requirements by field, visit, endpoint, risk, and site performance, with verified, queried, and waived states.
 
-**Acceptance evidence:** Dependency manifests, contract tests, stale dependency alerts, and no foreign-table references in generated artifacts. The evidence should be package-local in `src/pyAppGen/pbcs/clinical_trials_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must enforce SDV for critical data and show risk-based reductions with approval evidence.
 
-### 16. API completeness and versioning for Consent Record
+### 16. Data Query Lifecycle
 
-**Justification:** Complete domain coverage requires both command and query surfaces, not only happy-path create endpoints.
+**Justification:** Trial data queries need assignment, response, resolution, reopening, and auditability.
 
-**Improvement:** Expand APIs beyond POST /trial-protocols, POST /study-sites, POST /subjects to cover search, validation-only commands, simulation, bulk intake, exception closure, evidence export, projection reads, and idempotent corrections. Tie the behavior to `clinical_trials_management_record_study_site_workflow` where applicable, and make it visible in `ClinicalTrialsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add query reason, data field, issuer, assignee, response, resolution, reopen reason, aging, and final lock impact.
 
-**Acceptance evidence:** OpenAPI-style route manifests, backward-compatible version tests, deprecation metadata, and idempotency assertions. The evidence should be package-local in `src/pyAppGen/pbcs/clinical_trials_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must prevent data lock while required queries remain open.
 
-### 17. Typed emitted-event expansion for Visit Schedule
+### 17. Electronic Case Report Form Governance
 
-**Justification:** Consumers should understand what happened in Clinical Trials Management without parsing opaque payloads.
+**Justification:** CRF changes affect data capture and downstream analysis.
 
-**Improvement:** Replace generic lifecycle emissions with typed events for each meaningful `visit_schedule` transition, exception, approval, correction, simulation result, and downstream handoff. Tie the behavior to `clinical_trials_management_create_trial_protocol_workflow` where applicable, and make it visible in `ClinicalTrialsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add form version, field definitions, validation checks, edit checks, activation date, migration impact, and retired field handling.
 
-**Acceptance evidence:** Event schema tests, event examples, compatibility checks, and emitted-event coverage in release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/clinical_trials_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must preserve historical form versions and validate new entries against active definitions.
 
-### 18. Consumed-event handlers for Adverse Event
+### 18. Endpoint and Outcome Traceability
 
-**Justification:** A PBC is composable only when incoming events affect its own domain state predictably and safely.
+**Justification:** Primary and secondary endpoints require source traceability and analysis readiness.
 
-**Improvement:** Implement idempotent handlers for consumed events PolicyChanged, CustomerUpdated, SupplierQualified that update projections, open dependency exceptions, recalculate risk, and preserve source event lineage. Tie the behavior to `clinical_trials_management_record_study_site_workflow` where applicable, and make it visible in `ClinicalTrialsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add endpoint definitions, contributing assessments, derivation rules, adjudication state, missing data reason, and lock status.
 
-**Acceptance evidence:** Duplicate-event tests, handler side-effect boundaries, dead-letter fixtures, and lineage links back to source events. The evidence should be package-local in `src/pyAppGen/pbcs/clinical_trials_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must trace endpoint values to source visits and block lock if critical endpoint evidence is missing.
 
-### 19. Retry and dead-letter operations for Monitoring Finding
+### 19. Subject Retention and Visit Adherence
 
-**Justification:** Dead letters are not just plumbing; they are domain work queues that can block protocols, trial sites, subjects, consent, visits, adverse events, monitoring, and trial data operations.
+**Justification:** Missed visits and withdrawals threaten study power and safety follow-up.
 
-**Improvement:** Create operational tools for retrying, quarantining, explaining, and resolving dead-lettered `monitoring_finding` events with max-attempt policy, poison-message detection, and replay safety. Tie the behavior to `clinical_trials_management_create_trial_protocol_workflow` where applicable, and make it visible in `ClinicalTrialsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add retention risk, missed-contact patterns, outreach tasks, barrier categories, travel support needs, and withdrawal prevention actions.
 
-**Acceptance evidence:** Dead-letter workbench, retry eligibility tests, replay audit proof, and operator action logs. The evidence should be package-local in `src/pyAppGen/pbcs/clinical_trials_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must open retention tasks for risk signals and respect consent and contact preferences.
 
-### 20. RBAC and attribute policy for Clinical Trials Management Policy Rule
+### 20. Site Performance Scorecards
 
-**Justification:** High-impact domain operations need finer controls than generic RBAC grants.
+**Justification:** Sites vary in enrollment, data quality, query aging, protocol deviations, and safety reporting.
 
-**Improvement:** Extend permissions for `clinical_trials_management_policy_rule` from coarse read/create/update/admin to action-level and attribute-aware policies based on role, tenant, jurisdiction, monetary/materiality threshold, and exception severity. Tie the behavior to `clinical_trials_management_record_study_site_workflow` where applicable, and make it visible in `ClinicalTrialsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add scorecards for activation timeliness, enrollment pace, visit adherence, query aging, deviation rate, monitoring findings, and safety timeliness.
 
-**Acceptance evidence:** Permission matrix docs, ABAC policy tests, denied-action UI states, and assistant skill permission checks. The evidence should be package-local in `src/pyAppGen/pbcs/clinical_trials_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must calculate site metrics from owned trial evidence and show freshness.
 
-### 21. Continuous control testing for Clinical Trials Management Runtime Parameter
+### 21. Recruitment Funnel Tracking
 
-**Justification:** Controls should run during operations, not only during release audit or manual review.
+**Justification:** Recruitment requires prescreening, outreach, eligibility, consent, screen failures, and enrollment conversion.
 
-**Improvement:** Embed control assertions for `clinical_trials_management_runtime_parameter` that continuously test segregation of duties, required approvals, stale exceptions, policy drift, duplicate records, and boundary violations. Tie the behavior to `clinical_trials_management_create_trial_protocol_workflow` where applicable, and make it visible in `ClinicalTrialsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add recruitment funnel stages, referral source, outreach consent, screen-fail reason, diversity goal, and enrollment forecast.
 
-**Acceptance evidence:** Control dashboards, failing-control events, test fixtures, and release evidence tied to `clinical_trials_management_control_assertion` records. The evidence should be package-local in `src/pyAppGen/pbcs/clinical_trials_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must show funnel conversion and screen-fail breakdown without storing unauthorized patient data.
 
-### 22. Cryptographic audit proofing for Clinical Trials Management Schema Extension
+### 22. Diversity and Representativeness Monitoring
 
-**Justification:** Better-than-world-class auditability requires proof of integrity, not merely logs stored in mutable tables.
+**Justification:** Trials need evidence that enrollment represents target populations and configured diversity goals.
 
-**Improvement:** Hash-chain material `clinical_trials_management_schema_extension` decisions, documents, emitted events, and release-evidence snapshots to make tampering visible without exposing sensitive payloads. Tie the behavior to `clinical_trials_management_record_study_site_workflow` where applicable, and make it visible in `ClinicalTrialsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add enrollment demographic projections, target cohorts, underrepresented group flags, site contribution, and corrective recruitment actions.
 
-**Acceptance evidence:** Proof manifests, verification APIs, redacted proof exports, and audit-ledger handoff events. The evidence should be package-local in `src/pyAppGen/pbcs/clinical_trials_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must compute representation gaps and open recruitment tasks without exposing unnecessary protected details.
 
-### 23. Privacy, consent, and secrecy controls for Clinical Trials Management Control Assertion
+### 23. Ethics and Regulatory Approval Tracking
 
-**Justification:** Complete domain coverage must account for protected data and restricted operational evidence.
+**Justification:** Protocol, consent, recruitment material, amendments, and safety reports require approval tracking.
 
-**Improvement:** Add field-level privacy classifications for `clinical_trials_management_control_assertion`, consent checks, masking rules, retention schedules, legal holds, and assistant redaction policies. Tie the behavior to `clinical_trials_management_create_trial_protocol_workflow` where applicable, and make it visible in `ClinicalTrialsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add approval body, submission package, approval date, expiry, conditions, amendment linkage, and renewal tasks.
 
-**Acceptance evidence:** Retention tests, masked UI snapshots, consent-blocked mutation fixtures, and export controls. The evidence should be package-local in `src/pyAppGen/pbcs/clinical_trials_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must block site activation or amendment rollout when approvals are missing or expired.
 
-### 24. Multi-tenant operating model for Clinical Trials Management Governed Model
+### 24. Training Compliance
 
-**Justification:** The PBC should scale across organizations while preserving independent policy and compliance boundaries.
+**Justification:** Staff need protocol, safety, system, privacy, and procedure training before performing trial duties.
 
-**Improvement:** Support tenant-specific `clinical_trials_management_governed_model` rules, data residency, encryption context, configuration, seed data, and release evidence without allowing cross-tenant leakage. Tie the behavior to `clinical_trials_management_record_study_site_workflow` where applicable, and make it visible in `ClinicalTrialsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add training curriculum, required roles, completion, expiry, waiver, and task authorization linkage.
 
-**Acceptance evidence:** Tenant isolation tests, tenant-scoped parameters, key-rotation evidence, and cross-tenant negative fixtures. The evidence should be package-local in `src/pyAppGen/pbcs/clinical_trials_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must block delegated tasks for expired or missing training.
 
-### 25. Schema evolution and extension registry for Trial Protocol
+### 25. Trial Supply and Lab Kit Readiness
 
-**Justification:** Domain teams will add fields; the PBC must evolve without breaking APIs, events, or workbench projections.
+**Justification:** Missed supplies delay visits and compromise sample integrity.
 
-**Improvement:** Make schema extensions for `trial_protocol` first-class with compatibility checks, migration previews, projection backfills, field ownership, and rollback metadata. Tie the behavior to `clinical_trials_management_create_trial_protocol_workflow` where applicable, and make it visible in `ClinicalTrialsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add kit inventory, site supply level, expiry, shipment, receipt, temperature excursion, and visit supply readiness.
 
-**Acceptance evidence:** Extension registry UI, compatibility tests, migration dry-runs, and backfill release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/clinical_trials_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must warn when upcoming visits lack required valid kits.
 
-### 26. Master data quality gates for Study Site
+### 26. Sample Collection Dependency
 
-**Justification:** Many clinical trials management errors begin as bad reference data; the PBC should catch them before workflow execution.
+**Justification:** Trial visits often depend on lab samples collected within precise windows.
 
-**Improvement:** Define reference-data contracts for `study_site`: canonical codes, parties, locations, classifications, calendars, units, currencies, products, assets, or service categories as relevant to the domain. Tie the behavior to `clinical_trials_management_record_study_site_workflow` where applicable, and make it visible in `ClinicalTrialsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add sample requirement, collection window, processing requirement, shipment tracking, receipt status, and missing-sample deviation.
 
-**Acceptance evidence:** Reference validation fixtures, stale-code warnings, mapping tables, and dependency freshness indicators. The evidence should be package-local in `src/pyAppGen/pbcs/clinical_trials_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must open deviations for missed or mishandled samples and link them to visit evidence.
 
-### 27. Bulk operations and correction workflows for Subject
+### 27. Safety Signal Review
 
-**Justification:** Enterprise-scale Clinical Trials Management users cannot operate one record at a time.
+**Justification:** Repeated adverse events, lab abnormalities, and discontinuations can indicate emerging safety concerns.
 
-**Improvement:** Add bulk load, bulk validate, bulk approve, and bulk correction workflows for `subject` with partial success, row-level errors, resumability, and rollback. Tie the behavior to `clinical_trials_management_create_trial_protocol_workflow` where applicable, and make it visible in `ClinicalTrialsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add safety signal candidates, frequency, seriousness mix, relatedness trend, review committee status, and action recommendation.
 
-**Acceptance evidence:** CSV/API batch fixtures, resumable job state, row-level audit evidence, and assistant-generated correction suggestions. The evidence should be package-local in `src/pyAppGen/pbcs/clinical_trials_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must create signal review cases and require human confirmation before protocol actions.
 
-### 28. Lifecycle collaboration and tasking for Consent Record
+### 28. Risk-Based Monitoring Model Governance
 
-**Justification:** Domain collaboration should live inside the PBC boundary and remain auditable with the record it affects.
+**Justification:** Monitoring risk scores affect site oversight and data review.
 
-**Improvement:** Attach tasks, comments, ownership, due dates, handoffs, and escalation threads to `consent_record` without leaking into external shared task tables. Tie the behavior to `clinical_trials_management_record_study_site_workflow` where applicable, and make it visible in `ClinicalTrialsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Register risk models with version, features, evaluation evidence, thresholds, drift checks, and reviewer feedback.
 
-**Acceptance evidence:** Task tables, comment audit history, notification events, escalation SLAs, and role-specific task queues. The evidence should be package-local in `src/pyAppGen/pbcs/clinical_trials_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must block risk-based monitoring automation when model governance evidence is missing or stale.
 
-### 29. SLA and service-level governance for Visit Schedule
+### 29. Trial Master File Evidence
 
-**Justification:** Users need to know when protocols, trial sites, subjects, consent, visits, adverse events, monitoring, and trial data operations is late, blocked, or at risk before customer or regulator impact.
+**Justification:** Trial operations need complete, inspectable evidence for protocol, approvals, monitoring, safety, training, and site files.
 
-**Improvement:** Define SLAs for `visit_schedule` across intake, validation, approval, exception resolution, event handling, downstream projection refresh, and release-evidence generation. Tie the behavior to `clinical_trials_management_create_trial_protocol_workflow` where applicable, and make it visible in `ClinicalTrialsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add evidence packet categories, required artifacts, missing artifact queue, owner, retention class, and inspection readiness score.
 
-**Acceptance evidence:** SLA breach events, timers, configurable calendars, workbench aging buckets, and tests for pause/resume behavior. The evidence should be package-local in `src/pyAppGen/pbcs/clinical_trials_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must identify missing essential documents and generate inspection-ready evidence packets.
 
-### 30. Operational analytics cockpit for Adverse Event
+### 30. Audit and Inspection Readiness
 
-**Justification:** World-class operations require leading indicators, not only record counts.
+**Justification:** Trials can be inspected at site, sponsor, or study level.
 
-**Improvement:** Build analytics for `adverse_event`: throughput, backlog, aging, approval latency, exception rate, risk distribution, automation acceptance, correction rate, and downstream dependency health. Tie the behavior to `clinical_trials_management_record_study_site_workflow` where applicable, and make it visible in `ClinicalTrialsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add inspection request, scope, evidence room, finding, response, corrective action, due date, and closeout proof.
 
-**Acceptance evidence:** Metric definitions, projection tests, drill-through routes, export APIs, and anomaly overlays. The evidence should be package-local in `src/pyAppGen/pbcs/clinical_trials_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must produce scoped evidence rooms and track finding remediation.
 
-### 31. Decision intelligence and recommendations for Monitoring Finding
+### 31. Data Lock Readiness
 
-**Justification:** The PBC should help expert users decide faster while showing evidence and uncertainty.
+**Justification:** Database lock requires resolved queries, monitored critical data, signed visits, reconciled safety, and approved deviations.
 
-**Improvement:** Generate ranked recommendations for `monitoring_finding` such as next best action, likely resolution, required evidence, policy adjustment, staffing/capacity response, or downstream handoff. Tie the behavior to `clinical_trials_management_create_trial_protocol_workflow` where applicable, and make it visible in `ClinicalTrialsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add lock checklist, blocking issue, owner, waiver, approval, and lock/unlock audit.
 
-**Acceptance evidence:** Recommendation explanations, confidence intervals, feedback capture, model governance records, and rejection reasons. The evidence should be package-local in `src/pyAppGen/pbcs/clinical_trials_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must block lock until critical open items are resolved or waived.
 
-### 32. Quality and completeness scoring for Clinical Trials Management Policy Rule
+### 32. Consent-Aware Data Use
 
-**Justification:** Operators should see whether a record is truly ready, not just technically saved.
+**Justification:** Subject consent limits data collection, optional samples, future use, and data sharing.
 
-**Improvement:** Score each `clinical_trials_management_policy_rule` record for completeness, consistency, policy readiness, dependency readiness, evidence sufficiency, and downstream composability. Tie the behavior to `clinical_trials_management_record_study_site_workflow` where applicable, and make it visible in `ClinicalTrialsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add consent scope for main study, optional sub-study, biospecimen, future research, recontact, and withdrawal restrictions.
 
-**Acceptance evidence:** Scoring rules, missing-evidence lists, readiness badges, and blocking criteria in command handlers. The evidence should be package-local in `src/pyAppGen/pbcs/clinical_trials_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must block data use or visit procedures outside active consent scope.
 
-### 33. End-to-end scenario library for Clinical Trials Management Runtime Parameter
+### 33. Privacy-Safe Subject Views
 
-**Justification:** Release evidence is stronger when every important clinical trials management behavior has executable examples.
+**Justification:** Monitors, site users, sponsors, and analysts need different access to subject data.
 
-**Improvement:** Create seeded scenarios for `clinical_trials_management_runtime_parameter`: normal flow, urgent path, exception path, corrected path, duplicate path, late event path, and audit export path. Tie the behavior to `clinical_trials_management_create_trial_protocol_workflow` where applicable, and make it visible in `ClinicalTrialsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add role-based redaction for identifiers, clinical data, safety data, query data, and aggregate dashboards.
 
-**Acceptance evidence:** Scenario seed data, runtime smoke coverage, generated-app fixtures, and story-level workbench screenshots/contracts. The evidence should be package-local in `src/pyAppGen/pbcs/clinical_trials_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Permission tests must prove each role sees only necessary data.
 
-### 34. Domain ontology and terminology model for Clinical Trials Management Schema Extension
+### 34. Trial Agent Evidence Summaries
 
-**Justification:** Precise vocabulary prevents the PBC from misclassifying specialist documents or user instructions.
+**Justification:** Coordinators and monitors need concise summaries, but trial decisions need cited evidence.
 
-**Improvement:** Add an ontology for `clinical_trials_management_schema_extension` terms, synonyms, classifications, relationships, allowed values, and phrase mappings used by the assistant and UI. Tie the behavior to `clinical_trials_management_record_study_site_workflow` where applicable, and make it visible in `ClinicalTrialsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add agent skills for subject status, visit readiness, safety narrative draft, monitoring finding summary, and data-lock blocker explanation.
 
-**Acceptance evidence:** Ontology files, assistant parsing tests, UI glossary, and mapping evidence for domain-specific abbreviations. The evidence should be package-local in `src/pyAppGen/pbcs/clinical_trials_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must require citations and human approval for safety narratives and regulatory-facing text.
 
-### 35. Advanced search and investigation for Clinical Trials Management Control Assertion
+### 35. Governed Agent CRUD Commands
 
-**Justification:** Investigators and operators need fast, explainable retrieval across the whole domain surface.
+**Justification:** The chatbot should help with trial operations without silently changing regulated records.
 
-**Improvement:** Provide search across `clinical_trials_management_control_assertion` records, events, documents, exceptions, tasks, comments, and audit proofs with filters for tenant, status, risk, date, party, and dependency. Tie the behavior to `clinical_trials_management_create_trial_protocol_workflow` where applicable, and make it visible in `ClinicalTrialsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add command previews for enroll subject, schedule visit, record consent, open deviation, add monitoring finding, open query, and draft safety report.
 
-**Acceptance evidence:** Search index contracts, result provenance, permission-filtered queries, and stale-index warnings. The evidence should be package-local in `src/pyAppGen/pbcs/clinical_trials_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Intent tests must require entity, protocol version, source evidence, preview, confirmation, and audit trail.
 
-### 36. Reconciliation and closure controls for Clinical Trials Management Governed Model
+### 36. Protocol Amendment Impact Simulation
 
-**Justification:** Closure is not complete until the PBC can prove no material domain work remains unresolved.
+**Justification:** Amendments can trigger re-consent, schedule changes, endpoint changes, and site retraining.
 
-**Improvement:** Add reconciliation workflows that compare `clinical_trials_management_governed_model` state against consumed events, external projections, expected totals/counts, approvals, and release evidence before closure. Tie the behavior to `clinical_trials_management_record_study_site_workflow` where applicable, and make it visible in `ClinicalTrialsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add simulation for affected subjects, sites, visits, forms, consent records, training, and open deviations.
 
-**Acceptance evidence:** Reconciliation reports, variance thresholds, closure blockers, and AppGen-X closure events. The evidence should be package-local in `src/pyAppGen/pbcs/clinical_trials_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must produce amendment impact reports before activation.
 
-### 37. Regulatory and policy reporting for Trial Protocol
+### 37. Cross-PBC Boundary Proofs
 
-**Justification:** World-class PBCs turn operational evidence into credible reporting without spreadsheet reconstruction.
+**Justification:** Trial management composes with EHR, labs, devices, notifications, finance, and analytics without owning their tables.
 
-**Improvement:** Generate domain reporting packs for `trial_protocol` covering statutory, contractual, operational, board, customer, or regulator evidence depending on patient safety, clinical traceability, consent boundaries, eligibility nuance, coding accuracy, care continuity, and regulated health evidence. Tie the behavior to `clinical_trials_management_create_trial_protocol_workflow` where applicable, and make it visible in `ClinicalTrialsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add release gates proving external interactions use declared APIs, events, projections, or package metadata.
 
-**Acceptance evidence:** Report schemas, redaction rules, traceable metric sources, and approval/export audit events. The evidence should be package-local in `src/pyAppGen/pbcs/clinical_trials_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must fail on undeclared foreign table access and pass on declared AppGen-X contracts.
 
-### 38. Carbon and resource awareness for Study Site
+### 38. Trial Timeline Projection
 
-**Justification:** Sustainability evidence should be embedded in operations instead of treated as an after-the-fact report.
+**Justification:** Teams need a chronological view across protocol, site, subject, consent, visit, safety, monitoring, and data events.
 
-**Improvement:** Where relevant, attach carbon, energy, water, travel, capacity, compute, or resource-footprint metadata to `study_site` decisions and batch operations. Tie the behavior to `clinical_trials_management_record_study_site_workflow` where applicable, and make it visible in `ClinicalTrialsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add timeline projection with event type, actor, source, linked entity, protocol version, risk impact, and next action.
 
-**Acceptance evidence:** Footprint fields, scheduling parameters, exception rules, and dashboards that expose operational tradeoffs. The evidence should be package-local in `src/pyAppGen/pbcs/clinical_trials_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Replay tests must reconstruct timelines idempotently with permission-aware redaction.
 
-### 39. Resilience and offline behavior for Subject
+### 39. Deviation Root Cause Analytics
 
-**Justification:** Real operations keep moving during outages; the PBC must preserve correctness when dependencies are unavailable.
+**Justification:** Recurrent deviations should drive prevention actions.
 
-**Improvement:** Define resilience modes for `subject`: degraded dependency mode, offline draft capture, delayed event replay, conflict detection, and safe recovery after partial failure. Tie the behavior to `clinical_trials_management_create_trial_protocol_workflow` where applicable, and make it visible in `ClinicalTrialsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add root cause categories, site attribution, protocol complexity marker, training gap, process gap, and corrective action effectiveness.
 
-**Acceptance evidence:** Offline fixtures, replay tests, conflict queues, recovery logs, and user-visible degraded-mode warnings. The evidence should be package-local in `src/pyAppGen/pbcs/clinical_trials_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must trend deviation causes and open prevention tasks.
 
-### 40. Human-in-the-loop automation for Consent Record
+### 40. Carbon and Participant Burden Awareness
 
-**Justification:** Automation should accelerate protocols, trial sites, subjects, consent, visits, adverse events, monitoring, and trial data operations while preserving accountability for high-risk decisions.
+**Justification:** Trial operations should consider participant travel, site burden, shipment frequency, and remote visit options.
 
-**Improvement:** Set explicit automation boundaries for `consent_record`: auto-approve, auto-reject, suggest-only, require-review, and block-until-evidence states with policy-based routing. Tie the behavior to `clinical_trials_management_record_study_site_workflow` where applicable, and make it visible in `ClinicalTrialsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add burden metrics, remote visit eligibility, travel support, shipment consolidation, and operational carbon estimates where relevant.
 
-**Acceptance evidence:** Automation policy tests, reviewer queues, override reasons, and assistant action audit trails. The evidence should be package-local in `src/pyAppGen/pbcs/clinical_trials_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must show burden and sustainability metrics without overriding safety or protocol requirements.
 
-### 41. Package discovery and fit scoring for Visit Schedule
+### 41. Multi-Country Localization
 
-**Justification:** Users selecting PBCs need transparent fit reasoning, especially when domains are adjacent but not overlapping.
+**Justification:** Studies can span countries with different language, consent, reporting, and approval rules.
 
-**Improvement:** Improve package metadata so composition can explain when `clinical_trials_management` fits a prompt, what entities it owns, what APIs/events it exposes, and what adjacent PBCs it depends on. Tie the behavior to `clinical_trials_management_create_trial_protocol_workflow` where applicable, and make it visible in `ClinicalTrialsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add jurisdiction-specific consent, safety reporting, data privacy, visit window, and document requirements.
 
-**Acceptance evidence:** Discovery manifests, prompt-selection tests, overlap rationale links, and composition DSL examples. The evidence should be package-local in `src/pyAppGen/pbcs/clinical_trials_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must evaluate identical protocol events differently by jurisdiction and policy version.
 
-### 42. Configuration deployment pipeline for Adverse Event
+### 42. Continuous Control Assertions
 
-**Justification:** Configuration changes can materially alter clinical trials management; they need the same discipline as code releases.
+**Justification:** Trial quality requires controls over consent, eligibility, visits, safety reporting, monitoring, query aging, and lock readiness.
 
-**Improvement:** Add configuration promotion for `adverse_event` across draft, test, approved, active, deprecated, and rollback states with impact analysis before activation. Tie the behavior to `clinical_trials_management_record_study_site_workflow` where applicable, and make it visible in `ClinicalTrialsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add controls with threshold, population, failing records, owner, remediation, recurrence, and closure evidence.
 
-**Acceptance evidence:** Config diff views, approval workflows, simulation before activation, and rollback tests. The evidence should be package-local in `src/pyAppGen/pbcs/clinical_trials_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must open control failures and prevent closure without remediation proof.
 
-### 43. Workbench command completeness for Monitoring Finding
+### 43. Dead-Letter and Retry Operations
 
-**Justification:** A PBC does not fully surface its capabilities if users must call hidden APIs for core work.
+**Justification:** Trial events, lab results, safety documents, and monitoring updates can fail and must be replayed safely.
 
-**Improvement:** Expose every high-value operation for `monitoring_finding` in the UI: create, validate, approve, simulate, correct, assign, export, retry, close, and audit-proof verification. Tie the behavior to `clinical_trials_management_create_trial_protocol_workflow` where applicable, and make it visible in `ClinicalTrialsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add dead-letter reason, risk, retry count, idempotency key, remediation action, and replay checkpoint.
 
-**Acceptance evidence:** UI action coverage tests, permission-aware disabled states, keyboard paths, and assistant handoff links. The evidence should be package-local in `src/pyAppGen/pbcs/clinical_trials_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must replay failed events without duplicate subjects, visits, adverse events, or queries.
 
-### 44. Document packet and evidence vault for Clinical Trials Management Policy Rule
+### 44. Cryptographic Trial Evidence Proofs
 
-**Justification:** Documents often carry the legal or operational truth behind protocols, trial sites, subjects, consent, visits, adverse events, monitoring, and trial data operations.
+**Justification:** Regulated trial records need tamper-evident evidence.
 
-**Improvement:** Create a governed evidence vault for `clinical_trials_management_policy_rule` documents, attachments, source spans, extracted fields, signatures, approvals, and retention labels. Tie the behavior to `clinical_trials_management_record_study_site_workflow` where applicable, and make it visible in `ClinicalTrialsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add proof chains for consent, eligibility, randomization, visit completion, adverse event reporting, monitoring findings, and data lock.
 
-**Acceptance evidence:** Evidence models, source-to-field lineage, signature validation, retention policies, and proof exports. The evidence should be package-local in `src/pyAppGen/pbcs/clinical_trials_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must verify proof chains and detect altered payloads or reordered events.
 
-### 45. Data correction and amendment history for Clinical Trials Management Runtime Parameter
+### 45. Seeded Trial Scenario Library
 
-**Justification:** World-class systems correct mistakes without rewriting history or confusing downstream consumers.
+**Justification:** Release audits need realistic clinical research stories.
 
-**Improvement:** Support formal amendments for `clinical_trials_management_runtime_parameter` that preserve original values, correction reason, approving actor, effective date, downstream event impacts, and replay behavior. Tie the behavior to `clinical_trials_management_create_trial_protocol_workflow` where applicable, and make it visible in `ClinicalTrialsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add seeds for new protocol, site activation, subject enrollment, re-consent, missed visit, serious event, monitoring finding, data query, and database lock.
 
-**Acceptance evidence:** Amendment tables, correction events, projection replay tests, and side-by-side before/after UI. The evidence should be package-local in `src/pyAppGen/pbcs/clinical_trials_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Scenario tests must load side-effect-free and create expected queues, events, and workbench metrics.
 
-### 46. External participant collaboration for Clinical Trials Management Schema Extension
+### 46. Trial Operations Workbench
 
-**Justification:** Many clinical trials management workflows require outside parties, but they must not gain direct access to internal tables.
+**Justification:** Trial users need persona-specific work queues.
 
-**Improvement:** Add controlled collaboration portals or API views for external participants related to `clinical_trials_management_schema_extension`, limited to scoped evidence submission, status checks, comments, and dispute responses. Tie the behavior to `clinical_trials_management_record_study_site_workflow` where applicable, and make it visible in `ClinicalTrialsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add views for protocol amendments, site activation, screening, visit readiness, safety reporting, deviations, monitoring findings, queries, and lock blockers.
 
-**Acceptance evidence:** Participant role policies, scoped tokens, submission audit trails, and inbound evidence validation. The evidence should be package-local in `src/pyAppGen/pbcs/clinical_trials_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** UI tests must prove each view maps to owned data or declared projections with permission-aware actions.
 
-### 47. Advanced dependency freshness scoring for Clinical Trials Management Control Assertion
+### 47. Subject Discontinuation and Follow-Up
 
-**Justification:** A record may be valid locally but unsafe if dependency evidence is stale or incomplete.
+**Justification:** Withdrawal, lost-to-follow-up, safety discontinuation, and completed treatment have different data and safety obligations.
 
-**Improvement:** Score freshness and reliability of dependencies used by `clinical_trials_management_control_assertion`, including consumed events PolicyChanged, CustomerUpdated, SupplierQualified, referenced projections, configuration versions, and external submissions. Tie the behavior to `clinical_trials_management_create_trial_protocol_workflow` where applicable, and make it visible in `ClinicalTrialsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add discontinuation reason, treatment status, follow-up requirement, safety contact plan, data-use consent, and final status.
 
-**Acceptance evidence:** Freshness indicators, blocking rules, stale-event simulations, and workbench dependency health panels. The evidence should be package-local in `src/pyAppGen/pbcs/clinical_trials_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must distinguish treatment discontinuation from study withdrawal and preserve required follow-up tasks.
 
-### 48. Model governance and explainability for Clinical Trials Management Governed Model
+### 48. Full Clinical Trial Release Simulation
 
-**Justification:** Governed AI is mandatory for professional-grade automation in Clinical Trials Management.
+**Justification:** A complete PBC must prove the trial lifecycle end to end.
 
-**Improvement:** For every predictive or agentic feature around `clinical_trials_management_governed_model`, record model version, prompt or ruleset version, training/evaluation evidence, confidence, explanation, and human feedback. Tie the behavior to `clinical_trials_management_record_study_site_workflow` where applicable, and make it visible in `ClinicalTrialsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add a simulation where a protocol activates, site opens, subject consents, eligibility passes, visits occur, an adverse event is reported, monitoring finds an issue, queries resolve, and lock readiness is reached.
 
-**Acceptance evidence:** Model cards, prompt/version manifests, feedback loops, drift tests, and audit proof for recommendations. The evidence should be package-local in `src/pyAppGen/pbcs/clinical_trials_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** The simulation must validate owned schema, APIs, services, AppGen-X events, handlers, UI views, agent skills, permissions, and release evidence.
 
-### 49. High-scale partitioning and archival for Trial Protocol
+### 49. Package Overlap Guardrails
 
-**Justification:** Better-than-world-class packages must remain operable after years of high-volume domain history.
+**Justification:** This PBC must not duplicate EHR, laboratory, device, finance, or regulatory-submission ownership.
 
-**Improvement:** Plan scale behavior for `trial_protocol`: tenant partitioning, archival policies, cold storage, retention-aware search, projection compaction, and large-batch replay. Tie the behavior to `clinical_trials_management_create_trial_protocol_workflow` where applicable, and make it visible in `ClinicalTrialsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add explicit overlap checks and declared dependency contracts for chart evidence, lab samples, device readings, sponsor budgets, and submission systems.
 
-**Acceptance evidence:** Partition tests, archive/retrieve fixtures, retention enforcement, and replay benchmarks. The evidence should be package-local in `src/pyAppGen/pbcs/clinical_trials_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must fail on undeclared foreign table references and pass on declared AppGen-X dependency usage.
 
-### 50. Release gate expansion for Study Site
+### 50. Composition DSL and Unified Agent Exposure
 
-**Justification:** The PBC should not claim domain coverage unless release evidence proves the claim end to end.
+**Justification:** Generated applications must expose trial operations through DSL, UI, APIs, and the composed application agent.
 
-**Improvement:** Expand release gates for `clinical_trials_management` so every schema, service, API, event, handler, UI, rule, parameter, agent skill, seed scenario, and improvement backlog item maps to executable evidence. Tie the behavior to `clinical_trials_management_record_study_site_workflow` where applicable, and make it visible in `ClinicalTrialsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Extend composition metadata for protocols, sites, subjects, consents, visits, adverse events, monitoring, queries, controls, workbench fragments, and agent skills.
 
-**Acceptance evidence:** Release audit checks, manifest traceability, generated-app smoke tests, and missing-capability blockers. The evidence should be package-local in `src/pyAppGen/pbcs/clinical_trials_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** DSL tests must prove generated apps include trial models, routes, services, event contracts, UI artifacts, and assistant skills without stream-engine picker exposure.
