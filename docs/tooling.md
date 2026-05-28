@@ -534,6 +534,9 @@ appgen format app.appgen --json
 ```
 
 `--check` exits `1` when formatting changes are needed.
+`--write` rewrites the source file when the formatted text differs and the JSON
+payload reports `write_requested`, `written`, and `write_path` so IDEs and CI can
+distinguish a preview from an actual file mutation.
 `--organize` enables the optional table-body organization profile: identity
 fields and spreads, business keys, relationships, editable scalar fields,
 calculated fields, audit fields, and directives are ordered inside each table

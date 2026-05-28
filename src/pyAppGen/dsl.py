@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import argparse
 import ast
+import contextlib
 import difflib
 import hashlib
+import io
 import json
 import re
 import sys
@@ -1298,8 +1300,16 @@ def dsl_tooling_cli(argv: Iterable[str] | None = None) -> int:
         return 0 if report["ok"] else 1
     if args.command == "format":
         report = format_report_dsl(source, source_name=str(path), include_text=True, organize=args.organize)
+        written = False
         if args.write and report["changed"]:
             path.write_text(report["text"], encoding="utf-8")
+            written = True
+        report = {
+            **report,
+            "write_requested": bool(args.write),
+            "written": written,
+            "write_path": str(path) if written else None,
+        }
         printable = report if args.json else {key: value for key, value in report.items() if key != "text"}
         _emit_tooling_payload(printable, as_json=args.json)
         if args.check and report["changed"]:
@@ -1457,7 +1467,8 @@ def _emit_tooling_payload(payload: dict, *, as_json: bool) -> None:
     if payload.get("format") == "appgen.format-result.v1":
         status = "changed" if payload.get("changed") else "ok"
         idempotent = "idempotent" if payload.get("idempotent") else "not-idempotent"
-        print(f"format {status}: {idempotent}")
+        write_status = " written" if payload.get("written") else ""
+        print(f"format {status}: {idempotent}{write_status}")
         for diagnostic in payload.get("diagnostics", ()):
             print(f"{diagnostic['severity']} {diagnostic['code']}: {diagnostic['message']}")
         return
@@ -1921,6 +1932,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
         targets=("web", "mobile", "desktop", "pbc", "deployment"),
     )
     with tempfile.TemporaryDirectory(prefix="appgen-tooling-audit-") as tmp:
+        format_write = _tooling_audit_format_write(Path(tmp))
         generation = generate_report_dsl(
             source,
             source_name="tooling-audit.appgen",
@@ -1997,6 +2009,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
         _tooling_audit_check(
             "cli_validation_and_generation_contracts",
             validation["ok"]
+            and format_write["ok"]
             and generation["ok"]
             and generation["generated"]
             and not warning_generation_blocked["ok"]
@@ -2006,6 +2019,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             "docs/tooling.md#command-line-interface",
             {
                 "validate": validation.get("format"),
+                "format_write": format_write,
                 "generate": generation.get("format"),
                 "warning_block": warning_generation_blocked.get("blocking_gaps"),
                 "allow_warnings": warning_generation_allowed.get("allow_warnings"),
@@ -2438,6 +2452,30 @@ def _tooling_lsp_position(source: str, token: str) -> dict:
     previous_newline = source.rfind("\n", 0, index)
     character = index if previous_newline < 0 else index - previous_newline - 1
     return {"line": line, "character": character}
+
+
+def _tooling_audit_format_write(tmp: Path) -> dict:
+    path = tmp / "format-write.appgen"
+    source = "app FormatWrite { targets: web }\ntable Invoice { total: decimal; id: int pk }\n"
+    path.write_text(source, encoding="utf-8")
+    output = io.StringIO()
+    with contextlib.redirect_stdout(output):
+        exit_code = dsl_tooling_cli(("format", str(path), "--write", "--json"))
+    payload = json.loads(output.getvalue())
+    after = path.read_text(encoding="utf-8")
+    return {
+        "format": "appgen.format-write-audit.v1",
+        "ok": exit_code == 0
+        and payload.get("format") == "appgen.format-result.v1"
+        and payload.get("write_requested") is True
+        and payload.get("written") is True
+        and after == payload.get("text")
+        and after != source,
+        "exit_code": exit_code,
+        "payload_format": payload.get("format"),
+        "written": payload.get("written"),
+        "write_path": payload.get("write_path"),
+    }
 
 
 def _tooling_audit_migration_reports() -> tuple[dict, ...]:

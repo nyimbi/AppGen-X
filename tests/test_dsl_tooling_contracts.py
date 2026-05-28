@@ -2186,3 +2186,29 @@ def test_cli_contracts_cover_text_summaries_exit_codes_and_bad_arguments(tmp_pat
     assert "invalid choice" in invalid_graph_format.stderr
     assert missing_required_arg.returncode == 2
     assert "--out" in missing_required_arg.stderr
+
+
+def test_appgen_format_write_rewrites_file_and_reports_write_metadata(tmp_path: Path) -> None:
+    source_path = tmp_path / "format.appgen"
+    source_path.write_text(
+        "app FormatWrite { targets: web }\ntable Invoice { total: decimal; id: int pk }\n",
+        encoding="utf-8",
+    )
+    root = Path(__file__).resolve().parents[1]
+
+    result = subprocess.run(
+        [sys.executable, "-m", "pyAppGen", "format", str(source_path), "--write", "--json"],
+        check=False,
+        cwd=root,
+        text=True,
+        capture_output=True,
+    )
+    payload = json.loads(result.stdout)
+
+    assert result.returncode == 0, result.stderr
+    assert payload["format"] == "appgen.format-result.v1"
+    assert payload["write_requested"] is True
+    assert payload["written"] is True
+    assert payload["write_path"] == str(source_path)
+    assert source_path.read_text(encoding="utf-8") == payload["text"]
+    assert source_path.read_text(encoding="utf-8") != "app FormatWrite { targets: web }\ntable Invoice { total: decimal; id: int pk }\n"
