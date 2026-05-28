@@ -3563,8 +3563,8 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "scene_assets_before_preview_diff",
         "scene_camera_lights_before_materials",
         "scene_material_transactions_before_preview_diff",
-        "asset_import_transaction_before_preview",
         "hit_tests_before_designer_replay",
+        "transform_transactions_before_designer_replay",
     } <= {check["id"] for check in visual_lifecycle["checks"] if check["ok"]}
     assert {
         "validate_style_tokens",
