@@ -1,418 +1,264 @@
-# Publishing Editorial Operations PBC Better-Than-World-Class Improvement Backlog
-
-## Purpose
-
-This file identifies, justifies, and describes 50 high-impact improvements for `publishing_editorial_operations`. The backlog is specific to manuscripts, editorial workflow, rights, editions, production schedules, distribution, and publishing analytics and is intended to move the PBC from release-auditable scaffolding toward complete, specialist-grade domain coverage.
+# Publishing Editorial Operations Improvement Backlog
 
 ## Current Domain Evidence Used
 
-- Stable PBC key: `publishing_editorial_operations`.
-- Domain purpose: Manuscripts, editorial workflow, rights, editions, production schedules, distribution, and publishing analytics.
-- Owned domain tables: `manuscript`, `editorial_task`, `author_contract`, `edition`, `production_schedule`, `rights_grant`, `distribution_plan`, `publishing_editorial_operations_policy_rule`, `publishing_editorial_operations_runtime_parameter`, `publishing_editorial_operations_schema_extension`, `publishing_editorial_operations_control_assertion`, `publishing_editorial_operations_governed_model`.
-- Public APIs: `POST /manuscripts`, `POST /editorial-tasks`, `POST /author-contracts`, `POST /editions`, `POST /production-schedules`, `GET /publishing-editorial-operations-workbench`.
-- Emitted AppGen-X events: `PublishingEditorialOperationsCreated`, `PublishingEditorialOperationsUpdated`, `PublishingEditorialOperationsApproved`, `PublishingEditorialOperationsExceptionOpened`.
-- Consumed AppGen-X events: `PolicyChanged`, `AuditEventSealed`, `OperationalKpiChanged`.
-- Current standard surfaces include: `manuscript_management`, `publishing_editorial_operations_workflow`, `publishing_editorial_operations_analytics`, `configuration_schema`, `rule_engine`, `parameter_engine`, `owned_schema_migrations_models`, `appgen_x_outbox_inbox_eventing`, `idempotent_handlers`, `retry_dead_letter_evidence`.
-- Current advanced surfaces include: `publishing_editorial_operations_event_sourced_operational_history`, `publishing_editorial_operations_multi_tenant_policy_isolation`, `publishing_editorial_operations_schema_evolution_resilience`, `publishing_editorial_operations_autonomous_anomaly_detection`, `publishing_editorial_operations_semantic_document_instruction_understanding`, `publishing_editorial_operations_predictive_risk_scoring`, `publishing_editorial_operations_counterfactual_scenario_simulation`, `publishing_editorial_operations_cryptographic_audit_proofs`.
-
-## 50 High-Impact Improvements
-
-### 1. Canonical lifecycle state model for Manuscript
-
-**Justification:** This closes shallow CRUD gaps by making every publishing editorial operations transition explainable and testable instead of implicit in free-form status values.
-
-**Improvement:** Define a complete state machine for `manuscript` with explicit draft, validated, blocked, approved, active, suspended, corrected, closed, archived, and reopened states. Tie the behavior to `publishing_editorial_operations_create_manuscript_workflow` where applicable, and make it visible in `PublishingEditorialOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** State-transition tests, invalid-transition fixtures, workbench state badges, and emitted AppGen-X transition events for PublishingEditorialOperationsCreated, PublishingEditorialOperationsUpdated, PublishingEditorialOperationsApproved. The evidence should be package-local in `src/pyAppGen/pbcs/publishing_editorial_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 2. Domain intake and normalization for Editorial Task
-
-**Justification:** The PBC cannot reach complete domain coverage unless it handles the messy front door of manuscripts, editorial workflow, rights, editions, production schedules, distribution, and publishing analytics, not only already-clean records.
-
-**Improvement:** Build a typed intake pipeline for `editorial_task` that accepts structured API payloads, document-derived instructions, batch loads, and assistant-generated drafts while normalizing identifiers, dates, units, parties, and jurisdictional context. Tie the behavior to `publishing_editorial_operations_record_editorial_task_workflow` where applicable, and make it visible in `PublishingEditorialOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Golden intake fixtures, rejected-record queues, field-level normalization evidence, and assistant previews before governed datastore mutation. The evidence should be package-local in `src/pyAppGen/pbcs/publishing_editorial_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 3. Specialist validation rules for Author Contract
-
-**Justification:** World-class Publishing Editorial Operations requires rules that domain experts can reason about, version, test, and roll back without code edits.
-
-**Improvement:** Add a domain rule compiler for `author_contract` that supports threshold rules, eligibility rules, dependency rules, temporal windows, conflicting-instruction detection, and override justification. Tie the behavior to `publishing_editorial_operations_create_manuscript_workflow` where applicable, and make it visible in `PublishingEditorialOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Rule simulation tests, versioned rule manifests, rule impact reports, and UI rule editors linked to `PUBLISHING_EDITORIAL_OPERATIONS_DATABASE_URL, PUBLISHING_EDITORIAL_OPERATIONS_EVENT_TOPIC, PUBLISHING_EDITORIAL_OPERATIONS_RETRY_LIMIT`. The evidence should be package-local in `src/pyAppGen/pbcs/publishing_editorial_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 4. Parameter governance and tuning for Edition
-
-**Justification:** Parameters are where operations teams tune publishing editorial operations; unbounded constants would make the PBC brittle and unsafe in real deployments.
-
-**Improvement:** Expose bounded runtime parameters for `edition` covering risk thresholds, SLA windows, confidence floors, escalation cutoffs, batch sizes, retry limits, and human-confirmation requirements. Tie the behavior to `publishing_editorial_operations_record_editorial_task_workflow` where applicable, and make it visible in `PublishingEditorialOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Parameter schema validation, tenant overrides, approval history, rollback controls, and workbench diff views. The evidence should be package-local in `src/pyAppGen/pbcs/publishing_editorial_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 5. Deep owned schema expansion for Production Schedule
-
-**Justification:** A single payload column cannot express the full surface of manuscripts, editorial workflow, rights, editions, production schedules, distribution, and publishing analytics or prove cross-PBC boundaries are respected.
-
-**Improvement:** Extend the owned schema around `production_schedule` with normalized child tables for line-level evidence, party roles, approvals, attachments, comments, metrics, exception reasons, and control assertions. Tie the behavior to `publishing_editorial_operations_create_manuscript_workflow` where applicable, and make it visible in `PublishingEditorialOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Migrations, models, relationship tests, schema contract snapshots, and no shared-table access outside the `publishing_editorial_operations_` namespace. The evidence should be package-local in `src/pyAppGen/pbcs/publishing_editorial_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 6. Event-sourced operational history for Rights Grant
-
-**Justification:** Temporal reconstruction is essential for better-than-world-class auditability and dispute resolution in publishing editorial operations.
-
-**Improvement:** Capture every material mutation of `rights_grant` as immutable AppGen-X events with actor, tenant, command, policy version, idempotency key, before/after summary, and projection checkpoint. Tie the behavior to `publishing_editorial_operations_record_editorial_task_workflow` where applicable, and make it visible in `PublishingEditorialOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Replay tests, projection checksums, event ordering evidence, and point-in-time workbench views. The evidence should be package-local in `src/pyAppGen/pbcs/publishing_editorial_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 7. Projection and read-model strategy for Distribution Plan
-
-**Justification:** The workbench should not force users to infer domain truth from raw tables; each projection should answer a real operating question.
-
-**Improvement:** Create purpose-built projections for `distribution_plan`: operational queue, executive KPI rollup, exception aging, compliance evidence, agent task context, and external dependency health. Tie the behavior to `publishing_editorial_operations_create_manuscript_workflow` where applicable, and make it visible in `PublishingEditorialOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Projection contracts, freshness SLAs, backfill tests, and visible stale-projection warnings. The evidence should be package-local in `src/pyAppGen/pbcs/publishing_editorial_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 8. Exception taxonomy and remediation for Publishing Editorial Operations Policy Rule
-
-**Justification:** High-value PBCs win on exception throughput; generic “failed” states hide the details operators need.
-
-**Improvement:** Model the full exception taxonomy for `publishing_editorial_operations_policy_rule`, including severity, root cause, blocking dependency, remediation owner, due date, retry eligibility, escalation path, and closure evidence. Tie the behavior to `publishing_editorial_operations_record_editorial_task_workflow` where applicable, and make it visible in `PublishingEditorialOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Exception queues, aging metrics, remediation playbooks, dead-letter linkage, and closure test fixtures for invalid creative approvals. The evidence should be package-local in `src/pyAppGen/pbcs/publishing_editorial_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 9. Predictive risk scoring for Publishing Editorial Operations Runtime Parameter
-
-**Justification:** The package should warn users before publishing editorial operations work fails, breaches policy, or creates downstream cost.
-
-**Improvement:** Add predictive risk scoring for `publishing_editorial_operations_runtime_parameter` using domain features from owned tables, consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, rule outcomes, aging, anomaly signals, and historical corrections. Tie the behavior to `publishing_editorial_operations_create_manuscript_workflow` where applicable, and make it visible in `PublishingEditorialOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Feature manifests, score explanations, calibration reports, drift alerts, and tests for low/medium/high-risk scenarios. The evidence should be package-local in `src/pyAppGen/pbcs/publishing_editorial_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 10. Counterfactual simulation for Publishing Editorial Operations Schema Extension
-
-**Justification:** Advanced users need to ask “what would happen if” before committing changes to live manuscripts, editorial workflow, rights, editions, production schedules, distribution, and publishing analytics operations.
-
-**Improvement:** Provide scenario simulation for `publishing_editorial_operations_schema_extension`: policy change, capacity constraint, deadline shift, price/rate change, eligibility change, disruption, and manual override outcomes. Tie the behavior to `publishing_editorial_operations_record_editorial_task_workflow` where applicable, and make it visible in `PublishingEditorialOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Simulation APIs, non-mutating sandbox state, comparison reports, and workbench side-by-side scenario panels. The evidence should be package-local in `src/pyAppGen/pbcs/publishing_editorial_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 11. Autonomous anomaly triage for Publishing Editorial Operations Control Assertion
-
-**Justification:** A world-class PBC should reduce analyst burden without hiding the reasoning behind automated triage.
-
-**Improvement:** Implement anomaly detection for `publishing_editorial_operations_control_assertion` that identifies outliers, duplicate submissions, impossible sequences, stale dependencies, unusual amounts/counts/durations, and contradictory fields. Tie the behavior to `publishing_editorial_operations_create_manuscript_workflow` where applicable, and make it visible in `PublishingEditorialOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Explainable anomaly cards, reviewer feedback loops, false-positive tracking, and suppression governance. The evidence should be package-local in `src/pyAppGen/pbcs/publishing_editorial_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 12. Semantic document understanding for Publishing Editorial Operations Governed Model
-
-**Justification:** Document-heavy work in Publishing Editorial Operations cannot be complete if the assistant only answers questions and cannot prepare accurate governed changes.
-
-**Improvement:** Train the package assistant to parse domain documents and instructions for `publishing_editorial_operations_governed_model`, extract obligations, dates, parties, quantities, identifiers, and exceptions, then map them to safe draft mutations. Tie the behavior to `publishing_editorial_operations_record_editorial_task_workflow` where applicable, and make it visible in `PublishingEditorialOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Document extraction tests, confidence thresholds, redaction handling, source span citations, and human confirmation workflows. The evidence should be package-local in `src/pyAppGen/pbcs/publishing_editorial_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 13. Agent-safe CRUD execution for Manuscript
-
-**Justification:** The PBC agent must be a first-class operator but never a hidden bypass around RBAC, rules, or owned datastore boundaries.
-
-**Improvement:** Add a professional chatbot skill for `manuscript` that can create, update, correct, close, and annotate records only through policy-checked commands, approval gates, and previewed diffs. Tie the behavior to `publishing_editorial_operations_create_manuscript_workflow` where applicable, and make it visible in `PublishingEditorialOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Skill manifests, permission tests, preview/confirm flows, blocked-action evidence, and audit events for every assistant mutation. The evidence should be package-local in `src/pyAppGen/pbcs/publishing_editorial_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 14. Workbench persona coverage for Editorial Task
-
-**Justification:** A generic detail page underserves the domain; each role needs the exact controls and evidence they use daily.
-
-**Improvement:** Design dedicated workbench panels for `editorial_task`: operator queue, supervisor approvals, analyst exceptions, auditor evidence, configuration owner, and agent-assistance review. Tie the behavior to `publishing_editorial_operations_record_editorial_task_workflow` where applicable, and make it visible in `PublishingEditorialOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** UI contract entries, route tests, empty/error/loading states, and permission-aware action availability. The evidence should be package-local in `src/pyAppGen/pbcs/publishing_editorial_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 15. Cross-PBC dependency contracts for Author Contract
-
-**Justification:** Composable packages fail when hidden table coupling enters the domain model.
-
-**Improvement:** Represent dependencies for `author_contract` through declared APIs, consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, and projections rather than shared tables, with explicit freshness, ownership, and fallback behavior. Tie the behavior to `publishing_editorial_operations_create_manuscript_workflow` where applicable, and make it visible in `PublishingEditorialOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Dependency manifests, contract tests, stale dependency alerts, and no foreign-table references in generated artifacts. The evidence should be package-local in `src/pyAppGen/pbcs/publishing_editorial_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 16. API completeness and versioning for Edition
-
-**Justification:** Complete domain coverage requires both command and query surfaces, not only happy-path create endpoints.
-
-**Improvement:** Expand APIs beyond POST /manuscripts, POST /editorial-tasks, POST /author-contracts to cover search, validation-only commands, simulation, bulk intake, exception closure, evidence export, projection reads, and idempotent corrections. Tie the behavior to `publishing_editorial_operations_record_editorial_task_workflow` where applicable, and make it visible in `PublishingEditorialOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** OpenAPI-style route manifests, backward-compatible version tests, deprecation metadata, and idempotency assertions. The evidence should be package-local in `src/pyAppGen/pbcs/publishing_editorial_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 17. Typed emitted-event expansion for Production Schedule
-
-**Justification:** Consumers should understand what happened in Publishing Editorial Operations without parsing opaque payloads.
-
-**Improvement:** Replace generic lifecycle emissions with typed events for each meaningful `production_schedule` transition, exception, approval, correction, simulation result, and downstream handoff. Tie the behavior to `publishing_editorial_operations_create_manuscript_workflow` where applicable, and make it visible in `PublishingEditorialOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Event schema tests, event examples, compatibility checks, and emitted-event coverage in release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/publishing_editorial_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 18. Consumed-event handlers for Rights Grant
-
-**Justification:** A PBC is composable only when incoming events affect its own domain state predictably and safely.
-
-**Improvement:** Implement idempotent handlers for consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged that update projections, open dependency exceptions, recalculate risk, and preserve source event lineage. Tie the behavior to `publishing_editorial_operations_record_editorial_task_workflow` where applicable, and make it visible in `PublishingEditorialOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Duplicate-event tests, handler side-effect boundaries, dead-letter fixtures, and lineage links back to source events. The evidence should be package-local in `src/pyAppGen/pbcs/publishing_editorial_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 19. Retry and dead-letter operations for Distribution Plan
-
-**Justification:** Dead letters are not just plumbing; they are domain work queues that can block manuscripts, editorial workflow, rights, editions, production schedules, distribution, and publishing analytics.
-
-**Improvement:** Create operational tools for retrying, quarantining, explaining, and resolving dead-lettered `distribution_plan` events with max-attempt policy, poison-message detection, and replay safety. Tie the behavior to `publishing_editorial_operations_create_manuscript_workflow` where applicable, and make it visible in `PublishingEditorialOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Dead-letter workbench, retry eligibility tests, replay audit proof, and operator action logs. The evidence should be package-local in `src/pyAppGen/pbcs/publishing_editorial_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 20. RBAC and attribute policy for Publishing Editorial Operations Policy Rule
-
-**Justification:** High-impact domain operations need finer controls than generic RBAC grants.
-
-**Improvement:** Extend permissions for `publishing_editorial_operations_policy_rule` from coarse read/create/update/admin to action-level and attribute-aware policies based on role, tenant, jurisdiction, monetary/materiality threshold, and exception severity. Tie the behavior to `publishing_editorial_operations_record_editorial_task_workflow` where applicable, and make it visible in `PublishingEditorialOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Permission matrix docs, ABAC policy tests, denied-action UI states, and assistant skill permission checks. The evidence should be package-local in `src/pyAppGen/pbcs/publishing_editorial_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 21. Continuous control testing for Publishing Editorial Operations Runtime Parameter
-
-**Justification:** Controls should run during operations, not only during release audit or manual review.
-
-**Improvement:** Embed control assertions for `publishing_editorial_operations_runtime_parameter` that continuously test segregation of duties, required approvals, stale exceptions, policy drift, duplicate records, and boundary violations. Tie the behavior to `publishing_editorial_operations_create_manuscript_workflow` where applicable, and make it visible in `PublishingEditorialOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Control dashboards, failing-control events, test fixtures, and release evidence tied to `publishing_editorial_operations_control_assertion` records. The evidence should be package-local in `src/pyAppGen/pbcs/publishing_editorial_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 22. Cryptographic audit proofing for Publishing Editorial Operations Schema Extension
-
-**Justification:** Better-than-world-class auditability requires proof of integrity, not merely logs stored in mutable tables.
-
-**Improvement:** Hash-chain material `publishing_editorial_operations_schema_extension` decisions, documents, emitted events, and release-evidence snapshots to make tampering visible without exposing sensitive payloads. Tie the behavior to `publishing_editorial_operations_record_editorial_task_workflow` where applicable, and make it visible in `PublishingEditorialOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Proof manifests, verification APIs, redacted proof exports, and audit-ledger handoff events. The evidence should be package-local in `src/pyAppGen/pbcs/publishing_editorial_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 23. Privacy, consent, and secrecy controls for Publishing Editorial Operations Control Assertion
-
-**Justification:** Complete domain coverage must account for protected data and restricted operational evidence.
-
-**Improvement:** Add field-level privacy classifications for `publishing_editorial_operations_control_assertion`, consent checks, masking rules, retention schedules, legal holds, and assistant redaction policies. Tie the behavior to `publishing_editorial_operations_create_manuscript_workflow` where applicable, and make it visible in `PublishingEditorialOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Retention tests, masked UI snapshots, consent-blocked mutation fixtures, and export controls. The evidence should be package-local in `src/pyAppGen/pbcs/publishing_editorial_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 24. Multi-tenant operating model for Publishing Editorial Operations Governed Model
-
-**Justification:** The PBC should scale across organizations while preserving independent policy and compliance boundaries.
-
-**Improvement:** Support tenant-specific `publishing_editorial_operations_governed_model` rules, data residency, encryption context, configuration, seed data, and release evidence without allowing cross-tenant leakage. Tie the behavior to `publishing_editorial_operations_record_editorial_task_workflow` where applicable, and make it visible in `PublishingEditorialOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Tenant isolation tests, tenant-scoped parameters, key-rotation evidence, and cross-tenant negative fixtures. The evidence should be package-local in `src/pyAppGen/pbcs/publishing_editorial_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 25. Schema evolution and extension registry for Manuscript
-
-**Justification:** Domain teams will add fields; the PBC must evolve without breaking APIs, events, or workbench projections.
-
-**Improvement:** Make schema extensions for `manuscript` first-class with compatibility checks, migration previews, projection backfills, field ownership, and rollback metadata. Tie the behavior to `publishing_editorial_operations_create_manuscript_workflow` where applicable, and make it visible in `PublishingEditorialOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Extension registry UI, compatibility tests, migration dry-runs, and backfill release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/publishing_editorial_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 26. Master data quality gates for Editorial Task
-
-**Justification:** Many publishing editorial operations errors begin as bad reference data; the PBC should catch them before workflow execution.
-
-**Improvement:** Define reference-data contracts for `editorial_task`: canonical codes, parties, locations, classifications, calendars, units, currencies, products, assets, or service categories as relevant to the domain. Tie the behavior to `publishing_editorial_operations_record_editorial_task_workflow` where applicable, and make it visible in `PublishingEditorialOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Reference validation fixtures, stale-code warnings, mapping tables, and dependency freshness indicators. The evidence should be package-local in `src/pyAppGen/pbcs/publishing_editorial_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 27. Bulk operations and correction workflows for Author Contract
-
-**Justification:** Enterprise-scale Publishing Editorial Operations users cannot operate one record at a time.
-
-**Improvement:** Add bulk load, bulk validate, bulk approve, and bulk correction workflows for `author_contract` with partial success, row-level errors, resumability, and rollback. Tie the behavior to `publishing_editorial_operations_create_manuscript_workflow` where applicable, and make it visible in `PublishingEditorialOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** CSV/API batch fixtures, resumable job state, row-level audit evidence, and assistant-generated correction suggestions. The evidence should be package-local in `src/pyAppGen/pbcs/publishing_editorial_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 28. Lifecycle collaboration and tasking for Edition
-
-**Justification:** Domain collaboration should live inside the PBC boundary and remain auditable with the record it affects.
-
-**Improvement:** Attach tasks, comments, ownership, due dates, handoffs, and escalation threads to `edition` without leaking into external shared task tables. Tie the behavior to `publishing_editorial_operations_record_editorial_task_workflow` where applicable, and make it visible in `PublishingEditorialOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Task tables, comment audit history, notification events, escalation SLAs, and role-specific task queues. The evidence should be package-local in `src/pyAppGen/pbcs/publishing_editorial_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 29. SLA and service-level governance for Production Schedule
-
-**Justification:** Users need to know when manuscripts, editorial workflow, rights, editions, production schedules, distribution, and publishing analytics is late, blocked, or at risk before customer or regulator impact.
-
-**Improvement:** Define SLAs for `production_schedule` across intake, validation, approval, exception resolution, event handling, downstream projection refresh, and release-evidence generation. Tie the behavior to `publishing_editorial_operations_create_manuscript_workflow` where applicable, and make it visible in `PublishingEditorialOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** SLA breach events, timers, configurable calendars, workbench aging buckets, and tests for pause/resume behavior. The evidence should be package-local in `src/pyAppGen/pbcs/publishing_editorial_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 30. Operational analytics cockpit for Rights Grant
-
-**Justification:** World-class operations require leading indicators, not only record counts.
-
-**Improvement:** Build analytics for `rights_grant`: throughput, backlog, aging, approval latency, exception rate, risk distribution, automation acceptance, correction rate, and downstream dependency health. Tie the behavior to `publishing_editorial_operations_record_editorial_task_workflow` where applicable, and make it visible in `PublishingEditorialOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Metric definitions, projection tests, drill-through routes, export APIs, and anomaly overlays. The evidence should be package-local in `src/pyAppGen/pbcs/publishing_editorial_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 31. Decision intelligence and recommendations for Distribution Plan
-
-**Justification:** The PBC should help expert users decide faster while showing evidence and uncertainty.
-
-**Improvement:** Generate ranked recommendations for `distribution_plan` such as next best action, likely resolution, required evidence, policy adjustment, staffing/capacity response, or downstream handoff. Tie the behavior to `publishing_editorial_operations_create_manuscript_workflow` where applicable, and make it visible in `PublishingEditorialOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Recommendation explanations, confidence intervals, feedback capture, model governance records, and rejection reasons. The evidence should be package-local in `src/pyAppGen/pbcs/publishing_editorial_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 32. Quality and completeness scoring for Publishing Editorial Operations Policy Rule
-
-**Justification:** Operators should see whether a record is truly ready, not just technically saved.
-
-**Improvement:** Score each `publishing_editorial_operations_policy_rule` record for completeness, consistency, policy readiness, dependency readiness, evidence sufficiency, and downstream composability. Tie the behavior to `publishing_editorial_operations_record_editorial_task_workflow` where applicable, and make it visible in `PublishingEditorialOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Scoring rules, missing-evidence lists, readiness badges, and blocking criteria in command handlers. The evidence should be package-local in `src/pyAppGen/pbcs/publishing_editorial_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 33. End-to-end scenario library for Publishing Editorial Operations Runtime Parameter
-
-**Justification:** Release evidence is stronger when every important publishing editorial operations behavior has executable examples.
-
-**Improvement:** Create seeded scenarios for `publishing_editorial_operations_runtime_parameter`: normal flow, urgent path, exception path, corrected path, duplicate path, late event path, and audit export path. Tie the behavior to `publishing_editorial_operations_create_manuscript_workflow` where applicable, and make it visible in `PublishingEditorialOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Scenario seed data, runtime smoke coverage, generated-app fixtures, and story-level workbench screenshots/contracts. The evidence should be package-local in `src/pyAppGen/pbcs/publishing_editorial_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 34. Domain ontology and terminology model for Publishing Editorial Operations Schema Extension
-
-**Justification:** Precise vocabulary prevents the PBC from misclassifying specialist documents or user instructions.
-
-**Improvement:** Add an ontology for `publishing_editorial_operations_schema_extension` terms, synonyms, classifications, relationships, allowed values, and phrase mappings used by the assistant and UI. Tie the behavior to `publishing_editorial_operations_record_editorial_task_workflow` where applicable, and make it visible in `PublishingEditorialOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Ontology files, assistant parsing tests, UI glossary, and mapping evidence for domain-specific abbreviations. The evidence should be package-local in `src/pyAppGen/pbcs/publishing_editorial_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 35. Advanced search and investigation for Publishing Editorial Operations Control Assertion
-
-**Justification:** Investigators and operators need fast, explainable retrieval across the whole domain surface.
-
-**Improvement:** Provide search across `publishing_editorial_operations_control_assertion` records, events, documents, exceptions, tasks, comments, and audit proofs with filters for tenant, status, risk, date, party, and dependency. Tie the behavior to `publishing_editorial_operations_create_manuscript_workflow` where applicable, and make it visible in `PublishingEditorialOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Search index contracts, result provenance, permission-filtered queries, and stale-index warnings. The evidence should be package-local in `src/pyAppGen/pbcs/publishing_editorial_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 36. Reconciliation and closure controls for Publishing Editorial Operations Governed Model
-
-**Justification:** Closure is not complete until the PBC can prove no material domain work remains unresolved.
-
-**Improvement:** Add reconciliation workflows that compare `publishing_editorial_operations_governed_model` state against consumed events, external projections, expected totals/counts, approvals, and release evidence before closure. Tie the behavior to `publishing_editorial_operations_record_editorial_task_workflow` where applicable, and make it visible in `PublishingEditorialOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Reconciliation reports, variance thresholds, closure blockers, and AppGen-X closure events. The evidence should be package-local in `src/pyAppGen/pbcs/publishing_editorial_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 37. Regulatory and policy reporting for Manuscript
-
-**Justification:** World-class PBCs turn operational evidence into credible reporting without spreadsheet reconstruction.
-
-**Improvement:** Generate domain reporting packs for `manuscript` covering statutory, contractual, operational, board, customer, or regulator evidence depending on rights ownership, monetization accuracy, campaign performance, creative workflow evidence, distribution controls, royalty lineage, and channel-specific analytics. Tie the behavior to `publishing_editorial_operations_create_manuscript_workflow` where applicable, and make it visible in `PublishingEditorialOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Report schemas, redaction rules, traceable metric sources, and approval/export audit events. The evidence should be package-local in `src/pyAppGen/pbcs/publishing_editorial_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 38. Carbon and resource awareness for Editorial Task
-
-**Justification:** Sustainability evidence should be embedded in operations instead of treated as an after-the-fact report.
-
-**Improvement:** Where relevant, attach carbon, energy, water, travel, capacity, compute, or resource-footprint metadata to `editorial_task` decisions and batch operations. Tie the behavior to `publishing_editorial_operations_record_editorial_task_workflow` where applicable, and make it visible in `PublishingEditorialOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Footprint fields, scheduling parameters, exception rules, and dashboards that expose operational tradeoffs. The evidence should be package-local in `src/pyAppGen/pbcs/publishing_editorial_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 39. Resilience and offline behavior for Author Contract
-
-**Justification:** Real operations keep moving during outages; the PBC must preserve correctness when dependencies are unavailable.
-
-**Improvement:** Define resilience modes for `author_contract`: degraded dependency mode, offline draft capture, delayed event replay, conflict detection, and safe recovery after partial failure. Tie the behavior to `publishing_editorial_operations_create_manuscript_workflow` where applicable, and make it visible in `PublishingEditorialOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Offline fixtures, replay tests, conflict queues, recovery logs, and user-visible degraded-mode warnings. The evidence should be package-local in `src/pyAppGen/pbcs/publishing_editorial_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 40. Human-in-the-loop automation for Edition
-
-**Justification:** Automation should accelerate manuscripts, editorial workflow, rights, editions, production schedules, distribution, and publishing analytics while preserving accountability for high-risk decisions.
-
-**Improvement:** Set explicit automation boundaries for `edition`: auto-approve, auto-reject, suggest-only, require-review, and block-until-evidence states with policy-based routing. Tie the behavior to `publishing_editorial_operations_record_editorial_task_workflow` where applicable, and make it visible in `PublishingEditorialOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Automation policy tests, reviewer queues, override reasons, and assistant action audit trails. The evidence should be package-local in `src/pyAppGen/pbcs/publishing_editorial_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 41. Package discovery and fit scoring for Production Schedule
-
-**Justification:** Users selecting PBCs need transparent fit reasoning, especially when domains are adjacent but not overlapping.
-
-**Improvement:** Improve package metadata so composition can explain when `publishing_editorial_operations` fits a prompt, what entities it owns, what APIs/events it exposes, and what adjacent PBCs it depends on. Tie the behavior to `publishing_editorial_operations_create_manuscript_workflow` where applicable, and make it visible in `PublishingEditorialOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Discovery manifests, prompt-selection tests, overlap rationale links, and composition DSL examples. The evidence should be package-local in `src/pyAppGen/pbcs/publishing_editorial_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 42. Configuration deployment pipeline for Rights Grant
-
-**Justification:** Configuration changes can materially alter publishing editorial operations; they need the same discipline as code releases.
-
-**Improvement:** Add configuration promotion for `rights_grant` across draft, test, approved, active, deprecated, and rollback states with impact analysis before activation. Tie the behavior to `publishing_editorial_operations_record_editorial_task_workflow` where applicable, and make it visible in `PublishingEditorialOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Config diff views, approval workflows, simulation before activation, and rollback tests. The evidence should be package-local in `src/pyAppGen/pbcs/publishing_editorial_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 43. Workbench command completeness for Distribution Plan
-
-**Justification:** A PBC does not fully surface its capabilities if users must call hidden APIs for core work.
-
-**Improvement:** Expose every high-value operation for `distribution_plan` in the UI: create, validate, approve, simulate, correct, assign, export, retry, close, and audit-proof verification. Tie the behavior to `publishing_editorial_operations_create_manuscript_workflow` where applicable, and make it visible in `PublishingEditorialOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** UI action coverage tests, permission-aware disabled states, keyboard paths, and assistant handoff links. The evidence should be package-local in `src/pyAppGen/pbcs/publishing_editorial_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 44. Document packet and evidence vault for Publishing Editorial Operations Policy Rule
-
-**Justification:** Documents often carry the legal or operational truth behind manuscripts, editorial workflow, rights, editions, production schedules, distribution, and publishing analytics.
-
-**Improvement:** Create a governed evidence vault for `publishing_editorial_operations_policy_rule` documents, attachments, source spans, extracted fields, signatures, approvals, and retention labels. Tie the behavior to `publishing_editorial_operations_record_editorial_task_workflow` where applicable, and make it visible in `PublishingEditorialOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Evidence models, source-to-field lineage, signature validation, retention policies, and proof exports. The evidence should be package-local in `src/pyAppGen/pbcs/publishing_editorial_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 45. Data correction and amendment history for Publishing Editorial Operations Runtime Parameter
-
-**Justification:** World-class systems correct mistakes without rewriting history or confusing downstream consumers.
-
-**Improvement:** Support formal amendments for `publishing_editorial_operations_runtime_parameter` that preserve original values, correction reason, approving actor, effective date, downstream event impacts, and replay behavior. Tie the behavior to `publishing_editorial_operations_create_manuscript_workflow` where applicable, and make it visible in `PublishingEditorialOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Amendment tables, correction events, projection replay tests, and side-by-side before/after UI. The evidence should be package-local in `src/pyAppGen/pbcs/publishing_editorial_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 46. External participant collaboration for Publishing Editorial Operations Schema Extension
-
-**Justification:** Many publishing editorial operations workflows require outside parties, but they must not gain direct access to internal tables.
-
-**Improvement:** Add controlled collaboration portals or API views for external participants related to `publishing_editorial_operations_schema_extension`, limited to scoped evidence submission, status checks, comments, and dispute responses. Tie the behavior to `publishing_editorial_operations_record_editorial_task_workflow` where applicable, and make it visible in `PublishingEditorialOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Participant role policies, scoped tokens, submission audit trails, and inbound evidence validation. The evidence should be package-local in `src/pyAppGen/pbcs/publishing_editorial_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 47. Advanced dependency freshness scoring for Publishing Editorial Operations Control Assertion
-
-**Justification:** A record may be valid locally but unsafe if dependency evidence is stale or incomplete.
-
-**Improvement:** Score freshness and reliability of dependencies used by `publishing_editorial_operations_control_assertion`, including consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, referenced projections, configuration versions, and external submissions. Tie the behavior to `publishing_editorial_operations_create_manuscript_workflow` where applicable, and make it visible in `PublishingEditorialOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Freshness indicators, blocking rules, stale-event simulations, and workbench dependency health panels. The evidence should be package-local in `src/pyAppGen/pbcs/publishing_editorial_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 48. Model governance and explainability for Publishing Editorial Operations Governed Model
-
-**Justification:** Governed AI is mandatory for professional-grade automation in Publishing Editorial Operations.
-
-**Improvement:** For every predictive or agentic feature around `publishing_editorial_operations_governed_model`, record model version, prompt or ruleset version, training/evaluation evidence, confidence, explanation, and human feedback. Tie the behavior to `publishing_editorial_operations_record_editorial_task_workflow` where applicable, and make it visible in `PublishingEditorialOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Model cards, prompt/version manifests, feedback loops, drift tests, and audit proof for recommendations. The evidence should be package-local in `src/pyAppGen/pbcs/publishing_editorial_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 49. High-scale partitioning and archival for Manuscript
-
-**Justification:** Better-than-world-class packages must remain operable after years of high-volume domain history.
-
-**Improvement:** Plan scale behavior for `manuscript`: tenant partitioning, archival policies, cold storage, retention-aware search, projection compaction, and large-batch replay. Tie the behavior to `publishing_editorial_operations_create_manuscript_workflow` where applicable, and make it visible in `PublishingEditorialOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Partition tests, archive/retrieve fixtures, retention enforcement, and replay benchmarks. The evidence should be package-local in `src/pyAppGen/pbcs/publishing_editorial_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 50. Release gate expansion for Editorial Task
-
-**Justification:** The PBC should not claim domain coverage unless release evidence proves the claim end to end.
-
-**Improvement:** Expand release gates for `publishing_editorial_operations` so every schema, service, API, event, handler, UI, rule, parameter, agent skill, seed scenario, and improvement backlog item maps to executable evidence. Tie the behavior to `publishing_editorial_operations_record_editorial_task_workflow` where applicable, and make it visible in `PublishingEditorialOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Release audit checks, manifest traceability, generated-app smoke tests, and missing-capability blockers. The evidence should be package-local in `src/pyAppGen/pbcs/publishing_editorial_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+- Manifest key: `publishing_editorial_operations`.
+- Manifest description: manuscripts, editorial workflow, rights, editions, production schedules, distribution, and publishing analytics.
+- Current owned tables include `manuscript`, `editorial_task`, `author_contract`, `edition`, `production_schedule`, `rights_grant`, and `distribution_plan`.
+- Current command APIs are `POST /manuscripts`, `POST /editorial-tasks`, `POST /author-contracts`, `POST /editions`, `POST /production-schedules`, and `GET /publishing-editorial-operations-workbench`.
+- Current UI fragments are `PublishingEditorialOperationsWorkbench`, `PublishingEditorialOperationsDetail`, and `PublishingEditorialOperationsAssistantPanel`.
+- Current agent contract exposes governed CRUD, document instruction intake, mutation preview, and the `publishing_editorial_operations_skills` namespace.
+- Current emitted events are `PublishingEditorialOperationsCreated`, `PublishingEditorialOperationsUpdated`, `PublishingEditorialOperationsApproved`, and `PublishingEditorialOperationsExceptionOpened`.
+- Current consumed events are `PolicyChanged`, `AuditEventSealed`, and `OperationalKpiChanged`.
+- Current release evidence sections are `schema`, `services`, `events`, `handlers`, `ui`, `agent`, and `governance`.
+- Current domain operations include manuscript creation, editorial task recording, author contract review, edition approval, production schedule simulation, rights grant creation, and distribution plan recording.
+
+### 1. Acquisition Pipeline Intake
+**Justification:** The package starts at manuscript creation, but publishing teams first decide which proposals, pitches, and agented submissions deserve acquisition attention. Without acquisition intake inside the PBC boundary, the editorial trail begins too late.
+**Improvement:** Add acquisition proposal records, sponsor editor ownership, comp-title analysis, target imprint, expected season, projected format mix, and acquisition-stage state transitions that resolve into `manuscript` creation only after an explicit decision.
+**Acceptance evidence:** Release evidence shows an acquisition proposal progressing into a manuscript; the workbench exposes an acquisition queue; event history proves who recommended, approved, or declined each proposal.
+
+### 2. Acquisition Board Decision Ledger
+**Justification:** Editorial boards need a durable record of why a project advanced, stalled, or was rejected, especially when forecasts change between pitch, offer, and signed contract.
+**Improvement:** Introduce board packet generation, vote capture, conditions of approval, requested revisions, and post-board action tracking tied to acquisition candidates and later `author_contract` records.
+**Acceptance evidence:** A decision ledger links board outcomes to contracts and manuscripts; rejected and conditional approvals are searchable; workbench evidence shows required follow-ups before a title can move forward.
+
+### 3. Manuscript Package Completeness Rules
+**Justification:** Editorial operations fail downstream when manuscripts enter the workflow missing synopsis, author bio, permissions notes, sample chapters, art logs, or target metadata.
+**Improvement:** Define intake completeness profiles by book type, journal issue, reference work, or digital-first release, with explicit required artifacts, optional artifacts, and waiver reasons before a manuscript can enter active editorial processing.
+**Acceptance evidence:** Completeness checks block incomplete intake; waivers are recorded with approver identity; the detail page shows a resolved checklist for each manuscript package.
+
+### 4. Manuscript Version Lineage and Freeze Points
+**Justification:** Editorial, copyediting, proof, and production conversations break when teams cannot tell which manuscript version is authoritative or when text was frozen for a given stage.
+**Improvement:** Add manuscript version lineage with submission version, developmental edit version, copyedited version, proof version, corrected proof version, and final release version, including freeze timestamps and rationale.
+**Acceptance evidence:** Each manuscript shows a clear version graph; proof and production records reference a specific frozen version; release evidence includes a manuscript-to-final-text lineage trace.
+
+### 5. Editorial Calendar and Season Planning
+**Justification:** Publishing operations are governed by seasonal lists, issue calendars, conference tie-ins, and marketing windows, not by standalone record deadlines.
+**Improvement:** Create editorial calendar entities for season, issue, list, and campaign anchor dates, then connect manuscripts, editions, and publication schedules to those calendar objects with dependency visibility.
+**Acceptance evidence:** The workbench renders season and issue calendars; titles can be filtered by editorial season; missed calendar anchors open explicit exceptions instead of hidden slippage.
+
+### 6. Capacity-Aware Editorial Assignment
+**Justification:** Manuscripts stall when assignment decisions ignore editor capacity, specialty, leave, and current queue age.
+**Improvement:** Add capacity-aware routing for acquisitions editors, developmental editors, managing editors, copyeditors, and production editors using workload, domain expertise, due dates, and escalation thresholds.
+**Acceptance evidence:** Assignment recommendations show why a person was chosen; overloaded assignees trigger routing warnings; SLA evidence shows reduced reassignment churn and aging.
+
+### 7. Peer Review Workflow Models
+**Justification:** Scholarly and professional publishing often depends on peer review, yet the current package does not distinguish reviewer invitation, acceptance, review receipt, or decision synthesis states.
+**Improvement:** Support single-blind, double-blind, open, and editorial-only review models, with reviewer invitation tracking, reviewer deadline management, revision requests, and final editorial recommendation capture.
+**Acceptance evidence:** Review workflows can be configured by imprint or publication type; manuscripts display reviewer-state timelines; decision packets cite the completed review set that informed the recommendation.
+
+### 8. Reviewer Conflict and Anonymity Controls
+**Justification:** Reviewer quality is inseparable from conflict-of-interest checks, anonymity safeguards, and recusal evidence.
+**Improvement:** Add reviewer conflict declarations, institution and collaborator checks, anonymity rules for blind review, and recusal handling that preserves confidentiality while keeping the workflow auditable.
+**Acceptance evidence:** Reviewer records show conflict status and recusal outcomes; blind review exports redact forbidden identities; audit evidence proves conflict checks ran before assignment.
+
+### 9. Editorial Decision Bundle Integrity
+**Justification:** Accept, revise, reject, and transfer decisions need a structured rationale bundle rather than a status code plus free text.
+**Improvement:** Require decision bundles that include editorial rationale, reviewer synthesis, required revision points, rights or permissions blockers, target season impact, and communication templates before a manuscript moves state.
+**Acceptance evidence:** Decisions cannot be approved without a complete bundle; the detail UI shows decision rationale sections; outbound author communication references the stored decision bundle.
+
+### 10. Contract-to-Manuscript Alignment Checks
+**Justification:** Editorial teams need to know when delivery terms, due dates, option clauses, and format rights in the contract no longer match the live manuscript plan.
+**Improvement:** Add cross-checks between `author_contract` and `manuscript` for delivery dates, manuscript length expectations, optional illustrations, territory constraints, and edition commitments.
+**Acceptance evidence:** Contract drift exceptions appear on the workbench; corrective tasks are generated for editor and contracts owner; release evidence includes one resolved contract-to-manuscript mismatch case.
+
+### 11. Copyediting State Machine
+**Justification:** Copyediting is not a single task; it spans assignment, style-sheet setup, query pass, author response review, cleanup, and signoff.
+**Improvement:** Model copyediting as a first-class workflow with explicit stages, assignee roles, expected handoff artifacts, and re-entry paths when substantial author revisions reopen the edit.
+**Acceptance evidence:** Copyediting status appears as a board, not a note field; tasks reflect each substage; manuscripts re-enter copyedit only through governed transitions with evidence.
+
+### 12. House Style and Style-Sheet Governance
+**Justification:** Editorial quality depends on consistent application of imprint style, series conventions, citation systems, transliteration rules, and naming conventions.
+**Improvement:** Add style-sheet entities with imprint- and series-specific rules, exception approvals, terminology preferences, and inheritance into copyedit and proof workflows.
+**Acceptance evidence:** Style sheets are versioned and linked to manuscripts and editions; copyedit tasks cite the applicable style sheet; deviations require an explicit approval record.
+
+### 13. Author Query Resolution Tracking
+**Justification:** Author queries often determine whether copyediting and proofs stay on schedule, but they are commonly buried in email threads and attachments.
+**Improvement:** Capture author queries as structured records with severity, response deadline, owning editor, response status, and unresolved-impact flags tied to manuscript versions and proof rounds.
+**Acceptance evidence:** Query aging is visible in the workbench; unresolved critical queries block stage exit; the package can show which author responses changed the manuscript text.
+
+### 14. Artwork, Excerpts, and Permissions Intake
+**Justification:** Publishing projects often include images, tables, excerpts, and third-party materials that can derail schedules if rights evidence arrives late.
+**Improvement:** Extend manuscript intake to include asset inventories, permission request status, licensor constraints, caption requirements, and substitution plans for unlicensed content.
+**Acceptance evidence:** Asset and permissions completeness appears beside manuscript readiness; missing permissions raise rights exceptions before proof generation; release evidence includes a cleared permissions packet.
+
+### 15. Rights Boundary Ledger
+**Justification:** The package owns rights grants, but publishing decisions depend on a sharper boundary across territory, language, format, duration, and sublicensing rights than the current surface implies.
+**Improvement:** Build a rights boundary ledger that records granted, withheld, pending, reverted, and expired rights at title, edition, and asset level with clear upstream evidence and downstream usage rules.
+**Acceptance evidence:** Rights matrices can be viewed by title or edition; a blocked reuse attempt cites the exact boundary rule; event history shows every rights change with before-and-after scope.
+
+### 16. Territory, Language, and Format Collision Detection
+**Justification:** Editions and schedules become risky when ebook, audio, translation, serial, anthology, or territorial plans conflict with existing grants.
+**Improvement:** Add collision checks that evaluate proposed editions and publication schedules against rights territory, language, format, exclusivity, and embargo windows before approval.
+**Acceptance evidence:** Approval attempts surface specific rights collisions; accepted editions store a clean collision check; simulations show how rights changes affect planned release windows.
+
+### 17. Edition Lineage and Inheritance Rules
+**Justification:** New editions, revised editions, reprints, and special formats should inherit from prior editions selectively rather than copying data blindly.
+**Improvement:** Define edition lineage rules for inherited metadata, carried-forward corrections, reset schedules, new identifiers, rights reuse, and evidence of what changed between editions.
+**Acceptance evidence:** Each edition references its parent edition when applicable; inherited and overridden fields are distinguishable; release evidence includes an edition-diff artifact.
+
+### 18. Metadata Authority Records
+**Justification:** Publishing metadata errors damage discoverability, sales, library supply, and downstream syndication.
+**Improvement:** Add authority-controlled metadata for title, subtitle, contributors, series, imprint, BISAC or subject codes, keywords, audience, ISBN, DOI, ISSN, and accessibility flags with source-of-truth ownership.
+**Acceptance evidence:** Metadata validation catches missing or contradictory fields; contributor authority records prevent duplicate variants; approved editions expose a complete metadata readiness score.
+
+### 19. Metadata Export and Traceability
+**Justification:** It is not enough to hold metadata internally; editorial operations need proof of what metadata was approved and what left the package.
+**Improvement:** Create export-ready metadata manifests and change snapshots for internal catalog, distributor, retailer, and library feeds, with exact edition and schedule references plus release timestamps.
+**Acceptance evidence:** Export evidence binds each feed to a specific edition and publication schedule; a metadata diff view shows what changed between releases; failed exports land in a recoverable queue.
+
+### 20. Publication Schedule Critical Path
+**Justification:** `production_schedule` exists, but publishing schedules are only actionable when critical dependencies such as copyedit completion, proof approval, rights clearance, and metadata readiness are visible together.
+**Improvement:** Model a publication critical path that links editorial, design, production, metadata, and rights milestones to publication date risk, with hard gates and soft warnings.
+**Acceptance evidence:** Schedule boards show milestone dependencies and slack; blocked dates identify the missing prerequisite; forecast evidence explains why a publication date is safe or at risk.
+
+### 21. Production Handoff Packet
+**Justification:** Production handoff often fails because text, art, specs, and metadata are delivered as fragmented artifacts rather than as a governed package.
+**Improvement:** Require a production handoff packet containing frozen manuscript version, asset manifest, rights clearance state, trim and format specs, metadata snapshot, and unresolved-risk notes before production begins.
+**Acceptance evidence:** Production cannot start without a complete handoff packet; the handoff packet is reviewable in the workbench; release evidence includes one signed-off handoff record.
+
+### 22. Proof Round Orchestration
+**Justification:** Proofs usually move through multiple rounds with different owners, and schedule discipline depends on knowing which round is active and what changed since the last round.
+**Improvement:** Add proof round entities for first proof, second proof, final proof, and exception rounds, each with owner, due date, correction intake, and approval state.
+**Acceptance evidence:** The package shows active and completed proof rounds per edition; corrections are attached to a specific round; final signoff cites the closing proof round.
+
+### 23. Proof Correction Classification
+**Justification:** Editorial teams need to distinguish author corrections, compositor errors, copyediting misses, and late-stage factual fixes because each kind has different schedule and cost implications.
+**Improvement:** Classify proof corrections by source, severity, page scope, schedule impact, and whether the change requires rights or metadata revalidation.
+**Acceptance evidence:** Proof dashboards summarize corrections by class; critical corrections reopen required downstream checks; analytics can separate compositor-driven and author-driven proof churn.
+
+### 24. Accessibility and Alt-Text Readiness
+**Justification:** Accessibility obligations should be visible before publication, not treated as an afterthought after files leave editorial control.
+**Improvement:** Add accessibility readiness checks for alt text, reading order notes, tables, image descriptions, caption quality, and metadata flags tied to edition and proof signoff.
+**Acceptance evidence:** Accessibility blockers appear in proof and release views; editions cannot reach release-ready state with unresolved accessibility defects; evidence exports include accessibility status.
+
+### 25. Cover and Interior Asset Freeze Management
+**Justification:** Publication schedules slip when covers, interiors, and marketing assets are changed after dependent metadata and proof steps have already locked.
+**Improvement:** Track asset freeze milestones for cover, interior, jacket copy, and key marketing copy, with explicit reopen reasons and downstream recalculation of schedule risk.
+**Acceptance evidence:** Asset freeze status is visible beside the publication schedule; unauthorized post-freeze changes are blocked or escalated; release evidence records any approved late asset reopen.
+
+### 26. Publication Schedule Scenario Planning
+**Justification:** Editors frequently need to ask what happens if a review is late, a rights clearance slips, or a proof round expands.
+**Improvement:** Extend schedule simulation to model date slips, reviewer delays, proof-cycle expansion, asset changes, and territory-specific release sequencing for editions and formats.
+**Acceptance evidence:** Simulation reports compare planned versus delayed schedules; decision-makers can see which milestone drives the date change; scenario evidence is attached to the chosen plan.
+
+### 27. Editorial Exception Taxonomy
+**Justification:** `PublishingEditorialOperationsExceptionOpened` is too generic to support fast triage across acquisition, review, copyedit, rights, proofs, and release readiness.
+**Improvement:** Define explicit exception classes such as missing package evidence, reviewer overdue, contract drift, rights collision, metadata invalid, proof overload, late author response, and publication date breach.
+**Acceptance evidence:** Exceptions are grouped by class in the workbench; each class has owner and SLA defaults; release evidence shows resolution of at least one exception from multiple classes.
+
+### 28. Author Communication Timeline
+**Justification:** Author communication is central to editorial operations and should be visible as timeline evidence, not scattered across private inboxes and ad hoc notes.
+**Improvement:** Store structured author communications for offer discussion, delivery reminders, revision decisions, copyedit queries, proof instructions, and publication-date notices, linked to the relevant manuscript or edition stage.
+**Acceptance evidence:** The detail UI shows a chronological author communication timeline; overdue required communications trigger alerts; communication templates are traceable to the triggering workflow event.
+
+### 29. Reviewer and Editorial Correspondence Evidence
+**Justification:** Peer and editorial review decisions are hard to defend later without a durable record of invitations, reminders, declines, and editorial follow-up.
+**Improvement:** Record reviewer and editor correspondence events with message intent, recipient role, due date context, and privacy-safe summary fields while preserving blind-review safeguards.
+**Acceptance evidence:** Reviewer correspondence appears in the review timeline without leaking hidden identities where prohibited; reminder events are measurable; decline and replacement paths are auditable.
+
+### 30. Editorial Meeting Notes and Action Capture
+**Justification:** Weekly editorial meetings often decide the real next action, but those decisions rarely become structured workflow changes.
+**Improvement:** Add meeting-note capture that converts agreed actions into `editorial_task` records with owners, due dates, referenced manuscript or edition, and follow-up evidence requirements.
+**Acceptance evidence:** Meeting actions appear automatically in task boards; unresolved actions remain linked to the originating meeting note; supervisors can filter backlog by meeting-originated tasks.
+
+### 31. Acquisition Dashboard UI
+**Justification:** `PublishingEditorialOperationsWorkbench` currently exposes broad package surfaces, but acquisitions teams need a specialized board for pitch funnel health and decision aging.
+**Improvement:** Add an acquisitions dashboard with stages for unsolicited, under review, board packet pending, board decided, contract pending, and converted to manuscript, including comp-title and season views.
+**Acceptance evidence:** The workbench has a dedicated acquisitions route or panel; board-stage counts are visible; users can open a candidate and see the exact blockers preventing conversion.
+
+### 32. Manuscript Workspace UI
+**Justification:** A manuscript detail screen should answer editorial questions immediately: version state, outstanding queries, review status, rights blockers, and schedule impact.
+**Improvement:** Redesign the manuscript workspace around readiness panels, stage history, asset completeness, author communication, and linked edition and schedule consequences.
+**Acceptance evidence:** `PublishingEditorialOperationsDetail` exposes manuscript readiness panels; unresolved blockers are visible above the fold; users can drill from manuscript state to the exact dependent tasks.
+
+### 33. Editorial Calendar UI
+**Justification:** Calendar views are operationally different from record lists and are necessary for season planning, issue management, and launch coordination.
+**Improvement:** Add editorial calendar views for season, issue, and publication date planning with drag-aware previews, risk overlays, and dependency indicators rather than only tabular status.
+**Acceptance evidence:** Users can view titles by season or publication week; moving a date previews impacted milestones before confirmation; risk-colored calendar cells match schedule evidence.
+
+### 34. Peer Review Queue UI
+**Justification:** Review coordinators need a focused queue of invitation status, due dates, reviewer load, and overdue manuscripts, not just general task listings.
+**Improvement:** Create a peer review queue with invitation, acceptance, submission, reminder, overdue, and decision-ready columns plus blind-review-safe detail views.
+**Acceptance evidence:** Review coordinators can filter by review model and overdue status; manuscripts ready for decision synthesis are surfaced explicitly; anonymity rules are preserved in the UI.
+
+### 35. Copyedit and Proof Compare UI
+**Justification:** Editors and authors need to see what changed between copyedit, author response, and proof rounds without leaving the package.
+**Improvement:** Add compare views for manuscript versions and proof rounds with categorized changes, unresolved queries, and correction impact summaries tied to schedule and metadata effects.
+**Acceptance evidence:** Version compare screens show changed sections and correction categories; proof corrections can be filtered by severity; compare links appear from tasks and proof records.
+
+### 36. Rights and Editions Matrix UI
+**Justification:** Rights and edition planning are inseparable, and teams need a single view that shows which editions can ship where, when, and in what formats.
+**Improvement:** Build a matrix view that crosses editions with territory, language, format, embargo, and schedule status so operators can spot blocked releases before approval.
+**Acceptance evidence:** Rights collisions are visible in a matrix, not buried in notes; each matrix cell links to the governing rights evidence; edition approval screens reuse the same matrix.
+
+### 37. Acquisition and Manuscript Intake Agent Skill
+**Justification:** The current agent contract exposes generic read, create, and update skills, but editorial teams need domain-specific assistance at intake.
+**Improvement:** Add an agent skill that turns pitch notes, proposal documents, or agent submissions into acquisition candidates or manuscript drafts with explicit field mapping, completeness warnings, and no silent mutation path.
+**Acceptance evidence:** The assistant panel previews an intake draft before save; missing evidence is highlighted in domain terms; audit history shows the human confirmer and the source document digest.
+
+### 38. Editorial Brief and Decision Synthesis Agent Skill
+**Justification:** Editors spend time synthesizing reviewer comments, board notes, and schedule impacts into an actionable decision memo.
+**Improvement:** Add an agent skill that generates editorial briefs, reviewer synthesis, and decision memos grounded in stored review records, rights state, and schedule risk without inventing unsupported facts.
+**Acceptance evidence:** Generated briefs cite underlying records and timestamps; unsupported fields are marked as missing rather than guessed; editors can approve or reject the brief as a draft artifact.
+
+### 39. Copyedit Query and Change-Explanation Agent Skill
+**Justification:** Author response rounds slow down when changes are opaque and queries are scattered.
+**Improvement:** Add an agent skill that groups copyedit queries, explains major textual changes in plain language, and proposes author-facing summaries aligned to the current manuscript version and style sheet.
+**Acceptance evidence:** Query bundles are traceable to specific text changes; author-facing summaries are previewed before send; style-sheet exceptions are called out explicitly.
+
+### 40. Proof Risk and Release Readiness Agent Skill
+**Justification:** Proof and release readiness decisions require a fast synthesis of corrections, metadata state, rights clearance, and schedule pressure.
+**Improvement:** Add an agent skill that summarizes proof risk, identifies unresolved blockers, and drafts a release-readiness note grounded in proofs, publication schedules, and edition metadata.
+**Acceptance evidence:** Assistant output references proof rounds, blocker counts, and target publication dates; the note cannot be finalized if required evidence is absent; reviewer feedback on assistant accuracy is stored.
+
+### 41. Manuscript Lifecycle Event Expansion
+**Justification:** Four generic emitted events do not tell downstream consumers enough about editorial state changes.
+**Improvement:** Expand emitted events to include acquisition recommended, manuscript accepted, revision requested, copyedit started, copyedit completed, proof round opened, proof approved, and release readiness reached.
+**Acceptance evidence:** Event contract docs list the new manuscript-stage events; handlers and tests prove idempotent publication; event history in the workbench shows fine-grained lifecycle steps.
+
+### 42. Review and Decision Event Expansion
+**Justification:** Review-heavy workflows need event fidelity for invitations, declines, reviews received, editorial decisions, and revision cycles.
+**Improvement:** Add emitted events for reviewer invited, reviewer accepted, review overdue, decision memo approved, author revision returned, and editor recommendation changed.
+**Acceptance evidence:** Review events appear in the outbox with stable schemas; review dashboards subscribe to them without parsing free text; dead-letter handling demonstrates recovery for one failed review event.
+
+### 43. Production, Proof, and Publication Event Expansion
+**Justification:** Production handoff and schedule control are downstream-critical and deserve explicit event boundaries.
+**Improvement:** Emit events for production handoff ready, handoff accepted, proof round issued, proof corrections logged, metadata export completed, publication date changed, and edition released.
+**Acceptance evidence:** Production and schedule projections react to these events; event examples are included in release evidence; schedule changes can be reconstructed purely from event history.
+
+### 44. Time-Sensitive Notification Retry and Recovery
+**Justification:** Reviewer reminders, author deadlines, proof notices, and publication-date changes are time-sensitive and should not disappear into a generic dead-letter bucket.
+**Improvement:** Add retry policies and domain-aware recovery workflows for notification events, including stale-notice suppression, expiry handling, and escalations when a missed message changes editorial state.
+**Acceptance evidence:** Dead-letter records classify the missed notification type; operators can see whether replay is still safe; recovered notifications link back to the original editorial deadline.
+
+### 45. Editorial Release Evidence Binder
+**Justification:** Current release evidence is package-wide, but publishing teams need a title- and edition-level binder that proves the project is actually publishable.
+**Improvement:** Build a release evidence binder that assembles manuscript lineage, rights clearance, metadata readiness, proof signoff, schedule approval, communication evidence, and exception closure for each edition.
+**Acceptance evidence:** A binder can be generated per edition; missing sections are called out explicitly; the workbench can show a release-ready versus not-ready verdict with supporting artifacts.
+
+### 46. Publishing KPI and SLA Analytics
+**Justification:** Editorial leaders need operating metrics such as acquisition conversion, review turnaround, copyedit age, proof churn, and on-time publication rate.
+**Improvement:** Expand analytics to measure acquisition funnel conversion, reviewer acceptance rate, manuscript turnaround by stage, proof correction density, metadata defect rate, and schedule adherence by imprint or season.
+**Acceptance evidence:** KPI definitions are documented; workbench charts drill into source records; SLA breaches generate visible exceptions tied to responsible stages and owners.
+
+### 47. Owned Schema Expansion for Editorial Depth
+**Justification:** The existing owned tables do not explicitly cover acquisitions, reviewer assignments, proof rounds, style sheets, metadata exports, or communication logs.
+**Improvement:** Add owned tables or typed child records for acquisition candidates, reviewer assignments, review reports, style sheets, proof rounds, proof corrections, metadata snapshots, and communication events inside the PBC boundary.
+**Acceptance evidence:** Schema contracts and migrations show the new domain records; no shared-table shortcuts are introduced; table browsers in the workbench expose the new entities cleanly.
+
+### 48. Control Assertions for Editorial Integrity
+**Justification:** Editorial operations need continuous checks that no edition is released with unresolved rights, missing metadata, unapproved proofs, or untracked author communication.
+**Improvement:** Define control assertions that continuously test release blockers, blind-review anonymity violations, contract drift, metadata incompleteness, stale proof rounds, and post-freeze asset changes.
+**Acceptance evidence:** Control assertions run and surface pass or fail states; failing controls open the right exception class automatically; release evidence includes the control results used for the final decision.
+
+### 49. Scenario-Rich Test and Fixture Packs
+**Justification:** Domain depth is only credible if tests cover real editorial edge cases rather than only CRUD smoke tests.
+**Improvement:** Add fixture packs for late reviewer replacement, author non-response, image permissions denial, edition rights conflict, metadata correction after proof, schedule slip, and corrected reprint planning.
+**Acceptance evidence:** Test manifests name the editorial scenarios covered; fixture data ties directly to package tables and events; release evidence references the domain scenarios exercised in verification.
+
+### 50. Release Gate With Counted Evidence
+**Justification:** The package should not claim readiness unless it can prove that editorial, rights, metadata, proofs, schedules, and communications all reached a release-safe state for the target edition.
+**Improvement:** Implement a final release gate that counts required evidence artifacts, verifies their freshness, confirms that open exceptions are below the allowed threshold, and records the exact path of the generated binder.
+**Acceptance evidence:** The release gate produces a counted checklist, a pass or fail verdict, and the path of the edition evidence bundle; the workbench exposes the verdict and the underlying artifact counts before any release approval.

@@ -1,418 +1,413 @@
-# Public Sector Case Management PBC Better-Than-World-Class Improvement Backlog
-
-## Purpose
-
-This file identifies, justifies, and describes 50 high-impact improvements for `public_sector_case_management`. The backlog is specific to citizen cases, eligibility, benefits, inspections, notices, appeals, service levels, and public outcomes and is intended to move the PBC from release-auditable scaffolding toward complete, specialist-grade domain coverage.
+# Public Sector Case Management Improvement Backlog
 
 ## Current Domain Evidence Used
 
-- Stable PBC key: `public_sector_case_management`.
-- Domain purpose: Citizen cases, eligibility, benefits, inspections, notices, appeals, service levels, and public outcomes.
-- Owned domain tables: `citizen_case`, `eligibility_determination`, `benefit_decision`, `inspection`, `notice`, `appeal`, `service_outcome`, `public_sector_case_management_policy_rule`, `public_sector_case_management_runtime_parameter`, `public_sector_case_management_schema_extension`, `public_sector_case_management_control_assertion`, `public_sector_case_management_governed_model`.
-- Public APIs: `POST /citizen-cases`, `POST /eligibility-determinations`, `POST /benefit-decisions`, `POST /inspections`, `POST /notices`, `GET /public-sector-case-management-workbench`.
-- Emitted AppGen-X events: `PublicSectorCaseManagementCreated`, `PublicSectorCaseManagementUpdated`, `PublicSectorCaseManagementApproved`, `PublicSectorCaseManagementExceptionOpened`.
-- Consumed AppGen-X events: `PolicyChanged`, `CustomerUpdated`, `SupplierQualified`.
-- Current standard surfaces include: `citizen_case_management`, `public_sector_case_management_workflow`, `public_sector_case_management_analytics`, `configuration_schema`, `rule_engine`, `parameter_engine`, `owned_schema_migrations_models`, `appgen_x_outbox_inbox_eventing`, `idempotent_handlers`, `retry_dead_letter_evidence`.
-- Current advanced surfaces include: `public_sector_case_management_event_sourced_operational_history`, `public_sector_case_management_multi_tenant_policy_isolation`, `public_sector_case_management_schema_evolution_resilience`, `public_sector_case_management_autonomous_anomaly_detection`, `public_sector_case_management_semantic_document_instruction_understanding`, `public_sector_case_management_predictive_risk_scoring`, `public_sector_case_management_counterfactual_scenario_simulation`, `public_sector_case_management_cryptographic_audit_proofs`.
+- PBC key from the manifest: `public_sector_case_management`.
+- Manifest description: citizen cases, eligibility, benefits, inspections, notices, appeals, service levels, and public outcomes.
+- Existing APIs: `POST /citizen-cases`, `POST /eligibility-determinations`, `POST /benefit-decisions`, `POST /inspections`, `POST /notices`, `GET /public-sector-case-management-workbench`.
+- Existing workflows: `public_sector_case_management_create_citizen_case_workflow`, `public_sector_case_management_record_eligibility_determination_workflow`.
+- Existing tables: `citizen_case`, `eligibility_determination`, `benefit_decision`, `inspection`, `notice`, `appeal`, `service_outcome`, `public_sector_case_management_policy_rule`, `public_sector_case_management_runtime_parameter`, `public_sector_case_management_schema_extension`, `public_sector_case_management_control_assertion`, `public_sector_case_management_governed_model`.
+- Existing emitted events: `PublicSectorCaseManagementCreated`, `PublicSectorCaseManagementUpdated`, `PublicSectorCaseManagementApproved`, `PublicSectorCaseManagementExceptionOpened`.
+- Existing consumed events: `PolicyChanged`, `CustomerUpdated`, `SupplierQualified`.
+- Existing UI fragments: `PublicSectorCaseManagementWorkbench`, `PublicSectorCaseManagementDetail`, `PublicSectorCaseManagementAssistantPanel`.
+- Existing release artifacts referenced by the manifest: `SPECIFICATION.md`, `RELEASE_EVIDENCE.md`.
 
-## 50 High-Impact Improvements
+### 1. Multi-channel intake envelope
 
-### 1. Canonical lifecycle state model for Citizen Case
+**Justification:** Public-sector case work starts before a case exists, and intake often arrives through web forms, walk-in clerks, call-center notes, partner uploads, and scanned paper packets that currently risk becoming inconsistent records.
 
-**Justification:** This closes shallow CRUD gaps by making every public sector case management transition explainable and testable instead of implicit in free-form status values.
+**Improvement:** Add a canonical intake envelope for every inbound request with source channel, intake worker, submission timestamp, language, program requested, urgency marker, and contactability status before a `citizen_case` is created.
 
-**Improvement:** Define a complete state machine for `citizen_case` with explicit draft, validated, blocked, approved, active, suspended, corrected, closed, archived, and reopened states. Tie the behavior to `public_sector_case_management_create_citizen_case_workflow` where applicable, and make it visible in `PublicSectorCaseManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Intake fixtures cover portal, call-center, clerk, batch import, and scanned packet paths; the workbench shows the same intake envelope across all entry channels; rejected submissions carry explicit rejection reasons instead of disappearing from queues.
 
-**Acceptance evidence:** State-transition tests, invalid-transition fixtures, workbench state badges, and emitted AppGen-X transition events for PublicSectorCaseManagementCreated, PublicSectorCaseManagementUpdated, PublicSectorCaseManagementApproved. The evidence should be package-local in `src/pyAppGen/pbcs/public_sector_case_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 2. Applicant, household, and authorized representative model
 
-### 2. Domain intake and normalization for Eligibility Determination
+**Justification:** Eligibility and service decisions commonly depend on household composition and representation authority, not just one named applicant, and weak modeling here creates appealable errors.
 
-**Justification:** The PBC cannot reach complete domain coverage unless it handles the messy front door of citizen cases, eligibility, benefits, inspections, notices, appeals, service levels, and public outcomes, not only already-clean records.
+**Improvement:** Expand intake and case detail flows to track applicant, household members, caregivers, guardians, interpreters, and authorized representatives with role effective dates and verification status.
 
-**Improvement:** Build a typed intake pipeline for `eligibility_determination` that accepts structured API payloads, document-derived instructions, batch loads, and assistant-generated drafts while normalizing identifiers, dates, units, parties, and jurisdictional context. Tie the behavior to `public_sector_case_management_record_eligibility_determination_workflow` where applicable, and make it visible in `PublicSectorCaseManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** A case can show multiple parties with independent permissions and dates; household changes trigger recalculation prompts; representative changes are visible in case history and notice generation tests.
 
-**Acceptance evidence:** Golden intake fixtures, rejected-record queues, field-level normalization evidence, and assistant previews before governed datastore mutation. The evidence should be package-local in `src/pyAppGen/pbcs/public_sector_case_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 3. Residency and jurisdiction determination
 
-### 3. Specialist validation rules for Benefit Decision
+**Justification:** Residency, service district, and office jurisdiction often decide which rules, calendars, and appeal venues apply, so address data cannot remain a loose text field.
 
-**Justification:** World-class Public Sector Case Management requires rules that domain experts can reason about, version, test, and roll back without code edits.
+**Improvement:** Normalize residential, mailing, temporary shelter, and confidential addresses; derive jurisdiction, service office, hearing venue, and local program overlays from governed reference data.
 
-**Improvement:** Add a domain rule compiler for `benefit_decision` that supports threshold rules, eligibility rules, dependency rules, temporal windows, conflicting-instruction detection, and override justification. Tie the behavior to `public_sector_case_management_create_citizen_case_workflow` where applicable, and make it visible in `PublicSectorCaseManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Address normalization tests show deterministic jurisdiction assignment; confidential address handling suppresses unsafe display locations; routing to office queues changes when jurisdiction changes.
 
-**Acceptance evidence:** Rule simulation tests, versioned rule manifests, rule impact reports, and UI rule editors linked to `PUBLIC_SECTOR_CASE_MANAGEMENT_DATABASE_URL, PUBLIC_SECTOR_CASE_MANAGEMENT_EVENT_TOPIC, PUBLIC_SECTOR_CASE_MANAGEMENT_RETRY_LIMIT`. The evidence should be package-local in `src/pyAppGen/pbcs/public_sector_case_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 4. Front-door program screening
 
-### 4. Parameter governance and tuning for Inspection
+**Justification:** Citizens usually ask for help, not for a specific internal program code, so the system needs guided screening across benefits and services before a worker starts formal eligibility.
 
-**Justification:** Parameters are where operations teams tune public sector case management; unbounded constants would make the PBC brittle and unsafe in real deployments.
+**Improvement:** Add a screening layer that can suggest likely programs, missing prerequisites, cross-program incompatibilities, and referral-only services before an `eligibility_determination` is opened.
 
-**Improvement:** Expose bounded runtime parameters for `inspection` covering risk thresholds, SLA windows, confidence floors, escalation cutoffs, batch sizes, retry limits, and human-confirmation requirements. Tie the behavior to `public_sector_case_management_record_eligibility_determination_workflow` where applicable, and make it visible in `PublicSectorCaseManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Screening results list candidate programs with reasons and confidence bands; incompatible combinations are flagged before submission; screening can be rerun after new facts are added.
 
-**Acceptance evidence:** Parameter schema validation, tenant overrides, approval history, rollback controls, and workbench diff views. The evidence should be package-local in `src/pyAppGen/pbcs/public_sector_case_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 5. Eligibility period and retroactivity rules
 
-### 5. Deep owned schema expansion for Notice
+**Justification:** Public programs frequently hinge on application date, incident date, verification receipt date, and retroactive coverage windows, so date logic must be explicit and auditable.
 
-**Justification:** A single payload column cannot express the full surface of citizen cases, eligibility, benefits, inspections, notices, appeals, service levels, and public outcomes or prove cross-PBC boundaries are respected.
+**Improvement:** Add rule support for effective start date, retroactive start, end date, recertification date, and adverse-action lead time on `eligibility_determination` records.
 
-**Improvement:** Extend the owned schema around `notice` with normalized child tables for line-level evidence, party roles, approvals, attachments, comments, metrics, exception reasons, and control assertions. Tie the behavior to `public_sector_case_management_create_citizen_case_workflow` where applicable, and make it visible in `PublicSectorCaseManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Date-rule fixtures cover timely applications, late verification, retroactive grants, and closed periods; notices display the same date basis used by the decision engine; appeal records preserve the date rules that were applied.
 
-**Acceptance evidence:** Migrations, models, relationship tests, schema contract snapshots, and no shared-table access outside the `public_sector_case_management_` namespace. The evidence should be package-local in `src/pyAppGen/pbcs/public_sector_case_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 6. Missing-information and verification checklist engine
 
-### 6. Event-sourced operational history for Appeal
+**Justification:** Case delays often come from unstructured follow-up work for missing proofs, and without a checklist engine SLA management and correspondence quality both degrade.
 
-**Justification:** Temporal reconstruction is essential for better-than-world-class auditability and dispute resolution in public sector case management.
+**Improvement:** Generate program-specific verification checklists tied to policy rules, with item status, due date, waiver reason, substituted proof, and worker notes stored against the case.
 
-**Improvement:** Capture every material mutation of `appeal` as immutable AppGen-X events with actor, tenant, command, policy version, idempotency key, before/after summary, and projection checkpoint. Tie the behavior to `public_sector_case_management_record_eligibility_determination_workflow` where applicable, and make it visible in `PublicSectorCaseManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Each checklist item can be satisfied, waived, substituted, or expired; due dates drive reminder notices; checklist completion gates approval paths in workflow tests.
 
-**Acceptance evidence:** Replay tests, projection checksums, event ordering evidence, and point-in-time workbench views. The evidence should be package-local in `src/pyAppGen/pbcs/public_sector_case_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 7. Evidence-aware document intake
 
-### 7. Projection and read-model strategy for Service Outcome
+**Justification:** Scanned IDs, pay stubs, rent ledgers, medical forms, and hearing exhibits should enter the domain as evidence objects, not as loose attachments.
 
-**Justification:** The workbench should not force users to infer domain truth from raw tables; each projection should answer a real operating question.
+**Improvement:** Convert uploaded or scanned documents into typed evidence entries with document class, asserted facts, confidence score, extraction status, page count, and linkage to the exact decision question they support.
 
-**Improvement:** Create purpose-built projections for `service_outcome`: operational queue, executive KPI rollup, exception aging, compliance evidence, agent task context, and external dependency health. Tie the behavior to `public_sector_case_management_create_citizen_case_workflow` where applicable, and make it visible in `PublicSectorCaseManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** A worker can see which evidence supports income, identity, disability, residency, or service need; low-confidence extraction routes to manual review; evidence entries remain linked after appeal creation.
 
-**Acceptance evidence:** Projection contracts, freshness SLAs, backfill tests, and visible stale-projection warnings. The evidence should be package-local in `src/pyAppGen/pbcs/public_sector_case_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 8. Evidence sufficiency evaluation
 
-### 8. Exception taxonomy and remediation for Public Sector Case Management Policy Rule
+**Justification:** Workers need to know whether evidence is merely present or actually sufficient for the specific rule under review, especially in contested or time-sensitive cases.
 
-**Justification:** High-value PBCs win on exception throughput; generic “failed” states hide the details operators need.
+**Improvement:** Add an evidence sufficiency layer that scores whether the current evidence set satisfies each open rule, identifies contradictions, and proposes the smallest additional proof needed.
 
-**Improvement:** Model the full exception taxonomy for `public_sector_case_management_policy_rule`, including severity, root cause, blocking dependency, remediation owner, due date, retry eligibility, escalation path, and closure evidence. Tie the behavior to `public_sector_case_management_record_eligibility_determination_workflow` where applicable, and make it visible in `PublicSectorCaseManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Rule evaluations show satisfied, insufficient, conflicting, or expired evidence states; contradiction scenarios open explicit exceptions; sufficiency results are included in approval and denial review screens.
 
-**Acceptance evidence:** Exception queues, aging metrics, remediation playbooks, dead-letter linkage, and closure test fixtures for records retention holds. The evidence should be package-local in `src/pyAppGen/pbcs/public_sector_case_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 9. Outbound citizen correspondence orchestration
 
-### 9. Predictive risk scoring for Public Sector Case Management Runtime Parameter
+**Justification:** Public-sector case management fails operationally when notices are late, unclear, or inconsistent with the underlying decision record.
 
-**Justification:** The package should warn users before public sector case management work fails, breaches policy, or creates downstream cost.
+**Improvement:** Turn `notice` into a correspondence orchestration object that supports request-for-information letters, appointment notices, approval notices, denial notices, closure notices, and appeal-rights notices from the same decision facts.
 
-**Improvement:** Add predictive risk scoring for `public_sector_case_management_runtime_parameter` using domain features from owned tables, consumed events PolicyChanged, CustomerUpdated, SupplierQualified, rule outcomes, aging, anomaly signals, and historical corrections. Tie the behavior to `public_sector_case_management_create_citizen_case_workflow` where applicable, and make it visible in `PublicSectorCaseManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Notice templates render different scenarios from one governed data model; every notice stores delivery channel, generated language, and fact snapshot; denied notices include the exact rule citations used in the case.
 
-**Acceptance evidence:** Feature manifests, score explanations, calibration reports, drift alerts, and tests for low/medium/high-risk scenarios. The evidence should be package-local in `src/pyAppGen/pbcs/public_sector_case_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 10. Inbound correspondence and response matching
 
-### 10. Counterfactual simulation for Public Sector Case Management Schema Extension
+**Justification:** Citizens reply by mail, portal upload, email gateway, or contact-center callback, and the system must match those responses to the exact unresolved request without manual detective work.
 
-**Justification:** Advanced users need to ask “what would happen if” before committing changes to live citizen cases, eligibility, benefits, inspections, notices, appeals, service levels, and public outcomes operations.
+**Improvement:** Add inbound correspondence matching with notice ID, barcode, intake envelope, household identity hints, and unresolved checklist item linkage.
 
-**Improvement:** Provide scenario simulation for `public_sector_case_management_schema_extension`: policy change, capacity constraint, deadline shift, price/rate change, eligibility change, disruption, and manual override outcomes. Tie the behavior to `public_sector_case_management_record_eligibility_determination_workflow` where applicable, and make it visible in `PublicSectorCaseManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Returned proofs auto-link to the notice that requested them; ambiguous matches route to review queues; unmatched correspondence is visible in a supervised exception queue instead of being lost.
 
-**Acceptance evidence:** Simulation APIs, non-mutating sandbox state, comparison reports, and workbench side-by-side scenario panels. The evidence should be package-local in `src/pyAppGen/pbcs/public_sector_case_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 11. Referral creation to external services
 
-### 11. Autonomous anomaly triage for Public Sector Case Management Control Assertion
+**Justification:** Many cases need referrals to housing, behavioral health, workforce, child support, or partner agencies, and referral quality determines whether service plans actually complete.
 
-**Justification:** A world-class PBC should reduce analyst burden without hiding the reasoning behind automated triage.
+**Improvement:** Model outbound referrals as first-class records with referral reason, requested service, urgency, eligibility basis, receiving organization, expected response window, and closure requirements.
 
-**Improvement:** Implement anomaly detection for `public_sector_case_management_control_assertion` that identifies outliers, duplicate submissions, impossible sequences, stale dependencies, unusual amounts/counts/durations, and contradictory fields. Tie the behavior to `public_sector_case_management_create_citizen_case_workflow` where applicable, and make it visible in `PublicSectorCaseManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** A case can open multiple concurrent referrals with different programs and deadlines; referral packages include only allowed evidence; the workbench distinguishes pending, accepted, declined, and completed referrals.
 
-**Acceptance evidence:** Explainable anomaly cards, reviewer feedback loops, false-positive tracking, and suppression governance. The evidence should be package-local in `src/pyAppGen/pbcs/public_sector_case_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 12. Referral loop closure and service outcome capture
 
-### 12. Semantic document understanding for Public Sector Case Management Governed Model
+**Justification:** A referral is incomplete until the sending agency can prove what happened, whether service was delivered, and whether the citizen needs follow-up action.
 
-**Justification:** Document-heavy work in Public Sector Case Management cannot be complete if the assistant only answers questions and cannot prepare accurate governed changes.
+**Improvement:** Extend `service_outcome` to capture referral acceptance, first contact, no-show, completed service, partial service, ineligible-on-arrival, and provider-closed outcomes with structured reason codes.
 
-**Improvement:** Train the package assistant to parse domain documents and instructions for `public_sector_case_management_governed_model`, extract obligations, dates, parties, quantities, identifiers, and exceptions, then map them to safe draft mutations. Tie the behavior to `public_sector_case_management_record_eligibility_determination_workflow` where applicable, and make it visible in `PublicSectorCaseManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Service outcomes can be tied back to the originating referral and case goal; unresolved referrals breach SLA timers; provider closure codes surface in analytics without exposing private narrative text by default.
 
-**Acceptance evidence:** Document extraction tests, confidence thresholds, redaction handling, source span citations, and human confirmation workflows. The evidence should be package-local in `src/pyAppGen/pbcs/public_sector_case_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 13. Benefit and service package decisioning
 
-### 13. Agent-safe CRUD execution for Citizen Case
+**Justification:** Case workers often need to decide both monetary benefits and non-monetary services, and the package must be internally consistent before approval.
 
-**Justification:** The PBC agent must be a first-class operator but never a hidden bypass around RBAC, rules, or owned datastore boundaries.
+**Improvement:** Add a combined package view where `benefit_decision` and `service_outcome` recommendations can be reviewed together for amount, frequency, duration, conditions, and service obligations.
 
-**Improvement:** Add a professional chatbot skill for `citizen_case` that can create, update, correct, close, and annotate records only through policy-checked commands, approval gates, and previewed diffs. Tie the behavior to `public_sector_case_management_create_citizen_case_workflow` where applicable, and make it visible in `PublicSectorCaseManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Review screens show conflicts between cash benefit rules and service participation requirements; package approval stores one coherent fact snapshot; partial-package approvals are explicitly constrained and tested.
 
-**Acceptance evidence:** Skill manifests, permission tests, preview/confirm flows, blocked-action evidence, and audit events for every assistant mutation. The evidence should be package-local in `src/pyAppGen/pbcs/public_sector_case_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 14. Change reporting, reductions, and overpayment handling
 
-### 14. Workbench persona coverage for Eligibility Determination
+**Justification:** Public-sector programs face frequent changes in income, household, and compliance, and reductions or overpayments are where notice and appeal defects become most expensive.
 
-**Justification:** A generic detail page underserves the domain; each role needs the exact controls and evidence they use daily.
+**Improvement:** Add change-report workflows that recompute ongoing eligibility, identify reductions or closures, track potential overpayments, and enforce adverse-action notice lead times before final effect.
 
-**Improvement:** Design dedicated workbench panels for `eligibility_determination`: operator queue, supervisor approvals, analyst exceptions, auditor evidence, configuration owner, and agent-assistance review. Tie the behavior to `public_sector_case_management_record_eligibility_determination_workflow` where applicable, and make it visible in `PublicSectorCaseManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Tests cover income increase, household departure, late change reporting, and overpayment discovery; reduction actions cannot finalize before required notice windows; case history shows which reported change triggered the action.
 
-**Acceptance evidence:** UI contract entries, route tests, empty/error/loading states, and permission-aware action availability. The evidence should be package-local in `src/pyAppGen/pbcs/public_sector_case_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 15. Appeal intake validation
 
-### 15. Cross-PBC dependency contracts for Benefit Decision
+**Justification:** Appeals must be accepted or rejected on clear filing rules, because mishandling timeliness or standing creates due-process risk immediately.
 
-**Justification:** Composable packages fail when hidden table coupling enters the domain model.
+**Improvement:** Add an appeal intake validator that checks standing, filing date, appealed action, requested remedy, language needs, and whether the appeal is a continuation-of-benefits request.
 
-**Improvement:** Represent dependencies for `benefit_decision` through declared APIs, consumed events PolicyChanged, CustomerUpdated, SupplierQualified, and projections rather than shared tables, with explicit freshness, ownership, and fallback behavior. Tie the behavior to `public_sector_case_management_create_citizen_case_workflow` where applicable, and make it visible in `PublicSectorCaseManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Appeal submissions record timeliness calculations and filing basis; continuation-of-benefits requests open special review states; rejected appeals preserve a machine-readable rejection reason and review history.
 
-**Acceptance evidence:** Dependency manifests, contract tests, stale dependency alerts, and no foreign-table references in generated artifacts. The evidence should be package-local in `src/pyAppGen/pbcs/public_sector_case_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 16. Issue framing and appeal scope control
 
-### 16. API completeness and versioning for Inspection
+**Justification:** Appeal hearings go badly when the contested issue is vague, overly broad, or disconnected from the original decision facts.
 
-**Justification:** Complete domain coverage requires both command and query surfaces, not only happy-path create endpoints.
+**Improvement:** Require each `appeal` to define contested action, contested period, contested rule application, requested remedy, and included evidence scope before hearing preparation begins.
 
-**Improvement:** Expand APIs beyond POST /citizen-cases, POST /eligibility-determinations, POST /benefit-decisions to cover search, validation-only commands, simulation, bulk intake, exception closure, evidence export, projection reads, and idempotent corrections. Tie the behavior to `public_sector_case_management_record_eligibility_determination_workflow` where applicable, and make it visible in `PublicSectorCaseManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Appeal records cannot move to hearing-ready without a scoped issue statement; remand decisions can target only the contested scope; notices and hearing packets reuse the same appeal framing fields.
 
-**Acceptance evidence:** OpenAPI-style route manifests, backward-compatible version tests, deprecation metadata, and idempotency assertions. The evidence should be package-local in `src/pyAppGen/pbcs/public_sector_case_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 17. Hearing scheduling and participant logistics
 
-### 17. Typed emitted-event expansion for Notice
+**Justification:** Hearings involve officer calendars, worker availability, citizen accessibility needs, interpreters, remote links, and reschedule rules, all of which are case-critical domain data.
 
-**Justification:** Consumers should understand what happened in Public Sector Case Management without parsing opaque payloads.
+**Improvement:** Add hearing scheduling with venue type, accessibility accommodations, interpreter booking, remote participation details, representative attendance, and reschedule reason tracking.
 
-**Improvement:** Replace generic lifecycle emissions with typed events for each meaningful `notice` transition, exception, approval, correction, simulation result, and downstream handoff. Tie the behavior to `public_sector_case_management_create_citizen_case_workflow` where applicable, and make it visible in `PublicSectorCaseManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Scheduling tests cover in-person, phone, and video hearings; interpreter and accommodation needs block final scheduling until confirmed; reschedules preserve original dates and reasons in the audit trail.
 
-**Acceptance evidence:** Event schema tests, event examples, compatibility checks, and emitted-event coverage in release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/public_sector_case_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 18. Hearing packet assembly
 
-### 18. Consumed-event handlers for Appeal
+**Justification:** Hearing officers need a complete, ordered packet with the action under appeal, supporting evidence, notices, chronology, and rule basis, and packet gaps create remands.
 
-**Justification:** A PBC is composable only when incoming events affect its own domain state predictably and safely.
+**Improvement:** Build a hearing packet generator that assembles case chronology, adverse action history, evidence index, notice history, policy version, and issue statement into a reviewable bundle.
 
-**Improvement:** Implement idempotent handlers for consumed events PolicyChanged, CustomerUpdated, SupplierQualified that update projections, open dependency exceptions, recalculate risk, and preserve source event lineage. Tie the behavior to `public_sector_case_management_record_eligibility_determination_workflow` where applicable, and make it visible in `PublicSectorCaseManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Packet previews show missing components before release; packet generation timestamps and contents are immutable once served; packet exports respect privacy redaction rules by participant role.
 
-**Acceptance evidence:** Duplicate-event tests, handler side-effect boundaries, dead-letter fixtures, and lineage links back to source events. The evidence should be package-local in `src/pyAppGen/pbcs/public_sector_case_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 19. Hearing outcomes, remands, and implementation
 
-### 19. Retry and dead-letter operations for Service Outcome
+**Justification:** The operational burden continues after the hearing, and outcomes must translate into concrete case changes, reopened determinations, or upheld actions.
 
-**Justification:** Dead letters are not just plumbing; they are domain work queues that can block citizen cases, eligibility, benefits, inspections, notices, appeals, service levels, and public outcomes.
+**Improvement:** Add structured hearing outcomes for affirmed, reversed, modified, remanded, withdrawn, and dismissed results with implementation deadlines and owning queue.
 
-**Improvement:** Create operational tools for retrying, quarantining, explaining, and resolving dead-lettered `service_outcome` events with max-attempt policy, poison-message detection, and replay safety. Tie the behavior to `public_sector_case_management_create_citizen_case_workflow` where applicable, and make it visible in `PublicSectorCaseManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** A remand opens follow-up work with required issue scope; reversal outcomes regenerate benefits or services using the corrected basis; implementation delays show up in supervisor aging dashboards.
 
-**Acceptance evidence:** Dead-letter workbench, retry eligibility tests, replay audit proof, and operator action logs. The evidence should be package-local in `src/pyAppGen/pbcs/public_sector_case_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 20. Evidence chain of custody
 
-### 20. RBAC and attribute policy for Public Sector Case Management Policy Rule
+**Justification:** Evidence used for eligibility, sanctions, or hearings needs provenance strong enough for audit and appeal review, especially when documents are re-uploaded or redacted later.
 
-**Justification:** High-impact domain operations need finer controls than generic RBAC grants.
+**Improvement:** Track evidence receipt source, uploader, scan hash, original filename, derived pages, redaction lineage, and every access or export event for each evidence object.
 
-**Improvement:** Extend permissions for `public_sector_case_management_policy_rule` from coarse read/create/update/admin to action-level and attribute-aware policies based on role, tenant, jurisdiction, monetary/materiality threshold, and exception severity. Tie the behavior to `public_sector_case_management_record_eligibility_determination_workflow` where applicable, and make it visible in `PublicSectorCaseManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Chain-of-custody views show the full lifecycle of a document; redacted copies remain linked to originals without exposing sealed content; hearing packets can prove which evidence version was served.
 
-**Acceptance evidence:** Permission matrix docs, ABAC policy tests, denied-action UI states, and assistant skill permission checks. The evidence should be package-local in `src/pyAppGen/pbcs/public_sector_case_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 21. Privacy-safe evidence sharing
 
-### 21. Continuous control testing for Public Sector Case Management Runtime Parameter
+**Justification:** Case workers need to share enough evidence to support a decision or referral without disclosing unrelated or legally protected information.
 
-**Justification:** Controls should run during operations, not only during release audit or manual review.
+**Improvement:** Add role-based evidence views that can disclose full, partial, redacted, or metadata-only versions depending on whether the audience is an internal worker, provider, hearing officer, or citizen.
 
-**Improvement:** Embed control assertions for `public_sector_case_management_runtime_parameter` that continuously test segregation of duties, required approvals, stale exceptions, policy drift, duplicate records, and boundary violations. Tie the behavior to `public_sector_case_management_create_citizen_case_workflow` where applicable, and make it visible in `PublicSectorCaseManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Export tests prove that protected fields are removed by audience type; provider referral packets exclude unrelated household data; sealed documents cannot be attached to outbound correspondence without override approval.
 
-**Acceptance evidence:** Control dashboards, failing-control events, test fixtures, and release evidence tied to `public_sector_case_management_control_assertion` records. The evidence should be package-local in `src/pyAppGen/pbcs/public_sector_case_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 22. SLA clock model for case work
 
-### 22. Cryptographic audit proofing for Public Sector Case Management Schema Extension
+**Justification:** Intake, verification, decision, correspondence, referral, and appeal stages each have different clocks, and one generic due date is not enough to manage public obligations.
 
-**Justification:** Better-than-world-class auditability requires proof of integrity, not merely logs stored in mutable tables.
+**Improvement:** Define separate SLA clocks for intake registration, screening, eligibility determination, notice issuance, referral acknowledgment, appeal intake, hearing scheduling, and post-hearing implementation.
 
-**Improvement:** Hash-chain material `public_sector_case_management_schema_extension` decisions, documents, emitted events, and release-evidence snapshots to make tampering visible without exposing sensitive payloads. Tie the behavior to `public_sector_case_management_record_eligibility_determination_workflow` where applicable, and make it visible in `PublicSectorCaseManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Each queue shows its own age and target date; reports distinguish late intake from late notice generation; SLA definitions are parameterized by program and jurisdiction rather than hard-coded.
 
-**Acceptance evidence:** Proof manifests, verification APIs, redacted proof exports, and audit-ledger handoff events. The evidence should be package-local in `src/pyAppGen/pbcs/public_sector_case_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 23. Pause, tolling, and resume reasons
 
-### 23. Privacy, consent, and secrecy controls for Public Sector Case Management Control Assertion
+**Justification:** Case clocks often pause for citizen response windows, court stays, disaster periods, or pending external verification, and those pauses must be transparent to supervisors and auditors.
 
-**Justification:** Complete domain coverage must account for protected data and restricted operational evidence.
+**Improvement:** Add governed pause reasons with start and end triggers, actor, supporting evidence, and whether the pause affects only one clock or multiple clocks on the same case.
 
-**Improvement:** Add field-level privacy classifications for `public_sector_case_management_control_assertion`, consent checks, masking rules, retention schedules, legal holds, and assistant redaction policies. Tie the behavior to `public_sector_case_management_create_citizen_case_workflow` where applicable, and make it visible in `PublicSectorCaseManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Timeline views show active and paused periods distinctly; pause misuse opens control exceptions; resumed clocks continue from the correct remaining duration instead of resetting silently.
 
-**Acceptance evidence:** Retention tests, masked UI snapshots, consent-blocked mutation fixtures, and export controls. The evidence should be package-local in `src/pyAppGen/pbcs/public_sector_case_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 24. Purpose-based access and least privilege
 
-### 24. Multi-tenant operating model for Public Sector Case Management Governed Model
+**Justification:** Public-sector case records frequently contain health, income, domestic violence, juvenile, or other restricted data that should be visible only for a lawful case-processing purpose.
 
-**Justification:** The PBC should scale across organizations while preserving independent policy and compliance boundaries.
+**Improvement:** Extend permissions beyond coarse CRUD so that viewing, editing, exporting, or discussing a field requires both role authorization and a declared processing purpose tied to the case action.
 
-**Improvement:** Support tenant-specific `public_sector_case_management_governed_model` rules, data residency, encryption context, configuration, seed data, and release evidence without allowing cross-tenant leakage. Tie the behavior to `public_sector_case_management_record_eligibility_determination_workflow` where applicable, and make it visible in `PublicSectorCaseManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Unauthorized access attempts are denied with auditable reasons; supervisors can review purpose declarations by worker and field; assistant actions are blocked when the active purpose does not permit the requested data use.
 
-**Acceptance evidence:** Tenant isolation tests, tenant-scoped parameters, key-rotation evidence, and cross-tenant negative fixtures. The evidence should be package-local in `src/pyAppGen/pbcs/public_sector_case_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 25. Confidentiality markers and protected populations
 
-### 25. Schema evolution and extension registry for Citizen Case
+**Justification:** Survivors of violence, minors, witnesses, and other protected populations need extra handling across notices, hearing logistics, and workbench visibility.
 
-**Justification:** Domain teams will add fields; the PBC must evolve without breaking APIs, events, or workbench projections.
+**Improvement:** Add confidentiality markers for protected address, sealed contact method, restricted party, youth-sensitive record, and witness-protected evidence with downstream UI and export behavior attached to each marker.
 
-**Improvement:** Make schema extensions for `citizen_case` first-class with compatibility checks, migration previews, projection backfills, field ownership, and rollback metadata. Tie the behavior to `public_sector_case_management_create_citizen_case_workflow` where applicable, and make it visible in `PublicSectorCaseManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Confidentiality markers suppress unsafe display elements across case detail, notices, and packet exports; hearing scheduling prevents accidental disclosure of protected locations; role tests confirm correct masking behavior.
 
-**Acceptance evidence:** Extension registry UI, compatibility tests, migration dry-runs, and backfill release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/public_sector_case_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 26. Fraud referral boundary and handoff control
 
-### 26. Master data quality gates for Eligibility Determination
+**Justification:** Program integrity work must not contaminate ordinary eligibility processing with unreviewed suspicion signals, and the system needs a clear boundary between case work and fraud referral.
 
-**Justification:** Many public sector case management errors begin as bad reference data; the PBC should catch them before workflow execution.
+**Improvement:** Model fraud referral as a separate bounded handoff that can receive specific facts, reason codes, and approved evidence excerpts without exposing the ordinary case queue to investigative notes or retaliatory workflow branches.
 
-**Improvement:** Define reference-data contracts for `eligibility_determination`: canonical codes, parties, locations, classifications, calendars, units, currencies, products, assets, or service categories as relevant to the domain. Tie the behavior to `public_sector_case_management_record_eligibility_determination_workflow` where applicable, and make it visible in `PublicSectorCaseManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Fraud referral packages include only approved data categories; the originating case shows that a referral occurred without exposing investigative content; case workers cannot see fraud-case notes unless granted separate authority.
 
-**Acceptance evidence:** Reference validation fixtures, stale-code warnings, mapping tables, and dependency freshness indicators. The evidence should be package-local in `src/pyAppGen/pbcs/public_sector_case_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 27. Program rule versioning and effective dating
 
-### 27. Bulk operations and correction workflows for Benefit Decision
+**Justification:** Public programs change through legislation, emergency directives, budget updates, and local waivers, so decisions must always point to the exact rule set in force at the time.
 
-**Justification:** Enterprise-scale Public Sector Case Management users cannot operate one record at a time.
+**Improvement:** Version `public_sector_case_management_policy_rule` with effective start and end dates, emergency supersession flags, jurisdiction overlays, and migration notes for in-flight cases.
 
-**Improvement:** Add bulk load, bulk validate, bulk approve, and bulk correction workflows for `benefit_decision` with partial success, row-level errors, resumability, and rollback. Tie the behavior to `public_sector_case_management_create_citizen_case_workflow` where applicable, and make it visible in `PublicSectorCaseManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** A worker can inspect the precise rule version used for any eligibility or benefit decision; rule changes can be simulated against open cases before activation; out-of-date rule references fail validation in release checks.
 
-**Acceptance evidence:** CSV/API batch fixtures, resumable job state, row-level audit evidence, and assistant-generated correction suggestions. The evidence should be package-local in `src/pyAppGen/pbcs/public_sector_case_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 28. Human-readable rule explanations
 
-### 28. Lifecycle collaboration and tasking for Inspection
+**Justification:** Citizens, workers, and hearing officers need to understand why a rule fired, not just that it fired, especially in adverse decisions.
 
-**Justification:** Domain collaboration should live inside the PBC boundary and remain auditable with the record it affects.
+**Improvement:** Require every program-rule evaluation to produce a plain-language explanation, the governing citation, the decisive facts, and the missing facts that would have changed the outcome.
 
-**Improvement:** Attach tasks, comments, ownership, due dates, handoffs, and escalation threads to `inspection` without leaking into external shared task tables. Tie the behavior to `public_sector_case_management_record_eligibility_determination_workflow` where applicable, and make it visible in `PublicSectorCaseManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Denial and reduction notices reuse the same explanation text shown in the workbench; explanations are available by language and reading level template; appeal packets include both machine and human-readable rule traces.
 
-**Acceptance evidence:** Task tables, comment audit history, notification events, escalation SLAs, and role-specific task queues. The evidence should be package-local in `src/pyAppGen/pbcs/public_sector_case_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 29. Manual override governance
 
-### 29. SLA and service-level governance for Notice
+**Justification:** Overrides are sometimes necessary for hardship, emergency waiver, or data correction scenarios, but they become a control failure if they are informal.
 
-**Justification:** Users need to know when citizen cases, eligibility, benefits, inspections, notices, appeals, service levels, and public outcomes is late, blocked, or at risk before customer or regulator impact.
+**Improvement:** Add override types with required justification, approver role, expiry, downstream recalculation requirements, and whether the override affects benefits, services, SLA clocks, or correspondence.
 
-**Improvement:** Define SLAs for `notice` across intake, validation, approval, exception resolution, event handling, downstream projection refresh, and release-evidence generation. Tie the behavior to `public_sector_case_management_create_citizen_case_workflow` where applicable, and make it visible in `PublicSectorCaseManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Override records show who requested, approved, and relied on the override; expired overrides re-open review tasks automatically; reports separate lawful overrides from policy violations.
 
-**Acceptance evidence:** SLA breach events, timers, configurable calendars, workbench aging buckets, and tests for pause/resume behavior. The evidence should be package-local in `src/pyAppGen/pbcs/public_sector_case_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 30. Supervisor workbench queue design
 
-### 30. Operational analytics cockpit for Appeal
+**Justification:** Supervisors need to manage backlog by risk, lateness, and citizen impact, not by flat lists of open records.
 
-**Justification:** World-class operations require leading indicators, not only record counts.
+**Improvement:** Redesign `PublicSectorCaseManagementWorkbench` queues around intake review, pending verification, ready to decide, pending notice, pending referral response, appeal intake, hearing prep, and post-hearing implementation.
 
-**Improvement:** Build analytics for `appeal`: throughput, backlog, aging, approval latency, exception rate, risk distribution, automation acceptance, correction rate, and downstream dependency health. Tie the behavior to `public_sector_case_management_record_eligibility_determination_workflow` where applicable, and make it visible in `PublicSectorCaseManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Queue counts align with underlying state projections; supervisors can filter by program, office, SLA risk, and protected-case handling restrictions; queue definitions are testable and not embedded only in UI code.
 
-**Acceptance evidence:** Metric definitions, projection tests, drill-through routes, export APIs, and anomaly overlays. The evidence should be package-local in `src/pyAppGen/pbcs/public_sector_case_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 31. Case detail chronology and decision timeline
 
-### 31. Decision intelligence and recommendations for Service Outcome
+**Justification:** Workers and reviewers need one coherent chronology that shows facts, decisions, notices, referrals, appeals, and hearings in causal order.
 
-**Justification:** The PBC should help expert users decide faster while showing evidence and uncertainty.
+**Improvement:** Expand `PublicSectorCaseManagementDetail` with a timeline that merges intake events, evidence receipt, rule evaluations, decisions, correspondence, referral milestones, appeal actions, and hearing outcomes.
 
-**Improvement:** Generate ranked recommendations for `service_outcome` such as next best action, likely resolution, required evidence, policy adjustment, staffing/capacity response, or downstream handoff. Tie the behavior to `public_sector_case_management_create_citizen_case_workflow` where applicable, and make it visible in `PublicSectorCaseManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Timeline ordering remains correct under replay and backfill tests; each entry can drill into underlying evidence or policy context; chronology can be exported for quality review without exposing sealed data.
 
-**Acceptance evidence:** Recommendation explanations, confidence intervals, feedback capture, model governance records, and rejection reasons. The evidence should be package-local in `src/pyAppGen/pbcs/public_sector_case_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 32. Correspondence drafting and review UX
 
-### 32. Quality and completeness scoring for Public Sector Case Management Policy Rule
+**Justification:** Notice quality is often lost in the final drafting step when workers manually rewrite approved facts or paste from prior cases.
 
-**Justification:** Operators should see whether a record is truly ready, not just technically saved.
+**Improvement:** Add a structured correspondence composer that locks factual inserts to governed case data while still allowing controlled narrative sections, translation selection, and supervisor preview.
 
-**Improvement:** Score each `public_sector_case_management_policy_rule` record for completeness, consistency, policy readiness, dependency readiness, evidence sufficiency, and downstream composability. Tie the behavior to `public_sector_case_management_record_eligibility_determination_workflow` where applicable, and make it visible in `PublicSectorCaseManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Workers cannot accidentally alter governed facts inside a notice; preview mode shows final citizen-facing language by delivery channel; supervisor review compares the drafted notice against the decision facts and citations.
 
-**Acceptance evidence:** Scoring rules, missing-evidence lists, readiness badges, and blocking criteria in command handlers. The evidence should be package-local in `src/pyAppGen/pbcs/public_sector_case_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 33. Appeal and hearing operator UX
 
-### 33. End-to-end scenario library for Public Sector Case Management Runtime Parameter
+**Justification:** Appeals and hearings involve dense, time-sensitive navigation, and a generic case screen does not support clerk, worker, and hearing-officer needs.
 
-**Justification:** Release evidence is stronger when every important public sector case management behavior has executable examples.
+**Improvement:** Add role-specific appeal and hearing views for filing intake, issue framing, packet readiness, hearing logistics, continuance tracking, and outcome implementation.
 
-**Improvement:** Create seeded scenarios for `public_sector_case_management_runtime_parameter`: normal flow, urgent path, exception path, corrected path, duplicate path, late event path, and audit export path. Tie the behavior to `public_sector_case_management_create_citizen_case_workflow` where applicable, and make it visible in `PublicSectorCaseManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Users with different roles see different default panels and actions; packet completeness indicators are visible without opening each artifact; hearing-day workflows can be executed without using raw attachments or external spreadsheets.
 
-**Acceptance evidence:** Scenario seed data, runtime smoke coverage, generated-app fixtures, and story-level workbench screenshots/contracts. The evidence should be package-local in `src/pyAppGen/pbcs/public_sector_case_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 34. Agent skill for intake triage
 
-### 34. Domain ontology and terminology model for Public Sector Case Management Schema Extension
+**Justification:** The assistant panel is only useful if it performs bounded case-management work that reduces clerical load without making hidden decisions.
 
-**Justification:** Precise vocabulary prevents the PBC from misclassifying specialist documents or user instructions.
+**Improvement:** Add an intake-triage agent skill that summarizes inbound submissions, identifies missing structured fields, proposes likely program screens, and routes the case to the right human queue without auto-approving eligibility.
 
-**Improvement:** Add an ontology for `public_sector_case_management_schema_extension` terms, synonyms, classifications, relationships, allowed values, and phrase mappings used by the assistant and UI. Tie the behavior to `public_sector_case_management_record_eligibility_determination_workflow` where applicable, and make it visible in `PublicSectorCaseManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Agent outputs are stored as suggestions with confidence and provenance; the skill cannot commit decisions beyond its authority boundary; low-confidence triage results force human review before any downstream workflow starts.
 
-**Acceptance evidence:** Ontology files, assistant parsing tests, UI glossary, and mapping evidence for domain-specific abbreviations. The evidence should be package-local in `src/pyAppGen/pbcs/public_sector_case_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 35. Agent skill for correspondence drafting
 
-### 35. Advanced search and investigation for Public Sector Case Management Control Assertion
+**Justification:** Notice drafting is repetitive but legally sensitive, making it a good candidate for assisted drafting with strict grounding.
 
-**Justification:** Investigators and operators need fast, explainable retrieval across the whole domain surface.
+**Improvement:** Add a correspondence agent skill that drafts citizen-facing notices from governed case facts, active rule explanations, and approved templates while preserving citation blocks and plain-language standards.
 
-**Improvement:** Provide search across `public_sector_case_management_control_assertion` records, events, documents, exceptions, tasks, comments, and audit proofs with filters for tenant, status, risk, date, party, and dependency. Tie the behavior to `public_sector_case_management_create_citizen_case_workflow` where applicable, and make it visible in `PublicSectorCaseManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Drafted notices always cite the underlying decision and rule explanation objects; workers can compare draft language to source facts side by side; the agent refuses to invent facts or policy citations not present in the record.
 
-**Acceptance evidence:** Search index contracts, result provenance, permission-filtered queries, and stale-index warnings. The evidence should be package-local in `src/pyAppGen/pbcs/public_sector_case_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 36. Agent skill for hearing preparation
 
-### 36. Reconciliation and closure controls for Public Sector Case Management Governed Model
+**Justification:** Hearing preparation consumes significant staff time and requires fast summarization across chronology, evidence, and contested issues.
 
-**Justification:** Closure is not complete until the PBC can prove no material domain work remains unresolved.
+**Improvement:** Add a hearing-prep agent skill that assembles a concise issue summary, identifies disputed facts, highlights missing packet elements, and proposes targeted follow-up questions for the assigned worker.
 
-**Improvement:** Add reconciliation workflows that compare `public_sector_case_management_governed_model` state against consumed events, external projections, expected totals/counts, approvals, and release evidence before closure. Tie the behavior to `public_sector_case_management_record_eligibility_determination_workflow` where applicable, and make it visible in `PublicSectorCaseManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Hearing-prep outputs link every statement to case history or evidence; missing packet warnings match the packet-completeness rules; the skill cannot finalize hearing outcomes or alter the appeal scope.
 
-**Acceptance evidence:** Reconciliation reports, variance thresholds, closure blockers, and AppGen-X closure events. The evidence should be package-local in `src/pyAppGen/pbcs/public_sector_case_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 37. Agent skill for quality review and coaching
 
-### 37. Regulatory and policy reporting for Citizen Case
+**Justification:** Supervisors need scalable quality review that surfaces explainable defects rather than opaque scores.
 
-**Justification:** World-class PBCs turn operational evidence into credible reporting without spreadsheet reconstruction.
+**Improvement:** Add a quality-review agent skill that checks for unsupported decisions, missing notices, privacy leaks, stale SLA clocks, weak issue framing, and inconsistent referral closure while generating review notes for supervisors.
 
-**Improvement:** Generate domain reporting packs for `citizen_case` covering statutory, contractual, operational, board, customer, or regulator evidence depending on public accountability, eligibility rules, due process, protected records, transparent case history, equitable service delivery, and statutory reporting. Tie the behavior to `public_sector_case_management_create_citizen_case_workflow` where applicable, and make it visible in `PublicSectorCaseManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Quality-review findings can be sampled against human reviewer outcomes; each finding cites the record element that triggered it; false-positive tuning is tracked in release evidence rather than hidden in prompt changes.
 
-**Acceptance evidence:** Report schemas, redaction rules, traceable metric sources, and approval/export audit events. The evidence should be package-local in `src/pyAppGen/pbcs/public_sector_case_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 38. Domain event taxonomy expansion
 
-### 38. Carbon and resource awareness for Eligibility Determination
+**Justification:** The current emitted events are too coarse for operational replay, integration, and audit across intake, notices, referrals, appeals, and hearings.
 
-**Justification:** Sustainability evidence should be embedded in operations instead of treated as an after-the-fact report.
+**Improvement:** Add domain events for intake received, screening completed, verification requested, evidence accepted, decision issued, notice delivered, referral opened, referral closed, appeal filed, hearing scheduled, hearing decided, and SLA breached.
 
-**Improvement:** Where relevant, attach carbon, energy, water, travel, capacity, compute, or resource-footprint metadata to `eligibility_determination` decisions and batch operations. Tie the behavior to `public_sector_case_management_record_eligibility_determination_workflow` where applicable, and make it visible in `PublicSectorCaseManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Event contracts exist for each new domain milestone; consumers can subscribe without reading internal tables; event naming and payload examples are documented in the package release evidence.
 
-**Acceptance evidence:** Footprint fields, scheduling parameters, exception rules, and dashboards that expose operational tradeoffs. The evidence should be package-local in `src/pyAppGen/pbcs/public_sector_case_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 39. Cross-system event boundaries
 
-### 39. Resilience and offline behavior for Benefit Decision
+**Justification:** The PBC consumes external policy and party updates, but it needs explicit boundaries for what external changes may and may not mutate inside public-sector case processing.
 
-**Justification:** Real operations keep moving during outages; the PBC must preserve correctness when dependencies are unavailable.
+**Improvement:** Define inbound event handlers that can update reference data, party details, or provider qualification status while preventing external systems from silently closing cases, rewriting hearing outcomes, or changing protected evidence.
 
-**Improvement:** Define resilience modes for `benefit_decision`: degraded dependency mode, offline draft capture, delayed event replay, conflict detection, and safe recovery after partial failure. Tie the behavior to `public_sector_case_management_create_citizen_case_workflow` where applicable, and make it visible in `PublicSectorCaseManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Contract tests show what each consumed event may mutate; prohibited external mutations generate exceptions instead of side effects; lineage views trace every derived case change back to the source event.
 
-**Acceptance evidence:** Offline fixtures, replay tests, conflict queues, recovery logs, and user-visible degraded-mode warnings. The evidence should be package-local in `src/pyAppGen/pbcs/public_sector_case_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 40. Replay, idempotency, and dead-letter operations
 
-### 40. Human-in-the-loop automation for Inspection
+**Justification:** Public agencies need confidence that retried events and batch corrections will not duplicate benefits, notices, or hearing actions.
 
-**Justification:** Automation should accelerate citizen cases, eligibility, benefits, inspections, notices, appeals, service levels, and public outcomes while preserving accountability for high-risk decisions.
+**Improvement:** Strengthen event processing with domain-level idempotency keys, replay guards for irreversible actions, and dead-letter tooling that explains the case impact of a failed event before retry.
 
-**Improvement:** Set explicit automation boundaries for `inspection`: auto-approve, auto-reject, suggest-only, require-review, and block-until-evidence states with policy-based routing. Tie the behavior to `public_sector_case_management_record_eligibility_determination_workflow` where applicable, and make it visible in `PublicSectorCaseManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Duplicate-event tests prove no duplicate notices or benefit actions occur; dead-letter entries show affected case IDs and blocked milestones; replay tools require role-based approval for irreversible branches.
 
-**Acceptance evidence:** Automation policy tests, reviewer queues, override reasons, and assistant action audit trails. The evidence should be package-local in `src/pyAppGen/pbcs/public_sector_case_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 41. Operational analytics for backlog and citizen impact
 
-### 41. Package discovery and fit scoring for Notice
+**Justification:** Leadership needs to see more than throughput; they need aging, timeliness, reversal rates, referral completion, and service outcomes by office and program.
 
-**Justification:** Users selecting PBCs need transparent fit reasoning, especially when domains are adjacent but not overlapping.
+**Improvement:** Build operational analytics that combine queue aging, notice timeliness, appeal rates, hearing reversals, referral completion, and citizen-impact indicators into one governed metric model.
 
-**Improvement:** Improve package metadata so composition can explain when `public_sector_case_management` fits a prompt, what entities it owns, what APIs/events it exposes, and what adjacent PBCs it depends on. Tie the behavior to `public_sector_case_management_create_citizen_case_workflow` where applicable, and make it visible in `PublicSectorCaseManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Metrics are defined with business meaning and source projections; dashboards can drill from aggregate trend to affected cases; metric calculations are covered by regression fixtures.
 
-**Acceptance evidence:** Discovery manifests, prompt-selection tests, overlap rationale links, and composition DSL examples. The evidence should be package-local in `src/pyAppGen/pbcs/public_sector_case_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 42. Quality sampling and corrective action tracking
 
-### 42. Configuration deployment pipeline for Appeal
+**Justification:** Public-sector quality management requires repeatable sampling, defect classification, coaching, and proof that corrective actions close the same defect class over time.
 
-**Justification:** Configuration changes can materially alter public sector case management; they need the same discipline as code releases.
+**Improvement:** Add a quality module that samples cases by risk and program, records defect taxonomy, assigns corrective actions, and measures repeat-defect rates after remediation.
 
-**Improvement:** Add configuration promotion for `appeal` across draft, test, approved, active, deprecated, and rollback states with impact analysis before activation. Tie the behavior to `public_sector_case_management_record_eligibility_determination_workflow` where applicable, and make it visible in `PublicSectorCaseManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Sample plans can target high-risk cases or random cohorts; defect findings connect to policy, workflow, or training causes; repeated defects are visible in supervisor and release evidence views.
 
-**Acceptance evidence:** Config diff views, approval workflows, simulation before activation, and rollback tests. The evidence should be package-local in `src/pyAppGen/pbcs/public_sector_case_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 43. Retention, legal hold, and expungement rules
 
-### 43. Workbench command completeness for Service Outcome
+**Justification:** Case files, hearing materials, and referral records follow different retention schedules, and some records must be held or expunged under law.
 
-**Justification:** A PBC does not fully surface its capabilities if users must call hidden APIs for core work.
+**Improvement:** Apply retention schedules by record type and program, support legal holds at case or evidence level, and add expungement workflows that preserve required audit stubs without retaining sealed content.
 
-**Improvement:** Expose every high-value operation for `service_outcome` in the UI: create, validate, approve, simulate, correct, assign, export, retry, close, and audit-proof verification. Tie the behavior to `public_sector_case_management_create_citizen_case_workflow` where applicable, and make it visible in `PublicSectorCaseManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Retention timers can be shown per case artifact; legal holds block deletion and export changes; expungement tests confirm content removal while preserving the required audit trace.
 
-**Acceptance evidence:** UI action coverage tests, permission-aware disabled states, keyboard paths, and assistant handoff links. The evidence should be package-local in `src/pyAppGen/pbcs/public_sector_case_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 44. Release evidence pack for policy and workflow changes
 
-### 44. Document packet and evidence vault for Public Sector Case Management Policy Rule
+**Justification:** Every rule, template, queue, or agent change can affect eligibility and due process, so the package needs release evidence stronger than a passing unit-test summary.
 
-**Justification:** Documents often carry the legal or operational truth behind citizen cases, eligibility, benefits, inspections, notices, appeals, service levels, and public outcomes.
+**Improvement:** Expand `RELEASE_EVIDENCE.md` expectations to require policy diff summaries, affected program inventory, notice regression samples, appeal-impact review, privacy checks, and rollback instructions for every release.
 
-**Improvement:** Create a governed evidence vault for `public_sector_case_management_policy_rule` documents, attachments, source spans, extracted fields, signatures, approvals, and retention labels. Tie the behavior to `public_sector_case_management_record_eligibility_determination_workflow` where applicable, and make it visible in `PublicSectorCaseManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Release evidence bundles contain signed policy diffs, notice previews, workflow regression results, and explicit rollback steps; no release is marked ready without completed evidence for rules, templates, and agent behaviors touched.
 
-**Acceptance evidence:** Evidence models, source-to-field lineage, signature validation, retention policies, and proof exports. The evidence should be package-local in `src/pyAppGen/pbcs/public_sector_case_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 45. Seed data, fixtures, and scenario coverage
 
-### 45. Data correction and amendment history for Public Sector Case Management Runtime Parameter
+**Justification:** Rich domain fixtures are needed to keep the package from regressing back to shallow examples that ignore households, protected cases, appeals, and referrals.
 
-**Justification:** World-class systems correct mistakes without rewriting history or confusing downstream consumers.
+**Improvement:** Expand seed data and test fixtures to cover single-adult, multi-household, emergency, protected-address, reduction, overpayment, appeal, hearing, and multi-referral scenarios.
 
-**Improvement:** Support formal amendments for `public_sector_case_management_runtime_parameter` that preserve original values, correction reason, approving actor, effective date, downstream event impacts, and replay behavior. Tie the behavior to `public_sector_case_management_create_citizen_case_workflow` where applicable, and make it visible in `PublicSectorCaseManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Test fixtures can instantiate realistic end-to-end journeys without manual SQL edits; seed data includes policy versions and office calendars; scenario names match real operational use cases instead of generic placeholders.
 
-**Acceptance evidence:** Amendment tables, correction events, projection replay tests, and side-by-side before/after UI. The evidence should be package-local in `src/pyAppGen/pbcs/public_sector_case_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 46. Accessibility, language access, and readability
 
-### 46. External participant collaboration for Public Sector Case Management Schema Extension
+**Justification:** A public-sector system fails its mission if citizens cannot understand notices or participate in hearings because of language or accessibility gaps.
 
-**Justification:** Many public sector case management workflows require outside parties, but they must not gain direct access to internal tables.
+**Improvement:** Add language preference, interpreter need, alternate-format notice delivery, readability review, and accessibility checks across intake, correspondence, workbench actions, and hearing scheduling.
 
-**Improvement:** Add controlled collaboration portals or API views for external participants related to `public_sector_case_management_schema_extension`, limited to scoped evidence submission, status checks, comments, and dispute responses. Tie the behavior to `public_sector_case_management_record_eligibility_determination_workflow` where applicable, and make it visible in `PublicSectorCaseManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Notices can be rendered in alternate languages and accessible formats; hearing scheduling stores accommodation commitments; accessibility regressions are included in release evidence rather than treated as optional polish.
 
-**Acceptance evidence:** Participant role policies, scoped tokens, submission audit trails, and inbound evidence validation. The evidence should be package-local in `src/pyAppGen/pbcs/public_sector_case_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 47. Security logging and consent traceability
 
-### 47. Advanced dependency freshness scoring for Public Sector Case Management Control Assertion
+**Justification:** Supervisors and auditors need to reconstruct who viewed, changed, exported, or discussed sensitive case information and under what authority.
 
-**Justification:** A record may be valid locally but unsafe if dependency evidence is stale or incomplete.
+**Improvement:** Add security logging that records user, role, purpose, consent basis, record scope, action type, and export destination for sensitive operations across cases, notices, referrals, and hearings.
 
-**Improvement:** Score freshness and reliability of dependencies used by `public_sector_case_management_control_assertion`, including consumed events PolicyChanged, CustomerUpdated, SupplierQualified, referenced projections, configuration versions, and external submissions. Tie the behavior to `public_sector_case_management_create_citizen_case_workflow` where applicable, and make it visible in `PublicSectorCaseManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Sensitive actions appear in searchable audit views; consent-dependent actions fail when consent status is missing or expired; export logs distinguish citizen-authorized sharing from internal processing.
 
-**Acceptance evidence:** Freshness indicators, blocking rules, stale-event simulations, and workbench dependency health panels. The evidence should be package-local in `src/pyAppGen/pbcs/public_sector_case_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 48. Duplicate case and cross-program coordination
 
-### 48. Model governance and explainability for Public Sector Case Management Governed Model
+**Justification:** Agencies routinely receive duplicate applications, separate program enrollments for one household, and cross-program actions that should inform each other without collapsing lawful boundaries.
 
-**Justification:** Governed AI is mandatory for professional-grade automation in Public Sector Case Management.
+**Improvement:** Add duplicate detection and coordination rules that can link related cases, share allowed facts across programs, and prevent double-processing while still preserving program-specific rule and appeal boundaries.
 
-**Improvement:** For every predictive or agentic feature around `public_sector_case_management_governed_model`, record model version, prompt or ruleset version, training/evaluation evidence, confidence, explanation, and human feedback. Tie the behavior to `public_sector_case_management_record_eligibility_determination_workflow` where applicable, and make it visible in `PublicSectorCaseManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Potential duplicates are surfaced before decision issue; linked cases share only approved coordination facts; closing one program does not silently close another unless an explicit rule allows it.
 
-**Acceptance evidence:** Model cards, prompt/version manifests, feedback loops, drift tests, and audit proof for recommendations. The evidence should be package-local in `src/pyAppGen/pbcs/public_sector_case_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 49. Continuity operations for outages and hearing-day disruption
 
-### 49. High-scale partitioning and archival for Citizen Case
+**Justification:** Public service obligations continue through outages, courthouse closures, and disaster events, so the package needs continuity behavior for critical steps.
 
-**Justification:** Better-than-world-class packages must remain operable after years of high-volume domain history.
+**Improvement:** Add continuity procedures for offline intake capture, deferred notice generation, rescheduled hearings, emergency policy overrides, and replay of queued actions after service restoration.
 
-**Improvement:** Plan scale behavior for `citizen_case`: tenant partitioning, archival policies, cold storage, retention-aware search, projection compaction, and large-batch replay. Tie the behavior to `public_sector_case_management_create_citizen_case_workflow` where applicable, and make it visible in `PublicSectorCaseManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Outage simulations show that intake can be captured and reconciled later; hearing disruptions generate citizen-safe reschedule notices; replay after restoration preserves original timestamps and actor attribution.
 
-**Acceptance evidence:** Partition tests, archive/retrieve fixtures, retention enforcement, and replay benchmarks. The evidence should be package-local in `src/pyAppGen/pbcs/public_sector_case_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 50. Go-live exit criteria and production evidence
 
-### 50. Release gate expansion for Eligibility Determination
+**Justification:** A domain-deep backlog needs a concrete definition of done so releases do not ship with unproven due-process, privacy, or operational behavior.
 
-**Justification:** The PBC should not claim domain coverage unless release evidence proves the claim end to end.
+**Improvement:** Define go-live exit criteria for `public_sector_case_management` covering end-to-end scenario pass rates, notice accuracy, SLA instrumentation, privacy controls, fraud referral boundary tests, agent guardrails, event contract validation, and release evidence completeness.
 
-**Improvement:** Expand release gates for `public_sector_case_management` so every schema, service, API, event, handler, UI, rule, parameter, agent skill, seed scenario, and improvement backlog item maps to executable evidence. Tie the behavior to `public_sector_case_management_record_eligibility_determination_workflow` where applicable, and make it visible in `PublicSectorCaseManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Release audit checks, manifest traceability, generated-app smoke tests, and missing-capability blockers. The evidence should be package-local in `src/pyAppGen/pbcs/public_sector_case_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** The package can present a production-readiness report with scenario coverage, policy version inventory, event contract checks, privacy test results, and signed release evidence referencing the exact build and migration set that is being deployed.

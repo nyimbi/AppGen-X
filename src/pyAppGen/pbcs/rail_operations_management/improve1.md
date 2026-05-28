@@ -1,418 +1,261 @@
-# Rail Operations Management PBC Better-Than-World-Class Improvement Backlog
-
-## Purpose
-
-This file identifies, justifies, and describes 50 high-impact improvements for `rail_operations_management`. The backlog is specific to train plans, consists, track windows, yards, crews, incidents, and rail service performance and is intended to move the PBC from release-auditable scaffolding toward complete, specialist-grade domain coverage.
+# Rail Operations Management Improvement Backlog
 
 ## Current Domain Evidence Used
 
-- Stable PBC key: `rail_operations_management`.
-- Domain purpose: Train plans, consists, track windows, yards, crews, incidents, and rail service performance.
-- Owned domain tables: `train_plan`, `consist`, `track_window`, `yard_move`, `crew_assignment`, `rail_incident`, `service_performance`, `rail_operations_management_policy_rule`, `rail_operations_management_runtime_parameter`, `rail_operations_management_schema_extension`, `rail_operations_management_control_assertion`, `rail_operations_management_governed_model`.
-- Public APIs: `POST /train-plans`, `POST /consists`, `POST /track-windows`, `POST /yard-moves`, `POST /crew-assignments`, `GET /rail-operations-management-workbench`.
-- Emitted AppGen-X events: `RailOperationsManagementCreated`, `RailOperationsManagementUpdated`, `RailOperationsManagementApproved`, `RailOperationsManagementExceptionOpened`.
-- Consumed AppGen-X events: `PolicyChanged`, `AuditEventSealed`, `OperationalKpiChanged`.
-- Current standard surfaces include: `train_plan_management`, `rail_operations_management_workflow`, `rail_operations_management_analytics`, `configuration_schema`, `rule_engine`, `parameter_engine`, `owned_schema_migrations_models`, `appgen_x_outbox_inbox_eventing`, `idempotent_handlers`, `retry_dead_letter_evidence`.
-- Current advanced surfaces include: `rail_operations_management_event_sourced_operational_history`, `rail_operations_management_multi_tenant_policy_isolation`, `rail_operations_management_schema_evolution_resilience`, `rail_operations_management_autonomous_anomaly_detection`, `rail_operations_management_semantic_document_instruction_understanding`, `rail_operations_management_predictive_risk_scoring`, `rail_operations_management_counterfactual_scenario_simulation`, `rail_operations_management_cryptographic_audit_proofs`.
-
-## 50 High-Impact Improvements
-
-### 1. Canonical lifecycle state model for Train Plan
-
-**Justification:** This closes shallow CRUD gaps by making every rail operations management transition explainable and testable instead of implicit in free-form status values.
-
-**Improvement:** Define a complete state machine for `train_plan` with explicit draft, validated, blocked, approved, active, suspended, corrected, closed, archived, and reopened states. Tie the behavior to `rail_operations_management_create_train_plan_workflow` where applicable, and make it visible in `RailOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** State-transition tests, invalid-transition fixtures, workbench state badges, and emitted AppGen-X transition events for RailOperationsManagementCreated, RailOperationsManagementUpdated, RailOperationsManagementApproved. The evidence should be package-local in `src/pyAppGen/pbcs/rail_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 2. Domain intake and normalization for Consist
-
-**Justification:** The PBC cannot reach complete domain coverage unless it handles the messy front door of train plans, consists, track windows, yards, crews, incidents, and rail service performance, not only already-clean records.
-
-**Improvement:** Build a typed intake pipeline for `consist` that accepts structured API payloads, document-derived instructions, batch loads, and assistant-generated drafts while normalizing identifiers, dates, units, parties, and jurisdictional context. Tie the behavior to `rail_operations_management_record_consist_workflow` where applicable, and make it visible in `RailOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Golden intake fixtures, rejected-record queues, field-level normalization evidence, and assistant previews before governed datastore mutation. The evidence should be package-local in `src/pyAppGen/pbcs/rail_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 3. Specialist validation rules for Track Window
-
-**Justification:** World-class Rail Operations Management requires rules that domain experts can reason about, version, test, and roll back without code edits.
-
-**Improvement:** Add a domain rule compiler for `track_window` that supports threshold rules, eligibility rules, dependency rules, temporal windows, conflicting-instruction detection, and override justification. Tie the behavior to `rail_operations_management_create_train_plan_workflow` where applicable, and make it visible in `RailOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Rule simulation tests, versioned rule manifests, rule impact reports, and UI rule editors linked to `RAIL_OPERATIONS_MANAGEMENT_DATABASE_URL, RAIL_OPERATIONS_MANAGEMENT_EVENT_TOPIC, RAIL_OPERATIONS_MANAGEMENT_RETRY_LIMIT`. The evidence should be package-local in `src/pyAppGen/pbcs/rail_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 4. Parameter governance and tuning for Yard Move
-
-**Justification:** Parameters are where operations teams tune rail operations management; unbounded constants would make the PBC brittle and unsafe in real deployments.
-
-**Improvement:** Expose bounded runtime parameters for `yard_move` covering risk thresholds, SLA windows, confidence floors, escalation cutoffs, batch sizes, retry limits, and human-confirmation requirements. Tie the behavior to `rail_operations_management_record_consist_workflow` where applicable, and make it visible in `RailOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Parameter schema validation, tenant overrides, approval history, rollback controls, and workbench diff views. The evidence should be package-local in `src/pyAppGen/pbcs/rail_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 5. Deep owned schema expansion for Crew Assignment
-
-**Justification:** A single payload column cannot express the full surface of train plans, consists, track windows, yards, crews, incidents, and rail service performance or prove cross-PBC boundaries are respected.
-
-**Improvement:** Extend the owned schema around `crew_assignment` with normalized child tables for line-level evidence, party roles, approvals, attachments, comments, metrics, exception reasons, and control assertions. Tie the behavior to `rail_operations_management_create_train_plan_workflow` where applicable, and make it visible in `RailOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Migrations, models, relationship tests, schema contract snapshots, and no shared-table access outside the `rail_operations_management_` namespace. The evidence should be package-local in `src/pyAppGen/pbcs/rail_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 6. Event-sourced operational history for Rail Incident
-
-**Justification:** Temporal reconstruction is essential for better-than-world-class auditability and dispute resolution in rail operations management.
-
-**Improvement:** Capture every material mutation of `rail_incident` as immutable AppGen-X events with actor, tenant, command, policy version, idempotency key, before/after summary, and projection checkpoint. Tie the behavior to `rail_operations_management_record_consist_workflow` where applicable, and make it visible in `RailOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Replay tests, projection checksums, event ordering evidence, and point-in-time workbench views. The evidence should be package-local in `src/pyAppGen/pbcs/rail_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 7. Projection and read-model strategy for Service Performance
-
-**Justification:** The workbench should not force users to infer domain truth from raw tables; each projection should answer a real operating question.
-
-**Improvement:** Create purpose-built projections for `service_performance`: operational queue, executive KPI rollup, exception aging, compliance evidence, agent task context, and external dependency health. Tie the behavior to `rail_operations_management_create_train_plan_workflow` where applicable, and make it visible in `RailOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Projection contracts, freshness SLAs, backfill tests, and visible stale-projection warnings. The evidence should be package-local in `src/pyAppGen/pbcs/rail_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 8. Exception taxonomy and remediation for Rail Operations Management Policy Rule
-
-**Justification:** High-value PBCs win on exception throughput; generic “failed” states hide the details operators need.
-
-**Improvement:** Model the full exception taxonomy for `rail_operations_management_policy_rule`, including severity, root cause, blocking dependency, remediation owner, due date, retry eligibility, escalation path, and closure evidence. Tie the behavior to `rail_operations_management_record_consist_workflow` where applicable, and make it visible in `RailOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Exception queues, aging metrics, remediation playbooks, dead-letter linkage, and closure test fixtures for weather or traffic disruption. The evidence should be package-local in `src/pyAppGen/pbcs/rail_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 9. Predictive risk scoring for Rail Operations Management Runtime Parameter
-
-**Justification:** The package should warn users before rail operations management work fails, breaches policy, or creates downstream cost.
-
-**Improvement:** Add predictive risk scoring for `rail_operations_management_runtime_parameter` using domain features from owned tables, consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, rule outcomes, aging, anomaly signals, and historical corrections. Tie the behavior to `rail_operations_management_create_train_plan_workflow` where applicable, and make it visible in `RailOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Feature manifests, score explanations, calibration reports, drift alerts, and tests for low/medium/high-risk scenarios. The evidence should be package-local in `src/pyAppGen/pbcs/rail_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 10. Counterfactual simulation for Rail Operations Management Schema Extension
-
-**Justification:** Advanced users need to ask “what would happen if” before committing changes to live train plans, consists, track windows, yards, crews, incidents, and rail service performance operations.
-
-**Improvement:** Provide scenario simulation for `rail_operations_management_schema_extension`: policy change, capacity constraint, deadline shift, price/rate change, eligibility change, disruption, and manual override outcomes. Tie the behavior to `rail_operations_management_record_consist_workflow` where applicable, and make it visible in `RailOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Simulation APIs, non-mutating sandbox state, comparison reports, and workbench side-by-side scenario panels. The evidence should be package-local in `src/pyAppGen/pbcs/rail_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 11. Autonomous anomaly triage for Rail Operations Management Control Assertion
-
-**Justification:** A world-class PBC should reduce analyst burden without hiding the reasoning behind automated triage.
-
-**Improvement:** Implement anomaly detection for `rail_operations_management_control_assertion` that identifies outliers, duplicate submissions, impossible sequences, stale dependencies, unusual amounts/counts/durations, and contradictory fields. Tie the behavior to `rail_operations_management_create_train_plan_workflow` where applicable, and make it visible in `RailOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Explainable anomaly cards, reviewer feedback loops, false-positive tracking, and suppression governance. The evidence should be package-local in `src/pyAppGen/pbcs/rail_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 12. Semantic document understanding for Rail Operations Management Governed Model
-
-**Justification:** Document-heavy work in Rail Operations Management cannot be complete if the assistant only answers questions and cannot prepare accurate governed changes.
-
-**Improvement:** Train the package assistant to parse domain documents and instructions for `rail_operations_management_governed_model`, extract obligations, dates, parties, quantities, identifiers, and exceptions, then map them to safe draft mutations. Tie the behavior to `rail_operations_management_record_consist_workflow` where applicable, and make it visible in `RailOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Document extraction tests, confidence thresholds, redaction handling, source span citations, and human confirmation workflows. The evidence should be package-local in `src/pyAppGen/pbcs/rail_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 13. Agent-safe CRUD execution for Train Plan
-
-**Justification:** The PBC agent must be a first-class operator but never a hidden bypass around RBAC, rules, or owned datastore boundaries.
-
-**Improvement:** Add a professional chatbot skill for `train_plan` that can create, update, correct, close, and annotate records only through policy-checked commands, approval gates, and previewed diffs. Tie the behavior to `rail_operations_management_create_train_plan_workflow` where applicable, and make it visible in `RailOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Skill manifests, permission tests, preview/confirm flows, blocked-action evidence, and audit events for every assistant mutation. The evidence should be package-local in `src/pyAppGen/pbcs/rail_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 14. Workbench persona coverage for Consist
-
-**Justification:** A generic detail page underserves the domain; each role needs the exact controls and evidence they use daily.
-
-**Improvement:** Design dedicated workbench panels for `consist`: operator queue, supervisor approvals, analyst exceptions, auditor evidence, configuration owner, and agent-assistance review. Tie the behavior to `rail_operations_management_record_consist_workflow` where applicable, and make it visible in `RailOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** UI contract entries, route tests, empty/error/loading states, and permission-aware action availability. The evidence should be package-local in `src/pyAppGen/pbcs/rail_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 15. Cross-PBC dependency contracts for Track Window
-
-**Justification:** Composable packages fail when hidden table coupling enters the domain model.
-
-**Improvement:** Represent dependencies for `track_window` through declared APIs, consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, and projections rather than shared tables, with explicit freshness, ownership, and fallback behavior. Tie the behavior to `rail_operations_management_create_train_plan_workflow` where applicable, and make it visible in `RailOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Dependency manifests, contract tests, stale dependency alerts, and no foreign-table references in generated artifacts. The evidence should be package-local in `src/pyAppGen/pbcs/rail_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 16. API completeness and versioning for Yard Move
-
-**Justification:** Complete domain coverage requires both command and query surfaces, not only happy-path create endpoints.
-
-**Improvement:** Expand APIs beyond POST /train-plans, POST /consists, POST /track-windows to cover search, validation-only commands, simulation, bulk intake, exception closure, evidence export, projection reads, and idempotent corrections. Tie the behavior to `rail_operations_management_record_consist_workflow` where applicable, and make it visible in `RailOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** OpenAPI-style route manifests, backward-compatible version tests, deprecation metadata, and idempotency assertions. The evidence should be package-local in `src/pyAppGen/pbcs/rail_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 17. Typed emitted-event expansion for Crew Assignment
-
-**Justification:** Consumers should understand what happened in Rail Operations Management without parsing opaque payloads.
-
-**Improvement:** Replace generic lifecycle emissions with typed events for each meaningful `crew_assignment` transition, exception, approval, correction, simulation result, and downstream handoff. Tie the behavior to `rail_operations_management_create_train_plan_workflow` where applicable, and make it visible in `RailOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Event schema tests, event examples, compatibility checks, and emitted-event coverage in release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/rail_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 18. Consumed-event handlers for Rail Incident
-
-**Justification:** A PBC is composable only when incoming events affect its own domain state predictably and safely.
-
-**Improvement:** Implement idempotent handlers for consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged that update projections, open dependency exceptions, recalculate risk, and preserve source event lineage. Tie the behavior to `rail_operations_management_record_consist_workflow` where applicable, and make it visible in `RailOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Duplicate-event tests, handler side-effect boundaries, dead-letter fixtures, and lineage links back to source events. The evidence should be package-local in `src/pyAppGen/pbcs/rail_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 19. Retry and dead-letter operations for Service Performance
-
-**Justification:** Dead letters are not just plumbing; they are domain work queues that can block train plans, consists, track windows, yards, crews, incidents, and rail service performance.
-
-**Improvement:** Create operational tools for retrying, quarantining, explaining, and resolving dead-lettered `service_performance` events with max-attempt policy, poison-message detection, and replay safety. Tie the behavior to `rail_operations_management_create_train_plan_workflow` where applicable, and make it visible in `RailOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Dead-letter workbench, retry eligibility tests, replay audit proof, and operator action logs. The evidence should be package-local in `src/pyAppGen/pbcs/rail_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 20. RBAC and attribute policy for Rail Operations Management Policy Rule
-
-**Justification:** High-impact domain operations need finer controls than generic RBAC grants.
-
-**Improvement:** Extend permissions for `rail_operations_management_policy_rule` from coarse read/create/update/admin to action-level and attribute-aware policies based on role, tenant, jurisdiction, monetary/materiality threshold, and exception severity. Tie the behavior to `rail_operations_management_record_consist_workflow` where applicable, and make it visible in `RailOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Permission matrix docs, ABAC policy tests, denied-action UI states, and assistant skill permission checks. The evidence should be package-local in `src/pyAppGen/pbcs/rail_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 21. Continuous control testing for Rail Operations Management Runtime Parameter
-
-**Justification:** Controls should run during operations, not only during release audit or manual review.
-
-**Improvement:** Embed control assertions for `rail_operations_management_runtime_parameter` that continuously test segregation of duties, required approvals, stale exceptions, policy drift, duplicate records, and boundary violations. Tie the behavior to `rail_operations_management_create_train_plan_workflow` where applicable, and make it visible in `RailOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Control dashboards, failing-control events, test fixtures, and release evidence tied to `rail_operations_management_control_assertion` records. The evidence should be package-local in `src/pyAppGen/pbcs/rail_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 22. Cryptographic audit proofing for Rail Operations Management Schema Extension
-
-**Justification:** Better-than-world-class auditability requires proof of integrity, not merely logs stored in mutable tables.
-
-**Improvement:** Hash-chain material `rail_operations_management_schema_extension` decisions, documents, emitted events, and release-evidence snapshots to make tampering visible without exposing sensitive payloads. Tie the behavior to `rail_operations_management_record_consist_workflow` where applicable, and make it visible in `RailOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Proof manifests, verification APIs, redacted proof exports, and audit-ledger handoff events. The evidence should be package-local in `src/pyAppGen/pbcs/rail_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 23. Privacy, consent, and secrecy controls for Rail Operations Management Control Assertion
-
-**Justification:** Complete domain coverage must account for protected data and restricted operational evidence.
-
-**Improvement:** Add field-level privacy classifications for `rail_operations_management_control_assertion`, consent checks, masking rules, retention schedules, legal holds, and assistant redaction policies. Tie the behavior to `rail_operations_management_create_train_plan_workflow` where applicable, and make it visible in `RailOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Retention tests, masked UI snapshots, consent-blocked mutation fixtures, and export controls. The evidence should be package-local in `src/pyAppGen/pbcs/rail_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 24. Multi-tenant operating model for Rail Operations Management Governed Model
-
-**Justification:** The PBC should scale across organizations while preserving independent policy and compliance boundaries.
-
-**Improvement:** Support tenant-specific `rail_operations_management_governed_model` rules, data residency, encryption context, configuration, seed data, and release evidence without allowing cross-tenant leakage. Tie the behavior to `rail_operations_management_record_consist_workflow` where applicable, and make it visible in `RailOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Tenant isolation tests, tenant-scoped parameters, key-rotation evidence, and cross-tenant negative fixtures. The evidence should be package-local in `src/pyAppGen/pbcs/rail_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 25. Schema evolution and extension registry for Train Plan
-
-**Justification:** Domain teams will add fields; the PBC must evolve without breaking APIs, events, or workbench projections.
-
-**Improvement:** Make schema extensions for `train_plan` first-class with compatibility checks, migration previews, projection backfills, field ownership, and rollback metadata. Tie the behavior to `rail_operations_management_create_train_plan_workflow` where applicable, and make it visible in `RailOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Extension registry UI, compatibility tests, migration dry-runs, and backfill release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/rail_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 26. Master data quality gates for Consist
-
-**Justification:** Many rail operations management errors begin as bad reference data; the PBC should catch them before workflow execution.
-
-**Improvement:** Define reference-data contracts for `consist`: canonical codes, parties, locations, classifications, calendars, units, currencies, products, assets, or service categories as relevant to the domain. Tie the behavior to `rail_operations_management_record_consist_workflow` where applicable, and make it visible in `RailOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Reference validation fixtures, stale-code warnings, mapping tables, and dependency freshness indicators. The evidence should be package-local in `src/pyAppGen/pbcs/rail_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 27. Bulk operations and correction workflows for Track Window
-
-**Justification:** Enterprise-scale Rail Operations Management users cannot operate one record at a time.
-
-**Improvement:** Add bulk load, bulk validate, bulk approve, and bulk correction workflows for `track_window` with partial success, row-level errors, resumability, and rollback. Tie the behavior to `rail_operations_management_create_train_plan_workflow` where applicable, and make it visible in `RailOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** CSV/API batch fixtures, resumable job state, row-level audit evidence, and assistant-generated correction suggestions. The evidence should be package-local in `src/pyAppGen/pbcs/rail_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 28. Lifecycle collaboration and tasking for Yard Move
-
-**Justification:** Domain collaboration should live inside the PBC boundary and remain auditable with the record it affects.
-
-**Improvement:** Attach tasks, comments, ownership, due dates, handoffs, and escalation threads to `yard_move` without leaking into external shared task tables. Tie the behavior to `rail_operations_management_record_consist_workflow` where applicable, and make it visible in `RailOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Task tables, comment audit history, notification events, escalation SLAs, and role-specific task queues. The evidence should be package-local in `src/pyAppGen/pbcs/rail_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 29. SLA and service-level governance for Crew Assignment
-
-**Justification:** Users need to know when train plans, consists, track windows, yards, crews, incidents, and rail service performance is late, blocked, or at risk before customer or regulator impact.
-
-**Improvement:** Define SLAs for `crew_assignment` across intake, validation, approval, exception resolution, event handling, downstream projection refresh, and release-evidence generation. Tie the behavior to `rail_operations_management_create_train_plan_workflow` where applicable, and make it visible in `RailOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** SLA breach events, timers, configurable calendars, workbench aging buckets, and tests for pause/resume behavior. The evidence should be package-local in `src/pyAppGen/pbcs/rail_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 30. Operational analytics cockpit for Rail Incident
-
-**Justification:** World-class operations require leading indicators, not only record counts.
-
-**Improvement:** Build analytics for `rail_incident`: throughput, backlog, aging, approval latency, exception rate, risk distribution, automation acceptance, correction rate, and downstream dependency health. Tie the behavior to `rail_operations_management_record_consist_workflow` where applicable, and make it visible in `RailOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Metric definitions, projection tests, drill-through routes, export APIs, and anomaly overlays. The evidence should be package-local in `src/pyAppGen/pbcs/rail_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 31. Decision intelligence and recommendations for Service Performance
-
-**Justification:** The PBC should help expert users decide faster while showing evidence and uncertainty.
-
-**Improvement:** Generate ranked recommendations for `service_performance` such as next best action, likely resolution, required evidence, policy adjustment, staffing/capacity response, or downstream handoff. Tie the behavior to `rail_operations_management_create_train_plan_workflow` where applicable, and make it visible in `RailOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Recommendation explanations, confidence intervals, feedback capture, model governance records, and rejection reasons. The evidence should be package-local in `src/pyAppGen/pbcs/rail_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 32. Quality and completeness scoring for Rail Operations Management Policy Rule
-
-**Justification:** Operators should see whether a record is truly ready, not just technically saved.
-
-**Improvement:** Score each `rail_operations_management_policy_rule` record for completeness, consistency, policy readiness, dependency readiness, evidence sufficiency, and downstream composability. Tie the behavior to `rail_operations_management_record_consist_workflow` where applicable, and make it visible in `RailOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Scoring rules, missing-evidence lists, readiness badges, and blocking criteria in command handlers. The evidence should be package-local in `src/pyAppGen/pbcs/rail_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 33. End-to-end scenario library for Rail Operations Management Runtime Parameter
-
-**Justification:** Release evidence is stronger when every important rail operations management behavior has executable examples.
-
-**Improvement:** Create seeded scenarios for `rail_operations_management_runtime_parameter`: normal flow, urgent path, exception path, corrected path, duplicate path, late event path, and audit export path. Tie the behavior to `rail_operations_management_create_train_plan_workflow` where applicable, and make it visible in `RailOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Scenario seed data, runtime smoke coverage, generated-app fixtures, and story-level workbench screenshots/contracts. The evidence should be package-local in `src/pyAppGen/pbcs/rail_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 34. Domain ontology and terminology model for Rail Operations Management Schema Extension
-
-**Justification:** Precise vocabulary prevents the PBC from misclassifying specialist documents or user instructions.
-
-**Improvement:** Add an ontology for `rail_operations_management_schema_extension` terms, synonyms, classifications, relationships, allowed values, and phrase mappings used by the assistant and UI. Tie the behavior to `rail_operations_management_record_consist_workflow` where applicable, and make it visible in `RailOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Ontology files, assistant parsing tests, UI glossary, and mapping evidence for domain-specific abbreviations. The evidence should be package-local in `src/pyAppGen/pbcs/rail_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 35. Advanced search and investigation for Rail Operations Management Control Assertion
-
-**Justification:** Investigators and operators need fast, explainable retrieval across the whole domain surface.
-
-**Improvement:** Provide search across `rail_operations_management_control_assertion` records, events, documents, exceptions, tasks, comments, and audit proofs with filters for tenant, status, risk, date, party, and dependency. Tie the behavior to `rail_operations_management_create_train_plan_workflow` where applicable, and make it visible in `RailOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Search index contracts, result provenance, permission-filtered queries, and stale-index warnings. The evidence should be package-local in `src/pyAppGen/pbcs/rail_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 36. Reconciliation and closure controls for Rail Operations Management Governed Model
-
-**Justification:** Closure is not complete until the PBC can prove no material domain work remains unresolved.
-
-**Improvement:** Add reconciliation workflows that compare `rail_operations_management_governed_model` state against consumed events, external projections, expected totals/counts, approvals, and release evidence before closure. Tie the behavior to `rail_operations_management_record_consist_workflow` where applicable, and make it visible in `RailOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Reconciliation reports, variance thresholds, closure blockers, and AppGen-X closure events. The evidence should be package-local in `src/pyAppGen/pbcs/rail_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 37. Regulatory and policy reporting for Train Plan
-
-**Justification:** World-class PBCs turn operational evidence into credible reporting without spreadsheet reconstruction.
-
-**Improvement:** Generate domain reporting packs for `train_plan` covering statutory, contractual, operational, board, customer, or regulator evidence depending on real-time movement control, capacity commitments, disruptions, asset readiness, safety windows, route constraints, and operational handoff integrity. Tie the behavior to `rail_operations_management_create_train_plan_workflow` where applicable, and make it visible in `RailOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Report schemas, redaction rules, traceable metric sources, and approval/export audit events. The evidence should be package-local in `src/pyAppGen/pbcs/rail_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 38. Carbon and resource awareness for Consist
-
-**Justification:** Sustainability evidence should be embedded in operations instead of treated as an after-the-fact report.
-
-**Improvement:** Where relevant, attach carbon, energy, water, travel, capacity, compute, or resource-footprint metadata to `consist` decisions and batch operations. Tie the behavior to `rail_operations_management_record_consist_workflow` where applicable, and make it visible in `RailOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Footprint fields, scheduling parameters, exception rules, and dashboards that expose operational tradeoffs. The evidence should be package-local in `src/pyAppGen/pbcs/rail_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 39. Resilience and offline behavior for Track Window
-
-**Justification:** Real operations keep moving during outages; the PBC must preserve correctness when dependencies are unavailable.
-
-**Improvement:** Define resilience modes for `track_window`: degraded dependency mode, offline draft capture, delayed event replay, conflict detection, and safe recovery after partial failure. Tie the behavior to `rail_operations_management_create_train_plan_workflow` where applicable, and make it visible in `RailOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Offline fixtures, replay tests, conflict queues, recovery logs, and user-visible degraded-mode warnings. The evidence should be package-local in `src/pyAppGen/pbcs/rail_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 40. Human-in-the-loop automation for Yard Move
-
-**Justification:** Automation should accelerate train plans, consists, track windows, yards, crews, incidents, and rail service performance while preserving accountability for high-risk decisions.
-
-**Improvement:** Set explicit automation boundaries for `yard_move`: auto-approve, auto-reject, suggest-only, require-review, and block-until-evidence states with policy-based routing. Tie the behavior to `rail_operations_management_record_consist_workflow` where applicable, and make it visible in `RailOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Automation policy tests, reviewer queues, override reasons, and assistant action audit trails. The evidence should be package-local in `src/pyAppGen/pbcs/rail_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 41. Package discovery and fit scoring for Crew Assignment
-
-**Justification:** Users selecting PBCs need transparent fit reasoning, especially when domains are adjacent but not overlapping.
-
-**Improvement:** Improve package metadata so composition can explain when `rail_operations_management` fits a prompt, what entities it owns, what APIs/events it exposes, and what adjacent PBCs it depends on. Tie the behavior to `rail_operations_management_create_train_plan_workflow` where applicable, and make it visible in `RailOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Discovery manifests, prompt-selection tests, overlap rationale links, and composition DSL examples. The evidence should be package-local in `src/pyAppGen/pbcs/rail_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 42. Configuration deployment pipeline for Rail Incident
-
-**Justification:** Configuration changes can materially alter rail operations management; they need the same discipline as code releases.
-
-**Improvement:** Add configuration promotion for `rail_incident` across draft, test, approved, active, deprecated, and rollback states with impact analysis before activation. Tie the behavior to `rail_operations_management_record_consist_workflow` where applicable, and make it visible in `RailOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Config diff views, approval workflows, simulation before activation, and rollback tests. The evidence should be package-local in `src/pyAppGen/pbcs/rail_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 43. Workbench command completeness for Service Performance
-
-**Justification:** A PBC does not fully surface its capabilities if users must call hidden APIs for core work.
-
-**Improvement:** Expose every high-value operation for `service_performance` in the UI: create, validate, approve, simulate, correct, assign, export, retry, close, and audit-proof verification. Tie the behavior to `rail_operations_management_create_train_plan_workflow` where applicable, and make it visible in `RailOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** UI action coverage tests, permission-aware disabled states, keyboard paths, and assistant handoff links. The evidence should be package-local in `src/pyAppGen/pbcs/rail_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 44. Document packet and evidence vault for Rail Operations Management Policy Rule
-
-**Justification:** Documents often carry the legal or operational truth behind train plans, consists, track windows, yards, crews, incidents, and rail service performance.
-
-**Improvement:** Create a governed evidence vault for `rail_operations_management_policy_rule` documents, attachments, source spans, extracted fields, signatures, approvals, and retention labels. Tie the behavior to `rail_operations_management_record_consist_workflow` where applicable, and make it visible in `RailOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Evidence models, source-to-field lineage, signature validation, retention policies, and proof exports. The evidence should be package-local in `src/pyAppGen/pbcs/rail_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 45. Data correction and amendment history for Rail Operations Management Runtime Parameter
-
-**Justification:** World-class systems correct mistakes without rewriting history or confusing downstream consumers.
-
-**Improvement:** Support formal amendments for `rail_operations_management_runtime_parameter` that preserve original values, correction reason, approving actor, effective date, downstream event impacts, and replay behavior. Tie the behavior to `rail_operations_management_create_train_plan_workflow` where applicable, and make it visible in `RailOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Amendment tables, correction events, projection replay tests, and side-by-side before/after UI. The evidence should be package-local in `src/pyAppGen/pbcs/rail_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 46. External participant collaboration for Rail Operations Management Schema Extension
-
-**Justification:** Many rail operations management workflows require outside parties, but they must not gain direct access to internal tables.
-
-**Improvement:** Add controlled collaboration portals or API views for external participants related to `rail_operations_management_schema_extension`, limited to scoped evidence submission, status checks, comments, and dispute responses. Tie the behavior to `rail_operations_management_record_consist_workflow` where applicable, and make it visible in `RailOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Participant role policies, scoped tokens, submission audit trails, and inbound evidence validation. The evidence should be package-local in `src/pyAppGen/pbcs/rail_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 47. Advanced dependency freshness scoring for Rail Operations Management Control Assertion
-
-**Justification:** A record may be valid locally but unsafe if dependency evidence is stale or incomplete.
-
-**Improvement:** Score freshness and reliability of dependencies used by `rail_operations_management_control_assertion`, including consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, referenced projections, configuration versions, and external submissions. Tie the behavior to `rail_operations_management_create_train_plan_workflow` where applicable, and make it visible in `RailOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Freshness indicators, blocking rules, stale-event simulations, and workbench dependency health panels. The evidence should be package-local in `src/pyAppGen/pbcs/rail_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 48. Model governance and explainability for Rail Operations Management Governed Model
-
-**Justification:** Governed AI is mandatory for professional-grade automation in Rail Operations Management.
-
-**Improvement:** For every predictive or agentic feature around `rail_operations_management_governed_model`, record model version, prompt or ruleset version, training/evaluation evidence, confidence, explanation, and human feedback. Tie the behavior to `rail_operations_management_record_consist_workflow` where applicable, and make it visible in `RailOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Model cards, prompt/version manifests, feedback loops, drift tests, and audit proof for recommendations. The evidence should be package-local in `src/pyAppGen/pbcs/rail_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 49. High-scale partitioning and archival for Train Plan
-
-**Justification:** Better-than-world-class packages must remain operable after years of high-volume domain history.
-
-**Improvement:** Plan scale behavior for `train_plan`: tenant partitioning, archival policies, cold storage, retention-aware search, projection compaction, and large-batch replay. Tie the behavior to `rail_operations_management_create_train_plan_workflow` where applicable, and make it visible in `RailOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Partition tests, archive/retrieve fixtures, retention enforcement, and replay benchmarks. The evidence should be package-local in `src/pyAppGen/pbcs/rail_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 50. Release gate expansion for Consist
-
-**Justification:** The PBC should not claim domain coverage unless release evidence proves the claim end to end.
-
-**Improvement:** Expand release gates for `rail_operations_management` so every schema, service, API, event, handler, UI, rule, parameter, agent skill, seed scenario, and improvement backlog item maps to executable evidence. Tie the behavior to `rail_operations_management_record_consist_workflow` where applicable, and make it visible in `RailOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Release audit checks, manifest traceability, generated-app smoke tests, and missing-capability blockers. The evidence should be package-local in `src/pyAppGen/pbcs/rail_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+- Manifest key: `rail_operations_management`.
+- Manifest description: train plans, consists, track windows, yards, crews, incidents, and rail service performance.
+- Existing APIs in scope: `POST /train-plans`, `POST /consists`, `POST /track-windows`, `POST /yard-moves`, `POST /crew-assignments`, and `GET /rail-operations-management-workbench`.
+- Existing tables in scope: `train_plan`, `consist`, `track_window`, `yard_move`, `crew_assignment`, `rail_incident`, `service_performance`, `rail_operations_management_policy_rule`, `rail_operations_management_runtime_parameter`, `rail_operations_management_schema_extension`, `rail_operations_management_control_assertion`, and `rail_operations_management_governed_model`.
+- Existing emitted events in scope: `RailOperationsManagementCreated`, `RailOperationsManagementUpdated`, `RailOperationsManagementApproved`, and `RailOperationsManagementExceptionOpened`.
+- Existing consumed events in scope: `PolicyChanged`, `AuditEventSealed`, and `OperationalKpiChanged`.
+- Existing UI fragments in scope: `RailOperationsManagementWorkbench`, `RailOperationsManagementDetail`, and `RailOperationsManagementAssistantPanel`.
+
+### 1. Train graph and pathing baseline
+**Justification:** A train plan is only operationally credible if every planned movement is anchored to a line, direction, junction path, and allowable route rather than a loose origin-destination record.
+**Improvement:** Extend `train_plan` to store route graph references, line segments, running direction, ruling gradients, loop availability, and alternative paths so planners can distinguish preferred paths from diversionary paths before the day-of-operation.
+**Acceptance evidence:** Schema and API examples show route graph identifiers on `POST /train-plans`, validation rejects impossible segment orderings, and the workbench renders the planned path with primary and fallback routes.
+
+### 2. Public timetable versus operating timetable separation
+**Justification:** Passenger service recovery and freight prioritization break down when the same timetable field is used for public promises, internal pathing, and control-office working times.
+**Improvement:** Add distinct timetable layers for published times, working timetable times, and control-adjusted times, including validity dates, service class, and reason codes for divergence between what passengers see and what dispatch uses.
+**Acceptance evidence:** `train_plan` examples carry all three timetable layers, UI views let operators compare them side by side, and tests prove public times cannot be silently overwritten by control edits.
+
+### 3. Headway and junction conflict validation
+**Justification:** Train planning without headway rules, overlap clearance, and junction sequencing checks produces plans that look valid in CRUD terms but fail in real signaling territory.
+**Improvement:** Add timetable validation rules that enforce minimum headway by signaling section, junction margins, platform reoccupation intervals, and single-line token occupancy so planners see conflicts before approval.
+**Acceptance evidence:** Conflict fixtures demonstrate rejected overtakes, flat-junction clashes, and single-line meets, with the assistant and workbench showing exact blocking sections and conflict times.
+
+### 4. Rolling stock consist version history
+**Justification:** Consists change because of failures, late arrivals, and short formations, and operators need a durable history of what formation was planned, accepted, and actually dispatched.
+**Improvement:** Turn `consist` into a versioned structure that records locomotive class, vehicle order, brake type, coupler compatibility, and change reason for each formation revision.
+**Acceptance evidence:** `POST /consists` examples show explicit revision numbers, the detail page shows side-by-side formation diffs, and audit history reconstructs the consist active at departure time.
+
+### 5. Rolling stock restriction matching
+**Justification:** A valid consist must be compatible with route electrification, axle load, platform length, train protection equipment, and loading gauge, not just with the service code.
+**Improvement:** Add rule-engine checks that match each consist against traction availability, train heating or shore supply needs, ETCS or ATP fitment, maximum trailing load, and route class restrictions.
+**Acceptance evidence:** Validation evidence shows rejected diesel-on-electric-only paths, overlength passenger formations, and overweight freight consists, with rule outputs pointing to the exact restriction that failed.
+
+### 6. Crew district and boundary handoff model
+**Justification:** Crew assignments are domain-deep only when the system understands depots, signing-on points, route knowledge districts, and mandatory relief boundaries.
+**Improvement:** Expand `crew_assignment` to model driver and conductor districts, handover stations, taxi or van links, relief windows, and which crew leg owns the train between each boundary point.
+**Acceptance evidence:** A sample service crossing multiple districts shows legal handoffs in the UI, the API rejects assignments that cross a route-knowledge boundary without relief, and evidence traces the owning crew by segment.
+
+### 7. Hours-of-service and fatigue legality
+**Justification:** Crew legality is a safety boundary, and rail control cannot rely on manual spreadsheets to catch excessive duty lengths, missed rest, or night-shift accumulation.
+**Improvement:** Add rules for sign-on, preparation time, route time, relief time, maximum continuous driving, minimum rest, meal break handling, and fatigue escalation thresholds by crew role.
+**Acceptance evidence:** Tests cover late-running extensions, rescue duties, and relief failures, while the workbench shows remaining legal time and blocks new assignments once thresholds are crossed.
+
+### 8. Dispatch movement authority board
+**Justification:** Dispatchers need a single operational board that shows which trains are planned, ready, signaled, departed, delayed, held, or terminated instead of hunting across separate train and incident records.
+**Improvement:** Build a dispatch board projection that combines `train_plan`, `consist`, `crew_assignment`, `track_window`, and `rail_incident` into movement authority states with train-ready checks and hold reasons.
+**Acceptance evidence:** `GET /rail-operations-management-workbench` returns dispatch-board data, state transitions are evented, and UI filters allow controllers to view trains awaiting path, crew, stock, or possession clearance.
+
+### 9. Track possession and engineering window integration
+**Justification:** A train plan is not executable unless it knows where engineering possessions, line blocks, and worksite limits intersect the path and planned passage times.
+**Improvement:** Expand `track_window` from a generic window table into possession records carrying section limits, blocked tracks, worksite authority, isolation status, pilotman requirements, and affected timetable paths.
+**Acceptance evidence:** Possession examples show exact milepost or signal limits, planning validation flags trains through blocked sections, and the workbench can list every affected service by possession window.
+
+### 10. Temporary speed restriction handling
+**Justification:** Control offices recover service differently when delay comes from a possession closure versus a temporary speed restriction, so the timetable model must represent both.
+**Improvement:** Add temporary speed restriction objects tied to route sections, effective times, maximum allowed speed, and reason codes, then use them to recompute section running times and knock-on delay exposure.
+**Acceptance evidence:** Scenario tests show revised running times under TSRs, dispatch views highlight trains affected in the next operating horizon, and release evidence contains rule outputs for recalculated timings.
+
+### 11. Signaling and block occupancy constraints
+**Justification:** Dispatch decisions must respect block section occupancy, overlap release, approach locking, and single-line staff or token rules, not just timetable arithmetic.
+**Improvement:** Introduce signaling-constraint metadata in planning and dispatch projections so a controller sees when a planned move is blocked by occupied sections, overlap protection, or direction-of-traffic restrictions.
+**Acceptance evidence:** Simulations demonstrate blocked dispatch where signaling clearance is impossible, UI cards cite the signaling constraint, and event history captures when the block condition cleared.
+
+### 12. Station call and skip-stop modeling
+**Justification:** Passenger recovery frequently depends on adding, dropping, or reordering station calls, and freight services may have crew or traffic stops that should not be treated like public station calls.
+**Improvement:** Model each station call with arrival, departure, dwell, call type, platform preference, commercial stop flag, operational stop flag, and skip-stop authority so dispatch and passenger service views stay aligned.
+**Acceptance evidence:** The plan detail shows ordered station calls with reasons for omitted stops, validation catches impossible dwell or turn-round times, and service-recovery actions can selectively skip calls with audit evidence.
+
+### 13. Platform occupation and turnback logic
+**Justification:** Terminal congestion and turnback failures are major sources of delay, and platform conflicts must be surfaced before controllers improvise unsafe or unworkable reversals.
+**Improvement:** Add platform occupation intervals, minimum platform reoccupation gaps, shunt release times, cleaning or catering windows, and turnback dependencies between arriving and departing services.
+**Acceptance evidence:** Conflict fixtures show terminal throat and platform clashes, the workbench timeline displays overlapping occupations, and recovery simulations prove revised turnbacks remain feasible.
+
+### 14. Yard move route and authority control
+**Justification:** Yard moves are not generic logistics steps; they involve shunt routes, hand points, protected zones, and limits of authority that differ from mainline dispatch.
+**Improvement:** Expand `yard_move` to capture origin track, destination track, route path, foul-point protection, point-set requirements, propelling movement status, and supervising signaller or yardmaster.
+**Acceptance evidence:** Yard-move records show route detail rather than free text, conflict checks reject simultaneous occupation of the same ladder or neck, and the yard UI displays active shunts with authority limits.
+
+### 15. Last-mile shunt safety controls
+**Justification:** Low-speed yard work still creates high-severity risk because of hand signals, personnel on track, and rolling stock split or join operations.
+**Improvement:** Add safety checklists for ground staff confirmation, radio channel assignment, hand-signaller presence, brake continuity confirmation, and propelling movement limits before a yard move can start.
+**Acceptance evidence:** Safety-critical `yard_move` commands require explicit confirmations, failed confirmations open `RailOperationsManagementExceptionOpened`, and release evidence includes completed checklist samples.
+
+### 16. Freight train make-up and tonnage balance
+**Justification:** Freight recovery depends on knowing trailing tonnage, brake force, hazardous load position, wagon order, and route limits, not just whether a train number exists.
+**Improvement:** Add freight-specific consist logic for wagon order, tonnage by vehicle, hazardous commodity segregation, brake percentage, train length, trailing load by route section, and load-ready status.
+**Acceptance evidence:** Freight consist scenarios reject overweight and badly marshalled trains, the UI shows tonnage and brake summaries, and incident review can reconstruct the exact make-up at departure.
+
+### 17. Passenger formation swap management
+**Justification:** Passenger fleets often swap formations at short notice, and the system must track capacity loss, dooring differences, accessibility impacts, and platform fit.
+**Improvement:** Add passenger-formation swap workflows that preserve seat count, accessibility spaces, selective door operation needs, and dispatch consequences when a planned unit or coach set is replaced.
+**Acceptance evidence:** Formation swap events link old and new consists, passenger impact appears on service detail pages, and acceptance tests show accurate capacity and platform-fit recalculation.
+
+### 18. Passenger service recovery playbooks
+**Justification:** Passenger disruption handling needs structured playbooks for short turns, skip-stops, split routes, and bus bridges rather than ad hoc notes in incident records.
+**Improvement:** Add recovery templates tied to `rail_incident` and `train_plan` that can generate revised service patterns, passenger-facing call changes, alternative stock plans, and required approvals.
+**Acceptance evidence:** Recovery scenarios show a controller selecting a playbook and producing revised train plans, call changes, and approval evidence, with every generated action traceable in event history.
+
+### 19. Freight service recovery and path re-slotting
+**Justification:** Freight recovery has different priorities from passenger recovery, including terminal slots, customer cut-offs, wagon connections, and pathing around passenger peaks.
+**Improvement:** Add freight re-slotting tools that score alternative departure paths, yard hold options, re-marshalling needs, and customer-impact windows when a freight service misses its planned slot.
+**Acceptance evidence:** Simulated late-freight cases produce ranked alternatives, the decision record shows why a path was selected, and service-performance projections capture cut-off protection or breach.
+
+### 20. Delay attribution taxonomy
+**Justification:** Delay data is only useful if planners can separate primary cause, reactionary cause, and shared-contributor effects across infrastructure, operator, rolling stock, crew, and external events.
+**Improvement:** Extend `service_performance` and `rail_incident` with attribution categories, subcodes, reactionary links, causation confidence, and source evidence down to station-call or section-run granularity.
+**Acceptance evidence:** Delay reports can roll up by category and subcode, linked incidents show primary versus reactionary delay, and audit evidence traces each attribution decision back to operational facts.
+
+### 21. Incident command timeline
+**Justification:** Major incidents evolve through reports, site protection, service decisions, and recovery milestones, and operators need one authoritative chronology rather than scattered comments.
+**Improvement:** Turn `rail_incident` into a command timeline with detection time, first protection, control escalation, site attendance, recovery estimate, partial reopening, and full closure milestones.
+**Acceptance evidence:** Incident detail pages show ordered milestone cards, replay tests reconstruct the same timeline from events, and unresolved milestones stay visible on the dispatch board until cleared.
+
+### 22. Safety-critical near-miss evidence
+**Justification:** Near misses, SPAD-adjacent cases, wrong-route events, and worker-protection breaches demand stronger evidence preservation than ordinary service delays.
+**Improvement:** Add a safety-critical incident subtype with protected attachments, witness roles, signal or route identifiers, affected trains, track-worker protection status, and mandatory review workflow.
+**Acceptance evidence:** Safety incidents require higher permissions, the system records sealed evidence references after `AuditEventSealed`, and release evidence demonstrates immutable handling of sensitive incident data.
+
+### 23. Weather and environmental operating restrictions
+**Justification:** Heat, flooding, leaf fall, wind, and visibility restrictions change safe speeds, traction limits, and route availability, so they belong inside operations planning instead of outside memos.
+**Improvement:** Add environmental restriction records that can lower line speeds, ban specific rolling stock, require pilot working, or cap train length or weight by route and time band.
+**Acceptance evidence:** Weather-driven restrictions feed planning validation, dispatch views show active environmental controls, and scenario tests prove train timing and route eligibility adjust when restrictions apply.
+
+### 24. Resource triage across stock, crew, and infrastructure
+**Justification:** Dispatchers need to see which shortage is constraining service recovery: no stock, no legal crew, no route, no platform, or no path.
+**Improvement:** Build a triage view that scores each planned service on route availability, consist readiness, crew legality, station platform availability, and possession conflict so the bottleneck is explicit.
+**Acceptance evidence:** The workbench ranks constrained services by bottleneck type, triage scores update after relevant events, and tests show the top blocker changes correctly as constraints clear.
+
+### 25. Level crossing and line block coordination
+**Justification:** Certain routes depend on local crossing attendants, manual block releases, or line block clearances that are operationally different from pure signaling logic.
+**Improvement:** Add route constraints for attended crossings, manual release points, line-block authorities, and local protection dependencies that must be satisfied before a dispatch move can proceed.
+**Acceptance evidence:** Dispatch simulations reject moves lacking crossing or line-block clearance, the detail page shows which local authority is outstanding, and event evidence records when the clearance was granted.
+
+### 26. Terminal throat and platform-capacity management
+**Justification:** Busy terminals fail first at throats, scissors crossovers, and platform groups, so service planning must include these choke points explicitly.
+**Improvement:** Add terminal-capacity models for throat occupancy, crossover conflicts, platform groups, and approach-release sequencing to prevent infeasible turnbacks and stacked arrivals.
+**Acceptance evidence:** Capacity warnings appear before approval, terminal views show throat and platform contention windows, and recovery simulations demonstrate whether proposed resequencing actually fits.
+
+### 27. Maintenance-window negotiation
+**Justification:** Engineering access and traffic flow compete for the same infrastructure, and the package should support negotiated possessions rather than all-or-nothing closures.
+**Improvement:** Extend `track_window` with negotiation states, partial-section availability, handback milestones, and conditional release rules so engineering and operations can stage work around train priorities.
+**Acceptance evidence:** Possession records show requested, negotiated, confirmed, and handed-back states, conflict reports list trains affected by each negotiation option, and approvals capture who accepted the compromise.
+
+### 28. Interline and cross-boundary handover
+**Justification:** Rail services often cross operator, region, or control-area boundaries, and handover quality determines whether downstream controllers inherit good data or surprises.
+**Improvement:** Add control-boundary handover packets covering train state, consist state, delay status, incident context, and outstanding restrictions whenever a service passes to another desk or operator.
+**Acceptance evidence:** Handover records are evented, the receiving boundary can acknowledge or reject incomplete packets, and the audit trail shows the full train state handed over at each boundary.
+
+### 29. Event-sourced train movement history
+**Justification:** Performance analysis and incident review require a durable record of planned, actual, and amended movement times at each operational point.
+**Improvement:** Add event-sourced train movement records for departures, arrivals, passing times, platform changes, station-call amendments, and train-graph path changes linked back to `train_plan`.
+**Acceptance evidence:** Replay tests reconstruct a train's actual journey, service-performance reports derive from event history instead of mutable columns alone, and operators can view every timing change by event order.
+
+### 30. Predictive late running and missed-connection risk
+**Justification:** Controllers need forward-looking risk, not just current delay minutes, especially where passenger connections or freight terminal slots are fragile.
+**Improvement:** Use `service_performance`, station-call history, environmental restrictions, and active incidents to forecast late running, missed passenger connections, and terminal slot breaches over the next operating horizon.
+**Acceptance evidence:** Risk cards show predicted delay bands and key drivers, model outputs are calibrated against recent events, and controllers can trace each prediction back to observable operating inputs.
+
+### 31. Counterfactual dispatch simulation
+**Justification:** Service recovery choices should be tested before they are committed, especially when alternatives involve rerouting, skip-stopping, short-turning, or holding freight.
+**Improvement:** Add simulation tools that compare multiple dispatch interventions against line capacity, crew legality, station occupancy, passenger call coverage, and freight cut-off impact.
+**Acceptance evidence:** A controller can run side-by-side scenarios without mutating live records, each scenario returns quantified impacts, and accepted decisions link the chosen scenario to the resulting live changes.
+
+### 32. Station operations timeline UI
+**Justification:** Platform staff and passenger operations teams need a local view of arriving, dwelling, departing, and platform-changed services at each station.
+**Improvement:** Create a station timeline in `RailOperationsManagementWorkbench` showing station calls, platform allocations, dwell variance, missed calls, crowd-risk flags, and immediate turnaround dependencies.
+**Acceptance evidence:** Station views filter by location and time horizon, platform changes and skipped calls are highlighted, and UI tests confirm operators can trace a disrupted platform sequence without opening raw records.
+
+### 33. Corridor dispatcher UI
+**Justification:** Dispatchers need a corridor-first operational picture rather than a generic list page if they are to manage junctions, headways, and possessions effectively.
+**Improvement:** Add a corridor board with line diagrams, active train order, conflicting movements, possession overlays, and train-ready blockers so corridor dispatch can work directly from the package.
+**Acceptance evidence:** Workbench routes support corridor selection, live corridor cards explain why a train cannot yet move, and screenshot evidence shows line diagrams aligned with current train sequence data.
+
+### 34. Yardmaster UI
+**Justification:** Yard operations have different mental models from mainline dispatch and need track occupancy, rake position, and shunt conflict visibility.
+**Improvement:** Add a yardmaster workspace that shows receiving roads, departure roads, locomotive positions, planned shunts, blocked points, and unsafe route conflicts for each yard area.
+**Acceptance evidence:** Yard screens show track occupancy by road, active shunt authority by movement, and validation prevents two planned moves from fouling the same road at the same time.
+
+### 35. Incident commander UI
+**Justification:** Incident handling needs dedicated views for chronology, impacted services, protection state, and recovery options rather than overloading the generic detail screen.
+**Improvement:** Build an incident command view with milestone timeline, affected train list, service recovery candidates, possession implications, attachment inventory, and escalation status.
+**Acceptance evidence:** Incident detail routes show command-specific widgets, major incidents list all impacted trains and restrictions, and UI tests prove no critical incident action is hidden behind generic forms.
+
+### 36. Release evidence for safe timetable and dispatch changes
+**Justification:** Rail operations changes need release proof that rules, simulations, and regressions were checked before new planning or dispatch logic reaches users.
+**Improvement:** Expand `RELEASE_EVIDENCE.md` expectations to include timetable-conflict regression results, signaling constraint tests, possession overlap checks, yard safety checklist verification, and incident replay integrity.
+**Acceptance evidence:** Release packages contain explicit rail-operational test outputs, evidence links to event schemas and UI screenshots, and a reviewer can prove the release covered planning, dispatch, yard, and incident paths.
+
+### 37. Agent skill for timetable amendment intake
+**Justification:** Control offices receive amendment instructions in notices, circulars, and free text, and the assistant should convert them into safe draft timetable changes instead of plain summaries.
+**Improvement:** Add an assistant skill that extracts amended times, affected trains, station-call changes, route restrictions, and validity windows from documents and prepares draft `train_plan` amendments with citations.
+**Acceptance evidence:** Assistant previews show source spans for every proposed change, low-confidence extractions stay in review, and accepted drafts become governed commands rather than direct database edits.
+
+### 38. Agent skill for consist repair suggestions
+**Justification:** When rolling stock fails, operators need practical recovery options such as short formation, stock swap, or train cancellation support under time pressure.
+**Improvement:** Add a skill that analyzes unavailable vehicles, depot stock, route restrictions, and service obligations to propose valid consist substitutions and downstream passenger or freight impact.
+**Acceptance evidence:** Skill outputs rank alternatives with operational tradeoffs, blocked options cite the restriction that failed, and accepted proposals generate auditable consist revisions.
+
+### 39. Agent skill for incident summarization and handover
+**Justification:** Shift handover quality falls when incident summaries are manual and inconsistent, especially across long disruptions with multiple partial recoveries.
+**Improvement:** Add a handover skill that produces structured incident summaries covering chronology, protection state, trains still affected, next decision points, and unresolved safety conditions.
+**Acceptance evidence:** Shift handover summaries reference event and attachment sources, supervisors can compare outgoing and incoming handover packets, and no summary is sent without human review when safety-critical flags are present.
+
+### 40. Expanded rail-operational event catalog
+**Justification:** The current generic event names do not convey whether the package approved a timetable change, opened a safety incident, or reassigned a consist.
+**Improvement:** Add typed emitted events for train-plan validated, station-call changed, consist revised, crew handoff blocked, possession confirmed, yard move authorized, incident escalated, and recovery plan accepted.
+**Acceptance evidence:** Event schemas and examples are published beside the package, consumers can subscribe to specific operational changes without payload guessing, and compatibility tests protect older subscribers.
+
+### 41. Consumed-event handling and freshness checks
+**Justification:** External policy and KPI events should change rail behavior only through traceable, idempotent handlers with explicit staleness detection.
+**Improvement:** Use `PolicyChanged`, `AuditEventSealed`, and `OperationalKpiChanged` to refresh planning rules, seal evidence states, and update service-performance thresholds while recording source event lineage and freshness age.
+**Acceptance evidence:** Duplicate and out-of-order event tests pass, stale-source warnings are visible in the workbench, and every derived change links back to the consumed event that triggered it.
+
+### 42. Release evidence for safety-critical incident handling
+**Justification:** Incident workflows deserve their own release proof because service-delay tests alone do not show that safety-sensitive branches still behave correctly.
+**Improvement:** Require release evidence for safety-critical incident creation, escalation, evidence sealing, restricted-permission viewing, and closure with retained chronology.
+**Acceptance evidence:** Release artifacts include incident workflow traces, permission test output, sealed evidence references, and regression results for major-incident UI and event replay paths.
+
+### 43. Synthetic scenario test pack
+**Justification:** Rail operations quality improves when the package is tested against plausible operating days, not just isolated unit records.
+**Improvement:** Add packaged scenarios for commuter peak disruption, freight path squeeze, station overrun, failed unit swap, overrun possession, terminal congestion, and wrong-side crew relief.
+**Acceptance evidence:** The scenario suite runs end to end, each scenario exercises multiple tables and events, and outputs show whether planning, dispatch, yard, and incident projections remain internally consistent.
+
+### 44. Policy and parameter workbench for rail rules
+**Justification:** Controllers and planners need to see which operational rules are active without reading raw policy tables or code.
+**Improvement:** Build a policy workbench for `rail_operations_management_policy_rule` and `rail_operations_management_runtime_parameter` covering headway thresholds, dispatch priorities, fatigue rules, possession margins, and recovery approval gates.
+**Acceptance evidence:** Users can inspect active rule versions and effective dates, change previews show operational impact before approval, and audit history records who changed each live rule and why.
+
+### 45. Richer rail data model primitives
+**Justification:** Domain depth depends on naming the real objects of operation such as train IDs, service IDs, block sections, platforms, depots, yards, and control areas.
+**Improvement:** Expand schemas with first-class identifiers for reporting number, service code, consist code, control area, route section, platform, yard road, depot, and incident location so records stop relying on ambiguous text fields.
+**Acceptance evidence:** API payloads use typed identifiers, search and filtering work on those primitives, and migration evidence shows legacy free text mapped into controlled fields without data loss.
+
+### 46. Multi-tenant operating rule isolation
+**Justification:** Different rail operators, infrastructure managers, and control regions may share software but not dispatch rules, crew limits, or evidence access.
+**Improvement:** Enforce tenant-scoped rule sets, route maps, rolling-stock catalogs, control areas, and evidence retention policies so no operator can see or execute another operator's rail decisions.
+**Acceptance evidence:** Isolation tests prove tenant-specific views and rules, cross-tenant access is denied for incidents and dispatch boards, and release evidence includes negative tests for tenant leakage.
+
+### 47. Dead-letter, replay, and operational recovery tooling
+**Justification:** Event failures are operational incidents when they hide train-state, possession, or incident changes from the workbench.
+**Improvement:** Add dead-letter queues and replay tools with domain-specific explanations so operators can distinguish harmless duplicates from missing movement, crew, or incident updates.
+**Acceptance evidence:** The workbench exposes dead-letter reason, replay eligibility, and impacted train or incident context, with test fixtures proving safe replay and poison-message quarantine behavior.
+
+### 48. Carbon and energy-aware dispatch choices
+**Justification:** The manifest already signals carbon awareness, and rail control should use that capability in ways that respect punctuality, safety, and freight or passenger commitments.
+**Improvement:** Add optional energy and carbon scoring for pathing and recovery decisions, including diesel substitution, empty-stock balancing, regenerative-braking opportunity, and unnecessary yard repositioning.
+**Acceptance evidence:** Dispatch simulations can compare energy and punctuality tradeoffs, the scoring model is visible but not mandatory for safety-critical moves, and release evidence shows the feature never bypasses operational rules.
+
+### 49. Continuous control testing for safety boundaries
+**Justification:** Rail safety and control boundaries should be monitored continuously, not only during audits or after a bad dispatch decision.
+**Improvement:** Use `rail_operations_management_control_assertion` to run continuous checks for crew legality, route restriction breaches, unauthorized timetable edits, possession overlap, missing evidence seals, and unreviewed safety incidents.
+**Acceptance evidence:** Failing controls raise visible exceptions, control histories show pass or fail over time, and release evidence includes the latest control-run results for the modified package version.
+
+### 50. Go-live readiness scorecard
+**Justification:** A rail package should not be considered ready on the strength of CRUD completeness alone; it needs explicit proof across planning, dispatch, recovery, safety, UI, and eventing.
+**Improvement:** Add a readiness scorecard that gates release on train-plan validation coverage, dispatch-board fidelity, consist and crew legality, possession integration, incident chronology completeness, agent-skill guardrails, and event-contract verification.
+**Acceptance evidence:** The package ships with a scored release checklist, each score links to concrete evidence artifacts, and the final release report states whether `rail_operations_management` is fit for controlled rollout.

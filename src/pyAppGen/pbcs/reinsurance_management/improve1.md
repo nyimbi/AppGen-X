@@ -1,418 +1,416 @@
-# Reinsurance Management PBC Better-Than-World-Class Improvement Backlog
+# Reinsurance Management PBC Manual Improvement Backlog
 
 ## Purpose
 
-This file identifies, justifies, and describes 50 high-impact improvements for `reinsurance_management`. The backlog is specific to treaties, facultative placements, cessions, recoverables, bordereaux, claims recoveries, and exposure and is intended to move the PBC from release-auditable scaffolding toward complete, specialist-grade domain coverage.
+This hand-crafted backlog replaces generic roadmap text for `reinsurance_management` with reinsurance-specific improvements for treaties, facultative placements, cessions, bordereaux, recoverables, claim recoveries, exposure layers, counterparties, settlements, workbench operations, and governed agent assistance.
 
 ## Current Domain Evidence Used
 
 - Stable PBC key: `reinsurance_management`.
-- Domain purpose: Treaties, facultative placements, cessions, recoverables, bordereaux, claims recoveries, and exposure.
-- Owned domain tables: `reinsurance_treaty`, `facultative_placement`, `cession`, `bordereau`, `recoverable`, `claim_recovery`, `exposure_layer`, `reinsurance_management_policy_rule`, `reinsurance_management_runtime_parameter`, `reinsurance_management_schema_extension`, `reinsurance_management_control_assertion`, `reinsurance_management_governed_model`.
-- Public APIs: `POST /reinsurance-treatys`, `POST /facultative-placements`, `POST /cessions`, `POST /bordereaus`, `POST /recoverables`, `GET /reinsurance-management-workbench`.
-- Emitted AppGen-X events: `ReinsuranceManagementCreated`, `ReinsuranceManagementUpdated`, `ReinsuranceManagementApproved`, `ReinsuranceManagementExceptionOpened`.
-- Consumed AppGen-X events: `PolicyChanged`, `AuditEventSealed`, `OperationalKpiChanged`.
-- Current standard surfaces include: `reinsurance_treaty_management`, `reinsurance_management_workflow`, `reinsurance_management_analytics`, `configuration_schema`, `rule_engine`, `parameter_engine`, `owned_schema_migrations_models`, `appgen_x_outbox_inbox_eventing`, `idempotent_handlers`, `retry_dead_letter_evidence`.
-- Current advanced surfaces include: `reinsurance_management_event_sourced_operational_history`, `reinsurance_management_multi_tenant_policy_isolation`, `reinsurance_management_schema_evolution_resilience`, `reinsurance_management_autonomous_anomaly_detection`, `reinsurance_management_semantic_document_instruction_understanding`, `reinsurance_management_predictive_risk_scoring`, `reinsurance_management_counterfactual_scenario_simulation`, `reinsurance_management_cryptographic_audit_proofs`.
+- Domain purpose: treaties, facultative placements, cessions, recoverables, bordereaux, claims recoveries, and exposure.
+- Owned records include `reinsurance_treaty`, `facultative_placement`, `cession`, `bordereau`, `recoverable`, `claim_recovery`, `exposure_layer`, policy rules, runtime parameters, schema extensions, control assertions, and governed models.
+- Public APIs include `POST /reinsurance-treatys`, `POST /facultative-placements`, `POST /cessions`, `POST /bordereaus`, `POST /recoverables`, and `GET /reinsurance-management-workbench`.
+- Workbench surfaces include `ReinsuranceManagementWorkbench`, `ReinsuranceManagementDetail`, and `ReinsuranceManagementAssistantPanel`.
+- AppGen-X events include `ReinsuranceManagementCreated`, `ReinsuranceManagementUpdated`, `ReinsuranceManagementApproved`, and `ReinsuranceManagementExceptionOpened`.
 
 ## 50 High-Impact Improvements
 
-### 1. Canonical lifecycle state model for Reinsurance Treaty
+### 1. Treaty structure model
 
-**Justification:** This closes shallow CRUD gaps by making every reinsurance management transition explainable and testable instead of implicit in free-form status values.
+**Justification:** Reinsurance treaties differ by quota share, surplus, excess of loss, aggregate stop loss, catastrophe, per-risk, and facultative-obligatory structures.
 
-**Improvement:** Define a complete state machine for `reinsurance_treaty` with explicit draft, validated, blocked, approved, active, suspended, corrected, closed, archived, and reopened states. Tie the behavior to `reinsurance_management_create_reinsurance_treaty_workflow` where applicable, and make it visible in `ReinsuranceManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand `reinsurance_treaty` with treaty type, covered book, lines of business, attachment basis, limits, shares, reinstatements, exclusions, effective period, and wording reference.
 
-**Acceptance evidence:** State-transition tests, invalid-transition fixtures, workbench state badges, and emitted AppGen-X transition events for ReinsuranceManagementCreated, ReinsuranceManagementUpdated, ReinsuranceManagementApproved. The evidence should be package-local in `src/pyAppGen/pbcs/reinsurance_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must validate treaty structures and reject cessions against unsupported treaty types.
 
-### 2. Domain intake and normalization for Facultative Placement
+### 2. Treaty lifecycle state machine
 
-**Justification:** The PBC cannot reach complete domain coverage unless it handles the messy front door of treaties, facultative placements, cessions, recoverables, bordereaux, claims recoveries, and exposure, not only already-clean records.
+**Justification:** Treaty management requires draft, quoted, signed, active, suspended, commuted, expired, run-off, cancelled, and archived states.
 
-**Improvement:** Build a typed intake pipeline for `facultative_placement` that accepts structured API payloads, document-derived instructions, batch loads, and assistant-generated drafts while normalizing identifiers, dates, units, parties, and jurisdictional context. Tie the behavior to `reinsurance_management_record_facultative_placement_workflow` where applicable, and make it visible in `ReinsuranceManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add explicit treaty states with transition reason, evidence, approvals, allowed commands, and AppGen-X event emission.
 
-**Acceptance evidence:** Golden intake fixtures, rejected-record queues, field-level normalization evidence, and assistant previews before governed datastore mutation. The evidence should be package-local in `src/pyAppGen/pbcs/reinsurance_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Invalid transition tests must fail and `ReinsuranceManagementWorkbench` must show next allowed actions by treaty state.
 
-### 3. Specialist validation rules for Cession
+### 3. Counterparty and broker boundary
 
-**Justification:** World-class Reinsurance Management requires rules that domain experts can reason about, version, test, and roll back without code edits.
+**Justification:** Reinsurers, brokers, cedants, pools, and retrocessionaires must be referenced without becoming master-party ownership.
 
-**Improvement:** Add a domain rule compiler for `cession` that supports threshold rules, eligibility rules, dependency rules, temporal windows, conflicting-instruction detection, and override justification. Tie the behavior to `reinsurance_management_create_reinsurance_treaty_workflow` where applicable, and make it visible in `ReinsuranceManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Store counterparty projections with role, participation, credit rating, domicile, contact constraints, and freshness.
 
-**Acceptance evidence:** Rule simulation tests, versioned rule manifests, rule impact reports, and UI rule editors linked to `REINSURANCE_MANAGEMENT_DATABASE_URL, REINSURANCE_MANAGEMENT_EVENT_TOPIC, REINSURANCE_MANAGEMENT_RETRY_LIMIT`. The evidence should be package-local in `src/pyAppGen/pbcs/reinsurance_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Boundary tests must prove counterparty data is consumed as projection evidence and no external party table is mutated.
 
-### 4. Parameter governance and tuning for Bordereau
+### 4. Treaty participation ledger
 
-**Justification:** Parameters are where operations teams tune reinsurance management; unbounded constants would make the PBC brittle and unsafe in real deployments.
+**Justification:** Multi-participant placements need precise signed shares, order, security, slip references, and capacity changes.
 
-**Improvement:** Expose bounded runtime parameters for `bordereau` covering risk thresholds, SLA windows, confidence floors, escalation cutoffs, batch sizes, retry limits, and human-confirmation requirements. Tie the behavior to `reinsurance_management_record_facultative_placement_workflow` where applicable, and make it visible in `ReinsuranceManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add participation lines with reinsurer, broker, signed line, written line, authorization, effective date, and change history.
 
-**Acceptance evidence:** Parameter schema validation, tenant overrides, approval history, rollback controls, and workbench diff views. The evidence should be package-local in `src/pyAppGen/pbcs/reinsurance_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must sum signed shares, detect over-placement, and preserve historical participation.
 
-### 5. Deep owned schema expansion for Recoverable
+### 5. Facultative placement workflow
 
-**Justification:** A single payload column cannot express the full surface of treaties, facultative placements, cessions, recoverables, bordereaux, claims recoveries, and exposure or prove cross-PBC boundaries are respected.
+**Justification:** Large or unusual risks require facultative capacity, quotes, subjectivities, signed lines, and placement evidence.
 
-**Improvement:** Extend the owned schema around `recoverable` with normalized child tables for line-level evidence, party roles, approvals, attachments, comments, metrics, exception reasons, and control assertions. Tie the behavior to `reinsurance_management_create_reinsurance_treaty_workflow` where applicable, and make it visible in `ReinsuranceManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand `facultative_placement` with submission package, market list, quote terms, capacity, subjectivities, bind status, and declinations.
 
-**Acceptance evidence:** Migrations, models, relationship tests, schema contract snapshots, and no shared-table access outside the `reinsurance_management_` namespace. The evidence should be package-local in `src/pyAppGen/pbcs/reinsurance_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must block bind evidence until required signed lines and subjectivities are complete.
 
-### 6. Event-sourced operational history for Claim Recovery
+### 6. Placement document intake
 
-**Justification:** Temporal reconstruction is essential for better-than-world-class auditability and dispute resolution in reinsurance management.
+**Justification:** Slips, cover notes, treaty wording, bordereaux, and claim advice often arrive as documents.
 
-**Improvement:** Capture every material mutation of `claim_recovery` as immutable AppGen-X events with actor, tenant, command, policy version, idempotency key, before/after summary, and projection checkpoint. Tie the behavior to `reinsurance_management_record_facultative_placement_workflow` where applicable, and make it visible in `ReinsuranceManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add document extraction for limits, shares, effective dates, exclusions, premiums, claims clauses, and settlement terms with confidence and reviewer approval.
 
-**Acceptance evidence:** Replay tests, projection checksums, event ordering evidence, and point-in-time workbench views. The evidence should be package-local in `src/pyAppGen/pbcs/reinsurance_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must require human confirmation before document-derived values update owned records.
 
-### 7. Projection and read-model strategy for Exposure Layer
+### 7. Cession eligibility rules
 
-**Justification:** The workbench should not force users to infer domain truth from raw tables; each projection should answer a real operating question.
+**Justification:** A policy, exposure, premium, or loss must satisfy treaty scope before being ceded.
 
-**Improvement:** Create purpose-built projections for `exposure_layer`: operational queue, executive KPI rollup, exception aging, compliance evidence, agent task context, and external dependency health. Tie the behavior to `reinsurance_management_create_reinsurance_treaty_workflow` where applicable, and make it visible in `ReinsuranceManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand `cession` with source projection, treaty match, inclusion/exclusion rules, attachment test, limit test, territory, line, and effective-date validation.
 
-**Acceptance evidence:** Projection contracts, freshness SLAs, backfill tests, and visible stale-projection warnings. The evidence should be package-local in `src/pyAppGen/pbcs/reinsurance_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must approve eligible cessions and reject out-of-scope risks with cited rule versions.
 
-### 8. Exception taxonomy and remediation for Reinsurance Management Policy Rule
+### 8. Cession calculation trace
 
-**Justification:** High-value PBCs win on exception throughput; generic “failed” states hide the details operators need.
+**Justification:** Ceded premium and loss amounts must be reproducible from treaty terms and source amounts.
 
-**Improvement:** Model the full exception taxonomy for `reinsurance_management_policy_rule`, including severity, root cause, blocking dependency, remediation owner, due date, retry eligibility, escalation path, and closure evidence. Tie the behavior to `reinsurance_management_record_facultative_placement_workflow` where applicable, and make it visible in `ReinsuranceManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add calculation lines for gross amount, retention, share, layer, reinstatement, commission, tax, and rounding.
 
-**Acceptance evidence:** Exception queues, aging metrics, remediation playbooks, dead-letter linkage, and closure test fixtures for conflicting clinical instructions. The evidence should be package-local in `src/pyAppGen/pbcs/reinsurance_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must reconstruct cession amounts and flag unsupported manual overrides.
 
-### 9. Predictive risk scoring for Reinsurance Management Runtime Parameter
+### 9. Exposure layer accumulation
 
-**Justification:** The package should warn users before reinsurance management work fails, breaches policy, or creates downstream cost.
+**Justification:** Reinsurance protects layers of exposure by peril, geography, line, event, and portfolio.
 
-**Improvement:** Add predictive risk scoring for `reinsurance_management_runtime_parameter` using domain features from owned tables, consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, rule outcomes, aging, anomaly signals, and historical corrections. Tie the behavior to `reinsurance_management_create_reinsurance_treaty_workflow` where applicable, and make it visible in `ReinsuranceManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand `exposure_layer` with attachment, exhaustion, peril, territory, portfolio, aggregation basis, event definition, and utilization.
 
-**Acceptance evidence:** Feature manifests, score explanations, calibration reports, drift alerts, and tests for low/medium/high-risk scenarios. The evidence should be package-local in `src/pyAppGen/pbcs/reinsurance_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must update layer utilization from cessions and show remaining capacity.
 
-### 10. Counterfactual simulation for Reinsurance Management Schema Extension
+### 10. Catastrophe event tracking
 
-**Justification:** Advanced users need to ask “what would happen if” before committing changes to live treaties, facultative placements, cessions, recoverables, bordereaux, claims recoveries, and exposure operations.
+**Justification:** Cat events drive accumulation, notice, recoverables, reinstatements, and aggregate exhaustion.
 
-**Improvement:** Provide scenario simulation for `reinsurance_management_schema_extension`: policy change, capacity constraint, deadline shift, price/rate change, eligibility change, disruption, and manual override outcomes. Tie the behavior to `reinsurance_management_record_facultative_placement_workflow` where applicable, and make it visible in `ReinsuranceManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add event projections with event id, peril, occurrence window, affected treaties, gross loss estimate, ceded estimate, and reporting status.
 
-**Acceptance evidence:** Simulation APIs, non-mutating sandbox state, comparison reports, and workbench side-by-side scenario panels. The evidence should be package-local in `src/pyAppGen/pbcs/reinsurance_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must group claims into event windows and calculate affected layers.
 
-### 11. Autonomous anomaly triage for Reinsurance Management Control Assertion
+### 11. Bordereau schema governance
 
-**Justification:** A world-class PBC should reduce analyst burden without hiding the reasoning behind automated triage.
+**Justification:** Premium, loss, exposure, and claims bordereaux need consistent columns, validations, and reconciliation evidence.
 
-**Improvement:** Implement anomaly detection for `reinsurance_management_control_assertion` that identifies outliers, duplicate submissions, impossible sequences, stale dependencies, unusual amounts/counts/durations, and contradictory fields. Tie the behavior to `reinsurance_management_create_reinsurance_treaty_workflow` where applicable, and make it visible in `ReinsuranceManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand `bordereau` with type, period, schema version, source file, row counts, validation failures, approval, and submission status.
 
-**Acceptance evidence:** Explainable anomaly cards, reviewer feedback loops, false-positive tracking, and suppression governance. The evidence should be package-local in `src/pyAppGen/pbcs/reinsurance_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must validate bordereau rows and block submission with unresolved rejects.
 
-### 12. Semantic document understanding for Reinsurance Management Governed Model
+### 12. Bordereau ingestion quality controls
 
-**Justification:** Document-heavy work in Reinsurance Management cannot be complete if the assistant only answers questions and cannot prepare accurate governed changes.
+**Justification:** Bordereaux commonly contain duplicates, missing risk ids, currency mismatches, stale periods, and treaty mismatches.
 
-**Improvement:** Train the package assistant to parse domain documents and instructions for `reinsurance_management_governed_model`, extract obligations, dates, parties, quantities, identifiers, and exceptions, then map them to safe draft mutations. Tie the behavior to `reinsurance_management_record_facultative_placement_workflow` where applicable, and make it visible in `ReinsuranceManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add duplicate detection, period checks, currency validation, treaty mapping, source reconciliation, and reject queues.
 
-**Acceptance evidence:** Document extraction tests, confidence thresholds, redaction handling, source span citations, and human confirmation workflows. The evidence should be package-local in `src/pyAppGen/pbcs/reinsurance_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must isolate bad rows while preserving accepted rows and source evidence.
 
-### 13. Agent-safe CRUD execution for Reinsurance Treaty
+### 13. Premium bordereau reconciliation
 
-**Justification:** The PBC agent must be a first-class operator but never a hidden bypass around RBAC, rules, or owned datastore boundaries.
+**Justification:** Ceded premium must reconcile to policy and billing projections before settlement.
 
-**Improvement:** Add a professional chatbot skill for `reinsurance_treaty` that can create, update, correct, close, and annotate records only through policy-checked commands, approval gates, and previewed diffs. Tie the behavior to `reinsurance_management_create_reinsurance_treaty_workflow` where applicable, and make it visible in `ReinsuranceManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add reconciliation against policy premium projections, billing status, ceded commission, taxes, and prior adjustments.
 
-**Acceptance evidence:** Skill manifests, permission tests, preview/confirm flows, blocked-action evidence, and audit events for every assistant mutation. The evidence should be package-local in `src/pyAppGen/pbcs/reinsurance_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must flag variances and prevent settlement certification until resolved or approved.
 
-### 14. Workbench persona coverage for Facultative Placement
+### 14. Loss bordereau reconciliation
 
-**Justification:** A generic detail page underserves the domain; each role needs the exact controls and evidence they use daily.
+**Justification:** Ceded losses and expenses must reconcile to claims projections and treaty terms.
 
-**Improvement:** Design dedicated workbench panels for `facultative_placement`: operator queue, supervisor approvals, analyst exceptions, auditor evidence, configuration owner, and agent-assistance review. Tie the behavior to `reinsurance_management_record_facultative_placement_workflow` where applicable, and make it visible in `ReinsuranceManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add loss bordereau checks for claim status, paid, case reserve, allocated expenses, event coding, layer, and deductible treatment.
 
-**Acceptance evidence:** UI contract entries, route tests, empty/error/loading states, and permission-aware action availability. The evidence should be package-local in `src/pyAppGen/pbcs/reinsurance_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must reject loss lines that exceed treaty scope or stale claims projections.
 
-### 15. Cross-PBC dependency contracts for Cession
+### 15. Recoverable lifecycle
 
-**Justification:** Composable packages fail when hidden table coupling enters the domain model.
+**Justification:** Recoverables move from estimated to billed, disputed, collected, aged, impaired, written off, or closed.
 
-**Improvement:** Represent dependencies for `cession` through declared APIs, consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, and projections rather than shared tables, with explicit freshness, ownership, and fallback behavior. Tie the behavior to `reinsurance_management_create_reinsurance_treaty_workflow` where applicable, and make it visible in `ReinsuranceManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand `recoverable` with source cession, claim recovery link, amount, currency, due date, counterparty, status, aging, and impairment evidence.
 
-**Acceptance evidence:** Dependency manifests, contract tests, stale dependency alerts, and no foreign-table references in generated artifacts. The evidence should be package-local in `src/pyAppGen/pbcs/reinsurance_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must classify recoverables by status and aging bucket.
 
-### 16. API completeness and versioning for Bordereau
+### 16. Claim recovery workflow
 
-**Justification:** Complete domain coverage requires both command and query surfaces, not only happy-path create endpoints.
+**Justification:** Reinsurance claim recovery requires notices, supporting documents, treaty clauses, reinsurer responses, and cash collection.
 
-**Improvement:** Expand APIs beyond POST /reinsurance-treatys, POST /facultative-placements, POST /cessions to cover search, validation-only commands, simulation, bulk intake, exception closure, evidence export, projection reads, and idempotent corrections. Tie the behavior to `reinsurance_management_record_facultative_placement_workflow` where applicable, and make it visible in `ReinsuranceManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand `claim_recovery` with claim projection, notice date, required documentation, submission package, response, dispute, collection, and closure.
 
-**Acceptance evidence:** OpenAPI-style route manifests, backward-compatible version tests, deprecation metadata, and idempotency assertions. The evidence should be package-local in `src/pyAppGen/pbcs/reinsurance_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must block recovery billing without required claim and treaty evidence.
 
-### 17. Typed emitted-event expansion for Recoverable
+### 17. Reinstatement premium calculation
 
-**Justification:** Consumers should understand what happened in Reinsurance Management without parsing opaque payloads.
+**Justification:** Excess-of-loss treaties may require reinstatement premium after loss events.
 
-**Improvement:** Replace generic lifecycle emissions with typed events for each meaningful `recoverable` transition, exception, approval, correction, simulation result, and downstream handoff. Tie the behavior to `reinsurance_management_create_reinsurance_treaty_workflow` where applicable, and make it visible in `ReinsuranceManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add reinstatement records with exhausted limit, reinstatement number, pro-rata factor, premium due, approval, and settlement linkage.
 
-**Acceptance evidence:** Event schema tests, event examples, compatibility checks, and emitted-event coverage in release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/reinsurance_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must calculate reinstatement premiums from treaty terms and loss utilization.
 
-### 18. Consumed-event handlers for Claim Recovery
+### 18. Sliding-scale and profit commission
 
-**Justification:** A PBC is composable only when incoming events affect its own domain state predictably and safely.
+**Justification:** Treaty economics may include ceding commission, profit commission, sliding-scale rates, or no-claims bonuses.
 
-**Improvement:** Implement idempotent handlers for consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged that update projections, open dependency exceptions, recalculate risk, and preserve source event lineage. Tie the behavior to `reinsurance_management_record_facultative_placement_workflow` where applicable, and make it visible in `ReinsuranceManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add commission terms with basis, formula, loss ratio bands, period, adjustments, and settlement calculation trace.
 
-**Acceptance evidence:** Duplicate-event tests, handler side-effect boundaries, dead-letter fixtures, and lineage links back to source events. The evidence should be package-local in `src/pyAppGen/pbcs/reinsurance_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must calculate commissions and preserve formula versions.
 
-### 19. Retry and dead-letter operations for Exposure Layer
+### 19. Deposit premium and minimum premium
 
-**Justification:** Dead letters are not just plumbing; they are domain work queues that can block treaties, facultative placements, cessions, recoverables, bordereaux, claims recoveries, and exposure.
+**Justification:** Treaty settlement may involve deposit, minimum, adjustable, and earned premium calculations.
 
-**Improvement:** Create operational tools for retrying, quarantining, explaining, and resolving dead-lettered `exposure_layer` events with max-attempt policy, poison-message detection, and replay safety. Tie the behavior to `reinsurance_management_create_reinsurance_treaty_workflow` where applicable, and make it visible in `ReinsuranceManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add premium term records with deposit amount, adjustment basis, minimum, reporting frequency, due dates, and true-up handling.
 
-**Acceptance evidence:** Dead-letter workbench, retry eligibility tests, replay audit proof, and operator action logs. The evidence should be package-local in `src/pyAppGen/pbcs/reinsurance_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must calculate true-ups and flag missed reporting periods.
 
-### 20. RBAC and attribute policy for Reinsurance Management Policy Rule
+### 20. Currency and FX governance
 
-**Justification:** High-impact domain operations need finer controls than generic RBAC grants.
+**Justification:** Reinsurance programs often span currencies and require agreed exchange dates and rates.
 
-**Improvement:** Extend permissions for `reinsurance_management_policy_rule` from coarse read/create/update/admin to action-level and attribute-aware policies based on role, tenant, jurisdiction, monetary/materiality threshold, and exception severity. Tie the behavior to `reinsurance_management_record_facultative_placement_workflow` where applicable, and make it visible in `ReinsuranceManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add currency rules for treaty currency, source currency, settlement currency, FX source projection, conversion date, and rounding.
 
-**Acceptance evidence:** Permission matrix docs, ABAC policy tests, denied-action UI states, and assistant skill permission checks. The evidence should be package-local in `src/pyAppGen/pbcs/reinsurance_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must reproduce converted ceded amounts and reject missing FX evidence.
 
-### 21. Continuous control testing for Reinsurance Management Runtime Parameter
+### 21. Settlement statement generation
 
-**Justification:** Controls should run during operations, not only during release audit or manual review.
+**Justification:** Reinsurance settlements need clear premium, commission, loss, recoverable, cash, and balance-forward lines.
 
-**Improvement:** Embed control assertions for `reinsurance_management_runtime_parameter` that continuously test segregation of duties, required approvals, stale exceptions, policy drift, duplicate records, and boundary violations. Tie the behavior to `reinsurance_management_create_reinsurance_treaty_workflow` where applicable, and make it visible in `ReinsuranceManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add statement records with period, counterparty, treaty, balance, line items, approvals, delivery, and receipt status.
 
-**Acceptance evidence:** Control dashboards, failing-control events, test fixtures, and release evidence tied to `reinsurance_management_control_assertion` records. The evidence should be package-local in `src/pyAppGen/pbcs/reinsurance_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must generate statements from accepted bordereaux and recoverables.
 
-### 22. Cryptographic audit proofing for Reinsurance Management Schema Extension
+### 22. Cash matching boundary
 
-**Justification:** Better-than-world-class auditability requires proof of integrity, not merely logs stored in mutable tables.
+**Justification:** Reinsurance operations need cash collection status but should not own treasury or bank reconciliation.
 
-**Improvement:** Hash-chain material `reinsurance_management_schema_extension` decisions, documents, emitted events, and release-evidence snapshots to make tampering visible without exposing sensitive payloads. Tie the behavior to `reinsurance_management_record_facultative_placement_workflow` where applicable, and make it visible in `ReinsuranceManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Store cash receipt projections, matched statement ids, unmatched differences, and freshness from declared APIs/events.
 
-**Acceptance evidence:** Proof manifests, verification APIs, redacted proof exports, and audit-ledger handoff events. The evidence should be package-local in `src/pyAppGen/pbcs/reinsurance_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Boundary tests must prove cash data is projected and no treasury table is mutated.
 
-### 23. Privacy, consent, and secrecy controls for Reinsurance Management Control Assertion
+### 23. Collateral and funds-withheld tracking
 
-**Justification:** Complete domain coverage must account for protected data and restricted operational evidence.
+**Justification:** Some treaties require letters of credit, trusts, funds withheld, or collateral thresholds.
 
-**Improvement:** Add field-level privacy classifications for `reinsurance_management_control_assertion`, consent checks, masking rules, retention schedules, legal holds, and assistant redaction policies. Tie the behavior to `reinsurance_management_create_reinsurance_treaty_workflow` where applicable, and make it visible in `ReinsuranceManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add collateral records with type, amount, beneficiary, expiry, threshold, deficiency, renewal, and release conditions.
 
-**Acceptance evidence:** Retention tests, masked UI snapshots, consent-blocked mutation fixtures, and export controls. The evidence should be package-local in `src/pyAppGen/pbcs/reinsurance_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must flag collateral shortfalls and expiring instruments.
 
-### 24. Multi-tenant operating model for Reinsurance Management Governed Model
+### 24. Credit risk monitoring
 
-**Justification:** The PBC should scale across organizations while preserving independent policy and compliance boundaries.
+**Justification:** Reinsurer credit quality affects recoverability, collateral, impairment, and placement decisions.
 
-**Improvement:** Support tenant-specific `reinsurance_management_governed_model` rules, data residency, encryption context, configuration, seed data, and release evidence without allowing cross-tenant leakage. Tie the behavior to `reinsurance_management_record_facultative_placement_workflow` where applicable, and make it visible in `ReinsuranceManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Store credit rating projections, watchlist status, exposure by counterparty, recoverable aging, and concentration metrics.
 
-**Acceptance evidence:** Tenant isolation tests, tenant-scoped parameters, key-rotation evidence, and cross-tenant negative fixtures. The evidence should be package-local in `src/pyAppGen/pbcs/reinsurance_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must produce counterparty risk alerts when thresholds are breached.
 
-### 25. Schema evolution and extension registry for Reinsurance Treaty
+### 25. Commutation workflow
 
-**Justification:** Domain teams will add fields; the PBC must evolve without breaking APIs, events, or workbench projections.
+**Justification:** Treaty commutations settle future obligations and require actuarial estimates, negotiation, approval, and accounting handoff.
 
-**Improvement:** Make schema extensions for `reinsurance_treaty` first-class with compatibility checks, migration previews, projection backfills, field ownership, and rollback metadata. Tie the behavior to `reinsurance_management_create_reinsurance_treaty_workflow` where applicable, and make it visible in `ReinsuranceManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add commutation cases with affected treaties, estimated liabilities, offer terms, approval, settlement status, and release evidence.
 
-**Acceptance evidence:** Extension registry UI, compatibility tests, migration dry-runs, and backfill release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/reinsurance_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must close affected recoverables only after approved commutation settlement.
 
-### 26. Master data quality gates for Facultative Placement
+### 26. Treaty wording clause library
 
-**Justification:** Many reinsurance management errors begin as bad reference data; the PBC should catch them before workflow execution.
+**Justification:** Claims and cessions turn on clauses such as hours, exclusions, reporting deadlines, follow-the-fortunes, and loss-occurrence definitions.
 
-**Improvement:** Define reference-data contracts for `facultative_placement`: canonical codes, parties, locations, classifications, calendars, units, currencies, products, assets, or service categories as relevant to the domain. Tie the behavior to `reinsurance_management_record_facultative_placement_workflow` where applicable, and make it visible in `ReinsuranceManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add clause references with clause type, wording version, applicability, extracted obligations, and linked validations.
 
-**Acceptance evidence:** Reference validation fixtures, stale-code warnings, mapping tables, and dependency freshness indicators. The evidence should be package-local in `src/pyAppGen/pbcs/reinsurance_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must cite clause versions in cession and claim-recovery decisions.
 
-### 27. Bulk operations and correction workflows for Cession
+### 27. Notice and reporting calendar
 
-**Justification:** Enterprise-scale Reinsurance Management users cannot operate one record at a time.
+**Justification:** Treaties impose notice deadlines, bordereau due dates, cash calls, renewal dates, and termination windows.
 
-**Improvement:** Add bulk load, bulk validate, bulk approve, and bulk correction workflows for `cession` with partial success, row-level errors, resumability, and rollback. Tie the behavior to `reinsurance_management_create_reinsurance_treaty_workflow` where applicable, and make it visible in `ReinsuranceManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add calendar obligations with due date, owner, source clause, status, escalation, and proof of submission.
 
-**Acceptance evidence:** CSV/API batch fixtures, resumable job state, row-level audit evidence, and assistant-generated correction suggestions. The evidence should be package-local in `src/pyAppGen/pbcs/reinsurance_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must open exceptions for overdue obligations and show them in the workbench.
 
-### 28. Lifecycle collaboration and tasking for Bordereau
+### 28. Treaty renewal and placement pipeline
 
-**Justification:** Domain collaboration should live inside the PBC boundary and remain auditable with the record it affects.
+**Justification:** Renewals require exposure packs, loss experience, market submissions, quotes, signed lines, and bind evidence.
 
-**Improvement:** Attach tasks, comments, ownership, due dates, handoffs, and escalation threads to `bordereau` without leaking into external shared task tables. Tie the behavior to `reinsurance_management_record_facultative_placement_workflow` where applicable, and make it visible in `ReinsuranceManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add renewal pipeline with required data, market list, quote comparison, terms changed, signed line status, and handoff to active treaty.
 
-**Acceptance evidence:** Task tables, comment audit history, notification events, escalation SLAs, and role-specific task queues. The evidence should be package-local in `src/pyAppGen/pbcs/reinsurance_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must create renewal packages and preserve prior treaty terms.
 
-### 29. SLA and service-level governance for Recoverable
+### 29. Retrocession support
 
-**Justification:** Users need to know when treaties, facultative placements, cessions, recoverables, bordereaux, claims recoveries, and exposure is late, blocked, or at risk before customer or regulator impact.
+**Justification:** Reinsurers may cede assumed risk onward through retrocession arrangements.
 
-**Improvement:** Define SLAs for `recoverable` across intake, validation, approval, exception resolution, event handling, downstream projection refresh, and release-evidence generation. Tie the behavior to `reinsurance_management_create_reinsurance_treaty_workflow` where applicable, and make it visible in `ReinsuranceManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add retrocession flagging, assumed/ceded relationship, inward/outward treaty links, and net exposure calculations.
 
-**Acceptance evidence:** SLA breach events, timers, configurable calendars, workbench aging buckets, and tests for pause/resume behavior. The evidence should be package-local in `src/pyAppGen/pbcs/reinsurance_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must calculate gross, ceded, assumed, and net exposure without shared table access.
 
-### 30. Operational analytics cockpit for Claim Recovery
+### 30. Assumed reinsurance boundary
 
-**Justification:** World-class operations require leading indicators, not only record counts.
+**Justification:** The PBC may need assumed treaty context while preserving separate policy and claims ownership.
 
-**Improvement:** Build analytics for `claim_recovery`: throughput, backlog, aging, approval latency, exception rate, risk distribution, automation acceptance, correction rate, and downstream dependency health. Tie the behavior to `reinsurance_management_record_facultative_placement_workflow` where applicable, and make it visible in `ReinsuranceManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add assumed portfolio projections with cedant, period, exposure, premium, loss, and bordereau mapping.
 
-**Acceptance evidence:** Metric definitions, projection tests, drill-through routes, export APIs, and anomaly overlays. The evidence should be package-local in `src/pyAppGen/pbcs/reinsurance_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Boundary tests must show assumed data enters via declared projection or event contracts.
 
-### 31. Decision intelligence and recommendations for Exposure Layer
+### 31. Dispute and query management
 
-**Justification:** The PBC should help expert users decide faster while showing evidence and uncertainty.
+**Justification:** Reinsurers dispute bordereau rows, recoverables, claims support, wording interpretation, and settlement balances.
 
-**Improvement:** Generate ranked recommendations for `exposure_layer` such as next best action, likely resolution, required evidence, policy adjustment, staffing/capacity response, or downstream handoff. Tie the behavior to `reinsurance_management_create_reinsurance_treaty_workflow` where applicable, and make it visible in `ReinsuranceManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add dispute records with category, disputed amount, source row, counterparty response, evidence request, owner, and resolution.
 
-**Acceptance evidence:** Recommendation explanations, confidence intervals, feedback capture, model governance records, and rejection reasons. The evidence should be package-local in `src/pyAppGen/pbcs/reinsurance_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must hold disputed amounts from settlement certification until resolved.
 
-### 32. Quality and completeness scoring for Reinsurance Management Policy Rule
+### 32. Audit-ready treaty file
 
-**Justification:** Operators should see whether a record is truly ready, not just technically saved.
+**Justification:** Reinsurance reviews require treaty wording, slips, signatures, bordereaux, calculations, notices, recoveries, and settlements.
 
-**Improvement:** Score each `reinsurance_management_policy_rule` record for completeness, consistency, policy readiness, dependency readiness, evidence sufficiency, and downstream composability. Tie the behavior to `reinsurance_management_record_facultative_placement_workflow` where applicable, and make it visible in `ReinsuranceManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add treaty file packet with required document checklist, missing evidence, hash, approval, and export manifest.
 
-**Acceptance evidence:** Scoring rules, missing-evidence lists, readiness badges, and blocking criteria in command handlers. The evidence should be package-local in `src/pyAppGen/pbcs/reinsurance_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must generate a treaty file packet and detect missing evidence.
 
-### 33. End-to-end scenario library for Reinsurance Management Runtime Parameter
+### 33. Exposure bordereau drilldown UI
 
-**Justification:** Release evidence is stronger when every important reinsurance management behavior has executable examples.
+**Justification:** Analysts need to see why an exposure is attached to a treaty, layer, peril, and counterparty.
 
-**Improvement:** Create seeded scenarios for `reinsurance_management_runtime_parameter`: normal flow, urgent path, exception path, corrected path, duplicate path, late event path, and audit export path. Tie the behavior to `reinsurance_management_create_reinsurance_treaty_workflow` where applicable, and make it visible in `ReinsuranceManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add workbench drilldowns from exposure layer to cession, source projection, treaty clause, and accumulation bucket.
 
-**Acceptance evidence:** Scenario seed data, runtime smoke coverage, generated-app fixtures, and story-level workbench screenshots/contracts. The evidence should be package-local in `src/pyAppGen/pbcs/reinsurance_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** UI tests must expose layer drilldown and stale-projection warnings.
 
-### 34. Domain ontology and terminology model for Reinsurance Management Schema Extension
+### 34. Recoverable aging workbench
 
-**Justification:** Precise vocabulary prevents the PBC from misclassifying specialist documents or user instructions.
+**Justification:** Collections teams need prioritized views of overdue, disputed, impaired, and high-value recoverables.
 
-**Improvement:** Add an ontology for `reinsurance_management_schema_extension` terms, synonyms, classifications, relationships, allowed values, and phrase mappings used by the assistant and UI. Tie the behavior to `reinsurance_management_record_facultative_placement_workflow` where applicable, and make it visible in `ReinsuranceManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add recoverable queues by counterparty, treaty, age, currency, dispute status, and cash projection.
 
-**Acceptance evidence:** Ontology files, assistant parsing tests, UI glossary, and mapping evidence for domain-specific abbreviations. The evidence should be package-local in `src/pyAppGen/pbcs/reinsurance_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** UI tests must show aging buckets and collection actions without raw datastore access.
 
-### 35. Advanced search and investigation for Reinsurance Management Control Assertion
+### 35. Treaty rule and parameter workbench
 
-**Justification:** Investigators and operators need fast, explainable retrieval across the whole domain surface.
+**Justification:** Reinsurance rules vary by program, treaty, counterparty, period, line, and jurisdiction.
 
-**Improvement:** Provide search across `reinsurance_management_control_assertion` records, events, documents, exceptions, tasks, comments, and audit proofs with filters for tenant, status, risk, date, party, and dependency. Tie the behavior to `reinsurance_management_create_reinsurance_treaty_workflow` where applicable, and make it visible in `ReinsuranceManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add governed editors for treaty matching, bordereau validation, notice deadlines, recoverable aging, collateral thresholds, and approval limits.
 
-**Acceptance evidence:** Search index contracts, result provenance, permission-filtered queries, and stale-index warnings. The evidence should be package-local in `src/pyAppGen/pbcs/reinsurance_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must validate parameter bounds, approval history, rollback, and runtime effect.
 
-### 36. Reconciliation and closure controls for Reinsurance Management Governed Model
+### 36. Agent-assisted treaty extraction
 
-**Justification:** Closure is not complete until the PBC can prove no material domain work remains unresolved.
+**Justification:** Treaty wording and slips are dense documents with clauses, limits, shares, and obligations.
 
-**Improvement:** Add reconciliation workflows that compare `reinsurance_management_governed_model` state against consumed events, external projections, expected totals/counts, approvals, and release evidence before closure. Tie the behavior to `reinsurance_management_record_facultative_placement_workflow` where applicable, and make it visible in `ReinsuranceManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add assistant skills that extract treaty terms, clause obligations, participant shares, and reporting deadlines into governed previews.
 
-**Acceptance evidence:** Reconciliation reports, variance thresholds, closure blockers, and AppGen-X closure events. The evidence should be package-local in `src/pyAppGen/pbcs/reinsurance_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must require human confirmation and retain source-page evidence for each accepted extraction.
 
-### 37. Regulatory and policy reporting for Reinsurance Treaty
+### 37. Agent-assisted bordereau triage
 
-**Justification:** World-class PBCs turn operational evidence into credible reporting without spreadsheet reconstruction.
+**Justification:** Analysts need help explaining rejects, duplicates, variances, and treaty mismatches.
 
-**Improvement:** Generate domain reporting packs for `reinsurance_treaty` covering statutory, contractual, operational, board, customer, or regulator evidence depending on patient safety, clinical traceability, consent boundaries, eligibility nuance, coding accuracy, care continuity, and regulated health evidence. Tie the behavior to `reinsurance_management_create_reinsurance_treaty_workflow` where applicable, and make it visible in `ReinsuranceManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add assistant analysis for failed rows, likely mappings, missing source facts, and recommended remediation tasks.
 
-**Acceptance evidence:** Report schemas, redaction rules, traceable metric sources, and approval/export audit events. The evidence should be package-local in `src/pyAppGen/pbcs/reinsurance_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must show assistant recommendations without mutating rows until approved.
 
-### 38. Carbon and resource awareness for Facultative Placement
+### 38. Agent safety restrictions
 
-**Justification:** Sustainability evidence should be embedded in operations instead of treated as an after-the-fact report.
+**Justification:** AI must not silently approve treaties, release recoverables, settle statements, or alter cessions.
 
-**Improvement:** Where relevant, attach carbon, energy, water, travel, capacity, compute, or resource-footprint metadata to `facultative_placement` decisions and batch operations. Tie the behavior to `reinsurance_management_record_facultative_placement_workflow` where applicable, and make it visible in `ReinsuranceManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Require agent proposals to declare command, affected records, financial impact, evidence, confidence, approval role, and irreversible-impact flag.
 
-**Acceptance evidence:** Footprint fields, scheduling parameters, exception rules, and dashboards that expose operational tradeoffs. The evidence should be package-local in `src/pyAppGen/pbcs/reinsurance_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must block high-impact agent commands without explicit approval.
 
-### 39. Resilience and offline behavior for Cession
+### 39. AppGen-X event specialization
 
-**Justification:** Real operations keep moving during outages; the PBC must preserve correctness when dependencies are unavailable.
+**Justification:** Reinsurance composes with policy, claims, accounting, treasury, documents, and risk through events.
 
-**Improvement:** Define resilience modes for `cession`: degraded dependency mode, offline draft capture, delayed event replay, conflict detection, and safe recovery after partial failure. Tie the behavior to `reinsurance_management_create_reinsurance_treaty_workflow` where applicable, and make it visible in `ReinsuranceManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Define typed events for treaty activated, facultative bound, cession accepted, bordereau certified, recoverable billed, recovery collected, and dispute opened.
 
-**Acceptance evidence:** Offline fixtures, replay tests, conflict queues, recovery logs, and user-visible degraded-mode warnings. The evidence should be package-local in `src/pyAppGen/pbcs/reinsurance_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Event tests must verify idempotency keys, retry behavior, dead-letter evidence, and declared dependency usage.
 
-### 40. Human-in-the-loop automation for Bordereau
+### 40. Point-in-time reinsurance reconstruction
 
-**Justification:** Automation should accelerate treaties, facultative placements, cessions, recoverables, bordereaux, claims recoveries, and exposure while preserving accountability for high-risk decisions.
+**Justification:** Auditors and disputes require historical treaty, cession, exposure, and recoverable state.
 
-**Improvement:** Set explicit automation boundaries for `bordereau`: auto-approve, auto-reject, suggest-only, require-review, and block-until-evidence states with policy-based routing. Tie the behavior to `reinsurance_management_record_facultative_placement_workflow` where applicable, and make it visible in `ReinsuranceManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add event replay to reconstruct treaty participation, cessions, bordereaux, recoverables, and settlements at a date.
 
-**Acceptance evidence:** Automation policy tests, reviewer queues, override reasons, and assistant action audit trails. The evidence should be package-local in `src/pyAppGen/pbcs/reinsurance_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must replay owned events and reproduce historical snapshots.
 
-### 41. Package discovery and fit scoring for Recoverable
+### 41. Cryptographic reinsurance evidence packet
 
-**Justification:** Users selecting PBCs need transparent fit reasoning, especially when domains are adjacent but not overlapping.
+**Justification:** Counterparties, auditors, and regulators may challenge calculations and settlements.
 
-**Improvement:** Improve package metadata so composition can explain when `reinsurance_management` fits a prompt, what entities it owns, what APIs/events it exposes, and what adjacent PBCs it depends on. Tie the behavior to `reinsurance_management_create_reinsurance_treaty_workflow` where applicable, and make it visible in `ReinsuranceManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add hash-linked packets for treaty terms, cession calculations, bordereau certification, recoverable billing, and settlement statements.
 
-**Acceptance evidence:** Discovery manifests, prompt-selection tests, overlap rationale links, and composition DSL examples. The evidence should be package-local in `src/pyAppGen/pbcs/reinsurance_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must detect altered packet contents and verify packet generation from owned records.
 
-### 42. Configuration deployment pipeline for Claim Recovery
+### 42. Large-loss alerting
 
-**Justification:** Configuration changes can materially alter reinsurance management; they need the same discipline as code releases.
+**Justification:** Large losses can trigger notices, cash calls, reinstatements, collateral, and reserve review.
 
-**Improvement:** Add configuration promotion for `claim_recovery` across draft, test, approved, active, deprecated, and rollback states with impact analysis before activation. Tie the behavior to `reinsurance_management_record_facultative_placement_workflow` where applicable, and make it visible in `ReinsuranceManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add large-loss thresholds by treaty and counterparty with claim projection intake, alert routing, and required action checklist.
 
-**Acceptance evidence:** Config diff views, approval workflows, simulation before activation, and rollback tests. The evidence should be package-local in `src/pyAppGen/pbcs/reinsurance_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must open large-loss tasks when projected losses breach thresholds.
 
-### 43. Workbench command completeness for Exposure Layer
+### 43. Aggregate exhaustion monitoring
 
-**Justification:** A PBC does not fully surface its capabilities if users must call hidden APIs for core work.
+**Justification:** Aggregate covers and stop-loss treaties require careful erosion tracking.
 
-**Improvement:** Expose every high-value operation for `exposure_layer` in the UI: create, validate, approve, simulate, correct, assign, export, retry, close, and audit-proof verification. Tie the behavior to `reinsurance_management_create_reinsurance_treaty_workflow` where applicable, and make it visible in `ReinsuranceManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add aggregate exhaustion calculations by period, event, line, and treaty with remaining protection and breach warnings.
 
-**Acceptance evidence:** UI action coverage tests, permission-aware disabled states, keyboard paths, and assistant handoff links. The evidence should be package-local in `src/pyAppGen/pbcs/reinsurance_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must update aggregate usage after accepted loss cessions.
 
-### 44. Document packet and evidence vault for Reinsurance Management Policy Rule
+### 44. Operational risk scoring
 
-**Justification:** Documents often carry the legal or operational truth behind treaties, facultative placements, cessions, recoverables, bordereaux, claims recoveries, and exposure.
+**Justification:** Reinsurance operations need early warning for stale bordereaux, unpaid recoverables, credit risk, missed notices, and exposure concentration.
 
-**Improvement:** Create a governed evidence vault for `reinsurance_management_policy_rule` documents, attachments, source spans, extracted fields, signatures, approvals, and retention labels. Tie the behavior to `reinsurance_management_record_facultative_placement_workflow` where applicable, and make it visible in `ReinsuranceManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add risk scores with factor explanations, trend, threshold, owner, and workbench queue placement.
 
-**Acceptance evidence:** Evidence models, source-to-field lineage, signature validation, retention policies, and proof exports. The evidence should be package-local in `src/pyAppGen/pbcs/reinsurance_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must calculate scores and expose factor explanations.
 
-### 45. Data correction and amendment history for Reinsurance Management Runtime Parameter
+### 45. Multi-currency settlement dashboard
 
-**Justification:** World-class systems correct mistakes without rewriting history or confusing downstream consumers.
+**Justification:** Reinsurance settlements span currencies, exchange rates, counterparty balances, and aging.
 
-**Improvement:** Support formal amendments for `reinsurance_management_runtime_parameter` that preserve original values, correction reason, approving actor, effective date, downstream event impacts, and replay behavior. Tie the behavior to `reinsurance_management_create_reinsurance_treaty_workflow` where applicable, and make it visible in `ReinsuranceManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add dashboard views by currency, converted value, FX source, settlement status, and unmatched cash.
 
-**Acceptance evidence:** Amendment tables, correction events, projection replay tests, and side-by-side before/after UI. The evidence should be package-local in `src/pyAppGen/pbcs/reinsurance_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** UI tests must show original and converted amounts with FX evidence.
 
-### 46. External participant collaboration for Reinsurance Management Schema Extension
+### 46. Regulatory and statutory reporting support
 
-**Justification:** Many reinsurance management workflows require outside parties, but they must not gain direct access to internal tables.
+**Justification:** Reinsurance affects solvency, statutory schedules, concentration, credit-for-reinsurance, and recoverable aging reports.
 
-**Improvement:** Add controlled collaboration portals or API views for external participants related to `reinsurance_management_schema_extension`, limited to scoped evidence submission, status checks, comments, and dispute responses. Tie the behavior to `reinsurance_management_record_facultative_placement_workflow` where applicable, and make it visible in `ReinsuranceManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add reporting packages with report type, period, included treaties, recoverables, collateral, certification, and submission evidence.
 
-**Acceptance evidence:** Participant role policies, scoped tokens, submission audit trails, and inbound evidence validation. The evidence should be package-local in `src/pyAppGen/pbcs/reinsurance_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must generate report packages from owned records and projections.
 
-### 47. Advanced dependency freshness scoring for Reinsurance Management Control Assertion
+### 47. Release smoke scenarios
 
-**Justification:** A record may be valid locally but unsafe if dependency evidence is stale or incomplete.
+**Justification:** Generated apps need evidence that realistic reinsurance workflows execute after composition.
 
-**Improvement:** Score freshness and reliability of dependencies used by `reinsurance_management_control_assertion`, including consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, referenced projections, configuration versions, and external submissions. Tie the behavior to `reinsurance_management_create_reinsurance_treaty_workflow` where applicable, and make it visible in `ReinsuranceManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add smoke scenarios for treaty setup, facultative placement, cession calculation, bordereau certification, recoverable billing, claim recovery, and settlement.
 
-**Acceptance evidence:** Freshness indicators, blocking rules, stale-event simulations, and workbench dependency health panels. The evidence should be package-local in `src/pyAppGen/pbcs/reinsurance_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Release evidence must show owned records, AppGen-X events, UI artifacts, and boundary checks for each scenario.
 
-### 48. Model governance and explainability for Reinsurance Management Governed Model
+### 48. Cross-PBC boundary proof
 
-**Justification:** Governed AI is mandatory for professional-grade automation in Reinsurance Management.
+**Justification:** Reinsurance touches policy, claims, accounting, treasury, documents, risk, and counterparty domains without owning them.
 
-**Improvement:** For every predictive or agentic feature around `reinsurance_management_governed_model`, record model version, prompt or ruleset version, training/evaluation evidence, confidence, explanation, and human feedback. Tie the behavior to `reinsurance_management_record_facultative_placement_workflow` where applicable, and make it visible in `ReinsuranceManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add automated proof that generated models, services, routes, handlers, projections, and agent commands use only owned tables plus declared APIs/events.
 
-**Acceptance evidence:** Model cards, prompt/version manifests, feedback loops, drift tests, and audit proof for recommendations. The evidence should be package-local in `src/pyAppGen/pbcs/reinsurance_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must fail on undeclared table references and pass for declared projection or event dependency references.
 
-### 49. High-scale partitioning and archival for Reinsurance Treaty
+### 49. Treaty profitability analytics
 
-**Justification:** Better-than-world-class packages must remain operable after years of high-volume domain history.
+**Justification:** Reinsurance teams need view of ceded premium, losses, commissions, expenses, recoverables, and net benefit.
 
-**Improvement:** Plan scale behavior for `reinsurance_treaty`: tenant partitioning, archival policies, cold storage, retention-aware search, projection compaction, and large-batch replay. Tie the behavior to `reinsurance_management_create_reinsurance_treaty_workflow` where applicable, and make it visible in `ReinsuranceManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add profitability views by treaty, layer, counterparty, line, period, event, and portfolio.
 
-**Acceptance evidence:** Partition tests, archive/retrieve fixtures, retention enforcement, and replay benchmarks. The evidence should be package-local in `src/pyAppGen/pbcs/reinsurance_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must calculate profitability metrics from accepted cessions, recoveries, and settlement data.
 
-### 50. Release gate expansion for Facultative Placement
+### 50. Treaty command center
 
-**Justification:** The PBC should not claim domain coverage unless release evidence proves the claim end to end.
+**Justification:** Users need one surface for treaty status, obligations, cessions, bordereaux, recoverables, disputes, exposure, and agent guidance.
 
-**Improvement:** Expand release gates for `reinsurance_management` so every schema, service, API, event, handler, UI, rule, parameter, agent skill, seed scenario, and improvement backlog item maps to executable evidence. Tie the behavior to `reinsurance_management_record_facultative_placement_workflow` where applicable, and make it visible in `ReinsuranceManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add command center with treaty summary, next obligations, exposure utilization, recoverable aging, disputes, settlement status, and assistant panel.
 
-**Acceptance evidence:** Release audit checks, manifest traceability, generated-app smoke tests, and missing-capability blockers. The evidence should be package-local in `src/pyAppGen/pbcs/reinsurance_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** UI tests must expose treaty command context and governed actions without raw datastore access.
