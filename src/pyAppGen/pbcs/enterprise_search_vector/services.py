@@ -231,7 +231,7 @@ def _build_operation_contracts() -> tuple[dict, ...]:
                 "permission": route["permission"],
                 "owned_tables": table_scope if is_command else (),
                 "read_tables": () if is_command else table_scope,
-                "emitted_event": route.get("emitted_event") if is_command else None,
+                "emitted_event": route.get("emitted_event") or f"{PBC_KEY}.{route['operation']}.executed" if is_command else None,
                 "consumed_event": tuple(route.get("consumed_event", ())),
                 "idempotency_key": route.get("idempotency_key"),
                 "transaction_boundary": "owned_datastore_plus_outbox",
@@ -318,7 +318,7 @@ class EnterpriseSearchVectorService:
                     "command": operation_name,
                     "read_only": False,
                     "outbox_table": EVENT_CONTRACT["outbox_table"],
-                    "emits": (plan.get("emitted_event"),),
+                    "emits": (plan.get("emitted_event"),) if plan.get("emitted_event") else (),
                     "consumes": plan.get("consumed_event", ()),
                 }
             )

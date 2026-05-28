@@ -26,7 +26,7 @@ def _route_to_contract(route: dict) -> dict:
         "permission": route["requires_permission"],
         "owned_tables": owned_tables if is_command else (),
         "read_tables": () if is_command else owned_tables,
-        "emitted_event": tuple(route.get("emits", ())),
+        "emitted_event": (route.get("emits") or (f"{PBC_KEY}.{operation}.executed",))[0] if is_command else None,
         "consumed_event": tuple(route.get("consumes", ())),
         "idempotency_key": route.get("idempotency_key"),
         "dependency_apis": tuple(route.get("dependency_apis", ())),
@@ -115,7 +115,7 @@ class ApiGatewayMeshService:
                     "command": operation_name,
                     "read_only": False,
                     "outbox_table": EVENT_CONTRACT["outbox_table"],
-                    "emits": plan.get("emitted_event", ()),
+                    "emits": (plan.get("emitted_event"),) if plan.get("emitted_event") else (),
                 }
             )
         elif plan.get("operation_kind") == "query":

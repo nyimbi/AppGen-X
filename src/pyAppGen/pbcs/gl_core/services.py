@@ -18,6 +18,8 @@ def _route_to_contract(route: dict) -> dict:
         for table in route.get("owned_tables", ())
     )
     is_command = operation_kind == "command"
+    if is_command and not owned_tables:
+        owned_tables = (EVENT_CONTRACT["inbox_table"],)
     return {
         "operation": operation,
         "operation_kind": operation_kind,
@@ -26,7 +28,7 @@ def _route_to_contract(route: dict) -> dict:
         "permission": route["requires_permission"],
         "owned_tables": owned_tables if is_command else (),
         "read_tables": () if is_command else owned_tables,
-        "emitted_event": tuple(route.get("emits", ())),
+        "emitted_event": (route.get("emits") or (f"{PBC_KEY}.{operation}.executed",))[0] if is_command else None,
         "consumed_event": tuple(route.get("consumes", ())),
         "idempotency_key": route.get("idempotency_key"),
         "transaction_boundary": "owned_datastore_plus_outbox",
@@ -109,7 +111,7 @@ class GlCoreService:
                     "command": operation_name,
                     "read_only": False,
                     "outbox_table": EVENT_CONTRACT["outbox_table"],
-                    "emits": plan.get("emitted_event", ()),
+                    "emits": (plan.get("emitted_event"),) if plan.get("emitted_event") else (),
                 }
             )
         elif plan.get("operation_kind") == "query":
