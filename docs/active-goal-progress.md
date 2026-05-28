@@ -2774,3 +2774,18 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   replay, toolchain adapters, compiler-surface modules, and deep runtime
   surfaces without unpacking nested payloads. Verification is focused under
   the low-battery delivery constraint. Commit: `2f3c8e6`.
+- Current enterprise PBC capability-surface pass makes domain completeness
+  executable for the 20 newly packaged enterprise PBCs. Each package-local
+  `domain_depth.py` now declares specialist capabilities and edge cases, then
+  maps every domain operation, rule, runtime parameter, advanced capability,
+  edge-case queue, owned table browser, and agent skill into an explicit UI
+  surface. Each `ui.py` workbench contract now exposes those operation actions,
+  rule editors, parameter editors, advanced panels, edge-case queues, owned
+  table browsers, and agent tools directly so the composed application cannot
+  hide claimed capabilities behind generic panels. Added
+  `test_new_enterprise_pbc_ui_surfaces_every_domain_capability` to enforce this
+  surface coverage and the AppGen-X/no shared-table/no stream-picker rules.
+  Focused verification passed: `tests/test_pbc_enterprise_domain_depth.py -q`,
+  the 53-test PBC runtime/governance/agent/domain-depth suite,
+  `pbc_release_audit()`, and `pbc_generation_smoke_audit(IMPLEMENTED_PBC_KEYS)`.
+  Commit: `dd5db7a`.
