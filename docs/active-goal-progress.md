@@ -3229,6 +3229,22 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   entrypoints, focused package/audit tests, `tests/test_dsl_tooling_contracts.py
   -q`, tooling-audit JSON proof, scoped diff whitespace check, and
   restricted-name scan. Commit: `731f35ae`.
+- Current parallel PBC implementation pass delivered executable code for six
+  PBCs rather than plan-only artifacts: `actuarial_pricing_reserving`,
+  `advertising_campaign_operations`, `agri_supply_chain_traceability`,
+  `agriculture_farm_operations`, `airline_operations_control`, and
+  `airport_operations_management`. Each slice now has a hand-authored
+  `implementation-plan.md`, real domain code wired through runtime/service/UI
+  and agent or release evidence as applicable, focused implementation tests,
+  `implementation-status.md`, and `README.md`. The same pass fixed generated
+  PBC runtime ordering so explicit all-PBC generation smoke preserves the
+  requested selected PBC order. Verification passed: six PBC
+  implementation/runtime/contract suites (`79 passed`), selected six-PBC
+  generation smoke and implementation release audits, all-147
+  `pbc_generation_smoke_audit(IMPLEMENTED_PBC_KEYS)`, `pbc_release_audit()`,
+  Python compile checks, scoped diff whitespace checks, and
+  `tests/test_main.py::test_package_pbc_catalog_composes_enterprise_apps`.
+  Commit: `63349c99`.
 - Current Studio visual-edit matrix pass strengthens the IDE/designer evidence
   required by `docs/tooling.md`. `appgen.designer-visual-edit-matrix.v1` now
   proves database field edits, form component placement, workflow transition
