@@ -2010,6 +2010,7 @@ def test_doctor_report_checks_parser_catalog_generator_and_ide_hooks() -> None:
         "lsp_completion_coverage",
         "semantic_symbol_coverage",
         "studio_semantic_service",
+        "vscode_extension_surface",
     } <= {check["check"] for check in report["checks"]}
 
 

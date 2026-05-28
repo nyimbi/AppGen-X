@@ -1854,6 +1854,7 @@ def _validation_target_diagnostics(
 def doctor_report_dsl() -> dict:
     """Check parser generation, imports, catalog, templates, backends, and IDE hooks."""
     root = Path(__file__).resolve().parents[2]
+    vscode = _tooling_audit_vscode_extension(root)
     checks = (
         _doctor_check(
             "grammar_file",
@@ -1933,6 +1934,16 @@ def doctor_report_dsl() -> dict:
             designer_sync_report_dsl(_doctor_sample_dsl(), source_name="doctor.appgen")["semantic_model_format"] == "appgen.semantic-model.v1",
             "Studio designer service is bound to the shared semantic model.",
             {"report_format": "appgen.designer-sync-report.v1"},
+        ),
+        _doctor_check(
+            "vscode_extension_surface",
+            vscode["ok"],
+            "VS Code extension scaffold declares the AppGen-X language, commands, and LSP providers.",
+            {
+                "report_format": vscode["format"],
+                "checks": vscode["checks"],
+                "commands": vscode["commands"],
+            },
         ),
     )
     return {

@@ -619,7 +619,10 @@ Explain output should be human-readable by default and JSON with `--json`.
 ### `appgen doctor`
 
 Checks parser generation, Python package imports, catalog availability, template
-paths, generator backends, and optional IDE/LSP dependencies.
+paths, generator backends, and optional IDE/LSP dependencies. The doctor report
+also embeds a VS Code extension surface check so the editor scaffold, command
+palette entries, language configuration, syntax grammar, and LSP provider
+registrations are verified from the same command used in CI.
 
 ### `appgen tooling-audit`
 
