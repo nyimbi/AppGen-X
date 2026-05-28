@@ -3062,3 +3062,15 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   `tests/test_dsl_tooling_contracts.py -q`, focused DSL platform/CLI regression
   tests, scoped diff whitespace check, and restricted-name scan. Commit:
   `66e54f17`.
+- Current Studio semantic-service pass makes the web IDE bridge executable.
+  `appgen.studio-semantic-service.v1` now composes the LSP, designer-sync,
+  graph-suite, quick-fix, and natural-language planner contracts so the DSL
+  editor, component palette, form designer, database designer, workflow
+  designer, PBC composition designer, package/deployment designer, diagnostics
+  panel, graph/explain panel, and natural-language planner share one semantic
+  source. The frontend renders a dedicated semantic-service panel and browser
+  smoke expectations include that bridge. Verification passed: Python compile
+  for `src/pyAppGen/studio.py`, focused Studio pytest contract, frontend
+  `npm run build`, scoped diff whitespace check, and restricted-name scan.
+  Browser smoke execution was attempted but local Chrome exited before DOM
+  capture in this environment. Commit: `66e9a06d`.
