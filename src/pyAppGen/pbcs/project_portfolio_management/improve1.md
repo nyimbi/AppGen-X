@@ -2,314 +2,314 @@
 
 ## Purpose
 
-This backlog identifies 50 high-impact, high-value improvements for `project_portfolio_management`. Each item is specific to the domain surface currently declared by the PBC and is intended to move the package beyond world-class breadth toward complete specialist-grade coverage.
+This backlog identifies 50 high-impact, high-value improvements for `project_portfolio_management`. Each improvement is specific to portfolio intake, business-case governance, prioritization, stage gates, dependencies, resources, benefits, risks, financial governance, executive decisioning, and continuous portfolio control so the PBC can move toward complete specialist-grade domain coverage.
 
 ## Current Domain Evidence Used
 
-- Domain purpose: Owns initiative intake, business cases, portfolio scoring, prioritization, stage gates, dependencies, resources, benefits, risks, and executive portfolio governance.
-- Representative owned tables: `project_portfolio_management_portfolio_item`, `project_portfolio_management_portfolio_program`, `project_portfolio_management_business_case`, `project_portfolio_management_portfolio_score`, `project_portfolio_management_prioritization_run`, `project_portfolio_management_stage_gate`, `project_portfolio_management_gate_decision`, `project_portfolio_management_project_dependency`, `project_portfolio_management_resource_demand`, `project_portfolio_management_resource_assignment`, `project_portfolio_management_benefit_hypothesis`, `project_portfolio_management_benefit_realization`, ...
-- Representative operations/APIs: `intake_portfolio_item`, `create_business_case`, `score_portfolio_item`, `run_prioritization`, `define_stage_gate`, `record_gate_decision`, `map_dependency`, `forecast_resource_demand`, `assign_resource`, `define_benefit_hypothesis`, `measure_benefit_realization`, `record_portfolio_risk`, ...
-- Representative events: `PortfolioItemIntaked`, `BusinessCaseApproved`, `PrioritizationPublished`, `GateDecisionRecorded`, `BenefitRealizationMeasured`, `PortfolioExceptionOpened`.
-- Representative advanced capabilities: `optimization-based prioritization`, `counterfactual portfolio tradeoffs`, `dependency graph risk propagation`, `benefit realization forecasting`, `continuous governance controls`, `AI-assisted business case critique`.
+- Domain scope: initiative intake, business cases, portfolio scoring, prioritization, stage gates, dependencies, resources, benefits, risks, issues, change requests, financial snapshots, exceptions, policy rules, runtime parameters, governed models, and executive portfolio governance.
+- Owned operational surface: `portfolio_item`, `portfolio_program`, `business_case`, `portfolio_score`, `prioritization_run`, `stage_gate`, `gate_decision`, `project_dependency`, `resource_demand`, `resource_assignment`, `benefit_hypothesis`, `benefit_realization`, `portfolio_risk`, `portfolio_issue`, `change_request`, `portfolio_financial_snapshot`, `portfolio_exception_case`, `portfolio_policy_rule`, `portfolio_runtime_parameter`, `portfolio_schema_extension`, `portfolio_control_assertion`, and `portfolio_governed_model`.
+- Declared operations: portfolio item intake, business-case creation, scoring, prioritization, gate definition and decisions, dependency mapping, resource demand forecasting, resource assignment, benefit hypotheses, benefit measurement, risk and issue handling, change requests, financial snapshots, portfolio exceptions, rule compilation, and tradeoff simulation.
+- Declared integrations: consumed `BudgetApproved`, `EmployeeCreated`, `RiskAssessed`, and `PolicyChanged` events plus emitted `PortfolioItemIntaked`, `BusinessCaseApproved`, `PrioritizationPublished`, `GateDecisionRecorded`, `BenefitRealizationMeasured`, and `PortfolioExceptionOpened`.
+- Declared advanced posture: optimization-based prioritization, counterfactual portfolio tradeoffs, dependency graph risk propagation, benefit realization forecasting, continuous governance controls, AI-assisted business-case critique, AppGen-X eventing, owned boundaries, UI workbenches, agent skills, configuration, rules, parameters, release evidence, and runtime smoke checks.
 
 ## 50 Better-Than-World-Class Improvements
 
-### 1. Deep specialist lifecycle semantics for `project_portfolio_management_portfolio_item`
+### 1. Strategic objective traceability graph
 
-**Justification:** This owned table is part of the Project Portfolio Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns initiative intake, business cases, portfolio scoring, prioritization, stage gates, dependencies, resources, benefits, risks, and executive portfolio governance.
+**Justification:** Portfolio decisions are only defensible when every initiative connects to strategic objectives, measurable outcomes, executive commitments, and explicit tradeoffs.
 
-**Improvement:** Extend `project_portfolio_management_portfolio_item` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `portfolio_management`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add a strategic-objective graph that links `portfolio_item`, `portfolio_program`, `business_case`, `benefit_hypothesis`, and `portfolio_score` to objectives, OKRs, regulatory mandates, customer outcomes, and enterprise themes. The workbench should expose orphaned initiatives, overfunded themes, underfunded commitments, and agent-generated explanations of how each portfolio item supports strategy.
 
-### 2. Deep specialist lifecycle semantics for `project_portfolio_management_portfolio_program`
+### 2. Intake quality and readiness scoring
 
-**Justification:** This owned table is part of the Project Portfolio Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns initiative intake, business cases, portfolio scoring, prioritization, stage gates, dependencies, resources, benefits, risks, and executive portfolio governance.
+**Justification:** Poorly formed initiative requests consume governance time and distort prioritization before business cases are complete.
 
-**Improvement:** Extend `project_portfolio_management_portfolio_program` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `project_portfolio_management_workflow`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add intake readiness scoring for problem clarity, sponsor authority, strategic fit, expected benefit, cost basis, risk statement, dependency awareness, resource ask, compliance impact, and evidence completeness. Intake commands should route low-readiness items to remediation queues with precise missing-evidence tasks.
 
-### 3. Deep specialist lifecycle semantics for `project_portfolio_management_business_case`
+### 3. Portfolio item taxonomy and archetypes
 
-**Justification:** This owned table is part of the Project Portfolio Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns initiative intake, business cases, portfolio scoring, prioritization, stage gates, dependencies, resources, benefits, risks, and executive portfolio governance.
+**Justification:** Mandatory compliance work, innovation bets, platform investments, cost takeout, customer commitments, technical debt, and operational fixes should not be scored as if they were identical.
 
-**Improvement:** Extend `project_portfolio_management_business_case` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `project_portfolio_management_analytics`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add portfolio item archetypes with required evidence, scoring dimensions, approval paths, financial methods, risk tolerances, and gate templates. UI views should let executives compare like with like and prevent misleading rank-ordering across incompatible initiative classes.
 
-### 4. Deep specialist lifecycle semantics for `project_portfolio_management_portfolio_score`
+### 4. Business-case assumption ledger
 
-**Justification:** This owned table is part of the Project Portfolio Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns initiative intake, business cases, portfolio scoring, prioritization, stage gates, dependencies, resources, benefits, risks, and executive portfolio governance.
+**Justification:** Business cases often fail because assumptions about cost, timing, benefits, adoption, regulation, and constraints are undocumented or never revisited.
 
-**Improvement:** Extend `project_portfolio_management_portfolio_score` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `configuration_schema`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Extend `business_case` with an assumption ledger that records assumption type, owner, confidence, evidence source, expiration date, sensitivity, validation plan, and decision impact. The PBC agent should extract assumptions from documents and require confirmation before they influence scoring.
 
-### 5. Deep specialist lifecycle semantics for `project_portfolio_management_prioritization_run`
+### 5. Benefit hypothesis design studio
 
-**Justification:** This owned table is part of the Project Portfolio Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns initiative intake, business cases, portfolio scoring, prioritization, stage gates, dependencies, resources, benefits, risks, and executive portfolio governance.
+**Justification:** Benefit tracking is weak when hypotheses are vague, lagging, unowned, or disconnected from measurable operational changes.
 
-**Improvement:** Extend `project_portfolio_management_prioritization_run` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `rule_engine`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Expand `benefit_hypothesis` with outcome metric, baseline, target, realization mechanism, leading indicators, lagging indicators, measurement owner, data source contract, attribution logic, and expected realization curve. The UI should flag benefits that cannot be measured through declared APIs/events/projections.
 
-### 6. Deep specialist lifecycle semantics for `project_portfolio_management_stage_gate`
+### 6. Dynamic scoring model governance
 
-**Justification:** This owned table is part of the Project Portfolio Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns initiative intake, business cases, portfolio scoring, prioritization, stage gates, dependencies, resources, benefits, risks, and executive portfolio governance.
+**Justification:** Portfolio scores can become political black boxes unless criteria, weights, thresholds, and model changes are governed and explainable.
 
-**Improvement:** Extend `project_portfolio_management_stage_gate` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `parameter_engine`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add versioned score models with criteria libraries, weighting methods, normalization rules, mandatory criteria, excluded criteria, threshold policies, and approval history. Every `portfolio_score` should include a transparent score breakdown, model version, and explanation of why the item ranked where it did.
 
-### 7. Deep specialist lifecycle semantics for `project_portfolio_management_gate_decision`
+### 7. Multi-objective optimization prioritization
 
-**Justification:** This owned table is part of the Project Portfolio Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns initiative intake, business cases, portfolio scoring, prioritization, stage gates, dependencies, resources, benefits, risks, and executive portfolio governance.
+**Justification:** Portfolio prioritization must balance strategic value, cost, risk, capacity, timing, dependencies, compliance, resilience, sustainability, and option value, not just rank by a single score.
 
-**Improvement:** Extend `project_portfolio_management_gate_decision` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `owned_schema_migrations_models`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Extend `prioritization_run` with multi-objective optimization, constraint definitions, Pareto frontier output, selected frontier point, rejected alternatives, and executive rationale. The workbench should let leaders explore tradeoffs without committing changes until a prioritization scenario is published.
 
-### 8. Deep specialist lifecycle semantics for `project_portfolio_management_project_dependency`
+### 8. Constraint-aware capital allocation
 
-**Justification:** This owned table is part of the Project Portfolio Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns initiative intake, business cases, portfolio scoring, prioritization, stage gates, dependencies, resources, benefits, risks, and executive portfolio governance.
+**Justification:** Portfolio approval must respect budget envelopes, funding source restrictions, fiscal periods, capitalization rules, and reserved capacity.
 
-**Improvement:** Extend `project_portfolio_management_project_dependency` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `appgen_x_outbox_inbox_eventing`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add capital allocation constraints to prioritization and financial snapshots using declared budget projections only. The PBC should show funding gaps, stranded budget, fiscal-period mismatches, approval dependencies, and recommended sequencing for value delivery under budget constraints.
 
-### 9. Deep specialist lifecycle semantics for `project_portfolio_management_resource_demand`
+### 9. Capacity and skill supply modeling
 
-**Justification:** This owned table is part of the Project Portfolio Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns initiative intake, business cases, portfolio scoring, prioritization, stage gates, dependencies, resources, benefits, risks, and executive portfolio governance.
+**Justification:** A portfolio can be financially approved yet impossible to deliver because critical skills, teams, vendors, or decision-makers are unavailable.
 
-**Improvement:** Extend `project_portfolio_management_resource_demand` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `idempotent_handlers`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Expand `resource_demand` and `resource_assignment` with skill taxonomy, role criticality, scarcity, ramp time, location, availability windows, confidence, and declared workforce projections. Prioritization should account for bottleneck skills and show capacity heatmaps by period.
 
-### 10. Deep specialist lifecycle semantics for `project_portfolio_management_resource_assignment`
+### 10. Resource contention conflict detection
 
-**Justification:** This owned table is part of the Project Portfolio Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns initiative intake, business cases, portfolio scoring, prioritization, stage gates, dependencies, resources, benefits, risks, and executive portfolio governance.
+**Justification:** Shared teams are routinely overcommitted across initiatives, creating hidden delays, morale risk, and executive escalation.
 
-**Improvement:** Extend `project_portfolio_management_resource_assignment` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `retry_dead_letter_evidence`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add conflict detection that compares resource demand, assignment, priority, timing, and skill constraints across portfolio items. The UI should expose conflicts, affected milestones, possible swaps, fairness implications, and agent-proposed resolution plans.
 
-### 11. Make `intake_portfolio_item` a complete command lifecycle
+### 11. Dependency graph critical path analysis
 
-**Justification:** High-value users need `intake_portfolio_item` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Portfolio risk is often dominated by cross-project dependencies, predecessor decisions, shared platforms, vendor commitments, and regulatory dates.
 
-**Improvement:** Implement `intake_portfolio_item` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `PortfolioItemIntaked`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Extend `project_dependency` into a typed dependency graph with dependency kind, strength, lead/lag, required evidence, risk propagation, and critical path contribution. The workbench should show dependency chains, blocked value, and the initiatives that would unblock the most portfolio benefit.
 
-### 12. Make `create_business_case` a complete command lifecycle
+### 12. Dependency health and propagation scoring
 
-**Justification:** High-value users need `create_business_case` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** A dependency list is insufficient unless the portfolio can quantify how dependency slippage affects cost, schedule, benefit, and risk exposure.
 
-**Improvement:** Implement `create_business_case` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `BusinessCaseApproved`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add dependency health metrics, probability of delay, downstream impact, mitigation status, and propagation simulations. When a dependency changes, the PBC should update affected portfolio scores, gate readiness, benefit timing, and exception queues through side-effect-free planning output.
 
-### 13. Make `score_portfolio_item` a complete command lifecycle
+### 13. Stage-gate evidence package templates
 
-**Justification:** High-value users need `score_portfolio_item` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Gate decisions require different evidence at idea, business case, funding, delivery, launch, benefit realization, and closure stages.
 
-**Improvement:** Implement `score_portfolio_item` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `PrioritizationPublished`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add configurable gate templates with required documents, metrics, risk checks, financial evidence, dependency confirmations, resource commitments, benefit evidence, and control assertions. Gate decision UI should show missing evidence, waiver requests, and policy explanations before approval.
 
-### 14. Make `run_prioritization` a complete command lifecycle
+### 14. Gate decision dissent and conditional approval
 
-**Justification:** High-value users need `run_prioritization` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Real governance bodies rarely produce simple approve/reject decisions; they create conditions, dissent, deferrals, split approvals, and time-bound follow-ups.
 
-**Improvement:** Implement `run_prioritization` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `GateDecisionRecorded`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Extend `gate_decision` with conditional approval terms, dissent records, decision participants, quorum, delegated authority, action items, expiry dates, and escalation triggers. Emitted events should distinguish approved, conditionally approved, deferred, rejected, and reopened gate outcomes.
 
-### 15. Make `define_stage_gate` a complete command lifecycle
+### 15. Portfolio Kanban and lifecycle state machine
 
-**Justification:** High-value users need `define_stage_gate` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Portfolio items need explicit lifecycle states from concept through intake, case, prioritization, approval, delivery, benefits, closure, suspension, cancellation, or archival.
 
-**Improvement:** Implement `define_stage_gate` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `BenefitRealizationMeasured`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add a governed lifecycle state machine with allowed transitions, role permissions, required evidence, emitted events, and exception paths. UI boards should show portfolio flow, aging, bottlenecks, queue health, and WIP limits by governance stage.
 
-### 16. Make `record_gate_decision` a complete command lifecycle
+### 16. Executive scenario planning
 
-**Justification:** High-value users need `record_gate_decision` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Executives need to test budget cuts, accelerated strategy shifts, resource shortages, regulatory deadlines, merger effects, and market shocks before portfolio changes are made.
 
-**Improvement:** Implement `record_gate_decision` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `PortfolioExceptionOpened`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add side-effect-free executive scenarios with changed constraints, selected items, rejected items, delayed items, benefit timing, risk exposure, capacity use, financial envelopes, and sustainability impact. The agent should narrate tradeoffs and generate board-ready scenario summaries.
 
-### 17. Make `map_dependency` a complete command lifecycle
+### 17. Real-options valuation
 
-**Justification:** High-value users need `map_dependency` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Some initiatives create strategic optionality, learning, resilience, or market access that conventional ROI scoring undervalues.
 
-**Improvement:** Implement `map_dependency` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `PortfolioItemIntaked`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add real-options fields and valuation methods for defer, expand, abandon, stage, switch, and learn options. Business cases should record option assumptions, triggers, expiration, uncertainty, and decision checkpoints so innovation and platform bets can be governed properly.
 
-### 18. Make `forecast_resource_demand` a complete command lifecycle
+### 18. Portfolio risk aggregation
 
-**Justification:** High-value users need `forecast_resource_demand` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Individual project risks do not reveal concentration risk, correlated exposure, systemic dependency fragility, or aggregate delivery risk.
 
-**Improvement:** Implement `forecast_resource_demand` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `BusinessCaseApproved`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Extend `portfolio_risk` with aggregation dimensions, correlation groups, contagion paths, risk appetite thresholds, residual exposure, and mitigation coverage. The workbench should show portfolio-level heatmaps and risk-adjusted prioritization effects.
 
-### 19. Make `assign_resource` a complete command lifecycle
+### 19. Risk appetite and tolerance enforcement
 
-**Justification:** High-value users need `assign_resource` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Portfolio decisions should respect explicit risk appetite, not rely on ad hoc executive judgment at each meeting.
 
-**Improvement:** Implement `assign_resource` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `PrioritizationPublished`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add appetite statements, tolerance ranges, breach logic, escalation routes, and exception approvals to `portfolio_policy_rule`. Prioritization and gate decisions should produce evidence when a selection breaches appetite or requires risk acceptance.
 
-### 20. Make `define_benefit_hypothesis` a complete command lifecycle
+### 20. Issue escalation and executive intervention workflow
 
-**Justification:** High-value users need `define_benefit_hypothesis` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Portfolio issues need timely escalation when they threaten strategic value, compliance commitments, financial exposure, or critical milestones.
 
-**Improvement:** Implement `define_benefit_hypothesis` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `GateDecisionRecorded`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Expand `portfolio_issue` with escalation level, decision needed, owner, due date, impacted items, recommended intervention, unresolved blocker type, and decision history. Executive dashboards should show only material portfolio issues with clear asks and consequences.
 
-### 21. Operationalize `optimization-based prioritization` as a governed decision system
+### 21. Change request portfolio impact analysis
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Project Portfolio Management and measurably improves project portfolio management risk score without hiding assumptions.
+**Justification:** Scope, timing, funding, and resource changes can alter the entire portfolio, not just the individual project.
 
-**Improvement:** Promote `optimization-based prioritization` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `project_portfolio_management_risk_score`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Extend `change_request` with portfolio-level impact calculations for cost, benefit, score, risk, capacity, dependency, gate schedule, and strategic alignment. Change approval should require a before/after portfolio view and publish events only after approved.
 
-### 22. Operationalize `counterfactual portfolio tradeoffs` as a governed decision system
+### 22. Benefits realization attribution
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Project Portfolio Management and measurably improves project portfolio management workbench metric without hiding assumptions.
+**Justification:** Benefits are often claimed without proving which initiative, external factor, or operational change caused the result.
 
-**Improvement:** Promote `counterfactual portfolio tradeoffs` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `project_portfolio_management_workbench_metric`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Expand `benefit_realization` with attribution model, comparison baseline, counterfactual evidence, contributing initiatives, external confounders, confidence, and validation method. The agent should flag over-claimed benefits and suggest evidence needed for credible realization.
 
-### 23. Operationalize `dependency graph risk propagation` as a governed decision system
+### 23. Benefit leakage and erosion detection
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Project Portfolio Management and measurably improves project portfolio management risk score without hiding assumptions.
+**Justification:** Expected value erodes through delays, adoption gaps, cost increases, scope compromises, and operational noncompliance.
 
-**Improvement:** Promote `dependency graph risk propagation` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `project_portfolio_management_risk_score`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add benefit leakage categories, early warning indicators, erosion amount, recovery actions, and owner accountability. The portfolio cockpit should show value at risk and recommend whether to intervene, rebaseline, defer, or stop an initiative.
 
-### 24. Operationalize `benefit realization forecasting` as a governed decision system
+### 24. Post-investment review lifecycle
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Project Portfolio Management and measurably improves project portfolio management workbench metric without hiding assumptions.
+**Justification:** Portfolio learning requires structured reviews after delivery and benefit realization, not just approval and execution tracking.
 
-**Improvement:** Promote `benefit realization forecasting` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `project_portfolio_management_workbench_metric`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add post-investment review records for planned versus actual cost, schedule, scope, benefits, risk, assumptions, lessons, and future scoring calibration. Gate closure should require review evidence for material initiatives.
 
-### 25. Operationalize `continuous governance controls` as a governed decision system
+### 25. Strategic balance analytics
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Project Portfolio Management and measurably improves project portfolio management risk score without hiding assumptions.
+**Justification:** Executives need to know whether the portfolio is overconcentrated in run-the-business work, compliance, innovation, growth, resilience, or cost reduction.
 
-**Improvement:** Promote `continuous governance controls` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `project_portfolio_management_risk_score`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add balance analytics across strategy, archetype, risk, horizon, value stream, customer segment, geography, regulatory driver, and investment class. UI should show under/overweight areas and simulate rebalancing options.
 
-### 26. Operationalize `AI-assisted business case critique` as a governed decision system
+### 26. Portfolio dependency on external PBC projections
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Project Portfolio Management and measurably improves project portfolio management workbench metric without hiding assumptions.
+**Justification:** Portfolio governance requires budget, workforce, risk, procurement, delivery, and sustainability context while preserving owned table boundaries.
 
-**Improvement:** Promote `AI-assisted business case critique` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `project_portfolio_management_workbench_metric`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add explicit projection descriptors for financial envelopes, employee capacity, supplier commitments, risk assessments, procurement approvals, and sustainability metrics. Release audits should prove these are accessed only through declared APIs/events/projections and never through foreign table writes.
 
-### 27. Operationalize `optimization-based prioritization` as a governed decision system
+### 27. Financial snapshot variance analysis
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Project Portfolio Management and measurably improves project portfolio management risk score without hiding assumptions.
+**Justification:** Financial snapshots must explain changes in forecast cost, committed cost, actuals, benefits, capitalization, and contingency over time.
 
-**Improvement:** Promote `optimization-based prioritization` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `project_portfolio_management_risk_score`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Expand `portfolio_financial_snapshot` with baseline version, current forecast, variance drivers, funding source, capitalization treatment, contingency use, remaining exposure, and materiality thresholds. Workbench views should provide waterfall explanations for every material variance.
 
-### 28. Operationalize `counterfactual portfolio tradeoffs` as a governed decision system
+### 28. Funding tranche governance
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Project Portfolio Management and measurably improves project portfolio management workbench metric without hiding assumptions.
+**Justification:** Large initiatives are often funded in tranches tied to evidence, gates, milestones, or learning outcomes.
 
-**Improvement:** Promote `counterfactual portfolio tradeoffs` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `project_portfolio_management_workbench_metric`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add tranche definitions, release criteria, consumed amount, remaining authorization, gate dependency, and revocation rules. Gate decisions should be able to release, hold, reduce, or redirect funding without losing audit traceability.
 
-### 29. Operationalize `dependency graph risk propagation` as a governed decision system
+### 29. Portfolio stop, pause, pivot, and restart controls
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Project Portfolio Management and measurably improves project portfolio management risk score without hiding assumptions.
+**Justification:** World-class portfolio management must actively stop low-value work, pause constrained work, pivot assumptions, and restart only when evidence improves.
 
-**Improvement:** Promote `dependency graph risk propagation` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `project_portfolio_management_risk_score`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add lifecycle transitions and decision packages for stop, pause, pivot, and restart with sunk-cost disclosure, residual obligations, resource release, benefit loss, dependency impact, and executive authorization. The agent should identify candidates for termination or pivot.
 
-### 30. Operationalize `benefit realization forecasting` as a governed decision system
+### 30. Initiative health signal fusion
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Project Portfolio Management and measurably improves project portfolio management workbench metric without hiding assumptions.
+**Justification:** Portfolio health should combine schedule, cost, scope, benefit, risk, dependency, resource, stakeholder, and governance signals rather than rely on manual color statuses.
 
-**Improvement:** Promote `benefit realization forecasting` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `project_portfolio_management_workbench_metric`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add health scoring that fuses internal portfolio records with declared external projections and event signals. Each health score should include component contributions, data freshness, confidence, and action recommendations.
 
-### 31. Create simulation-grade governance for `intake_policy` and `minimum_score_threshold`
+### 31. Predictive delivery risk scoring
 
-**Justification:** Complete Project Portfolio Management coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Governance bodies need early warnings before initiatives miss gates, exceed budget, lose sponsors, or fail benefits.
 
-**Improvement:** Add a policy cockpit where `intake_policy` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `minimum_score_threshold` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add predictive risk models in `portfolio_governed_model` for delivery slippage, cost overrun, benefit erosion, resource contention, and gate failure. Store model evidence, drift checks, fairness considerations, and explainable drivers for each prediction.
 
-### 32. Create simulation-grade governance for `scoring_policy` and `capacity_buffer_percent`
+### 32. Governance meeting agenda automation
 
-**Justification:** Complete Project Portfolio Management coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Portfolio boards waste time when agendas do not focus on material decisions, exceptions, tradeoffs, and required approvals.
 
-**Improvement:** Add a policy cockpit where `scoring_policy` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `capacity_buffer_percent` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add agenda generation that selects items needing decisions, groups related dependencies, ranks by materiality, surfaces dissent, and drafts decision packets. The agent should produce meeting summaries and convert decisions into typed gate, issue, change, or prioritization commands.
 
-### 33. Create simulation-grade governance for `stage_gate_policy` and `gate_warning_days`
+### 33. Decision rights and authority matrix
 
-**Justification:** Complete Project Portfolio Management coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Portfolio actions must respect who can approve intake, funding, gates, changes, exceptions, waivers, and cancellation.
 
-**Improvement:** Add a policy cockpit where `stage_gate_policy` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `gate_warning_days` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add an authority matrix with role, threshold, domain, delegation, quorum, separation-of-duties, and emergency override rules. Every command should return required authority evidence and reject or escalate unauthorized decisions.
 
-### 34. Create simulation-grade governance for `resource_capacity_policy` and `benefit_materiality_threshold`
+### 34. Portfolio policy studio
 
-**Justification:** Complete Project Portfolio Management coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Governance rules change by strategy, region, investment type, risk class, funding level, and compliance context.
 
-**Improvement:** Add a policy cockpit where `resource_capacity_policy` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `benefit_materiality_threshold` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Expand `portfolio_policy_rule` into a policy studio with rule templates, impact previews, conflict detection, approval workflow, versioning, and simulation against historical decisions. Policy changes should show affected items before activation.
 
-### 35. Create simulation-grade governance for `benefit_tracking_policy` and `change_approval_limit`
+### 35. Runtime parameter impact simulation
 
-**Justification:** Complete Project Portfolio Management coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Threshold changes such as minimum score, capacity buffer, gate warning days, and materiality levels can reshape portfolio queues and executive workload.
 
-**Improvement:** Add a policy cockpit where `benefit_tracking_policy` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `change_approval_limit` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add parameter impact simulation that reports affected portfolio items, changed scores, new gate warnings, resource conflicts, benefit-materiality changes, and exception volume. The agent should explain blast radius before requesting parameter-change approval.
 
-### 36. Upgrade `portfolio workbench` into a full specialist command center
+### 36. Control assertion evidence automation
 
-**Justification:** The PBC UI must expose the complete Project Portfolio Management surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Portfolio governance must prove controls over approvals, scoring, funding, risk acceptance, benefit tracking, and exceptions continuously.
 
-**Improvement:** Expand `portfolio workbench` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Expand `portfolio_control_assertion` with control objective, test method, sample population, failure evidence, remediation, owner, and next test date. Release audits and UI should show control effectiveness by portfolio process.
 
-### 37. Upgrade `intake funnel` into a full specialist command center
+### 37. Portfolio audit reconstruction
 
-**Justification:** The PBC UI must expose the complete Project Portfolio Management surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Auditors and executives need to reconstruct why a portfolio looked a certain way at a past decision date.
 
-**Improvement:** Expand `intake funnel` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add time-travel reconstruction that rebuilds portfolio items, scores, scenarios, gates, dependencies, financial snapshots, risks, and decisions as of a transaction time and valid time. Exportable evidence packets should include hashes and decision lineage.
 
-### 38. Upgrade `business case canvas` into a full specialist command center
+### 38. Cryptographic decision proof packets
 
-**Justification:** The PBC UI must expose the complete Project Portfolio Management surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** High-stakes funding and cancellation decisions require tamper-evident proof of inputs, authorities, votes, evidence, and emitted events.
 
-**Improvement:** Expand `business case canvas` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add sealed decision proof packets for prioritization runs, gate decisions, business-case approvals, change requests, and funding tranches. Verification APIs should prove integrity without exposing sensitive portfolio details.
 
-### 39. Upgrade `prioritization board` into a full specialist command center
+### 39. Portfolio document and presentation ingestion
 
-**Justification:** The PBC UI must expose the complete Project Portfolio Management surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Initiative proposals, business cases, status decks, spreadsheets, and board packs contain key portfolio facts that should become governed records.
 
-**Improvement:** Expand `prioritization board` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add semantic document ingestion that extracts initiatives, assumptions, benefits, costs, risks, dependencies, decisions, and action items into proposed commands. The agent must show source citations, confidence, validation errors, and reversible CRUD previews.
 
-### 40. Upgrade `stage gate console` into a full specialist command center
+### 40. Agent-assisted business case critique
 
-**Justification:** The PBC UI must expose the complete Project Portfolio Management surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** The spec declares AI-assisted critique, but the PBC should provide deep, structured feedback on evidence quality, assumptions, benefit logic, risk, and feasibility.
 
-**Improvement:** Expand `stage gate console` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add agent skills that critique business cases against archetype-specific rubrics, identify missing evidence, challenge weak assumptions, compare to historical outcomes, and propose improvements. Critiques should be saved as owned evidence, not as ungoverned chat text.
 
-### 41. Prove cross-PBC federation for `POST /portfolios` and `BudgetApproved`
+### 41. Portfolio exception case management
 
-**Justification:** Project Portfolio Management must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Exceptions such as policy waivers, emergency approvals, missing evidence, risk breaches, and dependency failures need structured lifecycle handling.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /portfolios` and consumed event `BudgetApproved` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Expand `portfolio_exception_case` with exception type, affected item, policy breached, authority required, temporary controls, expiry date, remediation owner, recurrence marker, and closure proof. UI queues should prioritize exceptions by materiality and aging.
 
-### 42. Prove cross-PBC federation for `POST /programs` and `EmployeeCreated`
+### 42. Initiative intake marketplace
 
-**Justification:** Project Portfolio Management must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Organizations often receive more ideas than they can assess; intake needs transparent comparison, sponsor collaboration, and duplicate prevention.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /programs` and consumed event `EmployeeCreated` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Add an intake marketplace where sponsors can submit, enrich, merge, comment on, and track initiative candidates. Duplicate detection should identify overlapping ideas, competing sponsorship, and consolidation opportunities before business-case work begins.
 
-### 43. Prove cross-PBC federation for `POST /projects` and `RiskAssessed`
+### 43. Portfolio communication and stakeholder map
 
-**Justification:** Project Portfolio Management must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Portfolio outcomes depend on sponsor support, impacted stakeholders, adoption owners, governance participants, and communication obligations.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /projects` and consumed event `RiskAssessed` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Add stakeholder maps with sponsor, beneficiary, impacted group, decision-maker, approver, change champion, and communications owner. Gate and change workflows should require communications readiness for material initiatives.
 
-### 44. Prove cross-PBC federation for `POST /milestones` and `PolicyChanged`
+### 44. Regulatory and compliance commitment tracking
 
-**Justification:** Project Portfolio Management must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Compliance initiatives often have external deadlines, mandated controls, evidence requirements, and penalty exposure that require special governance.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /milestones` and consumed event `PolicyChanged` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Add compliance commitment records with obligation source, deadline, regulator/customer, penalty exposure, evidence package, dependency, and waiver status. Prioritization should protect mandatory commitments and quantify risk of deferral.
 
-### 45. Temporal reconstruction and bitemporal audit for Project Portfolio Management
+### 45. Sustainability and carbon portfolio lens
 
-**Justification:** Regulated and operationally complex domains need to answer what was known, valid, processed, and visible at any point in time.
+**Justification:** Portfolio investment choices can materially affect emissions, resilience, and sustainability commitments.
 
-**Improvement:** Add transaction-time, valid-time, and processing-time fields to core records, temporal query APIs, projection rebuild tooling, and UI time travel so specialists can reconstruct decisions, reports, and automation outcomes.
+**Improvement:** Add sustainability impact scoring for carbon, waste, energy, social impact, and resilience using declared projections. Executive scenarios should show how selected portfolios shift sustainability commitments alongside cost, benefit, and risk.
 
-### 46. Bulk operations and migration-grade controls for Project Portfolio Management
+### 46. Portfolio anomaly detection
 
-**Justification:** World-class deployments must handle imports, mass corrections, high-volume operating days, and cutovers without bypassing governance.
+**Justification:** Unusual scoring changes, repeated gate waivers, benefit overclaims, resource gaming, budget fragmentation, or approval clustering can signal governance failure.
 
-**Improvement:** Add staged bulk upload, duplicate detection, chunked validation, approval sampling, partial failure handling, retry dashboards, reconciliation summaries, and agent-generated remediation plans for large batches.
+**Improvement:** Add anomaly detection for portfolio operations with typology, severity, explanation, false-positive handling, and remediation workflows. Detected anomalies should open `portfolio_exception_case` records when material.
 
-### 47. Specialist edge-case playbooks for Project Portfolio Management
+### 47. Continuous portfolio close and reforecast cycle
 
-**Justification:** Rare cases often carry the highest financial, legal, safety, service, or compliance risk.
+**Justification:** Portfolio governance should maintain always-current forecasts rather than wait for monthly manual reporting cycles.
 
-**Improvement:** Create a playbook catalog with detection rules, required evidence, escalation paths, fallback actions, owner roles, and release-audited tests for high-severity edge cases and exception queues.
+**Improvement:** Add continuous close routines that refresh financial snapshots, benefits, capacity, risks, dependencies, and decision queues from declared events and projections. The workbench should show freshness, stale inputs, blocked refreshes, and publication readiness.
 
-### 48. Pre-mutation simulation and blast-radius analysis for Project Portfolio Management
+### 48. Executive narrative generation with evidence citations
 
-**Justification:** Users should understand consequences before committing irreversible, customer-visible, operationally disruptive, or financially material changes.
+**Justification:** Leaders need concise explanations of portfolio health, changes, decisions, and risks that can be traced to governed evidence.
 
-**Improvement:** Add what-if simulation for every material command, showing impacted records, emitted events, dependent projections, rule outcomes, approvals, downstream PBC dependencies, and rollback limits.
+**Improvement:** Add narrative generation that cites portfolio items, scores, dependencies, benefits, financial snapshots, risks, issues, and decisions. Narratives should clearly distinguish facts, forecasts, assumptions, recommendations, and unresolved evidence gaps.
 
-### 49. Continuous control testing and operational assurance for Project Portfolio Management
+### 49. Complete role-based portfolio workbench
 
-**Justification:** Better-than-world-class PBCs prove controls continuously, not only at release or during periodic audits.
+**Justification:** Sponsors, portfolio managers, finance, resource managers, risk teams, executives, and auditors require different workflows over the same controlled data.
 
-**Improvement:** Add executable control assertions, sampled evidence checks, anomaly thresholds, control-owner dashboards, breach/recovery events, and release gates that fail when domain controls lose evidence.
+**Improvement:** Expand UI fragments into role-specific workbenches: sponsor intake, portfolio manager command center, executive decision room, finance portfolio view, resource capacity view, benefits realization board, risk and exception console, and auditor evidence room. Each view should expose all relevant commands, metrics, and agent actions.
 
-### 50. Human-in-the-loop domain agent execution for Project Portfolio Management
+### 50. End-to-end portfolio release evidence matrix
 
-**Justification:** The PBC chatbot must help specialists perform real work while preventing unsafe autonomous mutation.
+**Justification:** A world-class PBC must prove every portfolio capability has owned schema, services, APIs, events, handlers, UI, agent skills, rules, parameters, tests, and boundary evidence.
 
-**Improvement:** Add domain-specific skills, document parsing, task planning, CRUD previews, confidence/risk scoring, confirmation gates, redaction, policy explanations, and post-action evidence packets for every supported command and query.
+**Improvement:** Add a release evidence matrix mapping every Project Portfolio Management capability to its tables, commands, route descriptors, AppGen-X event contracts, idempotent handlers, workbench panels, agent skills, permissions, smoke tests, and cross-PBC boundary checks. Release audits should fail whenever a claimed capability lacks executable proof.
