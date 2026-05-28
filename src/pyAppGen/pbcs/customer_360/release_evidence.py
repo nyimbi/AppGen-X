@@ -34,12 +34,45 @@ def _build_service_contract():
     return build_service_contract()
 
 
+def _build_standalone_contract():
+    try:
+        from .standalone import customer_360_standalone_app_contract
+    except ImportError:
+        return _load_sibling_module('standalone').customer_360_standalone_app_contract()
+    return customer_360_standalone_app_contract()
+
+
+def _documentation_artifacts():
+    base = Path(__file__).parent
+    artifacts = (
+        {"name": "README.md", "exists": (base / "README.md").exists()},
+        {"name": "implementation-plan.md", "exists": (base / "implementation-plan.md").exists()},
+        {"name": "implementation-status.md", "exists": (base / "implementation-status.md").exists()},
+        {"name": "RELEASE_EVIDENCE.md", "exists": (base / "RELEASE_EVIDENCE.md").exists()},
+    )
+    missing = tuple(item["name"] for item in artifacts if not item["exists"])
+    return {
+        "ok": not missing,
+        "artifacts": artifacts,
+        "missing": missing,
+    }
+
+
 def build_release_evidence():
     """Return generated release audit evidence for this PBC."""
     evidence = dict(RELEASE_EVIDENCE)
     evidence.setdefault('schema', _build_schema_contract())
     evidence.setdefault('service', _build_service_contract())
+    evidence['standalone_app'] = _build_standalone_contract()
+    evidence['documentation'] = _documentation_artifacts()
     evidence.setdefault('pbc', 'customer_360')
+    extra_checks = (
+        {'id': 'standalone_app_surface', 'ok': evidence['standalone_app'].get('ok') is True},
+        {'id': 'package_documentation_present', 'ok': evidence['documentation'].get('ok') is True},
+    )
+    evidence['checks'] = tuple(evidence.get('checks', ())) + extra_checks
+    evidence['blocking_gaps'] = tuple(check for check in evidence['checks'] if check.get('ok') is not True)
+    evidence['ok'] = not evidence['blocking_gaps']
     return evidence
 
 
@@ -48,7 +81,7 @@ def release_readiness_manifest():
     evidence = build_release_evidence()
     sections = tuple(
         name
-        for name in ('schema', 'service', 'api', 'permissions', 'ui', 'events')
+        for name in ('schema', 'service', 'api', 'permissions', 'ui', 'events', 'standalone_app', 'documentation')
         if isinstance(evidence.get(name), dict)
     )
     checks = tuple(evidence.get('checks', ()))

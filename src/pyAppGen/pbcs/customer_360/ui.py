@@ -29,6 +29,84 @@ CUSTOMER_360_UI_FRAGMENT_KEYS = (
     "CustomerServiceContractExplorer",
     "CustomerReleaseEvidencePanel",
 )
+CUSTOMER_360_FORM_KEYS = (
+    "CustomerProfileIntakeForm",
+    "CustomerIdentityLinkForm",
+    "CustomerConsentForm",
+    "CustomerPreferenceForm",
+    "CustomerTouchpointForm",
+    "CustomerEngagementEventForm",
+    "CustomerMergeReviewForm",
+    "CustomerEventInboxForm",
+)
+CUSTOMER_360_WIZARD_KEYS = (
+    "CustomerProfileOnboardingWizard",
+    "ConsentRecoveryWizard",
+    "CustomerTouchpointWizard",
+    "MergeCaseResolutionWizard",
+    "CustomerDocumentIntakeWizard",
+)
+CUSTOMER_360_CONTROL_KEYS = (
+    "WorkbenchSummaryCards",
+    "ProfileTimelineControl",
+    "MergeQueueControl",
+    "ConsentGuardrailControl",
+    "OutboxInboxControl",
+)
+
+
+def customer_360_form_contracts() -> dict:
+    contracts = (
+        {"key": "CustomerProfileIntakeForm", "table": "customer_360_customer_profile", "operation": "create_profile", "fields": ("profile_id", "tenant", "display_name", "region", "lifecycle_state", "account_type")},
+        {"key": "CustomerIdentityLinkForm", "table": "customer_360_customer_identity", "operation": "link_identity", "fields": ("identity_id", "tenant", "profile_id", "identity_type", "value", "confidence", "verified")},
+        {"key": "CustomerConsentForm", "table": "customer_360_consent_record", "operation": "record_consent", "fields": ("consent_id", "tenant", "profile_id", "purpose", "region", "status", "confidence")},
+        {"key": "CustomerPreferenceForm", "table": "customer_360_communication_preference", "operation": "set_preference", "fields": ("preference_id", "tenant", "profile_id", "channel", "topic", "status", "locale", "quiet_hours")},
+        {"key": "CustomerTouchpointForm", "table": "customer_360_touchpoint", "operation": "capture_touchpoint", "fields": ("touchpoint_id", "tenant", "profile_id", "channel", "source", "occurred_at", "metadata")},
+        {"key": "CustomerEngagementEventForm", "table": "customer_360_engagement_event", "operation": "ingest_engagement_event", "fields": ("event_id", "tenant", "profile_id", "event_type", "channel", "value", "sentiment", "occurred_at")},
+        {"key": "CustomerMergeReviewForm", "table": "customer_360_profile_merge_case", "operation": "resolve_merge_case", "fields": ("merge_case_id", "resolved_by")},
+        {"key": "CustomerEventInboxForm", "table": "customer_360_appgen_inbox_event", "operation": "receive_event", "fields": ("event_id", "event_type", "payload")},
+    )
+    return {
+        "format": "appgen.customer-360-form-contract.v1",
+        "ok": True,
+        "pbc": "customer_360",
+        "contracts": contracts,
+        "side_effects": (),
+    }
+
+
+def customer_360_wizard_contracts() -> dict:
+    contracts = (
+        {"key": "CustomerProfileOnboardingWizard", "steps": ("profile", "identity", "consent", "preference"), "forms": ("CustomerProfileIntakeForm", "CustomerIdentityLinkForm", "CustomerConsentForm", "CustomerPreferenceForm"), "keywords": ("onboard", "new customer", "profile")},
+        {"key": "ConsentRecoveryWizard", "steps": ("consent", "preference", "policy_review"), "forms": ("CustomerConsentForm", "CustomerPreferenceForm"), "keywords": ("consent", "preference", "opt-in", "opt out")},
+        {"key": "CustomerTouchpointWizard", "steps": ("touchpoint", "engagement", "timeline_review"), "forms": ("CustomerTouchpointForm", "CustomerEngagementEventForm"), "keywords": ("touchpoint", "timeline", "engagement")},
+        {"key": "MergeCaseResolutionWizard", "steps": ("candidate_review", "survivorship", "resolution"), "forms": ("CustomerMergeReviewForm",), "keywords": ("merge", "duplicate", "survivorship")},
+        {"key": "CustomerDocumentIntakeWizard", "steps": ("document_review", "field_extraction", "crud_plan"), "forms": ("CustomerEventInboxForm", "CustomerProfileIntakeForm"), "keywords": ("document", "instruction", "plan", "crud")},
+    )
+    return {
+        "format": "appgen.customer-360-wizard-contract.v1",
+        "ok": True,
+        "pbc": "customer_360",
+        "contracts": contracts,
+        "side_effects": (),
+    }
+
+
+def customer_360_control_catalog() -> dict:
+    contracts = (
+        {"key": "WorkbenchSummaryCards", "type": "cards", "binds_to": ("profiles", "identities", "consents", "engagements")},
+        {"key": "ProfileTimelineControl", "type": "timeline", "binds_to": ("touchpoint", "engagement_event", "consent_record", "communication_preference")},
+        {"key": "MergeQueueControl", "type": "queue", "binds_to": ("profile_merge_case",)},
+        {"key": "ConsentGuardrailControl", "type": "policy", "binds_to": ("consent_record", "communication_preference")},
+        {"key": "OutboxInboxControl", "type": "event_console", "binds_to": ("customer_360_appgen_outbox_event", "customer_360_appgen_inbox_event", "customer_360_dead_letter_event")},
+    )
+    return {
+        "format": "appgen.customer-360-control-catalog.v1",
+        "ok": True,
+        "pbc": "customer_360",
+        "contracts": contracts,
+        "side_effects": (),
+    }
 
 
 def customer_360_ui_contract() -> dict:
@@ -38,6 +116,9 @@ def customer_360_ui_contract() -> dict:
         "pbc": "customer_360",
         "implementation_directory": "src/pyAppGen/pbcs/customer_360",
         "fragments": CUSTOMER_360_UI_FRAGMENT_KEYS,
+        "forms": CUSTOMER_360_FORM_KEYS,
+        "wizards": CUSTOMER_360_WIZARD_KEYS,
+        "controls": CUSTOMER_360_CONTROL_KEYS,
         "routes": (
             "/workbench/pbcs/customer_360",
             "/workbench/pbcs/customer_360/profiles",
@@ -169,6 +250,9 @@ def customer_360_render_workbench(
         "configuration_bound": bool(configuration.get("ok")),
         "rules_bound": rule_ids,
         "parameters_bound": parameter_names,
+        "forms": customer_360_form_contracts()["contracts"],
+        "wizards": customer_360_wizard_contracts()["contracts"],
+        "controls": customer_360_control_catalog()["contracts"],
         "inbox_count": len(state.get("inbox", ())),
         "dead_letter_count": len(state.get("dead_letter", ())),
         "binding_evidence": {
@@ -203,6 +287,47 @@ def customer_360_render_workbench(
             },
         },
         "event_outbox_count": len(state["outbox"]),
+    }
+
+
+def customer_360_standalone_workbench_blueprint() -> dict:
+    from .routes import standalone_route_contracts
+
+    route_manifest = standalone_route_contracts()
+    forms = customer_360_form_contracts()
+    wizards = customer_360_wizard_contracts()
+    controls = customer_360_control_catalog()
+    return {
+        "format": "appgen.customer-360-standalone-workbench.v1",
+        "ok": route_manifest["ok"] and forms["ok"] and wizards["ok"] and controls["ok"],
+        "pbc": "customer_360",
+        "route_manifest": route_manifest,
+        "forms": forms["contracts"],
+        "wizards": wizards["contracts"],
+        "controls": controls["contracts"],
+        "side_effects": (),
+    }
+
+
+def customer_360_render_standalone_workbench(summary: dict) -> dict:
+    blueprint = customer_360_standalone_workbench_blueprint()
+    cards = (
+        {"key": "profiles", "value": summary.get("profile_count", 0), "control": "WorkbenchSummaryCards"},
+        {"key": "consents", "value": summary.get("effective_consent_count", 0), "control": "ConsentGuardrailControl"},
+        {"key": "touchpoints", "value": summary.get("touchpoint_count", 0), "control": "ProfileTimelineControl"},
+        {"key": "merge_queue", "value": summary.get("open_merge_case_count", 0), "control": "MergeQueueControl"},
+        {"key": "outbox", "value": summary.get("outbox_count", 0), "control": "OutboxInboxControl"},
+    )
+    return {
+        "format": "appgen.customer-360-standalone-workbench-render.v1",
+        "ok": blueprint["ok"],
+        "tenant": summary.get("tenant"),
+        "cards": cards,
+        "forms": blueprint["forms"],
+        "wizards": blueprint["wizards"],
+        "controls": blueprint["controls"],
+        "route_manifest": blueprint["route_manifest"]["routes"],
+        "side_effects": (),
     }
 
 class _AppGenSmokeState(dict):
@@ -252,12 +377,16 @@ def smoke_test():
         "event_surfaces": event_surfaces,
         "binding_evidence": binding_evidence,
     }
+    standalone = customer_360_render_standalone_workbench({"tenant": "smoke"})
     return {
         "format": "appgen.pbc-ui-smoke-test.v1",
         "ok": contract.get("ok") is True
         and rendered.get("ok") is True
         and bool(contract.get("fragments"))
         and bool(contract.get("routes"))
+        and bool(contract.get("forms"))
+        and bool(contract.get("wizards"))
+        and bool(contract.get("controls"))
         and bool(cards)
         and bool(contract.get("action_permissions"))
         and bool(configuration_editor)
@@ -267,11 +396,13 @@ def smoke_test():
         and bool(event_surfaces)
         and ("outbox_status" in event_surfaces or "contract" in event_surfaces)
         and binding_evidence.get("shared_table_access") is not True
-        and not binding_evidence.get("shared_tables", ()),
+        and not binding_evidence.get("shared_tables", ())
+        and standalone.get("ok") is True,
         "manifest": {"fragments": contract.get("fragments", ()), "routes": contract.get("routes", ())},
         "contract": contract,
         "governance": governance,
         "rendered": rendered,
+        "standalone": standalone,
         "cards": cards,
         "side_effects": (),
     }

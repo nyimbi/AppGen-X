@@ -1,6 +1,7 @@
 """API route contracts for the customer_360 PBC."""
 
 from .services import Customer360Service, service_operation_contracts
+from .services import Customer360StandaloneService, standalone_service_operation_contracts
 
 
 ROUTES = (
@@ -113,3 +114,95 @@ def smoke_test():
         'dispatch': dispatched,
         'side_effects': (),
     }
+
+
+def standalone_route_contracts():
+    """Return executable standalone-app routes for the one-PBC package slice."""
+    operations = standalone_service_operation_contracts()["contracts"]
+    contracts = tuple(
+        {
+            "route_id": f"{item['method']} {item['path']}",
+            "method": item["method"],
+            "path": item["path"],
+            "handler": item["handler"],
+            "operation": item["operation"],
+            "operation_kind": item["operation_kind"],
+            "permission": item["permission"],
+            "table": item["table"],
+            "form": item["form"],
+            "wizard": item["wizard"],
+        }
+        for item in operations
+    )
+    return {
+        "format": "appgen.customer-360-standalone-route-contract.v1",
+        "ok": bool(contracts),
+        "pbc": "customer_360",
+        "contracts": contracts,
+        "routes": tuple(item["route_id"] for item in contracts),
+        "side_effects": (),
+    }
+
+
+def dispatch_standalone_route(
+    method: str,
+    path: str,
+    payload: dict | None = None,
+    *,
+    service: Customer360StandaloneService | None = None,
+) -> dict:
+    """Dispatch one standalone-app route to the package-local service."""
+    manifest = standalone_route_contracts()
+    route = next(
+        (
+            item
+            for item in manifest["contracts"]
+            if item["method"] == method and item["path"] == path
+        ),
+        None,
+    )
+    if route is None:
+        return {"ok": False, "handled": False, "reason": "route_not_found", "side_effects": ()}
+    local_service = service or Customer360StandaloneService()
+    try:
+        result = getattr(local_service, route["handler"])(payload or {})
+        return {
+            "ok": result.get("ok") is True,
+            "handled": True,
+            "route": route,
+            "result": result,
+            "side_effects": (),
+        }
+    finally:
+        if service is None:
+            local_service.close()
+
+
+def standalone_route_smoke_test() -> dict:
+    service = Customer360StandaloneService()
+    try:
+        create = dispatch_standalone_route(
+            "POST",
+            "/app/customer-360/profiles",
+            {
+                "profile_id": "cust_route",
+                "tenant": "tenant_route",
+                "display_name": "Route Smoke",
+                "region": "US",
+            },
+            service=service,
+        )
+        workbench = dispatch_standalone_route(
+            "GET",
+            "/app/customer-360/workbench",
+            {"tenant": "tenant_route"},
+            service=service,
+        )
+        return {
+            "ok": standalone_route_contracts()["ok"] and create["ok"] and workbench["ok"],
+            "create": create,
+            "workbench": workbench,
+            "side_effects": (),
+        }
+    finally:
+        service.close()
