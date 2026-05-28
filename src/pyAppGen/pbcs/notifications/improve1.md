@@ -1,315 +1,315 @@
-# Omni-Channel Communication and Notifications PBC Improvement Backlog
+# Notifications PBC Improvement Backlog
 
 ## Purpose
 
-This backlog identifies 50 high-impact, high-value improvements for `notifications`. Each item is specific to the domain surface currently declared by the PBC and is intended to move the package beyond world-class breadth toward complete specialist-grade coverage.
+This backlog identifies 50 high-impact, high-value improvements for `notifications`. Each item is specific to omnichannel communication, template governance, consent-aware delivery, provider routing, deliverability, campaigns, transactional notifications, receipts, bounces, throttling, analytics, agent assistance, and AppGen-X event reliability.
 
 ## Current Domain Evidence Used
 
-- Domain purpose: Omnichannel templates, localized variants, channels, recipients, consent, schedules, throttles, provider routing, delivery lifecycle, campaigns, transactional notifications, audit, analytics, and governed notification operations.
-- Representative owned tables: `notifications_notification_template`, `notifications_template_locale_variant`, `notifications_delivery_channel`, `notifications_notification_recipient`, `notifications_preference_snapshot`, `notifications_consent_ledger`, `notifications_delivery_schedule`, `notifications_throttle_window`, `notifications_provider_route`, `notifications_message_delivery`, `notifications_delivery_attempt`, `notifications_retry_evidence`, ...
-- Representative operations/APIs: `configure_runtime`, `set_parameter`, `register_rule`, `register_schema_extension`, `register_template`, `register_channel`, `receive_event`, `send_message`, `record_delivery_attempt`, `create_campaign`, `schedule_notification`, `create_transactional_notification`, ...
-- Representative events: `MessageQueued`, `MessageDelivered`, `MessageFailed`, `DeliveryReceiptRecorded`, `BounceRecorded`, `CampaignDispatched`, `TransactionalNotificationDispatched`.
-- Representative advanced capabilities: `event_sourced_message_lifecycle`, `owned_notification_schema_boundary`, `multi_tenant_delivery_isolation`, `schema_evolution_resilient_template_context`, `omnichannel_template_management`, `recipient_profile_projection_handling`, `preference_snapshot_projection_handling`, `consent_ledger_evidence`, `delivery_schedule_and_quiet_hour_forecasting`, `throttling_and_fatigue_controls`, ...
+- Domain purpose: templates, localized variants, channels, recipients, preferences, consent evidence, schedules, throttling, provider routing, deliveries, retries, receipts, bounces, campaigns, transactional notifications, audit evidence, and deliverability analytics.
+- Owned operational surface: notification templates, locale variants, delivery channels, recipients, preference snapshots, consent ledger, schedules, throttle windows, provider routes, message deliveries, attempts, retry evidence, receipts, bounces, campaigns, campaign dispatches, transactional notifications, audit logs, analytics, rules, parameters, configuration, and AppGen-X runtime event tables.
+- Declared commands and APIs: runtime configuration, parameter/rule/schema registration, template/channel registration, event receipt, message sending, attempt recording, campaign creation, scheduling, transactional notification creation, provider routing, receipt and bounce recording, audit events, deliverability analytics, delivery-window forecasting, channel-routing simulation, localized variant recommendation, recipient fatigue analysis, campaign readiness review, transactional history review, workbench construction, and owned-boundary verification.
+- Declared events and integrations: consumes `PreferenceChanged`, `ConsentUpdated`, `CampaignScheduled`, `DeliveryReceiptImported`, `BounceRegistered`, `SlaBreached`, `WorkflowCompleted`, and `TransactionalNotificationRequested`; emits `MessageQueued`, `MessageDelivered`, `MessageFailed`, `DeliveryReceiptRecorded`, `BounceRecorded`, `CampaignDispatched`, and `TransactionalNotificationDispatched`.
+- Advanced capability evidence: event-sourced message lifecycle, owned notification schema boundary, multi-tenant delivery isolation, schema-evolution-safe template context, omnichannel template management, recipient/preference/consent projection handling, delivery schedule and quiet-hour forecasting, throttling and fatigue controls, self-healing provider routing, dynamic consent screening, deliverability analytics, AppGen-X outbox/inbox eventing, retry/dead-letter handling, governed model evidence, and package-local release auditing.
 
 ## 50 Better-Than-World-Class Improvements
 
-### 1. Deep specialist lifecycle semantics for `notifications_notification_template`
+### 1. Template lifecycle governance
 
-**Justification:** This owned table is part of the Omni-Channel Communication and Notifications operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Omnichannel templates, localized variants, channels, recipients, consent, schedules, throttles, provider routing, delivery lifecycle, campaigns, transactional notifications, audit, analytics, and governed notification operations.
+**Justification:** Notification templates are operational controls, not static text. Incorrect variables, unapproved wording, missing legal copy, or stale content can create failed deliveries, compliance gaps, and customer confusion.
 
-**Improvement:** Extend `notifications_notification_template` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `notification_template`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add draft, review, approved, active, paused, superseded, retired, and emergency-revoke states for templates with owner, approver, effective dates, required variables, allowed channels, required disclaimers, test cases, and rollback evidence. The UI should block dispatch from unapproved or expired templates.
 
-### 2. Deep specialist lifecycle semantics for `notifications_template_locale_variant`
+### 2. Template variable type system
 
-**Justification:** This owned table is part of the Omni-Channel Communication and Notifications operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Omnichannel templates, localized variants, channels, recipients, consent, schedules, throttles, provider routing, delivery lifecycle, campaigns, transactional notifications, audit, analytics, and governed notification operations.
+**Justification:** Runtime message failures often come from missing variables, unsafe formatting, malformed links, incorrect currency/date localization, or unsupported rich-content tokens.
 
-**Improvement:** Extend `notifications_template_locale_variant` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `template_locale_variant`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Implement typed variables for strings, numbers, currencies, dates, links, one-time codes, attachments, product references, and regulatory text blocks. Generate validation, preview fixtures, masking rules, fallback behavior, and per-channel render tests before a template can be activated.
 
-### 3. Deep specialist lifecycle semantics for `notifications_delivery_channel`
+### 3. Localization quality workflow
 
-**Justification:** This owned table is part of the Omni-Channel Communication and Notifications operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Omnichannel templates, localized variants, channels, recipients, consent, schedules, throttles, provider routing, delivery lifecycle, campaigns, transactional notifications, audit, analytics, and governed notification operations.
+**Justification:** Localized variants must preserve meaning, legal obligations, tone, channel length, and cultural suitability rather than merely translating strings.
 
-**Improvement:** Extend `notifications_delivery_channel` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `delivery_channel`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add localization review states, translator attribution, locale fallback chains, legal-copy locks, length checks for SMS/push, right-to-left rendering tests, glossary enforcement, and regression previews. Store locale-specific approval evidence and block destinations lacking a valid variant or fallback.
 
-### 4. Deep specialist lifecycle semantics for `notifications_notification_recipient`
+### 4. Channel capability registry
 
-**Justification:** This owned table is part of the Omni-Channel Communication and Notifications operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Omnichannel templates, localized variants, channels, recipients, consent, schedules, throttles, provider routing, delivery lifecycle, campaigns, transactional notifications, audit, analytics, and governed notification operations.
+**Justification:** Email, SMS, push, chat, in-app, voice, and webhook channels have different payload limits, delivery states, attachments, priority semantics, receipts, and compliance constraints.
 
-**Improvement:** Extend `notifications_notification_recipient` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `notification_recipient`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Extend delivery channels with capability descriptors for content types, maximum size, supported receipts, priority, TTL, attachment policy, opt-out handling, quiet-hour support, rate limits, provider fallback, and cost model. Dispatch planning should validate each message against the selected channel capability.
 
-### 5. Deep specialist lifecycle semantics for `notifications_preference_snapshot`
+### 5. Recipient address quality scoring
 
-**Justification:** This owned table is part of the Omni-Channel Communication and Notifications operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Omnichannel templates, localized variants, channels, recipients, consent, schedules, throttles, provider routing, delivery lifecycle, campaigns, transactional notifications, audit, analytics, and governed notification operations.
+**Justification:** A recipient may have multiple addresses or tokens, but stale, malformed, unverified, suppressed, or recently bounced endpoints should not be treated as equal.
 
-**Improvement:** Extend `notifications_preference_snapshot` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `preference_snapshot`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Score recipient endpoints by verification state, last success, bounce history, complaint history, consent status, provider feedback, source trust, and recency. Routing should choose the safest eligible endpoint and explain exclusions.
 
-### 6. Deep specialist lifecycle semantics for `notifications_consent_ledger`
+### 6. Preference timeline resolution
 
-**Justification:** This owned table is part of the Omni-Channel Communication and Notifications operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Omnichannel templates, localized variants, channels, recipients, consent, schedules, throttles, provider routing, delivery lifecycle, campaigns, transactional notifications, audit, analytics, and governed notification operations.
+**Justification:** Preferences change over time and may be channel-, topic-, brand-, region-, or frequency-specific. A flat snapshot cannot prove why a message was allowed.
 
-**Improvement:** Extend `notifications_consent_ledger` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `consent_ledger`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Maintain preference timelines with source, effective interval, topic taxonomy, channel choice, frequency cap, language, brand scope, and override source. Every delivery decision should persist the exact preference state used.
 
-### 7. Deep specialist lifecycle semantics for `notifications_delivery_schedule`
+### 7. Consent and preference conflict handling
 
-**Justification:** This owned table is part of the Omni-Channel Communication and Notifications operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Omnichannel templates, localized variants, channels, recipients, consent, schedules, throttles, provider routing, delivery lifecycle, campaigns, transactional notifications, audit, analytics, and governed notification operations.
+**Justification:** Consent and preferences can conflict across systems, regions, and message purposes; an unsafe resolution can produce unlawful or unwanted communication.
 
-**Improvement:** Extend `notifications_delivery_schedule` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `delivery_schedule`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add conflict policies that give revocations precedence, enforce region-specific defaults, distinguish transactional necessity from marketing choice, escalate ambiguous states, and block dispatch where proof is insufficient. The agent should explain eligibility in plain language with evidence links.
 
-### 8. Deep specialist lifecycle semantics for `notifications_throttle_window`
+### 8. Message purpose taxonomy
 
-**Justification:** This owned table is part of the Omni-Channel Communication and Notifications operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Omnichannel templates, localized variants, channels, recipients, consent, schedules, throttles, provider routing, delivery lifecycle, campaigns, transactional notifications, audit, analytics, and governed notification operations.
+**Justification:** Transactional, security, service, marketing, operational, lifecycle, legal, billing, and campaign messages require different consent, frequency, language, and audit treatment.
 
-**Improvement:** Extend `notifications_throttle_window` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `throttle_window`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add a governed purpose taxonomy tied to templates, rules, channels, consent purposes, suppression policies, retention, and analytics. Route descriptors and UI actions should require purpose selection before scheduling or sending.
 
-### 9. Deep specialist lifecycle semantics for `notifications_provider_route`
+### 9. Quiet-hour and timezone intelligence
 
-**Justification:** This owned table is part of the Omni-Channel Communication and Notifications operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Omnichannel templates, localized variants, channels, recipients, consent, schedules, throttles, provider routing, delivery lifecycle, campaigns, transactional notifications, audit, analytics, and governed notification operations.
+**Justification:** Respectful notification systems must know local time, quiet hours, urgency exceptions, daylight-saving transitions, and regional restrictions.
 
-**Improvement:** Extend `notifications_provider_route` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `provider_route`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Implement timezone confidence, quiet-hour calendars, holiday rules, daylight-saving edge handling, urgent-message overrides, next-eligible-send calculation, and evidence that explains whether a message was sent, delayed, or blocked.
 
-### 10. Deep specialist lifecycle semantics for `notifications_message_delivery`
+### 10. Delivery schedule optimizer
 
-**Justification:** This owned table is part of the Omni-Channel Communication and Notifications operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Omnichannel templates, localized variants, channels, recipients, consent, schedules, throttles, provider routing, delivery lifecycle, campaigns, transactional notifications, audit, analytics, and governed notification operations.
+**Justification:** Campaign and transactional sends compete for provider capacity, channel limits, customer attention, and business deadlines.
 
-**Improvement:** Extend `notifications_message_delivery` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `message_delivery`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add scheduling optimization that balances urgency, recipient timezone, fatigue, SLA deadlines, provider health, cost, deliverability, and campaign pacing. Store the selected window, rejected alternatives, and expected delivery risk.
 
-### 11. Make `configure_runtime` a complete command lifecycle
+### 11. Fatigue and contact pressure ledger
 
-**Justification:** High-value users need `configure_runtime` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Customers can receive too many messages across channels, campaigns, and transactional flows, even when each individual send is valid.
 
-**Improvement:** Implement `configure_runtime` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `MessageQueued`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Maintain a contact-pressure ledger by recipient, topic, purpose, channel, tenant, and rolling window. Enforce caps, cooldowns, priority rules, emergency exceptions, and suppression explanations at send time.
 
-### 12. Make `set_parameter` a complete command lifecycle
+### 12. Cross-campaign suppression coordination
 
-**Justification:** High-value users need `set_parameter` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Campaigns can conflict, duplicate, or undermine each other when they target overlapping recipients with incompatible content.
 
-**Improvement:** Implement `set_parameter` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `MessageDelivered`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add suppression groups, mutual exclusivity, priority arbitration, dedupe windows, campaign conflict previews, and overlap simulation. Campaign readiness should report recipients suppressed due to higher-priority or incompatible communication.
 
-### 13. Make `register_rule` a complete command lifecycle
+### 13. Provider health observability
 
-**Justification:** High-value users need `register_rule` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Provider outages, throttling, latency, regional degradation, and receipt delays directly affect delivery commitments.
 
-**Improvement:** Implement `register_rule` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `MessageFailed`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Track provider latency, acceptance rate, error taxonomy, retry-after headers, region health, receipt lag, cost changes, and SLA breach signals. Route selection should respond to provider health and preserve evidence for why a provider was chosen or bypassed.
 
-### 14. Make `register_schema_extension` a complete command lifecycle
+### 14. Provider route simulation
 
-**Justification:** High-value users need `register_schema_extension` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Users should understand delivery impact before changing provider weights, adding channels, or launching large campaigns.
 
-**Improvement:** Implement `register_schema_extension` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `DeliveryReceiptRecorded`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Simulate provider routes using channel capability, cost, capacity, success rate, region, recipient endpoint quality, quiet hours, and campaign volume. Show expected failure, cost, delay, and fallback rates for each routing plan.
 
-### 15. Make `register_template` a complete command lifecycle
+### 15. Multi-provider failover playbooks
 
-**Justification:** High-value users need `register_template` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Critical transactional notifications cannot rely on a single provider path when outages or regional blocks occur.
 
-**Improvement:** Implement `register_template` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `BounceRecorded`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add failover policies with provider priority, channel escalation, retry budgets, idempotency safeguards, duplicate-send suppression, provider cooldowns, and post-incident reconciliation. UI should allow emergency failover activation with audit evidence.
 
-### 16. Make `register_channel` a complete command lifecycle
+### 16. Idempotent send orchestration
 
-**Justification:** High-value users need `register_channel` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Duplicate notifications damage trust, create compliance risk, and can trigger duplicate payments, confirmations, or security actions.
 
-**Improvement:** Implement `register_channel` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `CampaignDispatched`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Enforce idempotency keys across message requests, schedules, attempts, provider acknowledgements, retries, and AppGen-X events. Store duplicate detection evidence and expose safe replay actions for failed sends.
 
-### 17. Make `receive_event` a complete command lifecycle
+### 17. Delivery attempt state machine
 
-**Justification:** High-value users need `receive_event` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Delivery attempts pass through queued, rendered, routed, provider-accepted, provider-rejected, retried, delivered, bounced, expired, cancelled, or dead-lettered states.
 
-**Improvement:** Implement `receive_event` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `TransactionalNotificationDispatched`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Implement a strict attempt state machine with allowed transitions, timestamps, provider payload hashes, error classification, retry eligibility, receipt correlation, and UI state explanations. Release audits should prove no impossible transitions are generated.
 
-### 18. Make `send_message` a complete command lifecycle
+### 18. Retry policy compiler
 
-**Justification:** High-value users need `send_message` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Retry behavior differs by error type, purpose, channel, provider, urgency, TTL, and recipient risk; fixed retry counts are too blunt.
 
-**Improvement:** Implement `send_message` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `MessageQueued`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Compile retry rules from error taxonomy, provider hints, message purpose, TTL, quiet hours, consent state, and duplicate-risk policy. Produce next-attempt schedules, retry exhaustion evidence, and dead-letter reasons.
 
-### 19. Make `record_delivery_attempt` a complete command lifecycle
+### 19. Dead-letter triage console
 
-**Justification:** High-value users need `record_delivery_attempt` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Failed notification events must be recoverable or conclusively closed, not silently buried.
 
-**Improvement:** Implement `record_delivery_attempt` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `MessageDelivered`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add a triage console grouping dead letters by provider, channel, template, consent failure, rendering error, missing recipient, stale projection, or AppGen-X handler failure. Include repair suggestions, replay previews, owner assignment, and closure evidence.
 
-### 20. Make `create_campaign` a complete command lifecycle
+### 20. Receipt correlation engine
 
-**Justification:** High-value users need `create_campaign` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Provider receipts often arrive late, out of order, duplicated, or with provider-specific identifiers that must be mapped to internal attempts.
 
-**Improvement:** Implement `create_campaign` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `MessageFailed`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add correlation rules for provider message IDs, idempotency keys, recipient endpoint hashes, timestamps, and payload fingerprints. Store correlation confidence, unresolved receipts, duplicate receipts, and reconciliation actions.
 
-### 21. Operationalize `event_sourced_message_lifecycle` as a governed decision system
+### 21. Bounce classification and remediation
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Omni-Channel Communication and Notifications and measurably improves delivery success rate without hiding assumptions.
+**Justification:** Hard bounces, soft bounces, complaints, blocks, mailbox full, invalid tokens, spam traps, and provider policy failures require different actions.
 
-**Improvement:** Promote `event_sourced_message_lifecycle` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `delivery_success_rate`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Classify bounces into actionable categories, update endpoint quality, trigger suppression, schedule revalidation, recommend provider changes, and expose recipient-level remediation. Keep evidence linking bounce events to affected templates, campaigns, and endpoints.
 
-### 22. Operationalize `owned_notification_schema_boundary` as a governed decision system
+### 22. Deliverability reputation analytics
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Omni-Channel Communication and Notifications and measurably improves bounce rate without hiding assumptions.
+**Justification:** Deliverability is shaped by template quality, list hygiene, provider reputation, complaint rates, engagement, and sending patterns.
 
-**Improvement:** Promote `owned_notification_schema_boundary` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `bounce_rate`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add analytics for acceptance, delivery, open/click where applicable, bounce, complaint, unsubscribe, spam-risk, provider reputation, domain reputation, and template performance. Provide trend diagnostics and recommended corrective actions.
 
-### 23. Operationalize `multi_tenant_delivery_isolation` as a governed decision system
+### 23. Campaign readiness gate
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Omni-Channel Communication and Notifications and measurably improves fatigue risk without hiding assumptions.
+**Justification:** Campaigns should not launch until audience, templates, localization, consent, fatigue, channel capacity, provider health, schedule, and analytics are ready.
 
-**Improvement:** Promote `multi_tenant_delivery_isolation` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `fatigue_risk`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Create a readiness gate with blocking and warning checks, estimated eligible recipients, exclusions by reason, delivery forecast, cost forecast, experiment/holdout setup, and approval workflow. Launch should require a signed readiness proof.
 
-### 24. Operationalize `schema_evolution_resilient_template_context` as a governed decision system
+### 24. Campaign pacing and backpressure
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Omni-Channel Communication and Notifications and measurably improves provider route score without hiding assumptions.
+**Justification:** Large sends can overwhelm providers, customer attention, internal support, and downstream workflows.
 
-**Improvement:** Promote `schema_evolution_resilient_template_context` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `provider_route_score`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add pacing controls by provider, channel, region, recipient segment, priority, and hourly/daily windows. Adjust send rate in response to bounces, complaints, provider throttles, SLA deadlines, and engagement signals.
 
-### 25. Operationalize `omnichannel_template_management` as a governed decision system
+### 25. Campaign experiment cells
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Omni-Channel Communication and Notifications and measurably improves channel health without hiding assumptions.
+**Justification:** Notification systems need controlled experimentation to optimize subject lines, variants, channels, timing, and content without uncontrolled bias.
 
-**Improvement:** Promote `omnichannel_template_management` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `channel_health`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add deterministic experiment cells, holdouts, stratification, variant allocation, exposure tracking, outcome capture, and statistical confidence reporting. Tie results to template versions and campaign dispatch evidence.
 
-### 26. Operationalize `recipient_profile_projection_handling` as a governed decision system
+### 26. Transactional notification SLA management
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Omni-Channel Communication and Notifications and measurably improves campaign dispatch rate without hiding assumptions.
+**Justification:** Password resets, order updates, payment notices, workflow completions, SLA breaches, and security alerts have strict delivery expectations.
 
-**Improvement:** Promote `recipient_profile_projection_handling` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `campaign_dispatch_rate`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add SLA policies per transactional purpose with queue deadlines, provider escalation, channel fallback, priority routing, late-delivery alerts, and breach evidence. Workbench views should show at-risk transactional messages in real time.
 
-### 27. Operationalize `preference_snapshot_projection_handling` as a governed decision system
+### 27. Transactional payload validation
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Omni-Channel Communication and Notifications and measurably improves transactional dispatch rate without hiding assumptions.
+**Justification:** Transactional messages often carry critical facts that must be complete, accurate, and safely rendered.
 
-**Improvement:** Promote `preference_snapshot_projection_handling` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `transactional_dispatch_rate`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Validate payloads against template variables, purpose rules, recipient eligibility, locale, sensitive-field masking, link safety, attachment policy, and TTL. Reject or hold invalid requests with explainable remediation steps.
 
-### 28. Operationalize `consent_ledger_evidence` as a governed decision system
+### 28. Secure link and token handling
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Omni-Channel Communication and Notifications and measurably improves message delivered throughput without hiding assumptions.
+**Justification:** Notifications frequently include reset links, verification codes, payment links, documents, and deep links that require strict security controls.
 
-**Improvement:** Promote `consent_ledger_evidence` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `message_delivered_throughput`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add token metadata, expiration policy, one-time-use flags, scope, channel binding, link signing, phishing-safe display rules, and masked previews. Audit every tokenized send and block unsafe agent-generated links.
 
-### 29. Operationalize `delivery_schedule_and_quiet_hour_forecasting` as a governed decision system
+### 29. Attachment governance
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Omni-Channel Communication and Notifications and measurably improves message failed throughput without hiding assumptions.
+**Justification:** Email and chat notifications may include documents or images with size, malware, privacy, and retention concerns.
 
-**Improvement:** Promote `delivery_schedule_and_quiet_hour_forecasting` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `message_failed_throughput`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add attachment scanning, type allowlists, size limits, retention policy, encryption metadata, access expiration, watermarking, and purpose binding. The agent should summarize attached documents and warn about sensitive content before sending.
 
-### 30. Operationalize `throttling_and_fatigue_controls` as a governed decision system
+### 30. Content safety and policy screening
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Omni-Channel Communication and Notifications and measurably improves delivery success rate without hiding assumptions.
+**Justification:** Notification content can contain prohibited claims, missing disclosures, unsafe wording, confidential data, or inconsistent brand language.
 
-**Improvement:** Promote `throttling_and_fatigue_controls` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `delivery_success_rate`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Screen templates and generated messages for required disclosures, sensitive data, prohibited terms, tone, brand vocabulary, legal holds, and channel-specific policy. Produce approval evidence and safe rewrite suggestions.
 
-### 31. Create simulation-grade governance for `NOTIFICATIONS_DATABASE_URL` and `NOTIFICATIONS_DATABASE_URL`
+### 31. Accessibility and readability checks
 
-**Justification:** Complete Omni-Channel Communication and Notifications coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Notifications should be usable across devices, assistive technologies, languages, and constrained channels.
 
-**Improvement:** Add a policy cockpit where `NOTIFICATIONS_DATABASE_URL` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `NOTIFICATIONS_DATABASE_URL` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add readability scoring, alt-text checks, contrast hints for rich content, SMS segmentation previews, push truncation previews, screen-reader summaries, and locale-specific readability guidance. Block inaccessible rich templates where required.
 
-### 32. Create simulation-grade governance for `NOTIFICATIONS_EVENT_TOPIC` and `NOTIFICATIONS_EVENT_TOPIC`
+### 32. Dynamic variant selection
 
-**Justification:** Complete Omni-Channel Communication and Notifications coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Best delivery may depend on locale, channel, customer preference, device, urgency, previous engagement, and template performance.
 
-**Improvement:** Add a policy cockpit where `NOTIFICATIONS_EVENT_TOPIC` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `NOTIFICATIONS_EVENT_TOPIC` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Select variants using governed rules and model evidence while preserving consent and fairness constraints. Record why a variant was chosen, which alternatives were rejected, and whether the choice was experimental or deterministic.
 
-### 33. Create simulation-grade governance for `NOTIFICATIONS_RETRY_LIMIT` and `NOTIFICATIONS_RETRY_LIMIT`
+### 33. Channel escalation policy
 
-**Justification:** Complete Omni-Channel Communication and Notifications coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Some messages should escalate from push to SMS, email to chat, or in-app to email when deadlines or failures occur, while others must not.
 
-**Improvement:** Add a policy cockpit where `NOTIFICATIONS_RETRY_LIMIT` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `NOTIFICATIONS_RETRY_LIMIT` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add channel escalation graphs by message purpose, recipient preference, urgency, consent, provider health, and failed-attempt reason. Enforce duplicate suppression and show escalation history in the delivery timeline.
 
-### 34. Create simulation-grade governance for `NOTIFICATIONS_DEFAULT_LOCALE` and `NOTIFICATIONS_DEFAULT_LOCALE`
+### 34. Inbox and in-app notification center support
 
-**Justification:** Complete Omni-Channel Communication and Notifications coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Many composed applications need a durable in-app notification center in addition to external channels.
 
-**Improvement:** Add a policy cockpit where `NOTIFICATIONS_DEFAULT_LOCALE` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `NOTIFICATIONS_DEFAULT_LOCALE` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add in-app inbox descriptors for unread state, priority, grouping, expiration, deep links, acknowledgement, dismissal, snooze, and read receipts. Ensure templates can render both external and in-app variants with shared audit evidence.
 
-### 35. Create simulation-grade governance for `NOTIFICATIONS_DEFAULT_TIMEZONE` and `NOTIFICATIONS_DEFAULT_TIMEZONE`
+### 35. Notification preference UI fragments
 
-**Justification:** Complete Omni-Channel Communication and Notifications coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Users need transparent controls for topics, channels, frequency, quiet hours, language, and unsubscribe choices.
 
-**Improvement:** Add a policy cockpit where `NOTIFICATIONS_DEFAULT_TIMEZONE` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `NOTIFICATIONS_DEFAULT_TIMEZONE` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Generate preference-center UI fragments that write preference events through declared contracts, explain consequences, validate regional requirements, and preview which active campaigns or transactional messages are affected.
 
-### 36. Upgrade `NotificationsWorkbench` into a full specialist command center
+### 36. Notification operations cockpit
 
-**Justification:** The PBC UI must expose the complete Omni-Channel Communication and Notifications surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Operators need a single view of queue depth, provider health, failure spikes, campaign progress, transactional SLA risk, receipts, bounces, and dead letters.
 
-**Improvement:** Expand `NotificationsWorkbench` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Build a workbench cockpit with live operational cards, severity-ranked alerts, drilldowns, replay actions, provider failover controls, campaign pause/resume, and evidence export. Every action should map to a service command and permission.
 
-### 37. Upgrade `TemplateDesigner` into a full specialist command center
+### 37. Recipient communication dossier
 
-**Justification:** The PBC UI must expose the complete Omni-Channel Communication and Notifications surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Support and compliance users need to answer what was sent to a recipient, why it was sent, whether it was allowed, and what happened afterward.
 
-**Improvement:** Expand `TemplateDesigner` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Generate a recipient dossier with preference and consent state, delivery timeline, campaign membership, transactional triggers, receipts, bounces, suppression, fatigue, complaints, and agent-readable explanations. Scope the dossier to authorized users and tenant boundaries.
 
-### 38. Upgrade `LocalizationStudio` into a full specialist command center
+### 38. Notification anomaly detection
 
-**Justification:** The PBC UI must expose the complete Omni-Channel Communication and Notifications surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Sudden bounce spikes, provider rejection bursts, unexpected campaign volume, template rendering errors, or repeated duplicate requests can indicate defects or abuse.
 
-**Improvement:** Expand `LocalizationStudio` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add anomaly detection for queue spikes, failure taxonomy changes, provider latency, receipt lag, duplicate sends, consent blocks, unsubscribe surges, and campaign outliers. Route severe anomalies to automatic holds or operator review.
 
-### 39. Upgrade `DeliveryChannelConsole` into a full specialist command center
+### 39. Abuse and spam-risk guardrails
 
-**Justification:** The PBC UI must expose the complete Omni-Channel Communication and Notifications surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Notification infrastructure can be misused for spam, phishing, harassment, or excessive messaging.
 
-**Improvement:** Expand `DeliveryChannelConsole` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add abuse risk scoring based on send velocity, template content, recipient complaints, endpoint quality, domain reputation, agent-originated drafts, and unusual targeting. Block or require approval for high-risk sends and preserve investigation evidence.
 
-### 40. Upgrade `RecipientDirectory` into a full specialist command center
+### 40. Notification cost optimization
 
-**Justification:** The PBC UI must expose the complete Omni-Channel Communication and Notifications surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** High-volume SMS, voice, and provider-routed campaigns can incur substantial cost without clear value.
 
-**Improvement:** Expand `RecipientDirectory` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Track provider cost, channel cost, retry cost, campaign cost, cost per delivered message, and cost per outcome. Simulate lower-cost route plans and expose tradeoffs against latency, reliability, deliverability, and customer preference.
 
-### 41. Prove cross-PBC federation for `POST /templates` and `PreferenceChanged`
+### 41. Carbon-aware campaign scheduling
 
-**Justification:** Omni-Channel Communication and Notifications must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Large non-urgent campaigns and analytics jobs can be scheduled to reduce infrastructure and provider impact where business rules allow.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /templates` and consumed event `PreferenceChanged` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Add optional carbon-aware scheduling windows for batch campaigns, deliverability rollups, and replay jobs. Store business-deadline constraints, selected window rationale, and override evidence.
 
-### 42. Prove cross-PBC federation for `POST /delivery-channels` and `ConsentUpdated`
+### 42. Message audit hash chain
 
-**Justification:** Omni-Channel Communication and Notifications must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Auditors need tamper-evident proof of template version, recipient eligibility, rendered payload, provider route, attempts, receipts, bounces, and operator actions.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /delivery-channels` and consumed event `ConsentUpdated` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Add hash-chain evidence across message lifecycle events with payload fingerprints, redacted proof views, and verifier exports. Preserve privacy by avoiding raw sensitive content in proofs where not required.
 
-### 43. Prove cross-PBC federation for `POST /notifications/rules` and `CampaignScheduled`
+### 43. AppGen-X inbox/outbox hardening
 
-**Justification:** Omni-Channel Communication and Notifications must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Notifications depend on many inbound triggers and outbound status events; weak event handling creates silent missed sends or duplicate status changes.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /notifications/rules` and consumed event `CampaignScheduled` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Strengthen event descriptors with schema versions, idempotency keys, ordering assumptions, retry envelopes, dead-letter reason taxonomy, replay eligibility, and handler evidence for every consumed and emitted AppGen-X event.
 
-### 44. Prove cross-PBC federation for `POST /notifications/parameters` and `DeliveryReceiptImported`
+### 44. Cross-PBC dependency boundary proof
 
-**Justification:** Omni-Channel Communication and Notifications must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Notifications must use recipient, workflow, SLA, campaign, preference, and consent context without directly reading foreign tables.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /notifications/parameters` and consumed event `DeliveryReceiptImported` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Generate a boundary proof listing every projection, API dependency, consumed event, cached field, staleness policy, and retention rule. Release audits should fail on undeclared customer, workflow, SLA, or profile table references.
 
-### 45. Temporal reconstruction and bitemporal audit for Omni-Channel Communication and Notifications
+### 45. Agent-assisted template authoring
 
-**Justification:** Regulated and operationally complex domains need to answer what was known, valid, processed, and visible at any point in time.
+**Justification:** A first-class PBC agent should help draft precise messages while respecting purpose, channel, audience, consent, localization, and brand constraints.
 
-**Improvement:** Add transaction-time, valid-time, and processing-time fields to core records, temporal query APIs, projection rebuild tooling, and UI time travel so specialists can reconstruct decisions, reports, and automation outcomes.
+**Improvement:** Let the agent create draft templates from instructions or documents, identify variables, propose localized variants, flag missing disclosures, simulate channel renderings, and produce a side-effect-free review plan before CRUD.
 
-### 46. Bulk operations and migration-grade controls for Omni-Channel Communication and Notifications
+### 46. Agent-guided campaign setup
 
-**Justification:** World-class deployments must handle imports, mass corrections, high-volume operating days, and cutovers without bypassing governance.
+**Justification:** Campaign setup spans audience, purpose, templates, variants, schedule, channels, consent, fatigue, experiments, provider capacity, and analytics.
 
-**Improvement:** Add staged bulk upload, duplicate detection, chunked validation, approval sampling, partial failure handling, retry dashboards, reconciliation summaries, and agent-generated remediation plans for large batches.
+**Improvement:** Add an agent skill that converts campaign goals into a launch checklist, validates dependencies, recommends segmentation and holdout setup, forecasts delivery and cost, highlights risks, and prepares approval-ready campaign records.
 
-### 47. Specialist edge-case playbooks for Omni-Channel Communication and Notifications
+### 47. Agent-safe transactional troubleshooting
 
-**Justification:** Rare cases often carry the highest financial, legal, safety, service, or compliance risk.
+**Justification:** Operators often ask why a password reset, SLA alert, workflow completion, or receipt notification did not arrive.
 
-**Improvement:** Create a playbook catalog with detection rules, required evidence, escalation paths, fallback actions, owner roles, and release-audited tests for high-severity edge cases and exception queues.
+**Improvement:** Let the agent trace a transactional request across inbound event, payload validation, consent/preference decision, schedule, route, attempts, provider response, receipts, and dead-letter state. It should propose replay or repair actions without mutating state until approved.
 
-### 48. Pre-mutation simulation and blast-radius analysis for Omni-Channel Communication and Notifications
+### 48. Release evidence for UI capability coverage
 
-**Justification:** Users should understand consequences before committing irreversible, customer-visible, operationally disruptive, or financially material changes.
+**Justification:** The PBC UI must expose all notification capabilities, not hide advanced routing, consent, fatigue, analytics, and recovery behind generic panels.
 
-**Improvement:** Add what-if simulation for every material command, showing impacted records, emitted events, dependent projections, rule outcomes, approvals, downstream PBC dependencies, and rollback limits.
+**Improvement:** Add release checks proving that templates, localization, channels, recipients, preferences, consent, schedules, throttles, routes, deliveries, attempts, retries, receipts, bounces, campaigns, transactional flows, analytics, outbox, inbox, dead letters, and agent skills have dedicated UI surfaces.
 
-### 49. Continuous control testing and operational assurance for Omni-Channel Communication and Notifications
+### 49. Notification resilience drills
 
-**Justification:** Better-than-world-class PBCs prove controls continuously, not only at release or during periodic audits.
+**Justification:** Communication systems must recover from provider outages, receipt backlogs, corrupted templates, event floods, bad campaigns, and dead-letter surges.
 
-**Improvement:** Add executable control assertions, sampled evidence checks, anomaly thresholds, control-owner dashboards, breach/recovery events, and release gates that fail when domain controls lose evidence.
+**Improvement:** Add resilience drills for provider outage, route failover, duplicate request storms, template rollback, campaign pause, receipt replay, and dead-letter recovery. Store recovery time, data-loss estimate, duplicate-send risk, and lessons learned.
 
-### 50. Human-in-the-loop domain agent execution for Omni-Channel Communication and Notifications
+### 50. End-to-end notification release proof
 
-**Justification:** The PBC chatbot must help specialists perform real work while preventing unsafe autonomous mutation.
+**Justification:** A world-class Notifications PBC needs a single evidence package proving that messages can be authored, localized, scheduled, routed, sent, retried, reconciled, audited, analyzed, and safely operated.
 
-**Improvement:** Add domain-specific skills, document parsing, task planning, CRUD previews, confidence/risk scoring, confirmation gates, redaction, policy explanations, and post-action evidence packets for every supported command and query.
+**Improvement:** Create an end-to-end proof that exercises template approval, localization, consent/preference resolution, quiet-hour scheduling, route simulation, campaign readiness, transactional SLA dispatch, delivery attempts, receipts, bounces, retry/dead-letter handling, deliverability analytics, UI coverage, AppGen-X events, boundary verification, and agent-safe CRUD planning.
