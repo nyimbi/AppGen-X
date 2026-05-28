@@ -1226,6 +1226,7 @@ def test_lsp_code_action_apply_audit_proves_required_quick_fixes() -> None:
         "add_relationship_for_lookup_path",
         "replace_typo_with_nearest_symbol",
         "replace_secret_literal_with_env",
+        "remove_invalid_runtime_picker_fields",
         "register_or_import_pbc_manifest",
         "add_missing_permission_for_agent_skill",
         "add_package_for_app_target",

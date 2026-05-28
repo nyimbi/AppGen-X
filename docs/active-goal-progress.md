@@ -3332,4 +3332,15 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   composition includes. Verification passed: Python compile for touched
   tooling entrypoints, focused LSP/audit tests (`5 passed`), scoped diff
   whitespace check, and restricted-name scan outside archive, Git internals,
-  and active PBC paths. Commit: pending.
+  and active PBC paths. Commit: `0059a59c`.
+- Current runtime-picker quick-fix pass closes the `docs/tooling.md`
+  requirement to remove invalid stream/runtime picker fields and enforces the
+  non-goal against arbitrary backend/runtime pickers. The linter now emits
+  `AGX0801` diagnostics for app-level `backend`, `runtime`, and `stream`
+  options, the language service offers `remove_invalid_runtime_picker_fields`,
+  LSP code actions apply DSL replacement edits as `newText`, and
+  `appgen.lsp-code-action-apply-audit.v1` proves the invalid picker fields are
+  removed while the DSL remains lintable. Verification passed: Python compile
+  for touched tooling entrypoints, focused LSP/audit tests (`2 passed`), scoped
+  diff whitespace check, and restricted-name scan outside archive, Git
+  internals, and active PBC paths. Commit: this commit.

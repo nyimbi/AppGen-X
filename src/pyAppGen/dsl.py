@@ -4332,13 +4332,27 @@ def lsp_code_actions_dsl(text: str, *, source_name: str | None = None) -> dict:
                 "title": action["title"],
                 "kind": "quickfix",
                 "diagnostics": tuple(_lsp_diagnostic(item) for item in action.get("diagnostics", ())),
-                "edit": {"changes": {source_name or "memory://appgen": action.get("edits", ())}},
+                "edit": {
+                    "changes": {
+                        source_name or "memory://appgen": _lsp_text_edits_from_dsl_edits(action.get("edits", ()))
+                    }
+                },
                 "command": action.get("command"),
                 "data": {"id": action["id"], "changed": action["changed"]},
             }
         )
     actions.extend(_lsp_required_quick_actions(text, source_name=source_name))
     return {"format": "appgen.lsp-code-actions.v1", "ok": True, "actions": tuple(actions)}
+
+
+def _lsp_text_edits_from_dsl_edits(edits: Iterable[dict]) -> tuple[dict, ...]:
+    return tuple(
+        {
+            "range": edit.get("range", {}),
+            "newText": str(edit.get("newText", edit.get("replacement", ""))),
+        }
+        for edit in edits or ()
+    )
 
 
 def apply_lsp_code_action_dsl(
@@ -4440,6 +4454,12 @@ def lsp_code_action_apply_audit_dsl() -> dict:
             "api_key: OPENAI_API_KEY",
         ),
         (
+            "remove_invalid_runtime_picker_fields",
+            "remove_invalid_runtime_picker_fields",
+            "app A { targets: web; runtime: node; stream: bytewax; backend: oracle }\ntable T { id: int pk }\nview TForm for T { Main: id }\n",
+            "targets: web",
+        ),
+        (
             "register_or_import_pbc_manifest",
             "register_or_import_pbc_manifest",
             "app A { targets: web }\ntable T { id: int pk }\nview TForm for T { Main: id }\ncomposition Suite { include pbc missing_pbc version 1.0.0 }\n",
@@ -4467,7 +4487,21 @@ def lsp_code_action_apply_audit_dsl() -> dict:
     cases = []
     for case_id, action_id, source, expected_text in case_specs:
         result = apply_lsp_code_action_dsl(source, source_name=f"{case_id}.appgen", action_id=action_id)
-        ok = result["ok"] and result["changed"] and expected_text in result["patched_source"] and bool(result["applied_edits"])
+        invalid_picker_removed = (
+            case_id != "remove_invalid_runtime_picker_fields"
+            or (
+                "runtime:" not in result["patched_source"]
+                and "stream:" not in result["patched_source"]
+                and "backend:" not in result["patched_source"]
+            )
+        )
+        ok = (
+            result["ok"]
+            and result["changed"]
+            and expected_text in result["patched_source"]
+            and bool(result["applied_edits"])
+            and invalid_picker_removed
+        )
         cases.append(
             {
                 "id": case_id,
@@ -7777,6 +7811,7 @@ def _spec_diagnostic_code(legacy_code: str, message: str) -> str:
         "agent_write_skill_permission": "AGX1002",
         "literal_api_key": "AGX0702",
         "unknown_app_target": "AGX0802",
+        "invalid_runtime_picker_field": "AGX0801",
     }
     if message.startswith("Unresolved lookup path"):
         return "AGX0303"
@@ -7799,6 +7834,8 @@ def _spec_diagnostic_code(legacy_code: str, message: str) -> str:
     if message.startswith("Unknown deployment"):
         return "AGX0801"
     if message.startswith("Invalid deployment"):
+        return "AGX0801"
+    if message.startswith("Invalid runtime picker field"):
         return "AGX0801"
     if message.startswith("Unknown role resource"):
         return "AGX0701"
@@ -8501,6 +8538,8 @@ def _apply_lint_fix(source: str, fix: dict) -> str:
         return re.sub(str(fix["pattern"]), str(fix["replacement"]), source)
     if kind == "replace_targets":
         return _apply_target_normalization(source, tuple(fix["supported"]))
+    if kind == "remove_app_options":
+        return _remove_app_options(source, tuple(fix["options"]))
     if kind == "normalize_aliases":
         return _normalize_authoring_aliases(source)
     if kind == "normalize_modifier_aliases":
@@ -8521,6 +8560,24 @@ def _apply_target_normalization(source: str, supported: tuple[str, ...]) -> str:
         return prefix + ", ".join(kept)
 
     return re.sub(r"(\btargets\s*:\s*)([^;\n}]+)", repl, source)
+
+
+def _remove_app_options(source: str, option_names: tuple[str, ...]) -> str:
+    if not option_names:
+        return source
+    names = "|".join(re.escape(name) for name in option_names)
+    pattern = re.compile(rf"(?P<lead>(?:^|[{{\n;])\s*)(?:{names})\s*:\s*[^;\n}}]+;?")
+
+    def repl(match: re.Match[str]) -> str:
+        lead = match.group("lead")
+        return "\n" if "\n" in lead else lead
+
+    previous = source
+    while True:
+        updated = pattern.sub(repl, previous)
+        if updated == previous:
+            return updated
+        previous = updated
 
 
 def _fix_edits(source: str, fix: dict) -> tuple[dict, ...]:
@@ -8561,6 +8618,15 @@ def _fix_edits(source: str, fix: dict) -> tuple[dict, ...]:
                         "replacement": fixed_match.group(2),
                     },
                 )
+    if kind == "remove_app_options":
+        fixed = _remove_app_options(source, tuple(fix["options"]))
+        if fixed != source:
+            return (
+                {
+                    "range": _source_range(source, 0, len(source)),
+                    "replacement": fixed,
+                },
+            )
     if kind == "normalize_aliases":
         fixed = _normalize_authoring_aliases(source)
         if fixed != source:
@@ -8680,6 +8746,15 @@ def _lint_quick_fixes(source: str, errors: Iterable[str], warnings: Iterable[str
                 }
             )
             break
+    if any(error.startswith("Invalid runtime picker field") for error in errors):
+        fixes.append(
+            {
+                "id": "remove_invalid_runtime_picker_fields",
+                "title": "Remove invalid backend/runtime/stream picker fields",
+                "kind": "remove_app_options",
+                "options": ("backend", "runtime", "stream"),
+            }
+        )
     return tuple(fixes)
 
 
@@ -8737,6 +8812,8 @@ def _diagnostic_code(message: str) -> str:
         return "unbalanced_braces"
     if message.startswith("Unknown app targets"):
         return "unknown_app_target"
+    if message.startswith("Invalid runtime picker field"):
+        return "invalid_runtime_picker_field"
     if message.startswith("Unknown field type"):
         return "unknown_field_type"
     if message.startswith("Multi-hop lookup chain breaks"):
@@ -8846,6 +8923,7 @@ def _diagnostic_fix_ids(code: str) -> tuple[str, ...]:
         "authoring_alias": ("normalize_authoring_aliases",),
         "modifier_alias": ("normalize_modifier_aliases",),
         "unknown_app_target": ("normalize_targets",),
+        "invalid_runtime_picker_field": ("remove_invalid_runtime_picker_fields",),
         "rule_single_equals": ("replace_rule_equals_with_eqeq",),
         "literal_api_key": ("use_api_key_env",),
     }
@@ -10222,6 +10300,10 @@ def _tooling_policy_diagnostics(
     local_contracts = _local_contract_names_by_kind(schema)
     errors: list[str] = []
     warnings: list[str] = []
+
+    for option_name in ("backend", "runtime", "stream"):
+        if option_name in schema.app_options:
+            errors.append(f"Invalid runtime picker field: app.{option_name}")
 
     for view in schema.views:
         for component in view.components:
