@@ -181,6 +181,27 @@ def test_lint_report_accepts_directory_source_sets(tmp_path: Path) -> None:
     assert memory_report["source_mode"] == "directory"
 
 
+def test_lint_report_strict_mode_promotes_unknown_components_to_errors() -> None:
+    source = """
+    app StrictDemo { targets: web }
+    table Customer { id: int pk; name: string }
+    view CustomerForm for Customer {
+      Main: name
+      @ name UnknownWidget 0 0 4 1
+    }
+    """
+
+    normal = lint_report_dsl(source, source_name="strict.appgen")
+    strict = lint_report_dsl(source, source_name="strict.appgen", strict=True)
+
+    assert normal["strict"] is False
+    assert strict["strict"] is True
+    assert normal["ok"] is True
+    assert strict["ok"] is False
+    assert any(item["code"] == "AGX0404" and item["severity"] == "warning" for item in normal["diagnostics"])
+    assert any(item["code"] == "AGX0404" and item["severity"] == "error" for item in strict["diagnostics"])
+
+
 def test_appgen_lint_subcommand_accepts_directory_input(tmp_path: Path) -> None:
     source_dir = tmp_path / "appgen"
     source_dir.mkdir()
@@ -200,6 +221,35 @@ def test_appgen_lint_subcommand_accepts_directory_input(tmp_path: Path) -> None:
     assert payload["format"] == "appgen.lint-report.v1"
     assert payload["source_mode"] == "directory"
     assert {Path(item).name for item in payload["files"]} == {"one.appgen", "two.appgen"}
+
+
+def test_appgen_lint_subcommand_enforces_strict_component_mode(tmp_path: Path) -> None:
+    source_path = tmp_path / "strict.appgen"
+    source_path.write_text(
+        """
+app StrictDemo { targets: web }
+table Customer { id: int pk; name: string }
+view CustomerForm for Customer {
+  Main: name
+  @ name UnknownWidget 0 0 4 1
+}
+""",
+        encoding="utf-8",
+    )
+
+    result = subprocess.run(
+        [sys.executable, "-m", "pyAppGen", "lint", str(source_path), "--strict", "--json"],
+        check=False,
+        cwd=Path(__file__).resolve().parents[1],
+        text=True,
+        capture_output=True,
+    )
+
+    assert result.returncode == 1, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["strict"] is True
+    assert payload["severity_counts"]["error"] == 1
+    assert any(item["code"] == "AGX0404" and item["severity"] == "error" for item in payload["diagnostics"])
 
 
 def test_format_validate_and_graph_reports_follow_tooling_contracts() -> None:

@@ -499,6 +499,11 @@ appgen lint app.appgen --json
 appgen lint src/appgen --strict --catalog docs/pbc-catalog.json
 ```
 
+`--strict` is an executable component-catalog gate. In normal mode, unknown
+visual components remain `AGX0404` warnings so drafts can be explored. In strict
+mode, the same diagnostics are promoted to errors and the command exits `1`,
+which lets CI, agents, and release flows block unregistered component use.
+
 Exit codes:
 
 - `0`: no errors;

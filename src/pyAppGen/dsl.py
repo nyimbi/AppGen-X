@@ -540,11 +540,14 @@ def semantic_model_dsl_file(path: str | Path) -> dict:
     return semantic_model_dsl(path.read_text(encoding="utf-8"), source_name=str(path))
 
 
-def lint_report_dsl(text: str, *, source_name: str | None = None) -> dict:
+def lint_report_dsl(text: str, *, source_name: str | None = None, strict: bool = False) -> dict:
     """Return the docs/tooling.md appgen.lint-report.v1 contract."""
     source = text or ""
     legacy = lint_dsl(source, source_name=source_name)
-    diagnostics = tuple(_spec_diagnostic_from_legacy(source, item) for item in legacy["diagnostics"])
+    diagnostics = tuple(
+        _strict_lint_diagnostic(_spec_diagnostic_from_legacy(source, item), strict=strict)
+        for item in legacy["diagnostics"]
+    )
     counts = {
         "error": sum(1 for item in diagnostics if item["severity"] == "error"),
         "warning": sum(1 for item in diagnostics if item["severity"] == "warning"),
@@ -559,11 +562,12 @@ def lint_report_dsl(text: str, *, source_name: str | None = None) -> dict:
         "diagnostics": diagnostics,
         "fixes_available": any(item.get("fixes") for item in diagnostics),
         "semantic_model_available": legacy["ok"],
+        "strict": strict,
         "legacy_report": legacy,
     }
 
 
-def lint_report_dsl_sources(sources: dict[str, str]) -> dict:
+def lint_report_dsl_sources(sources: dict[str, str], *, strict: bool = False) -> dict:
     """Aggregate linter output for a multi-file AppGen-X source set."""
     if not sources:
         diagnostic = _spec_diagnostic("", "AGX0001", "error", "No .appgen files found in directory input.")
@@ -575,11 +579,12 @@ def lint_report_dsl_sources(sources: dict[str, str]) -> dict:
             "diagnostics": (diagnostic,),
             "fixes_available": False,
             "semantic_model_available": False,
+            "strict": strict,
             "source_mode": "directory",
             "file_reports": (),
         }
     reports = tuple(
-        lint_report_dsl(source, source_name=name)
+        lint_report_dsl(source, source_name=name, strict=strict)
         for name, source in sorted(sources.items())
     )
     diagnostics = tuple(
@@ -601,17 +606,18 @@ def lint_report_dsl_sources(sources: dict[str, str]) -> dict:
         "diagnostics": diagnostics,
         "fixes_available": any(report["fixes_available"] for report in reports),
         "semantic_model_available": all(report["semantic_model_available"] for report in reports),
+        "strict": strict,
         "source_mode": "directory" if len(reports) != 1 else "multi-source",
         "file_reports": reports,
     }
 
 
-def lint_report_dsl_file(path: str | Path) -> dict:
+def lint_report_dsl_file(path: str | Path, *, strict: bool = False) -> dict:
     path = Path(path)
-    return lint_report_dsl(path.read_text(encoding="utf-8"), source_name=str(path))
+    return lint_report_dsl(path.read_text(encoding="utf-8"), source_name=str(path), strict=strict)
 
 
-def lint_report_dsl_path(path: str | Path) -> dict:
+def lint_report_dsl_path(path: str | Path, *, strict: bool = False) -> dict:
     path = Path(path)
     if path.is_dir():
         sources = {
@@ -619,8 +625,8 @@ def lint_report_dsl_path(path: str | Path) -> dict:
             for item in sorted(path.rglob("*.appgen"))
             if item.is_file()
         }
-        return lint_report_dsl_sources(sources)
-    return lint_report_dsl_file(path)
+        return lint_report_dsl_sources(sources, strict=strict)
+    return lint_report_dsl_file(path, strict=strict)
 
 
 def diagnostic_catalog_dsl() -> dict:
@@ -1024,7 +1030,7 @@ def dsl_tooling_cli(argv: Iterable[str] | None = None) -> int:
     source = "" if path is None or path.is_dir() else path.read_text(encoding="utf-8")
 
     if args.command == "lint":
-        report = lint_report_dsl_path(path) if path is not None else lint_report_dsl(source)
+        report = lint_report_dsl_path(path, strict=args.strict) if path is not None else lint_report_dsl(source, strict=args.strict)
         _emit_tooling_payload(report, as_json=args.json)
         return 0 if report["ok"] else 1
     if args.command == "format":
@@ -4445,6 +4451,16 @@ def _spec_diagnostic_from_legacy(source: str, diagnostic: dict) -> dict:
         ),
         "docs_url": _spec_docs_url(code),
     }
+
+
+def _strict_lint_diagnostic(diagnostic: dict, *, strict: bool) -> dict:
+    if strict and diagnostic.get("code") == "AGX0404":
+        return {
+            **diagnostic,
+            "severity": "error",
+            "message": f"{diagnostic.get('message', '')} Strict component mode treats unknown visual components as errors.",
+        }
+    return diagnostic
 
 
 def _spec_diagnostic(source: str, code: str, severity: str, message: str) -> dict:
