@@ -3372,4 +3372,16 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   workflow Mermaid, and PBC DOT outputs and proves the command emits parseable
   `appgen.graph-report.v1` JSON plus text renderings with the expected graph
   prefixes. Verification passed: full `appgen tooling-audit --json` with
-  `16/16` checks and no blocking gaps. Commit: pending.
+  `16/16` checks and no blocking gaps. Commit: `67895c15`.
+- Current migration CLI audit hardening pass closes the gap between migration
+  planner function coverage and the concrete `appgen migration-plan` command
+  contract in `docs/tooling.md`. `appgen.tooling-audit.v1` now embeds
+  `appgen.migration-cli-audit.v1`, which runs the CLI for `postgresql`,
+  `mysql`, and `mariadb`, applies table and field rename hints, and proves the
+  JSON command surface returns `appgen.migration-plan.v1`, backend identity,
+  destructive approval requirements, `AGX1101`, and rename/add-field change
+  records. Verification passed: Python compile for touched tooling entrypoints,
+  focused migration/tooling tests (`3 passed`), full `appgen tooling-audit
+  --json` with `16/16` checks and no blocking gaps, scoped diff whitespace
+  check, and restricted-name scan outside archive, Git internals, and active
+  PBC paths. Commit: pending.

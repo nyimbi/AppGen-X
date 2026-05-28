@@ -2135,6 +2135,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
         invalid_choice_exit = _tooling_audit_invalid_choice_exit(Path(tmp))
         designer_sync_cli = _tooling_audit_designer_sync_cli(Path(tmp), source)
         graph_cli = _tooling_audit_graph_cli_formats(Path(tmp), source)
+        migration_cli = _tooling_audit_migration_cli(Path(tmp))
         generation = generate_report_dsl(
             source,
             source_name="tooling-audit.appgen",
@@ -2323,10 +2324,11 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
         ),
         _tooling_audit_check(
             "migration_detection_coverage",
-            set(REQUIRED_MIGRATION_DETECTIONS) <= set(migration_detected),
-            "Migration planner detects the required table, field, relationship, directive, calculated-field, PBC ownership, and backfill families.",
+            set(REQUIRED_MIGRATION_DETECTIONS) <= set(migration_detected)
+            and migration_cli["ok"],
+            "Migration planner detects required change families and the CLI accepts supported backend profiles plus rename hints.",
             "docs/tooling.md#migration-planner",
-            {"detected": migration_detected, "required": REQUIRED_MIGRATION_DETECTIONS},
+            {"detected": migration_detected, "required": REQUIRED_MIGRATION_DETECTIONS, "cli": migration_cli},
         ),
         _tooling_audit_check(
             "natural_language_patch_planner",
@@ -2918,6 +2920,93 @@ def _tooling_audit_graph_cli_formats(tmp: Path, source: str) -> dict:
         "format": "appgen.graph-cli-format-audit.v1",
         "ok": all(result["ok"] for result in results),
         "cases": tuple(results),
+    }
+
+
+def _tooling_audit_migration_cli(tmp: Path) -> dict:
+    previous_path = tmp / "migration-previous.appgen"
+    current_path = tmp / "migration-current.appgen"
+    previous_path.write_text(
+        """
+app MigrationDemo { targets: web }
+
+table Customer {
+  id: int pk
+  name: string
+}
+
+table Invoice {
+  id: int pk
+  customer_id: int -> Customer.id
+  total: decimal default 0
+}
+""",
+        encoding="utf-8",
+    )
+    current_path.write_text(
+        """
+app MigrationDemo { targets: web }
+
+table Account {
+  id: int pk
+  name: string
+}
+
+table Invoice {
+  id: int pk
+  account_id: int -> Account.id
+  total: decimal default 0
+  due_date: date required
+}
+""",
+        encoding="utf-8",
+    )
+    cases = []
+    for backend in SUPPORTED_DATABASE_BACKENDS:
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            exit_code = dsl_tooling_cli(
+                (
+                    "migration-plan",
+                    str(previous_path),
+                    str(current_path),
+                    "--backend",
+                    backend,
+                    "--rename-hint",
+                    "table:Customer=Account",
+                    "--rename-hint",
+                    "field:Invoice.customer_id=Invoice.account_id",
+                    "--json",
+                )
+            )
+        try:
+            payload = json.loads(output.getvalue())
+        except json.JSONDecodeError:
+            payload = {}
+        change_kinds = {change.get("kind") for change in payload.get("changes", ())}
+        ok = (
+            exit_code == 0
+            and payload.get("format") == "appgen.migration-plan.v1"
+            and payload.get("backend") == backend
+            and payload.get("requires_approval") is True
+            and {"rename_table", "rename_field", "add_field"} <= change_kinds
+            and bool(payload.get("rename_hints"))
+        )
+        cases.append(
+            {
+                "backend": backend,
+                "ok": ok,
+                "exit_code": exit_code,
+                "change_kinds": tuple(sorted(change_kinds)),
+                "requires_approval": payload.get("requires_approval"),
+                "diagnostic_codes": tuple(item.get("code") for item in payload.get("diagnostics", ())),
+            }
+        )
+    return {
+        "format": "appgen.migration-cli-audit.v1",
+        "ok": all(case["ok"] for case in cases),
+        "allowed_backends": SUPPORTED_DATABASE_BACKENDS,
+        "cases": tuple(cases),
     }
 
 
