@@ -17,6 +17,7 @@ ASSET_LIFECYCLE_UI_FRAGMENT_KEYS = (
     "PlacedInServiceBoard",
     "DepreciationScheduleView",
     "DepreciationRunConsole",
+    "DepreciationRevisionConsole",
     "AssetTransferBoard",
     "RevaluationImpairmentPanel",
     "MaintenanceAdjustmentView",
@@ -44,6 +45,7 @@ def asset_lifecycle_ui_contract() -> dict:
             "/workbench/pbcs/asset_lifecycle/service",
             "/workbench/pbcs/asset_lifecycle/depreciation-schedules",
             "/workbench/pbcs/asset_lifecycle/depreciation-runs",
+            "/workbench/pbcs/asset_lifecycle/depreciation-revisions",
             "/workbench/pbcs/asset_lifecycle/transfers",
             "/workbench/pbcs/asset_lifecycle/valuations",
             "/workbench/pbcs/asset_lifecycle/maintenance",
@@ -69,6 +71,12 @@ def asset_lifecycle_ui_contract() -> dict:
                 "commands": ("build_depreciation_schedule", "run_depreciation", "route_depreciation_journal"),
             },
             {
+                "key": "depreciation_revision",
+                "fragment": "DepreciationRevisionConsole",
+                "binds_to": ("schedule_versions", "revision_flag", "idempotency"),
+                "commands": ("build_depreciation_schedule", "review_depreciation_plan"),
+            },
+            {
                 "key": "valuation",
                 "fragment": "RevaluationImpairmentPanel",
                 "binds_to": ("asset", "revaluation", "impairment", "valuation_projection"),
@@ -92,6 +100,7 @@ def asset_lifecycle_ui_contract() -> dict:
             "place_asset_in_service": "asset_lifecycle.service",
             "build_depreciation_schedule": "asset_lifecycle.depreciation",
             "run_depreciation": "asset_lifecycle.depreciation",
+            "review_depreciation_plan": "asset_lifecycle.depreciation",
             "transfer_asset": "asset_lifecycle.transfer",
             "revalue_asset": "asset_lifecycle.valuation",
             "impair_asset": "asset_lifecycle.valuation",
@@ -168,6 +177,7 @@ def asset_lifecycle_render_workbench(
         {"key": "net_book_value", "value": round(sum(asset["book_value"] for asset in assets), 2), "fragment": "AssetLifecycleWorkbench"},
         {"key": "schedules", "value": len(schedules), "fragment": "DepreciationScheduleView"},
         {"key": "depreciation_runs", "value": len(depreciation_runs), "fragment": "DepreciationRunConsole"},
+        {"key": "pending_schedule_revisions", "value": len(tuple(asset for asset in assets if asset.get("schedule_revision_required"))), "fragment": "DepreciationRevisionConsole"},
         {"key": "rules", "value": len(state.get("rules", {})), "fragment": "AssetRuleStudio"},
     )
     return {
@@ -186,6 +196,15 @@ def asset_lifecycle_render_workbench(
         "event_inbox_count": len(state.get("inbox", {})),
         "dead_letter_count": len(state.get("dead_letters", ())),
         "binding_evidence": contract["workbench_binding_evidence"],
+        "depreciation_controls": {
+            "pending_schedule_revisions": len(tuple(asset for asset in assets if asset.get("schedule_revision_required"))),
+            "active_schedule_versions": {
+                asset["asset_id"]: asset.get("active_schedule_version", 0)
+                for asset in assets
+                if asset.get("active_schedule_id")
+            },
+            "idempotency_keys": tuple(sorted(state.get("depreciation_run_index", {}))),
+        },
     }
 
 class _AppGenSmokeState(dict):

@@ -76,6 +76,8 @@ def chatbot_interface_contract():
             'governed_datastore_crud',
             'policy_and_permission_explanation',
             'workbench_navigation',
+            'audit_event_sealing_preview',
+            'forensic_export_minimization_preview',
         ),
         'professional_controls': (
             'citation_required_for_document_facts',
@@ -83,6 +85,8 @@ def chatbot_interface_contract():
             'permission_check_before_mutation',
             'owned_table_boundary_check',
             'audit_event_plan',
+            'evidence_envelope_preview',
+            'disclosure_minimization_preview',
         ),
         'side_effects': (),
     }
@@ -127,6 +131,32 @@ def datastore_crud_plan(action='read', table=None, payload=None):
     }
 
 
+def audit_event_preview(payload=None):
+    """Preview the sealing envelope an agent would require before mutation."""
+    preview = services.preview_audit_event_envelope(payload or {})
+    return {
+        'ok': preview['ok'],
+        'pbc': PBC_KEY,
+        'operation': 'record_audit_event',
+        'requires_confirmation': True,
+        'preview': preview,
+        'side_effects': (),
+    }
+
+
+def forensic_export_preview(payload=None):
+    """Preview minimized disclosure before an export is prepared."""
+    preview = services.preview_forensic_export(payload or {})
+    return {
+        'ok': preview['ok'],
+        'pbc': PBC_KEY,
+        'operation': 'prepare_forensic_export',
+        'requires_confirmation': True,
+        'preview': preview,
+        'side_effects': (),
+    }
+
+
 def composed_agent_contribution():
     """Return the package contribution to the application's single assistant."""
     skills = agent_skill_manifest()
@@ -150,6 +180,36 @@ def smoke_test():
     document = document_instruction_plan('sample instruction', 'create or update the primary record')
     read_plan = datastore_crud_plan('read')
     create_plan = datastore_crud_plan('create', payload={'status': 'draft'})
+    seal_preview = audit_event_preview(
+        {
+            'audit_id': 'audit-smoke',
+            'tenant': 'tenant-smoke',
+            'source_pbc': 'workflow_orchestration',
+            'aggregate_id': 'wf-1',
+            'actor': 'ops_user',
+            'action': 'complete_workflow',
+            'classification': 'regulated',
+            'payload': {'workflow_id': 'wf-1'},
+        }
+    )
+    export_preview = forensic_export_preview(
+        {
+            'classification': 'regulated',
+            'disclosure': ('actor', 'action'),
+            'sample_event': {
+                'audit_id': 'audit-smoke',
+                'tenant': 'tenant-smoke',
+                'source_pbc': 'workflow_orchestration',
+                'aggregate_id': 'wf-1',
+                'actor': 'ops_user',
+                'action': 'complete_workflow',
+                'classification': 'regulated',
+                'sequence': 1,
+                'payload_hash': 'hash',
+                'event_hash': 'event-hash',
+            },
+        }
+    )
     contribution = composed_agent_contribution()
     return {
         'ok': skills['ok']
@@ -157,6 +217,8 @@ def smoke_test():
         and document['ok']
         and read_plan['ok']
         and create_plan['ok']
+        and seal_preview['ok']
+        and export_preview['ok']
         and contribution['ok']
         and not create_plan['stream_engine_picker_visible'],
         'skills': skills,
@@ -164,6 +226,8 @@ def smoke_test():
         'document': document,
         'read_plan': read_plan,
         'create_plan': create_plan,
+        'seal_preview': seal_preview,
+        'export_preview': export_preview,
         'contribution': contribution,
         'side_effects': (),
     }

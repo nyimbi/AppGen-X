@@ -64,6 +64,15 @@ from .runtime import ar_credit_verify_formal_invariants
 from .runtime import ar_credit_verify_owned_table_boundary
 from .runtime import ar_credit_verify_revenue_proof
 from .runtime import ar_credit_write_off_receivable
+from .receivables_workflows import AR_CREDIT_IMPLEMENTED_BACKLOG_ITEMS
+from .receivables_workflows import AR_CREDIT_WORKFLOW_OPERATIONS
+from .receivables_workflows import ar_credit_build_collections_follow_up
+from .receivables_workflows import ar_credit_execute_customer_onboarding
+from .receivables_workflows import ar_credit_execute_invoice_issuance
+from .receivables_workflows import ar_credit_execute_receipt_application
+from .receivables_workflows import ar_credit_review_credit_onboarding
+from .receivables_workflows import ar_credit_review_invoice_readiness
+from .receivables_workflows import ar_credit_workflow_release_evidence
 from .ui import AR_CREDIT_UI_FRAGMENT_KEYS
 from .ui import ar_credit_render_workbench
 from .ui import ar_credit_ui_contract
@@ -89,6 +98,8 @@ def implementation_contract() -> dict:
         "required_event_topic": AR_CREDIT_REQUIRED_EVENT_TOPIC,
         "consumes": AR_CREDIT_CONSUMED_EVENT_TYPES,
         "emits": AR_CREDIT_EMITTED_EVENT_TYPES,
+        "workflow_operations": AR_CREDIT_WORKFLOW_OPERATIONS,
+        "implemented_backlog_items": AR_CREDIT_IMPLEMENTED_BACKLOG_ITEMS,
     }
 
 
@@ -138,4 +149,3 @@ def smoke_test() -> dict:
         "discovery": discovery,
         "side_effects": (),
     }
-

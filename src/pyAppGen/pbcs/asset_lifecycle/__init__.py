@@ -25,6 +25,7 @@ from .runtime import asset_lifecycle_place_asset_in_service
 from .runtime import asset_lifecycle_permissions_contract
 from .runtime import asset_lifecycle_receive_event
 from .runtime import asset_lifecycle_register_asset
+from .runtime import asset_lifecycle_review_depreciation_plan
 from .runtime import asset_lifecycle_register_rule
 from .runtime import asset_lifecycle_register_schema_extension
 from .runtime import asset_lifecycle_retire_asset
@@ -108,4 +109,3 @@ def smoke_test() -> dict:
         "discovery": discovery,
         "side_effects": (),
     }
-

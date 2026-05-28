@@ -1,6 +1,23 @@
 """Idempotent event handlers for the audit_ledger PBC."""
 
-HANDLER_CONTRACTS = ({'event_type': 'AccessPolicyChanged', 'function': 'handle_access_policy_changed', 'idempotency_key': 'audit_ledger:AccessPolicyChanged:{event_id}', 'retry_policy': {'name': 'audit_ledger_default_retry', 'max_attempts': 5, 'backoff': 'exponential'}, 'dead_letter_table': 'audit_ledger_appgen_dead_letter_event', 'side_effect_boundary': 'owned_tables_or_declared_api_calls'}, {'event_type': 'WorkflowCompleted', 'function': 'handle_workflow_completed', 'idempotency_key': 'audit_ledger:WorkflowCompleted:{event_id}', 'retry_policy': {'name': 'audit_ledger_default_retry', 'max_attempts': 5, 'backoff': 'exponential'}, 'dead_letter_table': 'audit_ledger_appgen_dead_letter_event', 'side_effect_boundary': 'owned_tables_or_declared_api_calls'}, {'event_type': 'RoutePublished', 'function': 'handle_route_published', 'idempotency_key': 'audit_ledger:RoutePublished:{event_id}', 'retry_policy': {'name': 'audit_ledger_default_retry', 'max_attempts': 5, 'backoff': 'exponential'}, 'dead_letter_table': 'audit_ledger_appgen_dead_letter_event', 'side_effect_boundary': 'owned_tables_or_declared_api_calls'})
+from .runtime import AUDIT_LEDGER_CONSUMED_EVENT_TYPES
+
+
+def _handler_contracts():
+    return tuple(
+        {
+            'event_type': event_type,
+            'function': f"handle_{''.join('_' + ch.lower() if ch.isupper() else ch for ch in event_type).lstrip('_')}",
+            'idempotency_key': f'audit_ledger:{event_type}:{{event_id}}',
+            'retry_policy': {'name': 'audit_ledger_default_retry', 'max_attempts': 5, 'backoff': 'exponential'},
+            'dead_letter_table': 'audit_ledger_dead_letter_event',
+            'side_effect_boundary': 'owned_tables_or_declared_api_calls',
+        }
+        for event_type in AUDIT_LEDGER_CONSUMED_EVENT_TYPES
+    )
+
+
+HANDLER_CONTRACTS = _handler_contracts()
 _PROCESSED_KEYS = set()
 
 

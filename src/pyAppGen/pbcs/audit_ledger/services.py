@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from .ledger_proofs import build_evidence_envelope
+from .ledger_proofs import plan_disclosure_minimization
 from .runtime import audit_ledger_build_api_contract
 from .runtime import audit_ledger_build_service_contract
 
@@ -25,7 +27,6 @@ def _path_for(route: str) -> tuple[str, str]:
 
 def _operation_contracts() -> tuple[dict, ...]:
     api = audit_ledger_build_api_contract()
-    fallback_event = tuple(api["events"]["emits"])[0]
     contracts = []
     for route in api["routes"]:
         method, path = _path_for(route["route"])
@@ -40,7 +41,7 @@ def _operation_contracts() -> tuple[dict, ...]:
                 "permission": route["requires_permission"],
                 "owned_tables": tuple(route.get("owned_tables", ())) if operation_kind == "command" else (),
                 "read_tables": tuple(route.get("owned_tables", ())) if operation_kind == "query" else (),
-                "emitted_event": (tuple(route.get("emits", ())) or (fallback_event,))[0] if operation_kind == "command" else None,
+                "emitted_event": tuple(route.get("emits", ()))[0] if operation_kind == "command" and route.get("emits") else None,
                 "consumed_events": tuple(route.get("consumes", ())),
                 "transaction_boundary": "owned_datastore_plus_outbox",
                 "event_contract": "AppGen-X",
@@ -50,6 +51,41 @@ def _operation_contracts() -> tuple[dict, ...]:
 
 
 OPERATION_CONTRACTS = _operation_contracts()
+
+
+def preview_audit_event_envelope(payload: dict | None = None) -> dict:
+    """Preview sealing evidence for one audit event without mutating state."""
+    supplied = dict(payload or {})
+    preview = build_evidence_envelope(supplied, sequence=1, previous_hash="genesis")
+    return {
+        "ok": preview["ok"],
+        "operation": "record_audit_event",
+        "event_contract": "AppGen-X",
+        "preview": preview,
+        "side_effects": (),
+    }
+
+
+def preview_forensic_export(payload: dict | None = None) -> dict:
+    """Preview disclosure minimization for one export request without mutating state."""
+    supplied = dict(payload or {})
+    sample_events = tuple(supplied.get("sample_events", ()))
+    if not sample_events and supplied.get("sample_event"):
+        sample_events = (dict(supplied["sample_event"]),)
+    plan = plan_disclosure_minimization(
+        sample_events,
+        classification=str(supplied.get("classification", "regulated")),
+        requested_fields=tuple(supplied.get("disclosure", ())),
+        purpose=str(supplied.get("purpose", "forensic_export")),
+        approval_required=bool(supplied.get("approval_required", False)),
+    )
+    return {
+        "ok": plan["ok"],
+        "operation": "prepare_forensic_export",
+        "event_contract": "AppGen-X",
+        "preview": plan,
+        "side_effects": (),
+    }
 
 
 def service_operation_contracts() -> dict:
@@ -115,6 +151,10 @@ class AuditLedgerService:
             "transaction_boundary": plan.get("transaction_boundary"),
             "side_effects": (),
         }
+        if operation_name == "record_audit_event":
+            result["preview"] = preview_audit_event_envelope(payload)
+        elif operation_name == "prepare_forensic_export":
+            result["preview"] = preview_forensic_export(payload)
         if operation_kind == "command":
             event_type = plan.get("emitted_event")
             result.update(
@@ -146,6 +186,7 @@ def service_operation_manifest() -> dict:
         "command_operations": contracts["command_operations"],
         "query_operations": contracts["query_operations"],
         "operation_contracts": contracts["contracts"],
+        "preview_operations": ("record_audit_event", "prepare_forensic_export"),
         "transaction_boundary": "owned_datastore_plus_outbox",
         "outbox_table": EVENT_CONTRACT["outbox_table"],
         "side_effects": (),

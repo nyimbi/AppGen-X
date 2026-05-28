@@ -478,6 +478,7 @@ def ar_credit_empty_state() -> dict:
         "invoices": {},
         "deliveries": {},
         "receipts": {},
+        "cash_applications": {},
         "unapplied_cash": {},
         "credit_memos": {},
         "write_offs": {},
@@ -663,21 +664,53 @@ def ar_credit_apply_cash(state: dict, receipt: dict) -> dict:
     invoice = state["invoices"].get(remittance.get("invoice_id"))
     if not invoice:
         return {"ok": False, "error": "invoice_not_found", "state": state}
-    amount_delta = abs(float(receipt["amount"]) - invoice["open_amount"]) / max(invoice["open_amount"], 1)
-    confidence = round(max(0.0, min(0.99, remittance.get("confidence", 0.4) - amount_delta)), 4)
-    decision = "auto_clear" if confidence >= 0.95 else "route_exception"
-    cleared_invoice = {**invoice, "open_amount": round(max(0, invoice["open_amount"] - receipt["amount"]), 2), "status": "cleared" if decision == "auto_clear" else "partial"}
+    receipt_amount = round(float(receipt["amount"]), 2)
+    open_amount = round(float(invoice["open_amount"]), 2)
+    remittance_confidence = float(remittance.get("confidence", 0.4))
+    amount_delta = abs(receipt_amount - open_amount) / max(open_amount, 1)
+    confidence = round(max(0.0, min(0.99, remittance_confidence - amount_delta * 0.35)), 4)
+    can_apply = remittance_confidence >= 0.95 and receipt_amount > 0
+    applied_amount = round(min(receipt_amount, open_amount), 2) if can_apply else 0.0
+    if applied_amount == 0:
+        decision = "route_exception"
+    elif applied_amount == open_amount and receipt_amount >= open_amount:
+        decision = "auto_clear"
+    else:
+        decision = "apply_partial"
+    next_open_amount = round(max(0, open_amount - applied_amount), 2)
+    cleared_invoice = {
+        **invoice,
+        "open_amount": next_open_amount,
+        "status": "cleared" if next_open_amount == 0 and applied_amount else "partial" if applied_amount else invoice["status"],
+    }
+    application = {
+        "application_id": receipt.get("application_id", f"app_{receipt['receipt_id']}"),
+        "receipt_id": receipt["receipt_id"],
+        "invoice_id": invoice["invoice_id"],
+        "confidence": confidence,
+        "decision": decision,
+        "applied_amount": applied_amount,
+    }
     tenant = receipt["tenant"]
     cash_pool = {**state["cash_pools"].get(tenant, {"tenant": tenant, "currency": receipt["currency"], "received_cash": 0.0})}
-    cash_pool["received_cash"] = round(cash_pool["received_cash"] + receipt["amount"], 2)
+    cash_pool["received_cash"] = round(cash_pool["received_cash"] + receipt_amount, 2)
     next_state = {
         **state,
-        "receipts": {**state["receipts"], receipt["receipt_id"]: {**receipt, "decision": decision}},
+        "receipts": {**state["receipts"], receipt["receipt_id"]: {**receipt, "decision": decision, "applied_amount": applied_amount}},
+        "cash_applications": {**state.get("cash_applications", {}), application["application_id"]: application},
         "invoices": {**state["invoices"], invoice["invoice_id"]: cleared_invoice},
         "cash_pools": {**state["cash_pools"], tenant: cash_pool},
     }
     next_state = _append_event(next_state, "PaymentReceived", {"tenant": tenant, "receipt_id": receipt["receipt_id"], "invoice_id": invoice["invoice_id"]})
-    return {"ok": True, "state": next_state, "decision": decision, "confidence": confidence, "cash_pool": cash_pool, "idempotency_key": f"ar_credit:PaymentReceived:{receipt['receipt_id']}"}
+    return {
+        "ok": True,
+        "state": next_state,
+        "decision": decision,
+        "confidence": confidence,
+        "cash_pool": cash_pool,
+        "application": application,
+        "idempotency_key": f"ar_credit:PaymentReceived:{receipt['receipt_id']}",
+    }
 
 
 def ar_credit_record_unapplied_cash(state: dict, receipt: dict) -> dict:
@@ -1119,15 +1152,26 @@ def ar_credit_build_service_contract() -> dict:
             "api_projections": tuple(item for item in _AR_CREDIT_ALLOWED_DEPENDENCIES if str(item).endswith("_projection")),
             "shared_tables": (),
         },
+        "workflow_operations": (
+            "review_credit_onboarding",
+            "execute_customer_onboarding",
+            "review_invoice_readiness",
+            "execute_invoice_issuance",
+            "execute_receipt_application",
+            "build_collections_follow_up",
+        ),
     }
 
 
 def ar_credit_build_release_evidence() -> dict:
     """Return package-local AR release evidence for implementation readiness."""
+    from .receivables_workflows import ar_credit_workflow_release_evidence
+
     schema = ar_credit_build_schema_contract()
     service = ar_credit_build_service_contract()
     api = ar_credit_build_api_contract()
     permissions = ar_credit_permissions_contract()
+    workflow = ar_credit_workflow_release_evidence()
     checks = (
         {"id": "owned_schema_depth", "ok": schema["ok"] and len(schema["tables"]) >= 35},
         {"id": "migration_per_owned_table", "ok": len(schema["migrations"]) == len(AR_CREDIT_OWNED_TABLES)},
@@ -1136,6 +1180,13 @@ def ar_credit_build_release_evidence() -> dict:
         {"id": "permissions_cover_commands", "ok": {"issue_invoice", "apply_cash", "receive_event"} <= set(permissions["action_permissions"])},
         {"id": "backend_allowlist", "ok": schema["datastore_backends"] == AR_CREDIT_ALLOWED_DATABASE_BACKENDS},
         {"id": "no_shared_table_access", "ok": not schema["shared_table_access"] and not api["shared_table_access"]},
+        {
+            "id": "workflow_slice_execution",
+            "ok": workflow["ok"]
+            and len(workflow["implemented_backlog_items"]) >= 4
+            and workflow["event_contract"] == "AppGen-X"
+            and workflow["shared_table_access"] is False,
+        },
     )
     return {
         "format": "appgen.ar-credit-release-evidence.v1",
@@ -1145,6 +1196,9 @@ def ar_credit_build_release_evidence() -> dict:
         "service": service,
         "api": api,
         "permissions": permissions,
+        "workflow_slice": workflow,
+        "implemented_backlog_items": workflow["implemented_backlog_items"],
+        "generated_artifacts": workflow["generated_artifacts"],
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }
 

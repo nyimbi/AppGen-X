@@ -6,7 +6,9 @@ import hashlib
 
 from .manifest import PBC_MANIFEST
 from . import routes
+from . import runtime
 from . import services
+from . import ui
 
 
 PBC_KEY = 'api_gateway_mesh'
@@ -26,7 +28,10 @@ _SKILL_NAMES = (
 
 
 def _owned_tables():
-    return tuple(f"{PBC_KEY}_{table}" for table in PBC_MANIFEST.get('tables', ()))
+    return tuple(
+        table if str(table).startswith(f"{PBC_KEY}_") else f"{PBC_KEY}_{table}"
+        for table in PBC_MANIFEST.get('tables', ())
+    )
 
 
 def _query_operations():
@@ -76,6 +81,8 @@ def chatbot_interface_contract():
             'governed_datastore_crud',
             'policy_and_permission_explanation',
             'workbench_navigation',
+            'route_publication_readiness',
+            'incident_triage',
         ),
         'professional_controls': (
             'citation_required_for_document_facts',
@@ -83,6 +90,7 @@ def chatbot_interface_contract():
             'permission_check_before_mutation',
             'owned_table_boundary_check',
             'audit_event_plan',
+            'route_publication_safety_case_preview',
         ),
         'side_effects': (),
     }
@@ -143,6 +151,74 @@ def composed_agent_contribution():
     }
 
 
+def route_publication_readiness_preview(state: dict, route_payload: dict) -> dict:
+    """Preview route publication safety, collisions, and required operator actions."""
+    collision = runtime.api_gateway_mesh_analyze_route_collisions(state, route_payload)
+    safety_case = runtime.api_gateway_mesh_build_route_publication_safety_case(state, route_payload)
+    actions = []
+    if collision["blocking"]:
+        actions.append("resolve host/path/method collision before publication")
+    if "workload_identity_verified" in safety_case["blocking_items"]:
+        actions.append("verify workload identity before publication")
+    if "tenant_rule_match" in safety_case["blocking_items"]:
+        actions.append("activate a tenant route rule covering method and protocol")
+    if "service_registered" in safety_case["blocking_items"]:
+        actions.append("register the service before publishing the route")
+    return {
+        "ok": True,
+        "pbc": PBC_KEY,
+        "route_id": route_payload.get("route_id"),
+        "ready_to_publish": safety_case["ready_to_publish"],
+        "blocking_items": safety_case["blocking_items"],
+        "collision_analysis": collision,
+        "safety_case": safety_case,
+        "recommended_actions": tuple(actions),
+        "side_effects": (),
+    }
+
+
+def incident_triage_preview(state: dict, *, tenant: str) -> dict:
+    """Summarize gateway incident blast radius and first-pass remediation options."""
+    workbench = runtime.api_gateway_mesh_build_workbench_view(state, tenant=tenant)
+    rendered = ui.api_gateway_mesh_render_workbench(
+        state,
+        tenant=tenant,
+        principal_permissions=tuple(ui.api_gateway_mesh_ui_contract()["action_permissions"].values()),
+    )
+    degraded_services = tuple(
+        health["service_id"]
+        for health in state.get("health", {}).values()
+        if health.get("tenant") == tenant and health.get("status") != "healthy"
+    )
+    blocked_routes = tuple(
+        route["route_id"]
+        for route in state.get("routes", {}).values()
+        if route.get("tenant") == tenant and route.get("status") != "published"
+    )
+    return {
+        "ok": True,
+        "pbc": PBC_KEY,
+        "tenant": tenant,
+        "blast_radius": {
+            "degraded_services": degraded_services,
+            "blocked_routes": blocked_routes,
+            "dead_letter_count": workbench["dead_letter_count"],
+            "retry_evidence_count": workbench["retry_evidence_count"],
+        },
+        "recommended_actions": tuple(
+            action
+            for action in (
+                "inspect release blockers" if workbench["release_blocking_count"] else None,
+                "review dead-letter backlog" if workbench["dead_letter_count"] else None,
+                "rebalance traffic or fail over" if degraded_services else None,
+            )
+            if action
+        ),
+        "rendered_workbench": rendered,
+        "side_effects": (),
+    }
+
+
 def smoke_test():
     """Exercise guidance, document intake, CRUD planning, and composition contribution."""
     skills = agent_skill_manifest()
@@ -151,6 +227,46 @@ def smoke_test():
     read_plan = datastore_crud_plan('read')
     create_plan = datastore_crud_plan('create', payload={'status': 'draft'})
     contribution = composed_agent_contribution()
+    state = runtime.api_gateway_mesh_empty_state()
+    state = runtime.api_gateway_mesh_configure_runtime(
+        state,
+        {
+            "database_backend": "postgresql",
+            "event_topic": runtime.API_GATEWAY_MESH_REQUIRED_EVENT_TOPIC,
+            "retry_limit": 3,
+            "allowed_methods": ("GET", "POST"),
+            "allowed_protocols": ("http",),
+            "allowed_regions": ("us-east",),
+            "default_timezone": "UTC",
+            "workbench_limit": 50,
+        },
+    )["state"]
+    state = runtime.api_gateway_mesh_register_rule(
+        state,
+        {
+            "rule_id": "agent_rule",
+            "tenant": "tenant_agent",
+            "rule_type": "routing",
+            "allowed_methods": ("GET", "POST"),
+            "allowed_protocols": ("http",),
+            "required_identity": True,
+            "blocked_paths": (),
+            "status": "active",
+        },
+    )["state"]
+    readiness = route_publication_readiness_preview(
+        state,
+        {
+            "route_id": "route_agent",
+            "tenant": "tenant_agent",
+            "service_id": "svc_missing",
+            "host": "api.example.com",
+            "path": "/catalog",
+            "method": "POST",
+            "protocol": "http",
+        },
+    )
+    triage = incident_triage_preview(state, tenant="tenant_agent")
     return {
         'ok': skills['ok']
         and chatbot['ok']
@@ -158,6 +274,8 @@ def smoke_test():
         and read_plan['ok']
         and create_plan['ok']
         and contribution['ok']
+        and readiness['ok']
+        and triage['ok']
         and not create_plan['stream_engine_picker_visible'],
         'skills': skills,
         'chatbot': chatbot,
@@ -165,5 +283,7 @@ def smoke_test():
         'read_plan': read_plan,
         'create_plan': create_plan,
         'contribution': contribution,
+        'readiness': readiness,
+        'triage': triage,
         'side_effects': (),
     }

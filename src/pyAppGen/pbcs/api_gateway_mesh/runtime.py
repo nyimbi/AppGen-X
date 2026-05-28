@@ -185,6 +185,8 @@ def api_gateway_mesh_runtime_capabilities() -> dict:
             "register_schema_extension",
             "receive_event",
             "register_service",
+            "analyze_route_collisions",
+            "build_route_publication_safety_case",
             "publish_route",
             "apply_rate_limit",
             "register_mtls_identity",
@@ -496,12 +498,36 @@ def api_gateway_mesh_register_mtls_identity(state: dict, identity: dict) -> dict
 def api_gateway_mesh_publish_route(state: dict, route: dict) -> dict:
     rule = next(iter(state["rules"].values()))
     identity_ok = any(identity["service_id"] == route["service_id"] and identity["verified"] for identity in state["identities"].values())
-    ok = route["method"] in rule["allowed_methods"] and route["protocol"] in rule["allowed_protocols"] and route["path"] not in rule["blocked_paths"] and (identity_ok or not rule["required_identity"])
-    enriched = {**route, "status": "published" if ok else "blocked", "route_hash": _digest(route)[:24]}
+    collision_analysis = api_gateway_mesh_analyze_route_collisions(state, route)
+    safety_case = api_gateway_mesh_build_route_publication_safety_case(state, route)
+    ok = (
+        route["method"] in rule["allowed_methods"]
+        and route["protocol"] in rule["allowed_protocols"]
+        and route["path"] not in rule["blocked_paths"]
+        and (identity_ok or not rule["required_identity"])
+        and safety_case["ready_to_publish"]
+        and not collision_analysis["blocking"]
+    )
+    blockers = tuple(sorted(set(safety_case["blocking_items"] + collision_analysis["blocking_reasons"])))
+    enriched = {
+        **route,
+        "status": "published" if ok else "blocked",
+        "route_hash": _digest(route)[:24],
+        "collision_analysis": collision_analysis,
+        "publication_safety_case": safety_case,
+        "publication_blockers": blockers,
+    }
     handoffs = ("identity_policy_projection", "schema_contract_projection", "audit_route_projection", "composition_service_projection")
     next_state = {**state, "routes": {**state["routes"], route["route_id"]: enriched}}
     next_state = _append_event(next_state, "RoutePublished", {"tenant": route["tenant"], "route_id": route["route_id"], "service_id": route["service_id"], "handoffs": handoffs})
-    return {"ok": ok, "state": next_state, "route": enriched, "handoffs": handoffs}
+    return {
+        "ok": ok,
+        "state": next_state,
+        "route": enriched,
+        "handoffs": handoffs,
+        "collision_analysis": collision_analysis,
+        "safety_case": safety_case,
+    }
 
 
 def api_gateway_mesh_apply_rate_limit(state: dict, policy: dict) -> dict:
@@ -541,6 +567,146 @@ def api_gateway_mesh_build_service_map(state: dict, *, tenant: str) -> dict:
         "edge_count": len(edges),
         "edges": edges,
         "projection_table": "gateway_service_map_projection",
+    }
+
+
+def api_gateway_mesh_analyze_route_collisions(state: dict, candidate_route: dict) -> dict:
+    collisions = []
+    candidate_tenant = candidate_route.get("tenant")
+    candidate_id = candidate_route.get("route_id")
+    candidate_host = str(candidate_route.get("host", "")).lower()
+    candidate_path = str(candidate_route.get("path", ""))
+    candidate_method = str(candidate_route.get("method", "")).upper()
+    candidate_protocol = str(candidate_route.get("protocol", "")).lower()
+    for existing in state["routes"].values():
+        if existing.get("tenant") != candidate_tenant:
+            continue
+        if existing.get("route_id") == candidate_id:
+            continue
+        same_host = str(existing.get("host", "")).lower() == candidate_host
+        same_method = str(existing.get("method", "")).upper() == candidate_method
+        same_protocol = str(existing.get("protocol", "")).lower() == candidate_protocol
+        if not (same_host and same_method and same_protocol):
+            continue
+        existing_path = str(existing.get("path", ""))
+        path_overlap = (
+            existing_path == candidate_path
+            or existing_path.startswith(candidate_path.rstrip("/") + "/")
+            or candidate_path.startswith(existing_path.rstrip("/") + "/")
+        )
+        if not path_overlap:
+            continue
+        severity = "blocking" if existing_path == candidate_path else "warning"
+        collisions.append(
+            {
+                "existing_route_id": existing["route_id"],
+                "existing_path": existing_path,
+                "candidate_path": candidate_path,
+                "host": candidate_host,
+                "method": candidate_method,
+                "protocol": candidate_protocol,
+                "severity": severity,
+                "reason": "exact_route_conflict" if severity == "blocking" else "path_shadowing_risk",
+            }
+        )
+    blocking_reasons = tuple(
+        dict.fromkeys(
+            item["reason"] for item in collisions if item["severity"] == "blocking"
+        )
+    )
+    return {
+        "ok": True,
+        "route_id": candidate_id,
+        "conflict_count": len(collisions),
+        "blocking": bool(blocking_reasons),
+        "blocking_reasons": blocking_reasons,
+        "collisions": tuple(collisions),
+        "projection_table": "gateway_route_contract_projection",
+    }
+
+
+def api_gateway_mesh_build_route_publication_safety_case(state: dict, route: dict) -> dict:
+    service = state["services"].get(route["service_id"])
+    identity_ok = any(
+        identity["service_id"] == route["service_id"] and identity["verified"]
+        for identity in state["identities"].values()
+    )
+    rules = tuple(
+        rule
+        for rule in state["rules"].values()
+        if rule.get("tenant") == route.get("tenant")
+        and route.get("method") in rule.get("allowed_methods", ())
+        and route.get("protocol") in rule.get("allowed_protocols", ())
+    )
+    collision_analysis = api_gateway_mesh_analyze_route_collisions(state, route)
+    health_records = tuple(
+        health
+        for health in state["health"].values()
+        if health["service_id"] == route["service_id"] and health["tenant"] == route["tenant"]
+    )
+    healthy_precheck = not health_records or any(item["status"] == "healthy" for item in health_records)
+    rollback_route = next(
+        (
+            existing["route_id"]
+            for existing in state["routes"].values()
+            if existing.get("tenant") == route.get("tenant")
+            and existing.get("service_id") == route.get("service_id")
+            and existing.get("status") == "published"
+            and existing.get("route_id") != route.get("route_id")
+        ),
+        route.get("fallback_route_id"),
+    )
+    checklist = (
+        {
+            "control": "service_registered",
+            "ok": bool(service and service.get("status") == "registered"),
+            "detail": route["service_id"],
+        },
+        {
+            "control": "workload_identity_verified",
+            "ok": identity_ok,
+            "detail": route["service_id"],
+        },
+        {
+            "control": "tenant_rule_match",
+            "ok": bool(rules),
+            "detail": tuple(rule["rule_id"] for rule in rules),
+        },
+        {
+            "control": "route_collision_free",
+            "ok": not collision_analysis["blocking"],
+            "detail": collision_analysis["blocking_reasons"],
+        },
+        {
+            "control": "health_precheck",
+            "ok": healthy_precheck,
+            "detail": tuple(item["health_id"] for item in health_records) or ("health_precheck_pending",),
+        },
+        {
+            "control": "event_contract_bound",
+            "ok": state.get("configuration", {}).get("event_contract") == "AppGen-X",
+            "detail": state.get("configuration", {}).get("event_topic"),
+        },
+        {
+            "control": "rollback_target_defined",
+            "ok": bool(rollback_route),
+            "detail": rollback_route,
+        },
+    )
+    blocking_items = tuple(
+        check["control"]
+        for check in checklist
+        if check["ok"] is not True and check["control"] in {"service_registered", "workload_identity_verified", "tenant_rule_match", "route_collision_free", "event_contract_bound"}
+    )
+    return {
+        "ok": True,
+        "route_id": route["route_id"],
+        "ready_to_publish": not blocking_items,
+        "checklist": checklist,
+        "blocking_items": blocking_items,
+        "warnings": tuple(check["control"] for check in checklist if check["ok"] is not True and check["control"] not in blocking_items),
+        "rollback_route_id": rollback_route,
+        "projection_table": "gateway_route_publication_proof",
     }
 
 
@@ -669,13 +835,15 @@ def api_gateway_mesh_build_api_contract() -> dict:
             _api_gateway_mesh_route_descriptor("POST /gateway-rules", command="register_rule", owned_tables=("gateway_rule",), requires_permission="api_gateway_mesh.configure", idempotency_key="rule_id"),
             _api_gateway_mesh_route_descriptor("POST /gateway-parameters", command="set_parameter", owned_tables=("gateway_parameter",), requires_permission="api_gateway_mesh.configure", idempotency_key="parameter_name"),
             _api_gateway_mesh_route_descriptor("POST /gateway-configuration", command="configure_runtime", owned_tables=("gateway_configuration",), requires_permission="api_gateway_mesh.configure", idempotency_key="tenant"),
+            _api_gateway_mesh_route_descriptor("POST /routes/collision-analysis", query="analyze_route_collisions", owned_tables=("service_route", "gateway_route_contract_projection"), requires_permission="api_gateway_mesh.route"),
+            _api_gateway_mesh_route_descriptor("POST /routes/safety-case", query="build_route_publication_safety_case", owned_tables=("service_route", "gateway_route_publication_proof", "gateway_control_assertion"), requires_permission="api_gateway_mesh.audit"),
             _api_gateway_mesh_route_descriptor("GET /service-map", query="build_service_map", owned_tables=("gateway_service_map_projection", "service_registration", "service_route"), requires_permission="api_gateway_mesh.read"),
             _api_gateway_mesh_route_descriptor("GET /gateway/contracts/schema", query="build_schema_contract", owned_tables=API_GATEWAY_MESH_OWNED_TABLES, requires_permission="api_gateway_mesh.audit"),
             _api_gateway_mesh_route_descriptor("GET /gateway/contracts/service", query="build_service_contract", owned_tables=API_GATEWAY_MESH_OWNED_TABLES, requires_permission="api_gateway_mesh.audit"),
             _api_gateway_mesh_route_descriptor("GET /gateway/release-evidence", query="build_release_evidence", owned_tables=API_GATEWAY_MESH_OWNED_TABLES, requires_permission="api_gateway_mesh.audit"),
             _api_gateway_mesh_route_descriptor("GET /gateway-workbench", query="build_workbench_view", owned_tables=API_GATEWAY_MESH_OWNED_TABLES, requires_permission="api_gateway_mesh.audit"),
         ),
-        "declared_catalog_routes": ("POST /services", "POST /routes", "POST /routes/{id}/publish", "POST /rate-limits", "POST /mtls-identities", "POST /traffic-policies", "POST /traffic-samples", "POST /service-health", "POST /gateway-rules", "POST /gateway-parameters", "POST /gateway-configuration", "GET /service-map", "GET /gateway/contracts/schema", "GET /gateway/contracts/service", "GET /gateway/release-evidence", "GET /gateway-workbench"),
+        "declared_catalog_routes": ("POST /services", "POST /routes", "POST /routes/{id}/publish", "POST /rate-limits", "POST /mtls-identities", "POST /traffic-policies", "POST /traffic-samples", "POST /service-health", "POST /gateway-rules", "POST /gateway-parameters", "POST /gateway-configuration", "POST /routes/collision-analysis", "POST /routes/safety-case", "GET /service-map", "GET /gateway/contracts/schema", "GET /gateway/contracts/service", "GET /gateway/release-evidence", "GET /gateway-workbench"),
         "events": {"emits": API_GATEWAY_MESH_EMITTED_EVENT_TYPES, "consumes": API_GATEWAY_MESH_CONSUMED_EVENT_TYPES},
         "emits": API_GATEWAY_MESH_EMITTED_EVENT_TYPES,
         "consumes": API_GATEWAY_MESH_CONSUMED_EVENT_TYPES,
@@ -826,6 +994,8 @@ def api_gateway_mesh_build_service_contract() -> dict:
         "query_methods": (
             "build_service_map",
             "build_workbench_view",
+            "analyze_route_collisions",
+            "build_route_publication_safety_case",
             "simulate_traffic_policy",
             "forecast_route_health",
             "parse_route_request",
@@ -862,6 +1032,7 @@ def api_gateway_mesh_build_release_evidence() -> dict:
     service = api_gateway_mesh_build_service_contract()
     api = api_gateway_mesh_build_api_contract()
     permissions = api_gateway_mesh_permissions_contract()
+    sample = _api_gateway_mesh_release_sample()
     checks = (
         {"id": "owned_schema_depth", "ok": schema["ok"] and len(schema["tables"]) >= 35},
         {"id": "migration_per_owned_table", "ok": len(schema["migrations"]) == len(API_GATEWAY_MESH_OWNED_TABLES)},
@@ -870,6 +1041,8 @@ def api_gateway_mesh_build_release_evidence() -> dict:
         {"id": "permissions_cover_commands", "ok": {"publish_route", "receive_event", "build_release_evidence"} <= set(permissions["action_permissions"])},
         {"id": "backend_allowlist", "ok": schema["datastore_backends"] == API_GATEWAY_MESH_ALLOWED_DATABASE_BACKENDS},
         {"id": "no_shared_table_access", "ok": not schema["shared_table_access"] and not api["shared_table_access"] and service["external_dependencies"]["shared_tables"] == ()},
+        {"id": "route_collision_analysis_execution", "ok": sample["collision"]["blocking"] is True and sample["collision"]["conflict_count"] >= 1},
+        {"id": "route_publication_safety_case_execution", "ok": sample["safety_case"]["ready_to_publish"] is False and "route_collision_free" in sample["safety_case"]["blocking_items"]},
     )
     return {
         "format": "appgen.api-gateway-mesh-release-evidence.v1",
@@ -879,6 +1052,7 @@ def api_gateway_mesh_build_release_evidence() -> dict:
         "service": service,
         "api": api,
         "permissions": permissions,
+        "execution_sample": sample,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }
 
@@ -901,6 +1075,8 @@ def api_gateway_mesh_permissions_contract() -> dict:
             "set_parameter": "api_gateway_mesh.configure",
             "configure_runtime": "api_gateway_mesh.configure",
             "build_service_map": "api_gateway_mesh.read",
+            "analyze_route_collisions": "api_gateway_mesh.route",
+            "build_route_publication_safety_case": "api_gateway_mesh.audit",
             "build_schema_contract": "api_gateway_mesh.audit",
             "build_service_contract": "api_gateway_mesh.audit",
             "build_release_evidence": "api_gateway_mesh.audit",
@@ -1070,6 +1246,9 @@ def api_gateway_mesh_build_workbench_view(state: dict, *, tenant: str) -> dict:
         "configuration_bound": bool(state.get("configuration", {}).get("ok")),
         "rule_count": len(state.get("rules", {})),
         "parameter_count": len(state.get("parameters", {})),
+        "route_collision_count": sum(route.get("collision_analysis", {}).get("conflict_count", 0) for route in routes),
+        "route_publication_blocked_count": len(tuple(route for route in routes if route.get("publication_blockers"))),
+        "route_publication_ready_count": len(tuple(route for route in routes if route.get("publication_safety_case", {}).get("ready_to_publish") is True)),
         "inbox_count": len(state.get("inbox", ())),
         "retry_evidence_count": len(state.get("retry_evidence", ())),
         "dead_letter_count": len(dead_letter_records),
@@ -1087,6 +1266,7 @@ def api_gateway_mesh_build_workbench_view(state: dict, *, tenant: str) -> dict:
                 "gateway_policy_screening",
                 "gateway_route_publication_proof",
                 "gateway_federation_projection",
+                "gateway_control_assertion",
             ),
             "configuration": {
                 "event_contract": state.get("configuration", {}).get("event_contract"),
@@ -1122,6 +1302,93 @@ def _append_event(state: dict, event_type: str, payload: dict) -> dict:
         "idempotency_key": f"api_gateway_mesh:{event_type}:{event['event_id']}",
     }
     return {**state, "events": (*state["events"], event), "outbox": (*state["outbox"], outbox_event)}
+
+
+def _api_gateway_mesh_release_sample() -> dict:
+    state = api_gateway_mesh_empty_state()
+    state = api_gateway_mesh_configure_runtime(
+        state,
+        {
+            "database_backend": "postgresql",
+            "event_topic": API_GATEWAY_MESH_REQUIRED_EVENT_TOPIC,
+            "retry_limit": 3,
+            "allowed_methods": ("GET", "POST"),
+            "allowed_protocols": ("http",),
+            "allowed_regions": ("us-east",),
+            "default_timezone": "UTC",
+            "workbench_limit": 50,
+        },
+    )["state"]
+    state = api_gateway_mesh_set_parameter(state, "default_rate_limit_per_minute", 1000)["state"]
+    state = api_gateway_mesh_set_parameter(state, "latency_slo_ms", 250)["state"]
+    state = api_gateway_mesh_set_parameter(state, "error_rate_threshold", 0.02)["state"]
+    state = api_gateway_mesh_register_rule(
+        state,
+        {
+            "rule_id": "release_rule",
+            "tenant": "tenant_release",
+            "rule_type": "routing",
+            "allowed_methods": ("GET", "POST"),
+            "allowed_protocols": ("http",),
+            "required_identity": True,
+            "blocked_paths": (),
+            "status": "active",
+        },
+    )["state"]
+    state = api_gateway_mesh_register_service(
+        state,
+        {
+            "service_id": "svc_release",
+            "tenant": "tenant_release",
+            "pbc": "product_catalog_pim",
+            "name": "catalog-api",
+            "version": "v1",
+            "region": "us-east",
+            "upstreams": ("https://catalog-v1",),
+        },
+    )["state"]
+    state = api_gateway_mesh_register_mtls_identity(
+        state,
+        {
+            "identity_id": "mtls_release",
+            "tenant": "tenant_release",
+            "service_id": "svc_release",
+            "spiffe_id": "spiffe://tenant/catalog",
+            "issuer": "trusted_registry",
+            "status": "active",
+        },
+    )["state"]
+    published = api_gateway_mesh_publish_route(
+        state,
+        {
+            "route_id": "route_release_primary",
+            "tenant": "tenant_release",
+            "service_id": "svc_release",
+            "host": "api.example.com",
+            "path": "/catalog",
+            "method": "POST",
+            "protocol": "http",
+            "version": "v1",
+            "canary_percent": 5,
+        },
+    )
+    state = published["state"]
+    candidate = {
+        "route_id": "route_release_conflict",
+        "tenant": "tenant_release",
+        "service_id": "svc_release",
+        "host": "api.example.com",
+        "path": "/catalog",
+        "method": "POST",
+        "protocol": "http",
+        "version": "v2",
+        "canary_percent": 10,
+    }
+    return {
+        "published": published,
+        "collision": api_gateway_mesh_analyze_route_collisions(state, candidate),
+        "safety_case": api_gateway_mesh_build_route_publication_safety_case(state, candidate),
+    }
 
 
 def _digest(value: object) -> str:

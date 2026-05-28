@@ -16,6 +16,7 @@ _CRUD_ACTIONS = ('create', 'read', 'update', 'delete')
 _SKILL_NAMES = (
     f'{PBC_KEY}.task_guidance',
     f'{PBC_KEY}.document_instruction_intake',
+    f'{PBC_KEY}.depreciation_revision_preview',
     f'{PBC_KEY}.governed_create',
     f'{PBC_KEY}.governed_read',
     f'{PBC_KEY}.governed_update',
@@ -73,6 +74,7 @@ def chatbot_interface_contract():
         'capabilities': (
             'task_guidance',
             'document_and_instruction_intake',
+            'depreciation_schedule_revision',
             'governed_datastore_crud',
             'policy_and_permission_explanation',
             'workbench_navigation',
@@ -143,6 +145,11 @@ def composed_agent_contribution():
     }
 
 
+def depreciation_revision_preview(payload=None):
+    """Preview a depreciation schedule build or revision for assistant flows."""
+    return services.AssetLifecycleService().preview_depreciation_plan(payload or {})
+
+
 def smoke_test():
     """Exercise guidance, document intake, CRUD planning, and composition contribution."""
     skills = agent_skill_manifest()
@@ -150,6 +157,18 @@ def smoke_test():
     document = document_instruction_plan('sample instruction', 'create or update the primary record')
     read_plan = datastore_crud_plan('read')
     create_plan = datastore_crud_plan('create', payload={'status': 'draft'})
+    preview = depreciation_revision_preview(
+        {
+            'asset': {
+                'asset_id': 'asset_smoke',
+                'cost': 10000,
+                'book_value': 10000,
+                'residual_value': 1000,
+                'useful_life_months': 36,
+                'service_date': '2026-01-01',
+            }
+        }
+    )
     contribution = composed_agent_contribution()
     return {
         'ok': skills['ok']
@@ -157,6 +176,7 @@ def smoke_test():
         and document['ok']
         and read_plan['ok']
         and create_plan['ok']
+        and preview['ok']
         and contribution['ok']
         and not create_plan['stream_engine_picker_visible'],
         'skills': skills,
@@ -164,6 +184,7 @@ def smoke_test():
         'document': document,
         'read_plan': read_plan,
         'create_plan': create_plan,
+        'preview': preview,
         'contribution': contribution,
         'side_effects': (),
     }

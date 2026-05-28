@@ -7,6 +7,13 @@ import json
 import math
 import re
 
+from .depreciation_engine import build_schedule_version
+from .depreciation_engine import first_open_line_for_period
+from .depreciation_engine import line_fingerprints_for_period
+from .depreciation_engine import next_period
+from .depreciation_engine import normalize_period
+from .depreciation_engine import posted_periods
+
 
 ASSET_LIFECYCLE_REQUIRED_EVENT_TOPIC = "appgen.asset.events"
 ASSET_LIFECYCLE_ALLOWED_DATABASE_BACKENDS = ("postgresql", "mysql", "mariadb")
@@ -203,6 +210,7 @@ def asset_lifecycle_runtime_capabilities() -> dict:
             "register_asset",
             "place_asset_in_service",
             "build_depreciation_schedule",
+            "review_depreciation_plan",
             "run_depreciation",
             "transfer_asset",
             "revalue_asset",
@@ -402,7 +410,9 @@ def asset_lifecycle_empty_state() -> dict:
         "assets": {},
         "asset_graph": {},
         "schedules": {},
+        "schedule_history": {},
         "depreciation_runs": {},
+        "depreciation_run_index": {},
         "schema_extensions": {},
         "crypto_epoch": {"epoch": 1, "algorithm": "sha3_256"},
     }
@@ -542,14 +552,30 @@ def asset_lifecycle_receive_event(state: dict, event: dict) -> dict:
 
 def asset_lifecycle_register_asset(state: dict, asset: dict) -> dict:
     graph_degree = len(asset.get("components", ())) + 1
-    enriched = {**asset, "status": "registered", "book_value": asset["cost"], "accumulated_depreciation": 0.0, "graph_degree": graph_degree}
+    enriched = {
+        **asset,
+        "status": "registered",
+        "book_value": asset["cost"],
+        "accumulated_depreciation": 0.0,
+        "depreciation_months_posted": 0,
+        "active_schedule_id": None,
+        "active_schedule_version": 0,
+        "schedule_revision_required": False,
+        "next_depreciation_period": None,
+        "graph_degree": graph_degree,
+    }
     next_state = {**state, "assets": {**state["assets"], asset["asset_id"]: enriched}, "asset_graph": {**state["asset_graph"], asset["asset_id"]: {"components": tuple(asset.get("components", ())), "location": asset["location"], "custodian": asset["custodian"]}}}
     next_state = _append_event(next_state, "AssetRegistered", {"tenant": asset["tenant"], "asset_id": asset["asset_id"], "cost": asset["cost"]})
     return {"ok": True, "state": next_state, "asset": enriched}
 
 
 def asset_lifecycle_place_asset_in_service(state: dict, asset_id: str, *, service_date: str) -> dict:
-    asset = {**state["assets"][asset_id], "status": "in_service", "service_date": service_date}
+    asset = {
+        **state["assets"][asset_id],
+        "status": "in_service",
+        "service_date": service_date,
+        "next_depreciation_period": normalize_period(service_date),
+    }
     next_state = {**state, "assets": {**state["assets"], asset_id: asset}}
     next_state = _append_event(next_state, "AssetPlacedInService", {"tenant": asset["tenant"], "asset_id": asset_id, "service_date": service_date})
     return {"ok": True, "state": next_state, "asset": asset}
@@ -557,27 +583,207 @@ def asset_lifecycle_place_asset_in_service(state: dict, asset_id: str, *, servic
 
 def asset_lifecycle_build_depreciation_schedule(state: dict, asset_id: str, *, method: str) -> dict:
     asset = state["assets"][asset_id]
-    depreciable = asset["cost"] - asset["residual_value"]
-    monthly = round(depreciable / asset["useful_life_months"], 2)
-    lines = tuple({"period": i + 1, "amount": monthly, "method": method} for i in range(asset["useful_life_months"]))
-    schedule = {"schedule_id": f"sch_{asset_id}", "asset_id": asset_id, "book": asset["book"], "method": method, "lines": lines}
-    next_state = {**state, "schedules": {**state["schedules"], schedule["schedule_id"]: schedule}}
-    return {"ok": True, "state": next_state, "schedule": schedule}
+    prior_schedule = state["schedules"].get(asset.get("active_schedule_id")) if asset.get("active_schedule_id") else None
+    revision_reason = "life_change" if asset.get("schedule_revision_required") else ("initial_build" if prior_schedule is None else "manual_rebuild")
+    version = int(asset.get("active_schedule_version", 0)) + 1
+    schedule = build_schedule_version(
+        asset,
+        method=method,
+        version=version,
+        revision_reason=revision_reason,
+        effective_period=asset.get("next_depreciation_period"),
+        prior_schedule=prior_schedule,
+    )
+    if not schedule["ok"]:
+        return {"ok": False, "state": state, "error": schedule["reason"], "asset_id": asset_id}
+
+    schedules = dict(state["schedules"])
+    if prior_schedule is not None:
+        schedules[prior_schedule["schedule_id"]] = {
+            **prior_schedule,
+            "status": "superseded",
+            "superseded_by": schedule["schedule_id"],
+        }
+    schedules[schedule["schedule_id"]] = schedule
+    history = dict(state.get("schedule_history", {}))
+    history[asset_id] = (*history.get(asset_id, ()), schedule["schedule_id"])
+    updated_asset = {
+        **asset,
+        "active_schedule_id": schedule["schedule_id"],
+        "active_schedule_version": schedule["version"],
+        "depreciation_method": method,
+        "schedule_revision_required": False,
+        "next_depreciation_period": schedule["next_open_period"],
+    }
+    next_state = {
+        **state,
+        "assets": {**state["assets"], asset_id: updated_asset},
+        "schedules": schedules,
+        "schedule_history": history,
+    }
+    return {
+        "ok": True,
+        "state": next_state,
+        "schedule": schedule,
+        "superseded_schedule_id": prior_schedule["schedule_id"] if prior_schedule else None,
+    }
+
+
+def asset_lifecycle_review_depreciation_plan(state: dict, asset_id: str) -> dict:
+    asset = state["assets"][asset_id]
+    history_ids = state.get("schedule_history", {}).get(asset_id, ())
+    history = tuple(state["schedules"][schedule_id] for schedule_id in history_ids if schedule_id in state["schedules"])
+    active_schedule = state["schedules"].get(asset.get("active_schedule_id"))
+    related_runs = tuple(
+        run
+        for run in state.get("depreciation_runs", {}).values()
+        if asset_id in run.get("included_assets", ())
+    )
+    return {
+        "ok": True,
+        "asset_id": asset_id,
+        "active_schedule_id": asset.get("active_schedule_id"),
+        "active_version": asset.get("active_schedule_version", 0),
+        "revision_required": bool(asset.get("schedule_revision_required")),
+        "next_depreciation_period": asset.get("next_depreciation_period"),
+        "posted_periods": posted_periods(history),
+        "pending_periods": tuple(
+            line["period"]
+            for line in (active_schedule or {}).get("lines", ())
+            if not line.get("posted")
+        ),
+        "schedule_versions": tuple(
+            {
+                "schedule_id": schedule["schedule_id"],
+                "version": schedule["version"],
+                "status": schedule["status"],
+                "revision_reason": schedule["revision_reason"],
+                "line_count": schedule["line_count"],
+            }
+            for schedule in history
+        ),
+        "latest_run_id": related_runs[-1]["run_id"] if related_runs else None,
+        "idempotency_keys": tuple(run["idempotency_key"] for run in related_runs),
+    }
 
 
 def asset_lifecycle_run_depreciation(state: dict, *, run_id: str, period: str) -> dict:
+    normalized_period = normalize_period(period)
+    active_schedules = tuple(schedule for schedule in state["schedules"].values() if schedule.get("status") == "active")
+    due_fingerprints = tuple(
+        fingerprint
+        for schedule in active_schedules
+        for fingerprint in line_fingerprints_for_period(schedule, normalized_period)
+    )
+    if not due_fingerprints:
+        return {"ok": False, "state": state, "reason": "no_due_schedule_lines", "period": normalized_period}
+
+    idempotency_key = f"asset_lifecycle:depreciation_run:{normalized_period}:{_digest(due_fingerprints)[:20]}"
+    if run_id in state.get("depreciation_runs", {}):
+        existing = state["depreciation_runs"][run_id]
+        return {
+            "ok": True,
+            "duplicate": True,
+            "state": state,
+            "run": existing,
+            "journals": existing["journals"],
+            "idempotency_key": existing["idempotency_key"],
+        }
+    existing_run_id = state.get("depreciation_run_index", {}).get(idempotency_key)
+    if existing_run_id is not None:
+        existing = state["depreciation_runs"][existing_run_id]
+        return {
+            "ok": True,
+            "duplicate": True,
+            "state": state,
+            "run": existing,
+            "journals": existing["journals"],
+            "idempotency_key": existing["idempotency_key"],
+            "duplicate_of": existing_run_id,
+        }
+
     journals = []
     assets = dict(state["assets"])
-    for schedule in state["schedules"].values():
+    schedules = dict(state["schedules"])
+    for schedule in active_schedules:
+        line = first_open_line_for_period(schedule, normalized_period)
+        if line is None:
+            continue
         asset = assets[schedule["asset_id"]]
-        line = schedule["lines"][0]
-        depreciation = line["amount"]
-        assets[asset["asset_id"]] = {**asset, "accumulated_depreciation": round(asset["accumulated_depreciation"] + depreciation, 2), "book_value": round(max(asset["residual_value"], asset["book_value"] - depreciation), 2)}
-        journals.append({"asset_id": asset["asset_id"], "period": period, "amount": depreciation, "event": "DepreciationCalculated"})
-    run = {"run_id": run_id, "period": period, "journals": tuple(journals), "status": "posted"}
-    next_state = {**state, "assets": assets, "depreciation_runs": {**state["depreciation_runs"], run_id: run}}
-    next_state = _append_event(next_state, "DepreciationCalculated", {"tenant": tuple(assets.values())[0]["tenant"], "run_id": run_id, "journal_count": len(journals)})
-    return {"ok": True, "state": next_state, "run": run, "journals": tuple(journals)}
+        depreciation = round(line["amount"], 2)
+        updated_lines = tuple(
+            {
+                **candidate,
+                "posted": True,
+                "posted_run_id": run_id,
+            }
+            if candidate["schedule_line_id"] == line["schedule_line_id"]
+            else candidate
+            for candidate in schedule["lines"]
+        )
+        next_open_period = next((candidate["period"] for candidate in updated_lines if not candidate.get("posted")), None)
+        schedules[schedule["schedule_id"]] = {
+            **schedule,
+            "lines": updated_lines,
+            "posted_line_count": int(schedule.get("posted_line_count", 0)) + 1,
+            "last_run_id": run_id,
+            "last_posted_period": normalized_period,
+            "next_open_period": next_open_period,
+        }
+        assets[asset["asset_id"]] = {
+            **asset,
+            "accumulated_depreciation": round(asset["accumulated_depreciation"] + depreciation, 2),
+            "book_value": round(max(asset["residual_value"], asset["book_value"] - depreciation), 2),
+            "depreciation_months_posted": int(asset.get("depreciation_months_posted", 0)) + 1,
+            "last_depreciation_period": normalized_period,
+            "next_depreciation_period": next_open_period or next_period(normalized_period),
+        }
+        journals.append(
+            {
+                "journal_id": f"jrnl_{run_id}_{asset['asset_id']}",
+                "asset_id": asset["asset_id"],
+                "schedule_id": schedule["schedule_id"],
+                "schedule_version": schedule["version"],
+                "period": normalized_period,
+                "amount": depreciation,
+                "route": "POST /ledger/journals",
+                "event": "DepreciationCalculated",
+            }
+        )
+
+    if not journals:
+        return {"ok": False, "state": state, "reason": "period_not_open", "period": normalized_period}
+
+    next_state = {**state, "assets": assets, "schedules": schedules}
+    tenant = assets[journals[0]["asset_id"]]["tenant"]
+    next_state = _append_event(
+        next_state,
+        "DepreciationCalculated",
+        {
+            "tenant": tenant,
+            "run_id": run_id,
+            "period": normalized_period,
+            "journal_count": len(journals),
+            "idempotency_key": idempotency_key,
+        },
+    )
+    run = {
+        "run_id": run_id,
+        "period": normalized_period,
+        "book": "all",
+        "status": "posted",
+        "idempotency_key": idempotency_key,
+        "included_assets": tuple(journal["asset_id"] for journal in journals),
+        "calculated_total": round(sum(journal["amount"] for journal in journals), 2),
+        "journals": tuple(journals),
+        "event_id": next_state["events"][-1]["event_id"],
+    }
+    next_state = {
+        **next_state,
+        "depreciation_runs": {**next_state["depreciation_runs"], run_id: run},
+        "depreciation_run_index": {**next_state.get("depreciation_run_index", {}), idempotency_key: run_id},
+    }
+    return {"ok": True, "state": next_state, "run": run, "journals": tuple(journals), "duplicate": False, "idempotency_key": idempotency_key}
 
 
 def asset_lifecycle_transfer_asset(state: dict, asset_id: str, *, location: str, cost_center: str, approved_by: str) -> dict:
@@ -605,7 +811,12 @@ def asset_lifecycle_impair_asset(state: dict, asset_id: str, *, recoverable_amou
 
 def asset_lifecycle_record_maintenance_adjustment(state: dict, asset_id: str, *, useful_life_delta_months: int, evidence: str) -> dict:
     asset = state["assets"][asset_id]
-    updated = {**asset, "useful_life_months": asset["useful_life_months"] + useful_life_delta_months, "maintenance_evidence": evidence}
+    updated = {
+        **asset,
+        "useful_life_months": asset["useful_life_months"] + useful_life_delta_months,
+        "maintenance_evidence": evidence,
+        "schedule_revision_required": bool(asset.get("active_schedule_id")),
+    }
     next_state = {**state, "assets": {**state["assets"], asset_id: updated}}
     next_state = _append_event(next_state, "MaintenanceAdjustedAssetLife", {"tenant": asset["tenant"], "asset_id": asset_id, "delta": useful_life_delta_months})
     return {"ok": True, "state": next_state, "asset": updated}
@@ -856,6 +1067,7 @@ def asset_lifecycle_build_service_contract() -> dict:
         "command_methods": command_methods,
         "query_methods": (
             "build_workbench_view",
+            "review_depreciation_plan",
             "estimate_useful_life",
             "project_asset_valuation",
             "forecast_asset_value_risk",
@@ -886,6 +1098,8 @@ def asset_lifecycle_build_release_evidence() -> dict:
         {"id": "permissions_cover_commands", "ok": {"register_asset", "run_depreciation", "receive_event"} <= set(permissions["action_permissions"])},
         {"id": "backend_allowlist", "ok": schema["datastore_backends"] == ASSET_LIFECYCLE_ALLOWED_DATABASE_BACKENDS},
         {"id": "no_shared_table_access", "ok": not schema["shared_table_access"] and not api["shared_table_access"]},
+        {"id": "depreciation_schedule_versioning", "ok": "review_depreciation_plan" in service["query_methods"]},
+        {"id": "depreciation_run_idempotency", "ok": "idempotency_key" in next(item for item in schema["tables"] if item["table"] == "asset_depreciation_run")["fields"]},
     )
     return {
         "format": "appgen.asset-lifecycle-release-evidence.v1",
@@ -918,6 +1132,7 @@ def asset_lifecycle_permissions_contract() -> dict:
         "generate_asset_audit_proof": "asset_lifecycle.audit",
         "run_control_tests": "asset_lifecycle.audit",
         "build_workbench_view": "asset_lifecycle.read",
+        "review_depreciation_plan": "asset_lifecycle.depreciation",
     }
     return {
         "format": "appgen.asset-lifecycle-permissions-contract.v1",
@@ -1022,6 +1237,11 @@ def asset_lifecycle_verify_owned_table_boundary(references: tuple[str, ...] | li
 
 def asset_lifecycle_build_workbench_view(state: dict, *, tenant: str) -> dict:
     assets = tuple(asset for asset in state["assets"].values() if asset["tenant"] == tenant)
+    depreciation_reviews = tuple(
+        asset_lifecycle_review_depreciation_plan(state, asset["asset_id"])
+        for asset in assets
+        if asset.get("active_schedule_id")
+    )
     return {
         "ok": True,
         "tenant": tenant,
@@ -1034,6 +1254,9 @@ def asset_lifecycle_build_workbench_view(state: dict, *, tenant: str) -> dict:
         "parameter_count": len(state.get("parameters", {})),
         "inbox_count": len(state.get("inbox", {})),
         "dead_letter_count": len(state.get("dead_letters", ())),
+        "pending_schedule_revisions": len(tuple(asset for asset in assets if asset.get("schedule_revision_required"))),
+        "active_schedule_versions": {review["asset_id"]: review["active_version"] for review in depreciation_reviews},
+        "depreciation_idempotency_keys": tuple(sorted(state.get("depreciation_run_index", {}))),
         "binding_evidence": {
             "owned_tables": ASSET_LIFECYCLE_OWNED_TABLES,
             "runtime_tables": _ASSET_LIFECYCLE_RUNTIME_TABLES,

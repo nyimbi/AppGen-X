@@ -8,6 +8,7 @@ from .runtime import AR_CREDIT_EMITTED_EVENT_TYPES
 from .runtime import AR_CREDIT_OWNED_TABLES
 from .runtime import AR_CREDIT_REQUIRED_EVENT_TOPIC
 from .runtime import ar_credit_permissions_contract
+from .receivables_workflows import AR_CREDIT_WORKFLOW_OPERATIONS
 
 
 AR_CREDIT_UI_FRAGMENT_KEYS = (
@@ -85,6 +86,13 @@ def ar_credit_ui_contract() -> dict:
                 "commands": ("register_rule", "set_parameter", "configure_runtime"),
             },
         ),
+        "workflow_actions": AR_CREDIT_WORKFLOW_OPERATIONS,
+        "full_capability_surface": {
+            "operation_actions": AR_CREDIT_WORKFLOW_OPERATIONS,
+            "event_contract": "AppGen-X",
+            "owned_tables": AR_CREDIT_OWNED_TABLES,
+            "shared_table_access": False,
+        },
         "action_permissions": ar_credit_permissions_contract()["action_permissions"],
         "configuration_editor": {
             "required_fields": ("database_backend", "event_topic", "retry_limit", "default_currency", "default_timezone"),
@@ -150,6 +158,29 @@ def ar_credit_render_workbench(
         "cards": cards,
         "visible_actions": visible_actions,
         "locked_actions": tuple(action for action in contract["action_permissions"] if action not in visible_actions),
+        "workflow_actions": contract["workflow_actions"],
+        "focus_workflows": (
+            {
+                "operation": "review_credit_onboarding",
+                "label": "Review credit onboarding",
+                "ready_count": len(tuple(customer for customer in state["customers"].values() if customer["tenant"] == tenant)),
+            },
+            {
+                "operation": "review_invoice_readiness",
+                "label": "Check invoice readiness",
+                "ready_count": len(invoices),
+            },
+            {
+                "operation": "execute_receipt_application",
+                "label": "Apply cash receipt",
+                "ready_count": len(receipts),
+            },
+            {
+                "operation": "build_collections_follow_up",
+                "label": "Build collections follow-up",
+                "ready_count": len(open_invoices),
+            },
+        ),
         "configuration_bound": bool(state.get("configuration", {}).get("ok")),
         "rules_bound": tuple(sorted(state.get("rules", {}))),
         "parameters_bound": tuple(sorted(state.get("parameters", {}))),

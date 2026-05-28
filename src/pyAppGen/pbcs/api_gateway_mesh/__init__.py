@@ -15,11 +15,13 @@ from .runtime import API_GATEWAY_MESH_RUNTIME_CAPABILITY_KEYS
 from .runtime import API_GATEWAY_MESH_STANDARD_FEATURE_KEYS
 from .runtime import api_gateway_mesh_apply_rate_limit
 from .runtime import api_gateway_mesh_build_api_contract
+from .runtime import api_gateway_mesh_build_route_publication_safety_case
 from .runtime import api_gateway_mesh_build_release_evidence
 from .runtime import api_gateway_mesh_build_schema_contract
 from .runtime import api_gateway_mesh_build_service_map
 from .runtime import api_gateway_mesh_build_service_contract
 from .runtime import api_gateway_mesh_build_workbench_view
+from .runtime import api_gateway_mesh_analyze_route_collisions
 from .runtime import api_gateway_mesh_configure_runtime
 from .runtime import api_gateway_mesh_empty_state
 from .runtime import api_gateway_mesh_permissions_contract
@@ -38,6 +40,8 @@ from .runtime import api_gateway_mesh_verify_owned_table_boundary
 from .ui import API_GATEWAY_MESH_UI_FRAGMENT_KEYS
 from .ui import api_gateway_mesh_render_workbench
 from .ui import api_gateway_mesh_ui_contract
+from .agent import incident_triage_preview
+from .agent import route_publication_readiness_preview
 
 PBC_KEY = "api_gateway_mesh"
 
@@ -109,4 +113,3 @@ def smoke_test() -> dict:
         "discovery": discovery,
         "side_effects": (),
     }
-

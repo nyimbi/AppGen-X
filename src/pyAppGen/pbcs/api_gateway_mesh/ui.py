@@ -7,6 +7,7 @@ from .runtime import API_GATEWAY_MESH_CONSUMED_EVENT_TYPES
 from .runtime import API_GATEWAY_MESH_EMITTED_EVENT_TYPES
 from .runtime import API_GATEWAY_MESH_OWNED_TABLES
 from .runtime import API_GATEWAY_MESH_REQUIRED_EVENT_TOPIC
+from .runtime import api_gateway_mesh_build_route_publication_safety_case
 from .runtime import api_gateway_mesh_build_workbench_view
 from .runtime import api_gateway_mesh_permissions_contract
 
@@ -27,6 +28,8 @@ API_GATEWAY_MESH_UI_FRAGMENT_KEYS = (
     "GatewayConfigurationPanel",
     "GatewayContractPanel",
     "GatewayReleaseEvidencePanel",
+    "RouteSafetyCasePanel",
+    "GatewayIncidentTriagePanel",
 )
 
 
@@ -83,13 +86,25 @@ def api_gateway_mesh_ui_contract() -> dict:
                 "key": "contract_evidence",
                 "fragment": "GatewayContractPanel",
                 "binds_to": ("gateway_route_contract_projection", "gateway_route_publication_proof", "gateway_federation_projection"),
-                "commands": ("build_api_contract", "build_schema_contract", "build_service_contract"),
+                "commands": ("build_api_contract", "build_schema_contract", "build_service_contract", "analyze_route_collisions", "build_route_publication_safety_case"),
             },
             {
                 "key": "release_gate",
                 "fragment": "GatewayReleaseEvidencePanel",
                 "binds_to": ("gateway_control_assertion", "gateway_retry_evidence", "api_gateway_mesh_dead_letter_event"),
                 "commands": ("build_release_evidence", "run_control_tests", "build_workbench_view"),
+            },
+            {
+                "key": "route_safety",
+                "fragment": "RouteSafetyCasePanel",
+                "binds_to": ("service_route", "gateway_route_publication_proof", "gateway_control_assertion"),
+                "commands": ("analyze_route_collisions", "build_route_publication_safety_case", "publish_route"),
+            },
+            {
+                "key": "incident_triage",
+                "fragment": "GatewayIncidentTriagePanel",
+                "binds_to": ("service_health", "traffic_sample", "gateway_retry_evidence", "api_gateway_mesh_dead_letter_event"),
+                "commands": ("build_workbench_view", "run_control_tests"),
             },
         ),
         "action_permissions": api_gateway_mesh_permissions_contract()["action_permissions"],
@@ -170,8 +185,12 @@ def api_gateway_mesh_render_workbench(
         {"key": "rate_limits", "value": workbench["rate_limit_count"], "fragment": "RateLimitPolicyBoard"},
         {"key": "mtls_identities", "value": workbench["mtls_identity_count"], "fragment": "MtlsIdentityConsole"},
         {"key": "traffic_samples", "value": workbench["traffic_sample_count"], "fragment": "RouteTelemetryDashboard"},
+        {"key": "route_collisions", "value": workbench["route_collision_count"], "fragment": "RouteSafetyCasePanel"},
+        {"key": "publication_blockers", "value": workbench["route_publication_blocked_count"], "fragment": "RouteSafetyCasePanel"},
         {"key": "release_blocking", "value": workbench["release_blocking_count"], "fragment": "GatewayReleaseEvidencePanel"},
     )
+    candidate_route = next((route for route in state["routes"].values() if route.get("tenant") == tenant), None)
+    safety_case = api_gateway_mesh_build_route_publication_safety_case(state, candidate_route) if candidate_route else None
     return {
         "format": "appgen.api-gateway-mesh-workbench-render.v1",
         "ok": True,
@@ -188,6 +207,10 @@ def api_gateway_mesh_render_workbench(
         "inbox_count": workbench["inbox_count"],
         "retry_evidence_count": workbench["retry_evidence_count"],
         "dead_letter_count": workbench["dead_letter_count"],
+        "route_collision_count": workbench["route_collision_count"],
+        "route_publication_blocked_count": workbench["route_publication_blocked_count"],
+        "route_publication_ready_count": workbench["route_publication_ready_count"],
+        "route_safety_case_preview": safety_case,
         "binding_evidence": {
             **workbench["binding_evidence"],
             "ui_route": "/workbench/pbcs/api_gateway_mesh",

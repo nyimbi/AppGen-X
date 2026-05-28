@@ -1,25 +1,45 @@
 """API route contracts for the asset_lifecycle PBC."""
 
-from .services import AssetLifecycleService, service_operation_contracts
+from __future__ import annotations
+
+from .services import AssetLifecycleService
+from .services import service_operation_contracts
 
 
-ROUTES = (
-    {'method': 'POST', 'path': '/api/pbc/asset_lifecycle/assets', 'handler': 'command_assets', 'permission': 'asset_lifecycle.command.1'},
-    {'method': 'POST', 'path': '/api/pbc/asset_lifecycle/assets/{asset_id}/service', 'handler': 'command_assets_asset_id_service', 'permission': 'asset_lifecycle.command.2'},
-    {'method': 'POST', 'path': '/api/pbc/asset_lifecycle/assets/{asset_id}/depreciation-schedules', 'handler': 'command_assets_asset_id_depreciation_schedules', 'permission': 'asset_lifecycle.command.3'},
-    {'method': 'POST', 'path': '/api/pbc/asset_lifecycle/depreciation-runs', 'handler': 'command_depreciation_runs', 'permission': 'asset_lifecycle.command.4'},
-    {'method': 'POST', 'path': '/api/pbc/asset_lifecycle/assets/{asset_id}/transfers', 'handler': 'command_assets_asset_id_transfers', 'permission': 'asset_lifecycle.command.5'},
-    {'method': 'POST', 'path': '/api/pbc/asset_lifecycle/assets/{asset_id}/revaluations', 'handler': 'command_assets_asset_id_revaluations', 'permission': 'asset_lifecycle.command.6'},
-    {'method': 'POST', 'path': '/api/pbc/asset_lifecycle/assets/{asset_id}/impairments', 'handler': 'command_assets_asset_id_impairments', 'permission': 'asset_lifecycle.command.7'},
-    {'method': 'POST', 'path': '/api/pbc/asset_lifecycle/assets/{asset_id}/maintenance-adjustments', 'handler': 'command_assets_asset_id_maintenance_adjustments', 'permission': 'asset_lifecycle.command.8'},
-    {'method': 'POST', 'path': '/api/pbc/asset_lifecycle/assets/{asset_id}/retirements', 'handler': 'command_assets_asset_id_retirements', 'permission': 'asset_lifecycle.command.9'},
-    {'method': 'POST', 'path': '/api/pbc/asset_lifecycle/assets/events/inbox', 'handler': 'command_assets_events_inbox', 'permission': 'asset_lifecycle.command.10'},
-    {'method': 'GET', 'path': '/api/pbc/asset_lifecycle/assets', 'handler': 'query_assets', 'permission': 'asset_lifecycle.query.11'},
-    {'method': 'GET', 'path': '/api/pbc/asset_lifecycle/assets/{asset_id}/risk', 'handler': 'query_assets_asset_id_risk', 'permission': 'asset_lifecycle.query.12'},
+def _route_from_operation(contract: dict) -> dict:
+    return {
+        "method": contract["method"],
+        "path": contract["path"],
+        "handler": contract["operation"],
+        "permission": contract["permission"],
+        "operation": contract["operation"],
+        "operation_kind": contract["operation_kind"],
+        "owned_tables": contract["owned_tables"],
+        "read_tables": contract["read_tables"],
+        "emitted_event": contract["emitted_event"],
+        "event_contract": contract["event_contract"],
+        "transaction_boundary": contract["transaction_boundary"],
+        "idempotency_required": contract["operation_kind"] == "command",
+        "idempotency_key": (
+            f"asset_lifecycle:{contract['operation']}:idempotency_key"
+            if contract["operation_kind"] == "command"
+            else None
+        ),
+        "shared_table_access": False,
+        "stream_engine_picker_visible": False,
+    }
+
+
+API_ROUTE_CONTRACTS = tuple(_route_from_operation(contract) for contract in service_operation_contracts()["contracts"])
+ROUTES = tuple(
+    {
+        "method": contract["method"],
+        "path": contract["path"],
+        "handler": contract["handler"],
+        "permission": contract["permission"],
+    }
+    for contract in API_ROUTE_CONTRACTS
 )
-
-
-API_ROUTE_CONTRACTS = ({'method': 'POST', 'path': '/api/pbc/asset_lifecycle/assets', 'handler': 'command_assets', 'permission': 'asset_lifecycle.command.1', 'operation': 'command_assets', 'operation_kind': 'command', 'owned_tables': ('asset_lifecycle_fixed_asset', 'asset_lifecycle_asset_component', 'asset_lifecycle_asset_component_history', 'asset_lifecycle_asset_book', 'asset_lifecycle_asset_book_assignment', 'asset_lifecycle_asset_acquisition', 'asset_lifecycle_asset_capitalization', 'asset_lifecycle_asset_lease_right_of_use', 'asset_lifecycle_asset_depreciation_schedule', 'asset_lifecycle_asset_depreciation_schedule_line', 'asset_lifecycle_asset_depreciation_run', 'asset_lifecycle_asset_depreciation_journal', 'asset_lifecycle_asset_transfer', 'asset_lifecycle_asset_valuation_adjustment', 'asset_lifecycle_asset_impairment_indicator', 'asset_lifecycle_asset_maintenance_adjustment', 'asset_lifecycle_asset_insurance_warranty', 'asset_lifecycle_asset_claim', 'asset_lifecycle_asset_retirement', 'asset_lifecycle_asset_disposal_proceeds', 'asset_lifecycle_asset_physical_verification', 'asset_lifecycle_asset_physical_verification_exception', 'asset_lifecycle_asset_location_assignment', 'asset_lifecycle_asset_custodian_assignment', 'asset_lifecycle_asset_cost_center_assignment', 'asset_lifecycle_asset_policy_screening', 'asset_lifecycle_asset_audit_proof', 'asset_lifecycle_asset_cross_system_federation', 'asset_lifecycle_asset_identity_credential', 'asset_lifecycle_asset_carbon_utilization', 'asset_lifecycle_asset_portfolio_optimization', 'asset_lifecycle_asset_allocation_mechanism', 'asset_lifecycle_asset_anomaly_signal', 'asset_lifecycle_asset_risk_model', 'asset_lifecycle_asset_seed_data', 'asset_lifecycle_asset_schema_extension', 'asset_lifecycle_asset_control_assertion', 'asset_lifecycle_asset_governed_model', 'asset_lifecycle_asset_rule', 'asset_lifecycle_asset_parameter', 'asset_lifecycle_asset_configuration'), 'read_tables': (), 'emitted_event': 'AssetRegistered', 'event_contract': 'AppGen-X', 'transaction_boundary': 'owned_datastore_plus_outbox', 'idempotency_required': True, 'idempotency_key': 'asset_lifecycle:command_assets:idempotency_key', 'shared_table_access': False, 'stream_engine_picker_visible': False}, {'method': 'POST', 'path': '/api/pbc/asset_lifecycle/assets/{asset_id}/service', 'handler': 'command_assets_asset_id_service', 'permission': 'asset_lifecycle.command.2', 'operation': 'command_assets_asset_id_service', 'operation_kind': 'command', 'owned_tables': ('asset_lifecycle_fixed_asset', 'asset_lifecycle_asset_component', 'asset_lifecycle_asset_component_history', 'asset_lifecycle_asset_book', 'asset_lifecycle_asset_book_assignment', 'asset_lifecycle_asset_acquisition', 'asset_lifecycle_asset_capitalization', 'asset_lifecycle_asset_lease_right_of_use', 'asset_lifecycle_asset_depreciation_schedule', 'asset_lifecycle_asset_depreciation_schedule_line', 'asset_lifecycle_asset_depreciation_run', 'asset_lifecycle_asset_depreciation_journal', 'asset_lifecycle_asset_transfer', 'asset_lifecycle_asset_valuation_adjustment', 'asset_lifecycle_asset_impairment_indicator', 'asset_lifecycle_asset_maintenance_adjustment', 'asset_lifecycle_asset_insurance_warranty', 'asset_lifecycle_asset_claim', 'asset_lifecycle_asset_retirement', 'asset_lifecycle_asset_disposal_proceeds', 'asset_lifecycle_asset_physical_verification', 'asset_lifecycle_asset_physical_verification_exception', 'asset_lifecycle_asset_location_assignment', 'asset_lifecycle_asset_custodian_assignment', 'asset_lifecycle_asset_cost_center_assignment', 'asset_lifecycle_asset_policy_screening', 'asset_lifecycle_asset_audit_proof', 'asset_lifecycle_asset_cross_system_federation', 'asset_lifecycle_asset_identity_credential', 'asset_lifecycle_asset_carbon_utilization', 'asset_lifecycle_asset_portfolio_optimization', 'asset_lifecycle_asset_allocation_mechanism', 'asset_lifecycle_asset_anomaly_signal', 'asset_lifecycle_asset_risk_model', 'asset_lifecycle_asset_seed_data', 'asset_lifecycle_asset_schema_extension', 'asset_lifecycle_asset_control_assertion', 'asset_lifecycle_asset_governed_model', 'asset_lifecycle_asset_rule', 'asset_lifecycle_asset_parameter', 'asset_lifecycle_asset_configuration'), 'read_tables': (), 'emitted_event': 'AssetPlacedInService', 'event_contract': 'AppGen-X', 'transaction_boundary': 'owned_datastore_plus_outbox', 'idempotency_required': True, 'idempotency_key': 'asset_lifecycle:command_assets_asset_id_service:idempotency_key', 'shared_table_access': False, 'stream_engine_picker_visible': False}, {'method': 'POST', 'path': '/api/pbc/asset_lifecycle/assets/{asset_id}/depreciation-schedules', 'handler': 'command_assets_asset_id_depreciation_schedules', 'permission': 'asset_lifecycle.command.3', 'operation': 'command_assets_asset_id_depreciation_schedules', 'operation_kind': 'command', 'owned_tables': ('asset_lifecycle_fixed_asset', 'asset_lifecycle_asset_component', 'asset_lifecycle_asset_component_history', 'asset_lifecycle_asset_book', 'asset_lifecycle_asset_book_assignment', 'asset_lifecycle_asset_acquisition', 'asset_lifecycle_asset_capitalization', 'asset_lifecycle_asset_lease_right_of_use', 'asset_lifecycle_asset_depreciation_schedule', 'asset_lifecycle_asset_depreciation_schedule_line', 'asset_lifecycle_asset_depreciation_run', 'asset_lifecycle_asset_depreciation_journal', 'asset_lifecycle_asset_transfer', 'asset_lifecycle_asset_valuation_adjustment', 'asset_lifecycle_asset_impairment_indicator', 'asset_lifecycle_asset_maintenance_adjustment', 'asset_lifecycle_asset_insurance_warranty', 'asset_lifecycle_asset_claim', 'asset_lifecycle_asset_retirement', 'asset_lifecycle_asset_disposal_proceeds', 'asset_lifecycle_asset_physical_verification', 'asset_lifecycle_asset_physical_verification_exception', 'asset_lifecycle_asset_location_assignment', 'asset_lifecycle_asset_custodian_assignment', 'asset_lifecycle_asset_cost_center_assignment', 'asset_lifecycle_asset_policy_screening', 'asset_lifecycle_asset_audit_proof', 'asset_lifecycle_asset_cross_system_federation', 'asset_lifecycle_asset_identity_credential', 'asset_lifecycle_asset_carbon_utilization', 'asset_lifecycle_asset_portfolio_optimization', 'asset_lifecycle_asset_allocation_mechanism', 'asset_lifecycle_asset_anomaly_signal', 'asset_lifecycle_asset_risk_model', 'asset_lifecycle_asset_seed_data', 'asset_lifecycle_asset_schema_extension', 'asset_lifecycle_asset_control_assertion', 'asset_lifecycle_asset_governed_model', 'asset_lifecycle_asset_rule', 'asset_lifecycle_asset_parameter', 'asset_lifecycle_asset_configuration'), 'read_tables': (), 'emitted_event': 'DepreciationCalculated', 'event_contract': 'AppGen-X', 'transaction_boundary': 'owned_datastore_plus_outbox', 'idempotency_required': True, 'idempotency_key': 'asset_lifecycle:command_assets_asset_id_depreciation_schedules:idempotency_key', 'shared_table_access': False, 'stream_engine_picker_visible': False}, {'method': 'POST', 'path': '/api/pbc/asset_lifecycle/depreciation-runs', 'handler': 'command_depreciation_runs', 'permission': 'asset_lifecycle.command.4', 'operation': 'command_depreciation_runs', 'operation_kind': 'command', 'owned_tables': ('asset_lifecycle_fixed_asset', 'asset_lifecycle_asset_component', 'asset_lifecycle_asset_component_history', 'asset_lifecycle_asset_book', 'asset_lifecycle_asset_book_assignment', 'asset_lifecycle_asset_acquisition', 'asset_lifecycle_asset_capitalization', 'asset_lifecycle_asset_lease_right_of_use', 'asset_lifecycle_asset_depreciation_schedule', 'asset_lifecycle_asset_depreciation_schedule_line', 'asset_lifecycle_asset_depreciation_run', 'asset_lifecycle_asset_depreciation_journal', 'asset_lifecycle_asset_transfer', 'asset_lifecycle_asset_valuation_adjustment', 'asset_lifecycle_asset_impairment_indicator', 'asset_lifecycle_asset_maintenance_adjustment', 'asset_lifecycle_asset_insurance_warranty', 'asset_lifecycle_asset_claim', 'asset_lifecycle_asset_retirement', 'asset_lifecycle_asset_disposal_proceeds', 'asset_lifecycle_asset_physical_verification', 'asset_lifecycle_asset_physical_verification_exception', 'asset_lifecycle_asset_location_assignment', 'asset_lifecycle_asset_custodian_assignment', 'asset_lifecycle_asset_cost_center_assignment', 'asset_lifecycle_asset_policy_screening', 'asset_lifecycle_asset_audit_proof', 'asset_lifecycle_asset_cross_system_federation', 'asset_lifecycle_asset_identity_credential', 'asset_lifecycle_asset_carbon_utilization', 'asset_lifecycle_asset_portfolio_optimization', 'asset_lifecycle_asset_allocation_mechanism', 'asset_lifecycle_asset_anomaly_signal', 'asset_lifecycle_asset_risk_model', 'asset_lifecycle_asset_seed_data', 'asset_lifecycle_asset_schema_extension', 'asset_lifecycle_asset_control_assertion', 'asset_lifecycle_asset_governed_model', 'asset_lifecycle_asset_rule', 'asset_lifecycle_asset_parameter', 'asset_lifecycle_asset_configuration'), 'read_tables': (), 'emitted_event': 'AssetTransferred', 'event_contract': 'AppGen-X', 'transaction_boundary': 'owned_datastore_plus_outbox', 'idempotency_required': True, 'idempotency_key': 'asset_lifecycle:command_depreciation_runs:idempotency_key', 'shared_table_access': False, 'stream_engine_picker_visible': False}, {'method': 'POST', 'path': '/api/pbc/asset_lifecycle/assets/{asset_id}/transfers', 'handler': 'command_assets_asset_id_transfers', 'permission': 'asset_lifecycle.command.5', 'operation': 'command_assets_asset_id_transfers', 'operation_kind': 'command', 'owned_tables': ('asset_lifecycle_fixed_asset', 'asset_lifecycle_asset_component', 'asset_lifecycle_asset_component_history', 'asset_lifecycle_asset_book', 'asset_lifecycle_asset_book_assignment', 'asset_lifecycle_asset_acquisition', 'asset_lifecycle_asset_capitalization', 'asset_lifecycle_asset_lease_right_of_use', 'asset_lifecycle_asset_depreciation_schedule', 'asset_lifecycle_asset_depreciation_schedule_line', 'asset_lifecycle_asset_depreciation_run', 'asset_lifecycle_asset_depreciation_journal', 'asset_lifecycle_asset_transfer', 'asset_lifecycle_asset_valuation_adjustment', 'asset_lifecycle_asset_impairment_indicator', 'asset_lifecycle_asset_maintenance_adjustment', 'asset_lifecycle_asset_insurance_warranty', 'asset_lifecycle_asset_claim', 'asset_lifecycle_asset_retirement', 'asset_lifecycle_asset_disposal_proceeds', 'asset_lifecycle_asset_physical_verification', 'asset_lifecycle_asset_physical_verification_exception', 'asset_lifecycle_asset_location_assignment', 'asset_lifecycle_asset_custodian_assignment', 'asset_lifecycle_asset_cost_center_assignment', 'asset_lifecycle_asset_policy_screening', 'asset_lifecycle_asset_audit_proof', 'asset_lifecycle_asset_cross_system_federation', 'asset_lifecycle_asset_identity_credential', 'asset_lifecycle_asset_carbon_utilization', 'asset_lifecycle_asset_portfolio_optimization', 'asset_lifecycle_asset_allocation_mechanism', 'asset_lifecycle_asset_anomaly_signal', 'asset_lifecycle_asset_risk_model', 'asset_lifecycle_asset_seed_data', 'asset_lifecycle_asset_schema_extension', 'asset_lifecycle_asset_control_assertion', 'asset_lifecycle_asset_governed_model', 'asset_lifecycle_asset_rule', 'asset_lifecycle_asset_parameter', 'asset_lifecycle_asset_configuration'), 'read_tables': (), 'emitted_event': 'AssetRevalued', 'event_contract': 'AppGen-X', 'transaction_boundary': 'owned_datastore_plus_outbox', 'idempotency_required': True, 'idempotency_key': 'asset_lifecycle:command_assets_asset_id_transfers:idempotency_key', 'shared_table_access': False, 'stream_engine_picker_visible': False}, {'method': 'POST', 'path': '/api/pbc/asset_lifecycle/assets/{asset_id}/revaluations', 'handler': 'command_assets_asset_id_revaluations', 'permission': 'asset_lifecycle.command.6', 'operation': 'command_assets_asset_id_revaluations', 'operation_kind': 'command', 'owned_tables': ('asset_lifecycle_fixed_asset', 'asset_lifecycle_asset_component', 'asset_lifecycle_asset_component_history', 'asset_lifecycle_asset_book', 'asset_lifecycle_asset_book_assignment', 'asset_lifecycle_asset_acquisition', 'asset_lifecycle_asset_capitalization', 'asset_lifecycle_asset_lease_right_of_use', 'asset_lifecycle_asset_depreciation_schedule', 'asset_lifecycle_asset_depreciation_schedule_line', 'asset_lifecycle_asset_depreciation_run', 'asset_lifecycle_asset_depreciation_journal', 'asset_lifecycle_asset_transfer', 'asset_lifecycle_asset_valuation_adjustment', 'asset_lifecycle_asset_impairment_indicator', 'asset_lifecycle_asset_maintenance_adjustment', 'asset_lifecycle_asset_insurance_warranty', 'asset_lifecycle_asset_claim', 'asset_lifecycle_asset_retirement', 'asset_lifecycle_asset_disposal_proceeds', 'asset_lifecycle_asset_physical_verification', 'asset_lifecycle_asset_physical_verification_exception', 'asset_lifecycle_asset_location_assignment', 'asset_lifecycle_asset_custodian_assignment', 'asset_lifecycle_asset_cost_center_assignment', 'asset_lifecycle_asset_policy_screening', 'asset_lifecycle_asset_audit_proof', 'asset_lifecycle_asset_cross_system_federation', 'asset_lifecycle_asset_identity_credential', 'asset_lifecycle_asset_carbon_utilization', 'asset_lifecycle_asset_portfolio_optimization', 'asset_lifecycle_asset_allocation_mechanism', 'asset_lifecycle_asset_anomaly_signal', 'asset_lifecycle_asset_risk_model', 'asset_lifecycle_asset_seed_data', 'asset_lifecycle_asset_schema_extension', 'asset_lifecycle_asset_control_assertion', 'asset_lifecycle_asset_governed_model', 'asset_lifecycle_asset_rule', 'asset_lifecycle_asset_parameter', 'asset_lifecycle_asset_configuration'), 'read_tables': (), 'emitted_event': 'AssetImpaired', 'event_contract': 'AppGen-X', 'transaction_boundary': 'owned_datastore_plus_outbox', 'idempotency_required': True, 'idempotency_key': 'asset_lifecycle:command_assets_asset_id_revaluations:idempotency_key', 'shared_table_access': False, 'stream_engine_picker_visible': False}, {'method': 'POST', 'path': '/api/pbc/asset_lifecycle/assets/{asset_id}/impairments', 'handler': 'command_assets_asset_id_impairments', 'permission': 'asset_lifecycle.command.7', 'operation': 'command_assets_asset_id_impairments', 'operation_kind': 'command', 'owned_tables': ('asset_lifecycle_fixed_asset', 'asset_lifecycle_asset_component', 'asset_lifecycle_asset_component_history', 'asset_lifecycle_asset_book', 'asset_lifecycle_asset_book_assignment', 'asset_lifecycle_asset_acquisition', 'asset_lifecycle_asset_capitalization', 'asset_lifecycle_asset_lease_right_of_use', 'asset_lifecycle_asset_depreciation_schedule', 'asset_lifecycle_asset_depreciation_schedule_line', 'asset_lifecycle_asset_depreciation_run', 'asset_lifecycle_asset_depreciation_journal', 'asset_lifecycle_asset_transfer', 'asset_lifecycle_asset_valuation_adjustment', 'asset_lifecycle_asset_impairment_indicator', 'asset_lifecycle_asset_maintenance_adjustment', 'asset_lifecycle_asset_insurance_warranty', 'asset_lifecycle_asset_claim', 'asset_lifecycle_asset_retirement', 'asset_lifecycle_asset_disposal_proceeds', 'asset_lifecycle_asset_physical_verification', 'asset_lifecycle_asset_physical_verification_exception', 'asset_lifecycle_asset_location_assignment', 'asset_lifecycle_asset_custodian_assignment', 'asset_lifecycle_asset_cost_center_assignment', 'asset_lifecycle_asset_policy_screening', 'asset_lifecycle_asset_audit_proof', 'asset_lifecycle_asset_cross_system_federation', 'asset_lifecycle_asset_identity_credential', 'asset_lifecycle_asset_carbon_utilization', 'asset_lifecycle_asset_portfolio_optimization', 'asset_lifecycle_asset_allocation_mechanism', 'asset_lifecycle_asset_anomaly_signal', 'asset_lifecycle_asset_risk_model', 'asset_lifecycle_asset_seed_data', 'asset_lifecycle_asset_schema_extension', 'asset_lifecycle_asset_control_assertion', 'asset_lifecycle_asset_governed_model', 'asset_lifecycle_asset_rule', 'asset_lifecycle_asset_parameter', 'asset_lifecycle_asset_configuration'), 'read_tables': (), 'emitted_event': 'MaintenanceAdjustedAssetLife', 'event_contract': 'AppGen-X', 'transaction_boundary': 'owned_datastore_plus_outbox', 'idempotency_required': True, 'idempotency_key': 'asset_lifecycle:command_assets_asset_id_impairments:idempotency_key', 'shared_table_access': False, 'stream_engine_picker_visible': False}, {'method': 'POST', 'path': '/api/pbc/asset_lifecycle/assets/{asset_id}/maintenance-adjustments', 'handler': 'command_assets_asset_id_maintenance_adjustments', 'permission': 'asset_lifecycle.command.8', 'operation': 'command_assets_asset_id_maintenance_adjustments', 'operation_kind': 'command', 'owned_tables': ('asset_lifecycle_fixed_asset', 'asset_lifecycle_asset_component', 'asset_lifecycle_asset_component_history', 'asset_lifecycle_asset_book', 'asset_lifecycle_asset_book_assignment', 'asset_lifecycle_asset_acquisition', 'asset_lifecycle_asset_capitalization', 'asset_lifecycle_asset_lease_right_of_use', 'asset_lifecycle_asset_depreciation_schedule', 'asset_lifecycle_asset_depreciation_schedule_line', 'asset_lifecycle_asset_depreciation_run', 'asset_lifecycle_asset_depreciation_journal', 'asset_lifecycle_asset_transfer', 'asset_lifecycle_asset_valuation_adjustment', 'asset_lifecycle_asset_impairment_indicator', 'asset_lifecycle_asset_maintenance_adjustment', 'asset_lifecycle_asset_insurance_warranty', 'asset_lifecycle_asset_claim', 'asset_lifecycle_asset_retirement', 'asset_lifecycle_asset_disposal_proceeds', 'asset_lifecycle_asset_physical_verification', 'asset_lifecycle_asset_physical_verification_exception', 'asset_lifecycle_asset_location_assignment', 'asset_lifecycle_asset_custodian_assignment', 'asset_lifecycle_asset_cost_center_assignment', 'asset_lifecycle_asset_policy_screening', 'asset_lifecycle_asset_audit_proof', 'asset_lifecycle_asset_cross_system_federation', 'asset_lifecycle_asset_identity_credential', 'asset_lifecycle_asset_carbon_utilization', 'asset_lifecycle_asset_portfolio_optimization', 'asset_lifecycle_asset_allocation_mechanism', 'asset_lifecycle_asset_anomaly_signal', 'asset_lifecycle_asset_risk_model', 'asset_lifecycle_asset_seed_data', 'asset_lifecycle_asset_schema_extension', 'asset_lifecycle_asset_control_assertion', 'asset_lifecycle_asset_governed_model', 'asset_lifecycle_asset_rule', 'asset_lifecycle_asset_parameter', 'asset_lifecycle_asset_configuration'), 'read_tables': (), 'emitted_event': 'AssetRetired', 'event_contract': 'AppGen-X', 'transaction_boundary': 'owned_datastore_plus_outbox', 'idempotency_required': True, 'idempotency_key': 'asset_lifecycle:command_assets_asset_id_maintenance_adjustments:idempotency_key', 'shared_table_access': False, 'stream_engine_picker_visible': False}, {'method': 'POST', 'path': '/api/pbc/asset_lifecycle/assets/{asset_id}/retirements', 'handler': 'command_assets_asset_id_retirements', 'permission': 'asset_lifecycle.command.9', 'operation': 'command_assets_asset_id_retirements', 'operation_kind': 'command', 'owned_tables': ('asset_lifecycle_fixed_asset', 'asset_lifecycle_asset_component', 'asset_lifecycle_asset_component_history', 'asset_lifecycle_asset_book', 'asset_lifecycle_asset_book_assignment', 'asset_lifecycle_asset_acquisition', 'asset_lifecycle_asset_capitalization', 'asset_lifecycle_asset_lease_right_of_use', 'asset_lifecycle_asset_depreciation_schedule', 'asset_lifecycle_asset_depreciation_schedule_line', 'asset_lifecycle_asset_depreciation_run', 'asset_lifecycle_asset_depreciation_journal', 'asset_lifecycle_asset_transfer', 'asset_lifecycle_asset_valuation_adjustment', 'asset_lifecycle_asset_impairment_indicator', 'asset_lifecycle_asset_maintenance_adjustment', 'asset_lifecycle_asset_insurance_warranty', 'asset_lifecycle_asset_claim', 'asset_lifecycle_asset_retirement', 'asset_lifecycle_asset_disposal_proceeds', 'asset_lifecycle_asset_physical_verification', 'asset_lifecycle_asset_physical_verification_exception', 'asset_lifecycle_asset_location_assignment', 'asset_lifecycle_asset_custodian_assignment', 'asset_lifecycle_asset_cost_center_assignment', 'asset_lifecycle_asset_policy_screening', 'asset_lifecycle_asset_audit_proof', 'asset_lifecycle_asset_cross_system_federation', 'asset_lifecycle_asset_identity_credential', 'asset_lifecycle_asset_carbon_utilization', 'asset_lifecycle_asset_portfolio_optimization', 'asset_lifecycle_asset_allocation_mechanism', 'asset_lifecycle_asset_anomaly_signal', 'asset_lifecycle_asset_risk_model', 'asset_lifecycle_asset_seed_data', 'asset_lifecycle_asset_schema_extension', 'asset_lifecycle_asset_control_assertion', 'asset_lifecycle_asset_governed_model', 'asset_lifecycle_asset_rule', 'asset_lifecycle_asset_parameter', 'asset_lifecycle_asset_configuration'), 'read_tables': (), 'emitted_event': 'AssetRegistered', 'event_contract': 'AppGen-X', 'transaction_boundary': 'owned_datastore_plus_outbox', 'idempotency_required': True, 'idempotency_key': 'asset_lifecycle:command_assets_asset_id_retirements:idempotency_key', 'shared_table_access': False, 'stream_engine_picker_visible': False}, {'method': 'POST', 'path': '/api/pbc/asset_lifecycle/assets/events/inbox', 'handler': 'command_assets_events_inbox', 'permission': 'asset_lifecycle.command.10', 'operation': 'command_assets_events_inbox', 'operation_kind': 'command', 'owned_tables': ('asset_lifecycle_fixed_asset', 'asset_lifecycle_asset_component', 'asset_lifecycle_asset_component_history', 'asset_lifecycle_asset_book', 'asset_lifecycle_asset_book_assignment', 'asset_lifecycle_asset_acquisition', 'asset_lifecycle_asset_capitalization', 'asset_lifecycle_asset_lease_right_of_use', 'asset_lifecycle_asset_depreciation_schedule', 'asset_lifecycle_asset_depreciation_schedule_line', 'asset_lifecycle_asset_depreciation_run', 'asset_lifecycle_asset_depreciation_journal', 'asset_lifecycle_asset_transfer', 'asset_lifecycle_asset_valuation_adjustment', 'asset_lifecycle_asset_impairment_indicator', 'asset_lifecycle_asset_maintenance_adjustment', 'asset_lifecycle_asset_insurance_warranty', 'asset_lifecycle_asset_claim', 'asset_lifecycle_asset_retirement', 'asset_lifecycle_asset_disposal_proceeds', 'asset_lifecycle_asset_physical_verification', 'asset_lifecycle_asset_physical_verification_exception', 'asset_lifecycle_asset_location_assignment', 'asset_lifecycle_asset_custodian_assignment', 'asset_lifecycle_asset_cost_center_assignment', 'asset_lifecycle_asset_policy_screening', 'asset_lifecycle_asset_audit_proof', 'asset_lifecycle_asset_cross_system_federation', 'asset_lifecycle_asset_identity_credential', 'asset_lifecycle_asset_carbon_utilization', 'asset_lifecycle_asset_portfolio_optimization', 'asset_lifecycle_asset_allocation_mechanism', 'asset_lifecycle_asset_anomaly_signal', 'asset_lifecycle_asset_risk_model', 'asset_lifecycle_asset_seed_data', 'asset_lifecycle_asset_schema_extension', 'asset_lifecycle_asset_control_assertion', 'asset_lifecycle_asset_governed_model', 'asset_lifecycle_asset_rule', 'asset_lifecycle_asset_parameter', 'asset_lifecycle_asset_configuration'), 'read_tables': (), 'emitted_event': 'AssetPlacedInService', 'event_contract': 'AppGen-X', 'transaction_boundary': 'owned_datastore_plus_outbox', 'idempotency_required': True, 'idempotency_key': 'asset_lifecycle:command_assets_events_inbox:idempotency_key', 'shared_table_access': False, 'stream_engine_picker_visible': False}, {'method': 'GET', 'path': '/api/pbc/asset_lifecycle/assets', 'handler': 'query_assets', 'permission': 'asset_lifecycle.query.11', 'operation': 'query_assets', 'operation_kind': 'query', 'owned_tables': (), 'read_tables': ('asset_lifecycle_fixed_asset', 'asset_lifecycle_asset_component', 'asset_lifecycle_asset_component_history', 'asset_lifecycle_asset_book', 'asset_lifecycle_asset_book_assignment', 'asset_lifecycle_asset_acquisition', 'asset_lifecycle_asset_capitalization', 'asset_lifecycle_asset_lease_right_of_use', 'asset_lifecycle_asset_depreciation_schedule', 'asset_lifecycle_asset_depreciation_schedule_line', 'asset_lifecycle_asset_depreciation_run', 'asset_lifecycle_asset_depreciation_journal', 'asset_lifecycle_asset_transfer', 'asset_lifecycle_asset_valuation_adjustment', 'asset_lifecycle_asset_impairment_indicator', 'asset_lifecycle_asset_maintenance_adjustment', 'asset_lifecycle_asset_insurance_warranty', 'asset_lifecycle_asset_claim', 'asset_lifecycle_asset_retirement', 'asset_lifecycle_asset_disposal_proceeds', 'asset_lifecycle_asset_physical_verification', 'asset_lifecycle_asset_physical_verification_exception', 'asset_lifecycle_asset_location_assignment', 'asset_lifecycle_asset_custodian_assignment', 'asset_lifecycle_asset_cost_center_assignment', 'asset_lifecycle_asset_policy_screening', 'asset_lifecycle_asset_audit_proof', 'asset_lifecycle_asset_cross_system_federation', 'asset_lifecycle_asset_identity_credential', 'asset_lifecycle_asset_carbon_utilization', 'asset_lifecycle_asset_portfolio_optimization', 'asset_lifecycle_asset_allocation_mechanism', 'asset_lifecycle_asset_anomaly_signal', 'asset_lifecycle_asset_risk_model', 'asset_lifecycle_asset_seed_data', 'asset_lifecycle_asset_schema_extension', 'asset_lifecycle_asset_control_assertion', 'asset_lifecycle_asset_governed_model', 'asset_lifecycle_asset_rule', 'asset_lifecycle_asset_parameter', 'asset_lifecycle_asset_configuration'), 'emitted_event': None, 'event_contract': 'AppGen-X', 'transaction_boundary': 'owned_datastore_plus_outbox', 'idempotency_required': False, 'idempotency_key': None, 'shared_table_access': False, 'stream_engine_picker_visible': False}, {'method': 'GET', 'path': '/api/pbc/asset_lifecycle/assets/{asset_id}/risk', 'handler': 'query_assets_asset_id_risk', 'permission': 'asset_lifecycle.query.12', 'operation': 'query_assets_asset_id_risk', 'operation_kind': 'query', 'owned_tables': (), 'read_tables': ('asset_lifecycle_fixed_asset', 'asset_lifecycle_asset_component', 'asset_lifecycle_asset_component_history', 'asset_lifecycle_asset_book', 'asset_lifecycle_asset_book_assignment', 'asset_lifecycle_asset_acquisition', 'asset_lifecycle_asset_capitalization', 'asset_lifecycle_asset_lease_right_of_use', 'asset_lifecycle_asset_depreciation_schedule', 'asset_lifecycle_asset_depreciation_schedule_line', 'asset_lifecycle_asset_depreciation_run', 'asset_lifecycle_asset_depreciation_journal', 'asset_lifecycle_asset_transfer', 'asset_lifecycle_asset_valuation_adjustment', 'asset_lifecycle_asset_impairment_indicator', 'asset_lifecycle_asset_maintenance_adjustment', 'asset_lifecycle_asset_insurance_warranty', 'asset_lifecycle_asset_claim', 'asset_lifecycle_asset_retirement', 'asset_lifecycle_asset_disposal_proceeds', 'asset_lifecycle_asset_physical_verification', 'asset_lifecycle_asset_physical_verification_exception', 'asset_lifecycle_asset_location_assignment', 'asset_lifecycle_asset_custodian_assignment', 'asset_lifecycle_asset_cost_center_assignment', 'asset_lifecycle_asset_policy_screening', 'asset_lifecycle_asset_audit_proof', 'asset_lifecycle_asset_cross_system_federation', 'asset_lifecycle_asset_identity_credential', 'asset_lifecycle_asset_carbon_utilization', 'asset_lifecycle_asset_portfolio_optimization', 'asset_lifecycle_asset_allocation_mechanism', 'asset_lifecycle_asset_anomaly_signal', 'asset_lifecycle_asset_risk_model', 'asset_lifecycle_asset_seed_data', 'asset_lifecycle_asset_schema_extension', 'asset_lifecycle_asset_control_assertion', 'asset_lifecycle_asset_governed_model', 'asset_lifecycle_asset_rule', 'asset_lifecycle_asset_parameter', 'asset_lifecycle_asset_configuration'), 'emitted_event': None, 'event_contract': 'AppGen-X', 'transaction_boundary': 'owned_datastore_plus_outbox', 'idempotency_required': False, 'idempotency_key': None, 'shared_table_access': False, 'stream_engine_picker_visible': False})
 
 
 def register_routes(app=None):
@@ -29,83 +49,80 @@ def register_routes(app=None):
 
 def api_route_contracts():
     """Return executable API route contracts with policy and boundary evidence."""
-    service_contracts = service_operation_contracts()['contracts']
-    operation_index = {item['operation']: item for item in service_contracts}
+    service_contracts = service_operation_contracts()["contracts"]
+    operation_index = {item["operation"]: item for item in service_contracts}
     contracts = tuple(
         {
             **contract,
-            'service_operation': operation_index.get(contract['operation']),
-            'route_id': f"{contract['method']} {contract['path']}",
+            "service_operation": operation_index.get(contract["operation"]),
+            "route_id": f"{contract['method']} {contract['path']}",
         }
         for contract in API_ROUTE_CONTRACTS
     )
     return {
-        'ok': bool(contracts)
-        and all(item['event_contract'] == 'AppGen-X' for item in contracts)
-        and all(item['transaction_boundary'] == 'owned_datastore_plus_outbox' for item in contracts)
-        and all(item['stream_engine_picker_visible'] is False for item in contracts)
-        and all(item['shared_table_access'] is False for item in contracts),
-        'pbc': 'asset_lifecycle',
-        'contracts': contracts,
-        'routes': tuple(item['route_id'] for item in contracts),
-        'side_effects': (),
+        "ok": bool(contracts)
+        and all(item["event_contract"] == "AppGen-X" for item in contracts)
+        and all(item["transaction_boundary"] == "owned_datastore_plus_outbox" for item in contracts)
+        and all(item["stream_engine_picker_visible"] is False for item in contracts)
+        and all(item["shared_table_access"] is False for item in contracts),
+        "pbc": "asset_lifecycle",
+        "contracts": contracts,
+        "routes": tuple(item["route_id"] for item in contracts),
+        "side_effects": (),
     }
 
 
 def validate_api_route_contracts():
     """Validate routes against service operations, permissions, idempotency, and table boundaries."""
     manifest = api_route_contracts()
-    contracts = manifest['contracts']
+    contracts = manifest["contracts"]
     service_mismatches = tuple(
-        item['route_id']
+        item["route_id"]
         for item in contracts
-        if not item['service_operation']
-        or item['service_operation']['method'] != item['method']
-        or item['service_operation']['path'] != item['path']
-        or item['service_operation']['permission'] != item['permission']
+        if not item["service_operation"]
+        or item["service_operation"]["method"] != item["method"]
+        or item["service_operation"]["path"] != item["path"]
+        or item["service_operation"]["permission"] != item["permission"]
     )
     missing_idempotency = tuple(
-        item['route_id']
+        item["route_id"]
         for item in contracts
-        if item['idempotency_required'] and not item['idempotency_key']
+        if item["idempotency_required"] and not item["idempotency_key"]
     )
     invalid_table_scope = tuple(
-        item['route_id']
+        item["route_id"]
         for item in contracts
-        for table in item['owned_tables'] + item['read_tables']
-        if not table.startswith('asset_lifecycle_')
+        for table in item["owned_tables"] + item["read_tables"]
+        if not table.startswith("asset_lifecycle_")
     )
     return {
-        'ok': manifest['ok']
+        "ok": manifest["ok"]
         and not service_mismatches
         and not missing_idempotency
         and not invalid_table_scope,
-        'pbc': 'asset_lifecycle',
-        'contracts': contracts,
-        'service_mismatches': service_mismatches,
-        'missing_idempotency': missing_idempotency,
-        'invalid_table_scope': invalid_table_scope,
-        'side_effects': (),
+        "pbc": "asset_lifecycle",
+        "contracts": contracts,
+        "service_mismatches": service_mismatches,
+        "missing_idempotency": missing_idempotency,
+        "invalid_table_scope": invalid_table_scope,
+        "side_effects": (),
     }
 
 
 def dispatch_route(method, path, payload=None):
     """Dispatch a route contract to its service command without side effects."""
-    route = next(
-        (item for item in ROUTES if item['method'] == method and item['path'] == path),
-        None,
-    )
+    route = next((item for item in ROUTES if item["method"] == method and item["path"] == path), None)
     if route is None:
-        return {'ok': False, 'handled': False, 'reason': 'route_not_found'}
+        return {"ok": False, "handled": False, "reason": "route_not_found"}
     service = AssetLifecycleService()
-    handler = getattr(service, route['handler'])
+    handler = getattr(service, route["handler"])
     result = handler(payload or {})
     return {
-        'ok': result.get('ok') is True,
-        'handled': True,
-        'route': route,
-        'result': result,
-        'side_effects': (),
+        "ok": result.get("ok") is True,
+        "handled": True,
+        "route": route,
+        "result": result,
+        "side_effects": (),
     }
 
 
@@ -113,12 +130,12 @@ def smoke_test():
     """Execute the first route and validate the API contract surface."""
     validation = validate_api_route_contracts()
     if not ROUTES:
-        return {'ok': False, 'reason': 'no_routes'}
+        return {"ok": False, "reason": "no_routes"}
     first = ROUTES[0]
-    dispatched = dispatch_route(first['method'], first['path'], {'smoke': True})
+    dispatched = dispatch_route(first["method"], first["path"], {"smoke": True})
     return {
-        'ok': validation['ok'] and dispatched['ok'],
-        'validation': validation,
-        'dispatch': dispatched,
-        'side_effects': (),
+        "ok": validation["ok"] and dispatched["ok"],
+        "validation": validation,
+        "dispatch": dispatched,
+        "side_effects": (),
     }

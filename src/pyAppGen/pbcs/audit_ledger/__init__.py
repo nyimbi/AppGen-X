@@ -14,7 +14,7 @@ from .runtime import AUDIT_LEDGER_REQUIRED_EVENT_TOPIC
 from .runtime import AUDIT_LEDGER_RUNTIME_CAPABILITY_KEYS
 from .runtime import AUDIT_LEDGER_STANDARD_FEATURE_KEYS
 from .runtime import audit_ledger_build_api_contract
-from .runtime import audit_ledger_build_release_evidence
+from .runtime import audit_ledger_build_notarization_bundle
 from .runtime import audit_ledger_build_schema_contract
 from .runtime import audit_ledger_build_service_contract
 from .runtime import audit_ledger_assert_control
@@ -26,6 +26,8 @@ from .runtime import audit_ledger_prepare_forensic_export
 from .runtime import audit_ledger_publish_audit_projection
 from .runtime import audit_ledger_record_access_evidence
 from .runtime import audit_ledger_record_audit_event
+from .runtime import audit_ledger_plan_correction_event
+from .runtime import audit_ledger_plan_disclosure_minimization
 from .runtime import audit_ledger_permissions_contract
 from .runtime import audit_ledger_receive_event
 from .runtime import audit_ledger_register_rule
@@ -35,6 +37,8 @@ from .runtime import audit_ledger_runtime_smoke
 from .runtime import audit_ledger_set_parameter
 from .runtime import audit_ledger_verify_owned_table_boundary
 from .runtime import audit_ledger_verify_signature_chain
+from .release_evidence import build_release_evidence as audit_ledger_build_release_evidence
+from .ledger_proofs import audit_ledger_proof_slice_release_evidence
 from .ui import AUDIT_LEDGER_UI_FRAGMENT_KEYS
 from .ui import audit_ledger_render_workbench
 from .ui import audit_ledger_ui_contract
@@ -109,4 +113,3 @@ def smoke_test() -> dict:
         "discovery": discovery,
         "side_effects": (),
     }
-

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from .ledger_proofs import sequence_integrity_proof
 from .runtime import AUDIT_LEDGER_ALLOWED_DATABASE_BACKENDS
 from .runtime import AUDIT_LEDGER_CONSUMED_EVENT_TYPES
 from .runtime import AUDIT_LEDGER_EMITTED_EVENT_TYPES
@@ -101,6 +102,23 @@ def audit_ledger_ui_contract() -> dict:
             "inbox_status": "visible",
             "dead_letter_status": "visible",
         },
+        "proof_widgets": (
+            {
+                "key": "evidence_envelope_admissibility",
+                "fragment": "AuditEventSearch",
+                "reads": ("audit_ledger_audit_event", "audit_ledger_signature_chain"),
+            },
+            {
+                "key": "sequence_integrity_proof",
+                "fragment": "SignatureChainVerifier",
+                "reads": ("audit_ledger_audit_event", "audit_ledger_signature_chain"),
+            },
+            {
+                "key": "disclosure_minimization",
+                "fragment": "ProofDisclosureDesigner",
+                "reads": ("audit_ledger_forensic_export", "audit_ledger_disclosure_proof"),
+            },
+        ),
         "binding_evidence": {
             "owned_tables": AUDIT_LEDGER_OWNED_TABLES,
             "outbox_table": "audit_ledger_appgen_outbox_event",
@@ -131,10 +149,14 @@ def audit_ledger_render_workbench(
     controls = tuple(item for item in state["control_assertions"].values() if item["tenant"] == tenant)
     retry_evidence = tuple(state.get("retry_evidence", ()))
     dead_letters = tuple(state.get("dead_letter", state.get("dead_letters", ())))
+    proof = sequence_integrity_proof(events, tenant=tenant) if events else {"ok": False, "link_count": 0, "gaps": (), "tampered": (), "inadmissible_events": (), "proof_hash": None}
     cards = (
         {"key": "events", "value": len(events), "fragment": "AuditEventSearch"},
+        {"key": "admissible_events", "value": len(tuple(item for item in events if item.get("admissibility", {}).get("admissible"))), "fragment": "SignatureChainVerifier"},
+        {"key": "corrections", "value": len(tuple(item for item in events if (item.get("correction") or {}).get("correction_of"))), "fragment": "AuditEventSearch"},
         {"key": "access_evidence", "value": len(access), "fragment": "AccessEvidenceView"},
         {"key": "exports", "value": len(exports), "fragment": "ForensicExportConsole"},
+        {"key": "exports_pending_approval", "value": len(tuple(item for item in exports if item.get("approval_required"))), "fragment": "ProofDisclosureDesigner"},
         {"key": "retry_evidence", "value": len(retry_evidence), "fragment": "AuditRetryEvidenceConsole"},
         {"key": "dead_letter", "value": len(dead_letters), "fragment": "AuditRetryEvidenceConsole"},
         {"key": "release_evidence", "value": int(bool(state["configuration"].get("ok")) and bool(state.get("rules")) and bool(state.get("parameters"))), "fragment": "AuditReleaseEvidencePanel"},
@@ -158,6 +180,8 @@ def audit_ledger_render_workbench(
         "retry_evidence_count": len(retry_evidence),
         "dead_letter_count": len(dead_letters),
         "release_evidence_ready": bool(state["configuration"].get("ok")) and bool(state.get("rules")) and bool(state.get("parameters")),
+        "proof_widgets": contract["proof_widgets"],
+        "chain_proof": proof,
         "binding_evidence": contract["binding_evidence"],
     }
 
@@ -221,12 +245,14 @@ def smoke_test():
         and bool(contract.get("parameter_editor"))
         and bool(rule_editor)
         and bool(event_surfaces)
+        and bool(contract.get("proof_widgets"))
         and ("outbox_status" in event_surfaces or "contract" in event_surfaces)
         and binding_evidence.get("shared_table_access") is not True
         and not binding_evidence.get("shared_tables", ()),
         "manifest": {"fragments": contract.get("fragments", ()), "routes": contract.get("routes", ())},
         "contract": contract,
         "governance": governance,
+        "proof_widgets": contract.get("proof_widgets", ()),
         "rendered": rendered,
         "cards": cards,
         "side_effects": (),

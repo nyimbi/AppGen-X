@@ -1,46 +1,48 @@
 """Executable permission contract for the api_gateway_mesh PBC."""
 
-PBC_KEY = 'api_gateway_mesh'
-PERMISSIONS = ('api_gateway_mesh.read', 'api_gateway_mesh.create', 'api_gateway_mesh.update', 'api_gateway_mesh.approve', 'api_gateway_mesh.admin')
-ACTION_PERMISSIONS = {
-    permission.rsplit('.', 1)[-1]: permission
-    for permission in PERMISSIONS
-}
+from __future__ import annotations
+
+from .runtime import api_gateway_mesh_permissions_contract
 
 
-def permission_manifest():
-    """Return the permission surface without mutating runtime state."""
+PBC_KEY = "api_gateway_mesh"
+
+
+def permission_manifest() -> dict:
+    """Return the permission surface aligned to the runtime contract."""
+    contract = api_gateway_mesh_permissions_contract()
     return {
-        'ok': bool(PERMISSIONS),
-        'pbc': PBC_KEY,
-        'permissions': PERMISSIONS,
-        'action_permissions': dict(ACTION_PERMISSIONS),
-        'side_effects': (),
+        "ok": contract["ok"],
+        "pbc": PBC_KEY,
+        "permissions": tuple(contract["permissions"]),
+        "action_permissions": dict(contract["action_permissions"]),
+        "side_effects": (),
     }
 
 
-def authorize(action, granted_permissions=()):
+def authorize(action: str, granted_permissions=()) -> dict:
     """Evaluate one action against a caller permission set."""
-    required = ACTION_PERMISSIONS.get(action)
-    allowed = required in set(granted_permissions) if required else False
+    manifest = permission_manifest()
+    required = manifest["action_permissions"].get(action)
+    granted = set(granted_permissions)
     return {
-        'ok': required is not None,
-        'allowed': allowed,
-        'action': action,
-        'required_permission': required,
-        'granted_permissions': tuple(granted_permissions),
-        'side_effects': (),
+        "ok": required is not None,
+        "allowed": required in granted if required else False,
+        "action": action,
+        "required_permission": required,
+        "granted_permissions": tuple(granted_permissions),
+        "side_effects": (),
     }
 
 
-def smoke_test():
-    """Exercise one permission decision side-effect-free."""
+def smoke_test() -> dict:
+    """Exercise one runtime-aligned permission decision side-effect-free."""
     manifest = permission_manifest()
-    action, permission = next(iter(ACTION_PERMISSIONS.items())) if ACTION_PERMISSIONS else (None, None)
-    decision = authorize(action, (permission,)) if action else {'ok': False, 'allowed': False}
+    action = "publish_route"
+    decision = authorize(action, ("api_gateway_mesh.route",))
     return {
-        'ok': manifest['ok'] and decision['ok'] and decision['allowed'],
-        'manifest': manifest,
-        'decision': decision,
-        'side_effects': (),
+        "ok": manifest["ok"] and decision["ok"] and decision["allowed"],
+        "manifest": manifest,
+        "decision": decision,
+        "side_effects": (),
     }

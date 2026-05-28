@@ -7,6 +7,11 @@ import json
 import math
 import re
 
+from .ledger_proofs import build_notarization_bundle
+from .ledger_proofs import plan_correction_event
+from .ledger_proofs import plan_disclosure_minimization
+from .ledger_proofs import seal_audit_event
+from .ledger_proofs import sequence_integrity_proof
 
 AUDIT_LEDGER_REQUIRED_EVENT_TOPIC = "appgen.audit.events"
 AUDIT_LEDGER_ALLOWED_DATABASE_BACKENDS = ("postgresql", "mysql", "mariadb")
@@ -118,6 +123,8 @@ AUDIT_LEDGER_STANDARD_FEATURE_KEYS = (
     "hash_chain",
     "signature_metadata",
     "event_sealing",
+    "evidence_envelope_validation",
+    "canonical_payload_digest",
     "chain_verification",
     "tamper_detection",
     "source_pbc_indexing",
@@ -127,10 +134,12 @@ AUDIT_LEDGER_STANDARD_FEATURE_KEYS = (
     "legal_hold",
     "forensic_export",
     "proof_bundle",
+    "release_notarization_bundle",
     "control_assertion",
     "release_blocking_controls",
     "payload_digest",
     "disclosure_minimization",
+    "immutable_correction_lineage",
     "idempotent_handlers",
     "retry_dead_letter",
     "permissions",
@@ -194,6 +203,9 @@ def audit_ledger_runtime_capabilities() -> dict:
             "recommend_control_remediation",
             "select_ingestion_route",
             "generate_disclosure_proof",
+            "plan_disclosure_minimization",
+            "build_notarization_bundle",
+            "plan_correction_event",
             "screen_policy",
             "run_control_tests",
             "minimize_evidence_bundle",
@@ -368,6 +380,7 @@ def audit_ledger_empty_state() -> dict:
         "retry_evidence": [],
         "dead_letter": [],
         "dead_letters": [],
+        "notarization_bundles": {},
         "identity_access_projections": {},
         "gateway_route_projections": {},
         "schema_contract_projections": {},
@@ -439,7 +452,15 @@ def audit_ledger_receive_event(state: dict, event: dict, *, simulate_failure: bo
         return {"ok": True, "duplicate": True, "state": state, "handler": state["handled_events"][key]}
     attempts = int(state["handled_events"].get(key, {}).get("attempts", 0)) + 1
     payload = dict(event.get("payload", {}))
-    inbox_entry = {"event_id": event_id, "event_type": event_type, "tenant": payload.get("tenant"), "attempts": attempts, "idempotency_key": key}
+    inbox_entry = {
+        "event_id": event_id,
+        "event_type": event_type,
+        "tenant": payload.get("tenant"),
+        "attempts": attempts,
+        "idempotency_key": key,
+        "status": "received",
+        "received_at": f"attempt-{attempts:02d}",
+    }
     next_state = _copy_state(state)
     next_state["inbox"].append(inbox_entry)
     retry_limit = int(next_state.get("configuration", {}).get("retry_limit", 1))
@@ -450,7 +471,7 @@ def audit_ledger_receive_event(state: dict, event: dict, *, simulate_failure: bo
         next_state["handled_events"][key] = handler
         next_state["retry_evidence"].append(evidence)
         if status == "dead_letter":
-            dead = {**inbox_entry, "reason": "unsupported_or_failed_audit_event"}
+            dead = {**inbox_entry, "reason": "unsupported_or_failed_audit_event", "recorded_at": f"attempt-{attempts:02d}"}
             next_state["dead_letters"].append(dead)
             next_state["dead_letter"].append(dead)
         return {"ok": False, "duplicate": False, "state": next_state, "handler": handler}
@@ -478,12 +499,40 @@ def audit_ledger_record_audit_event(state: dict, audit_event: dict) -> dict:
     tenant_events = tuple(event for event in next_state["audit_events"].values() if event["tenant"] == audit_event["tenant"])
     sequence = len(tenant_events) + 1
     previous_hash = tenant_events[-1]["event_hash"] if tenant_events else "genesis"
-    payload_hash = _hash_payload(audit_event["payload"])
-    event_hash = _hash_payload({**audit_event, "sequence": sequence, "previous_hash": previous_hash, "payload_hash": payload_hash})
-    tamper_risk = 0 if previous_hash == "genesis" or previous_hash else 0.8
-    stored = {**audit_event, "sequence": sequence, "payload_hash": payload_hash, "previous_hash": previous_hash, "event_hash": event_hash, "signature": f"sig_{event_hash[:16]}", "sealed": True, "tamper_risk": tamper_risk}
+    if audit_event.get("correction_of"):
+        original_event = next_state["audit_events"].get(audit_event["correction_of"])
+        correction_plan = plan_correction_event(
+            original_event or {},
+            {field: audit_event.get("payload", {}).get(field) for field in audit_event.get("corrected_fields", ())},
+            reason=str(audit_event.get("correction_reason", "")),
+            authority=str(audit_event.get("correction_authority", "")),
+        )
+        if correction_plan["ok"] is not True:
+            return {"ok": False, "reason": correction_plan["reason"], "state": state, "correction_plan": correction_plan}
+    sealed = seal_audit_event(
+        audit_event,
+        sequence=sequence,
+        previous_hash=previous_hash,
+        allowed_classifications=tuple(next_state.get("configuration", {}).get("allowed_classifications", ())),
+        signature_algorithm=str(next_state.get("configuration", {}).get("signature_algorithm", "dilithium3_simulated")),
+    )
+    if sealed["ok"] is not True:
+        return {"ok": False, "reason": sealed["reason"], "state": state, "envelope": sealed["envelope"]}
+    stored = dict(sealed["sealed_event"])
+    tamper_risk = 0 if previous_hash == "genesis" else round(min(0.95, sequence / max(sequence + 9, 1) * 0.2), 4)
+    stored["tamper_risk"] = tamper_risk
     next_state["audit_events"][audit_event["audit_id"]] = stored
-    next_state["signature_chain"][audit_event["audit_id"]] = {"audit_id": audit_event["audit_id"], "tenant": audit_event["tenant"], "sequence": sequence, "previous_hash": previous_hash, "event_hash": event_hash, "signature": stored["signature"], "verified": True}
+    next_state["signature_chain"][audit_event["audit_id"]] = {
+        "chain_link_id": f"chain_link:{audit_event['audit_id']}",
+        "audit_id": audit_event["audit_id"],
+        "tenant": audit_event["tenant"],
+        "sequence": sequence,
+        "previous_hash": previous_hash,
+        "event_hash": stored["event_hash"],
+        "signature": stored["signature"],
+        "verified": True,
+        "payload_hash": stored["payload_hash"],
+    }
     next_state = _emit(next_state, "AuditEventSealed", audit_event["tenant"], audit_event["audit_id"], stored)
     return {"ok": True, "state": next_state, "audit_event": stored}
 
@@ -492,7 +541,11 @@ def audit_ledger_record_access_evidence(state: dict, evidence: dict) -> dict:
     required = {"evidence_id", "tenant", "principal", "resource", "action", "decision", "context"}
     _require(evidence, required)
     next_state = _copy_state(state)
-    stored = {**evidence, "context_hash": _hash_payload(evidence["context"])}
+    stored = {
+        **evidence,
+        "context_hash": _hash_payload(evidence["context"]),
+        "policy_source": evidence.get("policy_source", "policy_projection"),
+    }
     next_state["access_evidence"][evidence["evidence_id"]] = stored
     return {"ok": True, "state": next_state, "evidence": stored}
 
@@ -511,7 +564,12 @@ def audit_ledger_assert_control(state: dict, assertion: dict) -> dict:
     required = {"control_id", "tenant", "control", "status", "severity", "evidence"}
     _require(assertion, required)
     next_state = _copy_state(state)
-    stored = {**assertion, "release_blocking": assertion["status"] != "pass" and assertion["severity"] == "blocking"}
+    stored = {
+        **assertion,
+        "evidence_hash": _hash_payload({"evidence": tuple(assertion["evidence"])}),
+        "remediation": assertion.get("remediation"),
+        "release_blocking": assertion["status"] != "pass" and assertion["severity"] == "blocking",
+    }
     next_state["control_assertions"][assertion["control_id"]] = stored
     if stored["release_blocking"]:
         next_state = _emit(next_state, "ControlAssertionFailed", assertion["tenant"], assertion["control_id"], stored)
@@ -523,26 +581,55 @@ def audit_ledger_prepare_forensic_export(state: dict, export: dict) -> dict:
     _require(export, required)
     next_state = _copy_state(state)
     events = tuple(event for event in next_state["audit_events"].values() if event["tenant"] == export["tenant"] and event["classification"] == export["classification"])
-    checksum = _hash_payload({"events": tuple(event["event_hash"] for event in events), "disclosure": export["disclosure"]})
-    stored = {**export, "event_count": len(events), "checksum": checksum, "status": "prepared", "proof_bundle": f"proof_bundle_{checksum[:16]}"}
+    approval_required = any(
+        rule["tenant"] == export["tenant"]
+        and rule["classification"] == export["classification"]
+        and rule.get("requires_export_approval") is True
+        and rule.get("status") == "active"
+        for rule in next_state["rules"].values()
+    )
+    disclosure_plan = plan_disclosure_minimization(
+        events,
+        classification=export["classification"],
+        requested_fields=tuple(export["disclosure"]),
+        purpose=str(export.get("purpose", "forensic_export")),
+        approval_required=approval_required,
+    )
+    checksum = _hash_payload(
+        {
+            "events": tuple(event["event_hash"] for event in events),
+            "selected_fields": disclosure_plan["selected_fields"],
+            "approval_required": approval_required,
+        }
+    )
+    stored = {
+        **export,
+        "event_count": len(events),
+        "checksum": checksum,
+        "status": "prepared",
+        "proof_bundle": f"proof_bundle_{checksum[:16]}",
+        "selected_fields": disclosure_plan["selected_fields"],
+        "withheld_fields": disclosure_plan["withheld_fields"],
+        "approval_required": approval_required,
+        "risk_flags": disclosure_plan["risk_flags"],
+        "proof_coverage": disclosure_plan["proof_coverage"],
+        "verifier_instructions": disclosure_plan["verifier_instructions"],
+        "chain_of_custody": (
+            {
+                "stage": "prepared",
+                "actor": export["requested_by"],
+                "purpose": export.get("purpose", "forensic_export"),
+            },
+        ),
+    }
     next_state["forensic_exports"][export["export_id"]] = stored
     next_state = _emit(next_state, "ForensicExportPrepared", export["tenant"], export["export_id"], stored)
     return {"ok": True, "state": next_state, "export": stored}
 
 
 def audit_ledger_verify_signature_chain(state: dict, *, tenant: str) -> dict:
-    links = sorted((link for link in state["signature_chain"].values() if link["tenant"] == tenant), key=lambda item: item["sequence"])
-    previous = "genesis"
-    gaps = []
-    tampered = []
-    for link in links:
-        if link["previous_hash"] != previous:
-            gaps.append(link["audit_id"])
-        event = state["audit_events"].get(link["audit_id"], {})
-        if event.get("event_hash") != link["event_hash"] or link["signature"] != f"sig_{link['event_hash'][:16]}":
-            tampered.append(link["audit_id"])
-        previous = link["event_hash"]
-    ok = not gaps and not tampered and bool(links)
+    proof = sequence_integrity_proof(tuple(state["audit_events"].values()), tenant=tenant)
+    ok = proof["ok"]
     next_state = state
     if ok:
         next_state = _copy_state(state)
@@ -551,14 +638,31 @@ def audit_ledger_verify_signature_chain(state: dict, *, tenant: str) -> dict:
             "SignatureChainVerified",
             tenant,
             f"signature_chain:{tenant}",
-            {"tenant": tenant, "link_count": len(links), "gaps": tuple(gaps), "tampered": tuple(tampered)},
+            {
+                "tenant": tenant,
+                "link_count": proof["link_count"],
+                "gaps": proof["gaps"],
+                "tampered": proof["tampered"],
+                "duplicate_sequences": proof["duplicate_sequences"],
+                "invalid_payload_digests": proof["invalid_payload_digests"],
+                "inadmissible_events": proof["inadmissible_events"],
+                "proof_hash": proof["proof_hash"],
+            },
         )
-    return {"ok": ok, "tenant": tenant, "link_count": len(links), "gaps": tuple(gaps), "tampered": tuple(tampered), "state": next_state}
+    return {**proof, "state": next_state}
 
 
 def audit_ledger_publish_audit_projection(state: dict, audit_id: str, systems: tuple[str, ...]) -> dict:
     next_state = _copy_state(state)
-    projection = {"projection_id": f"projection_{audit_id}", "audit_id": audit_id, "systems": systems, "handoffs": tuple(f"{system}_audit_projection" for system in systems)}
+    projection = {
+        "projection_id": f"projection_{audit_id}",
+        "audit_id": audit_id,
+        "systems": systems,
+        "target_system": systems[0] if len(systems) == 1 else "multiple",
+        "projection_hash": _hash_payload({"audit_id": audit_id, "systems": systems}),
+        "handoff_status": "published",
+        "handoffs": tuple(f"{system}_audit_projection" for system in systems),
+    }
     next_state["projections"][projection["projection_id"]] = projection
     tenant = next_state["audit_events"][audit_id]["tenant"]
     next_state = _emit(next_state, "AuditProjectionPublished", tenant, projection["projection_id"], projection)
@@ -571,16 +675,19 @@ def audit_ledger_build_workbench_view(state: dict, *, tenant: str) -> dict:
     exports = tuple(item for item in state["forensic_exports"].values() if item["tenant"] == tenant)
     controls = tuple(item for item in state["control_assertions"].values() if item["tenant"] == tenant)
     policies = tuple(item for item in state["retention_policies"].values() if item["tenant"] == tenant)
+    proof = sequence_integrity_proof(events, tenant=tenant) if events else {"ok": False, "link_count": 0, "gaps": (), "tampered": (), "inadmissible_events": (), "duplicate_sequences": (), "proof_hash": None}
     return {
         "format": "appgen.audit-ledger-workbench-view.v1",
         "tenant": tenant,
         "event_count": len(events),
+        "admissible_event_count": len(tuple(event for event in events if event.get("admissibility", {}).get("admissible"))),
+        "correction_count": len(tuple(event for event in events if (event.get("correction") or {}).get("correction_of"))),
         "access_evidence_count": len(access),
         "export_count": len(exports),
         "control_count": len(controls),
         "policy_count": len(policies),
         "projection_count": len(state.get("projections", {})),
-        "verified_chain": audit_ledger_verify_signature_chain(state, tenant=tenant)["ok"],
+        "verified_chain": proof["ok"],
         "release_blocking_count": len(tuple(item for item in controls if item["release_blocking"])),
         "configuration_bound": bool(state.get("configuration", {}).get("ok")),
         "rule_count": len(state.get("rules", {})),
@@ -588,7 +695,16 @@ def audit_ledger_build_workbench_view(state: dict, *, tenant: str) -> dict:
         "inbox_count": len(state.get("inbox", ())),
         "retry_evidence_count": len(state.get("retry_evidence", ())),
         "dead_letter_count": len(state.get("dead_letter", state.get("dead_letters", ()))),
+        "pending_export_approval_count": len(tuple(item for item in exports if item.get("approval_required"))),
         "release_evidence_ready": bool(state.get("configuration", {}).get("ok")) and bool(state.get("rules")) and bool(state.get("parameters")),
+        "chain_proof": {
+            "link_count": proof.get("link_count", 0),
+            "gaps": proof.get("gaps", ()),
+            "tampered": proof.get("tampered", ()),
+            "inadmissible_events": proof.get("inadmissible_events", ()),
+            "duplicate_sequences": proof.get("duplicate_sequences", ()),
+            "proof_hash": proof.get("proof_hash"),
+        },
         "binding_evidence": {
             "owned_tables": AUDIT_LEDGER_OWNED_TABLES,
             "outbox_table": "audit_ledger_appgen_outbox_event",
@@ -647,6 +763,42 @@ def audit_ledger_generate_disclosure_proof(state: dict, audit_id: str, *, disclo
     return {"ok": True, "proof": f"zk_audit_{digest[:16]}", "hash": digest, "disclosure": disclosure}
 
 
+def audit_ledger_plan_disclosure_minimization(
+    state: dict,
+    *,
+    tenant: str,
+    classification: str,
+    requested_fields: tuple[str, ...],
+    purpose: str = "forensic_export",
+) -> dict:
+    events = tuple(
+        event
+        for event in state["audit_events"].values()
+        if event["tenant"] == tenant and event["classification"] == classification
+    )
+    approval_required = any(
+        rule["tenant"] == tenant
+        and rule["classification"] == classification
+        and rule.get("requires_export_approval") is True
+        and rule.get("status") == "active"
+        for rule in state["rules"].values()
+    )
+    plan = plan_disclosure_minimization(
+        events,
+        classification=classification,
+        requested_fields=requested_fields,
+        purpose=purpose,
+        approval_required=approval_required,
+    )
+    return {"ok": plan["ok"], "tenant": tenant, "plan": plan, "side_effects": ()}
+
+
+def audit_ledger_plan_correction_event(state: dict, audit_id: str, *, corrected_fields: dict, reason: str, authority: str) -> dict:
+    original_event = state["audit_events"].get(audit_id, {})
+    plan = plan_correction_event(original_event, corrected_fields, reason=reason, authority=authority)
+    return {"ok": plan["ok"], "audit_id": audit_id, "plan": plan, "side_effects": ()}
+
+
 def audit_ledger_screen_policy(state: dict, audit_id: str, *, classifications: tuple[str, ...]) -> dict:
     event = state["audit_events"][audit_id]
     active_rules = tuple(rule for rule in state["rules"].values() if rule["status"] == "active")
@@ -657,6 +809,12 @@ def audit_ledger_screen_policy(state: dict, audit_id: str, *, classifications: t
 def audit_ledger_run_control_tests(state: dict) -> dict:
     hash_chain_valid = all(event["hash"] == _event_hash(event) for event in state["events"])
     signature_ok = all(link["verified"] for link in state["signature_chain"].values())
+    tenants = tuple(sorted({event["tenant"] for event in state["audit_events"].values()}))
+    proof_failures = tuple(
+        tenant
+        for tenant in tenants
+        if sequence_integrity_proof(tuple(state["audit_events"].values()), tenant=tenant)["ok"] is not True
+    )
     checks = {
         "configuration": state["configuration"].get("event_contract") == "AppGen-X",
         "database": state["configuration"].get("database_backend") in set(AUDIT_LEDGER_ALLOWED_DATABASE_BACKENDS),
@@ -666,8 +824,37 @@ def audit_ledger_run_control_tests(state: dict) -> dict:
         "outbox": all(item["idempotency_key"].startswith("audit_ledger:") for item in state["outbox"]),
         "dead_letter": isinstance(state["dead_letters"], list) and isinstance(state.get("dead_letter", []), list),
         "hash_chain": hash_chain_valid,
+        "tenant_sequence_integrity": not proof_failures,
     }
-    return {"ok": all(checks.values()), "checks": checks, "hash_chain_valid": hash_chain_valid and signature_ok, "blocking_gaps": tuple(key for key, ok in checks.items() if not ok)}
+    return {
+        "ok": all(checks.values()),
+        "checks": checks,
+        "hash_chain_valid": hash_chain_valid and signature_ok and not proof_failures,
+        "blocking_gaps": tuple(key for key, ok in checks.items() if not ok),
+        "proof_failures": proof_failures,
+    }
+
+
+def audit_ledger_build_notarization_bundle(state: dict, *, tenant: str) -> dict:
+    boundary = audit_ledger_verify_owned_table_boundary(
+        (
+            *AUDIT_LEDGER_OWNED_TABLES,
+            "identity_access_projection",
+            "gateway_route_projection",
+            "workflow_completion_projection",
+            "composition_release_projection",
+            "pbc_deployment_projection",
+        )
+    )
+    bundle = build_notarization_bundle(
+        state,
+        tenant=tenant,
+        boundary_ok=boundary["ok"],
+        boundary_violations=boundary["violations"],
+    )
+    next_state = _copy_state(state)
+    next_state["notarization_bundles"][tenant] = bundle
+    return {"ok": bundle["ok"], "state": next_state, "bundle": bundle}
 
 
 def audit_ledger_build_api_contract() -> dict:
@@ -701,10 +888,10 @@ def audit_ledger_build_api_contract() -> dict:
 
 def audit_ledger_build_schema_contract() -> dict:
     table_fields = {
-        "audit_ledger_audit_event": ("tenant", "audit_id", "source_pbc", "aggregate_id", "actor", "action", "classification", "payload_hash", "sequence", "previous_hash", "event_hash", "signature", "sealed"),
-        "audit_ledger_signature_chain": ("tenant", "chain_link_id", "audit_id", "sequence", "previous_hash", "event_hash", "signature", "verified"),
+        "audit_ledger_audit_event": ("tenant", "audit_id", "source_pbc", "aggregate_id", "actor", "action", "classification", "payload_hash", "sequence", "previous_hash", "event_hash", "signature", "signature_algorithm", "occurred_at", "timestamp_basis", "sealed"),
+        "audit_ledger_signature_chain": ("tenant", "chain_link_id", "audit_id", "sequence", "previous_hash", "event_hash", "signature", "payload_hash", "verified"),
         "audit_ledger_retention_policy": ("tenant", "policy_id", "classification", "retention_days", "legal_hold", "disposal_action", "status"),
-        "audit_ledger_forensic_export": ("tenant", "export_id", "classification", "requested_by", "event_count", "checksum", "proof_bundle", "status"),
+        "audit_ledger_forensic_export": ("tenant", "export_id", "classification", "requested_by", "event_count", "checksum", "proof_bundle", "status", "approval_required"),
         "audit_ledger_access_evidence": ("tenant", "evidence_id", "principal", "resource", "action", "decision", "context_hash", "policy_source"),
         "audit_ledger_control_assertion": ("tenant", "control_id", "control", "status", "severity", "evidence_hash", "release_blocking", "remediation"),
         "audit_ledger_rule": ("tenant", "rule_id", "scope", "classification", "minimum_retention_days", "requires_export_approval", "severity", "status"),
@@ -808,10 +995,13 @@ def audit_ledger_build_service_contract() -> dict:
             "build_schema_contract",
             "build_service_contract",
             "build_release_evidence",
+            "build_notarization_bundle",
             "verify_owned_table_boundary",
             "simulate_retention_disclosure",
             "forecast_evidence_health",
             "parse_audit_query",
+            "plan_disclosure_minimization",
+            "plan_correction_event",
             "score_audit_risk",
             "recommend_control_remediation",
             "select_ingestion_route",
@@ -863,6 +1053,27 @@ def audit_ledger_build_release_evidence() -> dict:
             "status": "active",
         },
     )["state"]
+    sample_state = audit_ledger_record_audit_event(
+        sample_state,
+        {
+            "audit_id": "release_audit_evt",
+            "tenant": "tenant_release",
+            "source_pbc": "composition_engine",
+            "aggregate_id": "release-001",
+            "actor": "release_manager",
+            "action": "prepare_release_bundle",
+            "classification": "regulated",
+            "payload": {"release_id": "release-001", "status": "prepared"},
+            "occurred_at": "2026-05-28T09:00:00Z",
+        },
+    )["state"]
+    export_plan = audit_ledger_plan_disclosure_minimization(
+        sample_state,
+        tenant="tenant_release",
+        classification="regulated",
+        requested_fields=("actor", "action"),
+    )["plan"]
+    notarization = audit_ledger_build_notarization_bundle(sample_state, tenant="tenant_release")["bundle"]
     workbench = audit_ledger_build_workbench_view(sample_state, tenant="tenant_release")
     checks = (
         {"id": "owned_schema_depth", "ok": schema["ok"] and len(schema["tables"]) >= 18},
@@ -874,6 +1085,8 @@ def audit_ledger_build_release_evidence() -> dict:
         {"id": "no_shared_table_access", "ok": not schema["shared_table_access"] and not api["shared_table_access"]},
         {"id": "ui_binding_evidence", "ok": ui["binding_evidence"]["owned_tables"] == AUDIT_LEDGER_OWNED_TABLES and ui["binding_evidence"]["configuration"]["event_contract"] == "AppGen-X"},
         {"id": "workbench_binding_evidence", "ok": workbench["configuration_bound"] and workbench["release_evidence_ready"] and workbench["binding_evidence"]["configuration"]["event_contract"] == "AppGen-X"},
+        {"id": "disclosure_minimization_plan", "ok": export_plan["ok"] and "payload_hash" in export_plan["selected_fields"]},
+        {"id": "release_notarization_bundle", "ok": notarization["ok"] and notarization["boundary_ok"] and notarization["chain_link_count"] >= 1},
     )
     return {
         "format": "appgen.audit-ledger-release-evidence.v1",
@@ -884,6 +1097,8 @@ def audit_ledger_build_release_evidence() -> dict:
         "api": api,
         "permissions": permissions,
         "ui": ui,
+        "notarization_bundle": notarization,
+        "disclosure_minimization_plan": export_plan,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }
 
@@ -1025,6 +1240,7 @@ def _copy_state(state: dict) -> dict:
         "retry_evidence": [dict(item) for item in state.get("retry_evidence", [])],
         "dead_letter": [dict(item) for item in state.get("dead_letter", [])],
         "dead_letters": [dict(item) for item in state["dead_letters"]],
+        "notarization_bundles": {key: dict(value) for key, value in state.get("notarization_bundles", {}).items()},
         "identity_access_projections": {key: dict(value) for key, value in state.get("identity_access_projections", {}).items()},
         "gateway_route_projections": {key: dict(value) for key, value in state.get("gateway_route_projections", {}).items()},
         "schema_contract_projections": {key: dict(value) for key, value in state.get("schema_contract_projections", {}).items()},
@@ -1040,7 +1256,18 @@ def _emit(state: dict, event_type: str, tenant: str, aggregate_id: str, payload:
     event = {"event_id": event_id, "event_type": event_type, "tenant": tenant, "aggregate_id": aggregate_id, "payload": payload}
     event["hash"] = _event_hash(event)
     state["events"].append(event)
-    state["outbox"].append({"event_id": event_id, "event_type": event_type, "idempotency_key": f"audit_ledger:{event_type}:{event_id}", "status": "pending", "payload": payload})
+    state["outbox"].append(
+        {
+            "tenant": tenant,
+            "event_id": event_id,
+            "event_type": event_type,
+            "topic": AUDIT_LEDGER_REQUIRED_EVENT_TOPIC,
+            "idempotency_key": f"audit_ledger:{event_type}:{event_id}",
+            "status": "pending",
+            "audit_hash": event["hash"],
+            "payload": payload,
+        }
+    )
     return state
 
 
