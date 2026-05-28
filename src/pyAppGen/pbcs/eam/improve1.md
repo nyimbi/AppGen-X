@@ -2,314 +2,313 @@
 
 ## Purpose
 
-This backlog identifies 50 high-impact, high-value improvements for `eam`. Each item is specific to the domain surface currently declared by the PBC and is intended to move the package beyond world-class breadth toward complete specialist-grade coverage.
+This backlog identifies 50 high-impact, high-value improvements for `eam`. The items are specific to enterprise asset management: equipment registry, asset hierarchy, locations, criticality, warranties, preventive and predictive maintenance, condition monitoring, meters, work requests, work orders, scheduling, mobile execution, safety permits, lockout/isolation, spare usage, labor assignment, downtime, failure analysis, vendor service, reliability analytics, rules, parameters, configuration, AppGen-X event reliability, UI workbenches, and agent-assisted maintenance operations.
 
 ## Current Domain Evidence Used
 
-- Domain purpose: Asset hierarchy, preventive and predictive maintenance, condition monitoring, work orders, safety permits, spares, vendor service, reliability analytics, and governed maintenance automation.
-- Representative owned tables: `eam_equipment`, `eam_maintenance_plan`, `eam_work_order`, `eam_spare_part_usage`, `eam_condition_reading`, `eam_meter_reading`, `eam_failure_event`, `eam_maintenance_schedule`, `eam_service_vendor_event`, `eam_safety_permit`, `eam_maintenance_rule`, `eam_maintenance_parameter`, ...
-- Representative operations/APIs: `configure_runtime`, `set_parameter`, `register_rule`, `register_schema_extension`, `receive_event`, `register_equipment`, `create_maintenance_plan`, `record_condition_reading`, `record_meter_reading`, `create_safety_permit`, `create_work_order`, `schedule_work_order`, ...
-- Representative events: `EquipmentRegistered`, `MaintenancePlanReleased`, `ConditionReadingRecorded`, `MeterReadingRecorded`, `SafetyPermitApproved`, `WorkOrderCreated`, `WorkOrderScheduled`, `SparePartUsed`, `MaintenanceCompleted`, `VendorPerformanceUpdated`.
-- Representative advanced capabilities: `event_sourced_maintenance_lifecycle`, `graph_relational_asset_topology`, `multi_tenant_maintenance_isolation`, `schema_evolution_resilient_maintenance_schema`, `probabilistic_failure_safety_cost_scoring`, `real_time_reliability_analytics`, `counterfactual_strategy_simulation`, `temporal_failure_forecasting`, `autonomous_maintenance_exception_resolution`, `semantic_maintenance_instruction_parsing`, ...
+- Domain purpose: `eam` owns maintainable equipment, asset hierarchy, maintenance strategies, preventive plans, condition monitoring, work requests, work orders, scheduling, safety controls, spare usage, labor execution, downtime, reliability analytics, compliance evidence, warranties, service-vendor performance, rules, parameters, configuration, and workbench UI fragments.
+- Owned boundary: equipment, maintenance plans, work orders, spare part usage, condition readings, meter readings, failure events, maintenance schedules, service vendor events, safety permits, maintenance rules, maintenance parameters, maintenance configuration, outbox, inbox, and dead-letter evidence.
+- Existing command/query surface: runtime configuration, parameter/rule/schema-extension registration, equipment registration, maintenance plan creation, condition and meter readings, safety permits, work orders, scheduling, spare issue, work-order completion, event inbox, workbench, schema/service/release evidence, permissions, UI binding, and boundary verification.
+- Existing events and dependencies: emits `EquipmentRegistered`, `MaintenancePlanReleased`, `ConditionReadingRecorded`, `MeterReadingRecorded`, `SafetyPermitApproved`, `WorkOrderCreated`, `WorkOrderScheduled`, `SparePartUsed`, `MaintenanceCompleted`, and `VendorPerformanceUpdated`; consumes `DowntimeCaptured`, `NonConformanceRaised`, `InventoryReservationConfirmed`, `PurchaseOrderAcknowledged`, and `AssetLifecycleUpdated`; composes with production, quality, inventory, procurement, asset lifecycle, audit, and analytics only through declared APIs/events/projections.
 
 ## 50 Better-Than-World-Class Improvements
 
-### 1. Deep specialist lifecycle semantics for `eam_equipment`
+### 1. Equipment readiness gate
 
-**Justification:** This owned table is part of the Enterprise Asset Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Asset hierarchy, preventive and predictive maintenance, condition monitoring, work orders, safety permits, spares, vendor service, reliability analytics, and governed maintenance automation.
+**Justification:** Maintenance work is unsafe and unreliable when equipment identity, hierarchy, location, criticality, warranty, meter, safety, and maintainability data are incomplete.
 
-**Improvement:** Extend `eam_equipment` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `equipment_registry`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add an equipment readiness gate that validates equipment class, site, location, parent/child hierarchy, status, criticality, maintainability state, meter setup, warranty references, safety requirements, and lifecycle projection freshness before equipment can be released for maintenance planning.
 
-### 2. Deep specialist lifecycle semantics for `eam_maintenance_plan`
+### 2. Asset hierarchy integrity model
 
-**Justification:** This owned table is part of the Enterprise Asset Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Asset hierarchy, preventive and predictive maintenance, condition monitoring, work orders, safety permits, spares, vendor service, reliability analytics, and governed maintenance automation.
+**Justification:** Incorrect parent-child relationships create bad downtime rollups, spare applicability errors, and incomplete safety isolation.
 
-**Improvement:** Extend `eam_maintenance_plan` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `asset_hierarchy`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Enforce hierarchy invariants for acyclic parentage, effective dates, site compatibility, location inheritance, criticality rollup, meter inheritance, failure aggregation, and isolation impact mapping.
 
-### 3. Deep specialist lifecycle semantics for `eam_work_order`
+### 3. Location and maintainability state tracking
 
-**Justification:** This owned table is part of the Enterprise Asset Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Asset hierarchy, preventive and predictive maintenance, condition monitoring, work orders, safety permits, spares, vendor service, reliability analytics, and governed maintenance automation.
+**Justification:** Equipment moves, temporary installations, decommissioning, and unavailable states change what work can be planned or executed.
 
-**Improvement:** Extend `eam_work_order` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `location_tracking`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Track location history, installation state, operating state, maintainability state, mobility, access restrictions, effective dates, and source event lineage, then expose as-of asset position in the workbench.
 
-### 4. Deep specialist lifecycle semantics for `eam_spare_part_usage`
+### 4. Criticality and consequence model
 
-**Justification:** This owned table is part of the Enterprise Asset Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Asset hierarchy, preventive and predictive maintenance, condition monitoring, work orders, safety permits, spares, vendor service, reliability analytics, and governed maintenance automation.
+**Justification:** Work priority should reflect safety, environmental, production, quality, service, and cost consequences rather than static labels.
 
-**Improvement:** Extend `eam_spare_part_usage` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `criticality_model`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add criticality scoring with weighted consequence dimensions, redundancy, failure detectability, downtime cost, safety exposure, regulatory class, customer impact, and explainable priority derivation.
 
-### 5. Deep specialist lifecycle semantics for `eam_condition_reading`
+### 5. Warranty and recovery governance
 
-**Justification:** This owned table is part of the Enterprise Asset Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Asset hierarchy, preventive and predictive maintenance, condition monitoring, work orders, safety permits, spares, vendor service, reliability analytics, and governed maintenance automation.
+**Justification:** Warranty leakage happens when maintenance work, failures, vendor events, and spare usage are not checked against coverage.
 
-**Improvement:** Extend `eam_condition_reading` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `warranty_tracking`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add warranty eligibility checks, claim windows, covered failure modes, excluded conditions, required evidence, vendor notification, recovery amount estimate, claim status, and closure evidence.
 
-### 6. Deep specialist lifecycle semantics for `eam_meter_reading`
+### 6. Maintenance strategy portfolio
 
-**Justification:** This owned table is part of the Enterprise Asset Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Asset hierarchy, preventive and predictive maintenance, condition monitoring, work orders, safety permits, spares, vendor service, reliability analytics, and governed maintenance automation.
+**Justification:** Assets need a mix of run-to-failure, preventive, predictive, condition-based, statutory, calibration, warranty, and shutdown strategies.
 
-**Improvement:** Extend `eam_meter_reading` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `maintenance_strategy`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Model strategy portfolios per equipment class and asset with trigger type, risk rationale, expected benefit, cost, compliance basis, override rules, and review cadence.
 
-### 7. Deep specialist lifecycle semantics for `eam_failure_event`
+### 7. Preventive maintenance plan readiness
 
-**Justification:** This owned table is part of the Enterprise Asset Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Asset hierarchy, preventive and predictive maintenance, condition monitoring, work orders, safety permits, spares, vendor service, reliability analytics, and governed maintenance automation.
+**Justification:** Preventive plans fail when intervals, task lists, spares, labor, permits, and release rules are incomplete.
 
-**Improvement:** Extend `eam_failure_event` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `preventive_maintenance_plan`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Validate interval, calendar, site, work type, task steps, labor skills, spare requirements, safety permit class, predecessor plans, downtime expectation, and release approvals before `MaintenancePlanReleased`.
 
-### 8. Deep specialist lifecycle semantics for `eam_maintenance_schedule`
+### 8. Meter-based maintenance triggers
 
-**Justification:** This owned table is part of the Enterprise Asset Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Asset hierarchy, preventive and predictive maintenance, condition monitoring, work orders, safety permits, spares, vendor service, reliability analytics, and governed maintenance automation.
+**Justification:** Usage-driven assets require maintenance based on runtime, cycles, mileage, throughput, or condition counters.
 
-**Improvement:** Extend `eam_maintenance_schedule` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `predictive_maintenance_plan`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add meter trigger definitions with unit, rollover handling, reading confidence, due-at threshold, forecasted due date, stale-reading policy, and generated work-order proposal evidence.
 
-### 9. Deep specialist lifecycle semantics for `eam_service_vendor_event`
+### 9. Predictive maintenance signal catalog
 
-**Justification:** This owned table is part of the Enterprise Asset Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Asset hierarchy, preventive and predictive maintenance, condition monitoring, work orders, safety permits, spares, vendor service, reliability analytics, and governed maintenance automation.
+**Justification:** Predictive maintenance requires controlled signals, not ad hoc sensor or condition readings.
 
-**Improvement:** Extend `eam_service_vendor_event` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `condition_monitoring`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Register signal definitions for vibration, temperature, pressure, oil analysis, electrical load, acoustic data, process drift, and operator observations with units, thresholds, sampling cadence, and asset applicability.
 
-### 10. Deep specialist lifecycle semantics for `eam_safety_permit`
+### 10. Condition reading validation
 
-**Justification:** This owned table is part of the Enterprise Asset Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Asset hierarchy, preventive and predictive maintenance, condition monitoring, work orders, safety permits, spares, vendor service, reliability analytics, and governed maintenance automation.
+**Justification:** Bad condition readings can trigger unnecessary maintenance or miss imminent failures.
 
-**Improvement:** Extend `eam_safety_permit` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `meter_reading`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Validate reading source, timestamp, unit, device identity, equipment state, outlier range, duplicate readings, stale readings, manual override reason, and confidence score before risk scoring.
 
-### 11. Make `configure_runtime` a complete command lifecycle
+### 11. Work request intake triage
 
-**Justification:** High-value users need `configure_runtime` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Maintenance demand often starts as vague operator reports, alarms, quality findings, or downtime records.
 
-**Improvement:** Implement `configure_runtime` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `EquipmentRegistered`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add intake triage for symptom, asset, location, severity, safety concern, production impact, evidence attachments, reporter, duplicate detection, recommended work type, and conversion to planned work order.
 
-### 12. Make `set_parameter` a complete command lifecycle
+### 12. Work order lifecycle state machine
 
-**Justification:** High-value users need `set_parameter` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Work orders need controlled transitions from request through planning, approval, scheduling, execution, completion, technical closure, and financial closure.
 
-**Improvement:** Implement `set_parameter` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `MaintenancePlanReleased`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Implement state transitions with idempotency key, actor, timestamp, reason, required fields, allowed next states, emitted event expectations, and policy explanations for invalid transitions.
 
-### 13. Make `register_rule` a complete command lifecycle
+### 13. Work planning package
 
-**Justification:** High-value users need `register_rule` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Execution quality depends on having job steps, skills, spares, tools, permits, procedures, drawings, and acceptance criteria ready before scheduling.
 
-**Improvement:** Implement `register_rule` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `ConditionReadingRecorded`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add work package readiness with task list, craft requirements, estimated duration, spare reservations, tool requirements, safety permits, isolation plan, documents, quality checks, and supervisor approval.
 
-### 14. Make `register_schema_extension` a complete command lifecycle
+### 14. Maintenance scheduling optimizer
 
-**Justification:** High-value users need `register_schema_extension` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Maintenance schedules must balance risk, production availability, labor, spares, permits, vendor windows, and downtime constraints.
 
-**Improvement:** Implement `register_schema_extension` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `MeterReadingRecorded`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add scheduling optimization that scores candidate windows by failure risk, production impact, craft capacity, spare availability, permit readiness, vendor SLA, planned downtime, and carbon-aware preferences.
 
-### 15. Make `receive_event` a complete command lifecycle
+### 15. Dispatch and mobile execution controls
 
-**Justification:** High-value users need `receive_event` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Technicians need a controlled field workflow that works under intermittent connectivity and preserves audit evidence.
 
-**Improvement:** Implement `receive_event` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `SafetyPermitApproved`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add mobile execution states for accepted, en route, on site, started, paused, blocked, completed, and synced with offline queue, evidence capture, job-step checklist, time booking, spares, photos, signatures, and retry proof.
 
-### 16. Make `register_equipment` a complete command lifecycle
+### 16. Skill-based labor assignment
 
-**Justification:** High-value users need `register_equipment` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Work quality and safety depend on matching craft, certification, location access, shift, fatigue exposure, and availability.
 
-**Improvement:** Implement `register_equipment` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `WorkOrderCreated`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add labor assignment checks for skill, certification expiry, crew size, shift schedule, overtime exposure, site access, safety qualification, conflict, travel time, and assignment rationale.
 
-### 17. Make `create_maintenance_plan` a complete command lifecycle
+### 17. Tool and equipment requirement matching
 
-**Justification:** High-value users need `create_maintenance_plan` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Jobs fail or are delayed when specialized tools, test equipment, lifts, or calibrated devices are unavailable.
 
-**Improvement:** Implement `create_maintenance_plan` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `WorkOrderScheduled`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add job-tool requirements, availability windows, calibration readiness, reservation, checkout/checkin, substitute tool rules, and blocked-work alerts for missing tools.
 
-### 18. Make `record_condition_reading` a complete command lifecycle
+### 18. Safety permit readiness gate
 
-**Justification:** High-value users need `record_condition_reading` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Hazardous maintenance requires permits, lockout, isolation, gas tests, confined-space controls, hot-work controls, and risk acceptance.
 
-**Improvement:** Implement `record_condition_reading` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `SparePartUsed`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Validate permit type, hazards, controls, isolations, approvers, effective window, affected equipment hierarchy, required tests, worker acknowledgements, and emergency rollback before `SafetyPermitApproved`.
 
-### 19. Make `record_meter_reading` a complete command lifecycle
+### 19. Lockout and isolation map
 
-**Justification:** High-value users need `record_meter_reading` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Safe maintenance requires knowing every energy source and adjacent asset affected by isolation.
 
-**Improvement:** Implement `record_meter_reading` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `MaintenanceCompleted`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Model isolation points, energy types, lock ownership, verification steps, affected equipment tree, conflict with running production, permit links, and release sequence.
 
-### 20. Make `create_safety_permit` a complete command lifecycle
+### 20. Spare reservation and issue governance
 
-**Justification:** High-value users need `create_safety_permit` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Spare shortages delay critical work, while uncontrolled issues distort inventory and cost.
 
-**Improvement:** Implement `create_safety_permit` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `VendorPerformanceUpdated`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add reservation projection checks, substitute rules, kitting, issue approval, consumption reason, serial/lot capture, return handling, cost attribution, and `SparePartUsed` event evidence.
 
-### 21. Operationalize `event_sourced_maintenance_lifecycle` as a governed decision system
+### 21. Repairable spare lifecycle
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Enterprise Asset Management and measurably improves plan adherence without hiding assumptions.
+**Justification:** Rotables and repairables require removal, inspection, refurbishment, quarantine, warranty, and return-to-stock tracking.
 
-**Improvement:** Promote `event_sourced_maintenance_lifecycle` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `plan_adherence`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add repairable spare workflows with removed-from-asset, condition, repair vendor, warranty claim, refurbishment result, certification, quarantine, installed-on-asset, and cost history.
 
-### 22. Operationalize `graph_relational_asset_topology` as a governed decision system
+### 22. Downtime and production impact linkage
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Enterprise Asset Management and measurably improves backlog risk without hiding assumptions.
+**Justification:** Maintenance decisions need reliable linkage between failures, downtime, work orders, and production impact.
 
-**Improvement:** Promote `graph_relational_asset_topology` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `backlog_risk`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Project `DowntimeCaptured` events into equipment downtime records with reason, duration, production impact, planned/unplanned flag, linked work order, restoration evidence, and MTTR calculation inputs.
 
-### 23. Operationalize `multi_tenant_maintenance_isolation` as a governed decision system
+### 23. Failure event classification
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Enterprise Asset Management and measurably improves schedule compliance without hiding assumptions.
+**Justification:** Reliability improvement depends on consistent failure modes, mechanisms, causes, effects, and detection methods.
 
-**Improvement:** Promote `multi_tenant_maintenance_isolation` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `schedule_compliance`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add failure coding with equipment class taxonomy, failure mode, mechanism, cause, effect, detection method, severity, recurrence group, evidence, and required root-cause trigger.
 
-### 24. Operationalize `schema_evolution_resilient_maintenance_schema` as a governed decision system
+### 24. Root-cause and corrective action workflow
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Enterprise Asset Management and measurably improves downtime hours without hiding assumptions.
+**Justification:** Recurrent failures persist when root cause and corrective actions are disconnected from work execution.
 
-**Improvement:** Promote `schema_evolution_resilient_maintenance_schema` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `downtime_hours`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add RCA methods, hypothesis evidence, cause validation, corrective actions, owner, due date, effectiveness check, recurrence monitoring, and linkage to failure events and work orders.
 
-### 25. Operationalize `probabilistic_failure_safety_cost_scoring` as a governed decision system
+### 25. Reliability analytics dashboard
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Enterprise Asset Management and measurably improves mtbf without hiding assumptions.
+**Justification:** Maintenance leaders need actionable reliability metrics, not raw work-order lists.
 
-**Improvement:** Promote `probabilistic_failure_safety_cost_scoring` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `mtbf`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add MTBF, MTTR, availability, backlog age, schedule compliance, wrench time, emergency work ratio, repeat failure, PM compliance, overdue statutory work, and cost-risk drilldowns by asset, class, site, and period.
 
-### 26. Operationalize `real_time_reliability_analytics` as a governed decision system
+### 26. Failure forecasting
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Enterprise Asset Management and measurably improves mttr without hiding assumptions.
+**Justification:** World-class asset management shifts from reactive work to risk-based intervention.
 
-**Improvement:** Promote `real_time_reliability_analytics` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `mttr`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Forecast failure probability, downtime exposure, safety exposure, spare demand, and maintenance due dates using condition readings, meter trends, failure history, operating context, and plan compliance.
 
-### 27. Operationalize `counterfactual_strategy_simulation` as a governed decision system
+### 27. Counterfactual strategy simulation
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Enterprise Asset Management and measurably improves spare cost without hiding assumptions.
+**Justification:** Planners need to compare maintenance intervals and condition triggers before changing a strategy.
 
-**Improvement:** Promote `counterfactual_strategy_simulation` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `spare_cost`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Simulate alternative intervals, thresholds, shutdown windows, labor plans, spare policies, and vendor strategies with predicted failures avoided, cost, downtime, safety risk, and backlog impact.
 
-### 28. Operationalize `temporal_failure_forecasting` as a governed decision system
+### 28. Maintenance backlog risk scoring
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Enterprise Asset Management and measurably improves critical work order count without hiding assumptions.
+**Justification:** Backlog should be prioritized by risk and consequence, not just age or manually assigned priority.
 
-**Improvement:** Promote `temporal_failure_forecasting` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `critical_work_order_count`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Score backlog items by criticality, failure forecast, safety exposure, compliance deadline, production impact, spare availability, vendor lead time, and schedule opportunity.
 
-### 29. Operationalize `autonomous_maintenance_exception_resolution` as a governed decision system
+### 29. Statutory and compliance maintenance proof
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Enterprise Asset Management and measurably improves maintenance completed throughput without hiding assumptions.
+**Justification:** Regulated assets require evidence that inspections, tests, permits, and maintenance were completed on time by qualified people.
 
-**Improvement:** Promote `autonomous_maintenance_exception_resolution` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `maintenance_completed_throughput`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Generate compliance proof packets with plan, work order, permit, technician qualifications, calibration/tool evidence, readings, completion notes, timestamps, signatures, and immutable event references.
 
-### 30. Operationalize `semantic_maintenance_instruction_parsing` as a governed decision system
+### 30. Service vendor performance management
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Enterprise Asset Management and measurably improves vendor performance updated throughput without hiding assumptions.
+**Justification:** External maintenance vendors influence uptime, cost, warranty, safety, and compliance.
 
-**Improvement:** Promote `semantic_maintenance_instruction_parsing` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `vendor_performance_updated_throughput`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Track vendor events, SLA commitments, response time, first-time fix, rework, safety incidents, warranty recovery, cost variance, documentation quality, and performance score updates.
 
-### 31. Create simulation-grade governance for `database_backend` and `database_backend`
+### 31. Vendor dispatch and acknowledgement workflow
 
-**Justification:** Complete Enterprise Asset Management coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Contractor work needs auditable assignment, site access, permit acknowledgement, arrival, execution, and completion evidence.
 
-**Improvement:** Add a policy cockpit where `database_backend` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `database_backend` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add vendor dispatch states, acknowledgement, expected arrival, credential checks, permit requirements, work evidence, completion review, dispute capture, and `VendorPerformanceUpdated` event output.
 
-### 32. Create simulation-grade governance for `event_topic` and `event_topic`
+### 32. Asset lifecycle handoff integration
 
-**Justification:** Complete Enterprise Asset Management coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Commissioning, transfer, refurbishment, and retirement affect maintenance plans, warranties, meters, and spares.
 
-**Improvement:** Add a policy cockpit where `event_topic` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `event_topic` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Consume `AssetLifecycleUpdated` into package-local projections that update maintainability state, plan eligibility, hierarchy changes, warranty state, and open-work exceptions without shared-table access.
 
-### 33. Create simulation-grade governance for `retry_limit` and `retry_limit`
+### 33. Quality and nonconformance integration
 
-**Justification:** Complete Enterprise Asset Management coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Quality findings can require equipment inspection, calibration, repair, or production hold support.
 
-**Improvement:** Add a policy cockpit where `retry_limit` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `retry_limit` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Project `NonConformanceRaised` into maintenance review queues with affected equipment, suspected cause, quality severity, required inspection, linked work order, and closure feedback.
 
-### 34. Create simulation-grade governance for `allowed_sites` and `allowed_sites`
+### 34. Inventory and procurement projection controls
 
-**Justification:** Complete Enterprise Asset Management coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Spare reservations and vendor orders must rely on declared projections instead of direct access to inventory or procurement tables.
 
-**Improvement:** Add a policy cockpit where `allowed_sites` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `allowed_sites` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Validate `InventoryReservationConfirmed` and `PurchaseOrderAcknowledged` projections for freshness, quantity, part identity, vendor, due date, and idempotency before scheduling or issuing spares.
 
-### 35. Create simulation-grade governance for `allowed_priorities` and `allowed_priorities`
+### 35. AppGen-X inbox reliability
 
-**Justification:** Complete Enterprise Asset Management coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Consumed downtime, quality, inventory, procurement, and lifecycle events materially change maintenance priority and execution readiness.
 
-**Improvement:** Add a policy cockpit where `allowed_priorities` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `allowed_priorities` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add inbox schema validation, idempotency, retry evidence, unsupported-event rejection, dead-letter promotion, projection rebuild, stale dependency alerts, and workbench replay/quarantine controls.
 
-### 36. Upgrade `MaintenanceWorkbench` into a full specialist command center
+### 36. AppGen-X outbox delivery assurance
 
-**Justification:** The PBC UI must expose the complete Enterprise Asset Management surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Equipment, plan, reading, permit, work-order, spare, completion, and vendor events must be reliably visible to composed applications.
 
-**Improvement:** Expand `MaintenanceWorkbench` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add outbox state, ordering group, payload hash, retry count, next attempt, delivery proof, dead-letter linkage, and replay controls for every emitted EAM event.
 
-### 37. Upgrade `EquipmentRegistry` into a full specialist command center
+### 37. Owned-boundary proof
 
-**Justification:** The PBC UI must expose the complete Enterprise Asset Management surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** EAM must compose through APIs/events/projections and never share source tables with production, quality, inventory, procurement, asset lifecycle, audit, or analytics.
 
-**Improvement:** Expand `EquipmentRegistry` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add release evidence that scans schema descriptors, services, routes, agent plans, and generated DSL for foreign table reads or writes, failing the audit on violations.
 
-### 38. Upgrade `AssetHierarchyMap` into a full specialist command center
+### 38. Maintenance workbench coverage
 
-**Justification:** The PBC UI must expose the complete Enterprise Asset Management surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** The UI must surface the complete EAM domain, not just equipment and work-order CRUD.
 
-**Improvement:** Expand `AssetHierarchyMap` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Expand workbench navigation for equipment registry, hierarchy map, plans, condition monitoring, meters, requests, work orders, scheduler, mobile execution, spares, safety, reliability, vendors, rules, parameters, configuration, events, and release evidence.
 
-### 39. Upgrade `MaintenancePlanConsole` into a full specialist command center
+### 39. Technician cockpit
 
-**Justification:** The PBC UI must expose the complete Enterprise Asset Management surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Technicians need a focused execution surface that reduces paperwork while preserving safety and evidence.
 
-**Improvement:** Expand `MaintenancePlanConsole` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add a cockpit with assigned jobs, route/travel context, permit status, job steps, tools, spares, readings, photos, notes, time capture, blockers, completion checklist, and offline synchronization status.
 
-### 40. Upgrade `ConditionMonitoringPanel` into a full specialist command center
+### 40. Planner and scheduler cockpit
 
-**Justification:** The PBC UI must expose the complete Enterprise Asset Management surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Planners need visibility into readiness blockers before work reaches the field.
 
-**Improvement:** Expand `ConditionMonitoringPanel` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add queues for unplanned requests, incomplete packages, missing spares, missing tools, permit blockers, labor conflicts, vendor dependencies, overdue PMs, risk-ranked backlog, and optimized schedule proposals.
 
-### 41. Prove cross-PBC federation for `POST /equipment` and `DowntimeCaptured`
+### 41. Agent-safe maintenance planning
 
-**Justification:** Enterprise Asset Management must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** AI assistance can save maintenance time only if it cannot bypass safety, permits, inventory, or approval controls.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /equipment` and consumed event `DowntimeCaptured` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Require the EAM agent to produce side-effect-free plans naming command, permission, owned tables, idempotency key, expected event, safety gates, rollback limits, and human confirmation for equipment, plan, work order, permit, spare, reading, and completion actions.
 
-### 42. Prove cross-PBC federation for `POST /maintenance-plans` and `NonConformanceRaised`
+### 42. Maintenance document and instruction intake
 
-**Justification:** Enterprise Asset Management must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Maintenance facts arrive through manuals, technician notes, inspection sheets, vendor reports, permits, and failure photos.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /maintenance-plans` and consumed event `NonConformanceRaised` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Extract candidate facts for equipment, plans, readings, work orders, permits, spares, and vendor events with confidence, evidence links, missing fields, rule checks, and governed mutation previews.
 
-### 43. Prove cross-PBC federation for `POST /work-orders` and `InventoryReservationConfirmed`
+### 43. Semantic maintenance instruction parsing
 
-**Justification:** Enterprise Asset Management must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Work request and task text must become structured work steps, hazards, spares, tools, skills, and completion criteria.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /work-orders` and consumed event `InventoryReservationConfirmed` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Parse instructions into proposed task lists, safety controls, spare requirements, labor skills, tools, readings, acceptance criteria, and quality checks with planner review.
 
-### 44. Prove cross-PBC federation for `POST /work-orders/{id}/schedule` and `PurchaseOrderAcknowledged`
+### 44. Maintenance anomaly detection
 
-**Justification:** Enterprise Asset Management must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Abnormal work patterns can indicate asset degradation, poor planning, missing spares, or unsafe execution.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /work-orders/{id}/schedule` and consumed event `PurchaseOrderAcknowledged` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Detect anomalies in readings, meter jumps, repeat failures, emergency work, spare usage, labor time, vendor response, safety permits, completion notes, and event replay behavior with explanations.
 
-### 45. Temporal reconstruction and bitemporal audit for Enterprise Asset Management
+### 45. Governed reliability model evidence
 
-**Justification:** Regulated and operationally complex domains need to answer what was known, valid, processed, and visible at any point in time.
+**Justification:** Predictive maintenance models affect safety, downtime, vendor spend, spare stock, and technician workload.
 
-**Improvement:** Add transaction-time, valid-time, and processing-time fields to core records, temporal query APIs, projection rebuild tooling, and UI time travel so specialists can reconstruct decisions, reports, and automation outcomes.
+**Improvement:** Track model purpose, training window, asset coverage, feature lineage, validation metrics, drift, false-negative exposure, approval status, rollback, and explainability evidence.
 
-### 46. Bulk operations and migration-grade controls for Enterprise Asset Management
+### 46. Decentralized equipment identity
 
-**Justification:** World-class deployments must handle imports, mass corrections, high-volume operating days, and cutovers without bypassing governance.
+**Justification:** High-control asset networks need trustworthy equipment, meter, tool, and vendor identities.
 
-**Improvement:** Add staged bulk upload, duplicate detection, chunked validation, approval sampling, partial failure handling, retry dashboards, reconciliation summaries, and agent-generated remediation plans for large batches.
+**Improvement:** Add credential references, issuer, verification status, expiry, revocation, proof hash, and trust level for equipment identity, meters, calibrated tools, vendor credentials, and compliance packets.
 
-### 47. Specialist edge-case playbooks for Enterprise Asset Management
+### 47. Maintenance resilience drills
 
-**Justification:** Rare cases often carry the highest financial, legal, safety, service, or compliance risk.
+**Justification:** Maintenance operations must remain safe when mobile devices, projections, outbox delivery, vendor channels, or scheduler services fail.
 
-**Improvement:** Create a playbook catalog with detection rules, required evidence, escalation paths, fallback actions, owner roles, and release-audited tests for high-severity edge cases and exception queues.
+**Improvement:** Add drills for duplicate lifecycle events, offline mobile completion, spare projection delay, permit approval outage, outbox dead letter, vendor acknowledgement failure, and hierarchy rebuild.
 
-### 48. Pre-mutation simulation and blast-radius analysis for Enterprise Asset Management
+### 48. Continuous maintenance control testing
 
-**Justification:** Users should understand consequences before committing irreversible, customer-visible, operationally disruptive, or financially material changes.
+**Justification:** Controls should be proven continuously across planning, scheduling, execution, safety, spares, vendors, and events.
 
-**Improvement:** Add what-if simulation for every material command, showing impacted records, emitted events, dependent projections, rule outcomes, approvals, downstream PBC dependencies, and rollback limits.
+**Improvement:** Add assertions for work without permit, completion without required reading, spare issue without reservation, overdue statutory PM, expired certification, stale projection, foreign-table access, dead-letter aging, and agent-preview bypass.
 
-### 49. Continuous control testing and operational assurance for Enterprise Asset Management
+### 49. EAM readiness score
 
-**Justification:** Better-than-world-class PBCs prove controls continuously, not only at release or during periodic audits.
+**Justification:** Users need an evidence-backed view of whether `eam` is ready for controlled asset operations.
 
-**Improvement:** Add executable control assertions, sampled evidence checks, anomaly thresholds, control-owner dashboards, breach/recovery events, and release gates that fail when domain controls lose evidence.
+**Improvement:** Compute readiness from equipment completeness, hierarchy integrity, plan coverage, condition/meter setup, work-order lifecycle, safety permits, spares, labor, vendor controls, reliability analytics, event reliability, UI coverage, model governance, and agent safety.
 
-### 50. Human-in-the-loop domain agent execution for Enterprise Asset Management
+### 50. End-to-end maintenance execution proof
 
-**Justification:** The PBC chatbot must help specialists perform real work while preventing unsafe autonomous mutation.
+**Justification:** A complete EAM PBC must prove it can run the full lifecycle from equipment registration to completed maintenance event.
 
-**Improvement:** Add domain-specific skills, document parsing, task planning, CRUD previews, confidence/risk scoring, confirmation gates, redaction, policy explanations, and post-action evidence packets for every supported command and query.
+**Improvement:** Add an executable proof scenario covering equipment registration, hierarchy, maintenance plan release, condition/meter trigger, work request, work package, permit, spare reservation/issue, labor assignment, schedule, mobile execution, completion, reliability metrics, emitted events, UI evidence, boundary proof, controls, and agent explanation.
