@@ -40,6 +40,22 @@ def build_release_evidence():
     evidence.setdefault('schema', _build_schema_contract())
     evidence.setdefault('service', _build_service_contract())
     evidence.setdefault('pbc', 'ap_automation')
+    try:
+        from . import agent, services, ui
+    except ImportError:
+        agent = _load_sibling_module('agent')
+        services = _load_sibling_module('services')
+        ui = _load_sibling_module('ui')
+    evidence['execution_service'] = services.execution_service_manifest()
+    evidence['ui'] = ui.smoke_test()
+    evidence['agent'] = agent.smoke_test()
+    live_checks = tuple(evidence.get('checks', ())) + (
+        {'id': 'execution_service_bound', 'ok': evidence['execution_service']['ok']},
+        {'id': 'ui_contract_bound', 'ok': evidence['ui']['ok']},
+        {'id': 'agent_contribution_bound', 'ok': evidence['agent']['ok']},
+    )
+    evidence['checks'] = live_checks
+    evidence['ok'] = evidence.get('ok') is True and all(check.get('ok') is True for check in live_checks)
     return evidence
 
 
@@ -48,7 +64,7 @@ def release_readiness_manifest():
     evidence = build_release_evidence()
     sections = tuple(
         name
-        for name in ('schema', 'service', 'api', 'permissions', 'ui', 'events')
+        for name in ('schema', 'service', 'api', 'permissions', 'ui', 'events', 'agent', 'execution_service')
         if isinstance(evidence.get(name), dict)
     )
     checks = tuple(evidence.get('checks', ()))

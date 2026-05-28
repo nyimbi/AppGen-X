@@ -191,11 +191,15 @@ def ap_automation_runtime_capabilities() -> dict:
             "register_rule",
             "register_schema_extension",
             "onboard_vendor",
+            "validate_vendor_bank_account",
+            "register_vendor_tax_profile",
             "issue_purchase_order",
             "record_goods_receipt",
             "capture_invoice",
+            "extract_invoice_artifact",
             "match_invoice",
             "resolve_exception",
+            "create_approval_task",
             "receive_event",
             "align_contract_terms",
             "score_vendor_risk",
@@ -204,7 +208,10 @@ def ap_automation_runtime_capabilities() -> dict:
             "screen_vendor_network",
             "run_control_tests",
             "schedule_payments",
+            "create_payment_batch",
             "execute_payment",
+            "generate_remittance_advice",
+            "reconcile_vendor_statement",
             "forecast_cash_flow",
             "analyze_discount_counterfactual",
             "build_api_contract",
@@ -497,11 +504,19 @@ def ap_automation_empty_state() -> dict:
         "handled_events": set(),
         "vendors": {},
         "vendor_graph": {},
+        "vendor_bank_accounts": {},
+        "vendor_tax_profiles": {},
+        "vendor_screenings": {},
         "purchase_orders": {},
         "receipts": {},
         "invoices": {},
+        "capture_artifacts": {},
+        "approval_tasks": {},
         "payment_pools": {},
         "payments": {},
+        "payment_batches": {},
+        "remittance_advices": {},
+        "vendor_statements": {},
         "exceptions": {},
         "schema_extensions": {},
         "crypto_epoch": {"epoch": 1, "algorithm": "sha3_256"},
@@ -603,9 +618,19 @@ def ap_automation_onboard_vendor(state: dict, vendor: dict) -> dict:
         "beneficial_owners": owners,
         "status": "active",
         "approval_status": "pending_approval",
+        "bank_validation_status": "pending",
+        "tax_validation_status": "pending",
+        "screening_status": "pending",
+        "payment_enabled": False,
+        "activation_requirements": tuple(vendor.get("activation_requirements", ("approval",))),
         "risk_score": risk,
         "graph_degree": len(owners),
         "audit_proof": _digest(vendor),
+    }
+    enriched["evidence_pack"] = {
+        "required_checks": enriched["activation_requirements"],
+        "pending_checks": _vendor_pending_checks(enriched),
+        "proof_hash": _digest(enriched),
     }
     runtime = _copy_state(state)
     runtime["vendors"][vendor_id] = enriched
@@ -620,6 +645,69 @@ def ap_automation_onboard_vendor(state: dict, vendor: dict) -> dict:
     )
     runtime = _emit(runtime, "VendorOnboarded", tenant, {"vendor_id": vendor_id, "risk_score": risk})
     return {"ok": True, "state": runtime, "vendor": enriched}
+
+
+def ap_automation_validate_vendor_bank_account(state: dict, bank_account: dict) -> dict:
+    """Validate a vendor payment destination and refresh payment readiness."""
+    _require_configured(state)
+    vendor_id = bank_account["vendor_id"]
+    if vendor_id not in state["vendors"]:
+        return {"ok": False, "error": "unknown_vendor", "state": state}
+    rail = bank_account.get("rail")
+    allowed_rails = tuple(state["configuration"].get("allowed_payment_rails", ()))
+    account_number = str(bank_account.get("account_number", ""))
+    validated = (
+        rail in allowed_rails
+        and bank_account.get("verification_method") in {"independent_callback", "bank_api", "microdeposit"}
+        and len(account_number) >= 6
+    )
+    stored = {
+        **bank_account,
+        "masked_account": "*" * max(0, len(account_number) - 4) + account_number[-4:],
+        "validation_status": "validated" if validated else "blocked",
+        "token_ref": "bank_token_" + _digest(bank_account)[:16],
+        "control_evidence": {
+            "verified_by": bank_account.get("verified_by"),
+            "verification_reference": bank_account.get("verification_reference"),
+            "segregation_of_duties": bank_account.get("verified_by") != bank_account.get("created_by"),
+        },
+    }
+    runtime = _copy_state(state)
+    runtime["vendor_bank_accounts"][bank_account["bank_account_id"]] = stored
+    vendor = {**runtime["vendors"][vendor_id], "bank_validation_status": stored["validation_status"]}
+    runtime["vendors"][vendor_id] = _refresh_vendor_payment_readiness(vendor)
+    return {
+        "ok": validated,
+        "state": runtime,
+        "bank_account": stored,
+        "validated": validated,
+        "payment_enabled": runtime["vendors"][vendor_id]["payment_enabled"],
+    }
+
+
+def ap_automation_register_vendor_tax_profile(state: dict, tax_profile: dict) -> dict:
+    """Register withholding and tax certificate evidence for a vendor."""
+    _require_configured(state)
+    vendor_id = tax_profile["vendor_id"]
+    if vendor_id not in state["vendors"]:
+        return {"ok": False, "error": "unknown_vendor", "state": state}
+    valid = bool(tax_profile.get("jurisdiction")) and bool(tax_profile.get("certificate_id"))
+    stored = {
+        **tax_profile,
+        "validation_status": "valid" if valid else "invalid",
+        "exemption_status": "current" if valid else "missing",
+        "proof_hash": "tax_profile_" + _digest(tax_profile)[:24],
+    }
+    runtime = _copy_state(state)
+    runtime["vendor_tax_profiles"][tax_profile["tax_profile_id"]] = stored
+    vendor = {**runtime["vendors"][vendor_id], "tax_validation_status": stored["validation_status"]}
+    runtime["vendors"][vendor_id] = _refresh_vendor_payment_readiness(vendor)
+    return {
+        "ok": valid,
+        "state": runtime,
+        "tax_profile": stored,
+        "payment_enabled": runtime["vendors"][vendor_id]["payment_enabled"],
+    }
 
 
 def ap_automation_issue_purchase_order(state: dict, purchase_order: dict) -> dict:
@@ -668,6 +756,8 @@ def ap_automation_capture_invoice(state: dict, invoice: dict) -> dict:
         return {"ok": False, "error": "duplicate_invoice", "state": state}
     subtotal = _line_total(invoice["lines"])
     tax_amount = float(invoice.get("tax", {}).get("amount", 0))
+    duplicate_candidates = _find_duplicate_invoices(state, invoice)
+    capture_artifact = ap_automation_extract_invoice_artifact(invoice.get("artifact", {}), invoice)
     captured = {
         **invoice,
         "subtotal": round(subtotal, 2),
@@ -675,10 +765,15 @@ def ap_automation_capture_invoice(state: dict, invoice: dict) -> dict:
         "status": "captured",
         "approval_status": "pending_match",
         "payment_status": "unscheduled",
+        "duplicate_review_required": bool(duplicate_candidates),
+        "duplicate_candidates": duplicate_candidates,
+        "hold_reasons": ("suspected_duplicate_invoice",) if duplicate_candidates else (),
+        "capture_artifact_id": capture_artifact["artifact"]["artifact_id"],
         "audit_proof": _digest(invoice),
     }
     runtime = _copy_state(state)
     runtime["invoices"][captured["invoice_id"]] = captured
+    runtime["capture_artifacts"][capture_artifact["artifact"]["artifact_id"]] = capture_artifact["artifact"]
     runtime = _emit(
         runtime,
         "InvoiceCaptured",
@@ -692,6 +787,15 @@ def ap_automation_match_invoice(state: dict, invoice_id: str) -> dict:
     invoice = state["invoices"].get(invoice_id)
     if not invoice:
         return {"ok": False, "error": "invoice_not_found"}
+    if invoice.get("duplicate_review_required"):
+        return {
+            "ok": True,
+            "invoice_id": invoice_id,
+            "confidence": 0.0,
+            "decision": "route_exception",
+            "duplicate_candidates": tuple(invoice.get("duplicate_candidates", ())),
+            "reason": "suspected_duplicate_invoice",
+        }
     po = state["purchase_orders"].get(invoice.get("po_id"))
     receipt = state["receipts"].get(invoice.get("receipt_id"))
     if not po or not receipt:
@@ -710,6 +814,49 @@ def ap_automation_match_invoice(state: dict, invoice_id: str) -> dict:
         confidence = 0.99 if po_quantities == invoice_quantities == receipt_quantities and amount_delta == 0 else confidence
     decision = "auto_approve" if confidence >= _parameter_value(state, "auto_match_threshold", 0.95) else "route_exception"
     return {"ok": True, "invoice_id": invoice_id, "confidence": round(confidence, 4), "decision": decision}
+
+
+def ap_automation_extract_invoice_artifact(artifact: dict, invoice: dict) -> dict:
+    """Normalize invoice capture evidence from documents, instructions, or e-invoice payloads."""
+    source = artifact.get("source_document") or artifact.get("payload_ref") or invoice.get("invoice_id")
+    extracted_fields = {
+        "invoice_id": invoice.get("invoice_id"),
+        "vendor_id": invoice.get("vendor_id"),
+        "supplier_invoice_number": invoice.get("supplier_invoice_number"),
+        "currency": invoice.get("currency"),
+        "line_count": len(tuple(invoice.get("lines", ()))),
+    }
+    stored = {
+        "artifact_id": artifact.get("artifact_id") or f"artifact_{invoice.get('invoice_id')}",
+        "tenant": invoice.get("tenant"),
+        "invoice_id": invoice.get("invoice_id"),
+        "artifact_type": artifact.get("channel", "document"),
+        "source_hash": _digest({"source": source, "fields": extracted_fields}),
+        "extraction_confidence": float(artifact.get("confidence", 0.98)),
+        "storage_ref": artifact.get("storage_ref", source),
+        "extracted_fields": extracted_fields,
+    }
+    return {"ok": True, "artifact": stored}
+
+
+def ap_automation_create_approval_task(state: dict, invoice_id: str, reason: str, assignee: str = "ap_controller") -> dict:
+    """Create an approval-control task for high-risk or over-limit invoices."""
+    invoice = state["invoices"][invoice_id]
+    task_id = f"approval_{invoice_id}_{len(state.get('approval_tasks', {})) + 1}"
+    task = {
+        "approval_id": task_id,
+        "tenant": invoice["tenant"],
+        "invoice_id": invoice_id,
+        "assignee": assignee,
+        "threshold": _parameter_value(state, "payment_approval_limit", 5000),
+        "reason": reason,
+        "decision": "pending",
+        "decided_at": None,
+        "audit_trace": _digest({"invoice_id": invoice_id, "reason": reason, "assignee": assignee}),
+    }
+    runtime = _copy_state(state)
+    runtime["approval_tasks"][task_id] = task
+    return {"ok": True, "state": runtime, "approval_task": task}
 
 
 def ap_automation_resolve_exception(state: dict, exception: dict) -> dict:
@@ -840,7 +987,26 @@ def ap_automation_submit_e_invoice(state: dict, invoice_id: str, *, jurisdiction
 def ap_automation_screen_vendor_network(state: dict, vendor_id: str, sanction_entities: tuple[str, ...]) -> dict:
     graph = state["vendor_graph"][vendor_id]
     hits = tuple(owner for owner in graph["owners"] if owner in sanction_entities)
-    return {"ok": not hits, "vendor_id": vendor_id, "hits": hits, "decision": "blocked" if hits else "clear"}
+    runtime = _copy_state(state)
+    vendor = {
+        **runtime["vendors"][vendor_id],
+        "screening_status": "blocked" if hits else "clear",
+    }
+    runtime["vendors"][vendor_id] = _refresh_vendor_payment_readiness(vendor)
+    runtime["vendor_screenings"][vendor_id] = {
+        "vendor_id": vendor_id,
+        "hits": hits,
+        "decision": "blocked" if hits else "clear",
+        "proof_hash": _digest({"vendor_id": vendor_id, "hits": hits}),
+    }
+    return {
+        "ok": not hits,
+        "state": runtime,
+        "vendor_id": vendor_id,
+        "hits": hits,
+        "decision": "blocked" if hits else "clear",
+        "payment_enabled": runtime["vendors"][vendor_id]["payment_enabled"],
+    }
 
 
 def ap_automation_run_control_tests(state: dict) -> dict:
@@ -890,8 +1056,14 @@ def ap_automation_schedule_payments(
             "scheduled_date": scheduled_date,
             "risk_score": risk,
             "status": "scheduled",
+            "hold_reasons": _payment_hold_reasons(runtime, invoice, risk, risk_limit),
             "approval_limit": int(_parameter_value(runtime, "payment_approval_limit", 5000)),
         }
+        if payment["hold_reasons"]:
+            payment["status"] = "blocked"
+            for reason in payment["hold_reasons"]:
+                approval = ap_automation_create_approval_task(runtime, invoice["invoice_id"], reason)
+                runtime = approval["state"]
         runtime["payments"][payment_id] = payment
         payments.append(payment)
     runtime = _emit(runtime, "PaymentScheduled", tenant, {"count": len(payments), "tenant": tenant})
@@ -912,6 +1084,14 @@ def ap_automation_build_workbench_view(state: dict, *, tenant: str) -> dict:
         "open_invoice_total": round(sum(invoice["total"] for invoice in invoices if invoice["status"] != "paid"), 2),
         "scheduled_payment_count": len(scheduled),
         "executed_payment_count": len(executed),
+        "blocked_payment_count": len(tuple(payment for payment in payments if payment["status"] == "blocked")),
+        "payment_batch_count": len(tuple(batch for batch in state.get("payment_batches", {}).values() if batch["tenant"] == tenant)),
+        "approval_task_count": len(tuple(task for task in state.get("approval_tasks", {}).values() if task["tenant"] == tenant)),
+        "statement_exception_count": sum(
+            statement.get("exception_count", 0)
+            for statement in state.get("vendor_statements", {}).values()
+            if statement["tenant"] == tenant
+        ),
         "rule_count": len(state.get("rules", {})),
         "parameter_count": len(state.get("parameters", {})),
         "configuration_bound": bool(state.get("configuration", {}).get("ok")),
@@ -931,8 +1111,10 @@ def ap_automation_execute_payment(state: dict, payment_id: str, *, rails: tuple[
     _require_appgen_x_event_contract(state)
     invoice_id = payment_id.removeprefix("pay_")
     invoice = state["invoices"][invoice_id]
-    selected = ap_automation_optimize_payment_route(rails)
     scheduled = state["payments"].get(payment_id, {})
+    if scheduled.get("status") == "blocked":
+        return {"ok": False, "error": "payment_blocked", "payment": scheduled, "state": state}
+    selected = ap_automation_optimize_payment_route(rails)
     payment = {
         **scheduled,
         "payment_id": payment_id,
@@ -946,6 +1128,8 @@ def ap_automation_execute_payment(state: dict, payment_id: str, *, rails: tuple[
         "approved_by": "ap_controller",
         "approval_limit": int(_parameter_value(state, "payment_approval_limit", 5000)),
     }
+    if scheduled.get("batch_id"):
+        payment["batch_id"] = scheduled["batch_id"]
     runtime = _copy_state(state)
     runtime["payments"][payment_id] = payment
     runtime["invoices"][invoice_id] = {**runtime["invoices"][invoice_id], "payment_status": "paid", "status": "paid"}
@@ -957,6 +1141,96 @@ def ap_automation_execute_payment(state: dict, payment_id: str, *, rails: tuple[
         "failover_used": any(not rail.get("available", True) for rail in rails[:1]),
         "idempotency_key": runtime["outbox"][-1]["idempotency_key"],
     }
+
+
+def ap_automation_create_payment_batch(state: dict, batch_request: dict) -> dict:
+    """Group scheduled payments into an auditable payment batch."""
+    _require_appgen_x_event_contract(state)
+    runtime = _copy_state(state)
+    payment_ids = tuple(batch_request.get("payment_ids", ()))
+    selected = tuple(runtime["payments"][payment_id] for payment_id in payment_ids)
+    invalid = tuple(payment["payment_id"] for payment in selected if payment["status"] != "scheduled")
+    if invalid:
+        return {"ok": False, "error": "payments_not_schedulable", "invalid_payment_ids": invalid, "state": state}
+    total = round(sum(float(payment["amount"]) for payment in selected), 2)
+    rail = batch_request.get("rail") or (selected[0].get("rail") if selected and selected[0].get("rail") else "ach")
+    batch = {
+        "batch_id": batch_request["batch_id"],
+        "tenant": batch_request["tenant"],
+        "rail": rail,
+        "currency": state["configuration"].get("default_currency", "USD"),
+        "scheduled_date": batch_request.get("scheduled_date", "next_payment_run"),
+        "status": "ready",
+        "total_amount": total,
+        "payment_count": len(selected),
+        "payment_ids": payment_ids,
+        "audit_hash": _digest(batch_request),
+    }
+    runtime["payment_batches"][batch["batch_id"]] = batch
+    for payment_id in payment_ids:
+        runtime["payments"][payment_id] = {**runtime["payments"][payment_id], "batch_id": batch["batch_id"]}
+    return {"ok": True, "state": runtime, "batch": batch}
+
+
+def ap_automation_generate_remittance_advice(state: dict, payment_id: str, *, delivery_channel: str) -> dict:
+    """Generate side-effect-tracked remittance details for a settled payment."""
+    payment = state["payments"][payment_id]
+    invoice = state["invoices"][payment["invoice_id"]]
+    vendor = state["vendors"][payment["vendor_id"]]
+    advice = {
+        "advice_id": f"remit_{payment_id}",
+        "tenant": payment["tenant"],
+        "payment_id": payment_id,
+        "vendor_id": payment["vendor_id"],
+        "vendor_name": vendor["name"],
+        "delivery_channel": delivery_channel,
+        "amount": payment["amount"],
+        "currency": invoice.get("currency", state["configuration"].get("default_currency", "USD")),
+        "invoices": (
+            {
+                "invoice_id": invoice["invoice_id"],
+                "supplier_invoice_number": invoice.get("supplier_invoice_number"),
+                "amount": invoice["total"],
+            },
+        ),
+        "audit_hash": _digest({"payment_id": payment_id, "delivery_channel": delivery_channel}),
+    }
+    runtime = _copy_state(state)
+    runtime["remittance_advices"][advice["advice_id"]] = advice
+    return {"ok": True, "state": runtime, "advice": advice}
+
+
+def ap_automation_reconcile_vendor_statement(state: dict, statement: dict) -> dict:
+    """Match vendor statement lines to AP invoices and payments."""
+    invoice_by_number = {
+        _normalize_invoice_number(invoice.get("supplier_invoice_number", invoice_id)): invoice
+        for invoice_id, invoice in state["invoices"].items()
+        if invoice["vendor_id"] == statement["vendor_id"]
+    }
+    exceptions = []
+    matched_amount = 0.0
+    for line in statement.get("lines", ()):
+        invoice = invoice_by_number.get(_normalize_invoice_number(line.get("supplier_invoice_number", "")))
+        if not invoice:
+            exceptions.append({"line": line, "reason": "statement_line_without_invoice"})
+            continue
+        matched_amount += float(line.get("amount", 0))
+        paid = invoice.get("payment_status") == "paid"
+        if line.get("status") == "paid" and not paid:
+            exceptions.append({"line": line, "invoice_id": invoice["invoice_id"], "reason": "vendor_marks_paid_but_ap_open"})
+        if abs(float(line.get("amount", 0)) - float(invoice["total"])) > 0.01:
+            exceptions.append({"line": line, "invoice_id": invoice["invoice_id"], "reason": "amount_variance"})
+    stored = {
+        **statement,
+        "statement_hash": _digest(statement),
+        "reconciled_amount": round(matched_amount, 2),
+        "exceptions": tuple(exceptions),
+        "exception_count": len(exceptions),
+        "status": "reconciled" if not exceptions else "action_required",
+    }
+    runtime = _copy_state(state)
+    runtime["vendor_statements"][statement["statement_id"]] = stored
+    return {"ok": True, "state": runtime, "statement": stored}
 
 
 def ap_automation_optimize_payment_route(rails: tuple[dict, ...]) -> dict:
@@ -1521,11 +1795,11 @@ def _apply_received_event(state: dict, event_type: str, payload: dict) -> None:
     if event_type == "VendorApproved":
         vendor_id = payload.get("vendor_id")
         if vendor_id in state["vendors"]:
-            state["vendors"][vendor_id] = {
+            state["vendors"][vendor_id] = _refresh_vendor_payment_readiness({
                 **state["vendors"][vendor_id],
                 "approval_status": "approved",
                 "approved_by": payload.get("approved_by"),
-            }
+            })
         return
     if event_type == "PurchaseOrderApproved":
         po_id = payload.get("po_id")
@@ -1621,6 +1895,72 @@ def _parameter_value(state: dict, key: str, default: float) -> float:
         return default
     value = parameter["value"] if isinstance(parameter, dict) else parameter
     return float(value)
+
+
+def _vendor_pending_checks(vendor: dict) -> tuple[str, ...]:
+    pending = []
+    requirements = set(vendor.get("activation_requirements", ()))
+    if "approval" in requirements and vendor.get("approval_status") != "approved":
+        pending.append("approval")
+    if "bank_validation" in requirements and vendor.get("bank_validation_status") != "validated":
+        pending.append("bank_validation")
+    if "tax_profile" in requirements and vendor.get("tax_validation_status") != "valid":
+        pending.append("tax_profile")
+    if "screening" in requirements and vendor.get("screening_status") != "clear":
+        pending.append("screening")
+    return tuple(pending)
+
+
+def _refresh_vendor_payment_readiness(vendor: dict) -> dict:
+    refreshed = dict(vendor)
+    pending = _vendor_pending_checks(refreshed)
+    refreshed["payment_enabled"] = not pending
+    refreshed["evidence_pack"] = {
+        "required_checks": tuple(refreshed.get("activation_requirements", ())),
+        "pending_checks": pending,
+        "proof_hash": _digest({**refreshed, "evidence_pack": None}),
+    }
+    return refreshed
+
+
+def _find_duplicate_invoices(state: dict, invoice: dict) -> tuple[dict, ...]:
+    supplier_number = _normalize_invoice_number(invoice.get("supplier_invoice_number", ""))
+    if not supplier_number:
+        return ()
+    candidates = []
+    target_amount = round(_line_total(invoice.get("lines", ())) + float(invoice.get("tax", {}).get("amount", 0)), 2)
+    for existing in state.get("invoices", {}).values():
+        same_vendor = existing.get("vendor_id") == invoice.get("vendor_id")
+        same_number = _normalize_invoice_number(existing.get("supplier_invoice_number", "")) == supplier_number
+        amount_delta = abs(float(existing.get("total", 0)) - target_amount)
+        if same_vendor and same_number and amount_delta <= 0.01:
+            candidates.append(
+                {
+                    "invoice_id": existing["invoice_id"],
+                    "supplier_invoice_number": existing.get("supplier_invoice_number"),
+                    "amount_delta": round(amount_delta, 2),
+                    "reason": "same_vendor_number_amount",
+                }
+            )
+    return tuple(candidates)
+
+
+def _payment_hold_reasons(state: dict, invoice: dict, risk: float, risk_limit: float) -> tuple[str, ...]:
+    reasons = []
+    vendor = state["vendors"][invoice["vendor_id"]]
+    if not vendor.get("payment_enabled", False):
+        reasons.append("vendor_not_payment_ready")
+    if invoice.get("duplicate_review_required"):
+        reasons.append("suspected_duplicate_invoice")
+    if float(invoice["total"]) > _parameter_value(state, "payment_approval_limit", 5000):
+        reasons.append("approval_required")
+    if risk > risk_limit:
+        reasons.append("vendor_risk_limit_exceeded")
+    return tuple(reasons)
+
+
+def _normalize_invoice_number(value: str) -> str:
+    return re.sub(r"[^a-z0-9]", "", str(value).lower())
 
 
 def _digest(payload: dict | tuple | list | str) -> str:
