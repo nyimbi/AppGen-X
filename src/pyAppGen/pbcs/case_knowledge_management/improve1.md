@@ -2,314 +2,314 @@
 
 ## Purpose
 
-This backlog identifies 50 high-impact, high-value improvements for `case_knowledge_management`. Each item is specific to the domain surface currently declared by the PBC and is intended to move the package beyond world-class breadth toward complete specialist-grade coverage.
+This backlog identifies 50 high-impact, high-value improvements for `case_knowledge_management`. Each item is specific to support case operations and knowledge management: intake, classification, routing, queues, assignments, SLAs, interactions, escalations, resolutions, knowledge articles, article versions, feedback, quality, root cause, duplicates, deflection, support intelligence, and governed agent assistance. The intent is complete domain coverage for a better-than-world-class support and knowledge PBC while preserving AppGen-X package boundaries.
 
 ## Current Domain Evidence Used
 
-- Domain purpose: Owns support case intake, classification, queues, SLAs, escalations, resolution, knowledge articles, article quality, feedback, and support intelligence.
-- Representative owned tables: `case_knowledge_management_support_case`, `case_knowledge_management_case_contact`, `case_knowledge_management_case_classification`, `case_knowledge_management_case_queue`, `case_knowledge_management_case_assignment`, `case_knowledge_management_case_sla`, `case_knowledge_management_sla_timer_event`, `case_knowledge_management_case_interaction`, `case_knowledge_management_case_escalation`, `case_knowledge_management_case_resolution`, `case_knowledge_management_knowledge_article`, `case_knowledge_management_article_version`, ...
-- Representative operations/APIs: `create_support_case`, `classify_case`, `route_case_queue`, `assign_case`, `start_sla_timer`, `record_case_interaction`, `open_case_escalation`, `resolve_case`, `publish_knowledge_article`, `version_article`, `capture_article_feedback`, `score_article_quality`, ...
-- Representative events: `CaseCreated`, `CaseAssigned`, `SlaRiskChanged`, `CaseEscalated`, `CaseResolved`, `KnowledgeArticlePublished`.
-- Representative advanced capabilities: `semantic case classification`, `next-best-resolution assistant`, `knowledge gap detection`, `duplicate case graphing`, `SLA breach prediction`, `article quality drift monitoring`.
+- Domain purpose: owns support case intake, classification, queues, SLAs, escalations, resolution, knowledge articles, article quality, feedback, and support intelligence.
+- Owned tables include support case, case contact, classification, queue, assignment, SLA, SLA timer event, interaction, escalation, resolution, knowledge article, article version, article feedback, article quality score, root cause, duplicate link, exception case, policy rules, runtime parameters, schema extensions, controls, governed models, outbox, inbox, and dead-letter evidence.
+- Operations include `create_support_case`, `classify_case`, `route_case_queue`, `assign_case`, `start_sla_timer`, `record_case_interaction`, `open_case_escalation`, `resolve_case`, `publish_knowledge_article`, `version_article`, `capture_article_feedback`, `score_article_quality`, `identify_root_cause`, `link_duplicate_case`, `resolve_case_exception`, and `recommend_next_best_resolution`.
+- Events include `CaseCreated`, `CaseAssigned`, `SlaRiskChanged`, `CaseEscalated`, `CaseResolved`, and `KnowledgeArticlePublished`; consumed events include customer, product, policy, and workflow task signals.
+- Existing advanced claims include semantic case classification, next-best-resolution assistance, knowledge gap detection, duplicate case graphing, SLA breach prediction, and article quality drift monitoring.
 
 ## 50 Better-Than-World-Class Improvements
 
-### 1. Deep specialist lifecycle semantics for `case_knowledge_management_support_case`
+### 1. Omnichannel Case Intake Normalization
 
-**Justification:** This owned table is part of the Case and Knowledge Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns support case intake, classification, queues, SLAs, escalations, resolution, knowledge articles, article quality, feedback, and support intelligence.
+**Justification:** Support cases arrive from portals, email, chat, phone transcripts, social channels, service tickets, product telemetry, partner submissions, and internal escalations. Without normalized intake, classification, SLA, routing, and knowledge recommendations become inconsistent.
 
-**Improvement:** Extend `case_knowledge_management_support_case` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `support_case_management`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Extend `create_support_case` with channel adapters, source transcript capture, customer identity projection, product/context extraction, attachment evidence, language detection, privacy masking, duplicate detection, and intake completeness scoring. The UI should show raw source, normalized case fields, confidence, and missing information before case creation.
 
-### 2. Deep specialist lifecycle semantics for `case_knowledge_management_case_contact`
+### 2. Case Contact and Authority Model
 
-**Justification:** This owned table is part of the Case and Knowledge Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns support case intake, classification, queues, SLAs, escalations, resolution, knowledge articles, article quality, feedback, and support intelligence.
+**Justification:** Case participants can include requester, affected user, account owner, reseller, internal sponsor, billing contact, legal contact, or support proxy. Mishandling authority causes privacy breaches and poor customer experience.
 
-**Improvement:** Extend `case_knowledge_management_case_contact` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `case_knowledge_management_workflow`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Expand case contacts with role, authority to act, communication permission, notification preference, escalation authority, accessibility needs, language, and effective dates. Block sensitive responses or case updates when the requesting contact lacks authority.
 
-### 3. Deep specialist lifecycle semantics for `case_knowledge_management_case_classification`
+### 3. Semantic Case Classification Taxonomy
 
-**Justification:** This owned table is part of the Case and Knowledge Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns support case intake, classification, queues, SLAs, escalations, resolution, knowledge articles, article quality, feedback, and support intelligence.
+**Justification:** Queue routing and knowledge recommendations depend on structured case type, product, component, error, severity, intent, customer impact, and root symptom. Generic categories cannot support high-quality support operations.
 
-**Improvement:** Extend `case_knowledge_management_case_classification` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `case_knowledge_management_analytics`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Upgrade `classify_case` with hierarchical taxonomies, model-assisted classification, confidence thresholds, fallback queues, human override, product/component projection, and classification drift monitoring. Store classification evidence and reasons for every case.
 
-### 4. Deep specialist lifecycle semantics for `case_knowledge_management_case_queue`
+### 4. Severity and Business Impact Scoring
 
-**Justification:** This owned table is part of the Case and Knowledge Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns support case intake, classification, queues, SLAs, escalations, resolution, knowledge articles, article quality, feedback, and support intelligence.
+**Justification:** Support severity is not just customer-selected priority. True impact depends on outage scope, customer tier, revenue risk, safety, regulatory sensitivity, workaround availability, affected users, and contractual obligations.
 
-**Improvement:** Extend `case_knowledge_management_case_queue` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `configuration_schema`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add severity scoring that combines user-declared priority, telemetry, account tier projections, SLA commitments, affected population, recurrence, and workaround status. Require approval when a user overrides severity above or below model and policy guidance.
 
-### 5. Deep specialist lifecycle semantics for `case_knowledge_management_case_assignment`
+### 5. Dynamic Queue Design and Capacity Controls
 
-**Justification:** This owned table is part of the Case and Knowledge Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns support case intake, classification, queues, SLAs, escalations, resolution, knowledge articles, article quality, feedback, and support intelligence.
+**Justification:** Support queues need capacity, skills, product coverage, language, region, hours, backlog, and escalation behavior. Static routing queues create bottlenecks and SLA misses.
 
-**Improvement:** Extend `case_knowledge_management_case_assignment` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `rule_engine`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Expand `route_case_queue` with queue capacity, skill requirements, operating calendar, backlog limits, language/region constraints, overflow queues, emergency queues, and queue health scoring. The queue board should show load, SLA risk, and rerouting recommendations.
 
-### 6. Deep specialist lifecycle semantics for `case_knowledge_management_case_sla`
+### 6. Skill-Based Case Assignment
 
-**Justification:** This owned table is part of the Case and Knowledge Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns support case intake, classification, queues, SLAs, escalations, resolution, knowledge articles, article quality, feedback, and support intelligence.
+**Justification:** Assigning cases by round-robin ignores product expertise, language, customer context, workload, availability, previous ownership, and escalation authority. Poor assignment drives rework and dissatisfaction.
 
-**Improvement:** Extend `case_knowledge_management_case_sla` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `parameter_engine`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Upgrade `assign_case` with agent skill profiles, product expertise, queue role, current workload, SLA risk, language, prior customer history, certification, and conflict constraints. Show assignment rationale and alternatives to supervisors.
 
-### 7. Deep specialist lifecycle semantics for `case_knowledge_management_sla_timer_event`
+### 7. Workload Fairness and Burnout Controls
 
-**Justification:** This owned table is part of the Case and Knowledge Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns support case intake, classification, queues, SLAs, escalations, resolution, knowledge articles, article quality, feedback, and support intelligence.
+**Justification:** High-performing support agents often accumulate the hardest cases, creating burnout and inconsistent service. Better-than-world-class operations need fairness and sustainability.
 
-**Improvement:** Extend `case_knowledge_management_sla_timer_event` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `owned_schema_migrations_models`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add workload distribution metrics by active cases, complexity, escalations, after-hours load, reopened cases, emotional intensity, and SLA pressure. Flag unfair assignment patterns and require supervisor override rationale for excessive load.
 
-### 8. Deep specialist lifecycle semantics for `case_knowledge_management_case_interaction`
+### 8. SLA Timer Semantics and Pause Rules
 
-**Justification:** This owned table is part of the Case and Knowledge Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns support case intake, classification, queues, SLAs, escalations, resolution, knowledge articles, article quality, feedback, and support intelligence.
+**Justification:** SLA timers are often disputed because of unclear start, pause, resume, customer-wait, vendor-wait, maintenance-window, or severity-change rules. Generic timers do not satisfy enterprise support needs.
 
-**Improvement:** Extend `case_knowledge_management_case_interaction` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `appgen_x_outbox_inbox_eventing`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Upgrade `start_sla_timer` with timer types, trigger source, pause/resume reasons, customer-wait proof, business calendars, severity changes, entitlement snapshots, and policy citations. Surface timer histories and breach forecasts on every case.
 
-### 9. Deep specialist lifecycle semantics for `case_knowledge_management_case_escalation`
+### 9. SLA Breach Prediction and Prevention
 
-**Justification:** This owned table is part of the Case and Knowledge Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns support case intake, classification, queues, SLAs, escalations, resolution, knowledge articles, article quality, feedback, and support intelligence.
+**Justification:** Support leaders need to prevent breaches before they occur, not only report missed targets. Risk depends on queue load, agent availability, complexity, customer responsiveness, and required dependencies.
 
-**Improvement:** Extend `case_knowledge_management_case_escalation` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `idempotent_handlers`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add predictive SLA risk scoring with explainable drivers, mitigation recommendations, automatic escalation suggestions, and dispatcher-style queue interventions. Emit `SlaRiskChanged` when risk crosses configured thresholds.
 
-### 10. Deep specialist lifecycle semantics for `case_knowledge_management_case_resolution`
+### 10. Case Interaction Timeline
 
-**Justification:** This owned table is part of the Case and Knowledge Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns support case intake, classification, queues, SLAs, escalations, resolution, knowledge articles, article quality, feedback, and support intelligence.
+**Justification:** A case must preserve every conversation, internal note, customer reply, attachment, status change, action, and system event in a clear chronology. Fragmented interactions cause repeated questions and poor handoffs.
 
-**Improvement:** Extend `case_knowledge_management_case_resolution` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `retry_dead_letter_evidence`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Expand `record_case_interaction` into a timeline with channel, participant role, visibility, sentiment, language, summary, required response, attachments, redaction status, and follow-up tasks. The UI should filter public, internal, escalation, and automated interactions.
 
-### 11. Make `create_support_case` a complete command lifecycle
+### 11. Customer Communication Governance
 
-**Justification:** High-value users need `create_support_case` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Support responses can disclose sensitive data, contradict policy, overpromise fixes, or miss required notices. Communication needs review controls, templates, and evidence.
 
-**Improvement:** Implement `create_support_case` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `CaseCreated`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add response templates, approval rules, sensitive-data checks, entitlement-aware wording, translation review, legal/compliance flags, and delivery proof. The agent should draft responses from case context but require confirmation before sending.
 
-### 12. Make `classify_case` a complete command lifecycle
+### 12. Escalation Playbooks
 
-**Justification:** High-value users need `classify_case` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Escalations differ by technical severity, customer executive concern, security issue, legal exposure, product defect, billing impact, or SLA breach. One escalation state is not enough.
 
-**Improvement:** Implement `classify_case` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `CaseAssigned`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Expand `open_case_escalation` with escalation type, trigger, severity, owner group, executive notification, incident link, engineering handoff, customer communication plan, and de-escalation criteria. Provide role-specific escalation rooms.
 
-### 13. Make `route_case_queue` a complete command lifecycle
+### 13. Major Incident and Swarm Support Mode
 
-**Justification:** High-value users need `route_case_queue` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Some support cases represent widespread incidents requiring coordinated response, customer grouping, status updates, workaround dissemination, and post-incident knowledge capture.
 
-**Improvement:** Implement `route_case_queue` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `SlaRiskChanged`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add major incident grouping, case swarm membership, incident status broadcasts, impacted customer lists, workaround tracking, root-cause links, and post-incident article generation. Keep incident projections boundary-safe through declared events or APIs.
 
-### 14. Make `assign_case` a complete command lifecycle
+### 14. Duplicate Case Graphing
 
-**Justification:** High-value users need `assign_case` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Duplicate cases reveal product incidents, documentation gaps, usability issues, and support load patterns. Pairwise duplicate links are insufficient for operational intelligence.
 
-**Improvement:** Implement `assign_case` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `CaseEscalated`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Upgrade `link_duplicate_case` with case clusters, canonical case selection, confidence, merge policy, customer-specific visibility, cluster status, and analytics. Use clusters to update knowledge gap detection and case deflection recommendations.
 
-### 15. Make `start_sla_timer` a complete command lifecycle
+### 15. Resolution Path and Outcome Taxonomy
 
-**Justification:** High-value users need `start_sla_timer` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Closing a case with a generic resolution hides whether the issue was solved by workaround, configuration, product fix, training, refund, escalation, no response, or external dependency.
 
-**Improvement:** Implement `start_sla_timer` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `CaseResolved`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Expand `resolve_case` with resolution type, action steps, customer confirmation, workaround, root cause link, knowledge article link, product defect link, reopen risk, and required follow-up. Prevent closure when required evidence or customer response is missing.
 
-### 16. Make `record_case_interaction` a complete command lifecycle
+### 16. Reopen and Regression Handling
 
-**Justification:** High-value users need `record_case_interaction` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Reopened cases and regressions often indicate poor resolution quality, product defects, or inadequate knowledge articles. They need explicit workflows rather than a status flip.
 
-**Improvement:** Implement `record_case_interaction` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `KnowledgeArticlePublished`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add reopen records with reason, prior resolution, new evidence, elapsed time, customer sentiment, article used, owner, and corrective action. Feed reopened-case patterns into agent coaching, article quality, and root-cause analytics.
 
-### 17. Make `open_case_escalation` a complete command lifecycle
+### 17. Root Cause Analysis Workbench
 
-**Justification:** High-value users need `open_case_escalation` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Support operations should convert case patterns into root causes: product defects, documentation gaps, onboarding issues, configuration errors, usability problems, integrations, or customer process gaps.
 
-**Improvement:** Implement `open_case_escalation` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `CaseCreated`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Upgrade `identify_root_cause` with root-cause categories, contributing factors, evidence links, duplicate clusters, impacted products, recurrence, owner, corrective actions, and verification. Provide a root-cause analytics board.
 
-### 18. Make `resolve_case` a complete command lifecycle
+### 18. Knowledge Article Lifecycle Governance
 
-**Justification:** High-value users need `resolve_case` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Knowledge articles require draft, technical review, editorial review, localization, publish, expire, archive, and emergency update states. Generic article records produce stale or unsafe knowledge.
 
-**Improvement:** Implement `resolve_case` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `CaseAssigned`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Expand `publish_knowledge_article` with lifecycle states, required reviewers, audience, product scope, risk flags, effective dates, approval evidence, and rollback. The knowledge studio should show article state, reviewers, and publishing blockers.
 
-### 19. Make `publish_knowledge_article` a complete command lifecycle
+### 19. Article Version Diff and Rollback
 
-**Justification:** High-value users need `publish_knowledge_article` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Support teams need to know exactly what changed in an article, when, why, and which cases or agents relied on it. Poor versioning creates inconsistent customer guidance.
 
-**Improvement:** Implement `publish_knowledge_article` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `SlaRiskChanged`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Upgrade `version_article` with structured diffs, semantic change reason, reviewer approvals, impacted products, cases using prior version, rollback support, and search reindex events. Show version lineage in the article editor.
 
-### 20. Make `version_article` a complete command lifecycle
+### 20. Knowledge Freshness and Expiry Controls
 
-**Justification:** High-value users need `version_article` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Articles become stale when product releases, policies, pricing, support processes, or known issues change. Stale knowledge causes bad support and customer frustration.
 
-**Improvement:** Implement `version_article` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `CaseEscalated`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add freshness rules, expiry dates, product-release triggers, stale usage alerts, owner reminders, and retirement workflows. Emit content freshness events and remove stale articles from agent recommendations unless explicitly allowed.
 
-### 21. Operationalize `semantic case classification` as a governed decision system
+### 21. Article Quality Scoring
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Case and Knowledge Management and measurably improves case knowledge management risk score without hiding assumptions.
+**Justification:** Article usefulness depends on accuracy, clarity, completeness, deflection, readability, outcome success, and support-agent feedback. Page views alone are a weak quality signal.
 
-**Improvement:** Promote `semantic case classification` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `case_knowledge_management_risk_score`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Expand `score_article_quality` with success rate, case reopen correlation, negative feedback themes, readability, search clickthrough, deflection conversion, localization coverage, and technical review age. Show quality drivers and recommended edits.
 
-### 22. Operationalize `next-best-resolution assistant` as a governed decision system
+### 22. Knowledge Feedback Loop
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Case and Knowledge Management and measurably improves case knowledge management workbench metric without hiding assumptions.
+**Justification:** Agents and customers constantly reveal whether articles are helpful, confusing, missing steps, outdated, or harmful. Feedback needs structured triage and ownership.
 
-**Improvement:** Promote `next-best-resolution assistant` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `case_knowledge_management_workbench_metric`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Upgrade `capture_article_feedback` with feedback type, source case, user role, severity, suggested edit, duplicate feedback grouping, owner assignment, and closure evidence. Link feedback to article version and quality score.
 
-### 23. Operationalize `knowledge gap detection` as a governed decision system
+### 23. Knowledge Gap Detection
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Case and Knowledge Management and measurably improves case knowledge management risk score without hiding assumptions.
+**Justification:** High-volume unresolved case categories, repeated agent explanations, failed searches, and escalations reveal missing knowledge. Manual knowledge planning misses these gaps.
 
-**Improvement:** Promote `knowledge gap detection` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `case_knowledge_management_risk_score`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add knowledge gap detection using case classifications, search misses, duplicate clusters, agent notes, root causes, and article feedback. Create recommended article tasks with evidence and expected deflection impact.
 
-### 24. Operationalize `duplicate case graphing` as a governed decision system
+### 24. Case Deflection Measurement
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Case and Knowledge Management and measurably improves case knowledge management workbench metric without hiding assumptions.
+**Justification:** Deflection should mean a customer solved the issue without creating or reopening a case, not merely clicked an article. Inflated deflection metrics hide poor service.
 
-**Improvement:** Promote `duplicate case graphing` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `case_knowledge_management_workbench_metric`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add deflection events with search query, article shown, customer action, time to case creation, satisfaction, and follow-up signals. Distinguish assisted deflection, failed deflection, and false deflection in analytics.
 
-### 25. Operationalize `SLA breach prediction` as a governed decision system
+### 25. Next-Best-Resolution Assistant
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Case and Knowledge Management and measurably improves case knowledge management risk score without hiding assumptions.
+**Justification:** Support agents need context-aware suggestions that consider case facts, customer history, product version, knowledge articles, duplicates, root causes, and policy constraints. Generic chatbot answers are unsafe.
 
-**Improvement:** Promote `SLA breach prediction` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `case_knowledge_management_risk_score`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Upgrade `recommend_next_best_resolution` with ranked actions, source citations, confidence, missing data, policy warnings, similar cases, article references, and human confirmation. Persist recommendations and whether they were accepted, edited, or rejected.
 
-### 26. Operationalize `article quality drift monitoring` as a governed decision system
+### 26. Agent Assist Guardrails and Audit
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Case and Knowledge Management and measurably improves case knowledge management workbench metric without hiding assumptions.
+**Justification:** AI assistance in support can hallucinate fixes, reveal sensitive data, or perform unsafe mutations. It must be auditable and constrained by support policy.
 
-**Improvement:** Promote `article quality drift monitoring` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `case_knowledge_management_workbench_metric`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add guardrails for grounded responses, source citations, permission checks, redaction, approval gates, prohibited claims, and post-action evidence. The agent should show affected owned tables and emitted events before CRUD operations.
 
-### 27. Operationalize `semantic case classification` as a governed decision system
+### 27. Multilingual and Localization Support
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Case and Knowledge Management and measurably improves case knowledge management risk score without hiding assumptions.
+**Justification:** Global support requires translated cases, localized articles, regional policies, language-specific queues, and customer-visible responses that preserve technical accuracy.
 
-**Improvement:** Promote `semantic case classification` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `case_knowledge_management_risk_score`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add language detection, translation status, localized article variants, regional terminology, translation review, locale-specific publishing approvals, and language-based routing. Track article quality separately by locale.
 
-### 28. Operationalize `next-best-resolution assistant` as a governed decision system
+### 28. Sentiment and Friction Detection
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Case and Knowledge Management and measurably improves case knowledge management workbench metric without hiding assumptions.
+**Justification:** Escalations often emerge from frustration, repeated contacts, unresolved symptoms, poor communication, or sensitive customer situations before formal SLA breaches.
 
-**Improvement:** Promote `next-best-resolution assistant` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `case_knowledge_management_workbench_metric`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add sentiment and friction signals from interactions, reopen history, wait time, customer tier, and repeated questions. Route high-friction cases to coaching or escalation queues with explainable drivers.
 
-### 29. Operationalize `knowledge gap detection` as a governed decision system
+### 29. Customer Health and Support History Projection
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Case and Knowledge Management and measurably improves case knowledge management risk score without hiding assumptions.
+**Justification:** Support decisions benefit from customer tier, recent incidents, open opportunities, churn risk, entitlement, and product adoption, but this PBC must not mutate customer systems.
 
-**Improvement:** Promote `knowledge gap detection` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `case_knowledge_management_risk_score`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add boundary-safe customer health projections with source, freshness, allowed fields, entitlement, and fallback behavior. Use them for routing, severity validation, SLA policy, and executive escalation decisions.
 
-### 30. Operationalize `duplicate case graphing` as a governed decision system
+### 30. Product and Release Context Projection
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Case and Knowledge Management and measurably improves case knowledge management workbench metric without hiding assumptions.
+**Justification:** Case classification, known issues, and knowledge freshness depend on product, version, component, release, feature flag, and deprecation status. Support needs product context without owning product master data.
 
-**Improvement:** Promote `duplicate case graphing` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `case_knowledge_management_workbench_metric`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add package-local product projections with version, component, release status, known issue references, support lifecycle, and documentation links. Use product events to trigger article review and classification updates.
 
-### 31. Create simulation-grade governance for `case_routing_policy` and `sla_warning_minutes`
+### 31. Queue Simulation and Staffing Forecasts
 
-**Justification:** Complete Case and Knowledge Management coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Support leaders need to understand how backlog, case arrival rates, skills, holidays, incidents, and policy changes affect SLA performance before queues fail.
 
-**Improvement:** Add a policy cockpit where `case_routing_policy` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `sla_warning_minutes` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add queue simulation for volume scenarios, staffing levels, skill gaps, backlog burn-down, SLA breach risk, and major incident surge. Provide recommended staffing or routing changes with assumptions.
 
-### 32. Create simulation-grade governance for `sla_policy` and `duplicate_similarity_threshold`
+### 32. Case Aging and Stuck-Case Detection
 
-**Justification:** Complete Case and Knowledge Management coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Cases can stall because of customer wait, internal handoff, engineering dependency, missing logs, unclear ownership, or repeated failed attempts. Stuck cases cause silent dissatisfaction.
 
-**Improvement:** Add a policy cockpit where `sla_policy` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `duplicate_similarity_threshold` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add stuck-case detection with aging by state, dependency, last customer touch, missing action, owner inactivity, and SLA risk. Generate recommended unblock actions and escalation candidates.
 
-### 33. Create simulation-grade governance for `escalation_policy` and `article_quality_floor`
+### 33. Engineering and Product Handoff Control
 
-**Justification:** Complete Case and Knowledge Management coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Support escalations to engineering need reproducible steps, logs, impact, priority, customer commitments, and feedback loops. Weak handoffs waste engineering time.
 
-**Improvement:** Add a policy cockpit where `escalation_policy` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `article_quality_floor` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add handoff packages with reproduction steps, environment, logs, affected customers, business impact, workaround, article links, and owner. Consume workflow completion events and update case state through idempotent handlers.
 
-### 34. Create simulation-grade governance for `knowledge_publish_policy` and `escalation_age_hours`
+### 34. Security and Privacy Case Handling
 
-**Justification:** Complete Case and Knowledge Management coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Cases can contain security incidents, personal data, credentials, vulnerability reports, or regulated information. These need restricted access, redaction, and special SLAs.
 
-**Improvement:** Add a policy cockpit where `knowledge_publish_policy` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `escalation_age_hours` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add sensitive case flags, restricted queues, redaction workflows, credential detection, security escalation, privacy review, and controlled response templates. Enforce masking in UI, APIs, and agent recommendations.
 
-### 35. Create simulation-grade governance for `duplicate_detection_policy` and `queue_capacity_limit`
+### 35. Attachment and Log Evidence Governance
 
-**Justification:** Complete Case and Knowledge Management coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Support cases often contain logs, screenshots, traces, exports, and configuration files that may include secrets or personal data. Evidence must be governed, searchable, and safe.
 
-**Improvement:** Add a policy cockpit where `duplicate_detection_policy` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `queue_capacity_limit` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add attachment metadata, source, type, hash, scan status, secret detection, retention class, redaction status, and link to interaction or resolution. Block unsafe downloads or agent use when evidence has not passed checks.
 
-### 36. Upgrade `case workbench` into a full specialist command center
+### 36. Self-Service Search Quality
 
-**Justification:** The PBC UI must expose the complete Case and Knowledge Management surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Customers cannot deflect cases if search does not understand symptoms, product versions, synonyms, error codes, and intent. Search quality is a core knowledge outcome.
 
-**Improvement:** Expand `case workbench` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add search quality analytics for zero-result queries, reformulations, article clicks, failed deflections, intent clusters, and freshness. Feed search gaps into article tasks and synonym management through declared search projections.
 
-### 37. Upgrade `queue board` into a full specialist command center
+### 37. Article Recommendation A/B and Policy Testing
 
-**Justification:** The PBC UI must expose the complete Case and Knowledge Management surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Knowledge recommendations affect resolution speed and customer outcomes. Teams need controlled experiments without compromising critical support paths.
 
-**Improvement:** Expand `queue board` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add recommendation experiments with eligibility, variant article sets, success metrics, guardrails, rollback, and ethical constraints. Record experiment exposure on cases and deflection events.
 
-### 38. Upgrade `SLA timer console` into a full specialist command center
+### 38. Support Playbooks and Macro Governance
 
-**Justification:** The PBC UI must expose the complete Case and Knowledge Management surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Agents rely on macros, playbooks, and troubleshooting scripts that can become outdated, unsafe, or inconsistent across teams.
 
-**Improvement:** Expand `SLA timer console` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add support playbook objects with steps, decision branches, linked articles, macro text, policy constraints, required evidence, and review cadence. Track playbook use on cases and measure outcome quality.
 
-### 39. Upgrade `escalation room` into a full specialist command center
+### 39. Case Collaboration and Swarming
 
-**Justification:** The PBC UI must expose the complete Case and Knowledge Management surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Complex cases require collaboration across support tiers, product specialists, customer success, engineering, and managers. Collaboration must be structured and visible.
 
-**Improvement:** Expand `escalation room` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add collaboration sessions with participants, roles, timebox, actions, decisions, handoffs, and customer communication owner. Link collaboration outcomes to case timeline, escalation, and resolution evidence.
 
-### 40. Upgrade `knowledge studio` into a full specialist command center
+### 40. Service Recovery and Goodwill Workflow
 
-**Justification:** The PBC UI must expose the complete Case and Knowledge Management surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Some cases require apology, goodwill credits, expedited service, executive follow-up, or corrective commitments. These actions need authority and audit trails.
 
-**Improvement:** Expand `knowledge studio` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add service recovery records with reason, proposed remedy, approval authority, customer impact, financial handoff event, and follow-up obligation. Use policy to block unauthorized credits or commitments.
 
-### 41. Prove cross-PBC federation for `POST /support-cases` and `CustomerUpdated`
+### 41. Case Closure Readiness
 
-**Justification:** Case and Knowledge Management must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Premature closure leads to reopened cases and customer frustration. Closure should verify resolution evidence, customer confirmation, linked tasks, knowledge updates, and follow-up obligations.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /support-cases` and consumed event `CustomerUpdated` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Add closure readiness checks for required interactions, customer response, resolution taxonomy, article link, root cause, open escalations, pending tasks, and SLA timer state. Prevent closure or require exception approval when gaps remain.
 
-### 42. Prove cross-PBC federation for `POST /knowledge-articles` and `ProductPublished`
+### 42. Continuous Quality Assurance Sampling
 
-**Justification:** Case and Knowledge Management must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Support quality should be tested continuously across communication, technical accuracy, policy compliance, empathy, resolution quality, and evidence completeness.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /knowledge-articles` and consumed event `ProductPublished` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Add QA sampling rules, reviewer assignments, scorecards, coaching tasks, dispute process, and quality trend dashboards. Link QA findings to agent training, article updates, and process controls.
 
-### 43. Prove cross-PBC federation for `POST /article-approvals` and `PolicyChanged`
+### 43. Knowledge-Driven Training Recommendations
 
-**Justification:** Case and Knowledge Management must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Case patterns and article feedback reveal agent skill gaps, onboarding needs, and product areas requiring training.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /article-approvals` and consumed event `PolicyChanged` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Add training recommendations from case outcomes, QA reviews, article usage, escalations, and reopened cases. Surface learning queues by agent, team, product, and skill while preserving HR boundaries through projections.
 
-### 44. Prove cross-PBC federation for `POST /case-deflections` and `WorkflowTaskCompleted`
+### 44. Support Operations Metrics Layer
 
-**Justification:** Case and Knowledge Management must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Leaders need reliable metrics for volume, backlog, SLA, first response, resolution, reopen rate, escalations, deflection, quality, article freshness, and root cause. Raw case counts are insufficient.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /case-deflections` and consumed event `WorkflowTaskCompleted` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Add governed metric definitions with grain, filters, exclusions, calculations, owner, and freshness. Provide dashboards by product, queue, customer tier, agent team, channel, severity, and knowledge domain.
 
-### 45. Temporal reconstruction and bitemporal audit for Case and Knowledge Management
+### 45. Policy and Parameter Studio for Support Operations
 
-**Justification:** Regulated and operationally complex domains need to answer what was known, valid, processed, and visible at any point in time.
+**Justification:** Routing, SLA, escalation, publishing, duplicate detection, article retirement, queue capacity, and quality thresholds change as support operations evolve.
 
-**Improvement:** Add transaction-time, valid-time, and processing-time fields to core records, temporal query APIs, projection rebuild tooling, and UI time travel so specialists can reconstruct decisions, reports, and automation outcomes.
+**Improvement:** Expand case policy rules and runtime parameters into a support policy studio with versioning, simulations, approval workflow, effective dates, impact analysis, rollback, and agent explanations before activation.
 
-### 46. Bulk operations and migration-grade controls for Case and Knowledge Management
+### 46. Cross-PBC Boundary and Projection Proofs
 
-**Justification:** World-class deployments must handle imports, mass corrections, high-volume operating days, and cutovers without bypassing governance.
+**Justification:** Case and knowledge workflows reference customers, products, service tickets, search indexes, workflow tasks, finance credits, subscriptions, and field service. Shared-table mutation would break PBC composition.
 
-**Improvement:** Add staged bulk upload, duplicate detection, chunked validation, approval sampling, partial failure handling, retry dashboards, reconciliation summaries, and agent-generated remediation plans for large batches.
+**Improvement:** Add explicit projection contracts for external context, including source PBC, identifier, snapshot time, allowed fields, freshness, authorization, and fallback behavior. Add tests proving services mutate only `case_knowledge_management_` tables and communicate externally through APIs/events/projections.
 
-### 47. Specialist edge-case playbooks for Case and Knowledge Management
+### 47. Agent-Assisted Case and Knowledge CRUD
 
-**Justification:** Rare cases often carry the highest financial, legal, safety, service, or compliance risk.
+**Justification:** The PBC chatbot must help agents create cases, update classifications, draft responses, create articles, link duplicates, resolve cases, and triage feedback without unsafe autonomous writes.
 
-**Improvement:** Create a playbook catalog with detection rules, required evidence, escalation paths, fallback actions, owner roles, and release-audited tests for high-severity edge cases and exception queues.
+**Improvement:** Give the PBC agent domain skills that parse documents, transcripts, logs, and instructions into proposed CRUD plans. Require source-grounded extraction, confidence, policy warnings, affected tables, AppGen-X event plans, and human confirmation before mutation.
 
-### 48. Pre-mutation simulation and blast-radius analysis for Case and Knowledge Management
+### 48. Cryptographic Support Evidence Packets
 
-**Justification:** Users should understand consequences before committing irreversible, customer-visible, operationally disruptive, or financially material changes.
+**Justification:** Enterprise customers may dispute SLAs, commitments, communications, or resolutions. The PBC needs defensible evidence of support handling.
 
-**Improvement:** Add what-if simulation for every material command, showing impacted records, emitted events, dependent projections, rule outcomes, approvals, downstream PBC dependencies, and rollback limits.
+**Improvement:** Generate case evidence packets containing timeline hashes, SLA timer history, assignments, interactions, escalations, articles recommended, resolutions, customer confirmations, and event lineage. Support export for customer reviews and audits.
 
-### 49. Continuous control testing and operational assurance for Case and Knowledge Management
+### 49. Support Resilience and Dead-Letter Operations
 
-**Justification:** Better-than-world-class PBCs prove controls continuously, not only at release or during periodic audits.
+**Justification:** Case creation, customer updates, product events, search refreshes, and workflow completions must survive duplicate, late, malformed, or replayed events.
 
-**Improvement:** Add executable control assertions, sampled evidence checks, anomaly thresholds, control-owner dashboards, breach/recovery events, and release gates that fail when domain controls lose evidence.
+**Improvement:** Add operations UI for AppGen-X inbox, outbox, retry, quarantine, and dead-letter events with payload lineage, idempotency keys, replay controls, and dependency health. Release gates should prove handler safety.
 
-### 50. Human-in-the-loop domain agent execution for Case and Knowledge Management
+### 50. Complete Case and Knowledge Workbench Coverage
 
-**Justification:** The PBC chatbot must help specialists perform real work while preventing unsafe autonomous mutation.
+**Justification:** If case and knowledge features are scattered behind APIs, support agents and knowledge managers cannot operate the PBC effectively.
 
-**Improvement:** Add domain-specific skills, document parsing, task planning, CRUD previews, confidence/risk scoring, confirmation gates, redaction, policy explanations, and post-action evidence packets for every supported command and query.
+**Improvement:** Expand the UI into role-specific workbenches for support agent, queue manager, escalation manager, knowledge author, reviewer, support operations analyst, QA reviewer, and executive sponsor. Cover intake, queues, assignments, SLA timers, interactions, escalations, resolutions, duplicate clusters, root causes, knowledge studio, feedback, quality, deflection, analytics, policies, agent panels, and release-evidence status.
