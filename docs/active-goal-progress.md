@@ -3199,3 +3199,13 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   Python compile for touched tooling entrypoints, focused CLI/audit tests,
   `tests/test_dsl_tooling_contracts.py -q`, tooling-audit JSON proof, scoped
   diff whitespace check, and restricted-name scan. Commit: `85455334`.
+- Current LSP stdio transport pass makes the documented `appgen lsp --stdio`
+  launch path directly executable and proven. The CLI now dispatches stdio mode
+  before trying to read an optional DSL path, the test suite sends real
+  `Content-Length` JSON-RPC frames through the subprocess command, and
+  `appgen.tooling-audit.v1` embeds `appgen.lsp-stdio-transport-audit.v1`
+  proving initialize, diagnostics publication, shutdown, and exit responses
+  over the transport. Verification passed: Python compile for touched tooling
+  entrypoints, focused stdio/audit tests, `tests/test_dsl_tooling_contracts.py
+  -q`, tooling-audit JSON proof, scoped diff whitespace check, and
+  restricted-name scan. Commit: `8552e35a`.
