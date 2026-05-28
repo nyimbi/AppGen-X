@@ -3050,3 +3050,13 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   modules, `tests/test_dsl_tooling_contracts.py -q`, focused DSL platform/CLI
   regression tests, scoped diff whitespace check, and restricted-name scan.
   Commit: `64a06340`.
+- Current migration coverage pass makes required migration scenario evidence
+  explicit. Every `appgen.migration-plan.v1` report now includes
+  `appgen.migration-coverage.v1` with required, detected, and missing detection
+  families for table, field, relationship, directive, calculated-field, PBC
+  ownership, and backfill cases so CI, IDE previews, and agents can prove
+  coverage without parsing prose. Verification passed: Python compile for
+  touched DSL modules, migration coverage contract tests,
+  `tests/test_dsl_tooling_contracts.py -q`, focused DSL platform/CLI regression
+  tests, scoped diff whitespace check, and restricted-name scan. Commit:
+  `66e54f17`.
