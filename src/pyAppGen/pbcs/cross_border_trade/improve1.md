@@ -1,315 +1,314 @@
-# Cross-Border Trade and Customs Compliance PBC Improvement Backlog
+# Cross Border Trade PBC Improvement Backlog
 
 ## Purpose
 
-This backlog identifies 50 high-impact, high-value improvements for `cross_border_trade`. Each item is specific to the domain surface currently declared by the PBC and is intended to move the package beyond world-class breadth toward complete specialist-grade coverage.
+This backlog identifies 50 high-impact, high-value improvements for `cross_border_trade`. The items are specific to cross-border trade execution: HS classification, landed-cost quoting, denied-party screening, export-control checks, customs declarations, document packets, broker handoffs, carrier handoffs, compliance holds, country restrictions, duties and taxes, Incoterms, audit evidence, rules, parameters, configuration, AppGen-X event reliability, UI workbenches, and agent-assisted trade compliance operations.
 
 ## Current Domain Evidence Used
 
-- Domain purpose: HS code assignment, landed cost, export controls, and customs declarations.
-- Representative owned tables: `cross_border_trade_hs_classification`, `cross_border_trade_landed_cost_quote`, `cross_border_trade_export_control_check`, `cross_border_trade_customs_declaration`, `cross_border_trade_denied_party_screening`, `cross_border_trade_trade_document_packet`, `cross_border_trade_broker_handoff`, `cross_border_trade_carrier_handoff`, `cross_border_trade_trade_compliance_hold`, `cross_border_trade_country_restriction_policy`, `cross_border_trade_trade_audit_evidence`.
-- Representative operations/APIs: `command_landed_cost`, `command_export_checks`, `command_declarations`, `query_cross_border_trade_workbench`, `command_denied_party_screenings`, `command_document_packets`, `command_broker_handoffs`, `command_carrier_handoffs`, `command_compliance_holds`, `command_hold_resolutions`, `command_country_restrictions`, `command_declaration_releases`.
-- Representative events: `CustomsDeclarationPrepared`, `LandedCostCalculated`, `DeniedPartyScreened`, `TradeDocumentPacketPrepared`, `BrokerHandoffQueued`, `CarrierHandoffPrepared`, `TradeComplianceHoldOpened`, `TradeComplianceHoldResolved`, `CountryRestrictionPolicyRegistered`, `CustomsDeclarationReleased`.
-- Representative advanced capabilities: `event_sourced_trade_lifecycle`, `owned_trade_schema_boundary`, `graph_relational_trade_topology`, `multi_tenant_trade_isolation`, `schema_evolution_resilient_trade_schema`, `probabilistic_hs_classification_scoring`, `counterfactual_landed_cost_simulation`, `temporal_duty_tax_exposure_forecasting`, `autonomous_trade_exception_resolution`, `semantic_trade_document_understanding`, ...
+- Domain purpose: `cross_border_trade` owns cross-border trade execution, including HS classification, landed-cost calculation, denied-party and export-control screening, customs document evidence, duties and taxes, broker and carrier handoffs, declarations, compliance holds, and audit-proof release evidence.
+- Owned boundary: HS classifications, landed-cost quotes, export-control checks, customs declarations, denied-party screenings, trade document packets, broker handoffs, carrier handoffs, compliance holds, country restriction policies, rules, parameters, configuration, schema extensions, audit evidence, inbox/outbox, and dead-letter evidence.
+- Existing command/query surface: runtime configuration, parameters, rules, schema extensions, event receiving, product classification, landed-cost quoting, export-control screening, customs declaration filing and release, denied-party screening, document packet preparation, broker/carrier handoffs, compliance hold open/resolution, country restriction policy registration, control tests, workbench, schema/service/release evidence, permissions, UI binding, and boundary verification.
+- Existing events and dependencies: consumes `OrderPlaced`, `InventoryReserved`, `PaymentCaptured`, and `ShipmentDispatched`; emits `HSClassified`, `LandedCostQuoted`, `ExportControlCleared`, `CustomsDeclarationFiled`, `DeniedPartyScreened`, `TradeDocumentPacketPrepared`, `BrokerHandoffQueued`, `CarrierHandoffPrepared`, `TradeComplianceHoldOpened`, `TradeComplianceHoldResolved`, `CountryRestrictionPolicyRegistered`, and `CustomsDeclarationReleased`; integrates with order, inventory, payment, shipment, broker, carrier, customer, and audit only through declared APIs/events/projections.
 
 ## 50 Better-Than-World-Class Improvements
 
-### 1. Deep specialist lifecycle semantics for `cross_border_trade_hs_classification`
+### 1. HS classification readiness gate
 
-**Justification:** This owned table is part of the Cross-Border Trade and Customs Compliance operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by HS code assignment, landed cost, export controls, and customs declarations.
+**Justification:** HS classification is unsafe when product description, materials, origin, destination, end use, and supporting evidence are incomplete.
 
-**Improvement:** Extend `cross_border_trade_hs_classification` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `hs_classification`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add readiness checks for item identity, description, composition, country of origin, destination, end use, customer/channel context, prior classifications, keyword evidence, confidence, reviewer threshold, and effective date before publishing `HSClassified`.
 
-### 2. Deep specialist lifecycle semantics for `cross_border_trade_landed_cost_quote`
+### 2. HS classification lifecycle governance
 
-**Justification:** This owned table is part of the Cross-Border Trade and Customs Compliance operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by HS code assignment, landed cost, export controls, and customs declarations.
+**Justification:** Classifications need draft, reviewed, approved, superseded, disputed, expired, and blocked states to support audit and reclassification.
 
-**Improvement:** Extend `cross_border_trade_landed_cost_quote` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `landed_cost_quote`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Implement state transitions with classifier, reviewer, confidence, legal basis, ruling reference, reason, effective window, supersession lineage, idempotency key, and invalid-transition explanations.
 
-### 3. Deep specialist lifecycle semantics for `cross_border_trade_export_control_check`
+### 3. Classification evidence graph
 
-**Justification:** This owned table is part of the Cross-Border Trade and Customs Compliance operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by HS code assignment, landed cost, export controls, and customs declarations.
+**Justification:** Trade specialists need to trace why a classification was selected and what evidence supported it.
 
-**Improvement:** Extend `cross_border_trade_export_control_check` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `export_control_check`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Link product attributes, materials, keywords, images/documents, prior rulings, country rules, reviewer notes, confidence factors, and audit hashes into a package-local classification graph.
 
-### 4. Deep specialist lifecycle semantics for `cross_border_trade_customs_declaration`
+### 4. Multi-jurisdiction classification variance
 
-**Justification:** This owned table is part of the Cross-Border Trade and Customs Compliance operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by HS code assignment, landed cost, export controls, and customs declarations.
+**Justification:** HS interpretation and duty treatment can vary by destination country, trade agreement, and local tariff schedule.
 
-**Improvement:** Extend `cross_border_trade_customs_declaration` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `customs_declaration`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Store jurisdiction-specific classification variants with destination, local code extension, tariff source, effective date, confidence, reviewer, and country restriction implications.
 
-### 5. Deep specialist lifecycle semantics for `cross_border_trade_denied_party_screening`
+### 5. Landed-cost quote completeness
 
-**Justification:** This owned table is part of the Cross-Border Trade and Customs Compliance operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by HS code assignment, landed cost, export controls, and customs declarations.
+**Justification:** Landed cost must include goods value, freight, insurance, duty, tax, fees, Incoterms, currency, and assumptions.
 
-**Improvement:** Extend `cross_border_trade_denied_party_screening` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `country_of_origin`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Validate quote inputs for item value, quantity, origin, destination, currency, Incoterms, shipping cost, insurance, broker fees, duty rates, tax rates, de minimis rules, and quote expiry.
 
-### 6. Deep specialist lifecycle semantics for `cross_border_trade_trade_document_packet`
+### 6. Duty and tax calculation trace
 
-**Justification:** This owned table is part of the Cross-Border Trade and Customs Compliance operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by HS code assignment, landed cost, export controls, and customs declarations.
+**Justification:** Auditors and customers need to understand how duties and taxes were calculated.
 
-**Improvement:** Extend `cross_border_trade_trade_document_packet` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `duty_tax_fee_calculation`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Record calculation lines for customs value, duty basis, rate source, duty amount, tax basis, tax rate, tax amount, fee amount, currency conversion, rounding, and excluded/assumed components.
 
-### 7. Deep specialist lifecycle semantics for `cross_border_trade_broker_handoff`
+### 7. Incoterm obligation model
 
-**Justification:** This owned table is part of the Cross-Border Trade and Customs Compliance operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by HS code assignment, landed cost, export controls, and customs declarations.
+**Justification:** Incoterms determine who owns customs clearance, risk transfer, cost responsibility, and document obligations.
 
-**Improvement:** Extend `cross_border_trade_broker_handoff` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `restricted_party_and_sanctions_screening`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add Incoterm rules for cost allocation, duty payer, tax payer, risk transfer point, document obligations, broker responsibility, carrier handoff requirements, and customer-facing disclosure.
 
-### 8. Deep specialist lifecycle semantics for `cross_border_trade_carrier_handoff`
+### 8. De minimis and threshold handling
 
-**Justification:** This owned table is part of the Cross-Border Trade and Customs Compliance operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by HS code assignment, landed cost, export controls, and customs declarations.
+**Justification:** Low-value shipments may qualify for simplified clearance, duty relief, or special tax treatment.
 
-**Improvement:** Extend `cross_border_trade_carrier_handoff` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `license_requirement_detection`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Model de minimis thresholds by country, currency, product category, shipment value, customer type, excluded goods, evidence requirements, and quote/declaration effects.
 
-### 9. Deep specialist lifecycle semantics for `cross_border_trade_trade_compliance_hold`
+### 9. Denied-party screening lifecycle
 
-**Justification:** This owned table is part of the Cross-Border Trade and Customs Compliance operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by HS code assignment, landed cost, export controls, and customs declarations.
+**Justification:** Restricted-party screening must be auditable across counterparty, ship-to, bill-to, payer, consignee, broker, and carrier identities.
 
-**Improvement:** Extend `cross_border_trade_trade_compliance_hold` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `incoterm_support`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add screening states, parties screened, list sources, match strength, aliases, address matching, risk decision, reviewer, expiry, hold linkage, and `DeniedPartyScreened` event evidence.
 
-### 10. Deep specialist lifecycle semantics for `cross_border_trade_country_restriction_policy`
+### 10. Fuzzy match resolution controls
 
-**Justification:** This owned table is part of the Cross-Border Trade and Customs Compliance operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by HS code assignment, landed cost, export controls, and customs declarations.
+**Justification:** Screening creates false positives and false negatives that require controlled adjudication.
 
-**Improvement:** Extend `cross_border_trade_country_restriction_policy` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `broker_submission_handoff`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add match adjudication with candidate list, similarity factors, identity evidence, reviewer outcome, override reason, expiration, rescreen trigger, and audit proof.
 
-### 11. Make `command_landed_cost` a complete command lifecycle
+### 11. Export-control check readiness
 
-**Justification:** High-value users need `command_landed_cost` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Export-control decisions need item, destination, end use, end user, license, classification, and order context.
 
-**Improvement:** Implement `command_landed_cost` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `CustomsDeclarationPrepared`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Validate classification, controlled item flags, destination restrictions, end-use statement, end-user screening, license requirement, exception eligibility, and review threshold before clearance.
 
-### 12. Make `command_export_checks` a complete command lifecycle
+### 12. License requirement detection
 
-**Justification:** High-value users need `command_export_checks` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Some goods, destinations, customers, and end uses require export licenses or deny shipment.
 
-**Improvement:** Implement `command_export_checks` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `LandedCostCalculated`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add license trigger rules with jurisdiction, item class, HS/export code, destination, end use, party risk, exception code, license id, expiry, and hold/release effect.
 
-### 13. Make `command_declarations` a complete command lifecycle
+### 13. Country restriction policy governance
 
-**Justification:** High-value users need `command_declarations` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Restricted countries, embargoes, sanctions, product bans, and local import rules change frequently.
 
-**Improvement:** Implement `command_declarations` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `DeniedPartyScreened`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Register policies with country, region, product scope, party scope, restriction type, severity, effective dates, source reference, reviewer, and compiled policy hash.
 
-### 14. Turn `query_cross_border_trade_workbench` into an expert read-model experience
+### 14. Compliance hold lifecycle
 
-**Justification:** Domain experts rely on `query_cross_border_trade_workbench` for operational decisions; a world-class read path must be explainable, filterable, temporally accurate, and safe under stale projections.
+**Justification:** Holds must prevent shipment or release until missing evidence, screening, licensing, or documents are resolved.
 
-**Improvement:** Build `query_cross_border_trade_workbench` as a dedicated query contract with projection freshness, filter validation, pagination, saved views, temporal/as-of reads, row-level permissions, traceable source records, and UI drilldowns. Add agent explanations for how the answer was produced, what events like `TradeDocumentPacketPrepared` last changed the projection, and where uncertainty or missing data affects confidence.
+**Improvement:** Implement hold states open, assigned, evidence_pending, reviewed, resolved, released, expired, escalated, and blocked with source, severity, owner, SLA, release conditions, and emitted events.
 
-### 15. Make `command_denied_party_screenings` a complete command lifecycle
+### 15. Document packet completeness
 
-**Justification:** High-value users need `command_denied_party_screenings` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Customs declarations require commercial invoice, packing list, certificate, license, origin evidence, and carrier/broker-specific documents.
 
-**Improvement:** Implement `command_denied_party_screenings` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `BrokerHandoffQueued`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add document packet rules by country, Incoterm, product, value, carrier, broker, and declaration type, with required documents, hashes, missing evidence, expiry, and completeness score.
 
-### 16. Make `command_document_packets` a complete command lifecycle
+### 16. Semantic trade document parsing
 
-**Justification:** High-value users need `command_document_packets` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Trade documents contain classification, origin, value, party, license, and shipment facts that should be extracted safely.
 
-**Improvement:** Implement `command_document_packets` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `CarrierHandoffPrepared`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Parse invoices, packing lists, certificates, licenses, and broker forms into candidate facts with confidence, evidence links, field gaps, policy checks, and side-effect-free previews.
 
-### 17. Make `command_broker_handoffs` a complete command lifecycle
+### 17. Customs declaration lifecycle
 
-**Justification:** High-value users need `command_broker_handoffs` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Declarations move through draft, documents_ready, broker_queued, filed, accepted, rejected, amended, released, closed, and cancelled.
 
-**Improvement:** Implement `command_broker_handoffs` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `TradeComplianceHoldOpened`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Implement declaration state transitions with filing data, broker handoff, carrier handoff, duties/taxes, holds, document packet, idempotency key, and release gates.
 
-### 18. Make `command_carrier_handoffs` a complete command lifecycle
+### 18. Declaration release gate
 
-**Justification:** High-value users need `command_carrier_handoffs` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Customs declarations should not be released while holds, missing documents, denied-party risk, or export-control blocks remain.
 
-**Improvement:** Implement `command_carrier_handoffs` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `TradeComplianceHoldResolved`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Enforce release checks for approved HS classification, landed-cost quote, denied-party clearance, export-control clearance, document completeness, broker status, carrier readiness, duties/taxes, and hold resolution.
 
-### 19. Make `command_compliance_holds` a complete command lifecycle
+### 19. Broker handoff orchestration
 
-**Justification:** High-value users need `command_compliance_holds` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Broker handoffs require payload completeness, filing readiness, retry handling, and response tracking.
 
-**Improvement:** Implement `command_compliance_holds` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `CountryRestrictionPolicyRegistered`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Track broker route, payload hash, filing method, submission state, response codes, correction requests, retry policy, broker SLA, and declaration linkage.
 
-### 20. Make `command_hold_resolutions` a complete command lifecycle
+### 20. Carrier handoff readiness
 
-**Justification:** High-value users need `command_hold_resolutions` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Carriers require customs references, documents, labels, commercial invoices, and shipment constraints before cross-border movement.
 
-**Improvement:** Implement `command_hold_resolutions` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `CustomsDeclarationReleased`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Validate carrier service, route, documents, customs reference, Incoterm obligations, restricted goods, handoff payload, carrier acknowledgement, and shipment-dispatch linkage.
 
-### 21. Operationalize `event_sourced_trade_lifecycle` as a governed decision system
+### 21. Broker and carrier performance scoring
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Cross-Border Trade and Customs Compliance and measurably improves authorization rate without hiding assumptions.
+**Justification:** Broker and carrier choices affect clearance speed, cost, compliance risk, and customer experience.
 
-**Improvement:** Promote `event_sourced_trade_lifecycle` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `authorization_rate`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Score providers by acceptance rate, correction rate, clearance time, fee, delay, compliance exceptions, carbon profile, country coverage, and claim/escalation history.
 
-### 22. Operationalize `owned_trade_schema_boundary` as a governed decision system
+### 22. Carbon-aware broker routing
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Cross-Border Trade and Customs Compliance and measurably improves route margin without hiding assumptions.
+**Justification:** Trade routing can reduce emissions through broker/carrier choice and consolidation when deadlines allow.
 
-**Improvement:** Promote `owned_trade_schema_boundary` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `route_margin`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add carbon scoring for broker/carrier options with service deadline, clearance confidence, shipment urgency, cost, route emissions, consolidation, and override evidence.
 
-### 23. Operationalize `graph_relational_trade_topology` as a governed decision system
+### 23. Counterfactual landed-cost simulation
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Cross-Border Trade and Customs Compliance and measurably improves return cycle time without hiding assumptions.
+**Justification:** Trade teams need to compare origin, destination, Incoterm, carrier, broker, and duty scenarios before committing.
 
-**Improvement:** Promote `graph_relational_trade_topology` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `return_cycle_time`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Simulate alternate origins, destinations, Incoterms, declared values, carriers, brokers, trade programs, and duty treatments with total landed cost and compliance risk.
 
-### 24. Operationalize `multi_tenant_trade_isolation` as a governed decision system
+### 24. Duty and tax exposure forecasting
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Cross-Border Trade and Customs Compliance and measurably improves landed cost accuracy without hiding assumptions.
+**Justification:** Cross-border margin and customer pricing need forward-looking duty, tax, FX, and policy exposure.
 
-**Improvement:** Promote `multi_tenant_trade_isolation` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `landed_cost_accuracy`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Forecast duty/tax exposure by country, product, HS classification, trade lane, value band, exchange rate, policy change, and seasonality.
 
-### 25. Operationalize `schema_evolution_resilient_trade_schema` as a governed decision system
+### 25. Trade program eligibility
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Cross-Border Trade and Customs Compliance and measurably improves customs declaration prepared throughput without hiding assumptions.
+**Justification:** Free trade agreements, preferential duties, bonded programs, and drawback can materially affect landed cost.
 
-**Improvement:** Promote `schema_evolution_resilient_trade_schema` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `customs_declaration_prepared_throughput`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Model trade program eligibility with origin rules, documentation, value thresholds, product scope, certification evidence, expiry, reviewer approval, and quote/declaration effects.
 
-### 26. Operationalize `probabilistic_hs_classification_scoring` as a governed decision system
+### 26. Country-of-origin evidence
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Cross-Border Trade and Customs Compliance and measurably improves landed cost calculated throughput without hiding assumptions.
+**Justification:** Origin drives duties, restrictions, marking, and trade-program eligibility.
 
-**Improvement:** Promote `probabilistic_hs_classification_scoring` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `landed_cost_calculated_throughput`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Track origin source, supplier evidence, manufacturing country, substantial transformation rationale, certificate references, confidence, expiry, and declaration linkage.
 
-### 27. Operationalize `counterfactual_landed_cost_simulation` as a governed decision system
+### 27. Customs valuation controls
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Cross-Border Trade and Customs Compliance and measurably improves authorization rate without hiding assumptions.
+**Justification:** Incorrect customs values create duty underpayment, overpayment, penalties, and broker rejection.
 
-**Improvement:** Promote `counterfactual_landed_cost_simulation` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `authorization_rate`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add valuation checks for transaction value, assists, royalties, freight, insurance, discounts, related-party flag, currency conversion, and variance threshold.
 
-### 28. Operationalize `temporal_duty_tax_exposure_forecasting` as a governed decision system
+### 28. Trade exception workflow
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Cross-Border Trade and Customs Compliance and measurably improves route margin without hiding assumptions.
+**Justification:** Exceptions arise from classification uncertainty, denied-party matches, missing documents, broker rejections, carrier blocks, and duty variances.
 
-**Improvement:** Promote `temporal_duty_tax_exposure_forecasting` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `route_margin`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add exception cases with category, severity, affected declaration/quote, root cause, owner, SLA, recommended actions, evidence required, and closure proof.
 
-### 29. Operationalize `autonomous_trade_exception_resolution` as a governed decision system
+### 29. Autonomous exception recommendation
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Cross-Border Trade and Customs Compliance and measurably improves return cycle time without hiding assumptions.
+**Justification:** Trade specialists need fast but controlled recommendations for complex compliance exceptions.
 
-**Improvement:** Promote `autonomous_trade_exception_resolution` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `return_cycle_time`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Recommend next actions for missing document, classification review, license check, denied-party false positive, broker rejection, carrier hold, and duty variance with rationale and approval requirements.
 
-### 30. Operationalize `semantic_trade_document_understanding` as a governed decision system
+### 30. Trade anomaly detection
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Cross-Border Trade and Customs Compliance and measurably improves landed cost accuracy without hiding assumptions.
+**Justification:** Abnormal patterns can indicate misclassification, evasion risk, broker issues, fraud, or integration failures.
 
-**Improvement:** Promote `semantic_trade_document_understanding` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `landed_cost_accuracy`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Detect anomalies in HS code changes, duty variance, denied-party matches, document gaps, broker rejections, carrier handoff failures, declaration amendments, and dead-letter spikes.
 
-### 31. Create simulation-grade governance for `CROSS_BORDER_TRADE_DATABASE_URL` and `CROSS_BORDER_TRADE_DATABASE_URL`
+### 31. Stochastic trade exposure model
 
-**Justification:** Complete Cross-Border Trade and Customs Compliance coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Trade exposure spans duties, taxes, fines, holds, delays, rejected declarations, customer churn, and margin loss.
 
-**Improvement:** Add a policy cockpit where `CROSS_BORDER_TRADE_DATABASE_URL` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `CROSS_BORDER_TRADE_DATABASE_URL` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Model exposure distributions by shipment, country, product, broker, carrier, value, party risk, classification confidence, and document completeness with mitigation.
 
-### 32. Create simulation-grade governance for `CROSS_BORDER_TRADE_EVENT_TOPIC` and `CROSS_BORDER_TRADE_EVENT_TOPIC`
+### 32. Governed trade model evidence
 
-**Justification:** Complete Cross-Border Trade and Customs Compliance coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Classification, risk, cost, and routing models affect compliance and financial outcomes.
 
-**Improvement:** Add a policy cockpit where `CROSS_BORDER_TRADE_EVENT_TOPIC` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `CROSS_BORDER_TRADE_EVENT_TOPIC` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Track model purpose, training window, feature lineage, validation metrics, drift, false-clear/false-hold impact, approval status, rollback, and explainability evidence.
 
-### 33. Create simulation-grade governance for `CROSS_BORDER_TRADE_RETRY_LIMIT` and `CROSS_BORDER_TRADE_RETRY_LIMIT`
+### 33. Cryptographic trade proof
 
-**Justification:** Complete Cross-Border Trade and Customs Compliance coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Auditors, brokers, and counterparties may need proof of clearance, classification, or policy screening without full data exposure.
 
-**Improvement:** Add a policy cockpit where `CROSS_BORDER_TRADE_RETRY_LIMIT` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `CROSS_BORDER_TRADE_RETRY_LIMIT` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Generate selective-disclosure proofs for classification, screening, declaration release, document completeness, landed-cost quote, and hold resolution with verifier and expiry.
 
-### 34. Create simulation-grade governance for `CROSS_BORDER_TRADE_DATABASE_URL` and `CROSS_BORDER_TRADE_DATABASE_URL`
+### 34. Immutable trade audit trail
 
-**Justification:** Complete Cross-Border Trade and Customs Compliance coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Customs audits require reconstruction of decisions, documents, filings, holds, and releases.
 
-**Improvement:** Add a policy cockpit where `CROSS_BORDER_TRADE_DATABASE_URL` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `CROSS_BORDER_TRADE_DATABASE_URL` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Hash-chain classifications, quotes, screens, documents, broker handoffs, carrier handoffs, declarations, holds, releases, and AppGen-X event deliveries.
 
-### 35. Create simulation-grade governance for `CROSS_BORDER_TRADE_EVENT_TOPIC` and `CROSS_BORDER_TRADE_EVENT_TOPIC`
+### 35. Dynamic trade policy screening
 
-**Justification:** Complete Cross-Border Trade and Customs Compliance coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Trade policy varies by country, item, party, value, Incoterm, license, document status, and shipment route.
 
-**Improvement:** Add a policy cockpit where `CROSS_BORDER_TRADE_EVENT_TOPIC` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `CROSS_BORDER_TRADE_EVENT_TOPIC` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Compile deterministic screening policies for classification, landed cost, denied parties, export control, documents, broker handoff, carrier handoff, holds, and declaration release.
 
-### 36. Upgrade `CrossBorderTradeWorkbench` into a full specialist command center
+### 36. AppGen-X inbox reliability
 
-**Justification:** The PBC UI must expose the complete Cross-Border Trade and Customs Compliance surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Order, inventory, payment, and shipment events are foundational inputs to trade execution.
 
-**Improvement:** Expand `CrossBorderTradeWorkbench` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add inbox schema validation, idempotency, duplicate suppression, retry evidence, unsupported-event rejection, dead-letter promotion, projection rebuild, and replay/quarantine controls.
 
-### 37. Upgrade `CrossBorderTradeDetail` into a full specialist command center
+### 37. AppGen-X outbox delivery assurance
 
-**Justification:** The PBC UI must expose the complete Cross-Border Trade and Customs Compliance surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Trade events must reliably reach order, shipment, carrier, broker, audit, customer, and finance flows.
 
-**Improvement:** Expand `CrossBorderTradeDetail` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add outbox state, ordering group, payload hash, retry attempts, next retry, delivery proof, dead-letter linkage, and replay controls for emitted trade events.
 
-### 38. Upgrade `CrossBorderTradeWorkbench` into a full specialist command center
+### 38. Cross-PBC boundary proof
 
-**Justification:** The PBC UI must expose the complete Cross-Border Trade and Customs Compliance surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Cross Border Trade must not directly read or write order, inventory, payment, shipment, broker, carrier, customer, or audit tables.
 
-**Improvement:** Expand `CrossBorderTradeWorkbench` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add release evidence scanning schema descriptors, services, routes, DSL, workbench bindings, and agent plans for foreign table access, proving dependencies are APIs, events, or projections only.
 
-### 39. Upgrade `CrossBorderTradeDetail` into a full specialist command center
+### 39. Runtime parameter governance
 
-**Justification:** The PBC UI must expose the complete Cross-Border Trade and Customs Compliance surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Classification thresholds, duty variance tolerance, denied-party thresholds, de minimis values, and routing weights change compliance outcomes.
 
-**Improvement:** Expand `CrossBorderTradeDetail` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add parameter bounds, impact simulation, approval workflow, effective dating, tenant/country overrides, rollback, and release evidence before parameter changes activate.
 
-### 40. Upgrade `CrossBorderTradeWorkbench` into a full specialist command center
+### 40. Schema extension governance
 
-**Justification:** The PBC UI must expose the complete Cross-Border Trade and Customs Compliance surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Trade operations need custom country, product, broker, carrier, and document fields while preserving owned boundaries.
 
-**Improvement:** Expand `CrossBorderTradeWorkbench` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Allow extensions only on owned trade tables with field validation, sensitivity classification, migration preview, UI binding preview, API exposure review, and release-audit evidence.
 
-### 41. Prove cross-PBC federation for `POST /landed-cost` and `ProductClassified`
+### 41. Trade workbench coverage
 
-**Justification:** Cross-Border Trade and Customs Compliance must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Specialists need a complete compliance command center, not scattered classification and declaration tables.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /landed-cost` and consumed event `ProductClassified` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Expand workbench surfaces for classifications, landed cost, screening, documents, broker handoffs, carrier handoffs, declarations, holds, policies, events, rules, parameters, configuration, and release evidence.
 
-### 42. Prove cross-PBC federation for `POST /export-checks` and `OrderPriced`
+### 42. Classification review console
 
-**Justification:** Cross-Border Trade and Customs Compliance must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Low-confidence HS classifications need expert review with evidence and alternatives.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /export-checks` and consumed event `OrderPriced` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Add review queues with confidence, candidate codes, evidence snippets, prior decisions, duty impact, restriction impact, reviewer notes, and approval actions.
 
-### 43. Prove cross-PBC federation for `POST /declarations` and `ProductClassified`
+### 43. Declaration operations cockpit
 
-**Justification:** Cross-Border Trade and Customs Compliance must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Operators need real-time visibility into declaration readiness, broker response, carrier readiness, holds, and release status.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /declarations` and consumed event `ProductClassified` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Add cockpit views for declaration state, document packet, broker handoff, carrier handoff, duty/tax, holds, errors, release gates, and customer/shipment impact.
 
-### 44. Prove cross-PBC federation for `GET /cross-border-trade-workbench` and `OrderPriced`
+### 44. Denied-party screening panel
 
-**Justification:** Cross-Border Trade and Customs Compliance must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Screening teams need controlled match adjudication and audit-ready decisions.
 
-**Improvement:** Add compatibility tests and workbench evidence for `GET /cross-border-trade-workbench` and consumed event `OrderPriced` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Add panels with party roles, match candidates, similarity factors, source lists, reviewer decisions, rescreen dates, hold linkage, and release evidence.
 
-### 45. Temporal reconstruction and bitemporal audit for Cross-Border Trade and Customs Compliance
+### 45. Continuous trade control testing
 
-**Justification:** Regulated and operationally complex domains need to answer what was known, valid, processed, and visible at any point in time.
+**Justification:** Trade compliance controls must run continuously, not just during release checks.
 
-**Improvement:** Add transaction-time, valid-time, and processing-time fields to core records, temporal query APIs, projection rebuild tooling, and UI time travel so specialists can reconstruct decisions, reports, and automation outcomes.
+**Improvement:** Add assertions for declaration without classification, release with open hold, missing documents, stale screening, blocked country, unsupported Incoterm, foreign-table access, dead-letter aging, and agent-preview bypass.
 
-### 46. Bulk operations and migration-grade controls for Cross-Border Trade and Customs Compliance
+### 46. Trade resilience drills
 
-**Justification:** World-class deployments must handle imports, mass corrections, high-volume operating days, and cutovers without bypassing governance.
+**Justification:** Cross-border execution must degrade safely through broker outages, carrier failures, duplicate events, and missing documents.
 
-**Improvement:** Add staged bulk upload, duplicate detection, chunked validation, approval sampling, partial failure handling, retry dashboards, reconciliation summaries, and agent-generated remediation plans for large batches.
+**Improvement:** Add drills for duplicate order event, inventory delay, payment delay, shipment dispatch replay, broker rejection, carrier acknowledgement failure, dead-letter recovery, and workbench degraded mode.
 
-### 47. Specialist edge-case playbooks for Cross-Border Trade and Customs Compliance
+### 47. Crypto-agile trade authorization
 
-**Justification:** Rare cases often carry the highest financial, legal, safety, service, or compliance risk.
+**Justification:** Trade proofs and audit evidence need durable signatures and future key rotation.
 
-**Improvement:** Create a playbook catalog with detection rules, required evidence, escalation paths, fallback actions, owner roles, and release-audited tests for high-severity edge cases and exception queues.
+**Improvement:** Add crypto epoch, signing profile, key rotation evidence, proof compatibility, revocation, and migration readiness across trade proofs and audit traces.
 
-### 48. Pre-mutation simulation and blast-radius analysis for Cross-Border Trade and Customs Compliance
+### 48. Agent-safe trade plans
 
-**Justification:** Users should understand consequences before committing irreversible, customer-visible, operationally disruptive, or financially material changes.
+**Justification:** The trade chatbot must not silently release declarations, override holds, or change classification and screening rules.
 
-**Improvement:** Add what-if simulation for every material command, showing impacted records, emitted events, dependent projections, rule outcomes, approvals, downstream PBC dependencies, and rollback limits.
+**Improvement:** Require side-effect-free plans naming command, permission, owned tables, idempotency key, expected event, compliance impact, financial impact, rollback limits, and human confirmation.
 
-### 49. Continuous control testing and operational assurance for Cross-Border Trade and Customs Compliance
+### 49. Cross Border Trade readiness score
 
-**Justification:** Better-than-world-class PBCs prove controls continuously, not only at release or during periodic audits.
+**Justification:** Users need an evidence-backed view of whether `cross_border_trade` is ready for live customs and compliance execution.
 
-**Improvement:** Add executable control assertions, sampled evidence checks, anomaly thresholds, control-owner dashboards, breach/recovery events, and release gates that fail when domain controls lose evidence.
+**Improvement:** Compute readiness from classification, landed-cost quoting, screening, document packets, broker/carrier handoffs, declarations, holds, duties/taxes, event reliability, UI coverage, model governance, controls, boundary proof, and agent safety.
 
-### 50. Human-in-the-loop domain agent execution for Cross-Border Trade and Customs Compliance
+### 50. End-to-end customs release proof
 
-**Justification:** The PBC chatbot must help specialists perform real work while preventing unsafe autonomous mutation.
+**Justification:** A complete Cross Border Trade PBC must prove it can execute the full lifecycle from order event to customs release.
 
-**Improvement:** Add domain-specific skills, document parsing, task planning, CRUD previews, confidence/risk scoring, confirmation gates, redaction, policy explanations, and post-action evidence packets for every supported command and query.
+**Improvement:** Add an executable proof scenario covering order/inventory/payment/shipment event intake, HS classification, landed-cost quote, denied-party screening, export-control clearance, document packet, broker and carrier handoffs, declaration filing, hold resolution if needed, declaration release, emitted events, UI evidence, boundary proof, controls, and agent explanation.
