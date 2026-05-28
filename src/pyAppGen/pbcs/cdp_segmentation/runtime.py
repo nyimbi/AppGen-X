@@ -6,6 +6,7 @@ import copy
 import hashlib
 import json
 import math
+from pathlib import Path
 
 
 CDP_SEGMENTATION_REQUIRED_EVENT_TOPIC = "appgen.cdp_segmentation.events"
@@ -646,14 +647,49 @@ def cdp_segmentation_evaluate_segments(state: dict, customer_id: str) -> dict:
         raise ValueError(f"Unknown CDP Segmentation profile: {customer_id}")
     memberships = []
     threshold = float(runtime["parameters"].get("membership_score_threshold", {"value": 0.5})["value"])
+    consent = _latest_consent_record(runtime, customer_id)
+    rule = _select_rule(runtime, profile["tenant"]) or {}
+    consent_required = bool(rule.get("consent_policy", {}).get("require_opt_in", True))
     for segment in runtime["segment_definitions"].values():
         if segment["tenant"] != profile["tenant"] or segment["status"] != "active":
             continue
         score = _membership_score(runtime, customer_id, segment)
-        status = "member" if score >= threshold else "excluded"
         membership_id = f"{segment['segment_id']}:{customer_id}"
-        membership = {"membership_id": membership_id, "tenant": profile["tenant"], "segment_id": segment["segment_id"], "customer_id": customer_id, "score": score, "status": status, "audit_proof": _digest({"segment": segment, "profile": profile, "score": score})}
+        prior = runtime["segment_memberships"].get(membership_id)
+        consent_allows_membership = bool(consent.get("opt_in", profile.get("opt_in", False))) or not consent_required
+        if score >= threshold and consent_allows_membership:
+            status = "member"
+        elif score >= threshold:
+            status = "blocked_consent"
+        else:
+            status = "excluded"
+        membership = {
+            "membership_id": membership_id,
+            "tenant": profile["tenant"],
+            "segment_id": segment["segment_id"],
+            "customer_id": customer_id,
+            "score": score,
+            "status": status,
+            "previous_status": prior.get("status") if prior else "new",
+            "consent_required": consent_required,
+            "consent_status": consent.get("status", "unknown"),
+            "audit_proof": _digest({"segment": segment, "profile": profile, "score": score, "status": status}),
+        }
         runtime["segment_memberships"][membership_id] = membership
+        evaluation_id = f"evaluation_{len(runtime['membership_evaluations']) + 1}"
+        runtime["membership_evaluations"][evaluation_id] = {
+            "evaluation_id": evaluation_id,
+            "tenant": profile["tenant"],
+            "segment_id": segment["segment_id"],
+            "customer_id": customer_id,
+            "score": score,
+            "previous_status": membership["previous_status"],
+            "new_status": status,
+            "consent_status": membership["consent_status"],
+            "transition": f"{membership['previous_status']}->{status}",
+            "status": "recorded",
+            "audit_proof": membership["audit_proof"],
+        }
         memberships.append(membership)
         if status == "member":
             _emit(runtime, "CustomerSegmentUpdated", profile["tenant"], membership)
@@ -667,8 +703,32 @@ def cdp_segmentation_activate_segment(state: dict, segment_id: str) -> dict:
         raise ValueError(f"Unknown CDP Segmentation segment: {segment_id}")
     runtime = _copy_state(state)
     activated = tuple(m for m in runtime["segment_memberships"].values() if m["segment_id"] == segment_id and m["status"] == "member")
-    runtime["events"].append(_state_event("SegmentActivated", segment_id, {"segment_id": segment_id, "member_count": len(activated)}))
-    return {"ok": True, "state": runtime, "activation": {"segment_id": segment_id, "member_count": len(activated)}}
+    activation_id = f"activate_{segment_id}_{len(runtime['activation_runs']) + 1}"
+    activation = {
+        "activation_id": activation_id,
+        "segment_id": segment_id,
+        "tenant": segment["tenant"],
+        "member_count": len(activated),
+        "status": "activated",
+        "audit_proof": _digest({"segment_id": segment_id, "members": tuple(item["membership_id"] for item in activated)}),
+    }
+    runtime["activation_runs"][activation_id] = activation
+    runtime["activation_deliveries"][activation_id] = {
+        "delivery_id": activation_id,
+        "tenant": segment["tenant"],
+        "destination": "workbench_preview",
+        "member_count": len(activated),
+        "status": "reconciled",
+    }
+    runtime["audience_snapshots"][activation_id] = {
+        "snapshot_id": activation_id,
+        "tenant": segment["tenant"],
+        "segment_id": segment_id,
+        "member_count": len(activated),
+        "status": "captured",
+    }
+    runtime["events"].append(_state_event("SegmentActivated", segment_id, activation))
+    return {"ok": True, "state": runtime, "activation": activation}
 
 
 def cdp_segmentation_simulate_segment_membership(state: dict, command: dict) -> dict:
@@ -1029,6 +1089,34 @@ def cdp_segmentation_build_workbench_view(state: dict, *, tenant: str) -> dict:
     segments = tuple(item for item in state.get("segment_definitions", {}).values() if item["tenant"] == tenant)
     memberships = tuple(item for item in state.get("segment_memberships", {}).values() if item["tenant"] == tenant)
     profiles = {item["customer_id"] for item in state.get("profile_properties", {}).values() if item["tenant"] == tenant}
+    evaluations = tuple(
+        item for item in state.get("membership_evaluations", {}).values() if item["tenant"] == tenant
+    )
+    consent_entries = tuple(item for item in state.get("profile_consents", {}).values() if item["tenant"] == tenant)
+    top_segments = tuple(
+        {
+            "segment_id": segment["segment_id"],
+            "name": segment["name"],
+            "status": segment["status"],
+            "member_count": len(
+                tuple(
+                    membership
+                    for membership in memberships
+                    if membership["segment_id"] == segment["segment_id"] and membership["status"] == "member"
+                )
+            ),
+        }
+        for segment in segments[:5]
+    )
+    alerts = tuple(
+        alert
+        for alert in (
+            "configuration_missing" if not state.get("configuration", {}).get("ok") else None,
+            "consent_blocked_memberships" if any(item["status"] == "blocked_consent" for item in memberships) else None,
+            "dead_letter_backlog" if state.get("dead_letter") else None,
+        )
+        if alert
+    )
     return {
         "format": "appgen.cdp-segmentation-workbench-view.v1",
         "tenant": tenant,
@@ -1042,6 +1130,10 @@ def cdp_segmentation_build_workbench_view(state: dict, *, tenant: str) -> dict:
         "configuration_bound": bool(state.get("configuration", {}).get("ok")),
         "rule_count": len(state.get("rules", {})),
         "parameter_count": len(state.get("parameters", {})),
+        "consent_entry_count": len(consent_entries),
+        "recent_membership_transitions": evaluations[-5:],
+        "top_segments": top_segments,
+        "alerts": alerts,
         "binding_evidence": {"owned_tables": CDP_SEGMENTATION_OWNED_TABLES, "outbox_table": "cdp_segmentation_appgen_outbox_event", "inbox_table": "cdp_segmentation_appgen_inbox_event", "dead_letter_table": "cdp_segmentation_dead_letter_event"},
     }
 
@@ -1107,6 +1199,38 @@ def cdp_segmentation_build_api_contract() -> dict:
         "format": "appgen.cdp-segmentation-api-contract.v1",
         "ok": True,
         "routes": (
+            {
+                "route": "POST /cdp-segmentation/configuration",
+                "command": "configure_runtime",
+                "owned_tables": ("cdp_segmentation_configuration",),
+                "emits": (),
+                "requires_permission": "cdp_segmentation.configure",
+                "idempotency_key": "tenant:database_backend:event_topic",
+            },
+            {
+                "route": "POST /cdp-segmentation/parameters",
+                "command": "set_parameter",
+                "owned_tables": ("cdp_segmentation_parameter",),
+                "emits": (),
+                "requires_permission": "cdp_segmentation.configure",
+                "idempotency_key": "name",
+            },
+            {
+                "route": "POST /cdp-segmentation/rules",
+                "command": "register_rule",
+                "owned_tables": ("cdp_segmentation_rule",),
+                "emits": (),
+                "requires_permission": "cdp_segmentation.configure",
+                "idempotency_key": "rule_id",
+            },
+            {
+                "route": "POST /cdp-segmentation/schema-extensions",
+                "command": "register_schema_extension",
+                "owned_tables": ("cdp_segmentation_configuration",),
+                "emits": (),
+                "requires_permission": "cdp_segmentation.configure",
+                "idempotency_key": "table",
+            },
             {
                 "route": "POST /events",
                 "command": "ingest_customer_event",
@@ -1285,6 +1409,9 @@ def cdp_segmentation_build_api_contract() -> dict:
             },
         ),
         "declared_catalog_routes": (
+            "POST /cdp-segmentation/configuration",
+            "POST /cdp-segmentation/parameters",
+            "POST /cdp-segmentation/rules",
             "POST /events",
             "POST /segments",
             "POST /segment-simulations",
@@ -1405,6 +1532,17 @@ def cdp_segmentation_build_release_evidence() -> dict:
     service = cdp_segmentation_build_service_contract()
     api = cdp_segmentation_build_api_contract()
     permissions = cdp_segmentation_permissions_contract()
+    package_dir = Path(__file__).resolve().parent
+    required_docs = (
+        "README.md",
+        "implementation-plan.md",
+        "implementation-status.md",
+        "RELEASE_EVIDENCE.md",
+    )
+    required_tests = (
+        "tests/test_contract.py",
+        "tests/test_execution.py",
+    )
     checks = (
         {"id": "owned_schema_depth", "ok": len(schema["owned_tables"]) >= 45},
         {"id": "migration_per_owned_table", "ok": len(schema["migrations"]) == len(schema["owned_tables"])},
@@ -1415,6 +1553,8 @@ def cdp_segmentation_build_release_evidence() -> dict:
         {"id": "permissions_cover_release_queries", "ok": {"build_schema_contract", "build_service_contract", "build_release_evidence"} <= set(permissions["action_permissions"])},
         {"id": "runtime_event_tables_owned", "ok": set(CDP_SEGMENTATION_RUNTIME_TABLES) <= set(schema["owned_tables"])},
         {"id": "no_shared_table_access", "ok": not schema["shared_table_access"] and not service["shared_table_access"] and not api["shared_table_access"]},
+        {"id": "documentation_present", "ok": all((package_dir / name).exists() for name in required_docs)},
+        {"id": "package_local_tests_present", "ok": all((package_dir / name).exists() for name in required_tests)},
     )
     blocking = tuple(check for check in checks if not check["ok"])
     return {
@@ -1427,6 +1567,16 @@ def cdp_segmentation_build_release_evidence() -> dict:
         "service": service,
         "api": api,
         "permissions": permissions,
+        "documentation": {
+            "required": required_docs,
+            "present": tuple(name for name in required_docs if (package_dir / name).exists()),
+            "missing": tuple(name for name in required_docs if not (package_dir / name).exists()),
+        },
+        "tests": {
+            "required": required_tests,
+            "present": tuple(name for name in required_tests if (package_dir / name).exists()),
+            "missing": tuple(name for name in required_tests if not (package_dir / name).exists()),
+        },
     }
 
 
@@ -1615,6 +1765,17 @@ def _upsert_profile(state: dict, event: dict) -> None:
     for key, value in event.get("properties", {}).items():
         prop_id = f"{customer_id}:{key}"
         state["profile_properties"][prop_id] = {**base, "property_id": prop_id, "name": key, "value": value, "audit_proof": _digest({"customer_id": customer_id, "name": key, "value": value})}
+    if "opt_in" in event.get("properties", {}):
+        consent_id = f"consent_{event['event_id']}"
+        state["profile_consents"][consent_id] = {
+            "consent_id": consent_id,
+            "tenant": event["tenant"],
+            "customer_id": customer_id,
+            "opt_in": bool(event["properties"]["opt_in"]),
+            "region": event["region"],
+            "source_event": event["event_id"],
+            "status": "active" if event["properties"]["opt_in"] else "restricted",
+        }
     state["profile_enrichments"][f"enrich_{event['event_id']}"] = {
         "enrichment_id": f"enrich_{event['event_id']}",
         "tenant": event["tenant"],
@@ -1632,6 +1793,17 @@ def _profile(state: dict, customer_id: str) -> dict:
     for prop in properties:
         profile[prop["name"]] = prop["value"]
     return profile
+
+
+def _latest_consent_record(state: dict, customer_id: str) -> dict:
+    records = tuple(
+        record
+        for record in state.get("profile_consents", {}).values()
+        if record.get("customer_id") == customer_id
+    )
+    if not records:
+        return {}
+    return records[-1]
 
 
 def _membership_score(state: dict, customer_id: str, segment: dict) -> float:

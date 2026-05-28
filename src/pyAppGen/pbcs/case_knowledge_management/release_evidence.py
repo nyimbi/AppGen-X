@@ -1,43 +1,84 @@
 """Release evidence for the case_knowledge_management PBC."""
-PBC_KEY = 'case_knowledge_management'
+
+from __future__ import annotations
+
+from .agent import smoke_test as agent_smoke_test
+from .config import governance_smoke_test
+from .events import validate_event_contract
+from .handlers import smoke_test as handler_smoke_test
+from .routes import validate_api_route_contracts
+from .runtime import case_knowledge_management_build_release_evidence as runtime_release_evidence
+from .schema_contract import validate_schema_contract
+from .service_contract import validate_service_contract
+from .ui import smoke_test as ui_smoke_test
 
 
-def build_release_evidence():
-    checks = ({'id': 'schema_service_release', 'ok': True}, {'id': 'owned_boundary', 'ok': True}, {'id': 'agent_ui_governance', 'ok': True}, {'id': 'tests_present', 'ok': True})
-    return {'format': 'appgen.case-knowledge-management-release-evidence.v1', 'ok': True, 'pbc': PBC_KEY, 'checks': checks, 'blocking_gaps': (), 'boundary_gaps': (), 'side_effects': ()}
+PBC_KEY = "case_knowledge_management"
 
 
-def release_readiness_manifest():
-    evidence = build_release_evidence()
-    return {'ok': evidence['ok'], 'pbc': PBC_KEY, 'sections': ('schema','service','api','events','handlers','ui','agent','governance','tests'), 'checks': evidence['checks'], 'blocking_gaps': tuple(evidence.get('blocking_gaps', ())), 'boundary_gaps': tuple(evidence.get('boundary_gaps', ())), 'side_effects': ()}
-
-
-def validate_release_evidence():
-    evidence = build_release_evidence()
-    failed = tuple(check for check in evidence['checks'] if not check['ok'])
-    return {'ok': evidence['ok'] and not failed and not evidence['boundary_gaps'], 'missing_sections': (), 'failed_checks': failed, 'boundary_gaps': evidence['boundary_gaps'], 'blocking_gaps': failed, 'side_effects': ()}
-
-
-def smoke_test():
-    validation = validate_release_evidence()
-    return {'ok': validation['ok'], 'validation': validation, 'side_effects': ()}
-
-from .domain_depth import domain_depth_contract, domain_depth_smoke_test
-
-_BASE_RELEASE_EVIDENCE = build_release_evidence
-
-def build_release_evidence():
-    base = dict(_BASE_RELEASE_EVIDENCE())
-    domain = domain_depth_contract()
-    smoke = domain_depth_smoke_test()
-    checks = tuple(base.get('checks', ())) + (
-        {'id': 'world_class_domain_depth', 'ok': domain['ok']},
-        {'id': 'domain_depth_smoke', 'ok': smoke['ok']},
-        {'id': 'owned_domain_table_depth', 'ok': len(domain['owned_tables']) >= domain['minimum_owned_domain_tables']},
-        {'id': 'domain_operation_depth', 'ok': domain['operation_count'] >= domain['minimum_domain_operations']},
+def build_release_evidence() -> dict:
+    runtime = runtime_release_evidence()
+    checks = tuple(runtime["checks"]) + (
+        {"id": "schema_contract", "ok": validate_schema_contract()["ok"]},
+        {"id": "service_contract", "ok": validate_service_contract()["ok"]},
+        {"id": "route_contract", "ok": validate_api_route_contracts()["ok"]},
+        {"id": "event_contract", "ok": validate_event_contract()["ok"]},
+        {"id": "handler_smoke", "ok": handler_smoke_test()["ok"]},
+        {"id": "governance_smoke", "ok": governance_smoke_test()["ok"]},
+        {"id": "agent_smoke", "ok": agent_smoke_test()["ok"]},
+        {"id": "ui_smoke", "ok": ui_smoke_test()["ok"]},
     )
-    return {**base, 'ok': base.get('ok') is True and all(check['ok'] for check in checks), 'checks': checks, 'world_class_domain_depth': domain, 'domain_depth_smoke': smoke, 'blocking_gaps': tuple(check for check in checks if not check['ok'])}
+    failed = tuple(check for check in checks if not check["ok"])
+    return {
+        "format": "appgen.case-knowledge-management-release-evidence.v2",
+        "ok": not failed,
+        "pbc": PBC_KEY,
+        "checks": checks,
+        "blocking_gaps": failed,
+        "boundary_gaps": (),
+        "runtime": runtime,
+        "side_effects": (),
+    }
 
 
-def case_knowledge_management_build_release_evidence():
-    return build_release_evidence()
+def release_readiness_manifest() -> dict:
+    evidence = build_release_evidence()
+    return {
+        "ok": evidence["ok"],
+        "pbc": PBC_KEY,
+        "sections": (
+            "schema",
+            "services",
+            "api",
+            "events",
+            "handlers",
+            "ui",
+            "agent",
+            "governance",
+            "release",
+            "tests",
+        ),
+        "checks": evidence["checks"],
+        "blocking_gaps": evidence["blocking_gaps"],
+        "boundary_gaps": evidence["boundary_gaps"],
+        "module": __name__,
+        "side_effects": (),
+    }
+
+
+def validate_release_evidence() -> dict:
+    evidence = build_release_evidence()
+    failed = tuple(check for check in evidence["checks"] if not check["ok"])
+    return {
+        "ok": evidence["ok"] and not failed,
+        "missing_sections": (),
+        "failed_checks": failed,
+        "boundary_gaps": evidence["boundary_gaps"],
+        "blocking_gaps": failed,
+        "side_effects": (),
+    }
+
+
+def smoke_test() -> dict:
+    validation = validate_release_evidence()
+    return {"ok": validation["ok"], "validation": validation, "side_effects": ()}

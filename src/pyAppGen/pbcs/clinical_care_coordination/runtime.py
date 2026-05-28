@@ -3,6 +3,13 @@ from __future__ import annotations
 from copy import deepcopy
 import hashlib
 from .domain_depth import domain_depth_contract, domain_depth_smoke_test, execute_domain_operation, DOMAIN_OPERATIONS, DOMAIN_OWNED_TABLES
+from .care_coordination_app import (
+    care_coordination_controls_contract,
+    care_coordination_forms_contract,
+    care_coordination_smoke_test,
+    care_coordination_wizards_contract,
+    single_pbc_app_contract,
+)
 
 PBC_KEY = 'clinical_care_coordination'
 CLINICAL_CARE_COORDINATION_OWNED_TABLES = ('clinical_care_coordination_patient_care_plan',
@@ -45,7 +52,11 @@ CLINICAL_CARE_COORDINATION_STANDARD_FEATURE_KEYS = ('patient_care_plan_managemen
  'governed_datastore_crud',
  'ai_agent_task_assistance',
  'configuration_workbench',
- 'continuous_release_assurance')
+ 'continuous_release_assurance',
+ 'single_pbc_domain_app',
+ 'forms',
+ 'wizards',
+ 'controls')
 CLINICAL_CARE_COORDINATION_RUNTIME_CAPABILITY_KEYS = ('clinical_care_coordination_event_sourced_operational_history',
  'clinical_care_coordination_multi_tenant_policy_isolation',
  'clinical_care_coordination_schema_evolution_resilience',
@@ -209,6 +220,10 @@ def clinical_care_coordination_runtime_capabilities():
         'standard_features': CLINICAL_CARE_COORDINATION_STANDARD_FEATURE_KEYS,
         'capabilities': CLINICAL_CARE_COORDINATION_RUNTIME_CAPABILITY_KEYS,
         'operations': operations,
+        'forms': care_coordination_forms_contract()['forms'],
+        'wizards': care_coordination_wizards_contract()['wizards'],
+        'controls': care_coordination_controls_contract()['controls'],
+        'single_pbc_app': single_pbc_app_contract(),
         'smoke': smoke,
         'world_class_domain_depth': domain,
         'database_backends': CLINICAL_CARE_COORDINATION_ALLOWED_DATABASE_BACKENDS,
@@ -234,6 +249,7 @@ def clinical_care_coordination_runtime_smoke():
     service = clinical_care_coordination_build_service_contract()
     release = clinical_care_coordination_build_release_evidence()
     workbench = clinical_care_coordination_build_workbench_view()
+    app_smoke = care_coordination_smoke_test()
     boundary = clinical_care_coordination_verify_owned_table_boundary(CLINICAL_CARE_COORDINATION_OWNED_TABLES + ('foreign_table',))
     domain = domain_depth_contract()
     checks = (
@@ -248,6 +264,7 @@ def clinical_care_coordination_runtime_smoke():
         {'id': 'build_service_contract', 'ok': service['ok']},
         {'id': 'build_release_evidence', 'ok': release['ok']},
         {'id': 'build_workbench_view', 'ok': workbench['ok']},
+        {'id': 'single_pbc_care_coordination_app', 'ok': app_smoke['ok']},
         {'id': 'owned_boundary_rejects_foreign_table', 'ok': boundary['ok'] is False},
         {'id': 'domain_depth', 'ok': domain['ok']},
     ) + tuple({'id': capability, 'ok': True} for capability in CLINICAL_CARE_COORDINATION_RUNTIME_CAPABILITY_KEYS)
@@ -261,6 +278,7 @@ def clinical_care_coordination_runtime_smoke():
         'service': service,
         'release': release,
         'workbench': workbench,
+        'single_pbc_app': app_smoke,
         'domain_depth': domain,
         'blocking_gaps': tuple(check for check in checks if not check['ok']),
         'side_effects': (),

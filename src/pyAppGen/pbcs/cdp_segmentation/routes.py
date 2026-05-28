@@ -51,7 +51,7 @@ def _route_contracts() -> tuple[dict, ...]:
                 "event_contract": "AppGen-X",
                 "transaction_boundary": "owned_datastore_plus_outbox",
                 "idempotency_required": idempotency_required,
-                "idempotency_key": f"cdp_segmentation:{route['handler']}:idempotency_key" if idempotency_required else None,
+                "idempotency_key": f"cdp_segmentation:{route['handler']}:request" if idempotency_required else None,
                 "shared_table_access": False,
                 "stream_engine_picker_visible": False,
             }
@@ -127,10 +127,10 @@ def validate_api_route_contracts() -> dict:
 
 
 def dispatch_route(method: str, path: str, payload: dict | None = None) -> dict:
-    """Dispatch a route contract to its service command without side effects."""
+    """Dispatch a route contract to its service command."""
     route = next((item for item in ROUTES if item["method"] == method and item["path"] == path), None)
     if route is None:
-        return {"ok": False, "handled": False, "reason": "route_not_found"}
+        return {"ok": False, "handled": False, "reason": "route_not_found", "side_effects": ()}
     service = CdpSegmentationService()
     result = service.execute_operation(route["handler"], payload or {})
     return {
@@ -138,19 +138,45 @@ def dispatch_route(method: str, path: str, payload: dict | None = None) -> dict:
         "handled": True,
         "route": route,
         "result": result,
+        "state": result.get("state"),
         "side_effects": (),
     }
 
 
 def smoke_test() -> dict:
-    """Execute the first route and validate the API contract surface."""
+    """Exercise route validation and one explicit-state dispatch."""
+    from .runtime import CDP_SEGMENTATION_REQUIRED_EVENT_TOPIC
+    from .runtime import cdp_segmentation_empty_state
+
     validation = validate_api_route_contracts()
     if not ROUTES:
-        return {"ok": False, "reason": "no_routes"}
-    first = ROUTES[0]
-    dispatched = dispatch_route(first["method"], first["path"], {"smoke": True})
+        return {"ok": False, "reason": "no_routes", "side_effects": ()}
+    dispatched = dispatch_route(
+        "POST",
+        "/events",
+        {
+            "state": {
+                **cdp_segmentation_empty_state(),
+                "configuration": {
+                    "ok": True,
+                    "database_backend": "postgresql",
+                    "event_topic": CDP_SEGMENTATION_REQUIRED_EVENT_TOPIC,
+                    "supported_regions": ("US",),
+                    "supported_event_types": ("profile", "payment", "shipment", "engagement"),
+                    "default_region": "US",
+                    "retry_limit": 3,
+                },
+            },
+            "event_id": "smoke_event",
+            "tenant": "smoke",
+            "customer_id": "cust_smoke",
+            "event_type": "profile",
+            "region": "US",
+            "properties": {"customer_id": "cust_smoke", "email": "smoke@example.com", "opt_in": True},
+        },
+    )
     return {
-        "ok": validation["ok"] and dispatched["ok"],
+        "ok": validation["ok"] and dispatched["ok"] and dispatched["state"]["customer_events"]["smoke_event"]["event_type"] == "profile",
         "validation": validation,
         "dispatch": dispatched,
         "side_effects": (),

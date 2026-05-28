@@ -1,110 +1,280 @@
-# Chemical Batch Compliance PBC
+# Chemical Batch Compliance Specification
 
 ## Purpose
 
-The `chemical_batch_compliance` PBC is a packaged business capability for Chemical formulas, batches, SDS, hazardous materials, regulatory submissions, quality, and compliance controls. It owns schema, migrations, models, services, API contracts, AppGen-X event contracts, handlers, UI fragments, AI agent skills, configuration, rules, parameters, seed data, package metadata, tests, and release evidence. It composes with other AppGen-X PBCs only through declared APIs, AppGen-X events, or package-local projections.
+`chemical_batch_compliance` is a packaged business capability for chemical
+manufacturing quality, safety, and regulatory control. This implementation is
+not a generic scaffold anymore. It now owns one coherent executable slice:
+controlled formula revision release, batch execution evidence, in-process
+quality escalation, compliance holds, regulatory dossier assembly, and governed
+assistant-driven document instructions.
+
+The slice is designed to let this PBC function as a one-PBC app inside AppGen-X
+without any central generator edits or foreign-table access. The package stays
+inside its own datastore boundary, exposes its own commands and queries, and
+integrates with the rest of AppGen-X only through declared APIs and AppGen-X
+events.
 
 ## Stable Identity
 
-- PBC key: `chemical_batch_compliance`.
-- Mesh: `opsmfg`.
-- Package directory: `src/pyAppGen/pbcs/chemical_batch_compliance`.
-- Runtime entrypoint: `chemical_batch_compliance_runtime_capabilities()`.
-- UI entrypoint: `chemical_batch_compliance_ui_contract()`.
-- Source registration entrypoint: `implementation_contract()`.
-- Allowed database backends: PostgreSQL, MySQL, and MariaDB.
-- Eventing standard: fixed AppGen-X outbox/inbox event contract.
-- User-facing stream-engine selector: forbidden and hidden.
+- PBC key: `chemical_batch_compliance`
+- Mesh: `opsmfg`
+- Package directory: `src/pyAppGen/pbcs/chemical_batch_compliance`
+- Runtime entrypoint: `chemical_batch_compliance_runtime_capabilities()`
+- UI entrypoint: `chemical_batch_compliance_ui_contract()`
+- Registration entrypoint: `implementation_contract()`
+- Eventing standard: `AppGen-X`
+- Allowed backends: PostgreSQL, MySQL, MariaDB
+- Stream-engine picker: forbidden and hidden
 
-## Owned Datastore Boundary
+The package must remain side-effect-free for discovery and metadata validation.
+Registration plans and package metadata are computed without mutating any shared
+registry.
 
-- `chemical_batch_compliance_chemical_formula`: owns chemical formula lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `chemical_batch_compliance_batch_record`: owns batch record lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `chemical_batch_compliance_sds_document`: owns sds document lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `chemical_batch_compliance_hazardous_material`: owns hazardous material lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `chemical_batch_compliance_regulatory_submission`: owns regulatory submission lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `chemical_batch_compliance_quality_test`: owns quality test lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `chemical_batch_compliance_compliance_hold`: owns compliance hold lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `chemical_batch_compliance_chemical_batch_compliance_policy_rule`: owns chemical batch compliance policy rule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `chemical_batch_compliance_chemical_batch_compliance_runtime_parameter`: owns chemical batch compliance runtime parameter lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `chemical_batch_compliance_chemical_batch_compliance_schema_extension`: owns chemical batch compliance schema extension lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `chemical_batch_compliance_chemical_batch_compliance_control_assertion`: owns chemical batch compliance control assertion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `chemical_batch_compliance_chemical_batch_compliance_governed_model`: owns chemical batch compliance governed model lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+## Owned Boundary
 
-Runtime AppGen-X event tables are `chemical_batch_compliance_appgen_outbox_event`, `chemical_batch_compliance_appgen_inbox_event`, and `chemical_batch_compliance_appgen_dead_letter_event`. The PBC does not mutate foreign tables. Dependencies are represented by consumed events ('PolicyChanged', 'AuditEventSealed', 'OperationalKpiChanged') and API contracts ('POST /chemical-formulas', 'POST /batch-records', 'POST /sds-documents', 'POST /hazardous-materials', 'POST /regulatory-submissions', 'GET /chemical-batch-compliance-workbench').
+The package owns the following business tables:
 
-## Executable Domain Operations
+- `chemical_batch_compliance_chemical_formula`
+- `chemical_batch_compliance_batch_record`
+- `chemical_batch_compliance_sds_document`
+- `chemical_batch_compliance_hazardous_material`
+- `chemical_batch_compliance_regulatory_submission`
+- `chemical_batch_compliance_quality_test`
+- `chemical_batch_compliance_compliance_hold`
+- `chemical_batch_compliance_chemical_batch_compliance_policy_rule`
+- `chemical_batch_compliance_chemical_batch_compliance_runtime_parameter`
+- `chemical_batch_compliance_chemical_batch_compliance_schema_extension`
+- `chemical_batch_compliance_chemical_batch_compliance_control_assertion`
+- `chemical_batch_compliance_chemical_batch_compliance_governed_model`
 
-- `create_chemical_formula`: validates policy, writes owned `chemical_batch_compliance_chemical_formula` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `record_batch_record`: validates policy, writes owned `chemical_batch_compliance_batch_record` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `review_sds_document`: validates policy, writes owned `chemical_batch_compliance_sds_document` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `approve_hazardous_material`: validates policy, writes owned `chemical_batch_compliance_hazardous_material` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `simulate_regulatory_submission`: validates policy, writes owned `chemical_batch_compliance_regulatory_submission` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `create_quality_test`: validates policy, writes owned `chemical_batch_compliance_quality_test` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `record_compliance_hold`: validates policy, writes owned `chemical_batch_compliance_compliance_hold` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `review_chemical_batch_compliance_policy_rule`: validates policy, writes owned `chemical_batch_compliance_chemical_batch_compliance_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `approve_chemical_batch_compliance_runtime_parameter`: validates policy, writes owned `chemical_batch_compliance_chemical_batch_compliance_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `simulate_chemical_batch_compliance_schema_extension`: validates policy, writes owned `chemical_batch_compliance_chemical_batch_compliance_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `create_chemical_batch_compliance_control_assertion`: validates policy, writes owned `chemical_batch_compliance_chemical_batch_compliance_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `record_chemical_batch_compliance_governed_model`: validates policy, writes owned `chemical_batch_compliance_chemical_batch_compliance_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_chemical_batch_compliance_13`: validates policy, writes owned `chemical_batch_compliance_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_chemical_batch_compliance_14`: validates policy, writes owned `chemical_batch_compliance_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_chemical_batch_compliance_15`: validates policy, writes owned `chemical_batch_compliance_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_chemical_batch_compliance_16`: validates policy, writes owned `chemical_batch_compliance_chemical_formula` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_chemical_batch_compliance_17`: validates policy, writes owned `chemical_batch_compliance_batch_record` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_chemical_batch_compliance_18`: validates policy, writes owned `chemical_batch_compliance_sds_document` records, emits AppGen-X events, and returns side-effect-free evidence.
+It also owns the AppGen-X event tables:
 
-Every command is deterministic and side-effect-free in package tests. Each command returns target owned tables, emitted event evidence, idempotency keys, rule decisions, parameter reads, permissions, and audit hashes.
+- `chemical_batch_compliance_appgen_outbox_event`
+- `chemical_batch_compliance_appgen_inbox_event`
+- `chemical_batch_compliance_appgen_dead_letter_event`
 
-## Standard Table-Stakes Capabilities
+No shared-table writes are allowed. No foreign-table reads are required for the
+implemented slice. Collaboration with other PBCs is represented only by
+declared route contracts and consumed AppGen-X events.
 
-The package covers lifecycle intake, identity and classification, validation, approvals, exception handling, audit evidence, role-aware workbenches, assistant-guided task execution, configuration, rule compilation, bounded parameters, seed data, RBAC, route dispatch, typed events, idempotent handlers, retry, and dead-letter triage. It includes PostgreSQL, MySQL, and MariaDB backend allowlists and never exposes stream-engine pickers.
+## Schema, Migrations, And Models
 
-## Advanced Capabilities
+The package contains a real `migrations/001_initial.sql` file with domain
+columns for recipe release, batch evidence, quality escalation, submission
+dossiers, and governed assistant artifacts. The migration intentionally uses
+portable `TEXT`, `JSON`, `BOOLEAN`, and `NUMERIC` types because the package
+declares a backend allowlist across PostgreSQL, MySQL, and MariaDB.
 
-- Event-sourced operational history for Chemical Batch Compliance domain records.
-- Multi-tenant policy isolation with owned table boundaries.
-- Schema evolution resilience through package-local schema extensions.
-- Autonomous anomaly detection and specialist exception triage.
-- Semantic document and instruction understanding for professional intake.
-- Predictive risk scoring and confidence-ranked recommendations.
-- Counterfactual scenario simulation for policy and operational choices.
-- Cryptographic audit proofs for high-value records and decisions.
-- Continuous control testing over domain lifecycle events.
-- Carbon and sustainability awareness where operational decisions affect footprint.
-- Cross-PBC event federation through AppGen-X only.
-- Governed AI agent execution with human confirmation for mutations.
+Owned models are exposed in `models.py` as package-local dataclasses for the
+main business entities. The most important models are:
 
-## Rules, Parameters, and Configuration
+- controlled formula revision
+- electronic batch record
+- SDS document
+- hazardous material qualification
+- quality test
+- compliance hold
+- regulatory submission dossier
+- governed assistant document instruction
 
-Rules are first-class artifacts: ('chemical_formula_policy', 'batch_record_policy', 'sds_document_policy', 'hazardous_material_policy', 'regulatory_submission_policy', 'quality_test_policy'). Parameters are bounded artifacts: ('quality_score_floor', 'materiality_threshold', 'approval_sla_hours', 'risk_threshold', 'forecast_horizon_days', 'workbench_limit'). Configuration includes database backend, event topic, retry limit, default policy, workbench limits, confirmation requirements for agent writes, and tenant isolation options.
+This gives the PBC an owned model vocabulary instead of relying only on opaque
+payload blobs.
 
-## Public APIs and Services
+## Service And API Contract
 
-APIs are ('POST /chemical-formulas', 'POST /batch-records', 'POST /sds-documents', 'POST /hazardous-materials', 'POST /regulatory-submissions', 'GET /chemical-batch-compliance-workbench'). Services preserve idempotency keys, permission names, owned table scopes, route metadata, and event mappings. Services write only to `chemical_batch_compliance_` tables and package-local event tables.
+The implemented command surface focuses on the chosen domain slice:
 
-## Events and Handlers
+- `create_formula_revision`
+- `release_formula_revision`
+- `review_sds_document`
+- `register_hazardous_material`
+- `record_batch`
+- `record_quality_test`
+- `place_compliance_hold`
+- `resolve_compliance_hold`
+- `create_regulatory_submission`
+- `register_rule`
+- `set_parameter`
+- `register_schema_extension`
+- `upsert_control_assertion`
+- `create_document_instruction`
+- `update_document_instruction`
+- `delete_document_instruction`
 
-Emitted events: ('ChemicalBatchComplianceCreated', 'ChemicalBatchComplianceUpdated', 'ChemicalBatchComplianceApproved', 'ChemicalBatchComplianceExceptionOpened'). Consumed events: ('PolicyChanged', 'AuditEventSealed', 'OperationalKpiChanged'). Handlers require event IDs, ignore duplicates, record AppGen-X inbox entries, and write dead-letter evidence for unknown or exhausted events.
+The query surface exposes:
 
-## UI, Workbench, and Agent Skills
+- formula detail
+- batch detail
+- document instruction detail
+- workbench summary and queues
+- app surface metadata
+- release evidence snapshot
 
-Workbench views include ('chemical formula board', 'batch record board', 'sds document board', 'hazardous material board', 'regulatory submission board', 'quality test board', 'compliance hold board'). The UI exposes operational queues, detail panels, rule editors, parameter editors, assistant panels, exception triage, analytics, and release evidence. The agent contributes `chemical_batch_compliance_skills`, parses documents and instructions, produces governed CRUD previews, validates owned table boundaries, requires human confirmation for writes, and participates in the composed single application assistant.
+Public APIs remain package-local and AppGen-X aligned:
 
-## Release Evidence and Tests
+- `POST /chemical-formulas`
+- `POST /batch-records`
+- `POST /sds-documents`
+- `POST /hazardous-materials`
+- `POST /regulatory-submissions`
+- `GET /chemical-batch-compliance-workbench`
 
-Release readiness proves schema, migrations, models, service contracts, route contracts, AppGen-X eventing, idempotent handlers, retry/dead-letter evidence, UI surfaces, RBAC, configuration, rules, parameters, seed data, package metadata, side-effect-free registration, domain-depth operations, agent integration, and generation smoke readiness. Focused package tests cover schema/service/release evidence, event contracts, package metadata, route contracts, governance hooks, and idempotent handlers.
+Routes map to owned commands or read-only workbench queries. All mutating
+operations remain within the package boundary and are reported with outbox
+evidence.
+
+## Eventing, Inbox, Outbox, Retry, And Dead Letter
+
+The event contract is fixed to `AppGen-X`. The package emits:
+
+- `ChemicalBatchComplianceCreated`
+- `ChemicalBatchComplianceUpdated`
+- `ChemicalBatchComplianceApproved`
+- `ChemicalBatchComplianceExceptionOpened`
+
+It consumes:
+
+- `PolicyChanged`
+- `AuditEventSealed`
+- `OperationalKpiChanged`
+
+Handlers are idempotent by `idempotency_key`. Known consumed events are accepted
+once and duplicate replays are reported as duplicates. Unknown events are routed
+to the package-owned dead-letter table with retry metadata. This keeps the slice
+safe for inbox processing without introducing cross-PBC persistence.
+
+## Domain Rules, Parameters, And Configuration
+
+Rules are explicit artifacts, not implied comments. The implemented rule set
+includes formula effectivity gates, substitution controls, line-clearance
+enforcement, parameter alarm handling, quality release policy, dossier
+completeness, and assistant mutation guardrails.
+
+Parameters are bounded and package-owned. They include potency drift tolerance,
+misweigh alert percentage, critical alarm hold duration, SDS expiry warning
+lead time, regulatory commitment SLA, and the workbench record limit.
+
+Configuration remains minimal and package-local:
+
+- database backend
+- AppGen-X event topic
+- retry limit
+- default policy
+
+All configuration validation remains deterministic and side-effect-free.
+
+## UI, Workbench, Forms, Wizards, And Controls
+
+The workbench is domain-specific. It is centered on:
+
+- formula release queue
+- batch review board
+- quality and hold triage
+- regulatory dossier monitor
+
+Package-local forms cover formula revision intake, batch execution evidence,
+quality review, and assistant document instruction intake. Wizards guide formula
+release, batch disposition, and dossier assembly. Controls enforce owned-table
+boundaries, formula release gates, line-clearance gating, automatic quality
+hold escalation, and assistant mutation confirmation.
+
+This is the one-PBC app surface requested for the slice. It is not dependent on
+external UI modules outside this package.
+
+## RBAC And Assistant Surface
+
+RBAC is package-owned. Roles include operator, quality reviewer, EHS reviewer,
+regulatory lead, auditor, and admin. Approval privileges are intentionally
+narrower than create/update privileges.
+
+The assistant surface supports:
+
+- formula-release guidance
+- quality hold triage
+- submission assembly help
+- document instruction management
+
+Document and instruction intake produces governed CRUD previews. Mutations are
+restricted to owned tables and require human confirmation. This satisfies the
+agent/chatbot document-instruction CRUD requirement without crossing package
+boundaries.
+
+## Release Evidence, Seed Data, And Tests
+
+`release_evidence.py` and `RELEASE_EVIDENCE.md` capture schema, services,
+events, handlers, workbench surfaces, governance, and assistant CRUD support.
+`seed_data.py` now describes realistic demo seed records for SDS, hazardous
+material, formula, batch, and document instruction artifacts.
+
+Focused tests cover:
+
+- metadata and contract shape
+- formula release gates
+- batch, quality, and hold flow
+- governed document-instruction CRUD
+- route dispatch and workbench surfaces
+- event handler idempotency and dead-letter behavior
 
 ## Manifest Traceability Appendix
 
-- tables: chemical_formula, batch_record, sds_document, hazardous_material, regulatory_submission, quality_test, compliance_hold, chemical_batch_compliance_policy_rule, chemical_batch_compliance_runtime_parameter, chemical_batch_compliance_schema_extension, chemical_batch_compliance_control_assertion, chemical_batch_compliance_governed_model
-- operations: create_chemical_formula, record_batch_record, review_sds_document, approve_hazardous_material, simulate_regulatory_submission, create_quality_test, record_compliance_hold, review_chemical_batch_compliance_policy_rule, approve_chemical_batch_compliance_runtime_parameter, simulate_chemical_batch_compliance_schema_extension, create_chemical_batch_compliance_control_assertion, record_chemical_batch_compliance_governed_model, operate_chemical_batch_compliance_13, operate_chemical_batch_compliance_14, operate_chemical_batch_compliance_15, operate_chemical_batch_compliance_16, operate_chemical_batch_compliance_17, operate_chemical_batch_compliance_18
-- emits: ChemicalBatchComplianceCreated, ChemicalBatchComplianceUpdated, ChemicalBatchComplianceApproved, ChemicalBatchComplianceExceptionOpened
-- consumes: PolicyChanged, AuditEventSealed, OperationalKpiChanged
-- rules: chemical_formula_policy, batch_record_policy, sds_document_policy, hazardous_material_policy, regulatory_submission_policy, quality_test_policy
-- parameters: quality_score_floor, materiality_threshold, approval_sla_hours, risk_threshold, forecast_horizon_days, workbench_limit
-- ui_fragments: ChemicalBatchComplianceWorkbench, ChemicalBatchComplianceDetail, ChemicalBatchComplianceAssistantPanel
-- permissions: chemical_batch_compliance.read, chemical_batch_compliance.create, chemical_batch_compliance.update, chemical_batch_compliance.approve, chemical_batch_compliance.admin
-- configuration: CHEMICAL_BATCH_COMPLIANCE_DATABASE_URL, CHEMICAL_BATCH_COMPLIANCE_EVENT_TOPIC, CHEMICAL_BATCH_COMPLIANCE_RETRY_LIMIT, CHEMICAL_BATCH_COMPLIANCE_DEFAULT_POLICY
-- standard_features: chemical_formula_management, chemical_batch_compliance_workflow, chemical_batch_compliance_analytics, configuration_schema, rule_engine, parameter_engine, owned_schema_migrations_models, appgen_x_outbox_inbox_eventing, idempotent_handlers, retry_dead_letter_evidence, permissions, seed_data, workbench, agentic_document_instruction_intake, governed_datastore_crud, ai_agent_task_assistance, configuration_workbench, continuous_release_assurance
-- advanced_capabilities: chemical_batch_compliance_event_sourced_operational_history, chemical_batch_compliance_multi_tenant_policy_isolation, chemical_batch_compliance_schema_evolution_resilience, chemical_batch_compliance_autonomous_anomaly_detection, chemical_batch_compliance_semantic_document_instruction_understanding, chemical_batch_compliance_predictive_risk_scoring, chemical_batch_compliance_counterfactual_scenario_simulation, chemical_batch_compliance_cryptographic_audit_proofs, chemical_batch_compliance_continuous_control_testing, chemical_batch_compliance_carbon_and_sustainability_awareness, chemical_batch_compliance_cross_pbc_event_federation, chemical_batch_compliance_governed_ai_agent_execution
+The PBC assistant contributes the `chemical_batch_compliance_skills` skill namespace for document/instruction intake, governed CRUD mutation previews, batch review help, formula release guidance, quality hold triage, and regulatory dossier assembly.
+
+- tables: chemical_formula, batch_record, sds_document, hazardous_material,
+  regulatory_submission, quality_test, compliance_hold,
+  chemical_batch_compliance_policy_rule,
+  chemical_batch_compliance_runtime_parameter,
+  chemical_batch_compliance_schema_extension,
+  chemical_batch_compliance_control_assertion,
+  chemical_batch_compliance_governed_model
+- apis: `POST /chemical-formulas`, `POST /batch-records`,
+  `POST /sds-documents`, `POST /hazardous-materials`,
+  `POST /regulatory-submissions`,
+  `GET /chemical-batch-compliance-workbench`
+- emits: `ChemicalBatchComplianceCreated`,
+  `ChemicalBatchComplianceUpdated`,
+  `ChemicalBatchComplianceApproved`,
+  `ChemicalBatchComplianceExceptionOpened`
+- consumes: `PolicyChanged`, `AuditEventSealed`, `OperationalKpiChanged`
+- ui fragments: `ChemicalBatchComplianceWorkbench`,
+  `ChemicalBatchComplianceDetail`,
+  `ChemicalBatchComplianceAssistantPanel`
+- permissions: `chemical_batch_compliance.read`,
+  `chemical_batch_compliance.create`,
+  `chemical_batch_compliance.update`,
+  `chemical_batch_compliance.approve`,
+  `chemical_batch_compliance.admin`
+- configuration: `CHEMICAL_BATCH_COMPLIANCE_DATABASE_URL`,
+  `CHEMICAL_BATCH_COMPLIANCE_EVENT_TOPIC`,
+  `CHEMICAL_BATCH_COMPLIANCE_RETRY_LIMIT`,
+  `CHEMICAL_BATCH_COMPLIANCE_DEFAULT_POLICY`
+- standard features: schema/migrations/models, service/api contracts,
+  AppGen-X events, idempotent handlers, retry/dead-letter evidence, RBAC,
+  parameters, rules, workbench, governed assistant CRUD, release evidence
+- standard features exact manifest values: chemical_formula_management,
+  chemical_batch_compliance_workflow,
+  chemical_batch_compliance_analytics, configuration_schema, rule_engine,
+  parameter_engine, owned_schema_migrations_models,
+  appgen_x_outbox_inbox_eventing, idempotent_handlers,
+  retry_dead_letter_evidence, permissions, seed_data, workbench,
+  agentic_document_instruction_intake, governed_datastore_crud,
+  ai_agent_task_assistance, configuration_workbench,
+  continuous_release_assurance
+- advanced capabilities: event-sourced history, multi-tenant isolation,
+  schema evolution resilience, anomaly detection, semantic document
+  understanding, predictive risk scoring, counterfactual assessment,
+  cryptographic audit proofs, continuous control testing, sustainability
+  awareness, cross-PBC event federation, governed AI execution
+- advanced capabilities exact manifest values:
+  chemical_batch_compliance_event_sourced_operational_history,
+  chemical_batch_compliance_multi_tenant_policy_isolation,
+  chemical_batch_compliance_schema_evolution_resilience,
+  chemical_batch_compliance_autonomous_anomaly_detection,
+  chemical_batch_compliance_semantic_document_instruction_understanding,
+  chemical_batch_compliance_predictive_risk_scoring,
+  chemical_batch_compliance_counterfactual_scenario_simulation,
+  chemical_batch_compliance_cryptographic_audit_proofs,
+  chemical_batch_compliance_continuous_control_testing,
+  chemical_batch_compliance_carbon_and_sustainability_awareness,
+  chemical_batch_compliance_cross_pbc_event_federation,
+  chemical_batch_compliance_governed_ai_agent_execution

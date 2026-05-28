@@ -66,6 +66,11 @@ from .runtime import checkout_processing_verify_formal_invariants
 from .ui import CHECKOUT_PROCESSING_UI_FRAGMENT_KEYS
 from .ui import checkout_processing_render_workbench
 from .ui import checkout_processing_ui_contract
+from .forms import checkout_processing_form_catalog
+from .wizards import checkout_processing_wizard_catalog
+from .controls import checkout_processing_control_catalog
+from .controls import checkout_processing_control_center
+from .agent import checkout_processing_assistant_preview
 
 PBC_KEY = "checkout_processing"
 
@@ -83,6 +88,18 @@ def implementation_contract() -> dict:
         "service_contract": checkout_processing_build_service_contract(),
         "release_evidence_contract": checkout_processing_build_release_evidence(),
         "permissions_contract": checkout_processing_permissions_contract(),
+        "forms": checkout_processing_form_catalog(),
+        "wizards": checkout_processing_wizard_catalog(),
+        "controls": checkout_processing_control_catalog(),
+        "control_center": checkout_processing_control_center(),
+        "assistant_preview": checkout_processing_assistant_preview(
+            {
+                "document_text": "Review retry policy for checkout exceptions.",
+                "instructions": "Read the checkout parameter and summarize the change impact.",
+                "target_entity": "checkout_parameter",
+                "requested_action": "read",
+            }
+        ),
         "owned_tables": CHECKOUT_PROCESSING_OWNED_TABLES,
         "runtime_tables": CHECKOUT_PROCESSING_RUNTIME_TABLES,
         "allowed_database_backends": CHECKOUT_PROCESSING_ALLOWED_DATABASE_BACKENDS,

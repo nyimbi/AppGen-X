@@ -1,15 +1,32 @@
-PBC_KEY = 'chemical_batch_compliance'
-PERMISSIONS = ('chemical_batch_compliance.read',
- 'chemical_batch_compliance.create',
- 'chemical_batch_compliance.update',
- 'chemical_batch_compliance.approve',
- 'chemical_batch_compliance.admin')
+"""RBAC helpers for chemical_batch_compliance."""
 
-def permission_manifest():
-    return {'ok': True, 'pbc': PBC_KEY, 'permissions': PERMISSIONS, 'roles': ('operator','approver','auditor'), 'side_effects': ()}
+from __future__ import annotations
 
-def authorize(permission, actor=None):
-    return {'ok': permission in PERMISSIONS or permission == f'{PBC_KEY}.operate', 'permission': permission, 'actor': dict(actor or {}), 'side_effects': ()}
+from .slice_app import PBC_KEY
+from .slice_app import PERMISSIONS
+from .slice_app import ROLE_PERMISSIONS
 
-def smoke_test():
-    return {'ok': permission_manifest()['ok'] and authorize(PERMISSIONS[0])['ok'], 'side_effects': ()}
+
+def permission_manifest() -> dict:
+    return {"ok": True, "pbc": PBC_KEY, "permissions": PERMISSIONS, "roles": tuple(ROLE_PERMISSIONS), "side_effects": ()}
+
+
+def authorize(permission: str, actor: dict | None = None) -> dict:
+    actor = dict(actor or {})
+    role = actor.get("role")
+    granted = permission in PERMISSIONS or permission == f"{PBC_KEY}.operate"
+    if role and role in ROLE_PERMISSIONS:
+        granted = granted and (
+            permission in ROLE_PERMISSIONS[role]
+            or permission == f"{PBC_KEY}.operate" and role == "admin"
+        )
+    return {"ok": granted, "permission": permission, "actor": actor, "side_effects": ()}
+
+
+def smoke_test() -> dict:
+    return {
+        "ok": permission_manifest()["ok"]
+        and authorize(PERMISSIONS[0], {"role": "operator"})["ok"]
+        and authorize(f"{PBC_KEY}.approve", {"role": "operator"})["ok"] is False,
+        "side_effects": (),
+    }

@@ -1,250 +1,225 @@
-"""Executable configuration, parameter, and rule contract for the cdp_segmentation PBC."""
+"""Executable configuration, parameter, and rule governance for CDP segmentation."""
+
+from __future__ import annotations
 
 import hashlib
+import json
 
-from .manifest import PBC_MANIFEST
+from .runtime import CDP_SEGMENTATION_ALLOWED_DATABASE_BACKENDS
+from .runtime import CDP_SEGMENTATION_REQUIRED_EVENT_TOPIC
+from .runtime import CDP_SEGMENTATION_REQUIRED_RULE_FIELDS
+from .runtime import CDP_SEGMENTATION_SUPPORTED_CONFIGURATION_FIELDS
+from .runtime import CDP_SEGMENTATION_SUPPORTED_PARAMETER_KEYS
+from .runtime import cdp_segmentation_build_release_evidence
 
 
-PBC_KEY = 'cdp_segmentation'
-CONFIG_SCHEMA = ({'key': 'CDP_SEGMENTATION_DATABASE_URL', 'required': True, 'source': 'environment'}, {'key': 'CDP_SEGMENTATION_EVENT_TOPIC', 'required': True, 'source': 'environment'}, {'key': 'CDP_SEGMENTATION_RETRY_LIMIT', 'required': False, 'source': 'environment'})
-ALLOWED_DATABASE_BACKENDS = ('postgresql', 'mysql', 'mariadb')
-_CORE_PARAMETER_SCHEMA = (
-    {'key': 'retry_limit', 'type': 'integer', 'default': 3, 'min': 1, 'max': 10, 'scope': 'platform'},
-    {'key': 'confidence_threshold', 'type': 'number', 'default': 0.75, 'min': 0.0, 'max': 1.0, 'scope': 'platform'},
-    {'key': 'workbench_limit', 'type': 'integer', 'default': 50, 'min': 1, 'max': 500, 'scope': 'platform'},
-)
-_CORE_RULE_SCHEMA = (
-    {'rule_id': f'{PBC_KEY}.require_tenant', 'condition': 'tenant_present', 'effect': 'allow_when_true', 'scope': 'platform'},
-    {'rule_id': f'{PBC_KEY}.database_backend_allowed', 'condition': 'database_backend_allowed', 'effect': 'allow_when_true', 'scope': 'platform'},
-    {'rule_id': f'{PBC_KEY}.appgen_event_contract_required', 'condition': 'event_contract_required', 'effect': 'allow_when_true', 'scope': 'platform'},
+PBC_KEY = "cdp_segmentation"
+CONFIG_SCHEMA = tuple(
+    {"key": key, "required": True, "source": "runtime_configuration"}
+    for key in CDP_SEGMENTATION_SUPPORTED_CONFIGURATION_FIELDS
 )
 
+PARAMETER_SCHEMA = (
+    {"key": "membership_score_threshold", "type": "number", "default": 0.68, "min": 0.0, "max": 1.0, "scope": "membership"},
+    {"key": "profile_merge_confidence_threshold", "type": "number", "default": 0.85, "min": 0.0, "max": 1.0, "scope": "identity"},
+    {"key": "event_freshness_days", "type": "integer", "default": 180, "min": 1, "max": 3650, "scope": "ingestion"},
+    {"key": "payment_value_weight", "type": "number", "default": 0.35, "min": 0.0, "max": 1.0, "scope": "scoring"},
+    {"key": "order_recency_weight", "type": "number", "default": 0.25, "min": 0.0, "max": 1.0, "scope": "scoring"},
+    {"key": "engagement_weight", "type": "number", "default": 0.40, "min": 0.0, "max": 1.0, "scope": "scoring"},
+    {"key": "consent_risk_threshold", "type": "number", "default": 0.60, "min": 0.0, "max": 1.0, "scope": "privacy"},
+    {"key": "activation_batch_limit", "type": "integer", "default": 5000, "min": 1, "max": 100000, "scope": "activation"},
+    {"key": "max_segments_per_profile", "type": "integer", "default": 20, "min": 1, "max": 1000, "scope": "segmentation"},
+    {"key": "workbench_limit", "type": "integer", "default": 50, "min": 1, "max": 1000, "scope": "workbench"},
+)
 
-def _slug(value):
-    return ''.join(ch if ch.isalnum() else '_' for ch in str(value).lower()).strip('_') or 'domain'
-
-
-def _first(values, fallback):
-    return tuple(values or (fallback,))[0]
-
-
-def _domain_parameter_schema():
-    standard = _first(PBC_MANIFEST.get('standard_features'), 'standard_capability')
-    advanced = _first(PBC_MANIFEST.get('advanced_capabilities'), 'advanced_capability')
-    workflow = _first(PBC_MANIFEST.get('workflows'), 'domain_workflow')
-    table = _first(PBC_MANIFEST.get('tables'), 'domain_record')
-    return (
-        {'key': f'{_slug(standard)}_strictness', 'type': 'number', 'default': 0.8, 'min': 0.0, 'max': 1.0, 'scope': 'domain', 'capability': standard},
-        {'key': f'{_slug(advanced)}_confidence', 'type': 'number', 'default': 0.9, 'min': 0.0, 'max': 1.0, 'scope': 'advanced', 'capability': advanced},
-        {'key': f'{_slug(workflow)}_sla_minutes', 'type': 'integer', 'default': 240, 'min': 1, 'max': 10080, 'scope': 'workflow', 'workflow': workflow},
-        {'key': f'{_slug(table)}_retention_days', 'type': 'integer', 'default': 2555, 'min': 1, 'max': 3650, 'scope': 'data_boundary', 'table': table},
-    )
-
-
-def _domain_rule_schema():
-    standard = _first(PBC_MANIFEST.get('standard_features'), 'standard_capability')
-    advanced = _first(PBC_MANIFEST.get('advanced_capabilities'), 'advanced_capability')
-    workflow = _first(PBC_MANIFEST.get('workflows'), 'domain_workflow')
-    table = _first(PBC_MANIFEST.get('tables'), 'domain_record')
-    return (
-        {'rule_id': f'{PBC_KEY}.{_slug(standard)}_capability_available', 'condition': 'capability_available', 'effect': 'allow_when_true', 'scope': 'domain', 'capability': standard},
-        {'rule_id': f'{PBC_KEY}.{_slug(advanced)}_advanced_capability_available', 'condition': 'capability_available', 'effect': 'allow_when_true', 'scope': 'advanced', 'capability': advanced},
-        {'rule_id': f'{PBC_KEY}.{_slug(workflow)}_workflow_declared', 'condition': 'workflow_declared', 'effect': 'allow_when_true', 'scope': 'workflow', 'workflow': workflow},
-        {'rule_id': f'{PBC_KEY}.{_slug(table)}_owned_table_boundary', 'condition': 'owned_table_boundary', 'effect': 'allow_when_true', 'scope': 'data_boundary', 'table': table},
-    )
-
-
-DOMAIN_PARAMETER_SCHEMA = _domain_parameter_schema()
-PARAMETER_SCHEMA = _CORE_PARAMETER_SCHEMA + DOMAIN_PARAMETER_SCHEMA
-DOMAIN_RULE_SCHEMA = _domain_rule_schema()
-RULE_SCHEMA = _CORE_RULE_SCHEMA + DOMAIN_RULE_SCHEMA
+RULE_SCHEMA = (
+    {
+        "rule_id": f"{PBC_KEY}.consent_gate",
+        "condition": "consent_required_for_activation",
+        "effect": "block_if_missing_opt_in",
+        "scope": "privacy",
+    },
+    {
+        "rule_id": f"{PBC_KEY}.region_allowlist",
+        "condition": "region_is_supported",
+        "effect": "allow_when_true",
+        "scope": "runtime",
+    },
+    {
+        "rule_id": f"{PBC_KEY}.owned_boundary",
+        "condition": "owned_table_boundary",
+        "effect": "allow_when_true",
+        "scope": "data_boundary",
+    },
+)
 
 
-def configuration_manifest():
-    """Return required configuration keys, bounded parameters, and executable rules."""
+def configuration_manifest() -> dict:
+    """Return the runtime configuration schema this package expects."""
     return {
-        'ok': bool(CONFIG_SCHEMA) and bool(DOMAIN_PARAMETER_SCHEMA) and bool(DOMAIN_RULE_SCHEMA),
-        'pbc': PBC_KEY,
-        'schema': CONFIG_SCHEMA,
-        'required_keys': required_keys(),
-        'allowed_database_backends': ALLOWED_DATABASE_BACKENDS,
-        'parameter_schema': PARAMETER_SCHEMA,
-        'domain_parameter_schema': DOMAIN_PARAMETER_SCHEMA,
-        'rule_schema': RULE_SCHEMA,
-        'domain_rule_schema': DOMAIN_RULE_SCHEMA,
-        'side_effects': (),
+        "ok": bool(CONFIG_SCHEMA) and bool(PARAMETER_SCHEMA) and bool(RULE_SCHEMA),
+        "pbc": PBC_KEY,
+        "schema": CONFIG_SCHEMA,
+        "required_keys": required_keys(),
+        "allowed_database_backends": CDP_SEGMENTATION_ALLOWED_DATABASE_BACKENDS,
+        "required_event_topic": CDP_SEGMENTATION_REQUIRED_EVENT_TOPIC,
+        "parameter_schema": PARAMETER_SCHEMA,
+        "rule_schema": RULE_SCHEMA,
+        "side_effects": (),
     }
 
 
-def required_keys():
-    """Return configuration keys that must be supplied by an installer."""
-    return tuple(item['key'] for item in CONFIG_SCHEMA if item.get('required'))
+def required_keys() -> tuple[str, ...]:
+    """Return required runtime configuration keys."""
+    return tuple(item["key"] for item in CONFIG_SCHEMA if item["required"])
 
 
-def validate_configuration(values=None):
-    """Validate supplied configuration values without reading process state."""
-    supplied = dict(values or {key: 'configured' for key in required_keys()})
-    missing = tuple(key for key in required_keys() if not supplied.get(key))
-    known = {item['key'] for item in CONFIG_SCHEMA}
-    unknown = tuple(sorted(key for key in supplied if key not in known))
+def validate_configuration(values: dict | None = None) -> dict:
+    """Validate supplied runtime configuration keys and contract-bound values."""
+    supplied = dict(values or {})
+    missing = tuple(key for key in required_keys() if key not in supplied)
+    unknown = tuple(sorted(key for key in supplied if key not in required_keys()))
+    invalid_backend = supplied.get("database_backend") not in CDP_SEGMENTATION_ALLOWED_DATABASE_BACKENDS if "database_backend" in supplied else False
+    invalid_topic = supplied.get("event_topic") != CDP_SEGMENTATION_REQUIRED_EVENT_TOPIC if "event_topic" in supplied else False
     return {
-        'ok': not missing and not unknown,
-        'pbc': PBC_KEY,
-        'missing': missing,
-        'unknown': unknown,
-        'required_keys': required_keys(),
-        'side_effects': (),
+        "ok": not missing and not unknown and not invalid_backend and not invalid_topic,
+        "pbc": PBC_KEY,
+        "missing": missing,
+        "unknown": unknown,
+        "invalid_backend": invalid_backend,
+        "invalid_event_topic": invalid_topic,
+        "required_keys": required_keys(),
+        "side_effects": (),
     }
 
 
-def parameter_manifest():
-    """Return bounded runtime and domain parameters understood by this PBC."""
+def parameter_manifest() -> dict:
+    """Return bounded runtime parameters for segmentation tuning."""
     return {
-        'ok': bool(PARAMETER_SCHEMA) and bool(DOMAIN_PARAMETER_SCHEMA),
-        'pbc': PBC_KEY,
-        'parameters': PARAMETER_SCHEMA,
-        'domain_parameters': DOMAIN_PARAMETER_SCHEMA,
-        'side_effects': (),
+        "ok": tuple(item["key"] for item in PARAMETER_SCHEMA) == CDP_SEGMENTATION_SUPPORTED_PARAMETER_KEYS,
+        "pbc": PBC_KEY,
+        "parameters": PARAMETER_SCHEMA,
+        "side_effects": (),
     }
 
 
-def set_parameter(current_parameters=None, key='retry_limit', value=None):
+def set_parameter(current_parameters: dict | None = None, key: str = "workbench_limit", value=None) -> dict:
     """Apply one bounded parameter change without mutating caller state."""
-    schema = next((item for item in PARAMETER_SCHEMA if item['key'] == key), None)
+    schema = next((item for item in PARAMETER_SCHEMA if item["key"] == key), None)
     if schema is None:
-        return {'ok': False, 'accepted': False, 'reason': 'unknown_parameter', 'key': key, 'side_effects': ()}
-    candidate = schema['default'] if value is None else value
-    if schema['type'] == 'integer' and (not isinstance(candidate, int) or isinstance(candidate, bool)):
-        return {'ok': False, 'accepted': False, 'reason': 'invalid_type', 'key': key, 'side_effects': ()}
-    if schema['type'] == 'number' and (not isinstance(candidate, (int, float)) or isinstance(candidate, bool)):
-        return {'ok': False, 'accepted': False, 'reason': 'invalid_type', 'key': key, 'side_effects': ()}
-    if candidate < schema['min'] or candidate > schema['max']:
-        return {'ok': False, 'accepted': False, 'reason': 'out_of_bounds', 'key': key, 'side_effects': ()}
+        return {"ok": False, "accepted": False, "reason": "unknown_parameter", "key": key, "side_effects": ()}
+    candidate = schema["default"] if value is None else value
+    if schema["type"] == "integer" and (not isinstance(candidate, int) or isinstance(candidate, bool)):
+        return {"ok": False, "accepted": False, "reason": "invalid_type", "key": key, "side_effects": ()}
+    if schema["type"] == "number" and (not isinstance(candidate, (int, float)) or isinstance(candidate, bool)):
+        return {"ok": False, "accepted": False, "reason": "invalid_type", "key": key, "side_effects": ()}
+    if candidate < schema["min"] or candidate > schema["max"]:
+        return {"ok": False, "accepted": False, "reason": "out_of_bounds", "key": key, "side_effects": ()}
     updated = dict(current_parameters or {})
     updated[key] = candidate
     return {
-        'ok': True,
-        'accepted': True,
-        'pbc': PBC_KEY,
-        'key': key,
-        'value': candidate,
-        'parameters': updated,
-        'parameter_scope': schema.get('scope'),
-        'side_effects': (),
+        "ok": True,
+        "accepted": True,
+        "pbc": PBC_KEY,
+        "key": key,
+        "value": candidate,
+        "parameters": updated,
+        "parameter_scope": schema["scope"],
+        "side_effects": (),
     }
 
 
-def rule_manifest():
-    """Return declarative platform and domain rules supported by this PBC."""
+def rule_manifest() -> dict:
+    """Return declarative domain governance rules."""
     return {
-        'ok': bool(RULE_SCHEMA) and bool(DOMAIN_RULE_SCHEMA),
-        'pbc': PBC_KEY,
-        'rules': RULE_SCHEMA,
-        'domain_rules': DOMAIN_RULE_SCHEMA,
-        'side_effects': (),
+        "ok": bool(RULE_SCHEMA),
+        "pbc": PBC_KEY,
+        "rules": RULE_SCHEMA,
+        "required_runtime_rule_fields": CDP_SEGMENTATION_REQUIRED_RULE_FIELDS,
+        "side_effects": (),
     }
 
 
-def compile_rule(rule):
-    """Compile a rule into a deterministic side-effect-free rule contract."""
+def compile_rule(rule: dict) -> dict:
+    """Compile one rule into a deterministic governance artifact."""
     candidate = dict(rule)
-    if 'stream_engine' in candidate or 'stream_processor' in candidate:
-        return {'ok': False, 'compiled': False, 'reason': 'stream_engine_picker_disallowed', 'side_effects': ()}
-    known_conditions = {item['condition'] for item in RULE_SCHEMA}
-    if candidate.get('condition') not in known_conditions:
-        return {'ok': False, 'compiled': False, 'reason': 'unknown_condition', 'side_effects': ()}
-    raw = f"{PBC_KEY}:{tuple(sorted(candidate.items()))}"
-    compiled_hash = hashlib.sha256(raw.encode('utf-8')).hexdigest()
+    if candidate.get("condition") not in {item["condition"] for item in RULE_SCHEMA}:
+        return {"ok": False, "compiled": False, "reason": "unknown_condition", "side_effects": ()}
+    raw = json.dumps(candidate, sort_keys=True, separators=(",", ":"))
     return {
-        'ok': True,
-        'compiled': True,
-        'pbc': PBC_KEY,
-        'rule': candidate,
-        'compiled_hash': compiled_hash,
-        'side_effects': (),
+        "ok": True,
+        "compiled": True,
+        "pbc": PBC_KEY,
+        "rule": candidate,
+        "compiled_hash": hashlib.sha256(raw.encode()).hexdigest(),
+        "side_effects": (),
     }
 
 
-def evaluate_rule(compiled_rule, context=None):
-    """Evaluate one compiled rule against supplied context."""
-    if not compiled_rule.get('compiled'):
-        return {'ok': False, 'allowed': False, 'reason': 'rule_not_compiled', 'side_effects': ()}
+def evaluate_rule(compiled_rule: dict, context: dict | None = None) -> dict:
+    """Evaluate one compiled governance rule against runtime context."""
+    if not compiled_rule.get("compiled"):
+        return {"ok": False, "allowed": False, "reason": "rule_not_compiled", "side_effects": ()}
     supplied = dict(context or {})
-    rule = compiled_rule['rule']
-    condition = rule['condition']
-    if condition == 'tenant_present':
-        allowed = bool(supplied.get('tenant'))
-    elif condition == 'database_backend_allowed':
-        allowed = supplied.get('database_backend', 'postgresql') in ALLOWED_DATABASE_BACKENDS
-    elif condition == 'event_contract_required':
-        allowed = supplied.get('event_contract', 'AppGen-X') == 'AppGen-X'
-    elif condition == 'capability_available':
-        capability = rule.get('capability')
-        capability_pool = set(PBC_MANIFEST.get('standard_features', ())) | set(PBC_MANIFEST.get('advanced_capabilities', ())) | set(PBC_MANIFEST.get('capabilities', ()))
-        allowed = capability in capability_pool
-    elif condition == 'workflow_declared':
-        allowed = rule.get('workflow') in set(PBC_MANIFEST.get('workflows', ()))
-    elif condition == 'owned_table_boundary':
-        table = supplied.get('table', rule.get('table'))
-        allowed = table in set(PBC_MANIFEST.get('tables', ())) or str(table).startswith(PBC_KEY + '_')
+    rule = compiled_rule["rule"]
+    condition = rule["condition"]
+    if condition == "consent_required_for_activation":
+        allowed = bool(supplied.get("opt_in", False)) or not supplied.get("require_opt_in", True)
+    elif condition == "region_is_supported":
+        allowed = supplied.get("region") in set(supplied.get("supported_regions", ()))
+    elif condition == "owned_table_boundary":
+        table = str(supplied.get("table", ""))
+        allowed = table.startswith(f"{PBC_KEY}_") or table in set(cdp_segmentation_build_release_evidence()["schema"]["owned_tables"])
     else:
         allowed = False
     return {
-        'ok': True,
-        'allowed': allowed,
-        'pbc': PBC_KEY,
-        'rule_id': rule.get('rule_id'),
-        'condition': condition,
-        'scope': rule.get('scope'),
-        'side_effects': (),
+        "ok": True,
+        "allowed": allowed,
+        "pbc": PBC_KEY,
+        "rule_id": rule.get("rule_id"),
+        "condition": condition,
+        "scope": rule.get("scope"),
+        "side_effects": (),
     }
 
 
-def governance_smoke_test():
-    """Exercise configuration, parameter, and domain rule behavior together."""
-    configuration = validate_configuration()
-    parameter = set_parameter({}, 'retry_limit', 3)
-    domain_parameter = set_parameter({}, DOMAIN_PARAMETER_SCHEMA[0]['key'], DOMAIN_PARAMETER_SCHEMA[0]['default'])
-    compiled_rule = compile_rule(RULE_SCHEMA[0])
-    rule_decision = evaluate_rule(
-        compiled_rule,
-        {'tenant': 'smoke', 'database_backend': 'postgresql', 'event_contract': 'AppGen-X'},
+def governance_smoke_test() -> dict:
+    """Exercise runtime config, parameters, and rule evaluation together."""
+    configuration = validate_configuration(
+        {
+            "database_backend": "postgresql",
+            "event_topic": CDP_SEGMENTATION_REQUIRED_EVENT_TOPIC,
+            "retry_limit": 3,
+            "default_region": "US",
+            "supported_regions": ("US",),
+            "supported_event_types": ("profile", "payment"),
+            "identity_keys": ("customer_id", "email"),
+            "default_timezone": "UTC",
+            "activation_mode": "policy",
+            "workbench_limit": 50,
+        }
     )
-    compiled_domain_rule = compile_rule(DOMAIN_RULE_SCHEMA[0])
-    domain_rule_decision = evaluate_rule(compiled_domain_rule, {'tenant': 'smoke'})
+    parameter = set_parameter({}, "membership_score_threshold", 0.68)
+    compiled_rule = compile_rule(RULE_SCHEMA[0])
+    rule_decision = evaluate_rule(compiled_rule, {"opt_in": True, "require_opt_in": True})
     return {
-        'ok': configuration['ok']
-        and parameter['ok']
-        and domain_parameter['ok']
-        and compiled_rule['ok']
-        and rule_decision['ok']
-        and rule_decision['allowed']
-        and compiled_domain_rule['ok']
-        and domain_rule_decision['ok']
-        and domain_rule_decision['allowed'],
-        'configuration': configuration,
-        'parameter': parameter,
-        'domain_parameter': domain_parameter,
-        'compiled_rule': compiled_rule,
-        'rule_decision': rule_decision,
-        'compiled_domain_rule': compiled_domain_rule,
-        'domain_rule_decision': domain_rule_decision,
-        'side_effects': (),
+        "ok": configuration["ok"] and parameter["ok"] and compiled_rule["ok"] and rule_decision["allowed"],
+        "configuration": configuration,
+        "parameter": parameter,
+        "compiled_rule": compiled_rule,
+        "rule_decision": rule_decision,
+        "side_effects": (),
     }
 
 
-def smoke_test():
-    """Exercise configuration, rules, and parameters using synthetic values."""
+def smoke_test() -> dict:
+    """Return a compact governance smoke surface for package tests."""
     governance = governance_smoke_test()
-    configuration = governance['configuration']
     return {
-        **configuration,
-        'ok': governance['ok'],
-        'parameter': governance['parameter'],
-        'domain_parameter': governance['domain_parameter'],
-        'compiled_rule': governance['compiled_rule'],
-        'rule_decision': governance['rule_decision'],
-        'compiled_domain_rule': governance['compiled_domain_rule'],
-        'domain_rule_decision': governance['domain_rule_decision'],
-        'side_effects': (),
+        **governance["configuration"],
+        "ok": governance["ok"],
+        "parameter": governance["parameter"],
+        "compiled_rule": governance["compiled_rule"],
+        "rule_decision": governance["rule_decision"],
+        "side_effects": (),
     }

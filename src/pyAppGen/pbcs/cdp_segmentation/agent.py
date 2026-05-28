@@ -16,6 +16,8 @@ _CRUD_ACTIONS = ('create', 'read', 'update', 'delete')
 _SKILL_NAMES = (
     f'{PBC_KEY}.task_guidance',
     f'{PBC_KEY}.document_instruction_intake',
+    f'{PBC_KEY}.segment_definition_drafting',
+    f'{PBC_KEY}.consent_screening_guidance',
     f'{PBC_KEY}.governed_create',
     f'{PBC_KEY}.governed_read',
     f'{PBC_KEY}.governed_update',
@@ -26,7 +28,10 @@ _SKILL_NAMES = (
 
 
 def _owned_tables():
-    return tuple(f"{PBC_KEY}_{table}" for table in PBC_MANIFEST.get('tables', ()))
+    return tuple(
+        table if str(table).startswith(f'{PBC_KEY}_') else f"{PBC_KEY}_{table}"
+        for table in PBC_MANIFEST.get('tables', ())
+    )
 
 
 def _query_operations():
@@ -93,13 +98,37 @@ def document_instruction_plan(document=None, instructions=None):
     document_text = str(document or '')
     instruction_text = str(instructions or '')
     digest = hashlib.sha256(f'{PBC_KEY}:{document_text}:{instruction_text}'.encode('utf-8')).hexdigest()
+    lower = f"{document_text}\n{instruction_text}".lower()
+    suggested_action = (
+        'define_segment' if 'segment' in lower or 'audience' in lower else
+        'upsert_profile_property' if 'profile' in lower or 'consent' in lower else
+        'resolve_audience_exception' if 'exception' in lower or 'conflict' in lower else
+        'read'
+    )
+    candidate_tables = _owned_tables()
     return {
         'ok': bool(document_text or instruction_text),
         'pbc': PBC_KEY,
         'document_digest': digest,
         'document_actions': _DOCUMENT_ACTIONS,
-        'candidate_tables': _owned_tables(),
+        'candidate_tables': candidate_tables,
         'candidate_operations': _command_operations() + _query_operations(),
+        'suggested_action': suggested_action,
+        'suggested_crud_action': 'update' if suggested_action in {'define_segment', 'upsert_profile_property', 'resolve_audience_exception'} else 'read',
+        'domain_entities': (
+            'profile',
+            'profile_consent',
+            'segment_definition',
+            'segment_membership',
+            'activation_run',
+            'profile_exception',
+        ),
+        'instruction_preview': {
+            'segment_intent': 'segment' in lower or 'audience' in lower,
+            'consent_intent': 'consent' in lower or 'opt in' in lower or 'opt-in' in lower,
+            'activation_intent': 'activate' in lower or 'delivery' in lower,
+            'exception_intent': 'exception' in lower or 'conflict' in lower,
+        },
         'requires_human_confirmation': True,
         'side_effects': (),
     }
@@ -112,6 +141,12 @@ def datastore_crud_plan(action='read', table=None, payload=None):
     selected_table = table or (owned_tables[0] if owned_tables else None)
     allowed = normalized_action in _CRUD_ACTIONS and selected_table in owned_tables
     operation_pool = _query_operations() if normalized_action == 'read' else _command_operations()
+    preferred_operation = (
+        'define_segment' if selected_table == f'{PBC_KEY}_segment_definition' else
+        'upsert_profile_property' if selected_table in {f'{PBC_KEY}_profile_property', f'{PBC_KEY}_profile_consent'} else
+        'resolve_audience_exception' if selected_table == f'{PBC_KEY}_profile_exception' else
+        ('build_workbench_view' if normalized_action == 'read' else None)
+    )
     return {
         'ok': allowed and bool(operation_pool),
         'pbc': PBC_KEY,
@@ -120,6 +155,7 @@ def datastore_crud_plan(action='read', table=None, payload=None):
         'payload_keys': tuple(sorted(dict(payload or {}))),
         'owned_tables': owned_tables,
         'candidate_operations': operation_pool,
+        'preferred_operation': preferred_operation,
         'requires_confirmation': normalized_action != 'read',
         'event_contract': 'AppGen-X',
         'stream_engine_picker_visible': False,

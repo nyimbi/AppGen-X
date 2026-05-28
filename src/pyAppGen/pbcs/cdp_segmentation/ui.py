@@ -12,14 +12,21 @@ CDP_SEGMENTATION_UI_FRAGMENT_KEYS = (
     "CdpSegmentationWorkbench",
     "CustomerEventStream",
     "ProfilePropertyPanel",
+    "ProfileConsentTimeline",
     "SegmentDefinitionBuilder",
     "MembershipEvaluationBoard",
+    "MembershipTransitionLedger",
     "ActivationConsole",
+    "ActivationAllocationPlanner",
     "ConsentPolicyPanel",
     "IdentityStitchingPanel",
     "CdpRuleStudio",
     "CdpParameterConsole",
     "CdpConfigurationPanel",
+    "DocumentInstructionDesk",
+    "SegmentSimulationWizard",
+    "ActivationReadinessWizard",
+    "WorkbenchControls",
     "CdpEventOutbox",
     "CdpDeadLetterQueue",
     "CdpSchemaContractExplorer",
@@ -107,6 +114,35 @@ def cdp_segmentation_ui_contract() -> dict:
             "outbox_status": "visible",
             "dead_letter_status": "visible",
         },
+        "forms": {
+            "event_intake": {
+                "fields": ("event_id", "tenant", "customer_id", "event_type", "region", "properties"),
+                "submit_action": "ingest_customer_event",
+            },
+            "segment_definition": {
+                "fields": ("segment_id", "tenant", "name", "criteria", "status"),
+                "submit_action": "define_segment",
+            },
+            "document_instruction": {
+                "fields": ("document", "instructions", "tenant", "preferred_action"),
+                "submit_action": "parse_segment_rule",
+            },
+        },
+        "wizards": {
+            "segment_simulation": {
+                "steps": ("choose_segment", "choose_customer", "adjust_counterfactual", "review_delta"),
+                "submit_action": "simulate_segment_membership",
+            },
+            "activation_readiness": {
+                "steps": ("screen_consent", "estimate_audience", "allocate_budget", "review_delivery"),
+                "submit_action": "allocate_activation",
+            },
+        },
+        "controls": {
+            "grid_filters": ("tenant", "segment_status", "membership_status", "consent_status"),
+            "quick_actions": ("evaluate_segments", "activate_segment", "run_data_quality_controls"),
+            "document_actions": ("summarize", "draft_segment", "draft_profile_update", "draft_governance_ticket"),
+        },
         "binding_evidence": {
             "owned_tables": CDP_SEGMENTATION_OWNED_TABLES,
             "runtime_tables": CDP_SEGMENTATION_RUNTIME_TABLES,
@@ -127,6 +163,8 @@ def cdp_segmentation_render_workbench(state: dict, *, tenant: str, principal_per
         {"key": "profiles", "value": view["profile_count"], "fragment": "ProfilePropertyPanel"},
         {"key": "segments", "value": view["segment_count"], "fragment": "SegmentDefinitionBuilder"},
         {"key": "memberships", "value": view["membership_count"], "fragment": "MembershipEvaluationBoard"},
+        {"key": "consent_entries", "value": view["consent_entry_count"], "fragment": "ProfileConsentTimeline"},
+        {"key": "transition_ledger", "value": len(view["recent_membership_transitions"]), "fragment": "MembershipTransitionLedger"},
         {"key": "outbox", "value": view["outbox_count"], "fragment": "CdpEventOutbox"},
         {"key": "dead_letter", "value": view["dead_letter_count"], "fragment": "CdpDeadLetterQueue"},
     )
@@ -144,22 +182,21 @@ def cdp_segmentation_render_workbench(state: dict, *, tenant: str, principal_per
         "parameters_bound": tuple(sorted(state.get("parameters", {}))),
         "event_outbox_count": len(state.get("outbox", ())),
         "dead_letter_count": len(state.get("dead_letter", ())),
+        "alerts": view["alerts"],
+        "top_segments": view["top_segments"],
+        "forms": contract["forms"],
+        "wizards": contract["wizards"],
+        "controls": contract["controls"],
         "binding_evidence": view["binding_evidence"],
     }
 
 
 def _view_counts(state: dict, tenant: str) -> dict:
-    events = tuple(item for item in state.get("customer_events", {}).values() if item["tenant"] == tenant)
-    segments = tuple(item for item in state.get("segment_definitions", {}).values() if item["tenant"] == tenant)
-    memberships = tuple(item for item in state.get("segment_memberships", {}).values() if item["tenant"] == tenant)
-    profiles = {item["customer_id"] for item in state.get("profile_properties", {}).values() if item["tenant"] == tenant}
+    from .runtime import cdp_segmentation_build_workbench_view
+
+    view = cdp_segmentation_build_workbench_view(state, tenant=tenant)
     return {
-        "event_count": len(events),
-        "profile_count": len(profiles),
-        "segment_count": len(segments),
-        "membership_count": len(memberships),
-        "outbox_count": len(state.get("outbox", ())),
-        "dead_letter_count": len(state.get("dead_letter", ())),
+        **view,
         "binding_evidence": {
             "configuration": bool(state.get("configuration", {}).get("ok")),
             "rules": tuple(sorted(state.get("rules", {}))),
@@ -167,6 +204,7 @@ def _view_counts(state: dict, tenant: str) -> dict:
             "owned_tables": CDP_SEGMENTATION_OWNED_TABLES,
             "runtime_tables": CDP_SEGMENTATION_RUNTIME_TABLES,
             "shared_table_access": False,
+            "event_contract": "AppGen-X",
         },
     }
 

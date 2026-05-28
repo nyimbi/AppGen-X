@@ -5,6 +5,11 @@ ROUTES = ('POST /patient-care-plans',
  'POST /referrals',
  'POST /encounters',
  'POST /care-gaps',
+ 'POST /transition-plans',
+ 'POST /outcome-measures',
+ 'GET /clinical-care-coordination/forms',
+ 'GET /clinical-care-coordination/wizards',
+ 'GET /clinical-care-coordination/controls',
  'GET /clinical-care-coordination-workbench')
 
 def api_route_contracts():
@@ -16,7 +21,18 @@ def validate_api_route_contracts():
     return {'ok': True, 'pbc': PBC_KEY, 'service_mismatches': (), 'missing_idempotency': tuple(c for c in contracts if not c['idempotency_key']), 'invalid_table_scope': (), 'side_effects': ()}
 
 def dispatch_route(route, payload=None):
-    return {'ok': route in ROUTES, 'route': route, 'payload': dict(payload or {}), 'operation_contract': service_operation_contracts()['operation_contract'], 'side_effects': ()}
+    service = service_operation_manifest()
+    route_to_operation = {
+        'POST /patient-care-plans': 'create_care_plan',
+        'POST /care-teams': 'add_care_team_member',
+        'POST /referrals': 'create_referral',
+        'POST /encounters': 'record_encounter_and_tasks',
+        'POST /care-gaps': 'open_care_gap',
+        'POST /transition-plans': 'create_transition_plan',
+        'POST /outcome-measures': 'record_outcome_measure',
+        'GET /clinical-care-coordination-workbench': 'query_workbench',
+    }
+    return {'ok': route in ROUTES, 'route': route, 'payload': dict(payload or {}), 'operation': route_to_operation.get(route), 'service_operations': service['command_operations'] + service['query_operations'], 'operation_contract': service_operation_contracts()['operation_contract'], 'side_effects': ()}
 
 def smoke_test():
     return {'ok': api_route_contracts()['ok'] and validate_api_route_contracts()['ok'] and dispatch_route(ROUTES[0])['ok'], 'side_effects': ()}

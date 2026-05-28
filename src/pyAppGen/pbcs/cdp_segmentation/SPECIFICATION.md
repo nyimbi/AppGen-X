@@ -300,6 +300,10 @@ Focused tests prove:
 
 ## Manifest Traceability Appendix
 
+Additional APIs required by the package manifest: POST /cdp-segmentation/configuration, POST /cdp-segmentation/parameters, POST /cdp-segmentation/rules, POST /cdp-segmentation/schema-extensions.
+
+Additional UI fragments required by the package manifest: ProfileConsentTimeline, MembershipTransitionLedger, ActivationAllocationPlanner, DocumentInstructionDesk, SegmentSimulationWizard, ActivationReadinessWizard, WorkbenchControls.
+
 This appendix is generated from the package manifest and is release-gated so the specification stays aligned with the implemented PBC surface.
 
 - PBC key: `cdp_segmentation`
@@ -521,4 +525,3 @@ The `cdp_segmentation` package exposes a first-class PBC agent and chatbot inter
 Document and instruction intake is explicit release evidence. The chatbot can accept uploaded documents, operational notes, or user instructions, extract candidate facts for owned tables such as `cdp_segmentation_customer_event`, `cdp_segmentation_segment_definition`, `cdp_segmentation_segment_membership`, `cdp_segmentation_profile_property`, validate those facts against package rules, parameters, configuration, and permissions, and return a side-effect-free mutation preview. The preview is not a write. It is a governed plan that references service operations such as `configure_runtime`, `set_parameter`, `register_rule`, `register_schema_extension`, `receive_event`, `ingest_customer_event`, uses AppGen-X event expectations such as `CustomerSegmentUpdated`, `ProfileEnriched`, rejects foreign tables, and records whether a read-only query or a confirmed command is required. This keeps AI assistance professional, auditable, and bounded to the PBC datastore.
 
 Self-registration is also part of the specification. `registration_plan()`, `package_metadata_manifest()`, `validate_package_metadata()`, and `package_discovery_plan()` must produce a side-effect-free discovery and registration plan for `cdp_segmentation`. Registration metadata identifies the source package directory, required artifacts, owned datastore, AppGen-X event contract, UI fragments, RBAC descriptors, configuration schema, seed data, tests, and release evidence without mutating the global catalog during discovery. Composition tooling may then register the PBC, merge the `cdp_segmentation_skills` contribution into the single composed assistant, and expose the workbench UI while preserving owned-table boundaries and declared API/event/projection dependencies.
-

@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from .forms import checkout_processing_form_catalog
+from .wizards import checkout_processing_wizard_catalog
+from .controls import checkout_processing_control_catalog
 from .runtime import CHECKOUT_PROCESSING_ALLOWED_DATABASE_BACKENDS
 from .runtime import CHECKOUT_PROCESSING_CONSUMED_EVENT_TYPES
 from .runtime import CHECKOUT_PROCESSING_OWNED_TABLES
@@ -27,35 +30,39 @@ CHECKOUT_PROCESSING_UI_FRAGMENT_KEYS = (
     "CheckoutParameterConsole",
     "CheckoutConfigurationPanel",
     "InboxOutboxMonitor",
+    "AssistantPreviewWorkbench",
+    "CheckoutWizardLauncher",
+    "ControlCenter",
 )
 
 
 def checkout_processing_ui_contract() -> dict:
+    """Return workbench metadata for the one-PBC checkout app."""
+    from .permissions import permission_manifest
+
+    forms = checkout_processing_form_catalog()
+    wizards = checkout_processing_wizard_catalog()
+    controls = checkout_processing_control_catalog()
+    action_permissions = permission_manifest()["action_permissions"]
     return {
         "format": "appgen.checkout-processing-ui-contract.v1",
-        "ok": True,
+        "ok": forms["ok"] and wizards["ok"] and controls["ok"],
         "pbc": "checkout_processing",
         "implementation_directory": "src/pyAppGen/pbcs/checkout_processing",
         "fragments": CHECKOUT_PROCESSING_UI_FRAGMENT_KEYS,
         "routes": (
             "/workbench/pbcs/checkout_processing",
             "/workbench/pbcs/checkout_processing/carts",
-            "/workbench/pbcs/checkout_processing/cart-lines",
             "/workbench/pbcs/checkout_processing/sessions",
-            "/workbench/pbcs/checkout_processing/promotions",
-            "/workbench/pbcs/checkout_processing/pricing-tax",
-            "/workbench/pbcs/checkout_processing/inventory",
+            "/workbench/pbcs/checkout_processing/pricing",
             "/workbench/pbcs/checkout_processing/payments",
             "/workbench/pbcs/checkout_processing/risk",
-            "/workbench/pbcs/checkout_processing/addressing",
-            "/workbench/pbcs/checkout_processing/shipping",
-            "/workbench/pbcs/checkout_processing/exceptions",
-            "/workbench/pbcs/checkout_processing/federation",
             "/workbench/pbcs/checkout_processing/rules",
             "/workbench/pbcs/checkout_processing/parameters",
             "/workbench/pbcs/checkout_processing/configuration",
             "/workbench/pbcs/checkout_processing/eventing",
-            "/workbench/pbcs/checkout_processing/contracts",
+            "/workbench/pbcs/checkout_processing/assistant",
+            "/workbench/pbcs/checkout_processing/controls",
         ),
         "panels": (
             {
@@ -65,59 +72,50 @@ def checkout_processing_ui_contract() -> dict:
                 "commands": ("create_cart", "add_cart_line", "apply_coupon"),
             },
             {
-                "key": "pricing",
-                "fragment": "PricingTaxHandoffPanel",
-                "binds_to": ("checkout_pricing_handoff", "checkout_tax_handoff", "price_projection", "tax_quote_projection"),
-                "commands": ("apply_pricing_handoff", "apply_tax_handoff"),
-            },
-            {
                 "key": "checkout",
                 "fragment": "CheckoutSessionConsole",
-                "binds_to": ("checkout_session", "checkout_inventory_reservation_handoff", "checkout_payment_intent_handoff"),
-                "commands": ("open_checkout_session", "reserve_inventory_handoff", "create_payment_intent", "complete_checkout"),
+                "binds_to": ("checkout_session", "checkout_address_validation", "checkout_risk_screen"),
+                "commands": ("open_checkout_session", "validate_shipping_address", "complete_checkout"),
             },
             {
-                "key": "risk",
-                "fragment": "RiskDecisionConsole",
-                "binds_to": ("risk_screen", "policy_screen", "dead_letter"),
-                "commands": ("screen_risk", "predictive_risk_score", "screen_checkout_policy", "run_control_tests"),
-            },
-            {
-                "key": "eventing",
-                "fragment": "InboxOutboxMonitor",
-                "binds_to": ("inbox", "outbox", "dead_letter", "idempotency_key"),
-                "commands": ("receive_event", "route_checkout", "run_resilience_drill"),
+                "key": "pricing_payment",
+                "fragment": "PaymentIntentPanel",
+                "binds_to": ("checkout_pricing_handoff", "checkout_tax_handoff", "checkout_payment_intent_handoff"),
+                "commands": ("apply_pricing_handoff", "apply_tax_handoff", "authorize_payment_intent", "capture_payment_intent"),
             },
             {
                 "key": "governance",
                 "fragment": "CheckoutRuleStudio",
-                "binds_to": ("configuration_evidence", "rule_evidence", "parameter_evidence"),
-                "commands": ("register_rule", "set_parameter", "configure_runtime", "build_schema_contract", "build_service_contract", "build_release_evidence"),
+                "binds_to": ("checkout_rule", "checkout_parameter", "checkout_configuration"),
+                "commands": ("register_rule", "set_parameter", "configure_runtime"),
+            },
+            {
+                "key": "assistant",
+                "fragment": "AssistantPreviewWorkbench",
+                "binds_to": ("checkout_rule", "checkout_parameter", "checkout_configuration", "checkout_session"),
+                "commands": ("query_checkout_processing_assistant_preview",),
+            },
+            {
+                "key": "controls",
+                "fragment": "ControlCenter",
+                "binds_to": ("checkout_session", "dead_letter_event", "release_evidence"),
+                "commands": ("query_checkout_processing_controls", "run_control_tests"),
             },
         ),
-        "action_permissions": {
-            "create_cart": "checkout_processing.cart",
-            "add_cart_line": "checkout_processing.cart",
-            "apply_coupon": "checkout_processing.promotion",
-            "open_checkout_session": "checkout_processing.checkout",
-            "apply_pricing_handoff": "checkout_processing.pricing",
-            "apply_tax_handoff": "checkout_processing.pricing",
-            "reserve_inventory_handoff": "checkout_processing.inventory",
-            "create_payment_intent": "checkout_processing.payment",
-            "complete_checkout": "checkout_processing.checkout",
-            "screen_risk": "checkout_processing.risk",
-            "screen_checkout_policy": "checkout_processing.audit",
-            "run_control_tests": "checkout_processing.audit",
-            "receive_event": "checkout_processing.event.consume",
-            "register_rule": "checkout_processing.configure",
-            "set_parameter": "checkout_processing.configure",
-            "configure_runtime": "checkout_processing.configure",
-            "build_schema_contract": "checkout_processing.audit",
-            "build_service_contract": "checkout_processing.audit",
-            "build_release_evidence": "checkout_processing.audit",
-        },
+        "action_permissions": action_permissions,
+        "forms": forms["forms"],
+        "wizards": wizards["wizards"],
+        "controls": controls["controls"],
         "configuration_editor": {
-            "required_fields": ("database_backend", "event_topic", "retry_limit", "default_currency", "supported_shipping_options", "supported_payment_methods"),
+            "required_fields": (
+                "database_backend",
+                "event_topic",
+                "retry_limit",
+                "default_currency",
+                "default_country",
+                "supported_shipping_options",
+                "supported_payment_methods",
+            ),
             "allowed_database_backends": CHECKOUT_PROCESSING_ALLOWED_DATABASE_BACKENDS,
             "required_event_topic": CHECKOUT_PROCESSING_REQUIRED_EVENT_TOPIC,
             "event_contract": "AppGen-X",
@@ -157,6 +155,9 @@ def checkout_processing_ui_contract() -> dict:
             "event_contract": "AppGen-X",
             "required_event_topic": CHECKOUT_PROCESSING_REQUIRED_EVENT_TOPIC,
             "stream_engine_picker_visible": False,
+            "form_ids": forms["form_ids"],
+            "wizard_ids": wizards["wizard_ids"],
+            "control_ids": controls["control_ids"],
         },
     }
 
@@ -167,18 +168,21 @@ def checkout_processing_render_workbench(
     tenant: str,
     principal_permissions: tuple[str, ...],
 ) -> dict:
+    """Render high-level workbench cards for the checkout slice."""
     contract = checkout_processing_ui_contract()
     permissions = set(principal_permissions)
-    visible_actions = tuple(action for action, required in contract["action_permissions"].items() if required in permissions)
+    visible_actions = tuple(
+        action for action, required in contract["action_permissions"].items() if required in permissions
+    )
     carts = tuple(cart for cart in state["carts"].values() if cart["tenant"] == tenant)
     sessions = tuple(session for session in state["checkout_sessions"].values() if session["tenant"] == tenant)
     cards = (
         {"key": "carts", "value": len(carts), "fragment": "CartConsole"},
-        {"key": "cart_lines", "value": len(tuple(line for line in state["cart_lines"].values() if line["tenant"] == tenant)), "fragment": "CartLineConsole"},
         {"key": "completed_checkouts", "value": len(tuple(session for session in sessions if session["status"] == "completed")), "fragment": "CheckoutSessionConsole"},
-        {"key": "promotions", "value": len(tuple(item for item in state["promotion_redemptions"].values() if item["tenant"] == tenant)), "fragment": "PromotionRedemptionStudio"},
         {"key": "dead_letters", "value": len(tuple(item for item in state["dead_letter"] if item.get("tenant") == tenant)), "fragment": "CheckoutExceptionBoard"},
-        {"key": "rules", "value": len(tuple(rule for rule in state["rules"].values() if rule["tenant"] == tenant)), "fragment": "CheckoutRuleStudio"},
+        {"key": "forms", "value": len(contract["forms"]), "fragment": "AssistantPreviewWorkbench"},
+        {"key": "wizards", "value": len(contract["wizards"]), "fragment": "CheckoutWizardLauncher"},
+        {"key": "controls", "value": len(contract["controls"]), "fragment": "ControlCenter"},
     )
     return {
         "format": "appgen.checkout-processing-workbench-render.v1",
@@ -195,8 +199,12 @@ def checkout_processing_render_workbench(
         "event_outbox_count": len(state.get("outbox", ())),
         "event_inbox_count": len(tuple(event for event in state.get("inbox", ()) if event.get("tenant") == tenant)),
         "dead_letter_count": len(tuple(event for event in state.get("dead_letter", ()) if event.get("tenant") == tenant)),
+        "forms": contract["forms"],
+        "wizards": contract["wizards"],
+        "controls": contract["controls"],
         "binding_evidence": contract["workbench_binding_evidence"],
     }
+
 
 class _AppGenSmokeState(dict):
     """Tolerant empty state for side-effect-free workbench smoke rendering."""
@@ -209,19 +217,20 @@ class _AppGenSmokeState(dict):
 
 def _appgen_smoke_state():
     """Return a deterministic state envelope understood by PBC workbench renderers."""
-    return _AppGenSmokeState({
-        "configuration": _AppGenSmokeState({"ok": True}),
-        "rules": _AppGenSmokeState(),
-        "parameters": _AppGenSmokeState(),
-        "outbox": (),
-        "inbox": (),
-        "dead_letter": (),
-        "dead_letters": (),
-        "events": (),
-    })
+    return _AppGenSmokeState(
+        {
+            "configuration": _AppGenSmokeState({"ok": True}),
+            "rules": _AppGenSmokeState(),
+            "parameters": _AppGenSmokeState(),
+            "outbox": (),
+            "inbox": (),
+            "dead_letter": (),
+            "events": (),
+        }
+    )
 
 
-def smoke_test():
+def smoke_test() -> dict:
     """Exercise the PBC workbench contract and render path without side effects."""
     contract = checkout_processing_ui_contract()
     permissions = tuple(dict.fromkeys(contract.get("action_permissions", {}).values()))
@@ -233,18 +242,7 @@ def smoke_test():
     cards = tuple(rendered.get("cards") or contract.get("panels") or contract.get("fragments", ()))
     configuration_editor = contract.get("configuration_editor", {})
     event_surfaces = contract.get("event_surfaces", {})
-    rule_editor = contract.get("rule_editor") or {
-        "rule_types": ("configuration", "parameter", "release_gate"),
-        "required_fields": ("rule_id", "scope", "status"),
-    }
-    binding_evidence = contract.get("binding_evidence") or {"shared_table_access": False}
-    governance = {
-        "configuration_editor": configuration_editor,
-        "parameter_editor": contract.get("parameter_editor", {}),
-        "rule_editor": rule_editor,
-        "event_surfaces": event_surfaces,
-        "binding_evidence": binding_evidence,
-    }
+    rule_editor = contract.get("rule_editor") or {"rule_types": ("configuration",), "required_fields": ("rule_id",)}
     return {
         "format": "appgen.pbc-ui-smoke-test.v1",
         "ok": contract.get("ok") is True
@@ -254,17 +252,14 @@ def smoke_test():
         and bool(cards)
         and bool(contract.get("action_permissions"))
         and bool(configuration_editor)
-        and configuration_editor.get("stream_engine_picker_visible", configuration_editor.get("user_facing_stream_engine_picker", False)) is False
+        and configuration_editor.get("stream_engine_picker_visible") is False
         and bool(contract.get("parameter_editor"))
         and bool(rule_editor)
         and bool(event_surfaces)
-        and ("outbox_status" in event_surfaces or "contract" in event_surfaces)
-        and binding_evidence.get("shared_table_access") is not True
-        and not binding_evidence.get("shared_tables", ()),
-        "manifest": {"fragments": contract.get("fragments", ()), "routes": contract.get("routes", ())},
-        "contract": contract,
-        "governance": governance,
+        and bool(contract.get("forms"))
+        and bool(contract.get("wizards"))
+        and bool(contract.get("controls")),
+        "manifest": {"fragments": contract.get("fragments", ())},
         "rendered": rendered,
-        "cards": cards,
         "side_effects": (),
     }

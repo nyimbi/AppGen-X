@@ -27,3 +27,10 @@ Generated checks:
 - seed_data
 - self_registration_metadata
 - contract_tests
+- one_pbc_readme_present
+- implementation_plan_present
+- implementation_status_present
+- forms_catalog
+- wizard_catalog
+- controls_catalog
+- assistant_preview_guardrails

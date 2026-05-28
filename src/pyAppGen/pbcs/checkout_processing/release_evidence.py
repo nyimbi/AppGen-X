@@ -2,6 +2,13 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
+from . import agent
+from . import controls
+from . import forms
+from . import ui
+from . import wizards
 from .runtime import checkout_processing_build_api_contract
 from .runtime import checkout_processing_build_release_evidence
 from .runtime import checkout_processing_build_schema_contract
@@ -9,44 +16,61 @@ from .runtime import checkout_processing_build_service_contract
 from .runtime import checkout_processing_permissions_contract
 
 PBC_KEY = "checkout_processing"
-
-RELEASE_EVIDENCE = {
-    **checkout_processing_build_release_evidence(),
-    "pbc": PBC_KEY,
-    "schema": checkout_processing_build_schema_contract(),
-    "service": checkout_processing_build_service_contract(),
-    "api": checkout_processing_build_api_contract(),
-    "permissions": checkout_processing_permissions_contract(),
-}
+PACKAGE_DIR = Path(__file__).parent
 
 
-def build_release_evidence():
+def build_release_evidence() -> dict:
     """Return generated release audit evidence for this PBC."""
-    return dict(RELEASE_EVIDENCE)
+    runtime_evidence = checkout_processing_build_release_evidence()
+    return {
+        **runtime_evidence,
+        "pbc": PBC_KEY,
+        "schema": checkout_processing_build_schema_contract(),
+        "service": checkout_processing_build_service_contract(),
+        "api": checkout_processing_build_api_contract(),
+        "permissions": checkout_processing_permissions_contract(),
+        "ui": ui.checkout_processing_ui_contract(),
+        "forms": forms.checkout_processing_form_catalog(),
+        "wizards": wizards.checkout_processing_wizard_catalog(),
+        "controls": controls.checkout_processing_control_catalog(),
+        "assistant": agent.composed_agent_contribution(),
+        "docs_present": {
+            "README.md": PACKAGE_DIR.joinpath("README.md").exists(),
+            "implementation-plan.md": PACKAGE_DIR.joinpath("implementation-plan.md").exists(),
+            "implementation-status.md": PACKAGE_DIR.joinpath("implementation-status.md").exists(),
+            "RELEASE_EVIDENCE.md": PACKAGE_DIR.joinpath("RELEASE_EVIDENCE.md").exists(),
+        },
+    }
 
 
-def release_readiness_manifest():
+RELEASE_EVIDENCE = build_release_evidence()
+
+
+def release_readiness_manifest() -> dict:
     """Return side-effect-free release evidence coverage and gate metadata."""
     evidence = build_release_evidence()
     sections = tuple(
         name
-        for name in ("schema", "service", "api", "permissions", "ui")
+        for name in ("schema", "service", "api", "permissions", "ui", "forms", "wizards", "controls", "assistant")
         if isinstance(evidence.get(name), dict)
     )
     checks = tuple(evidence.get("checks", ()))
+    docs_present = evidence.get("docs_present", {})
+    blocking_gaps = tuple(evidence.get("blocking_gaps", ())) + tuple(name for name, present in docs_present.items() if not present)
     return {
-        "ok": evidence.get("ok") is True and bool(checks),
+        "ok": evidence.get("ok") is True and bool(checks) and not blocking_gaps,
         "pbc": PBC_KEY,
         "format": evidence.get("format"),
         "sections": sections,
         "checks": checks,
-        "blocking_gaps": tuple(evidence.get("blocking_gaps", ())),
-        "required_sections": ("schema", "service", "api", "permissions", "ui"),
+        "blocking_gaps": blocking_gaps,
+        "required_sections": ("schema", "service", "api", "permissions", "ui", "forms", "wizards", "controls", "assistant"),
+        "docs_present": docs_present,
         "side_effects": (),
     }
 
 
-def validate_release_evidence():
+def validate_release_evidence() -> dict:
     """Validate release evidence, blocking gaps, and owned-boundary proof."""
     evidence = build_release_evidence()
     manifest = release_readiness_manifest()
@@ -54,6 +78,10 @@ def validate_release_evidence():
     failed_checks = tuple(check for check in manifest["checks"] if check.get("ok") is not True)
     schema = evidence.get("schema", {}) if isinstance(evidence.get("schema"), dict) else {}
     service = evidence.get("service", {}) if isinstance(evidence.get("service"), dict) else {}
+    forms_catalog = evidence.get("forms", {})
+    wizard_catalog = evidence.get("wizards", {})
+    control_catalog = evidence.get("controls", {})
+    assistant = evidence.get("assistant", {})
     finalization_commands = {"confirm_inventory_reservation", "authorize_payment_intent", "capture_payment_intent"}
     boundary_gaps = tuple(
         gap
@@ -61,13 +89,16 @@ def validate_release_evidence():
             ("schema_shared_table_access", schema.get("shared_table_access") is not False),
             ("service_shared_table_access", service.get("shared_table_access") is True),
             ("service_missing_finalization_commands", not finalization_commands <= set(service.get("command_methods", ()))),
+            ("missing_forms", not forms_catalog.get("ok")),
+            ("missing_wizards", not wizard_catalog.get("ok")),
+            ("missing_controls", not control_catalog.get("ok")),
+            ("missing_assistant", not assistant.get("ok")),
         )
         if failed
     )
     return {
         "ok": manifest["ok"]
         and evidence.get("pbc", PBC_KEY) == manifest["pbc"]
-        and not manifest["blocking_gaps"]
         and not missing_sections
         and not failed_checks
         and not boundary_gaps,
@@ -80,7 +111,7 @@ def validate_release_evidence():
     }
 
 
-def smoke_test():
+def smoke_test() -> dict:
     """Exercise release evidence readiness validation side-effect-free."""
     validation = validate_release_evidence()
     evidence = build_release_evidence()

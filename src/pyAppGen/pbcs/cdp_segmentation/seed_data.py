@@ -1,7 +1,29 @@
 """Executable seed-data contract for the cdp_segmentation PBC."""
 
 PBC_KEY = 'cdp_segmentation'
-SEED_DATA = ({'table': 'cdp_segmentation_customer_event', 'rows': ({'code': 'CDP_SEGMENTATION-001', 'status': 'active'},)}, {'table': 'cdp_segmentation_segment_definition', 'rows': ({'code': 'CDP_SEGMENTATION-002', 'status': 'active'},)})
+SEED_DATA = (
+    {
+        'table': 'cdp_segmentation_activation_destination',
+        'rows': (
+            {'code': 'dest_loyalty', 'status': 'active', 'destination': 'loyalty', 'channel': 'retention'},
+            {'code': 'dest_notifications', 'status': 'active', 'destination': 'notifications', 'channel': 'engagement'},
+        ),
+    },
+    {
+        'table': 'cdp_segmentation_segment_definition',
+        'rows': (
+            {'code': 'seg_high_value_repeat', 'status': 'active', 'name': 'High Value Repeat Buyers'},
+            {'code': 'seg_at_risk_recent', 'status': 'draft', 'name': 'At-Risk Recent Buyers'},
+        ),
+    },
+    {
+        'table': 'cdp_segmentation_cdp_segmentation_parameter',
+        'rows': (
+            {'code': 'membership_score_threshold', 'status': 'active', 'value': 0.68},
+            {'code': 'consent_risk_threshold', 'status': 'active', 'value': 0.60},
+        ),
+    },
+)
 
 
 def seed_plan():
