@@ -2,314 +2,313 @@
 
 ## Purpose
 
-This backlog identifies 50 high-impact, high-value improvements for `payroll_engine`. Each item is specific to the domain surface currently declared by the PBC and is intended to move the package beyond world-class breadth toward complete specialist-grade coverage.
+This backlog identifies 50 high-impact, high-value improvements for `payroll_engine`. The items are specific to gross-to-net payroll operations: calendars, pay periods, pay groups, legal entities, payroll runs, worker projections, pay profiles, bank instructions, approved labor-hour intake, earning calculations, overtime, gross components, taxes, deductions, garnishments, benefits, net pay, payment instructions, filings, corrections, retro adjustments, off-cycle payments, policy screening, payroll proofs, event reliability, UI workbenches, and agent-assisted payroll operations.
 
 ## Current Domain Evidence Used
 
-- Domain purpose: Gross-to-net payroll, worker pay profiles, earnings, deductions, benefits, filings, payment and journal handoffs, corrections, controls, and payroll-risk evidence.
-- Representative owned tables: `payroll_engine_payroll_calendar`, `payroll_engine_payroll_period`, `payroll_engine_payroll_pay_group`, `payroll_engine_payroll_legal_entity`, `payroll_engine_payroll_run`, `payroll_engine_payroll_run_worker`, `payroll_engine_payroll_run_approval`, `payroll_engine_payroll_run_lock`, `payroll_engine_worker_projection`, `payroll_engine_worker_pay_profile`, `payroll_engine_worker_bank_instruction`, `payroll_engine_labor_hours`, ...
-- Representative operations/APIs: `command_payroll_runs`, `command_payroll_runs_id_workers`, `command_payroll_runs_id_payslips`, `command_payslips_id_deductions`, `command_payslips_id_benefits`, `command_payroll_runs_id_post`, `command_payroll_filings`, `command_payroll_events_inbox`, `command_payroll_rules`, `command_payroll_parameters`, `command_payroll_configuration`, `query_payslips`, ...
-- Representative events: `PayrollPosted`, `PayrollFilingPrepared`.
-- Representative advanced capabilities: `event_sourced_payroll_lifecycle`, `graph_relational_compensation_topology`, `multi_tenant_payroll_isolation`, `schema_evolution_resilient_payroll_schema`, `probabilistic_payroll_anomaly_compliance_scoring`, `real_time_gross_to_net_analytics`, `counterfactual_pay_policy_simulation`, `temporal_payroll_cash_forecasting`, `autonomous_payroll_exception_resolution`, `semantic_payroll_instruction_parsing`, ...
+- Domain purpose: payroll execution for worker payroll projections, labor-hour intake, payslips, deductions, benefits, payroll postings, filing preparation, event evidence, rules, parameters, configuration, UI fragments, and release validation.
+- Owned boundary: payroll calendars, periods, pay groups, legal entities, runs, run workers, approvals, locks, worker projections, pay profiles, bank instructions, labor hours and lines, earning codes and calculations, overtime calculations, gross pay components, payslips and lines, tax withholding projections, deductions, deduction rules, arrears, garnishment orders, benefit allocations, benefit plans, employer contributions, net pay distributions, payment instructions, payment-batch projections, journal-request projections, tax wage-base projections, filings, filing lines, corrections, retro adjustments, off-cycle payments, exceptions, policy screening, audit traces, payroll proofs, federation projections, carbon batch windows, batch optimization, cash allocation, anomaly signals, risk models, cash forecasts, parsed instructions, seed data, schema extensions, controls, governed models, rules, parameters, configuration, inbox/outbox, and dead-letter evidence.
+- Existing command/query surface: runtime configuration, parameters, rules, schema extensions, event handling, worker projections, payroll runs, labor-hour ingestion, payslip calculation, deduction application, benefit allocation, payroll posting, filing preparation, payment/filing routing, payroll proofs, policy screening, federation, identity verification, resilience drills, crypto rotation, carbon-aware batches, batch optimization, cash allocation, controls, governed models, workbench, and boundary verification.
+- Existing events and dependencies: emits `PayrollPosted` and `PayrollFilingPrepared`; consumes `LaborHoursApproved` and `TaxCalculated`; integrates with personnel, time/labor, tax, treasury, ledger, and audit through declared APIs/projections only.
 
 ## 50 Better-Than-World-Class Improvements
 
-### 1. Deep specialist lifecycle semantics for `payroll_engine_payroll_calendar`
+### 1. Payroll calendar governance
 
-**Justification:** This owned table is part of the Compensation and Payroll Engine operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Gross-to-net payroll, worker pay profiles, earnings, deductions, benefits, filings, payment and journal handoffs, corrections, controls, and payroll-risk evidence.
+**Justification:** Payroll calendars determine cutoffs, pay dates, bank holidays, statutory deadlines, and run sequencing; errors can delay pay and filings.
 
-**Improvement:** Extend `payroll_engine_payroll_calendar` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `payroll_calendar`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Model calendar versions with pay frequency, cutoff windows, pay dates, bank holidays, statutory dates, approval deadlines, time-zone rules, and retro/off-cycle policy. Run creation should cite the active calendar snapshot.
 
-### 2. Deep specialist lifecycle semantics for `payroll_engine_payroll_period`
+### 2. Payroll period lifecycle
 
-**Justification:** This owned table is part of the Compensation and Payroll Engine operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Gross-to-net payroll, worker pay profiles, earnings, deductions, benefits, filings, payment and journal handoffs, corrections, controls, and payroll-risk evidence.
+**Justification:** Period state controls intake, calculation, approval, posting, filing, correction, and lock behavior.
 
-**Improvement:** Extend `payroll_engine_payroll_period` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `payroll_period`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add period states from open to intake-closed, calculated, approved, posted, filed, corrected, locked, and archived. Enforce allowed transitions with reason, actor, policy hash, and downstream handoff evidence.
 
-### 3. Deep specialist lifecycle semantics for `payroll_engine_payroll_pay_group`
+### 3. Pay group eligibility engine
 
-**Justification:** This owned table is part of the Compensation and Payroll Engine operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Gross-to-net payroll, worker pay profiles, earnings, deductions, benefits, filings, payment and journal handoffs, corrections, controls, and payroll-risk evidence.
+**Justification:** Workers must be paid in the right pay group based on legal entity, worker type, country, currency, schedule, and payroll policy.
 
-**Improvement:** Extend `payroll_engine_payroll_pay_group` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `pay_group_management`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add eligibility rules for pay frequency, worker class, country, legal entity, currency, labor source, banking readiness, and tax projection. Reject run rosters when worker/pay-group evidence conflicts.
 
-### 4. Deep specialist lifecycle semantics for `payroll_engine_payroll_legal_entity`
+### 4. Legal entity payroll controls
 
-**Justification:** This owned table is part of the Compensation and Payroll Engine operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Gross-to-net payroll, worker pay profiles, earnings, deductions, benefits, filings, payment and journal handoffs, corrections, controls, and payroll-risk evidence.
+**Justification:** Payroll obligations are tied to legal entities, employer registrations, currencies, filing channels, and statutory rules.
 
-**Improvement:** Extend `payroll_engine_payroll_legal_entity` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `legal_entity_payroll`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Store legal entity payroll registration, country, currency, statutory authority, filing channel, payment rail, bank funding source projection, and approval policy. Block runs when entity setup is incomplete.
 
-### 5. Deep specialist lifecycle semantics for `payroll_engine_payroll_run`
+### 5. Payroll run readiness gate
 
-**Justification:** This owned table is part of the Compensation and Payroll Engine operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Gross-to-net payroll, worker pay profiles, earnings, deductions, benefits, filings, payment and journal handoffs, corrections, controls, and payroll-risk evidence.
+**Justification:** Payroll runs should not start until period, worker roster, labor hours, tax projections, rules, payment rails, and approvals are ready.
 
-**Improvement:** Extend `payroll_engine_payroll_run` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `payroll_run_creation`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Compute run readiness from calendar, period, pay group, legal entity, worker projections, approved labor hours, tax projection freshness, deduction/benefit setup, payment readiness, and open exceptions.
 
-### 6. Deep specialist lifecycle semantics for `payroll_engine_payroll_run_worker`
+### 6. Payroll run lock and freeze controls
 
-**Justification:** This owned table is part of the Compensation and Payroll Engine operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Gross-to-net payroll, worker pay profiles, earnings, deductions, benefits, filings, payment and journal handoffs, corrections, controls, and payroll-risk evidence.
+**Justification:** Late changes after calculation or approval can create inconsistent payslips, payments, journals, and filings.
 
-**Improvement:** Extend `payroll_engine_payroll_run_worker` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `payroll_run_worker_roster`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add lock levels for calculation freeze, approval freeze, payment freeze, posting freeze, filing freeze, and archive lock. Require break-glass approvals with full delta evidence.
 
-### 7. Deep specialist lifecycle semantics for `payroll_engine_payroll_run_approval`
+### 7. Worker projection freshness
 
-**Justification:** This owned table is part of the Compensation and Payroll Engine operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Gross-to-net payroll, worker pay profiles, earnings, deductions, benefits, filings, payment and journal handoffs, corrections, controls, and payroll-risk evidence.
+**Justification:** Payroll depends on personnel facts without owning employee master data.
 
-**Improvement:** Extend `payroll_engine_payroll_run_approval` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `payroll_run_approval`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Track worker projection source, employment status, legal entity, pay group, tax residency, currency, compensation basis, termination date, and freshness. Block payment for stale or conflicting projections.
 
-### 8. Deep specialist lifecycle semantics for `payroll_engine_payroll_run_lock`
+### 8. Worker pay profile lifecycle
 
-**Justification:** This owned table is part of the Compensation and Payroll Engine operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Gross-to-net payroll, worker pay profiles, earnings, deductions, benefits, filings, payment and journal handoffs, corrections, controls, and payroll-risk evidence.
+**Justification:** Pay profile changes directly affect gross pay, tax, benefits, deductions, and eligibility.
 
-**Improvement:** Extend `payroll_engine_payroll_run_lock` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `payroll_run_lock`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Model pay profiles with effective dates, salary/hourly basis, rate, currency, FTE, worker type, pay group, tax profile reference, approval evidence, and retro impact. Changes should trigger recalculation analysis.
 
-### 9. Deep specialist lifecycle semantics for `payroll_engine_worker_projection`
+### 9. Bank instruction verification
 
-**Justification:** This owned table is part of the Compensation and Payroll Engine operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Gross-to-net payroll, worker pay profiles, earnings, deductions, benefits, filings, payment and journal handoffs, corrections, controls, and payroll-risk evidence.
+**Justification:** Incorrect or fraudulent bank instructions cause payment failures and payroll fraud.
 
-**Improvement:** Extend `payroll_engine_worker_projection` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `worker_projection`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add bank instruction lifecycle with verification status, account mask, payment rail, country, effective date, source, approval, change cooling period, and high-risk change flags. Payment instructions should require verified banking.
 
-### 10. Deep specialist lifecycle semantics for `payroll_engine_worker_pay_profile`
+### 10. Labor hours intake reconciliation
 
-**Justification:** This owned table is part of the Compensation and Payroll Engine operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Gross-to-net payroll, worker pay profiles, earnings, deductions, benefits, filings, payment and journal handoffs, corrections, controls, and payroll-risk evidence.
+**Justification:** Payroll must trust approved labor hours while preserving the time_labor boundary.
 
-**Improvement:** Extend `payroll_engine_worker_pay_profile` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `worker_pay_profile`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Ingest `LaborHoursApproved` with idempotency, period mapping, worker projection, earning-code mapping, exception status, approval proof, and stale event handling. Reconcile direct API labor pulls to consumed events.
 
-### 11. Make `command_payroll_runs` a complete command lifecycle
+### 11. Earning code catalog governance
 
-**Justification:** High-value users need `command_payroll_runs` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Earning codes drive gross pay, taxes, benefits, journals, filings, and payslip presentation.
 
-**Improvement:** Implement `command_payroll_runs` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `PayrollPosted`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Model earning codes with taxable status, pensionable/benefitable flags, jurisdiction, earning category, rate basis, GL/journal projection mapping, filing box mapping, and effective dates.
 
-### 12. Make `command_payroll_runs_id_workers` a complete command lifecycle
+### 12. Gross pay calculation trace
 
-**Justification:** High-value users need `command_payroll_runs_id_workers` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Payroll users must explain every gross pay component from hours, salary, overtime, premiums, supplemental pay, and corrections.
 
-**Improvement:** Implement `command_payroll_runs_id_workers` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `PayrollFilingPrepared`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Store gross calculation trace with inputs, earning code, rate, hours/units, multiplier, source event, rule hash, rounding, currency, and component lineage. Recalculation should version prior outcomes.
 
-### 13. Make `command_payroll_runs_id_payslips` a complete command lifecycle
+### 13. Salary proration engine
 
-**Justification:** High-value users need `command_payroll_runs_id_payslips` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Hires, terminations, leaves, job changes, unpaid absences, and partial periods require accurate proration.
 
-**Improvement:** Implement `command_payroll_runs_id_payslips` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `PayrollPosted`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add proration methods by calendar days, workdays, scheduled hours, FTE, jurisdiction, and policy. Show proration basis and affected payslip lines.
 
-### 14. Make `command_payslips_id_deductions` a complete command lifecycle
+### 14. Overtime and premium payroll validation
 
-**Justification:** High-value users need `command_payslips_id_deductions` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Payroll must validate overtime and premium outcomes from time_labor before payment.
 
-**Improvement:** Implement `command_payslips_id_deductions` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `PayrollFilingPrepared`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Recheck overtime and premiums against payroll rules, approved labor proof, earning code mapping, caps, and jurisdiction. Flag discrepancies for correction rather than silently accepting them.
 
-### 15. Make `command_payslips_id_benefits` a complete command lifecycle
+### 15. Tax withholding projection governance
 
-**Justification:** High-value users need `command_payslips_id_benefits` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Tax calculations are external projections but determine net pay, filings, and compliance.
 
-**Improvement:** Implement `command_payslips_id_benefits` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `PayrollPosted`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Track tax projection freshness, jurisdiction, wage base, taxable wages, withholding amounts, employee/employer tax split, source event, and recalculation trigger. Block posting when required tax projections are missing or stale.
 
-### 16. Make `command_payroll_runs_id_post` a complete command lifecycle
+### 16. Wage base accumulation
 
-**Justification:** High-value users need `command_payroll_runs_id_post` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Statutory taxes and benefits depend on year-to-date wage bases, thresholds, and caps.
 
-**Improvement:** Implement `command_payroll_runs_id_post` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `PayrollFilingPrepared`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add wage base projections with period, jurisdiction, worker, earning type, taxable base, cap, prior amounts, and source. Payslip calculation should explain threshold crossing and cap application.
 
-### 17. Make `command_payroll_filings` a complete command lifecycle
+### 17. Deduction rule engine
 
-**Justification:** High-value users need `command_payroll_filings` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Deductions vary by pre-tax/post-tax status, limits, priority, arrears, eligibility, and jurisdiction.
 
-**Improvement:** Implement `command_payroll_filings` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `PayrollPosted`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Model deduction rules with priority, taxable treatment, percentage/fixed amount, limit, arrears behavior, net pay floor interaction, effective dates, and proof. Apply rules in deterministic order.
 
-### 18. Make `command_payroll_events_inbox` a complete command lifecycle
+### 18. Garnishment priority and protection
 
-**Justification:** High-value users need `command_payroll_events_inbox` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Garnishments are legally sensitive and require priority, limits, protected earnings, and court/order evidence.
 
-**Improvement:** Implement `command_payroll_events_inbox` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `PayrollFilingPrepared`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add garnishment order lifecycle with authority, case reference, priority, protected amount, cap, start/end, remittance target, arrears, and stop notice. Payslips should show legal withholding evidence.
 
-### 19. Make `command_payroll_rules` a complete command lifecycle
+### 19. Deduction arrears recovery
 
-**Justification:** High-value users need `command_payroll_rules` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Missed deductions can accumulate and must be recovered without violating net pay floors or legal limits.
 
-**Improvement:** Implement `command_payroll_rules` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `PayrollPosted`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Track arrears origin, balance, recovery rule, max recovery per period, priority, employee notification status, and write-off approval. Recalculate arrears after corrections and off-cycle payments.
 
-### 20. Make `command_payroll_parameters` a complete command lifecycle
+### 20. Benefit allocation and contribution controls
 
-**Justification:** High-value users need `command_payroll_parameters` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Benefits affect employee deductions, employer contributions, taxes, and filings.
 
-**Improvement:** Implement `command_payroll_parameters` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `PayrollFilingPrepared`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Model benefit plans, eligibility, employee contribution, employer contribution, taxable benefit treatment, caps, enrollment source, and retro changes. Allocate benefit cost with evidence and effective dates.
 
-### 21. Operationalize `event_sourced_payroll_lifecycle` as a governed decision system
+### 21. Net pay floor enforcement
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Compensation and Payroll Engine and measurably improves cycle time without hiding assumptions.
+**Justification:** Payroll must prevent negative or below-threshold net pay unless legally and operationally authorized.
 
-**Improvement:** Promote `event_sourced_payroll_lifecycle` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `cycle_time`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Enforce net pay floors after taxes, deductions, garnishments, benefits, and arrears. Route violations to exception workflows with suggested recovery, off-cycle, or arrears options.
 
-### 22. Operationalize `graph_relational_compensation_topology` as a governed decision system
+### 22. Net pay distribution controls
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Compensation and Payroll Engine and measurably improves policy exceptions without hiding assumptions.
+**Justification:** Net pay may be split across accounts, cards, checks, or payment rails with limits and verification needs.
 
-**Improvement:** Promote `graph_relational_compensation_topology` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `policy_exceptions`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add distribution rules with priority, amount/percentage, verified bank instruction, currency, payment rail, residual account, and failed-distribution handling. Validate totals before payment batch handoff.
 
-### 23. Operationalize `multi_tenant_payroll_isolation` as a governed decision system
+### 23. Payment instruction readiness
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Compensation and Payroll Engine and measurably improves pay accuracy without hiding assumptions.
+**Justification:** Treasury can only process payroll when payment instructions are complete, approved, and reconciled to net pay.
 
-**Improvement:** Promote `multi_tenant_payroll_isolation` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `pay_accuracy`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Generate payment instructions with worker, amount, currency, payment rail, bank reference, pay date, legal entity, batch grouping, approval status, and treasury projection handoff evidence.
 
-### 24. Operationalize `schema_evolution_resilient_payroll_schema` as a governed decision system
+### 24. Payroll cash forecast
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Compensation and Payroll Engine and measurably improves workforce readiness without hiding assumptions.
+**Justification:** Treasury needs cash visibility before payroll posting and payment release.
 
-**Improvement:** Promote `schema_evolution_resilient_payroll_schema` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `workforce_readiness`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Forecast cash by legal entity, currency, pay date, payment rail, tax remittance, benefits, garnishments, and off-cycle payments. Include confidence and delta from prior run.
 
-### 25. Operationalize `probabilistic_payroll_anomaly_compliance_scoring` as a governed decision system
+### 25. Payroll run approval workflow
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Compensation and Payroll Engine and measurably improves payroll posted throughput without hiding assumptions.
+**Justification:** Payroll approval authorizes employee pay, statutory remittance, accounting, and filings.
 
-**Improvement:** Promote `probabilistic_payroll_anomaly_compliance_scoring` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `payroll_posted_throughput`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add approvals with amount threshold, legal entity, exception status, segregation-of-duties checks, batch approval, rejection reasons, and post-approval change detection. Approval UI should show risk and materiality.
 
-### 26. Operationalize `real_time_gross_to_net_analytics` as a governed decision system
+### 26. Payroll posting handoff
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Compensation and Payroll Engine and measurably improves payroll filing prepared throughput without hiding assumptions.
+**Justification:** Posting must create treasury, ledger, tax, and audit handoff artifacts without touching their tables.
 
-**Improvement:** Promote `real_time_gross_to_net_analytics` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `payroll_filing_prepared_throughput`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Emit posting evidence with payment batch projection, journal request projection, tax wage base projection, audit trace, proof hash, and `PayrollPosted` idempotency key. Boundary checks should reject direct treasury/ledger/tax table writes.
 
-### 27. Operationalize `counterfactual_pay_policy_simulation` as a governed decision system
+### 27. Payslip generation and disclosure rules
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Compensation and Payroll Engine and measurably improves cycle time without hiding assumptions.
+**Justification:** Payslips are employee-facing legal artifacts requiring correct line presentation and privacy.
 
-**Improvement:** Promote `counterfactual_pay_policy_simulation` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `cycle_time`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Generate payslips with earnings, taxes, deductions, benefits, employer contributions, net pay, YTD where allowed, legal disclaimers, locale, currency, and redaction rules. Preserve immutable issued payslip snapshots.
 
-### 28. Operationalize `temporal_payroll_cash_forecasting` as a governed decision system
+### 28. Payroll filing preparation
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Compensation and Payroll Engine and measurably improves policy exceptions without hiding assumptions.
+**Justification:** Statutory filings require jurisdiction-specific lines, materiality, deadlines, channels, and evidence.
 
-**Improvement:** Promote `temporal_payroll_cash_forecasting` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `policy_exceptions`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Prepare filings with jurisdiction, filing channel, period, legal entity, line classification, materiality threshold, source payslips, tax projections, validation errors, and emitted `PayrollFilingPrepared`.
 
-### 29. Operationalize `autonomous_payroll_exception_resolution` as a governed decision system
+### 29. Filing line reconciliation
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Compensation and Payroll Engine and measurably improves pay accuracy without hiding assumptions.
+**Justification:** Filing totals must reconcile to payslips, taxes, wage bases, benefits, and corrections.
 
-**Improvement:** Promote `autonomous_payroll_exception_resolution` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `pay_accuracy`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add reconciliation checks for filing lines versus payslip lines, tax projections, wage bases, legal entity totals, prior filings, and corrections. Flag out-of-balance filings before submission handoff.
 
-### 30. Operationalize `semantic_payroll_instruction_parsing` as a governed decision system
+### 30. Retroactive adjustment engine
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Compensation and Payroll Engine and measurably improves workforce readiness without hiding assumptions.
+**Justification:** Retro pay changes arise from late hours, pay rate changes, benefit corrections, tax updates, and policy changes.
 
-**Improvement:** Promote `semantic_payroll_instruction_parsing` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `workforce_readiness`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add retro lookback, affected periods, prior values, new values, delta calculation, tax recalculation dependency, payslip adjustment lines, approval, and audit evidence. Simulate retro before applying it.
 
-### 31. Create simulation-grade governance for `PAYROLL_ENGINE_DATABASE_URL` and `PAYROLL_ENGINE_DATABASE_URL`
+### 31. Off-cycle payment workflow
 
-**Justification:** Complete Compensation and Payroll Engine coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Off-cycle payments handle corrections, terminations, bonuses, missed pay, and emergency pay but increase risk.
 
-**Improvement:** Add a policy cockpit where `PAYROLL_ENGINE_DATABASE_URL` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `PAYROLL_ENGINE_DATABASE_URL` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add off-cycle types, eligibility, approval threshold, payment timing, tax treatment, bank readiness, cash impact, filing impact, and linkage to regular runs. Require explicit reason and evidence.
 
-### 32. Create simulation-grade governance for `PAYROLL_ENGINE_EVENT_TOPIC` and `PAYROLL_ENGINE_EVENT_TOPIC`
+### 32. Payroll correction lifecycle
 
-**Justification:** Complete Compensation and Payroll Engine coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Corrections must preserve original pay, reason, delta, worker communication, and downstream effects.
 
-**Improvement:** Add a policy cockpit where `PAYROLL_ENGINE_EVENT_TOPIC` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `PAYROLL_ENGINE_EVENT_TOPIC` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add correction cases with issue source, impacted payslips, amount delta, tax/deduction/benefit impact, approval, employee notification, retro/off-cycle decision, and closure proof.
 
-### 33. Create simulation-grade governance for `PAYROLL_ENGINE_RETRY_LIMIT` and `PAYROLL_ENGINE_RETRY_LIMIT`
+### 33. Payroll exception taxonomy
 
-**Justification:** Complete Compensation and Payroll Engine coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Generic payroll exceptions hide root causes and slow resolution.
 
-**Improvement:** Add a policy cockpit where `PAYROLL_ENGINE_RETRY_LIMIT` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `PAYROLL_ENGINE_RETRY_LIMIT` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Define exceptions for missing worker projection, stale tax projection, invalid bank, negative net, deduction limit breach, missing labor hours, gross variance, approval gap, filing mismatch, payment failure, and journal handoff issue. Each should define owner, SLA, severity, and recovery action.
 
-### 34. Create simulation-grade governance for `PAYROLL_ENGINE_DATABASE_URL` and `PAYROLL_ENGINE_DATABASE_URL`
+### 34. Payroll policy screening
 
-**Justification:** Complete Compensation and Payroll Engine coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Payroll actions must comply with jurisdiction, legal entity, worker status, pay group, deduction limits, benefit eligibility, and approval rules.
 
-**Improvement:** Add a policy cockpit where `PAYROLL_ENGINE_DATABASE_URL` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `PAYROLL_ENGINE_DATABASE_URL` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Screen run creation, worker roster, calculation, deduction, benefit, posting, filing, correction, and off-cycle actions. Store policy version, attributes evaluated, decision, explanation, and override path.
 
-### 35. Create simulation-grade governance for `PAYROLL_ENGINE_EVENT_TOPIC` and `PAYROLL_ENGINE_EVENT_TOPIC`
+### 35. Payroll anomaly detection
 
-**Justification:** Complete Compensation and Payroll Engine coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Unusual gross, net, tax, deduction, benefit, bank, or filing behavior can indicate errors or fraud.
 
-**Improvement:** Add a policy cockpit where `PAYROLL_ENGINE_EVENT_TOPIC` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `PAYROLL_ENGINE_EVENT_TOPIC` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Detect anomalies by worker, pay group, legal entity, earning code, deduction, net variance, bank change, retro amount, off-cycle frequency, and filing deltas. Route to review with explainable reasons.
 
-### 36. Upgrade `PayrollEngineWorkbench` into a full specialist command center
+### 36. Stochastic payroll exposure model
 
-**Justification:** The PBC UI must expose the complete Compensation and Payroll Engine surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Payroll risk spans cash shortfall, compliance errors, payment failure, filing penalties, fraud, and employee impact.
 
-**Improvement:** Expand `PayrollEngineWorkbench` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Model exposure distributions by run, legal entity, country, currency, payment rail, exception type, and worker group. Provide mitigation options with confidence.
 
-### 37. Upgrade `PayrollEngineDetail` into a full specialist command center
+### 37. Payroll MLOps governance
 
-**Justification:** The PBC UI must expose the complete Compensation and Payroll Engine surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Payroll risk, anomaly, cash, and exception models affect pay and compliance decisions.
 
-**Improvement:** Expand `PayrollEngineDetail` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add model registry, feature lineage, training windows, approval status, drift monitoring, explainability, fairness checks, rollback, and release evidence for all payroll models.
 
-### 38. Upgrade `PayrollEngineWorkbench` into a full specialist command center
+### 38. Zero-knowledge payroll proof
 
-**Justification:** The PBC UI must expose the complete Compensation and Payroll Engine surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Auditors or workers may need proof of pay facts without exposing full payslip details.
 
-**Improvement:** Expand `PayrollEngineWorkbench` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Generate redacted proofs for gross, taxes, deductions, net, filing inclusion, and approval status with hash, timestamp, and verification API. Support selective disclosure by purpose.
 
-### 39. Upgrade `PayrollEngineDetail` into a full specialist command center
+### 39. Immutable payroll audit trace
 
-**Justification:** The PBC UI must expose the complete Compensation and Payroll Engine surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Payroll is financially and legally material and must be reconstructable.
 
-**Improvement:** Expand `PayrollEngineDetail` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Hash-chain worker projections, labor intake, calculations, deductions, benefits, approvals, postings, filings, corrections, off-cycle payments, agent previews, and event handling. Support temporal reconstruction.
 
-### 40. Upgrade `PayrollEngineWorkbench` into a full specialist command center
+### 40. AppGen-X event reliability cockpit
 
-**Justification:** The PBC UI must expose the complete Compensation and Payroll Engine surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Payroll depends on labor and tax events and emits posting and filing events that downstream systems rely on.
 
-**Improvement:** Expand `PayrollEngineWorkbench` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add inbox/outbox/dead-letter views for idempotency, duplicates, retries, handler version, payload lineage, projection freshness, replay eligibility, and downstream handoff status. Warn on stale consumed events.
 
-### 41. Prove cross-PBC federation for `POST /payroll-runs` and `LaborHoursApproved`
+### 41. Boundary proof for payroll ownership
 
-**Justification:** Compensation and Payroll Engine must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Payroll must not bypass personnel, time, tax, treasury, ledger, benefits, banking, or audit packages through shared tables.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /payroll-runs` and consumed event `LaborHoursApproved` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Add static/runtime checks proving commands touch only payroll-owned tables plus AppGen-X runtime tables. Include failing fixtures for direct worker master, time entry, tax, treasury, ledger, and bank table access.
 
-### 42. Prove cross-PBC federation for `POST /payroll-runs/{id}/workers` and `TaxCalculated`
+### 42. Payroll workbench coverage
 
-**Justification:** Compensation and Payroll Engine must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Payroll specialists need full operational UI, not hidden backend commands.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /payroll-runs/{id}/workers` and consumed event `TaxCalculated` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Expand UI into calendar, periods, pay groups, legal entities, run console, roster, worker profile, labor intake, payslip review, deductions, garnishments, benefits, net distributions, payment readiness, filings, corrections, retro, off-cycle, exceptions, rules, parameters, configuration, event reliability, controls, and agent panels.
 
-### 43. Prove cross-PBC federation for `POST /payroll-runs/{id}/payslips` and `LaborHoursApproved`
+### 43. Agent-safe payroll instruction intake
 
-**Justification:** Compensation and Payroll Engine must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** The payroll_engine chatbot should parse payroll instructions, correction requests, deduction orders, filing notes, and pay profile changes without unsafe writes.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /payroll-runs/{id}/payslips` and consumed event `LaborHoursApproved` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Add intake skills that extract candidate payroll facts, map them to owned tables, validate rules/permissions/projections, reject foreign-table mutations, and produce side-effect-free previews with confidence, risks, approvals, payroll impact, and expected AppGen-X events.
 
-### 44. Prove cross-PBC federation for `POST /payslips/{id}/deductions` and `TaxCalculated`
+### 44. Agent-safe gross-to-net planning
 
-**Justification:** Compensation and Payroll Engine must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** AI assistance in payroll can alter pay and statutory outcomes, so it needs strict confirmation gates.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /payslips/{id}/deductions` and consumed event `TaxCalculated` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Require agent plans for run creation, calculation, deduction, benefit, correction, posting, filing, and off-cycle actions to list command, permission, owned tables, idempotency key, emitted event, affected workers, net impact, filing impact, rollback limits, and human approval.
 
-### 45. Temporal reconstruction and bitemporal audit for Compensation and Payroll Engine
+### 45. Counterfactual pay-policy simulation
 
-**Justification:** Regulated and operationally complex domains need to answer what was known, valid, processed, and visible at any point in time.
+**Justification:** Payroll policy changes can materially alter gross, taxes, deductions, net pay, cash, and filings.
 
-**Improvement:** Add transaction-time, valid-time, and processing-time fields to core records, temporal query APIs, projection rebuild tooling, and UI time travel so specialists can reconstruct decisions, reports, and automation outcomes.
+**Improvement:** Simulate parameter/rule changes such as overtime multiplier, supplemental rate, net floor, deduction cap, retro lookback, and approval threshold against historical/current runs before activation.
 
-### 46. Bulk operations and migration-grade controls for Compensation and Payroll Engine
+### 46. Cash allocation mechanism
 
-**Justification:** World-class deployments must handle imports, mass corrections, high-volume operating days, and cutovers without bypassing governance.
+**Justification:** Payroll cash constraints require principled allocation across wages, taxes, garnishments, benefits, and payment batches.
 
-**Improvement:** Add staged bulk upload, duplicate detection, chunked validation, approval sampling, partial failure handling, retry dashboards, reconciliation summaries, and agent-generated remediation plans for large batches.
+**Improvement:** Add cash allocation planning with legal priority, employee protection, statutory remittance, benefit obligations, payment rail constraints, and escalation. Do not execute constrained allocation without executive approval.
 
-### 47. Specialist edge-case playbooks for Compensation and Payroll Engine
+### 47. Carbon-aware payroll batch scheduling
 
-**Justification:** Rare cases often carry the highest financial, legal, safety, service, or compliance risk.
+**Justification:** Non-urgent payroll batch processing can be scheduled to reduce operational energy without affecting pay timeliness.
 
-**Improvement:** Create a playbook catalog with detection rules, required evidence, escalation paths, fallback actions, owner roles, and release-audited tests for high-severity edge cases and exception queues.
+**Improvement:** Add carbon-aware windows for simulation, proof generation, report preparation, and non-urgent filings while preserving pay-date and statutory deadlines. Show tradeoffs and constraints.
 
-### 48. Pre-mutation simulation and blast-radius analysis for Compensation and Payroll Engine
+### 48. Continuous payroll control testing
 
-**Justification:** Users should understand consequences before committing irreversible, customer-visible, operationally disruptive, or financially material changes.
+**Justification:** Payroll controls should run continuously across setup, calculations, approvals, payments, postings, filings, and events.
 
-**Improvement:** Add what-if simulation for every material command, showing impacted records, emitted events, dependent projections, rule outcomes, approvals, downstream PBC dependencies, and rollback limits.
+**Improvement:** Add assertions for missing worker projection, stale tax, negative net, deduction cap breach, unapproved run, payment mismatch, filing imbalance, direct foreign-table access, dead-letter aging, and agent-preview bypass.
 
-### 49. Continuous control testing and operational assurance for Compensation and Payroll Engine
+### 49. Payroll readiness score
 
-**Justification:** Better-than-world-class PBCs prove controls continuously, not only at release or during periodic audits.
+**Justification:** Users need an evidence-backed view of whether Payroll Engine is ready for production gross-to-net operations.
 
-**Improvement:** Add executable control assertions, sampled evidence checks, anomaly thresholds, control-owner dashboards, breach/recovery events, and release gates that fail when domain controls lose evidence.
+**Improvement:** Compute readiness from calendar setup, pay groups, legal entities, worker projections, labor intake, tax projections, earning/deduction/benefit rules, payment readiness, filing setup, controls, UI coverage, event reliability, boundary proof, model governance, and agent safety.
 
-### 50. Human-in-the-loop domain agent execution for Compensation and Payroll Engine
+### 50. End-to-end payroll run proof
 
-**Justification:** The PBC chatbot must help specialists perform real work while preventing unsafe autonomous mutation.
+**Justification:** A complete Payroll Engine PBC must prove it can run the full lifecycle from approved hours to posting and filing preparation.
 
-**Improvement:** Add domain-specific skills, document parsing, task planning, CRUD previews, confidence/risk scoring, confirmation gates, redaction, policy explanations, and post-action evidence packets for every supported command and query.
+**Improvement:** Add an executable proof scenario covering worker projection, approved labor hours, payroll run, payslip calculation, taxes, deductions, benefits, net pay distribution, approval, posting, payment/journal/tax handoff evidence, filing preparation, emitted events, UI evidence, controls, and agent explanation.
