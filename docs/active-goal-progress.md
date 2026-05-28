@@ -2986,3 +2986,13 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   touched CLI/parser modules, `tests/test_dsl_tooling_contracts.py -q`,
   focused DSL platform/CLI regression tests, scoped diff whitespace check, and
   restricted-name scan. Commit: `3bf2a382`.
+- Current language-server pass makes the documented stdio launch path
+  executable. `appgen lsp --stdio` now starts a JSON-RPC server with an
+  in-memory document cache, handles initialize/shutdown/exit, publishes
+  diagnostics after open/change notifications, and serves completion, hover,
+  definition, references, document symbols, rename, code actions, formatting,
+  and workspace symbols from the shared semantic model. Verification passed:
+  Python compile for touched CLI/parser modules,
+  `tests/test_dsl_tooling_contracts.py -q`, focused DSL platform/CLI regression
+  tests, scoped diff whitespace check, and restricted-name scan. Commit:
+  `fc7230f0`.
