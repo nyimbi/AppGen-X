@@ -3245,6 +3245,19 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   Python compile checks, scoped diff whitespace checks, and
   `tests/test_main.py::test_package_pbc_catalog_composes_enterprise_apps`.
   Commit: `63349c99`.
+- Current aviation maintenance pass delivered an executable
+  `aviation_maintenance_repair` release-to-service engine. It now evaluates
+  work-card closeout, duplicate inspection, technician authorization,
+  controlled tooling, consumables, component life/traceability, deferred
+  defects, airworthiness directive compliance, and human certifier evidence,
+  with runtime/service/UI/agent/release-evidence wiring plus README, status,
+  implementation plan, and focused tests. Verification passed:
+  `tests/test_pbc_aviation_maintenance_repair_implementation.py`,
+  `tests/test_pbc_aviation_maintenance_repair_runtime.py`,
+  `src/pyAppGen/pbcs/aviation_maintenance_repair/tests/test_contract.py` (`13
+  passed`), selected aviation `pbc_implementation_release_audit`, selected
+  aviation `pbc_generation_smoke_audit`, Python compile, and scoped diff
+  whitespace check. Commit: `72b17c1b`.
 - Current Studio visual-edit matrix pass strengthens the IDE/designer evidence
   required by `docs/tooling.md`. `appgen.designer-visual-edit-matrix.v1` now
   proves database field edits, form component placement, workflow transition
