@@ -2133,6 +2133,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
         internal_error_exit = _tooling_audit_internal_error_exit(Path(tmp))
         missing_input_exit = _tooling_audit_missing_input_exit(Path(tmp))
         invalid_choice_exit = _tooling_audit_invalid_choice_exit(Path(tmp))
+        lint_directory_cli = _tooling_audit_lint_directory_cli(Path(tmp), source)
         validate_generate_cli = _tooling_audit_validate_generate_cli(Path(tmp), source)
         designer_sync_cli = _tooling_audit_designer_sync_cli(Path(tmp), source)
         graph_cli = _tooling_audit_graph_cli_formats(Path(tmp), source)
@@ -2205,13 +2206,15 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             lint["ok"]
             and strict_lint["ok"]
             and catalog_lint["ok"]
-            and lint_report_dsl_sources({"a.appgen": source, "b.appgen": _doctor_sample_dsl()})["ok"],
+            and lint_report_dsl_sources({"a.appgen": source, "b.appgen": _doctor_sample_dsl()})["ok"]
+            and lint_directory_cli["ok"],
             "Linter accepts files/source sets, strict profile reporting, and registered component catalogs.",
             "docs/tooling.md#linter-specification",
             {
                 "format": lint.get("format"),
                 "strict": strict_lint.get("strict"),
                 "catalog": catalog_lint.get("component_catalog"),
+                "directory_cli": lint_directory_cli,
             },
         ),
         _tooling_audit_check(
@@ -2861,6 +2864,76 @@ def _tooling_audit_invalid_choice_exit(tmp: Path) -> dict:
         "format": "appgen.invalid-choice-exit-audit.v1",
         "ok": all(result["ok"] for result in results),
         "cases": tuple(results),
+    }
+
+
+def _tooling_audit_lint_directory_cli(tmp: Path, source: str) -> dict:
+    source_dir = tmp / "lint-directory"
+    nested_dir = source_dir / "nested"
+    catalog_path = tmp / "component-catalog.json"
+    nested_dir.mkdir(parents=True, exist_ok=True)
+    first_path = source_dir / "a.appgen"
+    second_path = nested_dir / "b.appgen"
+    first_path.write_text(source, encoding="utf-8")
+    second_path.write_text(_doctor_sample_dsl(), encoding="utf-8")
+    catalog_path.write_text(json.dumps({"components": ["CustomGauge"]}, indent=2), encoding="utf-8")
+
+    def run_json(argv: tuple[str, ...]) -> tuple[int, dict]:
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            exit_code = dsl_tooling_cli(argv)
+        try:
+            payload = json.loads(output.getvalue())
+        except json.JSONDecodeError:
+            payload = {}
+        return exit_code, payload
+
+    exit_code, payload = run_json(("lint", str(source_dir), "--strict", "--catalog", str(catalog_path), "--json"))
+
+    warning_dir = tmp / "lint-directory-warnings"
+    warning_nested_dir = warning_dir / "nested"
+    warning_nested_dir.mkdir(parents=True, exist_ok=True)
+    (warning_dir / "a.appgen").write_text(_tooling_audit_warning_generation_sample(), encoding="utf-8")
+    (warning_nested_dir / "b.appgen").write_text(_doctor_sample_dsl(), encoding="utf-8")
+    warning_exit_code, warning_payload = run_json(("lint", str(warning_dir), "--json"))
+
+    files = tuple(payload.get("files", ()))
+    file_reports = tuple(payload.get("file_reports", ()))
+    warning_files = tuple(warning_payload.get("files", ()))
+    warning_diagnostics = tuple(warning_payload.get("diagnostics", ()))
+    warning_severity_counts = warning_payload.get("severity_counts", {})
+    warning_diagnostics_have_files = all(
+        "file" in diagnostic and diagnostic["file"] in warning_files for diagnostic in warning_diagnostics
+    )
+    return {
+        "format": "appgen.lint-directory-cli-audit.v1",
+        "ok": exit_code == 0
+        and payload.get("format") == "appgen.lint-report.v1"
+        and payload.get("ok") is True
+        and payload.get("source_mode") == "directory"
+        and len(files) == 2
+        and files == tuple(sorted(files))
+        and len(file_reports) == 2
+        and payload.get("strict") is True
+        and payload.get("component_catalog", {}).get("components") == ["CustomGauge"]
+        and warning_exit_code == 0
+        and warning_payload.get("format") == "appgen.lint-report.v1"
+        and warning_payload.get("source_mode") == "directory"
+        and warning_severity_counts.get("warning", 0) >= 1
+        and len(warning_diagnostics) >= 1
+        and warning_diagnostics_have_files,
+        "exit_code": exit_code,
+        "payload_format": payload.get("format"),
+        "source_mode": payload.get("source_mode"),
+        "files": files,
+        "file_report_count": len(file_reports),
+        "strict": payload.get("strict"),
+        "component_catalog": payload.get("component_catalog"),
+        "warning_exit_code": warning_exit_code,
+        "warning_source_mode": warning_payload.get("source_mode"),
+        "warning_count": warning_severity_counts.get("warning", 0),
+        "diagnostic_count": len(warning_diagnostics),
+        "diagnostics_have_files": warning_diagnostics_have_files,
     }
 
 

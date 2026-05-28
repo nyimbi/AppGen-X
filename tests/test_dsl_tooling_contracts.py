@@ -2359,6 +2359,13 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
         "generate_blocks_warnings",
         "generate_allows_warnings_when_requested",
     } <= {case["case"] for case in cli_check["detail"]["validate_generate_cli"]["cases"]}
+    lint_check = next(check for check in report["checks"] if check["id"] == "lint_directory_and_strict_profiles")
+    assert lint_check["detail"]["directory_cli"]["format"] == "appgen.lint-directory-cli-audit.v1"
+    assert lint_check["detail"]["directory_cli"]["ok"] is True
+    assert lint_check["detail"]["directory_cli"]["source_mode"] == "directory"
+    assert lint_check["detail"]["directory_cli"]["file_report_count"] == 2
+    assert lint_check["detail"]["directory_cli"]["warning_count"] >= 1
+    assert lint_check["detail"]["directory_cli"]["diagnostics_have_files"] is True
     test_strategy_check = next(check for check in report["checks"] if check["id"] == "parser_golden_and_drift_gates")
     assert test_strategy_check["detail"]["cli"]["format"] == "appgen.test-strategy-cli-audit.v1"
     assert test_strategy_check["detail"]["cli"]["ok"] is True

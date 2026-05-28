@@ -3266,6 +3266,17 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   compile for touched tooling entrypoints, direct package/verify CLI audit
   probe, and full in-process `appgen.tooling-audit.v1` with no blocking gaps.
   Commit: `baeca47f`.
+- Current directory-lint CLI audit pass closes the gap between in-memory
+  source-set linting and the documented `appgen lint <directory> --json`
+  command contract. `appgen.tooling-audit.v1` now embeds
+  `appgen.lint-directory-cli-audit.v1`, which creates a temporary nested
+  directory, runs the CLI, and proves recursive `*.appgen` discovery,
+  deterministic file ordering, `source_mode: directory`, nested file reports,
+  strict profile/catalog propagation, warning diagnostics, and diagnostic file
+  attribution. Verification passed: Python compile for touched tooling
+  entrypoints, direct directory-lint CLI audit helper probe, focused directory
+  lint tests (`2 passed`), scoped diff whitespace check, and restricted-name
+  scan outside archive, Git internals, and active PBC paths. Commit: pending.
 - Current parallel PBC implementation pass delivered executable code for six
   PBCs rather than plan-only artifacts: `actuarial_pricing_reserving`,
   `advertising_campaign_operations`, `agri_supply_chain_traceability`,
