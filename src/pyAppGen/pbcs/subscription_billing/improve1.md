@@ -1,315 +1,314 @@
-# Subscription and Recurring Billing Management PBC Improvement Backlog
+# Subscription Billing PBC Improvement Backlog
 
 ## Purpose
 
-This backlog identifies 50 high-impact, high-value improvements for `subscription_billing`. Each item is specific to the domain surface currently declared by the PBC and is intended to move the package beyond world-class breadth toward complete specialist-grade coverage.
+This backlog identifies 50 high-impact, high-value improvements for `subscription_billing`. The items are specific to recurring revenue and subscription operations: plan catalog, rate schedules, trials, subscription lifecycle, phases, add-ons, change orders, cancellations, usage metering, billing schedules, invoices, invoice lines, credit memos, payment application, entitlements, revenue schedules, renewals, dunning, exceptions, rules, parameters, configuration, AppGen-X event reliability, UI workbenches, and agent-assisted billing operations.
 
 ## Current Domain Evidence Used
 
-- Domain purpose: Subscriptions, metering, dunning, renewals, and deferred revenue support.
-- Representative owned tables: `subscription_billing_plan_catalog`, `subscription_billing_subscription`, `subscription_billing_subscription_phase`, `subscription_billing_trial_period`, `subscription_billing_subscription_addon`, `subscription_billing_subscription_change_order`, `subscription_billing_usage_meter`, `subscription_billing_billing_schedule`, `subscription_billing_invoice`, `subscription_billing_invoice_line`, `subscription_billing_credit_memo`, `subscription_billing_payment_application`, ...
-- Representative operations/APIs: `command_subscriptions`, `command_usage`, `command_renewals`, `query_subscription_billing_workbench`.
-- Representative events: `SubscriptionActivated`, `SubscriptionRenewed`, `UsageRated`, `SubscriptionChanged`, `SubscriptionCancelled`, `CreditMemoIssued`, `PaymentApplied`, `EntitlementGranted`, `RevenueRecognized`, `InvoiceApproved`, ...
-- Representative advanced capabilities: `event_sourced_subscription_lifecycle`, `graph_relational_subscription_topology`, `multi_tenant_subscription_isolation`, `schema_evolution_resilient_billing_schema`, `probabilistic_churn_payment_revenue_scoring`, `counterfactual_plan_proration_simulation`, `temporal_mrr_arr_renewal_forecasting`, `autonomous_billing_exception_resolution`, `semantic_billing_instruction_parsing`, `predictive_billing_risk`, ...
+- Domain purpose: `subscription_billing` owns recurring revenue, usage rating, invoice approval, renewals, dunning, entitlement handoff, revenue recognition handoff, payment and price event handling, rules, parameters, configuration, and release evidence.
+- Owned boundary: plan catalog, subscriptions, subscription phases, trial periods, add-ons, change orders, usage meters, billing schedules, invoices, invoice lines, credit memos, payment applications, entitlement grants, revenue schedules, billing exceptions, dunning notices, configuration, schema extensions, rules, parameters, inbox/outbox, and dead-letter evidence.
+- Existing command/query surface: runtime configuration, parameters, rules, schema extensions, plan registration, trial start, subscription creation, plan changes, cancellation, add-ons, usage recording, invoice generation, credit memos, payment application, entitlement grants, revenue recognition, renewal, billing exceptions, dunning notices, event receiving, control tests, proration simulation, revenue exposure scoring, workbench, schema/service/release evidence, permissions, UI binding, and boundary verification.
+- Existing events and dependencies: emits `SubscriptionActivated`, `SubscriptionRenewed`, `UsageRated`, `SubscriptionChanged`, `SubscriptionCancelled`, `InvoiceApproved`, `InvoiceApprovalRequested`, `CreditMemoIssued`, `PaymentApplied`, `EntitlementGranted`, `RevenueRecognized`, and `DunningNoticeCreated`; consumes `PaymentCaptured` and `PriceOptimized`; integrates with payment, pricing, tax, ledger, entitlement, and customer projections only through declared APIs/events/projections.
 
 ## 50 Better-Than-World-Class Improvements
 
-### 1. Deep specialist lifecycle semantics for `subscription_billing_plan_catalog`
+### 1. Plan catalog readiness gate
 
-**Justification:** This owned table is part of the Subscription and Recurring Billing Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Subscriptions, metering, dunning, renewals, and deferred revenue support.
+**Justification:** Subscription billing breaks when plans lack currencies, regions, periods, prices, included units, usage rates, tax treatment, or entitlement mappings.
 
-**Improvement:** Extend `subscription_billing_plan_catalog` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `plan_catalog`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add readiness checks for plan family, lifecycle status, supported currencies, supported regions, billing periods, base prices, included units, usage rates, add-on compatibility, tax marker, revenue treatment, entitlement mapping, and approval evidence.
 
-### 2. Deep specialist lifecycle semantics for `subscription_billing_subscription`
+### 2. Rate schedule versioning
 
-**Justification:** This owned table is part of the Subscription and Recurring Billing Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Subscriptions, metering, dunning, renewals, and deferred revenue support.
+**Justification:** Subscription invoices must prove which rates were effective for each period, phase, usage event, and plan change.
 
-**Improvement:** Extend `subscription_billing_subscription` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `trial_management`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Version rate schedules with effective dates, currency, region, plan family, price source event, discount guardrails, usage tiers, archived versions, migration notes, and invoice-line lineage.
 
-### 3. Deep specialist lifecycle semantics for `subscription_billing_subscription_phase`
+### 3. Trial lifecycle governance
 
-**Justification:** This owned table is part of the Subscription and Recurring Billing Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Subscriptions, metering, dunning, renewals, and deferred revenue support.
+**Justification:** Trials affect conversion, entitlement access, billing start, renewal forecast, and abuse controls.
 
-**Improvement:** Extend `subscription_billing_subscription_phase` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `subscription_lifecycle`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Model trial states for offered, started, extended, converted, expired, cancelled, and abused with eligibility checks, trial length, extension approvals, entitlement scope, conversion score, and event evidence.
 
-### 4. Deep specialist lifecycle semantics for `subscription_billing_trial_period`
+### 4. Subscription lifecycle state machine
 
-**Justification:** This owned table is part of the Subscription and Recurring Billing Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Subscriptions, metering, dunning, renewals, and deferred revenue support.
+**Justification:** Subscriptions move through draft, trial, active, paused, changed, renewal_review, renewed, past_due, suspended, cancelled, expired, and reactivated states.
 
-**Improvement:** Extend `subscription_billing_trial_period` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `subscription_change_orders`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Implement transitions with actor, reason, effective date, idempotency key, billing schedule effect, entitlement effect, MRR effect, emitted events, and invalid-transition explanations.
 
-### 5. Deep specialist lifecycle semantics for `subscription_billing_subscription_addon`
+### 5. Subscription phase governance
 
-**Justification:** This owned table is part of the Subscription and Recurring Billing Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Subscriptions, metering, dunning, renewals, and deferred revenue support.
+**Justification:** Phased contracts include ramps, discounts, trials, promotional terms, fixed-term periods, and renewal phases.
 
-**Improvement:** Extend `subscription_billing_subscription_addon` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `subscription_cancellation`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add phase definitions with sequence, effective window, price rules, discount rules, included units, minimum commitment, entitlement changes, renewal behavior, and invoice generation rules.
 
-### 6. Deep specialist lifecycle semantics for `subscription_billing_subscription_change_order`
+### 6. Add-on lifecycle management
 
-**Justification:** This owned table is part of the Subscription and Recurring Billing Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Subscriptions, metering, dunning, renewals, and deferred revenue support.
+**Justification:** Add-ons can be recurring, one-time, usage-based, seat-based, trialed, prorated, or coterminated.
 
-**Improvement:** Extend `subscription_billing_subscription_change_order` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `addon_management`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Model add-on states, compatibility, quantity, billing cadence, proration behavior, entitlement scope, start/end dates, cancellation rules, and MRR/ARR impact.
 
-### 7. Deep specialist lifecycle semantics for `subscription_billing_usage_meter`
+### 7. Change order controls
 
-**Justification:** This owned table is part of the Subscription and Recurring Billing Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Subscriptions, metering, dunning, renewals, and deferred revenue support.
+**Justification:** Upgrades, downgrades, seat changes, add-on changes, pauses, and cancellations need governed effective dating and proration.
 
-**Improvement:** Extend `subscription_billing_usage_meter` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `usage_metering`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add change-order types, requested date, effective date, current/target plan, delta quantity, approval rule, proration quote, customer notice, entitlement effect, and audit proof.
 
-### 8. Deep specialist lifecycle semantics for `subscription_billing_billing_schedule`
+### 8. Cancellation and pause policy
 
-**Justification:** This owned table is part of the Subscription and Recurring Billing Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Subscriptions, metering, dunning, renewals, and deferred revenue support.
+**Justification:** Cancellation and pause decisions affect revenue, entitlements, dunning, renewals, and customer commitments.
 
-**Improvement:** Extend `subscription_billing_billing_schedule` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `invoice_line_rating`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add cancellation/pause policy checks for term commitment, notice period, refund/credit eligibility, entitlement termination, dunning status, renewal state, and final invoice behavior.
 
-### 9. Deep specialist lifecycle semantics for `subscription_billing_invoice`
+### 9. Billing schedule engine
 
-**Justification:** This owned table is part of the Subscription and Recurring Billing Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Subscriptions, metering, dunning, renewals, and deferred revenue support.
+**Justification:** Recurring billing requires precise invoice dates, period boundaries, timezone handling, holidays, retries, and renewal timing.
 
-**Improvement:** Extend `subscription_billing_invoice` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `rating_and_invoice_approval`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add schedule generation by billing calendar, anchor date, period, timezone, holiday behavior, next invoice date, renewal date, retry date, catch-up runs, and schedule-state proof.
 
-### 10. Deep specialist lifecycle semantics for `subscription_billing_invoice_line`
+### 10. Usage metering ingestion controls
 
-**Justification:** This owned table is part of the Subscription and Recurring Billing Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Subscriptions, metering, dunning, renewals, and deferred revenue support.
+**Justification:** Usage billing is vulnerable to duplicate events, late events, unit mismatches, and unbillable quantities.
 
-**Improvement:** Extend `subscription_billing_invoice_line` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `credit_memos`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Validate usage by subscription, meter key, event id, quantity, unit, timestamp, billing period, lateness policy, duplicate idempotency, included units, and billable status.
 
-### 11. Make `command_subscriptions` a complete command lifecycle
+### 11. Usage rating engine
 
-**Justification:** High-value users need `command_subscriptions` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Usage charges need tiering, included units, overage, minimums, rounding, currency, and effective rate evidence.
 
-**Improvement:** Implement `command_subscriptions` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `SubscriptionActivated`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add rating traces with included-unit calculation, tier selection, effective rate, rounding precision, discounts, tax marker, rated amount, currency, and `UsageRated` event evidence.
 
-### 12. Make `command_usage` a complete command lifecycle
+### 12. Late usage adjustment workflow
 
-**Justification:** High-value users need `command_usage` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Late-arriving usage can affect closed invoices, revenue schedules, customer trust, and auditability.
 
-**Improvement:** Implement `command_usage` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `SubscriptionRenewed`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add late usage states, cutoff rules, adjustment invoice, credit memo, next-cycle carryforward, approval thresholds, customer notice, and revenue impact evidence.
 
-### 13. Make `command_renewals` a complete command lifecycle
+### 13. Invoice generation readiness
 
-**Justification:** High-value users need `command_renewals` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Invoices should not be generated when schedules, usage, plan rates, tax, payment, or entitlement markers are incomplete.
 
-**Improvement:** Implement `command_renewals` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `UsageRated`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Validate subscription state, billing period, plan version, usage completeness, payment status, tax marker, credit balance, entitlement status, approval threshold, and dependency freshness before invoice generation.
 
-### 14. Turn `query_subscription_billing_workbench` into an expert read-model experience
+### 14. Invoice lifecycle state machine
 
-**Justification:** Domain experts rely on `query_subscription_billing_workbench` for operational decisions; a world-class read path must be explainable, filterable, temporally accurate, and safe under stale projections.
+**Justification:** Invoices require controlled states from draft to approved, posted, paid, partially paid, disputed, credited, voided, written off, and closed.
 
-**Improvement:** Build `query_subscription_billing_workbench` as a dedicated query contract with projection freshness, filter validation, pagination, saved views, temporal/as-of reads, row-level permissions, traceable source records, and UI drilldowns. Add agent explanations for how the answer was produced, what events like `SubscriptionChanged` last changed the projection, and where uncertainty or missing data affects confidence.
+**Improvement:** Implement invoice transitions with amount validation, approvals, payment applications, credit memo effects, revenue schedule effects, emitted events, and audit proof.
 
-### 15. Make `command_subscriptions` a complete command lifecycle
+### 15. Invoice line traceability
 
-**Justification:** High-value users need `command_subscriptions` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Customers and auditors need every invoice line tied to plan, phase, add-on, usage, credit, tax marker, or adjustment source.
 
-**Improvement:** Implement `command_subscriptions` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `SubscriptionCancelled`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add line provenance, source record, rate version, quantity, unit, period, proration ratio, discount, rounding, tax class, revenue treatment, and entitlement linkage.
 
-### 16. Make `command_usage` a complete command lifecycle
+### 16. Invoice approval workflow
 
-**Justification:** High-value users need `command_usage` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** High-value or anomalous invoices need human review before approval.
 
-**Improvement:** Implement `command_usage` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `CreditMemoIssued`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add approval thresholds, anomaly triggers, approver role, review queue, approval/denial reason, expiry, escalation, and `InvoiceApproved` or `InvoiceApprovalRequested` event evidence.
 
-### 17. Make `command_renewals` a complete command lifecycle
+### 17. Credit memo lifecycle
 
-**Justification:** High-value users need `command_renewals` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Credits affect invoices, revenue, payment balance, customer trust, and audit trails.
 
-**Improvement:** Implement `command_renewals` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `PaymentApplied`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Model credit memo states, source invoice, amount ceiling, reason, approval, tax/revenue effect, application target, customer notice, and `CreditMemoIssued` evidence.
 
-### 18. Turn `query_subscription_billing_workbench` into an expert read-model experience
+### 18. Payment application governance
 
-**Justification:** Domain experts rely on `query_subscription_billing_workbench` for operational decisions; a world-class read path must be explainable, filterable, temporally accurate, and safe under stale projections.
+**Justification:** Payment events must be applied idempotently and accurately to invoices and balances.
 
-**Improvement:** Build `query_subscription_billing_workbench` as a dedicated query contract with projection freshness, filter validation, pagination, saved views, temporal/as-of reads, row-level permissions, traceable source records, and UI drilldowns. Add agent explanations for how the answer was produced, what events like `EntitlementGranted` last changed the projection, and where uncertainty or missing data affects confidence.
+**Improvement:** Add application states, payment event id, amount, currency, invoice match, partial payment, overpayment, unapplied balance, duplicate suppression, and `PaymentApplied` event output.
 
-### 19. Make `command_subscriptions` a complete command lifecycle
+### 19. Dunning strategy engine
 
-**Justification:** High-value users need `command_subscriptions` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Collections should balance recovery, customer value, risk, and compliance.
 
-**Improvement:** Implement `command_subscriptions` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `RevenueRecognized`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add dunning strategies by customer segment, invoice age, amount, payment history, risk score, region, payment method, notice cadence, suspension policy, and escalation path.
 
-### 20. Make `command_usage` a complete command lifecycle
+### 20. Dunning notice lifecycle
 
-**Justification:** High-value users need `command_usage` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Dunning notices need controlled creation, delivery, retry, suppression, escalation, and closure.
 
-**Improvement:** Implement `command_usage` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `InvoiceApproved`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Model notice states, reason, invoice/subscription link, risk score, retry policy, delivery channel, suppression reason, dead-letter target, customer response, and closure proof.
 
-### 21. Operationalize `event_sourced_subscription_lifecycle` as a governed decision system
+### 21. Renewal confidence scoring
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Subscription and Recurring Billing Management and measurably improves authorization rate without hiding assumptions.
+**Justification:** Renewal actions should be prioritized by confidence, churn risk, usage, payment history, support risk, and customer value.
 
-**Improvement:** Promote `event_sourced_subscription_lifecycle` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `authorization_rate`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Score renewal confidence using subscription health, usage trend, payment delays, dunning history, plan fit, discount exposure, support/customer signals, and renewal history.
 
-### 22. Operationalize `graph_relational_subscription_topology` as a governed decision system
+### 22. Renewal approval workflow
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Subscription and Recurring Billing Management and measurably improves route margin without hiding assumptions.
+**Justification:** Low-confidence or high-value renewals require review before automatic renewal.
 
-**Improvement:** Promote `graph_relational_subscription_topology` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `route_margin`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add renewal review states, confidence threshold, churn reason, approver, negotiation notes, renewal terms, event evidence, and schedule updates.
 
-### 23. Operationalize `multi_tenant_subscription_isolation` as a governed decision system
+### 23. MRR and ARR movement ledger
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Subscription and Recurring Billing Management and measurably improves return cycle time without hiding assumptions.
+**Justification:** Recurring revenue reporting needs explainable movements for new, expansion, contraction, churn, reactivation, and FX changes.
 
-**Improvement:** Promote `multi_tenant_subscription_isolation` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `return_cycle_time`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add movement records with source event, prior MRR/ARR, new MRR/ARR, movement type, plan/add-on linkage, effective date, currency, FX note, and audit proof.
 
-### 24. Operationalize `schema_evolution_resilient_billing_schema` as a governed decision system
+### 24. Revenue schedule governance
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Subscription and Recurring Billing Management and measurably improves landed cost accuracy without hiding assumptions.
+**Justification:** Approved invoices must produce revenue recognition schedules with correct periodization and evidence.
 
-**Improvement:** Promote `schema_evolution_resilient_billing_schema` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `landed_cost_accuracy`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Generate schedules by invoice line, service period, recognition method, deferred amount, recognized amount, period, ledger handoff marker, and `RevenueRecognized` evidence.
 
-### 25. Operationalize `probabilistic_churn_payment_revenue_scoring` as a governed decision system
+### 25. Entitlement grant governance
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Subscription and Recurring Billing Management and measurably improves subscription renewed throughput without hiding assumptions.
+**Justification:** Subscription state must drive entitlements accurately without sharing entitlement tables.
 
-**Improvement:** Promote `probabilistic_churn_payment_revenue_scoring` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `subscription_renewed_throughput`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Create entitlement grants with subscription, plan, phase, add-on, scope, start/end dates, status, revocation reason, projection freshness, and `EntitlementGranted` event evidence.
 
-### 26. Operationalize `counterfactual_plan_proration_simulation` as a governed decision system
+### 26. Billing exception management
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Subscription and Recurring Billing Management and measurably improves usage rated throughput without hiding assumptions.
+**Justification:** Usage spikes, payment delays, tax mismatches, entitlement mismatches, and revenue variances require structured resolution.
 
-**Improvement:** Promote `counterfactual_plan_proration_simulation` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `usage_rated_throughput`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add exception type, severity, affected subscription/invoice, root cause, recommended action, owner, SLA, resolution proof, retry/dead-letter linkage, and workbench triage.
 
-### 27. Operationalize `temporal_mrr_arr_renewal_forecasting` as a governed decision system
+### 27. Tax quote handoff marker
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Subscription and Recurring Billing Management and measurably improves authorization rate without hiding assumptions.
+**Justification:** Billing needs tax readiness without directly owning tax calculation.
 
-**Improvement:** Promote `temporal_mrr_arr_renewal_forecasting` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `authorization_rate`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Record tax quote references, jurisdiction, quote expiry, taxable basis, invoice linkage, mismatch state, recalculation need, and declared API/projection lineage.
 
-### 28. Operationalize `autonomous_billing_exception_resolution` as a governed decision system
+### 28. Ledger handoff marker
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Subscription and Recurring Billing Management and measurably improves route margin without hiding assumptions.
+**Justification:** Billing must prove what should be posted without writing directly to ledger tables.
 
-**Improvement:** Promote `autonomous_billing_exception_resolution` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `route_margin`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add ledger handoff markers for invoice approval, credit memo, payment application, revenue recognition, write-off, and adjustment with idempotency and delivery evidence.
 
-### 29. Operationalize `semantic_billing_instruction_parsing` as a governed decision system
+### 29. Pricing event guardrails
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Subscription and Recurring Billing Management and measurably improves return cycle time without hiding assumptions.
+**Justification:** Optimized prices can change subscription rates and discounts but must respect contracts and discount guardrails.
 
-**Improvement:** Promote `semantic_billing_instruction_parsing` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `return_cycle_time`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Consume `PriceOptimized` with contract eligibility, effective date, discount cap, current phase, renewal-only flag, override approval, and rate schedule versioning.
 
-### 30. Operationalize `predictive_billing_risk` as a governed decision system
+### 30. Payment captured handler controls
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Subscription and Recurring Billing Management and measurably improves landed cost accuracy without hiding assumptions.
+**Justification:** Payment events must update invoice state exactly once and handle partials, overpayments, and unknown invoices.
 
-**Improvement:** Promote `predictive_billing_risk` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `landed_cost_accuracy`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add idempotent `PaymentCaptured` handling with invoice match, amount validation, currency validation, partial/overpayment routing, unknown invoice exception, retry evidence, and dead-letter evidence.
 
-### 31. Create simulation-grade governance for `SUBSCRIPTION_BILLING_DATABASE_URL` and `SUBSCRIPTION_BILLING_DATABASE_URL`
+### 31. AppGen-X outbox delivery assurance
 
-**Justification:** Complete Subscription and Recurring Billing Management coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Subscription, usage, invoice, credit, payment, entitlement, revenue, and dunning events drive downstream capabilities.
 
-**Improvement:** Add a policy cockpit where `SUBSCRIPTION_BILLING_DATABASE_URL` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `SUBSCRIPTION_BILLING_DATABASE_URL` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add outbox states, ordering group, payload hash, retry attempts, next retry, delivery proof, dead-letter linkage, and replay controls for every emitted billing event.
 
-### 32. Create simulation-grade governance for `SUBSCRIPTION_BILLING_EVENT_TOPIC` and `SUBSCRIPTION_BILLING_EVENT_TOPIC`
+### 32. Cross-PBC boundary proof
 
-**Justification:** Complete Subscription and Recurring Billing Management coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Subscription Billing must not directly read payment, pricing, tax, ledger, entitlement, customer, or analytics tables.
 
-**Improvement:** Add a policy cockpit where `SUBSCRIPTION_BILLING_EVENT_TOPIC` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `SUBSCRIPTION_BILLING_EVENT_TOPIC` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add release evidence scanning schema descriptors, services, routes, DSL, workbench bindings, and agent plans for foreign table access, proving dependencies are APIs, events, or package-local projections only.
 
-### 33. Create simulation-grade governance for `SUBSCRIPTION_BILLING_RETRY_LIMIT` and `SUBSCRIPTION_BILLING_RETRY_LIMIT`
+### 33. Multi-tenant and customer isolation
 
-**Justification:** Complete Subscription and Recurring Billing Management coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Billing records contain sensitive pricing, payment, usage, and contract information.
 
-**Improvement:** Add a policy cockpit where `SUBSCRIPTION_BILLING_RETRY_LIMIT` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `SUBSCRIPTION_BILLING_RETRY_LIMIT` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add tenant/customer isolation evidence for subscriptions, invoices, usage, dunning, rules, parameters, configuration, events, workbench views, exports, and agent plans.
 
-### 34. Create simulation-grade governance for `SUBSCRIPTION_BILLING_DATABASE_URL` and `SUBSCRIPTION_BILLING_DATABASE_URL`
+### 34. Proration quote simulator
 
-**Justification:** Complete Subscription and Recurring Billing Management coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Plan changes and seat changes need accurate proration previews before customer commitments.
 
-**Improvement:** Add a policy cockpit where `SUBSCRIPTION_BILLING_DATABASE_URL` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `SUBSCRIPTION_BILLING_DATABASE_URL` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Simulate proration by effective date, remaining ratio, current plan, target plan, add-ons, usage, discounts, taxes marker, credits, and next invoice effect.
 
-### 35. Create simulation-grade governance for `SUBSCRIPTION_BILLING_EVENT_TOPIC` and `SUBSCRIPTION_BILLING_EVENT_TOPIC`
+### 35. Counterfactual plan simulation
 
-**Justification:** Complete Subscription and Recurring Billing Management coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Commercial teams need to compare plan, discount, add-on, and usage alternatives against revenue and churn.
 
-**Improvement:** Add a policy cockpit where `SUBSCRIPTION_BILLING_EVENT_TOPIC` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `SUBSCRIPTION_BILLING_EVENT_TOPIC` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Simulate plan changes, usage tiers, discounts, commitments, renewal terms, add-ons, and billing cadence with effects on MRR, ARR, churn risk, revenue schedule, and customer cost.
 
-### 36. Upgrade `SubscriptionBillingWorkbench` into a full specialist command center
+### 36. Revenue exposure forecasting
 
-**Justification:** The PBC UI must expose the complete Subscription and Recurring Billing Management surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Billing teams need forward-looking exposure across churn, payment failure, dunning, usage volatility, and revenue timing.
 
-**Improvement:** Expand `SubscriptionBillingWorkbench` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Forecast MRR, ARR, invoices, payments, dunning risk, renewal probability, revenue recognition, credit exposure, and usage variance by plan, cohort, tenant, and period.
 
-### 37. Upgrade `SubscriptionBillingDetail` into a full specialist command center
+### 37. Billing anomaly detection
 
-**Justification:** The PBC UI must expose the complete Subscription and Recurring Billing Management surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Abnormal billing patterns can reveal metering defects, pricing errors, payment problems, entitlement mismatches, or revenue leakage.
 
-**Improvement:** Expand `SubscriptionBillingDetail` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Detect anomalies in usage spikes, invoice totals, discounts, credits, payment applications, dunning notices, renewal confidence, entitlement grants, revenue schedules, and dead letters.
 
-### 38. Upgrade `SubscriptionBillingWorkbench` into a full specialist command center
+### 38. Governed billing model evidence
 
-**Justification:** The PBC UI must expose the complete Subscription and Recurring Billing Management surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Churn, revenue, pricing, and dunning models influence customer treatment and revenue decisions.
 
-**Improvement:** Expand `SubscriptionBillingWorkbench` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Track model purpose, training window, feature lineage, validation metrics, drift, false-positive/negative impact, approval status, rollback, and explainability evidence.
 
-### 39. Upgrade `SubscriptionBillingDetail` into a full specialist command center
+### 39. Semantic billing instruction parsing
 
-**Justification:** The PBC UI must expose the complete Subscription and Recurring Billing Management surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Billing operators express actions such as pause this subscription, credit usage, or quote an upgrade in natural language.
 
-**Improvement:** Expand `SubscriptionBillingDetail` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Parse instructions into safe query or command previews with target subscription, action, amount, effective date, policy checks, missing evidence, confidence, and no mutation until confirmed.
 
-### 40. Upgrade `SubscriptionBillingWorkbench` into a full specialist command center
+### 40. Agent-safe billing plans
 
-**Justification:** The PBC UI must expose the complete Subscription and Recurring Billing Management surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** The billing chatbot must not silently change subscriptions, issue credits, apply payments, or recognize revenue.
 
-**Improvement:** Expand `SubscriptionBillingWorkbench` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Require side-effect-free plans naming command, permission, owned tables, idempotency key, expected event, financial impact, rollback limits, and human confirmation for all billing mutations.
 
-### 41. Prove cross-PBC federation for `POST /subscriptions` and `PaymentCaptured`
+### 41. Billing workbench coverage
 
-**Justification:** Subscription and Recurring Billing Management must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Operators need a full recurring-revenue command center, not isolated subscription tables.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /subscriptions` and consumed event `PaymentCaptured` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Expand workbench surfaces for plans, subscriptions, trials, phases, add-ons, change orders, usage, schedules, invoices, credits, payments, entitlements, revenue, renewals, dunning, exceptions, events, rules, parameters, configuration, and release evidence.
 
-### 42. Prove cross-PBC federation for `POST /usage` and `PriceOptimized`
+### 42. Invoice approval cockpit
 
-**Justification:** Subscription and Recurring Billing Management must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** High-risk invoices need fast review with line-level evidence and recommended actions.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /usage` and consumed event `PriceOptimized` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Add queues by approval threshold, anomaly, customer risk, usage spike, tax mismatch, credit impact, revenue impact, payment delay, and event failure with drilldowns.
 
-### 43. Prove cross-PBC federation for `POST /renewals` and `PaymentCaptured`
+### 43. Renewal console
 
-**Justification:** Subscription and Recurring Billing Management must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Renewal management needs contract, usage, payment, dunning, churn, and entitlement context.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /renewals` and consumed event `PaymentCaptured` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Add renewal views with confidence score, churn drivers, MRR/ARR, term dates, usage trend, dunning state, payment history, proposed terms, and approval actions.
 
-### 44. Prove cross-PBC federation for `GET /subscription-billing-workbench` and `PriceOptimized`
+### 44. Dunning board
 
-**Justification:** Subscription and Recurring Billing Management must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Collections teams need prioritized, explainable, and compliant dunning queues.
 
-**Improvement:** Add compatibility tests and workbench evidence for `GET /subscription-billing-workbench` and consumed event `PriceOptimized` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Add board views for notices, aging, risk score, amount due, customer value, suppression, retry status, delivery failures, escalation, entitlement suspension, and recovery actions.
 
-### 45. Temporal reconstruction and bitemporal audit for Subscription and Recurring Billing Management
+### 45. Runtime parameter governance
 
-**Justification:** Regulated and operationally complex domains need to answer what was known, valid, processed, and visible at any point in time.
+**Justification:** Renewal confidence, churn risk, dunning risk, precision, retry limits, discount guardrails, and approval thresholds materially affect revenue.
 
-**Improvement:** Add transaction-time, valid-time, and processing-time fields to core records, temporal query APIs, projection rebuild tooling, and UI time travel so specialists can reconstruct decisions, reports, and automation outcomes.
+**Improvement:** Add parameter bounds, impact simulation, approval workflow, effective dating, tenant/plan overrides, rollback, and release evidence for billing parameters.
 
-### 46. Bulk operations and migration-grade controls for Subscription and Recurring Billing Management
+### 46. Schema extension governance
 
-**Justification:** World-class deployments must handle imports, mass corrections, high-volume operating days, and cutovers without bypassing governance.
+**Justification:** Subscription businesses need custom contract attributes while preserving owned boundaries.
 
-**Improvement:** Add staged bulk upload, duplicate detection, chunked validation, approval sampling, partial failure handling, retry dashboards, reconciliation summaries, and agent-generated remediation plans for large batches.
+**Improvement:** Allow extensions only on owned billing tables with field validation, sensitivity classification, migration preview, UI binding preview, API exposure review, and release-audit evidence.
 
-### 47. Specialist edge-case playbooks for Subscription and Recurring Billing Management
+### 47. Continuous billing control testing
 
-**Justification:** Rare cases often carry the highest financial, legal, safety, service, or compliance risk.
+**Justification:** Billing controls should be proven continuously across subscriptions, usage, invoices, payments, entitlements, revenue, and events.
 
-**Improvement:** Create a playbook catalog with detection rules, required evidence, escalation paths, fallback actions, owner roles, and release-audited tests for high-severity edge cases and exception queues.
+**Improvement:** Add assertions for invoice without active subscription, usage without meter, payment over-application, credit above invoice, entitlement without subscription, revenue without approved invoice, foreign-table access, dead-letter aging, and agent-preview bypass.
 
-### 48. Pre-mutation simulation and blast-radius analysis for Subscription and Recurring Billing Management
+### 48. Billing resilience drills
 
-**Justification:** Users should understand consequences before committing irreversible, customer-visible, operationally disruptive, or financially material changes.
+**Justification:** Recurring revenue operations must degrade safely through duplicate events, payment delays, pricing lag, and invoice failures.
 
-**Improvement:** Add what-if simulation for every material command, showing impacted records, emitted events, dependent projections, rule outcomes, approvals, downstream PBC dependencies, and rollback limits.
+**Improvement:** Add drills for duplicate payment, price event delay, usage spike, invoice approval failure, dunning dead letter, entitlement handoff outage, revenue handoff failure, and workbench degraded mode.
 
-### 49. Continuous control testing and operational assurance for Subscription and Recurring Billing Management
+### 49. Subscription Billing readiness score
 
-**Justification:** Better-than-world-class PBCs prove controls continuously, not only at release or during periodic audits.
+**Justification:** Users need an evidence-backed view of whether `subscription_billing` is ready for live recurring revenue operations.
 
-**Improvement:** Add executable control assertions, sampled evidence checks, anomaly thresholds, control-owner dashboards, breach/recovery events, and release gates that fail when domain controls lose evidence.
+**Improvement:** Compute readiness from plan catalog, subscription lifecycle, usage rating, schedules, invoices, payments, entitlements, revenue schedules, renewals, dunning, events, UI coverage, model governance, controls, boundary proof, and agent safety.
 
-### 50. Human-in-the-loop domain agent execution for Subscription and Recurring Billing Management
+### 50. End-to-end recurring revenue proof
 
-**Justification:** The PBC chatbot must help specialists perform real work while preventing unsafe autonomous mutation.
+**Justification:** A complete Subscription Billing PBC must prove it can execute the full lifecycle from plan setup through revenue evidence.
 
-**Improvement:** Add domain-specific skills, document parsing, task planning, CRUD previews, confidence/risk scoring, confirmation gates, redaction, policy explanations, and post-action evidence packets for every supported command and query.
+**Improvement:** Add an executable proof scenario covering plan registration, trial, subscription activation, add-on, usage rating, invoice generation and approval, payment application, entitlement grant, revenue recognition, renewal, dunning branch, emitted events, UI evidence, boundary proof, controls, and agent explanation.
