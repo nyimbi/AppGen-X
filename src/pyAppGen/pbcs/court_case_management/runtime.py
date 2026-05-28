@@ -3,6 +3,7 @@ from __future__ import annotations
 from copy import deepcopy
 import hashlib
 from .domain_depth import domain_depth_contract, domain_depth_smoke_test, execute_domain_operation, DOMAIN_OPERATIONS, DOMAIN_OWNED_TABLES
+from .court_operations_app import controls_contract, court_operations_smoke_test, forms_contract, single_pbc_app_contract, wizards_contract
 
 PBC_KEY = 'court_case_management'
 COURT_CASE_MANAGEMENT_OWNED_TABLES = ('court_case_management_court_case',
@@ -45,7 +46,11 @@ COURT_CASE_MANAGEMENT_STANDARD_FEATURE_KEYS = ('court_case_management',
  'governed_datastore_crud',
  'ai_agent_task_assistance',
  'configuration_workbench',
- 'continuous_release_assurance')
+ 'continuous_release_assurance',
+ 'single_pbc_domain_app',
+ 'forms',
+ 'wizards',
+ 'controls')
 COURT_CASE_MANAGEMENT_RUNTIME_CAPABILITY_KEYS = ('court_case_management_event_sourced_operational_history',
  'court_case_management_multi_tenant_policy_isolation',
  'court_case_management_schema_evolution_resilience',
@@ -207,6 +212,10 @@ def court_case_management_runtime_capabilities():
         'standard_features': COURT_CASE_MANAGEMENT_STANDARD_FEATURE_KEYS,
         'capabilities': COURT_CASE_MANAGEMENT_RUNTIME_CAPABILITY_KEYS,
         'operations': operations,
+        'forms': forms_contract()['forms'],
+        'wizards': wizards_contract()['wizards'],
+        'controls': controls_contract()['controls'],
+        'single_pbc_app': single_pbc_app_contract(),
         'smoke': smoke,
         'world_class_domain_depth': domain,
         'database_backends': COURT_CASE_MANAGEMENT_ALLOWED_DATABASE_BACKENDS,
@@ -232,6 +241,7 @@ def court_case_management_runtime_smoke():
     service = court_case_management_build_service_contract()
     release = court_case_management_build_release_evidence()
     workbench = court_case_management_build_workbench_view()
+    app_smoke = court_operations_smoke_test()
     boundary = court_case_management_verify_owned_table_boundary(COURT_CASE_MANAGEMENT_OWNED_TABLES + ('foreign_table',))
     domain = domain_depth_contract()
     checks = (
@@ -246,6 +256,7 @@ def court_case_management_runtime_smoke():
         {'id': 'build_service_contract', 'ok': service['ok']},
         {'id': 'build_release_evidence', 'ok': release['ok']},
         {'id': 'build_workbench_view', 'ok': workbench['ok']},
+        {'id': 'single_pbc_court_operations_app', 'ok': app_smoke['ok']},
         {'id': 'owned_boundary_rejects_foreign_table', 'ok': boundary['ok'] is False},
         {'id': 'domain_depth', 'ok': domain['ok']},
     ) + tuple({'id': capability, 'ok': True} for capability in COURT_CASE_MANAGEMENT_RUNTIME_CAPABILITY_KEYS)
@@ -259,6 +270,7 @@ def court_case_management_runtime_smoke():
         'service': service,
         'release': release,
         'workbench': workbench,
+        'single_pbc_app': app_smoke,
         'domain_depth': domain,
         'blocking_gaps': tuple(check for check in checks if not check['ok']),
         'side_effects': (),

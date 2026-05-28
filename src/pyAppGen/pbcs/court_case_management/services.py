@@ -2,7 +2,18 @@
 PBC_KEY = 'court_case_management'
 EVENT_CONTRACT = {'outbox_table': f'{PBC_KEY}_appgen_outbox_event', 'inbox_table': f'{PBC_KEY}_appgen_inbox_event', 'dead_letter_table': f'{PBC_KEY}_appgen_dead_letter_event', 'event_contract': 'AppGen-X'}
 from .domain_depth import DOMAIN_OPERATIONS as DOMAIN_DEPTH_COMMAND_OPERATIONS, DOMAIN_OWNED_TABLES as DOMAIN_DEPTH_OWNED_TABLES, execute_domain_operation as execute_domain_depth_operation
-COMMAND_OPERATIONS = tuple(dict.fromkeys(('command_court_case','configure_runtime','set_parameter','register_rule') + tuple(DOMAIN_DEPTH_COMMAND_OPERATIONS)))
+from .court_operations_app import (
+    add_party,
+    court_workbench,
+    create_court_case,
+    draft_order,
+    empty_court_state,
+    receive_filing,
+    schedule_hearing,
+    sign_and_enter_order,
+)
+COURT_COMMAND_OPERATIONS = ('create_court_case','add_party','receive_filing','schedule_hearing','draft_order','sign_and_enter_order')
+COMMAND_OPERATIONS = tuple(dict.fromkeys(('command_court_case','configure_runtime','set_parameter','register_rule') + COURT_COMMAND_OPERATIONS + tuple(DOMAIN_DEPTH_COMMAND_OPERATIONS)))
 QUERY_OPERATIONS = ('query_workbench',)
 OWNED_TABLES = DOMAIN_DEPTH_OWNED_TABLES
 
@@ -13,6 +24,9 @@ def _operation_contract(name, kind):
  'CourtCaseManagementExceptionOpened')[0] if kind == 'command' else None, 'transaction_boundary': 'owned_datastore_plus_outbox' if kind == 'command' else 'read_only_projection'}
 
 class CourtCaseManagementService:
+    def __init__(self, state=None):
+        self.state = state or empty_court_state()
+
     def __getattr__(self, name):
         if name in COMMAND_OPERATIONS:
             return lambda payload=None, _name=name: self._command(_name, payload or {})
@@ -20,12 +34,32 @@ class CourtCaseManagementService:
             return lambda payload=None, _name=name: self._query(_name, payload or {})
         raise AttributeError(name)
     def _command(self, name, payload):
+        if name == 'create_court_case':
+            result = create_court_case(self.state, payload); self.state = result['state']
+            return {**result, 'operation': name, 'operation_kind': 'command', 'transaction_boundary': 'owned_datastore_plus_outbox', 'outbox_table': EVENT_CONTRACT['outbox_table']}
+        if name == 'add_party':
+            result = add_party(self.state, payload); self.state = result['state']
+            return {**result, 'operation': name, 'operation_kind': 'command', 'transaction_boundary': 'owned_datastore_plus_outbox', 'outbox_table': EVENT_CONTRACT['outbox_table']}
+        if name == 'receive_filing':
+            result = receive_filing(self.state, payload); self.state = result['state']
+            return {**result, 'operation': name, 'operation_kind': 'command', 'transaction_boundary': 'owned_datastore_plus_outbox', 'outbox_table': EVENT_CONTRACT['outbox_table']}
+        if name == 'schedule_hearing':
+            result = schedule_hearing(self.state, payload); self.state = result['state']
+            return {**result, 'operation': name, 'operation_kind': 'command', 'transaction_boundary': 'owned_datastore_plus_outbox', 'outbox_table': EVENT_CONTRACT['outbox_table']}
+        if name == 'draft_order':
+            result = draft_order(self.state, payload); self.state = result['state']
+            return {**result, 'operation': name, 'operation_kind': 'command', 'transaction_boundary': 'owned_datastore_plus_outbox', 'outbox_table': EVENT_CONTRACT['outbox_table']}
+        if name == 'sign_and_enter_order':
+            result = sign_and_enter_order(self.state, payload.get('order_id'), payload); self.state = result['state']
+            return {**result, 'operation': name, 'operation_kind': 'command', 'transaction_boundary': 'owned_datastore_plus_outbox', 'outbox_table': EVENT_CONTRACT['outbox_table']}
         if name in DOMAIN_DEPTH_COMMAND_OPERATIONS:
             plan = execute_domain_depth_operation(name, payload)
             return {'ok': plan['ok'], 'operation': name, 'operation_kind': 'command', 'read_only': False, 'payload': dict(payload), 'operation_contract': {'operation': name, 'operation_kind': 'command', 'owned_tables': plan.get('owned_tables', ()), 'read_tables': (), 'emitted_event': plan.get('emitted_event'), 'transaction_boundary': 'owned_datastore_plus_outbox'}, 'outbox_table': EVENT_CONTRACT['outbox_table'], 'emits': (plan.get('emitted_event'),), 'transaction_boundary': 'owned_datastore_plus_outbox', 'domain_depth': plan, 'side_effects': ()}
         contract = _operation_contract(name, 'command')
         return {'ok': True, 'operation': name, 'operation_kind': 'command', 'read_only': False, 'payload': dict(payload), 'operation_contract': contract, 'outbox_table': EVENT_CONTRACT['outbox_table'], 'emits': (contract['emitted_event'],), 'transaction_boundary': 'owned_datastore_plus_outbox', 'side_effects': ()}
     def _query(self, name, payload):
+        if name == 'query_workbench':
+            return {**court_workbench(self.state), 'operation': name, 'operation_kind': 'query', 'read_only': True}
         contract = _operation_contract(name, 'query')
         return {'ok': True, 'operation': name, 'operation_kind': 'query', 'read_only': True, 'payload': dict(payload), 'operation_contract': contract, 'outbox_table': None, 'emits': (), 'side_effects': ()}
 
