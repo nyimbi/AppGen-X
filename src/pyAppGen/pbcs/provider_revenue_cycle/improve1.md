@@ -1,418 +1,416 @@
-# Provider Revenue Cycle PBC Better-Than-World-Class Improvement Backlog
+# Provider Revenue Cycle PBC Manual Improvement Backlog
 
 ## Purpose
 
-This file identifies, justifies, and describes 50 high-impact improvements for `provider_revenue_cycle`. The backlog is specific to healthcare registration, charge capture, coding, claims, denials, payment posting, collections, and revenue integrity and is intended to move the PBC from release-auditable scaffolding toward complete, specialist-grade domain coverage.
+This strict backlog replaces scaffold-derived roadmap material for `provider_revenue_cycle` with a hand-curated provider revenue-cycle roadmap. The PBC owns patient accounts, registration revenue readiness, charge capture, coding workqueues, claim batch preparation, denial cases, payment posting evidence, collections coordination, revenue integrity, governed rules, agent assistance, and release evidence without owning payer adjudication, clinical chart source-of-truth, or general ledger tables.
 
 ## Current Domain Evidence Used
 
 - Stable PBC key: `provider_revenue_cycle`.
-- Domain purpose: Healthcare registration, charge capture, coding, claims, denials, payment posting, collections, and revenue integrity.
-- Owned domain tables: `patient_account`, `charge_capture`, `coding_workqueue`, `claim_batch`, `denial_case`, `payment_posting`, `collection_account`, `provider_revenue_cycle_policy_rule`, `provider_revenue_cycle_runtime_parameter`, `provider_revenue_cycle_schema_extension`, `provider_revenue_cycle_control_assertion`, `provider_revenue_cycle_governed_model`.
+- Domain purpose: healthcare registration, charge capture, coding, claims, denials, payment posting, collections, and revenue integrity.
+- Owned domain tables: `patient_account`, `charge_capture`, `coding_workqueue`, `claim_batch`, `denial_case`, `payment_posting`, `collection_worklist`, `provider_revenue_cycle_policy_rule`, `provider_revenue_cycle_runtime_parameter`, `provider_revenue_cycle_schema_extension`, `provider_revenue_cycle_control_assertion`, `provider_revenue_cycle_governed_model`.
 - Public APIs: `POST /patient-accounts`, `POST /charge-captures`, `POST /coding-workqueues`, `POST /claim-batchs`, `POST /denial-cases`, `GET /provider-revenue-cycle-workbench`.
 - Emitted AppGen-X events: `ProviderRevenueCycleCreated`, `ProviderRevenueCycleUpdated`, `ProviderRevenueCycleApproved`, `ProviderRevenueCycleExceptionOpened`.
 - Consumed AppGen-X events: `PolicyChanged`, `AuditEventSealed`, `OperationalKpiChanged`.
-- Current standard surfaces include: `patient_account_management`, `provider_revenue_cycle_workflow`, `provider_revenue_cycle_analytics`, `configuration_schema`, `rule_engine`, `parameter_engine`, `owned_schema_migrations_models`, `appgen_x_outbox_inbox_eventing`, `idempotent_handlers`, `retry_dead_letter_evidence`.
-- Current advanced surfaces include: `provider_revenue_cycle_event_sourced_operational_history`, `provider_revenue_cycle_multi_tenant_policy_isolation`, `provider_revenue_cycle_schema_evolution_resilience`, `provider_revenue_cycle_autonomous_anomaly_detection`, `provider_revenue_cycle_semantic_document_instruction_understanding`, `provider_revenue_cycle_predictive_risk_scoring`, `provider_revenue_cycle_counterfactual_scenario_simulation`, `provider_revenue_cycle_cryptographic_audit_proofs`.
 
 ## 50 High-Impact Improvements
 
-### 1. Canonical lifecycle state model for Patient Account
+### 1. Patient Account Revenue Readiness
 
-**Justification:** This closes shallow CRUD gaps by making every provider revenue cycle transition explainable and testable instead of implicit in free-form status values.
+**Justification:** A patient account is the revenue-cycle container for registration, coverage, authorization, charges, coding, billing, payment, and collections readiness.
 
-**Improvement:** Define a complete state machine for `patient_account` with explicit draft, validated, blocked, approved, active, suspended, corrected, closed, archived, and reopened states. Tie the behavior to `provider_revenue_cycle_create_patient_account_workflow` where applicable, and make it visible in `ProviderRevenueCycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add account states for preregistered, registered, eligibility pending, authorization pending, charge pending, coding pending, claim ready, billed, denied, paid, underpaid, patient balance, collections, and closed.
 
-**Acceptance evidence:** State-transition tests, invalid-transition fixtures, workbench state badges, and emitted AppGen-X transition events for ProviderRevenueCycleCreated, ProviderRevenueCycleUpdated, ProviderRevenueCycleApproved. The evidence should be package-local in `src/pyAppGen/pbcs/provider_revenue_cycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must reject invalid account transitions and show missing readiness components before claim batching.
 
-### 2. Domain intake and normalization for Charge Capture
+### 2. Registration Quality Controls
 
-**Justification:** The PBC cannot reach complete domain coverage unless it handles the messy front door of healthcare registration, charge capture, coding, claims, denials, payment posting, collections, and revenue integrity, not only already-clean records.
+**Justification:** Incorrect demographic, guarantor, coverage, accident, and coordination data causes denials and rework.
 
-**Improvement:** Build a typed intake pipeline for `charge_capture` that accepts structured API payloads, document-derived instructions, batch loads, and assistant-generated drafts while normalizing identifiers, dates, units, parties, and jurisdictional context. Tie the behavior to `provider_revenue_cycle_record_charge_capture_workflow` where applicable, and make it visible in `ProviderRevenueCycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add registration validation for identity confidence, guarantor, coverage priority, subscriber relationship, accident indicators, required consent, and missing financial-class evidence.
 
-**Acceptance evidence:** Golden intake fixtures, rejected-record queues, field-level normalization evidence, and assistant previews before governed datastore mutation. The evidence should be package-local in `src/pyAppGen/pbcs/provider_revenue_cycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must open registration deficiencies and block claim-ready state until configured errors are resolved.
 
-### 3. Specialist validation rules for Coding Workqueue
+### 3. Eligibility and Benefits Projection Boundary
 
-**Justification:** World-class Provider Revenue Cycle requires rules that domain experts can reason about, version, test, and roll back without code edits.
+**Justification:** Provider billing depends on eligibility but should not own payer enrollment systems.
 
-**Improvement:** Add a domain rule compiler for `coding_workqueue` that supports threshold rules, eligibility rules, dependency rules, temporal windows, conflicting-instruction detection, and override justification. Tie the behavior to `provider_revenue_cycle_create_patient_account_workflow` where applicable, and make it visible in `ProviderRevenueCycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Store eligibility response evidence with payer, plan, effective dates, coverage status, benefit summary, response time, and freshness.
 
-**Acceptance evidence:** Rule simulation tests, versioned rule manifests, rule impact reports, and UI rule editors linked to `PROVIDER_REVENUE_CYCLE_DATABASE_URL, PROVIDER_REVENUE_CYCLE_EVENT_TOPIC, PROVIDER_REVENUE_CYCLE_RETRY_LIMIT`. The evidence should be package-local in `src/pyAppGen/pbcs/provider_revenue_cycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Boundary tests must fail on shared eligibility table reads and pass on declared event/API projection usage.
 
-### 4. Parameter governance and tuning for Claim Batch
+### 4. Authorization Tracking
 
-**Justification:** Parameters are where operations teams tune provider revenue cycle; unbounded constants would make the PBC brittle and unsafe in real deployments.
+**Justification:** Missing or mismatched authorization creates avoidable denials.
 
-**Improvement:** Expose bounded runtime parameters for `claim_batch` covering risk thresholds, SLA windows, confidence floors, escalation cutoffs, batch sizes, retry limits, and human-confirmation requirements. Tie the behavior to `provider_revenue_cycle_record_charge_capture_workflow` where applicable, and make it visible in `ProviderRevenueCycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add authorization requirement, submitted date, approved services, units, validity dates, payer reference, remaining balance, and mismatch review.
 
-**Acceptance evidence:** Parameter schema validation, tenant overrides, approval history, rollback controls, and workbench diff views. The evidence should be package-local in `src/pyAppGen/pbcs/provider_revenue_cycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must flag missing, expired, unit-exhausted, and service-mismatched authorizations before billing.
 
-### 5. Deep owned schema expansion for Denial Case
+### 5. Charge Capture Completeness
 
-**Justification:** A single payload column cannot express the full surface of healthcare registration, charge capture, coding, claims, denials, payment posting, collections, and revenue integrity or prove cross-PBC boundaries are respected.
+**Justification:** Revenue leakage starts when performed services are never charged.
 
-**Improvement:** Extend the owned schema around `denial_case` with normalized child tables for line-level evidence, party roles, approvals, attachments, comments, metrics, exception reasons, and control assertions. Tie the behavior to `provider_revenue_cycle_create_patient_account_workflow` where applicable, and make it visible in `ProviderRevenueCycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand `charge_capture` with source encounter/event evidence, charge trigger, service date, department, performing clinician, expected charge, captured charge, variance, and missing-charge case.
 
-**Acceptance evidence:** Migrations, models, relationship tests, schema contract snapshots, and no shared-table access outside the `provider_revenue_cycle_` namespace. The evidence should be package-local in `src/pyAppGen/pbcs/provider_revenue_cycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must detect missing, duplicate, late, and unsupported charges from declared clinical events.
 
-### 6. Event-sourced operational history for Payment Posting
+### 6. Charge Description Governance
 
-**Justification:** Temporal reconstruction is essential for better-than-world-class auditability and dispute resolution in provider revenue cycle.
+**Justification:** Charge codes, prices, revenue codes, modifiers, and effective dates require controlled governance.
 
-**Improvement:** Capture every material mutation of `payment_posting` as immutable AppGen-X events with actor, tenant, command, policy version, idempotency key, before/after summary, and projection checkpoint. Tie the behavior to `provider_revenue_cycle_record_charge_capture_workflow` where applicable, and make it visible in `ProviderRevenueCycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add charge master version evidence, effective windows, billable setting, modifier requirements, price basis, and approval workflow.
 
-**Acceptance evidence:** Replay tests, projection checksums, event ordering evidence, and point-in-time workbench views. The evidence should be package-local in `src/pyAppGen/pbcs/provider_revenue_cycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must price historical charges against the correct version and block inactive charge codes.
 
-### 7. Projection and read-model strategy for Collection Account
+### 7. Coding Workqueue Specialization
 
-**Justification:** The workbench should not force users to infer domain truth from raw tables; each projection should answer a real operating question.
+**Justification:** Coding work differs by inpatient, outpatient, professional, emergency, surgery, and ancillary service lines.
 
-**Improvement:** Create purpose-built projections for `collection_account`: operational queue, executive KPI rollup, exception aging, compliance evidence, agent task context, and external dependency health. Tie the behavior to `provider_revenue_cycle_create_patient_account_workflow` where applicable, and make it visible in `ProviderRevenueCycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add coding case type, required documentation, diagnosis/procedure evidence, coder assignment, query need, coding status, and final code set.
 
-**Acceptance evidence:** Projection contracts, freshness SLAs, backfill tests, and visible stale-projection warnings. The evidence should be package-local in `src/pyAppGen/pbcs/provider_revenue_cycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must route cases by type and prevent final coding when required documentation is missing.
 
-### 8. Exception taxonomy and remediation for Provider Revenue Cycle Policy Rule
+### 8. Clinical Documentation Query Workflow
 
-**Justification:** High-value PBCs win on exception throughput; generic “failed” states hide the details operators need.
+**Justification:** Coders need governed queries to clinicians when documentation is unclear, incomplete, or conflicting.
 
-**Improvement:** Model the full exception taxonomy for `provider_revenue_cycle_policy_rule`, including severity, root cause, blocking dependency, remediation owner, due date, retry eligibility, escalation path, and closure evidence. Tie the behavior to `provider_revenue_cycle_record_charge_capture_workflow` where applicable, and make it visible in `ProviderRevenueCycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add query reason, linked documentation evidence, compliant question text, clinician response, due date, and coding outcome impact.
 
-**Acceptance evidence:** Exception queues, aging metrics, remediation playbooks, dead-letter linkage, and closure test fixtures for conflicting clinical instructions. The evidence should be package-local in `src/pyAppGen/pbcs/provider_revenue_cycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must preserve query history and block leading or unsupported query drafts.
 
-### 9. Predictive risk scoring for Provider Revenue Cycle Runtime Parameter
+### 9. Claim Scrubbing Rules
 
-**Justification:** The package should warn users before provider revenue cycle work fails, breaches policy, or creates downstream cost.
+**Justification:** Clean claims require edits before submission, not after payer rejection.
 
-**Improvement:** Add predictive risk scoring for `provider_revenue_cycle_runtime_parameter` using domain features from owned tables, consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, rule outcomes, aging, anomaly signals, and historical corrections. Tie the behavior to `provider_revenue_cycle_create_patient_account_workflow` where applicable, and make it visible in `ProviderRevenueCycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add scrub rules for demographics, coverage, authorization, coding, modifiers, diagnosis pointers, timely filing, accident data, and payer-specific requirements.
 
-**Acceptance evidence:** Feature manifests, score explanations, calibration reports, drift alerts, and tests for low/medium/high-risk scenarios. The evidence should be package-local in `src/pyAppGen/pbcs/provider_revenue_cycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must scrub clean, warning, fatal, and override-required claim scenarios.
 
-### 10. Counterfactual simulation for Provider Revenue Cycle Schema Extension
+### 10. Claim Batch Assembly
 
-**Justification:** Advanced users need to ask “what would happen if” before committing changes to live healthcare registration, charge capture, coding, claims, denials, payment posting, collections, and revenue integrity operations.
+**Justification:** Batches need payer, format, facility, claim type, submitter, sequence, and transmission evidence.
 
-**Improvement:** Provide scenario simulation for `provider_revenue_cycle_schema_extension`: policy change, capacity constraint, deadline shift, price/rate change, eligibility change, disruption, and manual override outcomes. Tie the behavior to `provider_revenue_cycle_record_charge_capture_workflow` where applicable, and make it visible in `ProviderRevenueCycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand `claim_batch` with batch type, payer, clearinghouse route, included accounts, totals, validation status, submission status, acknowledgement, and rejection evidence.
 
-**Acceptance evidence:** Simulation APIs, non-mutating sandbox state, comparison reports, and workbench side-by-side scenario panels. The evidence should be package-local in `src/pyAppGen/pbcs/provider_revenue_cycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must assemble, validate, submit, acknowledge, reject, and resubmit claim batches idempotently.
 
-### 11. Autonomous anomaly triage for Provider Revenue Cycle Control Assertion
+### 11. Clearinghouse Rejection Handling
 
-**Justification:** A world-class PBC should reduce analyst burden without hiding the reasoning behind automated triage.
+**Justification:** Clearinghouse rejections are operational problems before payer adjudication.
 
-**Improvement:** Implement anomaly detection for `provider_revenue_cycle_control_assertion` that identifies outliers, duplicate submissions, impossible sequences, stale dependencies, unusual amounts/counts/durations, and contradictory fields. Tie the behavior to `provider_revenue_cycle_create_patient_account_workflow` where applicable, and make it visible in `ProviderRevenueCycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add rejection reason, affected claim, edit category, owner, correction action, resubmission state, and aging.
 
-**Acceptance evidence:** Explainable anomaly cards, reviewer feedback loops, false-positive tracking, and suppression governance. The evidence should be package-local in `src/pyAppGen/pbcs/provider_revenue_cycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must correct and resubmit rejected claims without creating duplicate batches.
 
-### 12. Semantic document understanding for Provider Revenue Cycle Governed Model
+### 12. Denial Case Taxonomy
 
-**Justification:** Document-heavy work in Provider Revenue Cycle cannot be complete if the assistant only answers questions and cannot prepare accurate governed changes.
+**Justification:** Denials require root-cause categories, owner, deadline, appeal likelihood, and prevention feedback.
 
-**Improvement:** Train the package assistant to parse domain documents and instructions for `provider_revenue_cycle_governed_model`, extract obligations, dates, parties, quantities, identifiers, and exceptions, then map them to safe draft mutations. Tie the behavior to `provider_revenue_cycle_record_charge_capture_workflow` where applicable, and make it visible in `ProviderRevenueCycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand `denial_case` with category, payer reason, internal root cause, preventable flag, dollar amount, appeal path, owner, and closure reason.
 
-**Acceptance evidence:** Document extraction tests, confidence thresholds, redaction handling, source span citations, and human confirmation workflows. The evidence should be package-local in `src/pyAppGen/pbcs/provider_revenue_cycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must classify authorization, eligibility, coding, timely filing, medical necessity, duplicate, and coordination denials.
 
-### 13. Agent-safe CRUD execution for Patient Account
+### 13. Denial Appeal Workflows
 
-**Justification:** The PBC agent must be a first-class operator but never a hidden bypass around RBAC, rules, or owned datastore boundaries.
+**Justification:** Provider appeals need evidence packets, deadlines, payer-specific requirements, and follow-up.
 
-**Improvement:** Add a professional chatbot skill for `patient_account` that can create, update, correct, close, and annotate records only through policy-checked commands, approval gates, and previewed diffs. Tie the behavior to `provider_revenue_cycle_create_patient_account_workflow` where applicable, and make it visible in `ProviderRevenueCycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add appeal level, packet checklist, clinical documents, coding rationale, authorization evidence, deadline, submission proof, decision, and underpayment link.
 
-**Acceptance evidence:** Skill manifests, permission tests, preview/confirm flows, blocked-action evidence, and audit events for every assistant mutation. The evidence should be package-local in `src/pyAppGen/pbcs/provider_revenue_cycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must build appeal packets, enforce deadlines, and update account state on upheld or overturned decisions.
 
-### 14. Workbench persona coverage for Charge Capture
+### 14. Payment Posting and Remittance Matching
 
-**Justification:** A generic detail page underserves the domain; each role needs the exact controls and evidence they use daily.
+**Justification:** Provider cash application depends on matching remittances, payments, adjustments, denials, and patient responsibility.
 
-**Improvement:** Design dedicated workbench panels for `charge_capture`: operator queue, supervisor approvals, analyst exceptions, auditor evidence, configuration owner, and agent-assistance review. Tie the behavior to `provider_revenue_cycle_record_charge_capture_workflow` where applicable, and make it visible in `ProviderRevenueCycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add `payment_posting` evidence for remittance source, payer trace, claim lines, allowed amount, payment, adjustment, denial, patient responsibility, and unmatched cash.
 
-**Acceptance evidence:** UI contract entries, route tests, empty/error/loading states, and permission-aware action availability. The evidence should be package-local in `src/pyAppGen/pbcs/provider_revenue_cycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must auto-post clean remittances and route exceptions for unmatched, partial, and conflicting remittances.
 
-### 15. Cross-PBC dependency contracts for Coding Workqueue
+### 15. Contractual Underpayment Detection
 
-**Justification:** Composable packages fail when hidden table coupling enters the domain model.
+**Justification:** Payers may pay less than expected under contracted rates.
 
-**Improvement:** Represent dependencies for `coding_workqueue` through declared APIs, consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, and projections rather than shared tables, with explicit freshness, ownership, and fallback behavior. Tie the behavior to `provider_revenue_cycle_create_patient_account_workflow` where applicable, and make it visible in `ProviderRevenueCycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add expected reimbursement, actual payment, variance reason, contract basis, appeal/rebill action, and recovery status.
 
-**Acceptance evidence:** Dependency manifests, contract tests, stale dependency alerts, and no foreign-table references in generated artifacts. The evidence should be package-local in `src/pyAppGen/pbcs/provider_revenue_cycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must identify underpayment, overpayment, expected adjustment, and contract-missing scenarios.
 
-### 16. API completeness and versioning for Claim Batch
+### 16. Patient Balance Segmentation
 
-**Justification:** Complete domain coverage requires both command and query surfaces, not only happy-path create endpoints.
+**Justification:** Patient balances need financial assistance, payment plan, dispute, refund, bad debt, and collections paths.
 
-**Improvement:** Expand APIs beyond POST /patient-accounts, POST /charge-captures, POST /coding-workqueues to cover search, validation-only commands, simulation, bulk intake, exception closure, evidence export, projection reads, and idempotent corrections. Tie the behavior to `provider_revenue_cycle_record_charge_capture_workflow` where applicable, and make it visible in `ProviderRevenueCycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add balance segment, statement status, assistance screening, payment plan, dispute, collection hold, agency referral, and write-off reason.
 
-**Acceptance evidence:** OpenAPI-style route manifests, backward-compatible version tests, deprecation metadata, and idempotency assertions. The evidence should be package-local in `src/pyAppGen/pbcs/provider_revenue_cycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must route balances by segment and prevent collections on active disputes or assistance holds.
 
-### 17. Typed emitted-event expansion for Denial Case
+### 17. Financial Assistance Screening
 
-**Justification:** Consumers should understand what happened in Provider Revenue Cycle without parsing opaque payloads.
+**Justification:** Professional revenue-cycle operations must protect eligible patients from inappropriate collections.
 
-**Improvement:** Replace generic lifecycle emissions with typed events for each meaningful `denial_case` transition, exception, approval, correction, simulation result, and downstream handoff. Tie the behavior to `provider_revenue_cycle_create_patient_account_workflow` where applicable, and make it visible in `ProviderRevenueCycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add assistance eligibility signals, application status, presumptive eligibility, documentation request, approval, denial, discount, and renewal.
 
-**Acceptance evidence:** Event schema tests, event examples, compatibility checks, and emitted-event coverage in release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/provider_revenue_cycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must apply assistance holds and adjust patient balance only after approval evidence.
 
-### 18. Consumed-event handlers for Payment Posting
+### 18. Collections Worklist Governance
 
-**Justification:** A PBC is composable only when incoming events affect its own domain state predictably and safely.
+**Justification:** Collections must be compliant, fair, documented, and policy-controlled.
 
-**Improvement:** Implement idempotent handlers for consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged that update projections, open dependency exceptions, recalculate risk, and preserve source event lineage. Tie the behavior to `provider_revenue_cycle_record_charge_capture_workflow` where applicable, and make it visible in `ProviderRevenueCycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand `collection_worklist` with account age, balance, contact restrictions, dispute status, assistance status, agency eligibility, outreach attempts, and closure reason.
 
-**Acceptance evidence:** Duplicate-event tests, handler side-effect boundaries, dead-letter fixtures, and lineage links back to source events. The evidence should be package-local in `src/pyAppGen/pbcs/provider_revenue_cycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must block outreach where policy, dispute, consent, or assistance status prohibits it.
 
-### 19. Retry and dead-letter operations for Collection Account
+### 19. Refund and Credit Balance Handling
 
-**Justification:** Dead letters are not just plumbing; they are domain work queues that can block healthcare registration, charge capture, coding, claims, denials, payment posting, collections, and revenue integrity.
+**Justification:** Credit balances can indicate overpayment, payer recoupment, or patient refund obligations.
 
-**Improvement:** Create operational tools for retrying, quarantining, explaining, and resolving dead-lettered `collection_account` events with max-attempt policy, poison-message detection, and replay safety. Tie the behavior to `provider_revenue_cycle_create_patient_account_workflow` where applicable, and make it visible in `ProviderRevenueCycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add credit source, payer/member amount, refund eligibility, offset policy, approval, refund event, and stale-credit escalation.
 
-**Acceptance evidence:** Dead-letter workbench, retry eligibility tests, replay audit proof, and operator action logs. The evidence should be package-local in `src/pyAppGen/pbcs/provider_revenue_cycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must route payer and patient credits separately and prevent duplicate refunds.
 
-### 20. RBAC and attribute policy for Provider Revenue Cycle Policy Rule
+### 20. Revenue Integrity Audit Cases
 
-**Justification:** High-impact domain operations need finer controls than generic RBAC grants.
+**Justification:** Revenue integrity covers charge accuracy, coding compliance, missing revenue, contract variance, and policy adherence.
 
-**Improvement:** Extend permissions for `provider_revenue_cycle_policy_rule` from coarse read/create/update/admin to action-level and attribute-aware policies based on role, tenant, jurisdiction, monetary/materiality threshold, and exception severity. Tie the behavior to `provider_revenue_cycle_record_charge_capture_workflow` where applicable, and make it visible in `ProviderRevenueCycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add audit case type, population, finding, financial exposure, responsible department, corrective action, and follow-up measurement.
 
-**Acceptance evidence:** Permission matrix docs, ABAC policy tests, denied-action UI states, and assistant skill permission checks. The evidence should be package-local in `src/pyAppGen/pbcs/provider_revenue_cycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must create revenue integrity cases from charge, denial, underpayment, and audit signals.
 
-### 21. Continuous control testing for Provider Revenue Cycle Runtime Parameter
+### 21. Timely Filing Management
 
-**Justification:** Controls should run during operations, not only during release audit or manual review.
+**Justification:** Missed filing windows cause preventable write-offs.
 
-**Improvement:** Embed control assertions for `provider_revenue_cycle_runtime_parameter` that continuously test segregation of duties, required approvals, stale exceptions, policy drift, duplicate records, and boundary violations. Tie the behavior to `provider_revenue_cycle_create_patient_account_workflow` where applicable, and make it visible in `ProviderRevenueCycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add payer deadline, first submission, rejection resubmission clock, appeal deadline, proof of timely filing, and late-risk queue.
 
-**Acceptance evidence:** Control dashboards, failing-control events, test fixtures, and release evidence tied to `provider_revenue_cycle_control_assertion` records. The evidence should be package-local in `src/pyAppGen/pbcs/provider_revenue_cycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must escalate accounts near deadline and preserve submission proof.
 
-### 22. Cryptographic audit proofing for Provider Revenue Cycle Schema Extension
+### 22. Coding Compliance Controls
 
-**Justification:** Better-than-world-class auditability requires proof of integrity, not merely logs stored in mutable tables.
+**Justification:** Coding must be accurate, compliant, and defensible.
 
-**Improvement:** Hash-chain material `provider_revenue_cycle_schema_extension` decisions, documents, emitted events, and release-evidence snapshots to make tampering visible without exposing sensitive payloads. Tie the behavior to `provider_revenue_cycle_record_charge_capture_workflow` where applicable, and make it visible in `ProviderRevenueCycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add coding audit flags, coder quality metrics, unsupported code warnings, modifier risk, diagnosis specificity, and correction tracking.
 
-**Acceptance evidence:** Proof manifests, verification APIs, redacted proof exports, and audit-ledger handoff events. The evidence should be package-local in `src/pyAppGen/pbcs/provider_revenue_cycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must open compliance exceptions and prevent unsupported code finalization.
 
-### 23. Privacy, consent, and secrecy controls for Provider Revenue Cycle Control Assertion
+### 23. Claim Status Follow-Up
 
-**Justification:** Complete domain coverage must account for protected data and restricted operational evidence.
+**Justification:** Submitted claims require payer acknowledgement, status checks, follow-up, and escalation.
 
-**Improvement:** Add field-level privacy classifications for `provider_revenue_cycle_control_assertion`, consent checks, masking rules, retention schedules, legal holds, and assistant redaction policies. Tie the behavior to `provider_revenue_cycle_create_patient_account_workflow` where applicable, and make it visible in `ProviderRevenueCycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add follow-up schedule, last payer status, no-response escalation, requested information, and owner queue.
 
-**Acceptance evidence:** Retention tests, masked UI snapshots, consent-blocked mutation fixtures, and export controls. The evidence should be package-local in `src/pyAppGen/pbcs/provider_revenue_cycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must create follow-up tasks and close only when payment, denial, rejection, or documented resolution exists.
 
-### 24. Multi-tenant operating model for Provider Revenue Cycle Governed Model
+### 24. Payer Rule Configuration
 
-**Justification:** The PBC should scale across organizations while preserving independent policy and compliance boundaries.
+**Justification:** Payer billing requirements vary and change frequently.
 
-**Improvement:** Support tenant-specific `provider_revenue_cycle_governed_model` rules, data residency, encryption context, configuration, seed data, and release evidence without allowing cross-tenant leakage. Tie the behavior to `provider_revenue_cycle_record_charge_capture_workflow` where applicable, and make it visible in `ProviderRevenueCycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add payer-specific billing rules, required fields, attachment rules, timely filing, appeal process, authorization policy, and effective dates.
 
-**Acceptance evidence:** Tenant isolation tests, tenant-scoped parameters, key-rotation evidence, and cross-tenant negative fixtures. The evidence should be package-local in `src/pyAppGen/pbcs/provider_revenue_cycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must evaluate the same account differently by payer and rule version.
 
-### 25. Schema evolution and extension registry for Patient Account
+### 25. Parameter Impact Simulation
 
-**Justification:** Domain teams will add fields; the PBC must evolve without breaking APIs, events, or workbench projections.
+**Justification:** Changing scrub rules, appeal thresholds, write-off limits, or collection policies can shift revenue and compliance outcomes.
 
-**Improvement:** Make schema extensions for `patient_account` first-class with compatibility checks, migration previews, projection backfills, field ownership, and rollback metadata. Tie the behavior to `provider_revenue_cycle_create_patient_account_workflow` where applicable, and make it visible in `ProviderRevenueCycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add side-effect-free simulation over accounts, charges, claims, denials, patient balances, and underpayments.
 
-**Acceptance evidence:** Extension registry UI, compatibility tests, migration dry-runs, and backfill release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/provider_revenue_cycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must produce impact reports before activating high-risk parameter changes.
 
-### 26. Master data quality gates for Charge Capture
+### 26. Denial Prevention Feedback Loop
 
-**Justification:** Many provider revenue cycle errors begin as bad reference data; the PBC should catch them before workflow execution.
+**Justification:** Denial management should prevent recurrence, not just work cases.
 
-**Improvement:** Define reference-data contracts for `charge_capture`: canonical codes, parties, locations, classifications, calendars, units, currencies, products, assets, or service categories as relevant to the domain. Tie the behavior to `provider_revenue_cycle_record_charge_capture_workflow` where applicable, and make it visible in `ProviderRevenueCycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add root-cause trends, upstream owner, prevention recommendation, education task, rule update candidate, and measured reduction.
 
-**Acceptance evidence:** Reference validation fixtures, stale-code warnings, mapping tables, and dependency freshness indicators. The evidence should be package-local in `src/pyAppGen/pbcs/provider_revenue_cycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must tie recurring denial causes to prevention actions and track outcome.
 
-### 27. Bulk operations and correction workflows for Coding Workqueue
+### 27. Missing Charge and Late Charge Workflow
 
-**Justification:** Enterprise-scale Provider Revenue Cycle users cannot operate one record at a time.
+**Justification:** Late charges can delay claims and create rebills.
 
-**Improvement:** Add bulk load, bulk validate, bulk approve, and bulk correction workflows for `coding_workqueue` with partial success, row-level errors, resumability, and rollback. Tie the behavior to `provider_revenue_cycle_create_patient_account_workflow` where applicable, and make it visible in `ProviderRevenueCycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add late charge detection, billing hold, rebill requirement, payer notification need, financial impact, and approval workflow.
 
-**Acceptance evidence:** CSV/API batch fixtures, resumable job state, row-level audit evidence, and assistant-generated correction suggestions. The evidence should be package-local in `src/pyAppGen/pbcs/provider_revenue_cycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must route late charges correctly before and after claim submission.
 
-### 28. Lifecycle collaboration and tasking for Claim Batch
+### 28. Bad Debt and Write-Off Governance
 
-**Justification:** Domain collaboration should live inside the PBC boundary and remain auditable with the record it affects.
+**Justification:** Write-offs require authorization, category, policy, recoverability, and audit evidence.
 
-**Improvement:** Attach tasks, comments, ownership, due dates, handoffs, and escalation threads to `claim_batch` without leaking into external shared task tables. Tie the behavior to `provider_revenue_cycle_record_charge_capture_workflow` where applicable, and make it visible in `ProviderRevenueCycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add write-off type, threshold, approver, reason, financial class, collection history, and reversal path.
 
-**Acceptance evidence:** Task tables, comment audit history, notification events, escalation SLAs, and role-specific task queues. The evidence should be package-local in `src/pyAppGen/pbcs/provider_revenue_cycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must reject unauthorized write-offs and preserve reversal evidence.
 
-### 29. SLA and service-level governance for Denial Case
+### 29. Patient Communication Notices
 
-**Justification:** Users need to know when healthcare registration, charge capture, coding, claims, denials, payment posting, collections, and revenue integrity is late, blocked, or at risk before customer or regulator impact.
+**Justification:** Statements, assistance notices, payment plans, disputes, and collection warnings require governed communication.
 
-**Improvement:** Define SLAs for `denial_case` across intake, validation, approval, exception resolution, event handling, downstream projection refresh, and release-evidence generation. Tie the behavior to `provider_revenue_cycle_create_patient_account_workflow` where applicable, and make it visible in `ProviderRevenueCycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add notice templates, language, delivery channel, required inserts, consent restrictions, proof of delivery, and returned-mail handling.
 
-**Acceptance evidence:** SLA breach events, timers, configurable calendars, workbench aging buckets, and tests for pause/resume behavior. The evidence should be package-local in `src/pyAppGen/pbcs/provider_revenue_cycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must generate notices and block communications when restrictions apply.
 
-### 30. Operational analytics cockpit for Payment Posting
+### 30. Revenue Cycle Workbench
 
-**Justification:** World-class operations require leading indicators, not only record counts.
+**Justification:** Users need operational queues by role instead of generic record lists.
 
-**Improvement:** Build analytics for `payment_posting`: throughput, backlog, aging, approval latency, exception rate, risk distribution, automation acceptance, correction rate, and downstream dependency health. Tie the behavior to `provider_revenue_cycle_record_charge_capture_workflow` where applicable, and make it visible in `ProviderRevenueCycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add views for registration deficiencies, authorization risk, missing charges, coding backlog, claim rejects, denials, underpayments, credit balances, and collections holds.
 
-**Acceptance evidence:** Metric definitions, projection tests, drill-through routes, export APIs, and anomaly overlays. The evidence should be package-local in `src/pyAppGen/pbcs/provider_revenue_cycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** UI tests must prove each queue maps to owned data or declared projections and exposes permission-aware actions.
 
-### 31. Decision intelligence and recommendations for Collection Account
+### 31. Agent-Assisted Account Summaries
 
-**Justification:** The PBC should help expert users decide faster while showing evidence and uncertainty.
+**Justification:** Staff need quick explanations of why an account is stalled or at risk.
 
-**Improvement:** Generate ranked recommendations for `collection_account` such as next best action, likely resolution, required evidence, policy adjustment, staffing/capacity response, or downstream handoff. Tie the behavior to `provider_revenue_cycle_create_patient_account_workflow` where applicable, and make it visible in `ProviderRevenueCycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add agent skills for account summary, denial root cause, appeal packet draft, missing charge explanation, underpayment rationale, and patient balance guidance.
 
-**Acceptance evidence:** Recommendation explanations, confidence intervals, feedback capture, model governance records, and rejection reasons. The evidence should be package-local in `src/pyAppGen/pbcs/provider_revenue_cycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must require citations for every agent summary and mark inferred recommendations clearly.
 
-### 32. Quality and completeness scoring for Provider Revenue Cycle Policy Rule
+### 32. Governed Agent CRUD Commands
 
-**Justification:** Operators should see whether a record is truly ready, not just technically saved.
+**Justification:** The assistant should help update accounts safely without silently changing financial state.
 
-**Improvement:** Score each `provider_revenue_cycle_policy_rule` record for completeness, consistency, policy readiness, dependency readiness, evidence sufficiency, and downstream composability. Tie the behavior to `provider_revenue_cycle_record_charge_capture_workflow` where applicable, and make it visible in `ProviderRevenueCycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add command previews for open denial, assign coder, hold claim, release batch, post payment exception, create collection hold, and draft appeal.
 
-**Acceptance evidence:** Scoring rules, missing-evidence lists, readiness badges, and blocking criteria in command handlers. The evidence should be package-local in `src/pyAppGen/pbcs/provider_revenue_cycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Intent tests must require account, action, evidence, preview, confirmation, and audit record.
 
-### 33. End-to-end scenario library for Provider Revenue Cycle Runtime Parameter
+### 33. Remittance Document and Attachment Ingestion
 
-**Justification:** Release evidence is stronger when every important provider revenue cycle behavior has executable examples.
+**Justification:** Remittances, payer letters, medical records, and appeal decisions often arrive as documents.
 
-**Improvement:** Create seeded scenarios for `provider_revenue_cycle_runtime_parameter`: normal flow, urgent path, exception path, corrected path, duplicate path, late event path, and audit export path. Tie the behavior to `provider_revenue_cycle_create_patient_account_workflow` where applicable, and make it visible in `ProviderRevenueCycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add document extraction with source span, candidate posting, denial reason, appeal outcome, confidence, reviewer, and accepted fields.
 
-**Acceptance evidence:** Scenario seed data, runtime smoke coverage, generated-app fixtures, and story-level workbench screenshots/contracts. The evidence should be package-local in `src/pyAppGen/pbcs/provider_revenue_cycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must block low-confidence document-derived mutations until reviewed.
 
-### 34. Domain ontology and terminology model for Provider Revenue Cycle Schema Extension
+### 34. Governance of Revenue Models
 
-**Justification:** Precise vocabulary prevents the PBC from misclassifying specialist documents or user instructions.
+**Justification:** Denial prediction, underpayment detection, and agent summarization affect financial outcomes.
 
-**Improvement:** Add an ontology for `provider_revenue_cycle_schema_extension` terms, synonyms, classifications, relationships, allowed values, and phrase mappings used by the assistant and UI. Tie the behavior to `provider_revenue_cycle_record_charge_capture_workflow` where applicable, and make it visible in `ProviderRevenueCycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Register governed models with use case, version, evaluation set, thresholds, drift checks, and human feedback.
 
-**Acceptance evidence:** Ontology files, assistant parsing tests, UI glossary, and mapping evidence for domain-specific abbreviations. The evidence should be package-local in `src/pyAppGen/pbcs/provider_revenue_cycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must block model-backed recommendations if governance evidence is missing or stale.
 
-### 35. Advanced search and investigation for Provider Revenue Cycle Control Assertion
+### 35. Continuous Controls
 
-**Justification:** Investigators and operators need fast, explainable retrieval across the whole domain surface.
+**Justification:** Revenue-cycle quality requires ongoing controls for clean claim rate, denial preventability, payment variance, write-offs, and collections compliance.
 
-**Improvement:** Provide search across `provider_revenue_cycle_control_assertion` records, events, documents, exceptions, tasks, comments, and audit proofs with filters for tenant, status, risk, date, party, and dependency. Tie the behavior to `provider_revenue_cycle_create_patient_account_workflow` where applicable, and make it visible in `ProviderRevenueCycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add controls with thresholds, populations, failing samples, owner, remediation, recurrence, and closure evidence.
 
-**Acceptance evidence:** Search index contracts, result provenance, permission-filtered queries, and stale-index warnings. The evidence should be package-local in `src/pyAppGen/pbcs/provider_revenue_cycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must open control failures and require remediation evidence before closure.
 
-### 36. Reconciliation and closure controls for Provider Revenue Cycle Governed Model
+### 36. Dead-Letter and Retry Operations
 
-**Justification:** Closure is not complete until the PBC can prove no material domain work remains unresolved.
+**Justification:** Eligibility events, charge events, claim acknowledgements, remittances, and payer updates can fail.
 
-**Improvement:** Add reconciliation workflows that compare `provider_revenue_cycle_governed_model` state against consumed events, external projections, expected totals/counts, approvals, and release evidence before closure. Tie the behavior to `provider_revenue_cycle_record_charge_capture_workflow` where applicable, and make it visible in `ProviderRevenueCycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add retry classification, idempotency key, financial risk, replay checkpoint, remediation action, and dead-letter queue.
 
-**Acceptance evidence:** Reconciliation reports, variance thresholds, closure blockers, and AppGen-X closure events. The evidence should be package-local in `src/pyAppGen/pbcs/provider_revenue_cycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must replay failed inputs without duplicate charges, claims, postings, or notices.
 
-### 37. Regulatory and policy reporting for Patient Account
+### 37. Cross-PBC Boundary Proofs
 
-**Justification:** World-class PBCs turn operational evidence into credible reporting without spreadsheet reconstruction.
+**Justification:** Provider revenue cycle composes with EHR, claims adjudication, finance, notifications, and audit but must not share their tables.
 
-**Improvement:** Generate domain reporting packs for `patient_account` covering statutory, contractual, operational, board, customer, or regulator evidence depending on patient safety, clinical traceability, consent boundaries, eligibility nuance, coding accuracy, care continuity, and regulated health evidence. Tie the behavior to `provider_revenue_cycle_create_patient_account_workflow` where applicable, and make it visible in `ProviderRevenueCycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add release gates proving all dependencies use declared APIs, events, projections, or package metadata.
 
-**Acceptance evidence:** Report schemas, redaction rules, traceable metric sources, and approval/export audit events. The evidence should be package-local in `src/pyAppGen/pbcs/provider_revenue_cycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must fail on undeclared foreign table reads and pass on AppGen-X event/API contracts.
 
-### 38. Carbon and resource awareness for Charge Capture
+### 38. Net Revenue Forecast
 
-**Justification:** Sustainability evidence should be embedded in operations instead of treated as an after-the-fact report.
+**Justification:** Leaders need predicted reimbursement, denial exposure, cash timing, and write-off risk.
 
-**Improvement:** Where relevant, attach carbon, energy, water, travel, capacity, compute, or resource-footprint metadata to `charge_capture` decisions and batch operations. Tie the behavior to `provider_revenue_cycle_record_charge_capture_workflow` where applicable, and make it visible in `ProviderRevenueCycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add forecast projections by account, payer, service line, claim status, denial probability, expected payment, and confidence.
 
-**Acceptance evidence:** Footprint fields, scheduling parameters, exception rules, and dashboards that expose operational tradeoffs. The evidence should be package-local in `src/pyAppGen/pbcs/provider_revenue_cycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must produce explainable forecasts and compare actual results to prediction.
 
-### 39. Resilience and offline behavior for Coding Workqueue
+### 39. Root-Cause Financial Analytics
 
-**Justification:** Real operations keep moving during outages; the PBC must preserve correctness when dependencies are unavailable.
+**Justification:** Revenue losses need actionable attribution.
 
-**Improvement:** Define resilience modes for `coding_workqueue`: degraded dependency mode, offline draft capture, delayed event replay, conflict detection, and safe recovery after partial failure. Tie the behavior to `provider_revenue_cycle_create_patient_account_workflow` where applicable, and make it visible in `ProviderRevenueCycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add analytics for registration errors, authorization misses, coding delays, late charges, claim rejects, denials, underpayments, credit balances, and collections leakage.
 
-**Acceptance evidence:** Offline fixtures, replay tests, conflict queues, recovery logs, and user-visible degraded-mode warnings. The evidence should be package-local in `src/pyAppGen/pbcs/provider_revenue_cycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must generate tenant-scoped metrics with source drilldowns.
 
-### 40. Human-in-the-loop automation for Claim Batch
+### 40. Payer Scorecards
 
-**Justification:** Automation should accelerate healthcare registration, charge capture, coding, claims, denials, payment posting, collections, and revenue integrity while preserving accountability for high-risk decisions.
+**Justification:** Provider organizations need evidence on payer payment speed, denial rate, overturn rate, underpayment rate, and administrative burden.
 
-**Improvement:** Set explicit automation boundaries for `claim_batch`: auto-approve, auto-reject, suggest-only, require-review, and block-until-evidence states with policy-based routing. Tie the behavior to `provider_revenue_cycle_record_charge_capture_workflow` where applicable, and make it visible in `ProviderRevenueCycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add payer scorecards from claim, denial, appeal, underpayment, and payment-posting evidence with trend and confidence.
 
-**Acceptance evidence:** Automation policy tests, reviewer queues, override reasons, and assistant action audit trails. The evidence should be package-local in `src/pyAppGen/pbcs/provider_revenue_cycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must calculate scorecards without owning payer master tables beyond local evidence.
 
-### 41. Package discovery and fit scoring for Denial Case
+### 41. Account Timeline Projection
 
-**Justification:** Users selecting PBCs need transparent fit reasoning, especially when domains are adjacent but not overlapping.
+**Justification:** Users need a full history from registration to cash.
 
-**Improvement:** Improve package metadata so composition can explain when `provider_revenue_cycle` fits a prompt, what entities it owns, what APIs/events it exposes, and what adjacent PBCs it depends on. Tie the behavior to `provider_revenue_cycle_create_patient_account_workflow` where applicable, and make it visible in `ProviderRevenueCycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Build account timeline events for registration, eligibility, authorization, charges, coding, billing, denial, appeal, posting, collections, and closure.
 
-**Acceptance evidence:** Discovery manifests, prompt-selection tests, overlap rationale links, and composition DSL examples. The evidence should be package-local in `src/pyAppGen/pbcs/provider_revenue_cycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Replay tests must reconstruct timelines idempotently and respect redaction by role.
 
-### 42. Configuration deployment pipeline for Payment Posting
+### 42. Cryptographic Revenue Evidence
 
-**Justification:** Configuration changes can materially alter provider revenue cycle; they need the same discipline as code releases.
+**Justification:** Financial disputes and audits need tamper-evident account and payment history.
 
-**Improvement:** Add configuration promotion for `payment_posting` across draft, test, approved, active, deprecated, and rollback states with impact analysis before activation. Tie the behavior to `provider_revenue_cycle_record_charge_capture_workflow` where applicable, and make it visible in `ProviderRevenueCycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add proof chains for charge capture, coding finalization, claim submission, denial appeal, payment posting, write-off, and refund events.
 
-**Acceptance evidence:** Config diff views, approval workflows, simulation before activation, and rollback tests. The evidence should be package-local in `src/pyAppGen/pbcs/provider_revenue_cycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must verify proof chains and detect altered payloads or reordered events.
 
-### 43. Workbench command completeness for Collection Account
+### 43. Compliance and Audit Evidence Room
 
-**Justification:** A PBC does not fully surface its capabilities if users must call hidden APIs for core work.
+**Justification:** Auditors need curated evidence, not raw exports.
 
-**Improvement:** Expose every high-value operation for `collection_account` in the UI: create, validate, approve, simulate, correct, assign, export, retry, close, and audit-proof verification. Tie the behavior to `provider_revenue_cycle_create_patient_account_workflow` where applicable, and make it visible in `ProviderRevenueCycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add evidence packets for account readiness, coding decision, claim submission, denial appeal, payment posting, write-off, and collections action.
 
-**Acceptance evidence:** UI action coverage tests, permission-aware disabled states, keyboard paths, and assistant handoff links. The evidence should be package-local in `src/pyAppGen/pbcs/provider_revenue_cycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must generate permission-safe evidence packets with source links.
 
-### 44. Document packet and evidence vault for Provider Revenue Cycle Policy Rule
+### 44. Patient Dispute Workflow
 
-**Justification:** Documents often carry the legal or operational truth behind healthcare registration, charge capture, coding, claims, denials, payment posting, collections, and revenue integrity.
+**Justification:** Patients may dispute balances, insurance handling, coding, or financial assistance decisions.
 
-**Improvement:** Create a governed evidence vault for `provider_revenue_cycle_policy_rule` documents, attachments, source spans, extracted fields, signatures, approvals, and retention labels. Tie the behavior to `provider_revenue_cycle_record_charge_capture_workflow` where applicable, and make it visible in `ProviderRevenueCycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add dispute reason, account hold, evidence requested, investigation owner, resolution, adjustment, communication, and appeal path.
 
-**Acceptance evidence:** Evidence models, source-to-field lineage, signature validation, retention policies, and proof exports. The evidence should be package-local in `src/pyAppGen/pbcs/provider_revenue_cycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must block collections during active disputes and preserve resolution evidence.
 
-### 45. Data correction and amendment history for Provider Revenue Cycle Runtime Parameter
+### 45. Seeded Revenue Cycle Scenario Library
 
-**Justification:** World-class systems correct mistakes without rewriting history or confusing downstream consumers.
+**Justification:** Release evidence needs realistic provider financial journeys.
 
-**Improvement:** Support formal amendments for `provider_revenue_cycle_runtime_parameter` that preserve original values, correction reason, approving actor, effective date, downstream event impacts, and replay behavior. Tie the behavior to `provider_revenue_cycle_create_patient_account_workflow` where applicable, and make it visible in `ProviderRevenueCycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add seeds for clean claim, registration error, missing authorization, coding query, late charge, denial appeal, underpayment, credit balance, and patient assistance.
 
-**Acceptance evidence:** Amendment tables, correction events, projection replay tests, and side-by-side before/after UI. The evidence should be package-local in `src/pyAppGen/pbcs/provider_revenue_cycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Scenario tests must load side-effect-free and create expected queues, events, and analytics.
 
-### 46. External participant collaboration for Provider Revenue Cycle Schema Extension
+### 46. Role-Based Permission Model
 
-**Justification:** Many provider revenue cycle workflows require outside parties, but they must not gain direct access to internal tables.
+**Justification:** Registrars, coders, billers, collectors, revenue integrity analysts, managers, and compliance users need different authority.
 
-**Improvement:** Add controlled collaboration portals or API views for external participants related to `provider_revenue_cycle_schema_extension`, limited to scoped evidence submission, status checks, comments, and dispute responses. Tie the behavior to `provider_revenue_cycle_record_charge_capture_workflow` where applicable, and make it visible in `ProviderRevenueCycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add permission descriptors for account edit, charge approve, coding finalize, batch submit, appeal submit, write-off approve, payment post, and collection action.
 
-**Acceptance evidence:** Participant role policies, scoped tokens, submission audit trails, and inbound evidence validation. The evidence should be package-local in `src/pyAppGen/pbcs/provider_revenue_cycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Permission tests must block unauthorized commands and show disabled UI actions.
 
-### 47. Advanced dependency freshness scoring for Provider Revenue Cycle Control Assertion
+### 47. Timely Close and Month-End Support
 
-**Justification:** A record may be valid locally but unsafe if dependency evidence is stale or incomplete.
+**Justification:** Revenue-cycle operations feed financial close but should not own general ledger posting.
 
-**Improvement:** Score freshness and reliability of dependencies used by `provider_revenue_cycle_control_assertion`, including consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, referenced projections, configuration versions, and external submissions. Tie the behavior to `provider_revenue_cycle_create_patient_account_workflow` where applicable, and make it visible in `ProviderRevenueCycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add month-end readiness projections for unbilled accounts, late charges, uncoded accounts, unposted remittances, open denials, and unapplied cash.
 
-**Acceptance evidence:** Freshness indicators, blocking rules, stale-event simulations, and workbench dependency health panels. The evidence should be package-local in `src/pyAppGen/pbcs/provider_revenue_cycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must emit close-readiness events and avoid GL table writes.
 
-### 48. Model governance and explainability for Provider Revenue Cycle Governed Model
+### 48. Full Revenue Cycle Release Simulation
 
-**Justification:** Governed AI is mandatory for professional-grade automation in Provider Revenue Cycle.
+**Justification:** A complete PBC must prove account-to-cash behavior end to end.
 
-**Improvement:** For every predictive or agentic feature around `provider_revenue_cycle_governed_model`, record model version, prompt or ruleset version, training/evaluation evidence, confidence, explanation, and human feedback. Tie the behavior to `provider_revenue_cycle_record_charge_capture_workflow` where applicable, and make it visible in `ProviderRevenueCycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add a simulation where a patient account registers, eligibility is checked, authorization is captured, charges post, coding finalizes, claim batches, denial appeals, payment posts, and balance closes.
 
-**Acceptance evidence:** Model cards, prompt/version manifests, feedback loops, drift tests, and audit proof for recommendations. The evidence should be package-local in `src/pyAppGen/pbcs/provider_revenue_cycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** The simulation must validate owned schema, APIs, services, AppGen-X events, handlers, workbench views, agent skills, permissions, and release evidence.
 
-### 49. High-scale partitioning and archival for Patient Account
+### 49. Package Boundary and Overlap Proofs
 
-**Justification:** Better-than-world-class packages must remain operable after years of high-volume domain history.
+**Justification:** This PBC must not duplicate payer adjudication, clinical chart ownership, or general ledger ownership.
 
-**Improvement:** Plan scale behavior for `patient_account`: tenant partitioning, archival policies, cold storage, retention-aware search, projection compaction, and large-batch replay. Tie the behavior to `provider_revenue_cycle_create_patient_account_workflow` where applicable, and make it visible in `ProviderRevenueCycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add overlap checks showing provider-side evidence boundaries and declared dependency contracts for clinical, payer, finance, notification, and audit interactions.
 
-**Acceptance evidence:** Partition tests, archive/retrieve fixtures, retention enforcement, and replay benchmarks. The evidence should be package-local in `src/pyAppGen/pbcs/provider_revenue_cycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must fail on undeclared external table references and pass on declared AppGen-X contracts.
 
-### 50. Release gate expansion for Charge Capture
+### 50. Composition DSL and Unified Agent Exposure
 
-**Justification:** The PBC should not claim domain coverage unless release evidence proves the claim end to end.
+**Justification:** Generated applications must expose revenue-cycle skills through DSL, UI, APIs, and the composed application agent.
 
-**Improvement:** Expand release gates for `provider_revenue_cycle` so every schema, service, API, event, handler, UI, rule, parameter, agent skill, seed scenario, and improvement backlog item maps to executable evidence. Tie the behavior to `provider_revenue_cycle_record_charge_capture_workflow` where applicable, and make it visible in `ProviderRevenueCycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Extend composition metadata for patient accounts, charges, coding, claim batches, denials, postings, collections, workbench views, rules, parameters, controls, and agent skills.
 
-**Acceptance evidence:** Release audit checks, manifest traceability, generated-app smoke tests, and missing-capability blockers. The evidence should be package-local in `src/pyAppGen/pbcs/provider_revenue_cycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** DSL tests must prove generated apps include provider revenue-cycle models, routes, services, UI artifacts, event contracts, and assistant skills without stream-engine picker exposure.

@@ -1,418 +1,416 @@
-# Healthcare Claims Adjudication PBC Better-Than-World-Class Improvement Backlog
+# Healthcare Claims Adjudication PBC Manual Improvement Backlog
 
 ## Purpose
 
-This file identifies, justifies, and describes 50 high-impact improvements for `claims_adjudication_healthcare`. The backlog is specific to healthcare claim intake, coding validation, benefit rules, denials, appeals, payment integrity, and payer adjudication and is intended to move the PBC from release-auditable scaffolding toward complete, specialist-grade domain coverage.
+This strict backlog replaces scaffold-derived roadmap material for `claims_adjudication_healthcare` with a hand-curated payer adjudication roadmap. The PBC owns healthcare claim intake, claim lines, coding validation, benefit rules, denials, appeals, payment integrity, adjudication evidence, governed rules, agent assistance, and release evidence without owning provider charge capture, member enrollment, or pharmacy benefit operations tables.
 
 ## Current Domain Evidence Used
 
 - Stable PBC key: `claims_adjudication_healthcare`.
-- Domain purpose: Healthcare claim intake, coding validation, benefit rules, denials, appeals, payment integrity, and payer adjudication.
-- Owned domain tables: `health_claim`, `claim_line`, `coding_review`, `benefit_rule`, `denial`, `appeal`, `payment_determination`, `claims_adjudication_healthcare_policy_rule`, `claims_adjudication_healthcare_runtime_parameter`, `claims_adjudication_healthcare_schema_extension`, `claims_adjudication_healthcare_control_assertion`, `claims_adjudication_healthcare_governed_model`.
+- Domain purpose: healthcare claim intake, coding validation, benefit rules, denials, appeals, payment integrity, and payer adjudication.
+- Owned domain tables: `health_claim`, `claim_line`, `coding_review`, `benefit_rule`, `denial`, `appeal`, `payment_integrity_case`, `claims_adjudication_healthcare_policy_rule`, `claims_adjudication_healthcare_runtime_parameter`, `claims_adjudication_healthcare_schema_extension`, `claims_adjudication_healthcare_control_assertion`, `claims_adjudication_healthcare_governed_model`.
 - Public APIs: `POST /health-claims`, `POST /claim-lines`, `POST /coding-reviews`, `POST /benefit-rules`, `POST /denials`, `GET /claims-adjudication-healthcare-workbench`.
 - Emitted AppGen-X events: `ClaimsAdjudicationHealthcareCreated`, `ClaimsAdjudicationHealthcareUpdated`, `ClaimsAdjudicationHealthcareApproved`, `ClaimsAdjudicationHealthcareExceptionOpened`.
 - Consumed AppGen-X events: `PolicyChanged`, `AuditEventSealed`, `OperationalKpiChanged`.
-- Current standard surfaces include: `health_claim_management`, `claims_adjudication_healthcare_workflow`, `claims_adjudication_healthcare_analytics`, `configuration_schema`, `rule_engine`, `parameter_engine`, `owned_schema_migrations_models`, `appgen_x_outbox_inbox_eventing`, `idempotent_handlers`, `retry_dead_letter_evidence`.
-- Current advanced surfaces include: `claims_adjudication_healthcare_event_sourced_operational_history`, `claims_adjudication_healthcare_multi_tenant_policy_isolation`, `claims_adjudication_healthcare_schema_evolution_resilience`, `claims_adjudication_healthcare_autonomous_anomaly_detection`, `claims_adjudication_healthcare_semantic_document_instruction_understanding`, `claims_adjudication_healthcare_predictive_risk_scoring`, `claims_adjudication_healthcare_counterfactual_scenario_simulation`, `claims_adjudication_healthcare_cryptographic_audit_proofs`.
 
 ## 50 High-Impact Improvements
 
-### 1. Canonical lifecycle state model for Health Claim
+### 1. Claim Intake Canonicalization
 
-**Justification:** This closes shallow CRUD gaps by making every healthcare claims adjudication transition explainable and testable instead of implicit in free-form status values.
+**Justification:** Claims arrive from many channels with inconsistent member, provider, diagnosis, procedure, modifier, authorization, and attachment details.
 
-**Improvement:** Define a complete state machine for `health_claim` with explicit draft, validated, blocked, approved, active, suspended, corrected, closed, archived, and reopened states. Tie the behavior to `claims_adjudication_healthcare_create_health_claim_workflow` where applicable, and make it visible in `ClaimsAdjudicationHealthcareWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add intake normalization for professional, institutional, dental, vision, encounter, paper-derived, and corrected claims with source format, submitter, batch, and canonical claim identity.
 
-**Acceptance evidence:** State-transition tests, invalid-transition fixtures, workbench state badges, and emitted AppGen-X transition events for ClaimsAdjudicationHealthcareCreated, ClaimsAdjudicationHealthcareUpdated, ClaimsAdjudicationHealthcareApproved. The evidence should be package-local in `src/pyAppGen/pbcs/claims_adjudication_healthcare` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must parse representative intake payloads, reject malformed records with actionable reasons, and prevent duplicate claim creation on replay.
 
-### 2. Domain intake and normalization for Claim Line
+### 2. Claim Lifecycle State Machine
 
-**Justification:** The PBC cannot reach complete domain coverage unless it handles the messy front door of healthcare claim intake, coding validation, benefit rules, denials, appeals, payment integrity, and payer adjudication, not only already-clean records.
+**Justification:** A healthcare claim is not simply approved or denied; it can suspend, pend, split, adjust, reverse, reopen, appeal, or recover.
 
-**Improvement:** Build a typed intake pipeline for `claim_line` that accepts structured API payloads, document-derived instructions, batch loads, and assistant-generated drafts while normalizing identifiers, dates, units, parties, and jurisdictional context. Tie the behavior to `claims_adjudication_healthcare_record_claim_line_workflow` where applicable, and make it visible in `ClaimsAdjudicationHealthcareWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add states for received, validated, pended, suspended, priced, adjudicated, paid, denied, partially denied, adjusted, reversed, appealed, recovered, and archived.
 
-**Acceptance evidence:** Golden intake fixtures, rejected-record queues, field-level normalization evidence, and assistant previews before governed datastore mutation. The evidence should be package-local in `src/pyAppGen/pbcs/claims_adjudication_healthcare` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must reject invalid state transitions and preserve original claim outcomes after corrections or adjustments.
 
-### 3. Specialist validation rules for Coding Review
+### 3. Claim Line Granularity
 
-**Justification:** World-class Healthcare Claims Adjudication requires rules that domain experts can reason about, version, test, and roll back without code edits.
+**Justification:** Adjudication decisions often happen at line level, not claim header level.
 
-**Improvement:** Add a domain rule compiler for `coding_review` that supports threshold rules, eligibility rules, dependency rules, temporal windows, conflicting-instruction detection, and override justification. Tie the behavior to `claims_adjudication_healthcare_create_health_claim_workflow` where applicable, and make it visible in `ClaimsAdjudicationHealthcareWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand `claim_line` with service date, place of service, diagnosis pointers, procedure, modifier stack, units, charge, allowed amount, adjudication reason, and line-level payment state.
 
-**Acceptance evidence:** Rule simulation tests, versioned rule manifests, rule impact reports, and UI rule editors linked to `CLAIMS_ADJUDICATION_HEALTHCARE_DATABASE_URL, CLAIMS_ADJUDICATION_HEALTHCARE_EVENT_TOPIC, CLAIMS_ADJUDICATION_HEALTHCARE_RETRY_LIMIT`. The evidence should be package-local in `src/pyAppGen/pbcs/claims_adjudication_healthcare` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must adjudicate mixed paid, reduced, denied, bundled, and pended lines under a single claim.
 
-### 4. Parameter governance and tuning for Benefit Rule
+### 4. Member Eligibility Projection Boundary
 
-**Justification:** Parameters are where operations teams tune healthcare claims adjudication; unbounded constants would make the PBC brittle and unsafe in real deployments.
+**Justification:** Claims depend on eligibility, coverage dates, plan, coordination of benefits, and accumulator state but should not own member enrollment tables.
 
-**Improvement:** Expose bounded runtime parameters for `benefit_rule` covering risk thresholds, SLA windows, confidence floors, escalation cutoffs, batch sizes, retry limits, and human-confirmation requirements. Tie the behavior to `claims_adjudication_healthcare_record_claim_line_workflow` where applicable, and make it visible in `ClaimsAdjudicationHealthcareWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Represent eligibility as declared AppGen-X event/API projection evidence with freshness, plan version, source time, and fallback behavior.
 
-**Acceptance evidence:** Parameter schema validation, tenant overrides, approval history, rollback controls, and workbench diff views. The evidence should be package-local in `src/pyAppGen/pbcs/claims_adjudication_healthcare` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Boundary tests must fail on shared enrollment table reads and pass when eligibility is consumed through declared projections.
 
-### 5. Deep owned schema expansion for Denial
+### 5. Provider Network and Credential Projection Boundary
 
-**Justification:** A single payload column cannot express the full surface of healthcare claim intake, coding validation, benefit rules, denials, appeals, payment integrity, and payer adjudication or prove cross-PBC boundaries are respected.
+**Justification:** Provider participation, taxonomy, license, facility, and contract status affect adjudication but may be owned by another PBC.
 
-**Improvement:** Extend the owned schema around `denial` with normalized child tables for line-level evidence, party roles, approvals, attachments, comments, metrics, exception reasons, and control assertions. Tie the behavior to `claims_adjudication_healthcare_create_health_claim_workflow` where applicable, and make it visible in `ClaimsAdjudicationHealthcareWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Store only adjudication evidence for provider status, contract basis, network tier, and credential freshness.
 
-**Acceptance evidence:** Migrations, models, relationship tests, schema contract snapshots, and no shared-table access outside the `claims_adjudication_healthcare_` namespace. The evidence should be package-local in `src/pyAppGen/pbcs/claims_adjudication_healthcare` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must prove provider evidence is versioned and stale provider projections trigger pended claims or review.
 
-### 6. Event-sourced operational history for Appeal
+### 6. Benefit Rule Versioning
 
-**Justification:** Temporal reconstruction is essential for better-than-world-class auditability and dispute resolution in healthcare claims adjudication.
+**Justification:** Benefit rules change by plan, jurisdiction, effective date, service type, authorization, and member category.
 
-**Improvement:** Capture every material mutation of `appeal` as immutable AppGen-X events with actor, tenant, command, policy version, idempotency key, before/after summary, and projection checkpoint. Tie the behavior to `claims_adjudication_healthcare_record_claim_line_workflow` where applicable, and make it visible in `ClaimsAdjudicationHealthcareWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add rule versions with eligibility context, covered service, exclusion, limitation, cost share, authorization requirement, effective window, and approval evidence.
 
-**Acceptance evidence:** Replay tests, projection checksums, event ordering evidence, and point-in-time workbench views. The evidence should be package-local in `src/pyAppGen/pbcs/claims_adjudication_healthcare` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must adjudicate historical and current claims against the correct rule version.
 
-### 7. Projection and read-model strategy for Payment Determination
+### 7. Medical Necessity Review
 
-**Justification:** The workbench should not force users to infer domain truth from raw tables; each projection should answer a real operating question.
+**Justification:** Some claims require clinical appropriateness evidence beyond plan coverage.
 
-**Improvement:** Create purpose-built projections for `payment_determination`: operational queue, executive KPI rollup, exception aging, compliance evidence, agent task context, and external dependency health. Tie the behavior to `claims_adjudication_healthcare_create_health_claim_workflow` where applicable, and make it visible in `ClaimsAdjudicationHealthcareWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add medical necessity review cases with clinical basis, documentation required, reviewer qualification, determination, and appeal rights.
 
-**Acceptance evidence:** Projection contracts, freshness SLAs, backfill tests, and visible stale-projection warnings. The evidence should be package-local in `src/pyAppGen/pbcs/claims_adjudication_healthcare` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must pend claims for missing necessity evidence and resolve them with approved, denied, or partial outcomes.
 
-### 8. Exception taxonomy and remediation for Claims Adjudication Healthcare Policy Rule
+### 8. Prior Authorization Matching
 
-**Justification:** High-value PBCs win on exception throughput; generic “failed” states hide the details operators need.
+**Justification:** Claims can be incorrectly denied or paid if authorization matching is weak.
 
-**Improvement:** Model the full exception taxonomy for `claims_adjudication_healthcare_policy_rule`, including severity, root cause, blocking dependency, remediation owner, due date, retry eligibility, escalation path, and closure evidence. Tie the behavior to `claims_adjudication_healthcare_record_claim_line_workflow` where applicable, and make it visible in `ClaimsAdjudicationHealthcareWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add authorization match evidence by member, provider, service, date, units, diagnosis, place of service, and authorization remaining balance.
 
-**Acceptance evidence:** Exception queues, aging metrics, remediation playbooks, dead-letter linkage, and closure test fixtures for conflicting clinical instructions. The evidence should be package-local in `src/pyAppGen/pbcs/claims_adjudication_healthcare` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must cover exact match, partial match, expired authorization, exhausted units, and no-match cases.
 
-### 9. Predictive risk scoring for Claims Adjudication Healthcare Runtime Parameter
+### 9. Coding Validation Engine
 
-**Justification:** The package should warn users before healthcare claims adjudication work fails, breaches policy, or creates downstream cost.
+**Justification:** Invalid, incompatible, unbundled, or unsupported codes drive leakage and disputes.
 
-**Improvement:** Add predictive risk scoring for `claims_adjudication_healthcare_runtime_parameter` using domain features from owned tables, consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, rule outcomes, aging, anomaly signals, and historical corrections. Tie the behavior to `claims_adjudication_healthcare_create_health_claim_workflow` where applicable, and make it visible in `ClaimsAdjudicationHealthcareWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add `coding_review` checks for diagnosis/procedure compatibility, modifier validity, age/sex edits, place-of-service mismatch, bundling, and documentation support.
 
-**Acceptance evidence:** Feature manifests, score explanations, calibration reports, drift alerts, and tests for low/medium/high-risk scenarios. The evidence should be package-local in `src/pyAppGen/pbcs/claims_adjudication_healthcare` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must open coding review cases with line-level reasons and close them only after correction or override evidence.
 
-### 10. Counterfactual simulation for Claims Adjudication Healthcare Schema Extension
+### 10. Coordination of Benefits
 
-**Justification:** Advanced users need to ask “what would happen if” before committing changes to live healthcare claim intake, coding validation, benefit rules, denials, appeals, payment integrity, and payer adjudication operations.
+**Justification:** Secondary payer logic and other coverage evidence materially change member responsibility and payer liability.
 
-**Improvement:** Provide scenario simulation for `claims_adjudication_healthcare_schema_extension`: policy change, capacity constraint, deadline shift, price/rate change, eligibility change, disruption, and manual override outcomes. Tie the behavior to `claims_adjudication_healthcare_record_claim_line_workflow` where applicable, and make it visible in `ClaimsAdjudicationHealthcareWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add COB status, primary payer evidence, allowed amount basis, paid amount from other payer, residual responsibility, and missing EOB review.
 
-**Acceptance evidence:** Simulation APIs, non-mutating sandbox state, comparison reports, and workbench side-by-side scenario panels. The evidence should be package-local in `src/pyAppGen/pbcs/claims_adjudication_healthcare` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must adjudicate primary, secondary, missing-EOB, and corrected COB scenarios.
 
-### 11. Autonomous anomaly triage for Claims Adjudication Healthcare Control Assertion
+### 11. Deductible, Coinsurance, and Copay Application
 
-**Justification:** A world-class PBC should reduce analyst burden without hiding the reasoning behind automated triage.
+**Justification:** Member cost sharing must be traceable to plan rules and accumulator evidence.
 
-**Improvement:** Implement anomaly detection for `claims_adjudication_healthcare_control_assertion` that identifies outliers, duplicate submissions, impossible sequences, stale dependencies, unusual amounts/counts/durations, and contradictory fields. Tie the behavior to `claims_adjudication_healthcare_create_health_claim_workflow` where applicable, and make it visible in `ClaimsAdjudicationHealthcareWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add line-level cost-share calculation with deductible, copay, coinsurance, out-of-pocket cap, excluded amount, and accumulator freshness.
 
-**Acceptance evidence:** Explainable anomaly cards, reviewer feedback loops, false-positive tracking, and suppression governance. The evidence should be package-local in `src/pyAppGen/pbcs/claims_adjudication_healthcare` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must prove member responsibility is calculated with rule and accumulator version evidence.
 
-### 12. Semantic document understanding for Claims Adjudication Healthcare Governed Model
+### 12. Contract Pricing and Allowed Amount
 
-**Justification:** Document-heavy work in Healthcare Claims Adjudication cannot be complete if the assistant only answers questions and cannot prepare accurate governed changes.
+**Justification:** Allowed amounts depend on contract, fee schedule, service site, provider status, and effective date.
 
-**Improvement:** Train the package assistant to parse domain documents and instructions for `claims_adjudication_healthcare_governed_model`, extract obligations, dates, parties, quantities, identifiers, and exceptions, then map them to safe draft mutations. Tie the behavior to `claims_adjudication_healthcare_record_claim_line_workflow` where applicable, and make it visible in `ClaimsAdjudicationHealthcareWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add pricing basis, contract reference evidence, fee schedule version, negotiated rate, outlier rule, and manual price review state.
 
-**Acceptance evidence:** Document extraction tests, confidence thresholds, redaction handling, source span citations, and human confirmation workflows. The evidence should be package-local in `src/pyAppGen/pbcs/claims_adjudication_healthcare` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must price network, out-of-network, missing contract, and manually reviewed lines.
 
-### 13. Agent-safe CRUD execution for Health Claim
+### 13. Claim Pend Reason Taxonomy
 
-**Justification:** The PBC agent must be a first-class operator but never a hidden bypass around RBAC, rules, or owned datastore boundaries.
+**Justification:** Generic pending statuses hide the work needed to resolve claims.
 
-**Improvement:** Add a professional chatbot skill for `health_claim` that can create, update, correct, close, and annotate records only through policy-checked commands, approval gates, and previewed diffs. Tie the behavior to `claims_adjudication_healthcare_create_health_claim_workflow` where applicable, and make it visible in `ClaimsAdjudicationHealthcareWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add pend reasons for missing eligibility, provider mismatch, missing authorization, coding issue, duplicate risk, attachment required, pricing review, and policy exception.
 
-**Acceptance evidence:** Skill manifests, permission tests, preview/confirm flows, blocked-action evidence, and audit events for every assistant mutation. The evidence should be package-local in `src/pyAppGen/pbcs/claims_adjudication_healthcare` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must route each pend type to the correct queue, owner role, SLA, and resolution action.
 
-### 14. Workbench persona coverage for Claim Line
+### 14. Denial Reason Governance
 
-**Justification:** A generic detail page underserves the domain; each role needs the exact controls and evidence they use daily.
+**Justification:** Denials must be precise, defensible, appealable, and tied to policy evidence.
 
-**Improvement:** Design dedicated workbench panels for `claim_line`: operator queue, supervisor approvals, analyst exceptions, auditor evidence, configuration owner, and agent-assistance review. Tie the behavior to `claims_adjudication_healthcare_record_claim_line_workflow` where applicable, and make it visible in `ClaimsAdjudicationHealthcareWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add denial codes, clinical or benefit rationale, line mapping, notice text, appeal deadline, reviewer, and policy version.
 
-**Acceptance evidence:** UI contract entries, route tests, empty/error/loading states, and permission-aware action availability. The evidence should be package-local in `src/pyAppGen/pbcs/claims_adjudication_healthcare` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must generate denial notices with line-specific reasons and reject denials missing policy evidence.
 
-### 15. Cross-PBC dependency contracts for Coding Review
+### 15. Appeal Lifecycle
 
-**Justification:** Composable packages fail when hidden table coupling enters the domain model.
+**Justification:** Appeals require levels, deadlines, evidence packets, independent review, overturns, and final determinations.
 
-**Improvement:** Represent dependencies for `coding_review` through declared APIs, consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, and projections rather than shared tables, with explicit freshness, ownership, and fallback behavior. Tie the behavior to `claims_adjudication_healthcare_create_health_claim_workflow` where applicable, and make it visible in `ClaimsAdjudicationHealthcareWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add appeal levels, requester, evidence submitted, reviewer independence, deadline, decision, overturn reason, and reopened claim link.
 
-**Acceptance evidence:** Dependency manifests, contract tests, stale dependency alerts, and no foreign-table references in generated artifacts. The evidence should be package-local in `src/pyAppGen/pbcs/claims_adjudication_healthcare` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must process appeal received, missing evidence, upheld, overturned, partially overturned, and external-review outcomes.
 
-### 16. API completeness and versioning for Benefit Rule
+### 16. Duplicate Claim Detection
 
-**Justification:** Complete domain coverage requires both command and query surfaces, not only happy-path create endpoints.
+**Justification:** Duplicate billing can create overpayment or member confusion.
 
-**Improvement:** Expand APIs beyond POST /health-claims, POST /claim-lines, POST /coding-reviews to cover search, validation-only commands, simulation, bulk intake, exception closure, evidence export, projection reads, and idempotent corrections. Tie the behavior to `claims_adjudication_healthcare_record_claim_line_workflow` where applicable, and make it visible in `ClaimsAdjudicationHealthcareWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add duplicate scoring across member, provider, service dates, codes, units, charge, authorization, and source claim lineage.
 
-**Acceptance evidence:** OpenAPI-style route manifests, backward-compatible version tests, deprecation metadata, and idempotency assertions. The evidence should be package-local in `src/pyAppGen/pbcs/claims_adjudication_healthcare` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must detect exact, near, corrected, and legitimate repeat-service cases without auto-denying ambiguous claims.
 
-### 17. Typed emitted-event expansion for Denial
+### 17. Payment Integrity Case Management
 
-**Justification:** Consumers should understand what happened in Healthcare Claims Adjudication without parsing opaque payloads.
+**Justification:** Payment integrity work includes prepay edits, postpay audits, recoveries, provider education, and disputes.
 
-**Improvement:** Replace generic lifecycle emissions with typed events for each meaningful `denial` transition, exception, approval, correction, simulation result, and downstream handoff. Tie the behavior to `claims_adjudication_healthcare_create_health_claim_workflow` where applicable, and make it visible in `ClaimsAdjudicationHealthcareWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand `payment_integrity_case` with trigger, suspected issue, dollar exposure, evidence, reviewer, action, recovery status, and dispute path.
 
-**Acceptance evidence:** Event schema tests, event examples, compatibility checks, and emitted-event coverage in release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/claims_adjudication_healthcare` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must open prepay and postpay cases and prevent duplicate recoveries.
 
-### 18. Consumed-event handlers for Appeal
+### 18. Fraud, Waste, and Abuse Signal Review
 
-**Justification:** A PBC is composable only when incoming events affect its own domain state predictably and safely.
+**Justification:** Claims patterns can indicate suspicious behavior but require governed review before adverse action.
 
-**Improvement:** Implement idempotent handlers for consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged that update projections, open dependency exceptions, recalculate risk, and preserve source event lineage. Tie the behavior to `claims_adjudication_healthcare_record_claim_line_workflow` where applicable, and make it visible in `ClaimsAdjudicationHealthcareWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add anomaly signals for upcoding, unbundling, excessive units, impossible services, provider outliers, and member/provider collusion indicators.
 
-**Acceptance evidence:** Duplicate-event tests, handler side-effect boundaries, dead-letter fixtures, and lineage links back to source events. The evidence should be package-local in `src/pyAppGen/pbcs/claims_adjudication_healthcare` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must create explainable investigation cases and require human review before denial or recovery actions.
 
-### 19. Retry and dead-letter operations for Payment Determination
+### 19. Attachment and Medical Record Handling
 
-**Justification:** Dead letters are not just plumbing; they are domain work queues that can block healthcare claim intake, coding validation, benefit rules, denials, appeals, payment integrity, and payer adjudication.
+**Justification:** Documentation drives medical necessity, coding support, and appeal decisions.
 
-**Improvement:** Create operational tools for retrying, quarantining, explaining, and resolving dead-lettered `payment_determination` events with max-attempt policy, poison-message detection, and replay safety. Tie the behavior to `claims_adjudication_healthcare_create_health_claim_workflow` where applicable, and make it visible in `ClaimsAdjudicationHealthcareWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add attachment metadata, source, linked claim lines, extracted facts, missing pages, redaction profile, reviewer, and retention class.
 
-**Acceptance evidence:** Dead-letter workbench, retry eligibility tests, replay audit proof, and operator action logs. The evidence should be package-local in `src/pyAppGen/pbcs/claims_adjudication_healthcare` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must preserve attachment lineage and require reviewer confirmation for extracted facts.
 
-### 20. RBAC and attribute policy for Claims Adjudication Healthcare Policy Rule
+### 20. Corrected and Replacement Claim Lineage
 
-**Justification:** High-impact domain operations need finer controls than generic RBAC grants.
+**Justification:** Corrected claims must replace or adjust prior claims without double-paying.
 
-**Improvement:** Extend permissions for `claims_adjudication_healthcare_policy_rule` from coarse read/create/update/admin to action-level and attribute-aware policies based on role, tenant, jurisdiction, monetary/materiality threshold, and exception severity. Tie the behavior to `claims_adjudication_healthcare_record_claim_line_workflow` where applicable, and make it visible in `ClaimsAdjudicationHealthcareWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add original claim link, correction type, replaced lines, financial delta, submission reason, and replay-safe adjustment logic.
 
-**Acceptance evidence:** Permission matrix docs, ABAC policy tests, denied-action UI states, and assistant skill permission checks. The evidence should be package-local in `src/pyAppGen/pbcs/claims_adjudication_healthcare` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must process corrected claims and prove paid amounts are not duplicated.
 
-### 21. Continuous control testing for Claims Adjudication Healthcare Runtime Parameter
+### 21. Overpayment and Recovery Workflow
 
-**Justification:** Controls should run during operations, not only during release audit or manual review.
+**Justification:** Postpay findings need recovery notices, offsets, repayment plans, disputes, and write-off policy.
 
-**Improvement:** Embed control assertions for `claims_adjudication_healthcare_runtime_parameter` that continuously test segregation of duties, required approvals, stale exceptions, policy drift, duplicate records, and boundary violations. Tie the behavior to `claims_adjudication_healthcare_create_health_claim_workflow` where applicable, and make it visible in `ClaimsAdjudicationHealthcareWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add overpayment amount, reason, notice, offset status, repayment schedule, dispute, reversal, and closure evidence.
 
-**Acceptance evidence:** Control dashboards, failing-control events, test fixtures, and release evidence tied to `claims_adjudication_healthcare_control_assertion` records. The evidence should be package-local in `src/pyAppGen/pbcs/claims_adjudication_healthcare` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must create recoveries, apply offsets, handle disputes, and close with financial evidence.
 
-### 22. Cryptographic audit proofing for Claims Adjudication Healthcare Schema Extension
+### 22. Claim Adjustment and Reversal
 
-**Justification:** Better-than-world-class auditability requires proof of integrity, not merely logs stored in mutable tables.
+**Justification:** Operational corrections require controlled adjustments and reversals.
 
-**Improvement:** Hash-chain material `claims_adjudication_healthcare_schema_extension` decisions, documents, emitted events, and release-evidence snapshots to make tampering visible without exposing sensitive payloads. Tie the behavior to `claims_adjudication_healthcare_record_claim_line_workflow` where applicable, and make it visible in `ClaimsAdjudicationHealthcareWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add adjustment reason, initiator, affected lines, before/after amounts, member impact, provider notice, and authorization.
 
-**Acceptance evidence:** Proof manifests, verification APIs, redacted proof exports, and audit-ledger handoff events. The evidence should be package-local in `src/pyAppGen/pbcs/claims_adjudication_healthcare` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must reject unauthorized adjustments and preserve audit trails for changed amounts.
 
-### 23. Privacy, consent, and secrecy controls for Claims Adjudication Healthcare Control Assertion
+### 23. Benefit Limit Tracking
 
-**Justification:** Complete domain coverage must account for protected data and restricted operational evidence.
+**Justification:** Visit, dollar, unit, and frequency limits require history and projection freshness.
 
-**Improvement:** Add field-level privacy classifications for `claims_adjudication_healthcare_control_assertion`, consent checks, masking rules, retention schedules, legal holds, and assistant redaction policies. Tie the behavior to `claims_adjudication_healthcare_create_health_claim_workflow` where applicable, and make it visible in `ClaimsAdjudicationHealthcareWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add limit evaluation evidence with limit type, consumed amount, remaining amount, time window, and source freshness.
 
-**Acceptance evidence:** Retention tests, masked UI snapshots, consent-blocked mutation fixtures, and export controls. The evidence should be package-local in `src/pyAppGen/pbcs/claims_adjudication_healthcare` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must adjudicate within-limit, exceeded-limit, and stale-limit cases.
 
-### 24. Multi-tenant operating model for Claims Adjudication Healthcare Governed Model
+### 24. Bundling and Unbundling Detection
 
-**Justification:** The PBC should scale across organizations while preserving independent policy and compliance boundaries.
+**Justification:** Procedure bundling affects allowed amounts and payment integrity.
 
-**Improvement:** Support tenant-specific `claims_adjudication_healthcare_governed_model` rules, data residency, encryption context, configuration, seed data, and release evidence without allowing cross-tenant leakage. Tie the behavior to `claims_adjudication_healthcare_record_claim_line_workflow` where applicable, and make it visible in `ClaimsAdjudicationHealthcareWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add bundling rule, primary line, bundled line, modifier exception, documentation requirement, and override reason.
 
-**Acceptance evidence:** Tenant isolation tests, tenant-scoped parameters, key-rotation evidence, and cross-tenant negative fixtures. The evidence should be package-local in `src/pyAppGen/pbcs/claims_adjudication_healthcare` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must bundle lines, allow legitimate modifiers, and open review on questionable unbundling.
 
-### 25. Schema evolution and extension registry for Health Claim
+### 25. Inpatient and Episode Claim Logic
 
-**Justification:** Domain teams will add fields; the PBC must evolve without breaking APIs, events, or workbench projections.
+**Justification:** Facility claims can involve episodes, diagnosis related group logic, outliers, transfers, and readmissions.
 
-**Improvement:** Make schema extensions for `health_claim` first-class with compatibility checks, migration previews, projection backfills, field ownership, and rollback metadata. Tie the behavior to `claims_adjudication_healthcare_create_health_claim_workflow` where applicable, and make it visible in `ClaimsAdjudicationHealthcareWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add episode grouping, admission/discharge dates, stay classification, transfer flag, outlier basis, and facility review queue.
 
-**Acceptance evidence:** Extension registry UI, compatibility tests, migration dry-runs, and backfill release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/claims_adjudication_healthcare` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must adjudicate routine, transfer, outlier, and suspicious readmission scenarios.
 
-### 26. Master data quality gates for Claim Line
+### 26. Professional Claim Specialty Logic
 
-**Justification:** Many healthcare claims adjudication errors begin as bad reference data; the PBC should catch them before workflow execution.
+**Justification:** Professional claims require provider specialty, place of service, modifier, supervision, and frequency controls.
 
-**Improvement:** Define reference-data contracts for `claim_line`: canonical codes, parties, locations, classifications, calendars, units, currencies, products, assets, or service categories as relevant to the domain. Tie the behavior to `claims_adjudication_healthcare_record_claim_line_workflow` where applicable, and make it visible in `ClaimsAdjudicationHealthcareWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add specialty-sensitive rules for evaluation services, procedures, telehealth, assistant roles, and same-day services.
 
-**Acceptance evidence:** Reference validation fixtures, stale-code warnings, mapping tables, and dependency freshness indicators. The evidence should be package-local in `src/pyAppGen/pbcs/claims_adjudication_healthcare` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must validate specialty restrictions and modifier-driven exceptions.
 
-### 27. Bulk operations and correction workflows for Coding Review
+### 27. Member and Provider Notice Generation
 
-**Justification:** Enterprise-scale Healthcare Claims Adjudication users cannot operate one record at a time.
+**Justification:** Denials, adjustments, recoveries, appeals, and requests for information require clear notices.
 
-**Improvement:** Add bulk load, bulk validate, bulk approve, and bulk correction workflows for `coding_review` with partial success, row-level errors, resumability, and rollback. Tie the behavior to `claims_adjudication_healthcare_create_health_claim_workflow` where applicable, and make it visible in `ClaimsAdjudicationHealthcareWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add notice templates, recipient, channel, language, deadline, appeal rights, line references, and delivery proof.
 
-**Acceptance evidence:** CSV/API batch fixtures, resumable job state, row-level audit evidence, and assistant-generated correction suggestions. The evidence should be package-local in `src/pyAppGen/pbcs/claims_adjudication_healthcare` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must generate notices with accurate claim-line and policy references.
 
-### 28. Lifecycle collaboration and tasking for Benefit Rule
+### 28. SLA and Timeliness Management
 
-**Justification:** Domain collaboration should live inside the PBC boundary and remain auditable with the record it affects.
+**Justification:** Claims and appeals have processing deadlines that vary by claim type and jurisdiction.
 
-**Improvement:** Attach tasks, comments, ownership, due dates, handoffs, and escalation threads to `benefit_rule` without leaking into external shared task tables. Tie the behavior to `claims_adjudication_healthcare_record_claim_line_workflow` where applicable, and make it visible in `ClaimsAdjudicationHealthcareWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add SLA clocks, pause reasons, urgency, jurisdiction, service category, escalation, and late-case exception evidence.
 
-**Acceptance evidence:** Task tables, comment audit history, notification events, escalation SLAs, and role-specific task queues. The evidence should be package-local in `src/pyAppGen/pbcs/claims_adjudication_healthcare` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must escalate near-deadline and overdue claims with correct timer behavior.
 
-### 29. SLA and service-level governance for Denial
+### 29. Adjudication Explainability Packet
 
-**Justification:** Users need to know when healthcare claim intake, coding validation, benefit rules, denials, appeals, payment integrity, and payer adjudication is late, blocked, or at risk before customer or regulator impact.
+**Justification:** Users need a transparent explanation of why each line paid, denied, reduced, or pended.
 
-**Improvement:** Define SLAs for `denial` across intake, validation, approval, exception resolution, event handling, downstream projection refresh, and release-evidence generation. Tie the behavior to `claims_adjudication_healthcare_create_health_claim_workflow` where applicable, and make it visible in `ClaimsAdjudicationHealthcareWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Generate packets containing input facts, rule versions, projections, edits, pricing, cost-share, denial reasons, and reviewer actions.
 
-**Acceptance evidence:** SLA breach events, timers, configurable calendars, workbench aging buckets, and tests for pause/resume behavior. The evidence should be package-local in `src/pyAppGen/pbcs/claims_adjudication_healthcare` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must produce explanation packets for paid, denied, partially paid, and adjusted claims.
 
-### 30. Operational analytics cockpit for Appeal
+### 30. Rule Conflict and Impact Simulation
 
-**Justification:** World-class operations require leading indicators, not only record counts.
+**Justification:** Benefit and edit changes can create contradictory outcomes or unintended claim disruption.
 
-**Improvement:** Build analytics for `appeal`: throughput, backlog, aging, approval latency, exception rate, risk distribution, automation acceptance, correction rate, and downstream dependency health. Tie the behavior to `claims_adjudication_healthcare_record_claim_line_workflow` where applicable, and make it visible in `ClaimsAdjudicationHealthcareWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add side-effect-free simulation over sample claims, affected plan populations, financial impact, denial changes, and appeal risk.
 
-**Acceptance evidence:** Metric definitions, projection tests, drill-through routes, export APIs, and anomaly overlays. The evidence should be package-local in `src/pyAppGen/pbcs/claims_adjudication_healthcare` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must block activation of conflicted or unsimulated rule changes.
 
-### 31. Decision intelligence and recommendations for Payment Determination
+### 31. Claims Operations Workbench
 
-**Justification:** The PBC should help expert users decide faster while showing evidence and uncertainty.
+**Justification:** Adjudicators need queues, aging, reasons, and next actions rather than generic record lists.
 
-**Improvement:** Generate ranked recommendations for `payment_determination` such as next best action, likely resolution, required evidence, policy adjustment, staffing/capacity response, or downstream handoff. Tie the behavior to `claims_adjudication_healthcare_create_health_claim_workflow` where applicable, and make it visible in `ClaimsAdjudicationHealthcareWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add views for intake rejects, pended claims, coding review, medical necessity, duplicate risk, denials, appeals, payment integrity, and SLA risk.
 
-**Acceptance evidence:** Recommendation explanations, confidence intervals, feedback capture, model governance records, and rejection reasons. The evidence should be package-local in `src/pyAppGen/pbcs/claims_adjudication_healthcare` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** UI tests must prove each queue maps to owned data and declared projections with permission-aware actions.
 
-### 32. Quality and completeness scoring for Claims Adjudication Healthcare Policy Rule
+### 32. Agent-Assisted Claim Review
 
-**Justification:** Operators should see whether a record is truly ready, not just technically saved.
+**Justification:** The agent can reduce review time by summarizing evidence and proposing next steps, but decisions need traceability.
 
-**Improvement:** Score each `claims_adjudication_healthcare_policy_rule` record for completeness, consistency, policy readiness, dependency readiness, evidence sufficiency, and downstream composability. Tie the behavior to `claims_adjudication_healthcare_record_claim_line_workflow` where applicable, and make it visible in `ClaimsAdjudicationHealthcareWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add skills for claim summary, missing evidence request, denial draft, appeal packet summary, duplicate rationale, and payment integrity case notes.
 
-**Acceptance evidence:** Scoring rules, missing-evidence lists, readiness badges, and blocking criteria in command handlers. The evidence should be package-local in `src/pyAppGen/pbcs/claims_adjudication_healthcare` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must require cited evidence for every agent recommendation and confirmation before claim mutation.
 
-### 33. End-to-end scenario library for Claims Adjudication Healthcare Runtime Parameter
+### 33. Governed Agent CRUD Commands
 
-**Justification:** Release evidence is stronger when every important healthcare claims adjudication behavior has executable examples.
+**Justification:** Professional users need safe command previews for operational updates.
 
-**Improvement:** Create seeded scenarios for `claims_adjudication_healthcare_runtime_parameter`: normal flow, urgent path, exception path, corrected path, duplicate path, late event path, and audit export path. Tie the behavior to `claims_adjudication_healthcare_create_health_claim_workflow` where applicable, and make it visible in `ClaimsAdjudicationHealthcareWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add command previews for pend claim, release claim, deny line, request attachment, open appeal, adjust claim, and open recovery case.
 
-**Acceptance evidence:** Scenario seed data, runtime smoke coverage, generated-app fixtures, and story-level workbench screenshots/contracts. The evidence should be package-local in `src/pyAppGen/pbcs/claims_adjudication_healthcare` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Intent tests must reject ambiguous member or claim references and record source instruction, preview, approver, and command result.
 
-### 34. Domain ontology and terminology model for Claims Adjudication Healthcare Schema Extension
+### 34. Model Governance for Claim Intelligence
 
-**Justification:** Precise vocabulary prevents the PBC from misclassifying specialist documents or user instructions.
+**Justification:** Coding suggestions, anomaly detection, and appeal prediction affect financial and member outcomes.
 
-**Improvement:** Add an ontology for `claims_adjudication_healthcare_schema_extension` terms, synonyms, classifications, relationships, allowed values, and phrase mappings used by the assistant and UI. Tie the behavior to `claims_adjudication_healthcare_record_claim_line_workflow` where applicable, and make it visible in `ClaimsAdjudicationHealthcareWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Register governed models with intended use, version, evaluation evidence, bias checks, thresholds, drift, and human feedback.
 
-**Acceptance evidence:** Ontology files, assistant parsing tests, UI glossary, and mapping evidence for domain-specific abbreviations. The evidence should be package-local in `src/pyAppGen/pbcs/claims_adjudication_healthcare` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must block model-backed recommendations when governance evidence is missing or expired.
 
-### 35. Advanced search and investigation for Claims Adjudication Healthcare Control Assertion
+### 35. Continuous Control Assertions
 
-**Justification:** Investigators and operators need fast, explainable retrieval across the whole domain surface.
+**Justification:** Claims adjudication must prove controls over timeliness, denial quality, duplicate payment, override use, and recovery leakage.
 
-**Improvement:** Provide search across `claims_adjudication_healthcare_control_assertion` records, events, documents, exceptions, tasks, comments, and audit proofs with filters for tenant, status, risk, date, party, and dependency. Tie the behavior to `claims_adjudication_healthcare_create_health_claim_workflow` where applicable, and make it visible in `ClaimsAdjudicationHealthcareWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add control assertions with population, threshold, owner, frequency, failing sample, remediation, and closure evidence.
 
-**Acceptance evidence:** Search index contracts, result provenance, permission-filtered queries, and stale-index warnings. The evidence should be package-local in `src/pyAppGen/pbcs/claims_adjudication_healthcare` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must open failures and prevent closure without remediation evidence.
 
-### 36. Reconciliation and closure controls for Claims Adjudication Healthcare Governed Model
+### 36. Dead-Letter and Retry Queue
 
-**Justification:** Closure is not complete until the PBC can prove no material domain work remains unresolved.
+**Justification:** Claim events, attachments, rule updates, and payment events can fail and must be replayed safely.
 
-**Improvement:** Add reconciliation workflows that compare `claims_adjudication_healthcare_governed_model` state against consumed events, external projections, expected totals/counts, approvals, and release evidence before closure. Tie the behavior to `claims_adjudication_healthcare_record_claim_line_workflow` where applicable, and make it visible in `ClaimsAdjudicationHealthcareWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add dead-letter classification, idempotency key, clinical or financial risk, retry count, replay checkpoint, and manual remediation.
 
-**Acceptance evidence:** Reconciliation reports, variance thresholds, closure blockers, and AppGen-X closure events. The evidence should be package-local in `src/pyAppGen/pbcs/claims_adjudication_healthcare` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must replay failed events without duplicate denials, payments, notices, or appeals.
 
-### 37. Regulatory and policy reporting for Health Claim
+### 37. Cross-PBC Dependency Freshness
 
-**Justification:** World-class PBCs turn operational evidence into credible reporting without spreadsheet reconstruction.
+**Justification:** Stale policy, audit, KPI, eligibility, provider, or authorization evidence can produce unsafe decisions.
 
-**Improvement:** Generate domain reporting packs for `health_claim` covering statutory, contractual, operational, board, customer, or regulator evidence depending on patient safety, clinical traceability, consent boundaries, eligibility nuance, coding accuracy, care continuity, and regulated health evidence. Tie the behavior to `claims_adjudication_healthcare_create_health_claim_workflow` where applicable, and make it visible in `ClaimsAdjudicationHealthcareWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add freshness indicators, blocking thresholds, degraded-mode policy, and override evidence for consumed projections.
 
-**Acceptance evidence:** Report schemas, redaction rules, traceable metric sources, and approval/export audit events. The evidence should be package-local in `src/pyAppGen/pbcs/claims_adjudication_healthcare` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must pend or block claims when required dependency evidence is stale.
 
-### 38. Carbon and resource awareness for Claim Line
+### 38. Low-Value Care and Policy Analytics
 
-**Justification:** Sustainability evidence should be embedded in operations instead of treated as an after-the-fact report.
+**Justification:** Claims history can surface low-value care patterns while still preserving adjudication boundaries.
 
-**Improvement:** Where relevant, attach carbon, energy, water, travel, capacity, compute, or resource-footprint metadata to `claim_line` decisions and batch operations. Tie the behavior to `claims_adjudication_healthcare_record_claim_line_workflow` where applicable, and make it visible in `ClaimsAdjudicationHealthcareWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add analytics for avoidable services, repeated denials, high overturn rates, provider education targets, and policy leakage.
 
-**Acceptance evidence:** Footprint fields, scheduling parameters, exception rules, and dashboards that expose operational tradeoffs. The evidence should be package-local in `src/pyAppGen/pbcs/claims_adjudication_healthcare` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must produce tenant-scoped analytic projections with low-count suppression.
 
-### 39. Resilience and offline behavior for Coding Review
+### 39. Provider Dispute Workflow
 
-**Justification:** Real operations keep moving during outages; the PBC must preserve correctness when dependencies are unavailable.
+**Justification:** Providers may dispute denials, payments, recoveries, or coding decisions outside member appeals.
 
-**Improvement:** Define resilience modes for `coding_review`: degraded dependency mode, offline draft capture, delayed event replay, conflict detection, and safe recovery after partial failure. Tie the behavior to `claims_adjudication_healthcare_create_health_claim_workflow` where applicable, and make it visible in `ClaimsAdjudicationHealthcareWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add dispute type, disputed lines, requested correction, evidence, reviewer, negotiation note, decision, and reopened claim link.
 
-**Acceptance evidence:** Offline fixtures, replay tests, conflict queues, recovery logs, and user-visible degraded-mode warnings. The evidence should be package-local in `src/pyAppGen/pbcs/claims_adjudication_healthcare` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must process disputes without conflating provider dispute rights with member appeal rights.
 
-### 40. Human-in-the-loop automation for Benefit Rule
+### 40. Subrogation and Third-Party Liability
 
-**Justification:** Automation should accelerate healthcare claim intake, coding validation, benefit rules, denials, appeals, payment integrity, and payer adjudication while preserving accountability for high-risk decisions.
+**Justification:** Accident, workers compensation, and liability cases can require recovery from third parties.
 
-**Improvement:** Set explicit automation boundaries for `benefit_rule`: auto-approve, auto-reject, suggest-only, require-review, and block-until-evidence states with policy-based routing. Tie the behavior to `claims_adjudication_healthcare_record_claim_line_workflow` where applicable, and make it visible in `ClaimsAdjudicationHealthcareWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add liability indicator, accident date, third-party evidence, questionnaire status, recovery amount, and coordination state.
 
-**Acceptance evidence:** Automation policy tests, reviewer queues, override reasons, and assistant action audit trails. The evidence should be package-local in `src/pyAppGen/pbcs/claims_adjudication_healthcare` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must pend, pay-and-pursue, recover, and close third-party liability scenarios.
 
-### 41. Package discovery and fit scoring for Denial
+### 41. Claim Audit Sampling
 
-**Justification:** Users selecting PBCs need transparent fit reasoning, especially when domains are adjacent but not overlapping.
+**Justification:** Quality programs need statistically and risk-based claim samples.
 
-**Improvement:** Improve package metadata so composition can explain when `claims_adjudication_healthcare` fits a prompt, what entities it owns, what APIs/events it exposes, and what adjacent PBCs it depends on. Tie the behavior to `claims_adjudication_healthcare_create_health_claim_workflow` where applicable, and make it visible in `ClaimsAdjudicationHealthcareWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add sample frame, selection method, risk score, auditor assignment, findings, corrective action, and rework outcome.
 
-**Acceptance evidence:** Discovery manifests, prompt-selection tests, overlap rationale links, and composition DSL examples. The evidence should be package-local in `src/pyAppGen/pbcs/claims_adjudication_healthcare` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must create random and risk-based samples with reproducible selection evidence.
 
-### 42. Configuration deployment pipeline for Appeal
+### 42. Cryptographic Adjudication Proofs
 
-**Justification:** Configuration changes can materially alter healthcare claims adjudication; they need the same discipline as code releases.
+**Justification:** Adjudication history needs tamper-evident proof for audit and disputes.
 
-**Improvement:** Add configuration promotion for `appeal` across draft, test, approved, active, deprecated, and rollback states with impact analysis before activation. Tie the behavior to `claims_adjudication_healthcare_record_claim_line_workflow` where applicable, and make it visible in `ClaimsAdjudicationHealthcareWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add hash-chained proof records for claim intake, line edits, pricing, denial, appeal, adjustment, and recovery events.
 
-**Acceptance evidence:** Config diff views, approval workflows, simulation before activation, and rollback tests. The evidence should be package-local in `src/pyAppGen/pbcs/claims_adjudication_healthcare` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must verify proof chains and detect altered payloads or reordered events.
 
-### 43. Workbench command completeness for Payment Determination
+### 43. Privacy and Minimum Necessary Views
 
-**Justification:** A PBC does not fully surface its capabilities if users must call hidden APIs for core work.
+**Justification:** Claim records contain sensitive clinical and financial data.
 
-**Improvement:** Expose every high-value operation for `payment_determination` in the UI: create, validate, approve, simulate, correct, assign, export, retry, close, and audit-proof verification. Tie the behavior to `claims_adjudication_healthcare_create_health_claim_workflow` where applicable, and make it visible in `ClaimsAdjudicationHealthcareWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add role-specific redaction for adjudicator, clinical reviewer, appeal reviewer, auditor, provider portal, and member notice views.
 
-**Acceptance evidence:** UI action coverage tests, permission-aware disabled states, keyboard paths, and assistant handoff links. The evidence should be package-local in `src/pyAppGen/pbcs/claims_adjudication_healthcare` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Permission tests must prove restricted diagnosis, attachment, and financial fields are hidden when not needed.
 
-### 44. Document packet and evidence vault for Claims Adjudication Healthcare Policy Rule
+### 44. Correction of Erroneous Denials
 
-**Justification:** Documents often carry the legal or operational truth behind healthcare claim intake, coding validation, benefit rules, denials, appeals, payment integrity, and payer adjudication.
+**Justification:** Incorrect denials need rapid identification, correction, notice, payment, and root-cause analysis.
 
-**Improvement:** Create a governed evidence vault for `claims_adjudication_healthcare_policy_rule` documents, attachments, source spans, extracted fields, signatures, approvals, and retention labels. Tie the behavior to `claims_adjudication_healthcare_record_claim_line_workflow` where applicable, and make it visible in `ClaimsAdjudicationHealthcareWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add denial quality monitoring, overturned-denial cohorting, systemic issue detection, corrective batch action, and notice generation.
 
-**Acceptance evidence:** Evidence models, source-to-field lineage, signature validation, retention policies, and proof exports. The evidence should be package-local in `src/pyAppGen/pbcs/claims_adjudication_healthcare` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must correct a cohort of erroneous denials without duplicate payments.
 
-### 45. Data correction and amendment history for Claims Adjudication Healthcare Runtime Parameter
+### 45. Seeded Adjudication Scenario Library
 
-**Justification:** World-class systems correct mistakes without rewriting history or confusing downstream consumers.
+**Justification:** Release evidence needs realistic payer claim stories.
 
-**Improvement:** Support formal amendments for `claims_adjudication_healthcare_runtime_parameter` that preserve original values, correction reason, approving actor, effective date, downstream event impacts, and replay behavior. Tie the behavior to `claims_adjudication_healthcare_create_health_claim_workflow` where applicable, and make it visible in `ClaimsAdjudicationHealthcareWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add seeds for clean claim, missing eligibility, authorization mismatch, coding denial, COB, duplicate, appeal overturn, overpayment recovery, and stale dependency.
 
-**Acceptance evidence:** Amendment tables, correction events, projection replay tests, and side-by-side before/after UI. The evidence should be package-local in `src/pyAppGen/pbcs/claims_adjudication_healthcare` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Scenario tests must load side-effect-free and produce expected queues, events, and explanation packets.
 
-### 46. External participant collaboration for Claims Adjudication Healthcare Schema Extension
+### 46. Financial Reconciliation Contract
 
-**Justification:** Many healthcare claims adjudication workflows require outside parties, but they must not gain direct access to internal tables.
+**Justification:** Claim adjudication outputs need downstream payment and accounting reconciliation without owning those ledgers.
 
-**Improvement:** Add controlled collaboration portals or API views for external participants related to `claims_adjudication_healthcare_schema_extension`, limited to scoped evidence submission, status checks, comments, and dispute responses. Tie the behavior to `claims_adjudication_healthcare_record_claim_line_workflow` where applicable, and make it visible in `ClaimsAdjudicationHealthcareWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Emit payable, adjustment, recovery, and member-responsibility events with traceable adjudication basis and idempotency keys.
 
-**Acceptance evidence:** Participant role policies, scoped tokens, submission audit trails, and inbound evidence validation. The evidence should be package-local in `src/pyAppGen/pbcs/claims_adjudication_healthcare` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Contract tests must prove emitted events are complete and replay-safe.
 
-### 47. Advanced dependency freshness scoring for Claims Adjudication Healthcare Control Assertion
+### 47. Regulatory Reporting Extracts
 
-**Justification:** A record may be valid locally but unsafe if dependency evidence is stale or incomplete.
+**Justification:** Payers need defensible reporting for timeliness, denials, appeals, recoveries, and complaints.
 
-**Improvement:** Score freshness and reliability of dependencies used by `claims_adjudication_healthcare_control_assertion`, including consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, referenced projections, configuration versions, and external submissions. Tie the behavior to `claims_adjudication_healthcare_create_health_claim_workflow` where applicable, and make it visible in `ClaimsAdjudicationHealthcareWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add report projections with measure definitions, numerator, denominator, exclusion, source evidence, and submission status.
 
-**Acceptance evidence:** Freshness indicators, blocking rules, stale-event simulations, and workbench dependency health panels. The evidence should be package-local in `src/pyAppGen/pbcs/claims_adjudication_healthcare` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must generate report extracts with source links and suppression where required.
 
-### 48. Model governance and explainability for Claims Adjudication Healthcare Governed Model
+### 48. Full Claims Release Simulation
 
-**Justification:** Governed AI is mandatory for professional-grade automation in Healthcare Claims Adjudication.
+**Justification:** A complete PBC must prove adjudication from intake to final financial outcome.
 
-**Improvement:** For every predictive or agentic feature around `claims_adjudication_healthcare_governed_model`, record model version, prompt or ruleset version, training/evaluation evidence, confidence, explanation, and human feedback. Tie the behavior to `claims_adjudication_healthcare_record_claim_line_workflow` where applicable, and make it visible in `ClaimsAdjudicationHealthcareWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add a simulation where a claim is received, validated, pended, reviewed, priced, partially denied, appealed, adjusted, paid, audited, and reported.
 
-**Acceptance evidence:** Model cards, prompt/version manifests, feedback loops, drift tests, and audit proof for recommendations. The evidence should be package-local in `src/pyAppGen/pbcs/claims_adjudication_healthcare` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** The simulation must validate owned schema, APIs, services, AppGen-X events, handlers, workbench views, agent skills, permissions, and release evidence.
 
-### 49. High-scale partitioning and archival for Health Claim
+### 49. Package Boundary Proofs
 
-**Justification:** Better-than-world-class packages must remain operable after years of high-volume domain history.
+**Justification:** Claims adjudication composes with provider, eligibility, finance, notification, and audit PBCs but must not share their tables.
 
-**Improvement:** Plan scale behavior for `health_claim`: tenant partitioning, archival policies, cold storage, retention-aware search, projection compaction, and large-batch replay. Tie the behavior to `claims_adjudication_healthcare_create_health_claim_workflow` where applicable, and make it visible in `ClaimsAdjudicationHealthcareWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add release gates that prove external inputs and outputs are declared API, event, projection, or package metadata contracts.
 
-**Acceptance evidence:** Partition tests, archive/retrieve fixtures, retention enforcement, and replay benchmarks. The evidence should be package-local in `src/pyAppGen/pbcs/claims_adjudication_healthcare` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must fail on undeclared foreign table references and pass on declared AppGen-X dependency usage.
 
-### 50. Release gate expansion for Claim Line
+### 50. Composition DSL and Unified Agent Exposure
 
-**Justification:** The PBC should not claim domain coverage unless release evidence proves the claim end to end.
+**Justification:** Generated applications must expose claims adjudication capabilities through DSL, UI, APIs, and the composed agent.
 
-**Improvement:** Expand release gates for `claims_adjudication_healthcare` so every schema, service, API, event, handler, UI, rule, parameter, agent skill, seed scenario, and improvement backlog item maps to executable evidence. Tie the behavior to `claims_adjudication_healthcare_record_claim_line_workflow` where applicable, and make it visible in `ClaimsAdjudicationHealthcareWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Extend composition metadata for claims, lines, rules, coding reviews, denials, appeals, payment integrity, workbench fragments, parameters, controls, and agent skills.
 
-**Acceptance evidence:** Release audit checks, manifest traceability, generated-app smoke tests, and missing-capability blockers. The evidence should be package-local in `src/pyAppGen/pbcs/claims_adjudication_healthcare` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** DSL tests must prove generated apps include adjudication models, routes, services, event contracts, UI workbench artifacts, and assistant skills without stream-engine picker exposure.
