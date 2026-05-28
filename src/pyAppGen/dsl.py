@@ -617,6 +617,31 @@ def diagnostic_fixture_audit_dsl() -> dict:
     }
 
 
+def parser_golden_audit_dsl() -> dict:
+    """Run parser golden fixtures for the grammar surface required by docs/tooling.md."""
+    results = tuple(_run_parser_golden_fixture(fixture) for fixture in PARSER_GOLDEN_FIXTURES)
+    covered = {
+        construct
+        for result in results
+        if result["valid"]
+        for construct in result["constructs"]
+    }
+    required = tuple(PARSER_GOLDEN_REQUIRED_CONSTRUCTS)
+    missing = tuple(construct for construct in required if construct not in covered)
+    return {
+        "format": "appgen.parser-golden-audit.v1",
+        "ok": not missing and all(result["ok"] for result in results),
+        "constructs_required": required,
+        "constructs_covered": tuple(sorted(covered)),
+        "missing_constructs": missing,
+        "fixture_count": len(results),
+        "valid_fixture_count": sum(1 for result in results if result["valid"]),
+        "invalid_fixture_count": sum(1 for result in results if not result["valid"]),
+        "fixtures": results,
+        "blocking_gaps": tuple(result for result in results if not result["ok"]),
+    }
+
+
 def semantic_drift_audit_dsl(text: str, *, source_name: str | None = None) -> dict:
     """Prove CLI, LSP, IDE, verifier, and tests consume one semantic model."""
     source = text or ""
@@ -809,6 +834,27 @@ def _run_diagnostic_fixture(fixture: dict) -> dict:
     }
 
 
+def _run_parser_golden_fixture(fixture: dict) -> dict:
+    valid = bool(fixture["valid"])
+    error = ""
+    parsed = False
+    try:
+        _parse(fixture["source"])
+        parsed = True
+    except AppGenSyntaxError as exc:
+        error = str(exc)
+    ok = parsed if valid else not parsed
+    return {
+        "name": fixture["name"],
+        "valid": valid,
+        "constructs": tuple(fixture["constructs"]),
+        "ok": ok,
+        "parsed": parsed,
+        "error": error,
+        "source_lines": len(fixture["source"].splitlines()),
+    }
+
+
 def dsl_tooling_cli(argv: Iterable[str] | None = None) -> int:
     """Run docs/tooling.md subcommands without disturbing legacy flags."""
     parser = argparse.ArgumentParser(prog="appgen")
@@ -907,6 +953,9 @@ def dsl_tooling_cli(argv: Iterable[str] | None = None) -> int:
     diagnostics_parser = subparsers.add_parser("diagnostics")
     diagnostics_parser.add_argument("--audit-fixtures", action="store_true")
     diagnostics_parser.add_argument("--json", action="store_true")
+
+    parser_golden_parser = subparsers.add_parser("parser-golden")
+    parser_golden_parser.add_argument("--json", action="store_true")
 
     drift_parser = subparsers.add_parser("drift")
     drift_parser.add_argument("path")
@@ -1041,6 +1090,10 @@ def dsl_tooling_cli(argv: Iterable[str] | None = None) -> int:
         report = diagnostic_fixture_audit_dsl() if args.audit_fixtures else diagnostic_catalog_dsl()
         _emit_tooling_payload(report, as_json=args.json)
         return 0 if report["ok"] else 1
+    if args.command == "parser-golden":
+        report = parser_golden_audit_dsl()
+        _emit_tooling_payload(report, as_json=args.json)
+        return 0 if report["ok"] else 1
     if args.command == "drift":
         report = semantic_drift_audit_dsl(source, source_name=str(path))
         _emit_tooling_payload(report, as_json=args.json)
@@ -1091,6 +1144,16 @@ def _emit_tooling_payload(payload: dict, *, as_json: bool) -> None:
         print(f"graph-suite {status}: {kind_count} kinds, {format_count} formats")
         for check in payload.get("checks", ()):
             print(f"{'ok' if check['ok'] else 'fail'} {check['check']}")
+        return
+    if payload.get("format") == "appgen.parser-golden-audit.v1":
+        status = "ok" if payload.get("ok") else "failed"
+        print(
+            f"parser-golden {status}: "
+            f"{payload.get('fixture_count', 0)} fixtures, "
+            f"{len(payload.get('constructs_covered', ()))} constructs"
+        )
+        for gap in payload.get("blocking_gaps", ()):
+            print(f"fail {gap['name']}: {gap.get('error', '')}")
         return
     if payload.get("format") == "appgen.explain-report.v1":
         print(json.dumps(payload, indent=2, sort_keys=True, default=list))
@@ -1272,6 +1335,12 @@ def doctor_report_dsl() -> dict:
             dsl_antlr_integrity_report()["ok"],
             "Generated ANTLR artifacts are synchronized with the grammar contract.",
             {"report_format": "appgen.dsl-antlr-integrity.v1"},
+        ),
+        _doctor_check(
+            "parser_golden_fixtures",
+            parser_golden_audit_dsl()["ok"],
+            "Parser golden fixtures cover valid and invalid DSL grammar constructs.",
+            {"report_format": "appgen.parser-golden-audit.v1"},
         ),
         _doctor_import_check("python_package_import", "pyAppGen"),
         _doctor_import_check("sqlalchemy_import", "sqlalchemy"),
@@ -5746,6 +5815,266 @@ CORE_KEYWORDS = (
     "agent",
 )
 KEYWORD_LIMIT = 32
+PARSER_GOLDEN_REQUIRED_CONSTRUCTS = (
+    "app",
+    "app_option",
+    "table",
+    "field",
+    "field_group",
+    "spread",
+    "derived_field",
+    "field_modifier",
+    "relation",
+    "relation_cardinality",
+    "table_directive",
+    "enum",
+    "view",
+    "view_section",
+    "component_placement",
+    "handler",
+    "flow",
+    "flow_step",
+    "flow_directive",
+    "role",
+    "permission",
+    "rule",
+    "rule_expression",
+    "llm",
+    "agent",
+    "agentic_option",
+    "contract_arrow",
+    "pbc",
+    "composition",
+    "composition_include",
+    "composition_require",
+    "composition_expose",
+    "composition_connect",
+    "audit",
+    "deploy",
+    "deploy_unit",
+    "deploy_scale",
+    "deploy_health",
+    "deploy_check",
+    "deploy_resource",
+    "deploy_binding",
+    "deploy_directive",
+    "version",
+    "operation",
+    "security",
+    "api",
+    "event",
+    "job",
+    "report",
+    "menu",
+    "component",
+    "package",
+    "test",
+)
+PARSER_GOLDEN_FIXTURES = (
+    {
+        "name": "enterprise_surface_valid.appgen",
+        "valid": True,
+        "constructs": PARSER_GOLDEN_REQUIRED_CONSTRUCTS,
+        "source": """
+app FinanceSuite { targets: web, mobile, desktop }
+
+AddressFields {
+  street: string
+  city: string search
+}
+
+table Customer {
+  id: int pk
+  ... AddressFields
+  name: string required unique search
+  status: string default active
+}
+
+table Invoice {
+  id: int pk
+  customer_id: int -> Customer.id [many-to-one]
+  subtotal: decimal default 0
+  tax: decimal default 0
+  total: decimal = subtotal + tax
+  index(total)
+}
+
+Customer.id -> Invoice.customer_id [one-to-many]
+
+enum InvoiceStatus { draft approved posted voided }
+
+view InvoiceForm for Invoice {
+  Main: customer.name, subtotal, tax, total
+  @ customer.name Lookup 0 0 6 1
+  on Save -> SubmitInvoice;
+}
+
+flow InvoiceApproval {
+  draft -> reviewed;
+  reviewed -> posted;
+  human Review assigned Accountant -> reviewed;
+  timer reviewed "P2D" -> escalated;
+  compensate posted -> ReverseInvoice;
+}
+
+role Accountant {
+  Invoice: read, write
+  Customer: read
+}
+
+rule InvoicePolicy for Invoice {
+  total required "Invoice total is required"
+  total >= 0 and exists(customer.name) -> SubmitInvoice;
+}
+
+llm LocalModel {
+  provider: ollama
+  mode: local
+  model: "qwen3.5-4b"
+}
+
+agent InvoiceAssistant {
+  provider: LocalModel
+  tools: read
+  Invoice: read
+  on Draft -> SubmitInvoice;
+  recommend Invoice -> SubmitInvoice;
+}
+
+pbc Billing {
+  owns: Invoice, Customer
+  contract InvoiceApi -> InvoiceApproved;
+  Invoice: read, write
+}
+
+composition EnterpriseSuite {
+  include pbc gl_core version 1.0.0
+  require database postgresql, mysql
+  expose endpoint InvoiceApi
+  connect Billing domain_event InvoiceApproved -> gl_core domain_event JournalPosted
+}
+
+audit FinancialAudit {
+  retention: P7Y
+  pii: masked
+}
+
+deploy Production {
+  unit Billing as microservice
+  scale Billing min 1 max 3
+  health Billing "/health"
+  check ready http "/ready"
+  resource cpu request 500
+  env DATABASE_URL APP_DATABASE_URL
+  restart Billing rolling
+}
+
+version Release2026 {
+  number: 1.0.0
+  channel: stable
+}
+
+operation SubmitInvoice {
+  draft -> posted;
+  on Approve -> InvoiceApproved;
+  emit InvoiceApproved -> JournalPosted;
+}
+
+security TenantSecurity {
+  Invoice: read, write
+  tenancy: org
+}
+
+api InvoiceApi {
+  on Create -> SubmitInvoice;
+  request Invoice -> InvoiceApproved;
+  Invoice: read, write
+}
+
+event InvoiceApproved {
+  payload Invoice -> JournalPosted;
+  topic: finance.invoice.approved
+}
+
+job ReconcileInvoices {
+  schedule daily -> SubmitInvoice;
+  cron: "0 2 * * *"
+}
+
+report TrialBalance {
+  source Invoice -> InvoiceApi;
+  columns: subtotal, tax, total
+}
+
+menu MainMenu {
+  on OpenInvoice -> SubmitInvoice;
+  item invoices -> InvoiceForm;
+}
+
+component MoneyInput {
+  on Change -> SubmitInvoice;
+  bind total -> Invoice;
+}
+
+package DesktopRelease {
+  target: desktop
+  splash: FinanceSplash
+  start_menu: MainMenu
+}
+
+test InvoiceHappyPath {
+  case happy -> passed;
+  expects: InvoiceApproved
+}
+""",
+    },
+    {
+        "name": "compact_contracts_valid.appgen",
+        "valid": True,
+        "constructs": (
+            "api",
+            "event",
+            "job",
+            "report",
+            "menu",
+            "component",
+            "package",
+            "test",
+            "handler",
+            "contract_arrow",
+            "agentic_option",
+            "permission",
+        ),
+        "source": """
+api CustomerApi { on Lookup -> CustomerFound; Customer: read }
+event CustomerFound { topic: crm.customer.found }
+job CustomerSync { run nightly -> CustomerFound }
+report CustomerList { source CustomerApi -> CustomerFound }
+menu CustomerMenu { item customers -> CustomerList }
+component CustomerLookup { on Select -> CustomerFound }
+package WebRelease { target: web }
+test CustomerLookupWorks { case lookup -> passed }
+""",
+    },
+    {
+        "name": "invalid_unbalanced_block.appgen",
+        "valid": False,
+        "constructs": ("syntax_error",),
+        "source": "app Broken { table Missing { id: int pk ",
+    },
+    {
+        "name": "invalid_table_component_placement.appgen",
+        "valid": False,
+        "constructs": ("table_item_error",),
+        "source": "table Bad { @ id Text 0 0 1 1 }",
+    },
+    {
+        "name": "invalid_view_missing_close.appgen",
+        "valid": False,
+        "constructs": ("view_error",),
+        "source": "view Bad for Invoice { Main: id",
+    },
+)
 DIAGNOSTIC_RANGES = (
     ("AGX0000-AGX0099", "Syntax and parser errors."),
     ("AGX0100-AGX0199", "Naming, duplicates, reserved words, and style."),

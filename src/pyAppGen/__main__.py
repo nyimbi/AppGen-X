@@ -23,6 +23,7 @@ _TOOLING_SUBCOMMANDS = {
     "pbc",
     "designer-sync",
     "diagnostics",
+    "parser-golden",
     "drift",
     "doctor",
 }

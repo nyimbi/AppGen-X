@@ -888,7 +888,7 @@ Tooling tests must be fixture-driven and deterministic.
 
 | Test Family | Required Coverage |
 | --- | --- |
-| Parser golden tests | Valid/invalid DSL examples for every grammar construct. |
+| Parser golden tests | Valid/invalid DSL examples for every grammar construct, enforced by `appgen parser-golden --json` and the `appgen.parser-golden-audit.v1` report. |
 | Semantic tests | Symbol table, lookup paths, handler targets, PBC catalog binding, workflows, packages, deployments. |
 | Diagnostic golden tests | Every diagnostic code has at least one fixture and expected JSON output. |
 | Formatter tests | Idempotency, comment preservation, modifier ordering, stable output. |
@@ -900,6 +900,23 @@ Tooling tests must be fixture-driven and deterministic.
 | Verifier tests | Web/mobile/desktop/PBC/deployment release evidence contracts. |
 | Drift tests | CLI, LSP, IDE, generator, and tests consume the same semantic model. |
 
+### Parser Golden Audit
+
+`appgen parser-golden --json` is the executable gate for grammar coverage. It is intentionally independent of project files: the command runs the checked-in golden fixture catalog and fails when any valid fixture stops parsing, any invalid fixture starts parsing, or any required grammar construct is not represented by a valid fixture.
+
+The report contract is `appgen.parser-golden-audit.v1`:
+
+- `ok`: true only when fixture outcomes and construct coverage pass;
+- `constructs_required`: the grammar surface the platform promises to keep covered;
+- `constructs_covered`: constructs proven by valid fixtures;
+- `missing_constructs`: constructs that need new valid examples before release;
+- `fixtures`: per-fixture parse outcome, validity expectation, construct tags, and syntax error text;
+- `blocking_gaps`: the exact fixture failures that should block CI.
+
+The required construct set includes application options, table fields, reusable field groups, spreads, derived fields, modifiers, relationships, relationship cardinality, table directives, enums, views, component placement, handlers, flows, workflow directives, roles, permissions, rules, rule expressions, LLM definitions, agents, PBCs, PBC composition include/require/expose/connect clauses, audit blocks, deployment units/scale/health/check/resource/env/directives, version blocks, operations, security, APIs, events, jobs, reports, menus, component contracts, packages, and tests.
+
+When a new keyword, block, nested item, or syntax form is added to `lang/appgen.g4`, the same change must add or extend a parser golden fixture before the grammar is considered release-ready. Diagnostic golden fixtures are still required for semantic behavior, but parser-golden fixtures prove that the grammar itself accepts and rejects the intended language forms.
+
 ## Implementation Phases
 
 ### Phase 0: Inventory And Stabilization
@@ -908,13 +925,16 @@ Tooling tests must be fixture-driven and deterministic.
   generator code.
 - Identify duplicate semantic logic.
 - Define JSON schemas for diagnostics and semantic model.
-- Add fixture directories for tooling tests.
+- Add fixture directories and built-in fixture catalogs for parser-golden,
+  diagnostic-golden, formatter, semantic drift, graph, migration, and verifier
+  tests.
 
 Exit criteria:
 
 - Current behavior documented.
 - No new generator behavior required.
-- Tooling fixtures can run in CI.
+- Tooling fixtures can run in CI, including `appgen parser-golden --json`,
+  `appgen diagnostics --audit-fixtures --json`, and `appgen drift <file> --json`.
 
 ### Phase 1: Shared Semantic Model MVP
 

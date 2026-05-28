@@ -15,6 +15,7 @@ from pyAppGen.dsl import lint_report_dsl
 from pyAppGen.dsl import lsp_service_dsl
 from pyAppGen.dsl import migration_plan_dsl
 from pyAppGen.dsl import nl_plan_dsl
+from pyAppGen.dsl import parser_golden_audit_dsl
 from pyAppGen.dsl import pbc_publish_report
 from pyAppGen.dsl import pbc_verifier_report
 from pyAppGen.dsl import release_verifier_report_dsl
@@ -777,6 +778,47 @@ def test_appgen_diagnostics_subcommand_emits_catalog_and_fixture_audit() -> None
     assert json.loads(audit_result.stdout)["format"] == "appgen.diagnostic-fixture-audit.v1"
 
 
+def test_parser_golden_audit_covers_required_grammar_constructs() -> None:
+    audit = parser_golden_audit_dsl()
+
+    assert audit["format"] == "appgen.parser-golden-audit.v1"
+    assert audit["ok"] is True
+    assert audit["missing_constructs"] == ()
+    assert audit["valid_fixture_count"] >= 1
+    assert audit["invalid_fixture_count"] >= 1
+    assert set(audit["constructs_required"]) <= set(audit["constructs_covered"])
+    assert {
+        "composition_connect",
+        "deploy_unit",
+        "llm",
+        "agent",
+        "package",
+        "test",
+    } <= set(audit["constructs_covered"])
+
+
+def test_appgen_parser_golden_subcommand_emits_json_and_text_contracts() -> None:
+    json_result = subprocess.run(
+        [sys.executable, "-m", "pyAppGen", "parser-golden", "--json"],
+        check=False,
+        cwd=Path(__file__).resolve().parents[1],
+        text=True,
+        capture_output=True,
+    )
+    text_result = subprocess.run(
+        [sys.executable, "-m", "pyAppGen", "parser-golden"],
+        check=False,
+        cwd=Path(__file__).resolve().parents[1],
+        text=True,
+        capture_output=True,
+    )
+
+    assert json_result.returncode == 0, json_result.stderr
+    assert text_result.returncode == 0, text_result.stderr
+    assert json.loads(json_result.stdout)["format"] == "appgen.parser-golden-audit.v1"
+    assert text_result.stdout.startswith("parser-golden ok:")
+
+
 def test_semantic_drift_audit_proves_tooling_surfaces_share_one_model() -> None:
     report = semantic_drift_audit_dsl(RELEASE_SAMPLE, source_name="release.appgen")
 
@@ -823,6 +865,7 @@ def test_doctor_report_checks_parser_catalog_generator_and_ide_hooks() -> None:
         "grammar_file",
         "generated_parser",
         "parser_sync",
+        "parser_golden_fixtures",
         "pbc_catalog",
         "template_writers",
         "generator_backends",
