@@ -1,418 +1,361 @@
-# Port Terminal Operations PBC Better-Than-World-Class Improvement Backlog
-
-## Purpose
-
-This file identifies, justifies, and describes 50 high-impact improvements for `port_terminal_operations`. The backlog is specific to vessel calls, berths, yard moves, containers, equipment, customs handoffs, and terminal productivity and is intended to move the PBC from release-auditable scaffolding toward complete, specialist-grade domain coverage.
+# Port Terminal Operations Improvement Backlog
 
 ## Current Domain Evidence Used
 
-- Stable PBC key: `port_terminal_operations`.
-- Domain purpose: Vessel calls, berths, yard moves, containers, equipment, customs handoffs, and terminal productivity.
-- Owned domain tables: `vessel_call`, `berth_plan`, `container_move`, `yard_slot`, `gate_transaction`, `terminal_equipment`, `customs_handoff`, `port_terminal_operations_policy_rule`, `port_terminal_operations_runtime_parameter`, `port_terminal_operations_schema_extension`, `port_terminal_operations_control_assertion`, `port_terminal_operations_governed_model`.
-- Public APIs: `POST /vessel-calls`, `POST /berth-plans`, `POST /container-moves`, `POST /yard-slots`, `POST /gate-transactions`, `GET /port-terminal-operations-workbench`.
-- Emitted AppGen-X events: `PortTerminalOperationsCreated`, `PortTerminalOperationsUpdated`, `PortTerminalOperationsApproved`, `PortTerminalOperationsExceptionOpened`.
-- Consumed AppGen-X events: `PolicyChanged`, `AuditEventSealed`, `OperationalKpiChanged`.
-- Current standard surfaces include: `vessel_call_management`, `port_terminal_operations_workflow`, `port_terminal_operations_analytics`, `configuration_schema`, `rule_engine`, `parameter_engine`, `owned_schema_migrations_models`, `appgen_x_outbox_inbox_eventing`, `idempotent_handlers`, `retry_dead_letter_evidence`.
-- Current advanced surfaces include: `port_terminal_operations_event_sourced_operational_history`, `port_terminal_operations_multi_tenant_policy_isolation`, `port_terminal_operations_schema_evolution_resilience`, `port_terminal_operations_autonomous_anomaly_detection`, `port_terminal_operations_semantic_document_instruction_understanding`, `port_terminal_operations_predictive_risk_scoring`, `port_terminal_operations_counterfactual_scenario_simulation`, `port_terminal_operations_cryptographic_audit_proofs`.
+- PBC key: `port_terminal_operations`.
+- Manifest description: vessel calls, berths, yard moves, containers, equipment, customs handoffs, and terminal productivity.
+- Current tables: `vessel_call`, `berth_plan`, `container_move`, `yard_slot`, `gate_transaction`, `terminal_equipment`, `customs_handoff`, `port_terminal_operations_policy_rule`, `port_terminal_operations_runtime_parameter`, `port_terminal_operations_schema_extension`, `port_terminal_operations_control_assertion`, `port_terminal_operations_governed_model`.
+- Current APIs: `POST /vessel-calls`, `POST /berth-plans`, `POST /container-moves`, `POST /yard-slots`, `POST /gate-transactions`, `GET /port-terminal-operations-workbench`.
+- Current emitted events: `PortTerminalOperationsCreated`, `PortTerminalOperationsUpdated`, `PortTerminalOperationsApproved`, `PortTerminalOperationsExceptionOpened`.
+- Current consumed events: `PolicyChanged`, `AuditEventSealed`, `OperationalKpiChanged`.
+- Current workflows and UI fragments: `port_terminal_operations_create_vessel_call_workflow`, `port_terminal_operations_record_berth_plan_workflow`, `PortTerminalOperationsWorkbench`, `PortTerminalOperationsDetail`, `PortTerminalOperationsAssistantPanel`.
 
-## 50 High-Impact Improvements
+### 1. Vessel ETA Confidence and Berth Nomination
+**Justification:** Berth planning fails early when ETA changes arrive as free text and the terminal cannot distinguish a stable arrival forecast from a speculative line update.
 
-### 1. Canonical lifecycle state model for Vessel Call
+**Improvement:** Add a vessel-arrival model that stores last advised ETA, pilot-ready ETA, tide-feasible ETA, and confidence band, then requires berth nominations to carry source, update time, and revision reason before they can influence quay plans.
 
-**Justification:** This closes shallow CRUD gaps by making every port terminal operations transition explainable and testable instead of implicit in free-form status values.
+**Acceptance evidence:** A berth nomination record shows ETA revisions with source lineage, conflict flags when confidence drops below threshold, and tests cover early arrival, late arrival, and repeated ETA churn.
 
-**Improvement:** Define a complete state machine for `vessel_call` with explicit draft, validated, blocked, approved, active, suspended, corrected, closed, archived, and reopened states. Tie the behavior to `port_terminal_operations_create_vessel_call_workflow` where applicable, and make it visible in `PortTerminalOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+### 2. Berth Window Conflict Resolution
+**Justification:** Two vessels can appear schedulable on paper while still conflicting on LOA, beam, draft, bollard reach, tidal window, or adjacent-crane envelope.
 
-**Acceptance evidence:** State-transition tests, invalid-transition fixtures, workbench state badges, and emitted AppGen-X transition events for PortTerminalOperationsCreated, PortTerminalOperationsUpdated, PortTerminalOperationsApproved. The evidence should be package-local in `src/pyAppGen/pbcs/port_terminal_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Improvement:** Extend berth planning to evaluate berth windows against vessel dimensions, tide constraints, neighboring vessel interference, and marine service availability before a berth plan is accepted.
 
-### 2. Domain intake and normalization for Berth Plan
+**Acceptance evidence:** Simulation fixtures prove the plan rejects impossible overlaps, explains the blocking constraint, and offers the next feasible berth window or alternate berth.
 
-**Justification:** The PBC cannot reach complete domain coverage unless it handles the messy front door of vessel calls, berths, yard moves, containers, equipment, customs handoffs, and terminal productivity, not only already-clean records.
+### 3. Berth Readiness Checklist
+**Justification:** A vessel marked "alongside" without readiness evidence hides missing pilotage, tug confirmation, gang assignment, customs pre-clearance, or crane availability.
 
-**Improvement:** Build a typed intake pipeline for `berth_plan` that accepts structured API payloads, document-derived instructions, batch loads, and assistant-generated drafts while normalizing identifiers, dates, units, parties, and jurisdictional context. Tie the behavior to `port_terminal_operations_record_berth_plan_workflow` where applicable, and make it visible in `PortTerminalOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Introduce a berth-readiness checklist that gates berthing on marine services, labor shift coverage, crane allocation, yard receiving space, and customs status for the intended move profile.
 
-**Acceptance evidence:** Golden intake fixtures, rejected-record queues, field-level normalization evidence, and assistant previews before governed datastore mutation. The evidence should be package-local in `src/pyAppGen/pbcs/port_terminal_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** A vessel cannot transition to ready-to-berth without all checklist items resolved, blocked items surface on the workbench, and audit history shows who cleared each dependency.
 
-### 3. Specialist validation rules for Container Move
+### 4. Quay Crane Assignment by Bay Plan
+**Justification:** Terminal productivity drops when crane allocation is disconnected from hatch distribution, move density, twin-lift eligibility, and crane travel interference.
 
-**Justification:** World-class Port Terminal Operations requires rules that domain experts can reason about, version, test, and roll back without code edits.
+**Improvement:** Model quay crane assignment per vessel call using bay-level move counts, hatch grouping, crane split zones, crane crossing restrictions, and crane travel time between assigned spans.
 
-**Improvement:** Add a domain rule compiler for `container_move` that supports threshold rules, eligibility rules, dependency rules, temporal windows, conflicting-instruction detection, and override justification. Tie the behavior to `port_terminal_operations_create_vessel_call_workflow` where applicable, and make it visible in `PortTerminalOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** The berth plan shows crane-to-bay assignments, warns on crane crossing conflicts, and replay tests confirm reassignment after crane outage or late vessel shift.
 
-**Acceptance evidence:** Rule simulation tests, versioned rule manifests, rule impact reports, and UI rule editors linked to `PORT_TERMINAL_OPERATIONS_DATABASE_URL, PORT_TERMINAL_OPERATIONS_EVENT_TOPIC, PORT_TERMINAL_OPERATIONS_RETRY_LIMIT`. The evidence should be package-local in `src/pyAppGen/pbcs/port_terminal_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 5. Crane Intensity and Shift Alignment
+**Justification:** A crane plan is not operational if it ignores gang start times, meal breaks, maintenance windows, and night-shift labor limits.
 
-### 4. Parameter governance and tuning for Yard Slot
+**Improvement:** Add crane intensity planning that aligns planned gross moves per hour with labor rosters, maintenance windows, and approved work-hour limits, then throttles the plan when staffing cannot support the requested intensity.
 
-**Justification:** Parameters are where operations teams tune port terminal operations; unbounded constants would make the PBC brittle and unsafe in real deployments.
+**Acceptance evidence:** Shift-aware crane plans show planned versus feasible intensity, reject unsupported peaks, and produce evidence for supervisor override when temporary extra gangs are approved.
 
-**Improvement:** Expose bounded runtime parameters for `yard_slot` covering risk thresholds, SLA windows, confidence floors, escalation cutoffs, batch sizes, retry limits, and human-confirmation requirements. Tie the behavior to `port_terminal_operations_record_berth_plan_workflow` where applicable, and make it visible in `PortTerminalOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+### 6. Bay Sequence and Hatch Cover Dependencies
+**Justification:** Move instructions that ignore hatch cover sequencing and lashing release create unsafe crane time assumptions and avoidable delays.
 
-**Acceptance evidence:** Parameter schema validation, tenant overrides, approval history, rollback controls, and workbench diff views. The evidence should be package-local in `src/pyAppGen/pbcs/port_terminal_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Improvement:** Track bay sequence dependencies, including hatch cover open and close order, lashing status, and bay access readiness, so crane schedules only expose executable move sets.
 
-### 5. Deep owned schema expansion for Gate Transaction
+**Acceptance evidence:** Vessel work plans block moves behind unopened hatches, record lashing completion events, and highlight downstream delay if hatch cover handling slips.
 
-**Justification:** A single payload column cannot express the full surface of vessel calls, berths, yard moves, containers, equipment, customs handoffs, and terminal productivity or prove cross-PBC boundaries are respected.
+### 7. Restow Control and Avoidable Rehandles
+**Justification:** Restows consume crane time and berth window capacity, yet many are preventable when stow mismatches are detected before discharge starts.
 
-**Improvement:** Extend the owned schema around `gate_transaction` with normalized child tables for line-level evidence, party roles, approvals, attachments, comments, metrics, exception reasons, and control assertions. Tie the behavior to `port_terminal_operations_create_vessel_call_workflow` where applicable, and make it visible in `PortTerminalOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Flag planned and emerging restows by comparing expected discharge and load sequence against bay stack geometry, destination mix, and container priority, then surface a "preventable restow" queue.
 
-**Acceptance evidence:** Migrations, models, relationship tests, schema contract snapshots, and no shared-table access outside the `port_terminal_operations_` namespace. The evidence should be package-local in `src/pyAppGen/pbcs/port_terminal_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** The system quantifies planned restows by vessel call, records operator justification for accepted restows, and shows reduced avoidable restow count after corrective sequencing.
 
-### 6. Event-sourced operational history for Terminal Equipment
+### 8. Container Move Instruction Lifecycle
+**Justification:** Container work becomes irreconcilable when a move can jump from request to completion without visible dispatch, acknowledgment, execution, and exception states.
 
-**Justification:** Temporal reconstruction is essential for better-than-world-class auditability and dispute resolution in port terminal operations.
+**Improvement:** Give each container move a lifecycle of planned, dispatched, accepted, in-progress, completed, reversed, canceled, or exception, with actor, equipment, location, and timestamp captured at each transition.
 
-**Improvement:** Capture every material mutation of `terminal_equipment` as immutable AppGen-X events with actor, tenant, command, policy version, idempotency key, before/after summary, and projection checkpoint. Tie the behavior to `port_terminal_operations_record_berth_plan_workflow` where applicable, and make it visible in `PortTerminalOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Move history for a single box reconstructs who instructed, who executed, what equipment was used, and why a reversal or cancellation occurred.
 
-**Acceptance evidence:** Replay tests, projection checksums, event ordering evidence, and point-in-time workbench views. The evidence should be package-local in `src/pyAppGen/pbcs/port_terminal_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 9. Twin-Lift, Tandem, and Dual-Cycle Eligibility
+**Justification:** Crane productivity assumptions are misleading if high-productivity move modes are planned on boxes, bays, or cargo mixes that cannot support them.
 
-### 7. Projection and read-model strategy for Customs Handoff
+**Improvement:** Encode eligibility rules for twin-lift, tandem lift, and dual-cycle operations based on container size mix, weight spread, dangerous-goods restrictions, and vessel bay geometry.
 
-**Justification:** The workbench should not force users to infer domain truth from raw tables; each projection should answer a real operating question.
+**Acceptance evidence:** Productivity models show when advanced lift modes are permitted, exceptions explain the disqualifying factor, and crane plans recalculate when lift mode eligibility changes.
 
-**Improvement:** Create purpose-built projections for `customs_handoff`: operational queue, executive KPI rollup, exception aging, compliance evidence, agent task context, and external dependency health. Tie the behavior to `port_terminal_operations_create_vessel_call_workflow` where applicable, and make it visible in `PortTerminalOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+### 10. Yard Block Allocation by Flow
+**Justification:** Yard congestion rises when import, export, transshipment, hazardous, empty, reefer, and customs-held containers compete for the same blocks without policy.
 
-**Acceptance evidence:** Projection contracts, freshness SLAs, backfill tests, and visible stale-projection warnings. The evidence should be package-local in `src/pyAppGen/pbcs/port_terminal_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Improvement:** Introduce yard planning rules that allocate blocks by cargo flow, onward mode, service string, destination cluster, and special handling class, then protect reserved capacity for imminent vessel work.
 
-### 8. Exception taxonomy and remediation for Port Terminal Operations Policy Rule
+**Acceptance evidence:** Yard-slot projections show reserved versus consumed capacity by flow type, and tests cover high-import surge, export stack buildup, and transshipment peaking.
 
-**Justification:** High-value PBCs win on exception throughput; generic “failed” states hide the details operators need.
+### 11. Rehandle Hotspot Prediction
+**Justification:** The terminal usually knows where unproductive rehandles will occur before the yard reaches crisis state, but that signal is lost without stack-level forecasting.
 
-**Improvement:** Model the full exception taxonomy for `port_terminal_operations_policy_rule`, including severity, root cause, blocking dependency, remediation owner, due date, retry eligibility, escalation path, and closure evidence. Tie the behavior to `port_terminal_operations_record_berth_plan_workflow` where applicable, and make it visible in `PortTerminalOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Score yard slots for rehandle risk using stack height, due time, box priority, truck appointment demand, vessel cut-off, and expected crane feeding sequence.
 
-**Acceptance evidence:** Exception queues, aging metrics, remediation playbooks, dead-letter linkage, and closure test fixtures for weather or traffic disruption. The evidence should be package-local in `src/pyAppGen/pbcs/port_terminal_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** The workbench highlights hotspot stacks before the shift starts, planners can compare proposed relocations, and actual rehandle counts are tracked against forecast.
 
-### 9. Predictive risk scoring for Port Terminal Operations Runtime Parameter
+### 12. Stack Discipline for Weight and Segregation
+**Justification:** Unsafe stacks arise when heavy-over-light, hazardous segregation, OOG placement, and line-specific placement rules are enforced only through local memory.
 
-**Justification:** The package should warn users before port terminal operations work fails, breaches policy, or creates downstream cost.
+**Improvement:** Add yard-slot validation for stack weight ordering, dangerous-goods segregation, out-of-gauge geometry, line allocation, and reefer plug proximity before a move is accepted.
 
-**Improvement:** Add predictive risk scoring for `port_terminal_operations_runtime_parameter` using domain features from owned tables, consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, rule outcomes, aging, anomaly signals, and historical corrections. Tie the behavior to `port_terminal_operations_create_vessel_call_workflow` where applicable, and make it visible in `PortTerminalOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Invalid stack placements are blocked with a domain reason, exception overrides require named approval, and tests prove segregation rules across neighboring slots.
 
-**Acceptance evidence:** Feature manifests, score explanations, calibration reports, drift alerts, and tests for low/medium/high-risk scenarios. The evidence should be package-local in `src/pyAppGen/pbcs/port_terminal_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 13. Misposition and Lost-Box Search
+**Justification:** A container marked present but not found in the expected slot disrupts vessel work, gate release, and customs inspection queues.
 
-### 10. Counterfactual simulation for Port Terminal Operations Schema Extension
+**Improvement:** Build a misposition workflow that triangulates last confirmed move, equipment breadcrumb, OCR sightings, neighboring slot anomalies, and manual search results to locate missing containers fast.
 
-**Justification:** Advanced users need to ask “what would happen if” before committing changes to live vessel calls, berths, yard moves, containers, equipment, customs handoffs, and terminal productivity operations.
+**Acceptance evidence:** Search cases retain search trail evidence, candidate locations are ranked, and closure requires either physical confirmation or a reconciled correction move.
 
-**Improvement:** Provide scenario simulation for `port_terminal_operations_schema_extension`: policy change, capacity constraint, deadline shift, price/rate change, eligibility change, disruption, and manual override outcomes. Tie the behavior to `port_terminal_operations_record_berth_plan_workflow` where applicable, and make it visible in `PortTerminalOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+### 14. Gate Appointment Capacity by Hour and Lane
+**Justification:** Gate congestion is created upstream when appointment limits ignore lane count, clerk staffing, OCR uptime, and yard receiving capacity.
 
-**Acceptance evidence:** Simulation APIs, non-mutating sandbox state, comparison reports, and workbench side-by-side scenario panels. The evidence should be package-local in `src/pyAppGen/pbcs/port_terminal_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Improvement:** Support hourly appointment quotas by gate lane, transaction type, trucking segment, and yard destination so import pickup, export drop-off, empty return, and reefer service flows can be shaped independently.
 
-### 11. Autonomous anomaly triage for Port Terminal Operations Control Assertion
+**Acceptance evidence:** Appointment calendars show remaining capacity by hour, overbooking rules are explicit, and turn-time results improve after quota adjustments.
 
-**Justification:** A world-class PBC should reduce analyst burden without hiding the reasoning behind automated triage.
+### 15. Truck Turn-Time Exception Loop
+**Justification:** Median turn time hides the operational causes of failure such as missing release, OCR mismatch, no booking, late customs hold, or yard retrieval delay.
 
-**Improvement:** Implement anomaly detection for `port_terminal_operations_control_assertion` that identifies outliers, duplicate submissions, impossible sequences, stale dependencies, unusual amounts/counts/durations, and contradictory fields. Tie the behavior to `port_terminal_operations_create_vessel_call_workflow` where applicable, and make it visible in `PortTerminalOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add an exception loop for gate transactions that classifies delay cause at entry, processing, yard handoff, and exit, then routes the case to the owning team with a due clock.
 
-**Acceptance evidence:** Explainable anomaly cards, reviewer feedback loops, false-positive tracking, and suppression governance. The evidence should be package-local in `src/pyAppGen/pbcs/port_terminal_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Gate dashboards break down turn-time loss by cause code, each long-turn case shows routed ownership, and repeat causes are traceable to equipment, appointment, or release failures.
 
-### 12. Semantic document understanding for Port Terminal Operations Governed Model
+### 16. Empty Pickup and Return Balancing
+**Justification:** Empty inventory can consume prime gate and yard capacity when release orders, depot allocations, and line return windows are handled outside the core operating model.
 
-**Justification:** Document-heavy work in Port Terminal Operations cannot be complete if the assistant only answers questions and cannot prepare accurate governed changes.
+**Improvement:** Add empty-container policies for pickup and return that consider line ownership, depot target, gate slot pressure, yard dwell, and reposition priorities.
 
-**Improvement:** Train the package assistant to parse domain documents and instructions for `port_terminal_operations_governed_model`, extract obligations, dates, parties, quantities, identifiers, and exceptions, then map them to safe draft mutations. Tie the behavior to `port_terminal_operations_record_berth_plan_workflow` where applicable, and make it visible in `PortTerminalOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Empty stock by line and depot is visible, invalid returns are blocked before gate arrival, and planners can see the impact of changing return instructions.
 
-**Acceptance evidence:** Document extraction tests, confidence thresholds, redaction handling, source span citations, and human confirmation workflows. The evidence should be package-local in `src/pyAppGen/pbcs/port_terminal_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 17. Customs Boundary Release Gating
+**Justification:** A box should not flow from terminal custody to truck or vessel if the customs boundary is represented only as a note or offline email.
 
-### 13. Agent-safe CRUD execution for Vessel Call
+**Improvement:** Model customs release as a first-class gate on container and gate workflows, with release state, inspection requirement, scan result, and expiry timestamp carried into move and gate decisions.
 
-**Justification:** The PBC agent must be a first-class operator but never a hidden bypass around RBAC, rules, or owned datastore boundaries.
+**Acceptance evidence:** Containers under customs restriction cannot be dispatched or gated out, release expiry is enforced, and every release decision retains source message evidence.
 
-**Improvement:** Add a professional chatbot skill for `vessel_call` that can create, update, correct, close, and annotate records only through policy-checked commands, approval gates, and previewed diffs. Tie the behavior to `port_terminal_operations_create_vessel_call_workflow` where applicable, and make it visible in `PortTerminalOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+### 18. Hold Taxonomy and Precedence Rules
+**Justification:** Operations teams lose time when "on hold" does not distinguish line hold, customs hold, terminal safety hold, documentation hold, or reefer technical hold.
 
-**Acceptance evidence:** Skill manifests, permission tests, preview/confirm flows, blocked-action evidence, and audit events for every assistant mutation. The evidence should be package-local in `src/pyAppGen/pbcs/port_terminal_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Improvement:** Create a hold model with type, issuer, effective time, expiry rule, precedence, override authority, and operational impact so multiple holds can coexist without ambiguity.
 
-### 14. Workbench persona coverage for Berth Plan
+**Acceptance evidence:** A container or vessel view shows all active holds in precedence order, actions are blocked according to the highest-precedence hold, and release history shows which hold was cleared.
 
-**Justification:** A generic detail page underserves the domain; each role needs the exact controls and evidence they use daily.
+### 19. Customs Exam and Scan Routing
+**Justification:** Inspection flow breaks down when exam yard staging, scanner queueing, and return-to-stack instructions are tracked outside the move lifecycle.
 
-**Improvement:** Design dedicated workbench panels for `berth_plan`: operator queue, supervisor approvals, analyst exceptions, auditor evidence, configuration owner, and agent-assistance review. Tie the behavior to `port_terminal_operations_record_berth_plan_workflow` where applicable, and make it visible in `PortTerminalOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add customs exam routing that reserves staging positions, scan appointments, escort steps, and return instructions, with explicit ownership for failed scan, missed exam, or non-intrusive inspection retry.
 
-**Acceptance evidence:** UI contract entries, route tests, empty/error/loading states, and permission-aware action availability. The evidence should be package-local in `src/pyAppGen/pbcs/port_terminal_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Exam cases show current stage, next appointment, and return path, and missed inspection windows produce recoverable exceptions rather than silent dwell growth.
 
-### 15. Cross-PBC dependency contracts for Container Move
+### 20. Dangerous Goods Segregation and IMDG Checks
+**Justification:** Dangerous-goods safety cannot rely on manual memory when stack neighbors, vessel stow plans, and gate acceptance decisions all depend on the same classification logic.
 
-**Justification:** Composable packages fail when hidden table coupling enters the domain model.
+**Improvement:** Enforce IMDG-aware rules across yard slots, gate acceptance, vessel loading, and reefer plug allocation, including class, subsidiary risk, flashpoint, segregation group, and documentation completeness.
 
-**Improvement:** Represent dependencies for `container_move` through declared APIs, consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, and projections rather than shared tables, with explicit freshness, ownership, and fallback behavior. Tie the behavior to `port_terminal_operations_create_vessel_call_workflow` where applicable, and make it visible in `PortTerminalOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** DG validation blocks unsafe adjacency, vessel load plans flag incompatible neighbors, and the audit trail shows the exact DG rule that drove the decision.
 
-**Acceptance evidence:** Dependency manifests, contract tests, stale dependency alerts, and no foreign-table references in generated artifacts. The evidence should be package-local in `src/pyAppGen/pbcs/port_terminal_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 21. Reefer Plug Allocation
+**Justification:** Reefer service failures start when the terminal treats plug points as generic yard capacity instead of a monitored, constrained resource.
 
-### 16. API completeness and versioning for Yard Slot
+**Improvement:** Track reefer sockets, power status, cable reach, genset dependency, and priority class, then reserve plug positions based on arrival pattern, dwell risk, and vessel cut-off.
 
-**Justification:** Complete domain coverage requires both command and query surfaces, not only happy-path create endpoints.
+**Acceptance evidence:** The yard plan shows plug occupancy and reserve margin, reefer moves cannot target unpowered slots, and allocation tests cover import surge and transshipment reefers.
 
-**Improvement:** Expand APIs beyond POST /vessel-calls, POST /berth-plans, POST /container-moves to cover search, validation-only commands, simulation, bulk intake, exception closure, evidence export, projection reads, and idempotent corrections. Tie the behavior to `port_terminal_operations_record_berth_plan_workflow` where applicable, and make it visible in `PortTerminalOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+### 22. Reefer Temperature and Power Excursion Workflow
+**Justification:** A reefer alarm is only useful if it drives timely action before cargo quality is at risk or release is blocked.
 
-**Acceptance evidence:** OpenAPI-style route manifests, backward-compatible version tests, deprecation metadata, and idempotency assertions. The evidence should be package-local in `src/pyAppGen/pbcs/port_terminal_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Improvement:** Add a reefer-monitoring workflow for temperature deviation, power loss, unplug event, and manual inspection result, with escalation rules by commodity sensitivity and remaining tolerance window.
 
-### 17. Typed emitted-event expansion for Gate Transaction
+**Acceptance evidence:** Every reefer alarm opens a timed case, inspection notes and corrective actions are linked to the container, and unresolved power loss remains visible until closure.
 
-**Justification:** Consumers should understand what happened in Port Terminal Operations without parsing opaque payloads.
+### 23. Demurrage and Dwell-Risk Watchlist
+**Justification:** Dwell pain is often predictable from holds, missing documents, customs exam backlog, and failed appointments before invoices or complaints arrive.
 
-**Improvement:** Replace generic lifecycle emissions with typed events for each meaningful `gate_transaction` transition, exception, approval, correction, simulation result, and downstream handoff. Tie the behavior to `port_terminal_operations_create_vessel_call_workflow` where applicable, and make it visible in `PortTerminalOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Build a dwell-risk watchlist that scores containers by free-time expiry, hold status, customs stage, appointment availability, line release, and storage location accessibility.
 
-**Acceptance evidence:** Event schema tests, event examples, compatibility checks, and emitted-event coverage in release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/port_terminal_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** The workbench ranks at-risk boxes by hours remaining, planners can filter by root cause, and historical evidence shows whether intervention reduced late pickups.
 
-### 18. Consumed-event handlers for Terminal Equipment
+### 24. Free-Time Exception Evidence
+**Justification:** Waivers and storage disputes become unresolvable when free-time adjustments are not tied to named causes and terminal evidence.
 
-**Justification:** A PBC is composable only when incoming events affect its own domain state predictably and safely.
+**Improvement:** Record demurrage and storage exception grounds such as customs stop, system outage, weather closure, terminal-caused misposition, or reefer technical issue, then attach supporting event and approval evidence.
 
-**Improvement:** Implement idempotent handlers for consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged that update projections, open dependency exceptions, recalculate risk, and preserve source event lineage. Tie the behavior to `port_terminal_operations_record_berth_plan_workflow` where applicable, and make it visible in `PortTerminalOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Every free-time adjustment shows cause, approver, time range, and supporting event references, and exportable evidence exists for dispute handling.
 
-**Acceptance evidence:** Duplicate-event tests, handler side-effect boundaries, dead-letter fixtures, and lineage links back to source events. The evidence should be package-local in `src/pyAppGen/pbcs/port_terminal_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 25. Transshipment Connection Protection
+**Justification:** Transshipment promises fail when incoming vessel delay, yard position, and outgoing cut-off are not evaluated together.
 
-### 19. Retry and dead-letter operations for Customs Handoff
+**Improvement:** Add transshipment protection logic that pairs inbound ETA confidence, discharge sequence, yard transfer path, and outbound load cut-off to identify boxes likely to miss the connection.
 
-**Justification:** Dead letters are not just plumbing; they are domain work queues that can block vessel calls, berths, yard moves, containers, equipment, customs handoffs, and terminal productivity.
+**Acceptance evidence:** At-risk transshipment boxes are visible before discharge completes, the system recommends rescue moves or roll decisions, and completed cases show saved versus missed connections.
 
-**Improvement:** Create operational tools for retrying, quarantining, explaining, and resolving dead-lettered `customs_handoff` events with max-attempt policy, poison-message detection, and replay safety. Tie the behavior to `port_terminal_operations_create_vessel_call_workflow` where applicable, and make it visible in `PortTerminalOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+### 26. Intermodal Cut-Off Coordination
+**Justification:** Port terminals often hand cargo to rail, barge, and truck legs that each have different closure times and staging needs.
 
-**Acceptance evidence:** Dead-letter workbench, retry eligibility tests, replay audit proof, and operator action logs. The evidence should be package-local in `src/pyAppGen/pbcs/port_terminal_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Improvement:** Track onward-mode cut-offs, transfer staging, documentation readiness, and late-gate tolerances so the yard plan and gate appointment logic can respect downstream departure windows.
 
-### 20. RBAC and attribute policy for Port Terminal Operations Policy Rule
+**Acceptance evidence:** A container view shows the active onward-mode deadline, missed cut-offs produce explicit exceptions, and planners can see cutoff breaches by mode and carrier.
 
-**Justification:** High-impact domain operations need finer controls than generic RBAC grants.
+### 27. Marine Services Dependency Board
+**Justification:** Berth plans are operationally incomplete when tug, pilot, mooring crew, and launch availability sit outside the same exception surface as vessel work.
 
-**Improvement:** Extend permissions for `port_terminal_operations_policy_rule` from coarse read/create/update/admin to action-level and attribute-aware policies based on role, tenant, jurisdiction, monetary/materiality threshold, and exception severity. Tie the behavior to `port_terminal_operations_record_berth_plan_workflow` where applicable, and make it visible in `PortTerminalOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add marine-services dependencies to vessel calls, including requested service time, confirmed service time, provider acknowledgment, and slippage reason, then feed that into berth and sailing readiness.
 
-**Acceptance evidence:** Permission matrix docs, ABAC policy tests, denied-action UI states, and assistant skill permission checks. The evidence should be package-local in `src/pyAppGen/pbcs/port_terminal_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Vessel calls display dependency readiness at a glance, missed marine service slots automatically threaten the berth window, and replans are logged with cause.
 
-### 21. Continuous control testing for Port Terminal Operations Runtime Parameter
+### 28. Equipment Health and Fallback Dispatch
+**Justification:** Yard and quay plans degrade quickly if RTGs, RMGs, terminal tractors, top handlers, and reach stackers are assumed healthy until they fail.
 
-**Justification:** Controls should run during operations, not only during release audit or manual review.
+**Improvement:** Extend terminal-equipment records with operating state, fault category, maintenance hold, battery or fuel state, and fallback equipment pool so dispatch can reassign work before queues collapse.
 
-**Improvement:** Embed control assertions for `port_terminal_operations_runtime_parameter` that continuously test segregation of duties, required approvals, stale exceptions, policy drift, duplicate records, and boundary violations. Tie the behavior to `port_terminal_operations_create_vessel_call_workflow` where applicable, and make it visible in `PortTerminalOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Equipment outages trigger task rerouting, planners can see the productivity hit of each outage, and dispatch history shows which moves were reassigned.
 
-**Acceptance evidence:** Control dashboards, failing-control events, test fixtures, and release evidence tied to `port_terminal_operations_control_assertion` records. The evidence should be package-local in `src/pyAppGen/pbcs/port_terminal_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 29. Vessel Work Completion Reconciliation
+**Justification:** A vessel should not sail on the strength of move counts alone when unlanded boxes, short-shipped exports, and late bay corrections may still exist.
 
-### 22. Cryptographic audit proofing for Port Terminal Operations Schema Extension
+**Improvement:** Reconcile actual discharge and load execution against planned move lists, bay completion, hatch closure, and final stow confirmation before the vessel call can close.
 
-**Justification:** Better-than-world-class auditability requires proof of integrity, not merely logs stored in mutable tables.
+**Acceptance evidence:** Closure requires zero unresolved move discrepancies or approved exceptions, and the final reconciliation report shows shortages, overages, and corrected last-minute changes.
 
-**Improvement:** Hash-chain material `port_terminal_operations_schema_extension` decisions, documents, emitted events, and release-evidence snapshots to make tampering visible without exposing sensitive payloads. Tie the behavior to `port_terminal_operations_record_berth_plan_workflow` where applicable, and make it visible in `PortTerminalOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+### 30. EDI Ingest for Vessel and Container Messages
+**Justification:** Port operations depend on external messages, and poor normalization of line and vessel EDI creates repeated manual repair work.
 
-**Acceptance evidence:** Proof manifests, verification APIs, redacted proof exports, and audit-ledger handoff events. The evidence should be package-local in `src/pyAppGen/pbcs/port_terminal_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Improvement:** Add structured ingest and validation for operational messages such as BAPLIE, MOVINS, CODECO, COARRI, and COPARN, mapping them to vessel call, move, gate, and customs-release workflows with source retention.
 
-### 23. Privacy, consent, and secrecy controls for Port Terminal Operations Control Assertion
+**Acceptance evidence:** Each inbound message can be replayed idempotently, parser rejects are explainable at segment level, and normalized events retain original message identifiers.
 
-**Justification:** Complete domain coverage must account for protected data and restricted operational evidence.
+### 31. Operational Event Timestamp Fidelity
+**Justification:** Sequence disputes arise when the system cannot distinguish event occurrence time, device capture time, ingest time, and correction time.
 
-**Improvement:** Add field-level privacy classifications for `port_terminal_operations_control_assertion`, consent checks, masking rules, retention schedules, legal holds, and assistant redaction policies. Tie the behavior to `port_terminal_operations_create_vessel_call_workflow` where applicable, and make it visible in `PortTerminalOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Store multi-clock timestamps for gate, move, reefer, customs, and crane events, then use an explicit ordering policy for projections and audit reconstruction.
 
-**Acceptance evidence:** Retention tests, masked UI snapshots, consent-blocked mutation fixtures, and export controls. The evidence should be package-local in `src/pyAppGen/pbcs/port_terminal_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Event views show all relevant timestamps, replay logic remains deterministic with late-arriving messages, and audit exports explain why a corrected event was reordered.
 
-### 24. Multi-tenant operating model for Port Terminal Operations Governed Model
+### 32. Idempotent Replay and Late-Message Handling
+**Justification:** External line, customs, and gate systems will resend or delay messages; without replay discipline, the terminal creates phantom moves and duplicate releases.
 
-**Justification:** The PBC should scale across organizations while preserving independent policy and compliance boundaries.
+**Improvement:** Add idempotency keys and late-message policies for all inbound operational events so duplicates are suppressed, superseded messages are tracked, and harmless replays can rebuild projections safely.
 
-**Improvement:** Support tenant-specific `port_terminal_operations_governed_model` rules, data residency, encryption context, configuration, seed data, and release evidence without allowing cross-tenant leakage. Tie the behavior to `port_terminal_operations_record_berth_plan_workflow` where applicable, and make it visible in `PortTerminalOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Duplicate message tests do not create extra work, stale messages are quarantined with reason, and replay from a known checkpoint reproduces the same operational state.
 
-**Acceptance evidence:** Tenant isolation tests, tenant-scoped parameters, key-rotation evidence, and cross-tenant negative fixtures. The evidence should be package-local in `src/pyAppGen/pbcs/port_terminal_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 33. Customs Handoff Audit Chain
+**Justification:** Customs handoff is the legal boundary between cargo restriction and permitted flow, so every state change must be provable after the fact.
 
-### 25. Schema evolution and extension registry for Vessel Call
+**Improvement:** Expand customs handoff records with request, response, officer or system source, document reference, validity period, and linked container actions that were enabled or blocked by that handoff.
 
-**Justification:** Domain teams will add fields; the PBC must evolve without breaking APIs, events, or workbench projections.
+**Acceptance evidence:** A single customs case can be reconstructed end to end, from request to release or rejection, and container actions cite the governing customs decision.
 
-**Improvement:** Make schema extensions for `vessel_call` first-class with compatibility checks, migration previews, projection backfills, field ownership, and rollback metadata. Tie the behavior to `port_terminal_operations_create_vessel_call_workflow` where applicable, and make it visible in `PortTerminalOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+### 34. Live Berth, Yard, and Gate Workbench
+**Justification:** Operators need one operating picture that connects quay work, yard pressure, and gate demand rather than three disconnected status pages.
 
-**Acceptance evidence:** Extension registry UI, compatibility tests, migration dry-runs, and backfill release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/port_terminal_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Improvement:** Redesign the workbench into synchronized berth, yard, and gate boards with shared filters for vessel, service, container, block, gate lane, hold type, and exception owner.
 
-### 26. Master data quality gates for Berth Plan
+**Acceptance evidence:** Filters applied on one board propagate to the others, drill-through preserves context, and operators can move from vessel delay to affected yard and gate impacts in one flow.
 
-**Justification:** Many port terminal operations errors begin as bad reference data; the PBC should catch them before workflow execution.
+### 35. Yard Visual Heatmap and Stack Profile UI
+**Justification:** Yard planners need spatial visibility into congestion, reefer density, DG clustering, and rehandle hotspots that cannot be inferred from flat tables.
 
-**Improvement:** Define reference-data contracts for `berth_plan`: canonical codes, parties, locations, classifications, calendars, units, currencies, products, assets, or service categories as relevant to the domain. Tie the behavior to `port_terminal_operations_record_berth_plan_workflow` where applicable, and make it visible in `PortTerminalOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add a yard heatmap that shows occupancy, dwell pressure, plug usage, DG concentration, and predicted rehandle risk, with stack profiles visible at block, row, bay, and tier level.
 
-**Acceptance evidence:** Reference validation fixtures, stale-code warnings, mapping tables, and dependency freshness indicators. The evidence should be package-local in `src/pyAppGen/pbcs/port_terminal_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Clicking a hotspot reveals the underlying boxes and risk reasons, planners can compare before and after a re-slot scenario, and the UI handles large yards without losing responsiveness.
 
-### 27. Bulk operations and correction workflows for Container Move
+### 36. Exception Cockpit with Aging and SLA Views
+**Justification:** Exception queues become noise when berth conflicts, missed appointments, DG blocks, reefer alarms, and customs holds are mixed without urgency and ownership.
 
-**Justification:** Enterprise-scale Port Terminal Operations users cannot operate one record at a time.
+**Improvement:** Build an exception cockpit that groups operational issues by domain stream, severity, aging bucket, SLA breach risk, and current owner, with explicit next action and escalation path.
 
-**Improvement:** Add bulk load, bulk validate, bulk approve, and bulk correction workflows for `container_move` with partial success, row-level errors, resumability, and rollback. Tie the behavior to `port_terminal_operations_create_vessel_call_workflow` where applicable, and make it visible in `PortTerminalOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Operators can filter to breach-imminent cases, each case shows time remaining and owner, and completed exceptions preserve closure evidence and cause coding.
 
-**Acceptance evidence:** CSV/API batch fixtures, resumable job state, row-level audit evidence, and assistant-generated correction suggestions. The evidence should be package-local in `src/pyAppGen/pbcs/port_terminal_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 37. Evidence Panel for Holds and Releases
+**Justification:** Operators waste time hunting across logs, emails, and screens to verify why a container is blocked or released.
 
-### 28. Lifecycle collaboration and tasking for Yard Slot
+**Improvement:** Add an evidence panel on detail pages that assembles holds, release messages, customs actions, gate attempts, reefer alarms, and recent moves in time order with source links.
 
-**Justification:** Domain collaboration should live inside the PBC boundary and remain auditable with the record it affects.
+**Acceptance evidence:** A blocked container view shows all governing evidence without leaving the detail page, and exported evidence packs retain source timestamps and identifiers.
 
-**Improvement:** Attach tasks, comments, ownership, due dates, handoffs, and escalation threads to `yard_slot` without leaking into external shared task tables. Tie the behavior to `port_terminal_operations_record_berth_plan_workflow` where applicable, and make it visible in `PortTerminalOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+### 38. Operator Task and Shift Handover Log
+**Justification:** Port operations are shift-based, and unresolved issues are often lost during handover even though the system already knows the pending risks.
 
-**Acceptance evidence:** Task tables, comment audit history, notification events, escalation SLAs, and role-specific task queues. The evidence should be package-local in `src/pyAppGen/pbcs/port_terminal_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Improvement:** Attach shift handover notes, active risks, pending approvals, and priority actions to berth, yard, gate, reefer, and customs queues so incoming supervisors inherit the live problem list.
 
-### 29. SLA and service-level governance for Gate Transaction
+**Acceptance evidence:** Shift close requires unresolved cases to be handed over or acknowledged, handover logs are searchable by workstream, and reopened cases show the missed handover link.
 
-**Justification:** Users need to know when vessel calls, berths, yard moves, containers, equipment, customs handoffs, and terminal productivity is late, blocked, or at risk before customer or regulator impact.
+### 39. Agent Skill for Vessel Operations Coordination
+**Justification:** The assistant should help with berth and vessel-work coordination without becoming an ungoverned shortcut around marine or cargo controls.
 
-**Improvement:** Define SLAs for `gate_transaction` across intake, validation, approval, exception resolution, event handling, downstream projection refresh, and release-evidence generation. Tie the behavior to `port_terminal_operations_create_vessel_call_workflow` where applicable, and make it visible in `PortTerminalOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add a vessel-ops agent skill that can summarize ETA shifts, berth conflicts, crane assignment impacts, and sail-readiness gaps, then prepare but not silently apply corrective plans.
 
-**Acceptance evidence:** SLA breach events, timers, configurable calendars, workbench aging buckets, and tests for pause/resume behavior. The evidence should be package-local in `src/pyAppGen/pbcs/port_terminal_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** The assistant produces cited vessel coordination summaries, every proposed change is previewed before approval, and blocked actions explain the governing policy.
 
-### 30. Operational analytics cockpit for Terminal Equipment
+### 40. Agent Skill for Yard Planning
+**Justification:** Yard planners need rapid what-if support on stack allocation, rehandle reduction, transshipment rescue, and reefer placement.
 
-**Justification:** World-class operations require leading indicators, not only record counts.
+**Improvement:** Add a yard-planner agent skill that can compare block-allocation scenarios, recommend re-slots, identify misposition search paths, and explain the tradeoff between dwell relief and crane feeding efficiency.
 
-**Improvement:** Build analytics for `terminal_equipment`: throughput, backlog, aging, approval latency, exception rate, risk distribution, automation acceptance, correction rate, and downstream dependency health. Tie the behavior to `port_terminal_operations_record_berth_plan_workflow` where applicable, and make it visible in `PortTerminalOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Scenario outputs include the source slots and predicted impact, accepted recommendations create visible drafts, and rejected recommendations capture planner feedback for improvement.
 
-**Acceptance evidence:** Metric definitions, projection tests, drill-through routes, export APIs, and anomaly overlays. The evidence should be package-local in `src/pyAppGen/pbcs/port_terminal_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 41. Agent Skill for Gate Supervision
+**Justification:** Gate supervisors need help spotting appointment oversubscription, release failures, OCR outages, and truck turn-time spikes before queues spill outside the terminal.
 
-### 31. Decision intelligence and recommendations for Customs Handoff
+**Improvement:** Add a gate-supervisor agent skill that monitors appointment utilization, long-turn root causes, lane outages, and release blocks, then suggests quota adjustments or manual recovery actions.
 
-**Justification:** The PBC should help expert users decide faster while showing evidence and uncertainty.
+**Acceptance evidence:** The assistant can explain current gate pressure with cited cases, suggested quota changes are tied to capacity assumptions, and no agent action bypasses appointment or release rules.
 
-**Improvement:** Generate ranked recommendations for `customs_handoff` such as next best action, likely resolution, required evidence, policy adjustment, staffing/capacity response, or downstream handoff. Tie the behavior to `port_terminal_operations_create_vessel_call_workflow` where applicable, and make it visible in `PortTerminalOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+### 42. Agent Skill for Customs and Release Desk
+**Justification:** Release desks spend time correlating holds, releases, scan results, and carrier instructions across multiple systems and messages.
 
-**Acceptance evidence:** Recommendation explanations, confidence intervals, feedback capture, model governance records, and rejection reasons. The evidence should be package-local in `src/pyAppGen/pbcs/port_terminal_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Improvement:** Add a customs-and-release agent skill that assembles the current release posture for a container, shows active holds and precedence, and drafts the next permissible action or escalation.
 
-### 32. Quality and completeness scoring for Port Terminal Operations Policy Rule
+**Acceptance evidence:** Desk users can request a release summary with linked evidence, the skill refuses unsafe release recommendations, and every desk action remains attributable to a named user approval.
 
-**Justification:** Operators should see whether a record is truly ready, not just technically saved.
+### 43. Agent Skill for Reefer Operations
+**Justification:** Reefer teams need fast triage during power loss, alarm storms, and plug-capacity pressure, but the assistant must stay grounded in live equipment and container state.
 
-**Improvement:** Score each `port_terminal_operations_policy_rule` record for completeness, consistency, policy readiness, dependency readiness, evidence sufficiency, and downstream composability. Tie the behavior to `port_terminal_operations_record_berth_plan_workflow` where applicable, and make it visible in `PortTerminalOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add a reefer-operations agent skill that summarizes active alarms, plug saturation, high-value cargo exposure, and recommended inspection sequence based on risk and time remaining.
 
-**Acceptance evidence:** Scoring rules, missing-evidence lists, readiness badges, and blocking criteria in command handlers. The evidence should be package-local in `src/pyAppGen/pbcs/port_terminal_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Alarm triage summaries cite the current reefer cases, inspection order can be compared with manual prioritization, and corrective actions require explicit operator confirmation.
 
-### 33. End-to-end scenario library for Port Terminal Operations Runtime Parameter
+### 44. Agent Governance and Preview-Confirm Discipline
+**Justification:** Helpful agent skills become operational risk if they can issue live commands without explaining impact on holds, customs, cranes, or gate capacity.
 
-**Justification:** Release evidence is stronger when every important port terminal operations behavior has executable examples.
+**Improvement:** Require every assistant-generated mutation to show preview diffs, affected containers or vessel calls, policy checks, and downstream impacts before a human with the right permission confirms it.
 
-**Improvement:** Create seeded scenarios for `port_terminal_operations_runtime_parameter`: normal flow, urgent path, exception path, corrected path, duplicate path, late event path, and audit export path. Tie the behavior to `port_terminal_operations_create_vessel_call_workflow` where applicable, and make it visible in `PortTerminalOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Audit history records the preview, approver, and final applied command, and tests prove the assistant cannot commit state changes through hidden side paths.
 
-**Acceptance evidence:** Scenario seed data, runtime smoke coverage, generated-app fixtures, and story-level workbench screenshots/contracts. The evidence should be package-local in `src/pyAppGen/pbcs/port_terminal_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 45. Scenario Simulation for Delay and Outage Cases
+**Justification:** Terminal leaders need to compare response options when weather closes the berth, a crane trips, customs scanning backs up, or gate OCR goes down.
 
-### 34. Domain ontology and terminology model for Port Terminal Operations Schema Extension
+**Improvement:** Add scenario simulation for berth delay, crane outage, yard block closure, customs inspection surge, reefer plug shortage, and gate lane failure, with impact projected onto vessel completion, dwell, and truck turn time.
 
-**Justification:** Precise vocabulary prevents the PBC from misclassifying specialist documents or user instructions.
+**Acceptance evidence:** Scenario runs show baseline versus simulated KPIs, assumptions are explicit, and accepted response plans can be promoted into governed operational drafts.
 
-**Improvement:** Add an ontology for `port_terminal_operations_schema_extension` terms, synonyms, classifications, relationships, allowed values, and phrase mappings used by the assistant and UI. Tie the behavior to `port_terminal_operations_record_berth_plan_workflow` where applicable, and make it visible in `PortTerminalOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+### 46. Release Evidence Pack for Operational Readiness
+**Justification:** A terminal-facing release is not ready on the strength of unit tests alone; it needs proof that domain controls, queues, and event flows are behaving.
 
-**Acceptance evidence:** Ontology files, assistant parsing tests, UI glossary, and mapping evidence for domain-specific abbreviations. The evidence should be package-local in `src/pyAppGen/pbcs/port_terminal_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Improvement:** Produce a release evidence pack that includes berth-planning cases, yard-pressure cases, DG and reefer cases, customs-release cases, gate congestion cases, and replayed EDI/event traces.
 
-### 35. Advanced search and investigation for Port Terminal Operations Control Assertion
+**Acceptance evidence:** The package contains named scenarios, expected outcomes, captured screenshots or logs, and sign-off fields for operations, controls, and support owners.
 
-**Justification:** Investigators and operators need fast, explainable retrieval across the whole domain surface.
+### 47. Realistic Test Data for Vessel Calls and Container Populations
+**Justification:** Thin seed data hides sequence and congestion defects that only appear when a vessel call carries realistic bay counts, discharge waves, and mixed cargo classes.
 
-**Improvement:** Provide search across `port_terminal_operations_control_assertion` records, events, documents, exceptions, tasks, comments, and audit proofs with filters for tenant, status, risk, date, party, and dependency. Tie the behavior to `port_terminal_operations_create_vessel_call_workflow` where applicable, and make it visible in `PortTerminalOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Build scenario data sets for feeder, mainline, transshipment-heavy, reefer-heavy, and DG-heavy calls, with corresponding yard occupancy, gate demand, and customs-release variation.
 
-**Acceptance evidence:** Search index contracts, result provenance, permission-filtered queries, and stale-index warnings. The evidence should be package-local in `src/pyAppGen/pbcs/port_terminal_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Test fixtures reproduce realistic congestion patterns, move counts and cut-off windows are plausible, and regression suites use the data to validate planning and exception behavior.
 
-### 36. Reconciliation and closure controls for Port Terminal Operations Governed Model
+### 48. Operational KPI Baselines and Thresholds
+**Justification:** The PBC should know what "good", "at risk", and "failed" look like for berth productivity, gate turn time, dwell, reefer response, and customs cycle time.
 
-**Justification:** Closure is not complete until the PBC can prove no material domain work remains unresolved.
+**Improvement:** Define KPI baselines and alert thresholds for berth waiting time, gross moves per hour, rehandle ratio, gate turn time, customs-release aging, reefer alarm response, and transshipment miss rate.
 
-**Improvement:** Add reconciliation workflows that compare `port_terminal_operations_governed_model` state against consumed events, external projections, expected totals/counts, approvals, and release evidence before closure. Tie the behavior to `port_terminal_operations_record_berth_plan_workflow` where applicable, and make it visible in `PortTerminalOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** KPI definitions are visible in the workbench, thresholds are configurable with approval history, and alerts trigger when the live metric crosses the defined boundary.
 
-**Acceptance evidence:** Reconciliation reports, variance thresholds, closure blockers, and AppGen-X closure events. The evidence should be package-local in `src/pyAppGen/pbcs/port_terminal_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 49. Terminal-Specific Policy Variants Under Tenant Isolation
+**Justification:** Different terminals can have different tide constraints, DG rules, gate hours, customs processes, and reefer capacity, yet must stay inside the same package boundary safely.
 
-### 37. Regulatory and policy reporting for Vessel Call
+**Improvement:** Support tenant-specific operational policies, parameter sets, and UI defaults for berth, yard, gate, customs, DG, and reefer workflows without allowing one terminal's rules or data to leak into another's.
 
-**Justification:** World-class PBCs turn operational evidence into credible reporting without spreadsheet reconstruction.
+**Acceptance evidence:** Tenant policy sets can be compared and versioned independently, cross-tenant access tests fail closed, and release evidence proves rule changes only affect the intended terminal.
 
-**Improvement:** Generate domain reporting packs for `vessel_call` covering statutory, contractual, operational, board, customer, or regulator evidence depending on real-time movement control, capacity commitments, disruptions, asset readiness, safety windows, route constraints, and operational handoff integrity. Tie the behavior to `port_terminal_operations_create_vessel_call_workflow` where applicable, and make it visible in `PortTerminalOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+### 50. Cutover, Rollback, and Recovery Drills
+**Justification:** Port operations cannot accept a release that has never been tested against replay, rollback, and degraded-mode recovery under live-like pressure.
 
-**Acceptance evidence:** Report schemas, redaction rules, traceable metric sources, and approval/export audit events. The evidence should be package-local in `src/pyAppGen/pbcs/port_terminal_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Improvement:** Define cutover and rollback drills for EDI ingest failure, projection rebuild, crane telemetry loss, reefer alarm backlog, customs-message delay, and gate appointment overload, with explicit degraded-mode procedures.
 
-### 38. Carbon and resource awareness for Berth Plan
-
-**Justification:** Sustainability evidence should be embedded in operations instead of treated as an after-the-fact report.
-
-**Improvement:** Where relevant, attach carbon, energy, water, travel, capacity, compute, or resource-footprint metadata to `berth_plan` decisions and batch operations. Tie the behavior to `port_terminal_operations_record_berth_plan_workflow` where applicable, and make it visible in `PortTerminalOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Footprint fields, scheduling parameters, exception rules, and dashboards that expose operational tradeoffs. The evidence should be package-local in `src/pyAppGen/pbcs/port_terminal_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 39. Resilience and offline behavior for Container Move
-
-**Justification:** Real operations keep moving during outages; the PBC must preserve correctness when dependencies are unavailable.
-
-**Improvement:** Define resilience modes for `container_move`: degraded dependency mode, offline draft capture, delayed event replay, conflict detection, and safe recovery after partial failure. Tie the behavior to `port_terminal_operations_create_vessel_call_workflow` where applicable, and make it visible in `PortTerminalOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Offline fixtures, replay tests, conflict queues, recovery logs, and user-visible degraded-mode warnings. The evidence should be package-local in `src/pyAppGen/pbcs/port_terminal_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 40. Human-in-the-loop automation for Yard Slot
-
-**Justification:** Automation should accelerate vessel calls, berths, yard moves, containers, equipment, customs handoffs, and terminal productivity while preserving accountability for high-risk decisions.
-
-**Improvement:** Set explicit automation boundaries for `yard_slot`: auto-approve, auto-reject, suggest-only, require-review, and block-until-evidence states with policy-based routing. Tie the behavior to `port_terminal_operations_record_berth_plan_workflow` where applicable, and make it visible in `PortTerminalOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Automation policy tests, reviewer queues, override reasons, and assistant action audit trails. The evidence should be package-local in `src/pyAppGen/pbcs/port_terminal_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 41. Package discovery and fit scoring for Gate Transaction
-
-**Justification:** Users selecting PBCs need transparent fit reasoning, especially when domains are adjacent but not overlapping.
-
-**Improvement:** Improve package metadata so composition can explain when `port_terminal_operations` fits a prompt, what entities it owns, what APIs/events it exposes, and what adjacent PBCs it depends on. Tie the behavior to `port_terminal_operations_create_vessel_call_workflow` where applicable, and make it visible in `PortTerminalOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Discovery manifests, prompt-selection tests, overlap rationale links, and composition DSL examples. The evidence should be package-local in `src/pyAppGen/pbcs/port_terminal_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 42. Configuration deployment pipeline for Terminal Equipment
-
-**Justification:** Configuration changes can materially alter port terminal operations; they need the same discipline as code releases.
-
-**Improvement:** Add configuration promotion for `terminal_equipment` across draft, test, approved, active, deprecated, and rollback states with impact analysis before activation. Tie the behavior to `port_terminal_operations_record_berth_plan_workflow` where applicable, and make it visible in `PortTerminalOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Config diff views, approval workflows, simulation before activation, and rollback tests. The evidence should be package-local in `src/pyAppGen/pbcs/port_terminal_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 43. Workbench command completeness for Customs Handoff
-
-**Justification:** A PBC does not fully surface its capabilities if users must call hidden APIs for core work.
-
-**Improvement:** Expose every high-value operation for `customs_handoff` in the UI: create, validate, approve, simulate, correct, assign, export, retry, close, and audit-proof verification. Tie the behavior to `port_terminal_operations_create_vessel_call_workflow` where applicable, and make it visible in `PortTerminalOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** UI action coverage tests, permission-aware disabled states, keyboard paths, and assistant handoff links. The evidence should be package-local in `src/pyAppGen/pbcs/port_terminal_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 44. Document packet and evidence vault for Port Terminal Operations Policy Rule
-
-**Justification:** Documents often carry the legal or operational truth behind vessel calls, berths, yard moves, containers, equipment, customs handoffs, and terminal productivity.
-
-**Improvement:** Create a governed evidence vault for `port_terminal_operations_policy_rule` documents, attachments, source spans, extracted fields, signatures, approvals, and retention labels. Tie the behavior to `port_terminal_operations_record_berth_plan_workflow` where applicable, and make it visible in `PortTerminalOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Evidence models, source-to-field lineage, signature validation, retention policies, and proof exports. The evidence should be package-local in `src/pyAppGen/pbcs/port_terminal_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 45. Data correction and amendment history for Port Terminal Operations Runtime Parameter
-
-**Justification:** World-class systems correct mistakes without rewriting history or confusing downstream consumers.
-
-**Improvement:** Support formal amendments for `port_terminal_operations_runtime_parameter` that preserve original values, correction reason, approving actor, effective date, downstream event impacts, and replay behavior. Tie the behavior to `port_terminal_operations_create_vessel_call_workflow` where applicable, and make it visible in `PortTerminalOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Amendment tables, correction events, projection replay tests, and side-by-side before/after UI. The evidence should be package-local in `src/pyAppGen/pbcs/port_terminal_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 46. External participant collaboration for Port Terminal Operations Schema Extension
-
-**Justification:** Many port terminal operations workflows require outside parties, but they must not gain direct access to internal tables.
-
-**Improvement:** Add controlled collaboration portals or API views for external participants related to `port_terminal_operations_schema_extension`, limited to scoped evidence submission, status checks, comments, and dispute responses. Tie the behavior to `port_terminal_operations_record_berth_plan_workflow` where applicable, and make it visible in `PortTerminalOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Participant role policies, scoped tokens, submission audit trails, and inbound evidence validation. The evidence should be package-local in `src/pyAppGen/pbcs/port_terminal_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 47. Advanced dependency freshness scoring for Port Terminal Operations Control Assertion
-
-**Justification:** A record may be valid locally but unsafe if dependency evidence is stale or incomplete.
-
-**Improvement:** Score freshness and reliability of dependencies used by `port_terminal_operations_control_assertion`, including consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, referenced projections, configuration versions, and external submissions. Tie the behavior to `port_terminal_operations_create_vessel_call_workflow` where applicable, and make it visible in `PortTerminalOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Freshness indicators, blocking rules, stale-event simulations, and workbench dependency health panels. The evidence should be package-local in `src/pyAppGen/pbcs/port_terminal_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 48. Model governance and explainability for Port Terminal Operations Governed Model
-
-**Justification:** Governed AI is mandatory for professional-grade automation in Port Terminal Operations.
-
-**Improvement:** For every predictive or agentic feature around `port_terminal_operations_governed_model`, record model version, prompt or ruleset version, training/evaluation evidence, confidence, explanation, and human feedback. Tie the behavior to `port_terminal_operations_record_berth_plan_workflow` where applicable, and make it visible in `PortTerminalOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Model cards, prompt/version manifests, feedback loops, drift tests, and audit proof for recommendations. The evidence should be package-local in `src/pyAppGen/pbcs/port_terminal_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 49. High-scale partitioning and archival for Vessel Call
-
-**Justification:** Better-than-world-class packages must remain operable after years of high-volume domain history.
-
-**Improvement:** Plan scale behavior for `vessel_call`: tenant partitioning, archival policies, cold storage, retention-aware search, projection compaction, and large-batch replay. Tie the behavior to `port_terminal_operations_create_vessel_call_workflow` where applicable, and make it visible in `PortTerminalOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Partition tests, archive/retrieve fixtures, retention enforcement, and replay benchmarks. The evidence should be package-local in `src/pyAppGen/pbcs/port_terminal_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 50. Release gate expansion for Berth Plan
-
-**Justification:** The PBC should not claim domain coverage unless release evidence proves the claim end to end.
-
-**Improvement:** Expand release gates for `port_terminal_operations` so every schema, service, API, event, handler, UI, rule, parameter, agent skill, seed scenario, and improvement backlog item maps to executable evidence. Tie the behavior to `port_terminal_operations_record_berth_plan_workflow` where applicable, and make it visible in `PortTerminalOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Release audit checks, manifest traceability, generated-app smoke tests, and missing-capability blockers. The evidence should be package-local in `src/pyAppGen/pbcs/port_terminal_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Recovery drills are executed against representative data, restore times and data-loss windows are recorded, and the release report includes unresolved recovery gaps before go-live.

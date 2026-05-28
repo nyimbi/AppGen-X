@@ -1,418 +1,262 @@
-# Nonprofit Program Impact PBC Better-Than-World-Class Improvement Backlog
-
-## Purpose
-
-This file identifies, justifies, and describes 50 high-impact improvements for `nonprofit_program_impact`. The backlog is specific to programs, beneficiaries, outcomes, grants, services, restrictions, impact evidence, and donor reporting and is intended to move the PBC from release-auditable scaffolding toward complete, specialist-grade domain coverage.
+# Nonprofit Program Impact Improvement Backlog
 
 ## Current Domain Evidence Used
 
-- Stable PBC key: `nonprofit_program_impact`.
-- Domain purpose: Programs, beneficiaries, outcomes, grants, services, restrictions, impact evidence, and donor reporting.
-- Owned domain tables: `program`, `beneficiary`, `service_episode`, `outcome_measure`, `grant_restriction`, `impact_evidence`, `donor_report`, `nonprofit_program_impact_policy_rule`, `nonprofit_program_impact_runtime_parameter`, `nonprofit_program_impact_schema_extension`, `nonprofit_program_impact_control_assertion`, `nonprofit_program_impact_governed_model`.
-- Public APIs: `POST /programs`, `POST /beneficiarys`, `POST /service-episodes`, `POST /outcome-measures`, `POST /grant-restrictions`, `GET /nonprofit-program-impact-workbench`.
-- Emitted AppGen-X events: `NonprofitProgramImpactCreated`, `NonprofitProgramImpactUpdated`, `NonprofitProgramImpactApproved`, `NonprofitProgramImpactExceptionOpened`.
-- Consumed AppGen-X events: `PolicyChanged`, `CustomerUpdated`, `SupplierQualified`.
-- Current standard surfaces include: `program_management`, `nonprofit_program_impact_workflow`, `nonprofit_program_impact_analytics`, `configuration_schema`, `rule_engine`, `parameter_engine`, `owned_schema_migrations_models`, `appgen_x_outbox_inbox_eventing`, `idempotent_handlers`, `retry_dead_letter_evidence`.
-- Current advanced surfaces include: `nonprofit_program_impact_event_sourced_operational_history`, `nonprofit_program_impact_multi_tenant_policy_isolation`, `nonprofit_program_impact_schema_evolution_resilience`, `nonprofit_program_impact_autonomous_anomaly_detection`, `nonprofit_program_impact_semantic_document_instruction_understanding`, `nonprofit_program_impact_predictive_risk_scoring`, `nonprofit_program_impact_counterfactual_scenario_simulation`, `nonprofit_program_impact_cryptographic_audit_proofs`.
-
-## 50 High-Impact Improvements
-
-### 1. Canonical lifecycle state model for Program
-
-**Justification:** This closes shallow CRUD gaps by making every nonprofit program impact transition explainable and testable instead of implicit in free-form status values.
-
-**Improvement:** Define a complete state machine for `program` with explicit draft, validated, blocked, approved, active, suspended, corrected, closed, archived, and reopened states. Tie the behavior to `nonprofit_program_impact_create_program_workflow` where applicable, and make it visible in `NonprofitProgramImpactWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** State-transition tests, invalid-transition fixtures, workbench state badges, and emitted AppGen-X transition events for NonprofitProgramImpactCreated, NonprofitProgramImpactUpdated, NonprofitProgramImpactApproved. The evidence should be package-local in `src/pyAppGen/pbcs/nonprofit_program_impact` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 2. Domain intake and normalization for Beneficiary
-
-**Justification:** The PBC cannot reach complete domain coverage unless it handles the messy front door of programs, beneficiaries, outcomes, grants, services, restrictions, impact evidence, and donor reporting, not only already-clean records.
-
-**Improvement:** Build a typed intake pipeline for `beneficiary` that accepts structured API payloads, document-derived instructions, batch loads, and assistant-generated drafts while normalizing identifiers, dates, units, parties, and jurisdictional context. Tie the behavior to `nonprofit_program_impact_record_beneficiary_workflow` where applicable, and make it visible in `NonprofitProgramImpactWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Golden intake fixtures, rejected-record queues, field-level normalization evidence, and assistant previews before governed datastore mutation. The evidence should be package-local in `src/pyAppGen/pbcs/nonprofit_program_impact` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 3. Specialist validation rules for Service Episode
-
-**Justification:** World-class Nonprofit Program Impact requires rules that domain experts can reason about, version, test, and roll back without code edits.
-
-**Improvement:** Add a domain rule compiler for `service_episode` that supports threshold rules, eligibility rules, dependency rules, temporal windows, conflicting-instruction detection, and override justification. Tie the behavior to `nonprofit_program_impact_create_program_workflow` where applicable, and make it visible in `NonprofitProgramImpactWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Rule simulation tests, versioned rule manifests, rule impact reports, and UI rule editors linked to `NONPROFIT_PROGRAM_IMPACT_DATABASE_URL, NONPROFIT_PROGRAM_IMPACT_EVENT_TOPIC, NONPROFIT_PROGRAM_IMPACT_RETRY_LIMIT`. The evidence should be package-local in `src/pyAppGen/pbcs/nonprofit_program_impact` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 4. Parameter governance and tuning for Outcome Measure
-
-**Justification:** Parameters are where operations teams tune nonprofit program impact; unbounded constants would make the PBC brittle and unsafe in real deployments.
-
-**Improvement:** Expose bounded runtime parameters for `outcome_measure` covering risk thresholds, SLA windows, confidence floors, escalation cutoffs, batch sizes, retry limits, and human-confirmation requirements. Tie the behavior to `nonprofit_program_impact_record_beneficiary_workflow` where applicable, and make it visible in `NonprofitProgramImpactWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Parameter schema validation, tenant overrides, approval history, rollback controls, and workbench diff views. The evidence should be package-local in `src/pyAppGen/pbcs/nonprofit_program_impact` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 5. Deep owned schema expansion for Grant Restriction
-
-**Justification:** A single payload column cannot express the full surface of programs, beneficiaries, outcomes, grants, services, restrictions, impact evidence, and donor reporting or prove cross-PBC boundaries are respected.
-
-**Improvement:** Extend the owned schema around `grant_restriction` with normalized child tables for line-level evidence, party roles, approvals, attachments, comments, metrics, exception reasons, and control assertions. Tie the behavior to `nonprofit_program_impact_create_program_workflow` where applicable, and make it visible in `NonprofitProgramImpactWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Migrations, models, relationship tests, schema contract snapshots, and no shared-table access outside the `nonprofit_program_impact_` namespace. The evidence should be package-local in `src/pyAppGen/pbcs/nonprofit_program_impact` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 6. Event-sourced operational history for Impact Evidence
-
-**Justification:** Temporal reconstruction is essential for better-than-world-class auditability and dispute resolution in nonprofit program impact.
-
-**Improvement:** Capture every material mutation of `impact_evidence` as immutable AppGen-X events with actor, tenant, command, policy version, idempotency key, before/after summary, and projection checkpoint. Tie the behavior to `nonprofit_program_impact_record_beneficiary_workflow` where applicable, and make it visible in `NonprofitProgramImpactWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Replay tests, projection checksums, event ordering evidence, and point-in-time workbench views. The evidence should be package-local in `src/pyAppGen/pbcs/nonprofit_program_impact` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 7. Projection and read-model strategy for Donor Report
-
-**Justification:** The workbench should not force users to infer domain truth from raw tables; each projection should answer a real operating question.
-
-**Improvement:** Create purpose-built projections for `donor_report`: operational queue, executive KPI rollup, exception aging, compliance evidence, agent task context, and external dependency health. Tie the behavior to `nonprofit_program_impact_create_program_workflow` where applicable, and make it visible in `NonprofitProgramImpactWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Projection contracts, freshness SLAs, backfill tests, and visible stale-projection warnings. The evidence should be package-local in `src/pyAppGen/pbcs/nonprofit_program_impact` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 8. Exception taxonomy and remediation for Nonprofit Program Impact Policy Rule
-
-**Justification:** High-value PBCs win on exception throughput; generic “failed” states hide the details operators need.
-
-**Improvement:** Model the full exception taxonomy for `nonprofit_program_impact_policy_rule`, including severity, root cause, blocking dependency, remediation owner, due date, retry eligibility, escalation path, and closure evidence. Tie the behavior to `nonprofit_program_impact_record_beneficiary_workflow` where applicable, and make it visible in `NonprofitProgramImpactWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Exception queues, aging metrics, remediation playbooks, dead-letter linkage, and closure test fixtures for weather or traffic disruption. The evidence should be package-local in `src/pyAppGen/pbcs/nonprofit_program_impact` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 9. Predictive risk scoring for Nonprofit Program Impact Runtime Parameter
-
-**Justification:** The package should warn users before nonprofit program impact work fails, breaches policy, or creates downstream cost.
-
-**Improvement:** Add predictive risk scoring for `nonprofit_program_impact_runtime_parameter` using domain features from owned tables, consumed events PolicyChanged, CustomerUpdated, SupplierQualified, rule outcomes, aging, anomaly signals, and historical corrections. Tie the behavior to `nonprofit_program_impact_create_program_workflow` where applicable, and make it visible in `NonprofitProgramImpactWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Feature manifests, score explanations, calibration reports, drift alerts, and tests for low/medium/high-risk scenarios. The evidence should be package-local in `src/pyAppGen/pbcs/nonprofit_program_impact` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 10. Counterfactual simulation for Nonprofit Program Impact Schema Extension
-
-**Justification:** Advanced users need to ask “what would happen if” before committing changes to live programs, beneficiaries, outcomes, grants, services, restrictions, impact evidence, and donor reporting operations.
-
-**Improvement:** Provide scenario simulation for `nonprofit_program_impact_schema_extension`: policy change, capacity constraint, deadline shift, price/rate change, eligibility change, disruption, and manual override outcomes. Tie the behavior to `nonprofit_program_impact_record_beneficiary_workflow` where applicable, and make it visible in `NonprofitProgramImpactWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Simulation APIs, non-mutating sandbox state, comparison reports, and workbench side-by-side scenario panels. The evidence should be package-local in `src/pyAppGen/pbcs/nonprofit_program_impact` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 11. Autonomous anomaly triage for Nonprofit Program Impact Control Assertion
-
-**Justification:** A world-class PBC should reduce analyst burden without hiding the reasoning behind automated triage.
-
-**Improvement:** Implement anomaly detection for `nonprofit_program_impact_control_assertion` that identifies outliers, duplicate submissions, impossible sequences, stale dependencies, unusual amounts/counts/durations, and contradictory fields. Tie the behavior to `nonprofit_program_impact_create_program_workflow` where applicable, and make it visible in `NonprofitProgramImpactWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Explainable anomaly cards, reviewer feedback loops, false-positive tracking, and suppression governance. The evidence should be package-local in `src/pyAppGen/pbcs/nonprofit_program_impact` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 12. Semantic document understanding for Nonprofit Program Impact Governed Model
-
-**Justification:** Document-heavy work in Nonprofit Program Impact cannot be complete if the assistant only answers questions and cannot prepare accurate governed changes.
-
-**Improvement:** Train the package assistant to parse domain documents and instructions for `nonprofit_program_impact_governed_model`, extract obligations, dates, parties, quantities, identifiers, and exceptions, then map them to safe draft mutations. Tie the behavior to `nonprofit_program_impact_record_beneficiary_workflow` where applicable, and make it visible in `NonprofitProgramImpactWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Document extraction tests, confidence thresholds, redaction handling, source span citations, and human confirmation workflows. The evidence should be package-local in `src/pyAppGen/pbcs/nonprofit_program_impact` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 13. Agent-safe CRUD execution for Program
-
-**Justification:** The PBC agent must be a first-class operator but never a hidden bypass around RBAC, rules, or owned datastore boundaries.
-
-**Improvement:** Add a professional chatbot skill for `program` that can create, update, correct, close, and annotate records only through policy-checked commands, approval gates, and previewed diffs. Tie the behavior to `nonprofit_program_impact_create_program_workflow` where applicable, and make it visible in `NonprofitProgramImpactWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Skill manifests, permission tests, preview/confirm flows, blocked-action evidence, and audit events for every assistant mutation. The evidence should be package-local in `src/pyAppGen/pbcs/nonprofit_program_impact` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 14. Workbench persona coverage for Beneficiary
-
-**Justification:** A generic detail page underserves the domain; each role needs the exact controls and evidence they use daily.
-
-**Improvement:** Design dedicated workbench panels for `beneficiary`: operator queue, supervisor approvals, analyst exceptions, auditor evidence, configuration owner, and agent-assistance review. Tie the behavior to `nonprofit_program_impact_record_beneficiary_workflow` where applicable, and make it visible in `NonprofitProgramImpactWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** UI contract entries, route tests, empty/error/loading states, and permission-aware action availability. The evidence should be package-local in `src/pyAppGen/pbcs/nonprofit_program_impact` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 15. Cross-PBC dependency contracts for Service Episode
-
-**Justification:** Composable packages fail when hidden table coupling enters the domain model.
-
-**Improvement:** Represent dependencies for `service_episode` through declared APIs, consumed events PolicyChanged, CustomerUpdated, SupplierQualified, and projections rather than shared tables, with explicit freshness, ownership, and fallback behavior. Tie the behavior to `nonprofit_program_impact_create_program_workflow` where applicable, and make it visible in `NonprofitProgramImpactWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Dependency manifests, contract tests, stale dependency alerts, and no foreign-table references in generated artifacts. The evidence should be package-local in `src/pyAppGen/pbcs/nonprofit_program_impact` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 16. API completeness and versioning for Outcome Measure
-
-**Justification:** Complete domain coverage requires both command and query surfaces, not only happy-path create endpoints.
-
-**Improvement:** Expand APIs beyond POST /programs, POST /beneficiarys, POST /service-episodes to cover search, validation-only commands, simulation, bulk intake, exception closure, evidence export, projection reads, and idempotent corrections. Tie the behavior to `nonprofit_program_impact_record_beneficiary_workflow` where applicable, and make it visible in `NonprofitProgramImpactWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** OpenAPI-style route manifests, backward-compatible version tests, deprecation metadata, and idempotency assertions. The evidence should be package-local in `src/pyAppGen/pbcs/nonprofit_program_impact` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 17. Typed emitted-event expansion for Grant Restriction
-
-**Justification:** Consumers should understand what happened in Nonprofit Program Impact without parsing opaque payloads.
-
-**Improvement:** Replace generic lifecycle emissions with typed events for each meaningful `grant_restriction` transition, exception, approval, correction, simulation result, and downstream handoff. Tie the behavior to `nonprofit_program_impact_create_program_workflow` where applicable, and make it visible in `NonprofitProgramImpactWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Event schema tests, event examples, compatibility checks, and emitted-event coverage in release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/nonprofit_program_impact` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 18. Consumed-event handlers for Impact Evidence
-
-**Justification:** A PBC is composable only when incoming events affect its own domain state predictably and safely.
-
-**Improvement:** Implement idempotent handlers for consumed events PolicyChanged, CustomerUpdated, SupplierQualified that update projections, open dependency exceptions, recalculate risk, and preserve source event lineage. Tie the behavior to `nonprofit_program_impact_record_beneficiary_workflow` where applicable, and make it visible in `NonprofitProgramImpactWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Duplicate-event tests, handler side-effect boundaries, dead-letter fixtures, and lineage links back to source events. The evidence should be package-local in `src/pyAppGen/pbcs/nonprofit_program_impact` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 19. Retry and dead-letter operations for Donor Report
-
-**Justification:** Dead letters are not just plumbing; they are domain work queues that can block programs, beneficiaries, outcomes, grants, services, restrictions, impact evidence, and donor reporting.
-
-**Improvement:** Create operational tools for retrying, quarantining, explaining, and resolving dead-lettered `donor_report` events with max-attempt policy, poison-message detection, and replay safety. Tie the behavior to `nonprofit_program_impact_create_program_workflow` where applicable, and make it visible in `NonprofitProgramImpactWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Dead-letter workbench, retry eligibility tests, replay audit proof, and operator action logs. The evidence should be package-local in `src/pyAppGen/pbcs/nonprofit_program_impact` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 20. RBAC and attribute policy for Nonprofit Program Impact Policy Rule
-
-**Justification:** High-impact domain operations need finer controls than generic RBAC grants.
-
-**Improvement:** Extend permissions for `nonprofit_program_impact_policy_rule` from coarse read/create/update/admin to action-level and attribute-aware policies based on role, tenant, jurisdiction, monetary/materiality threshold, and exception severity. Tie the behavior to `nonprofit_program_impact_record_beneficiary_workflow` where applicable, and make it visible in `NonprofitProgramImpactWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Permission matrix docs, ABAC policy tests, denied-action UI states, and assistant skill permission checks. The evidence should be package-local in `src/pyAppGen/pbcs/nonprofit_program_impact` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 21. Continuous control testing for Nonprofit Program Impact Runtime Parameter
-
-**Justification:** Controls should run during operations, not only during release audit or manual review.
-
-**Improvement:** Embed control assertions for `nonprofit_program_impact_runtime_parameter` that continuously test segregation of duties, required approvals, stale exceptions, policy drift, duplicate records, and boundary violations. Tie the behavior to `nonprofit_program_impact_create_program_workflow` where applicable, and make it visible in `NonprofitProgramImpactWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Control dashboards, failing-control events, test fixtures, and release evidence tied to `nonprofit_program_impact_control_assertion` records. The evidence should be package-local in `src/pyAppGen/pbcs/nonprofit_program_impact` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 22. Cryptographic audit proofing for Nonprofit Program Impact Schema Extension
-
-**Justification:** Better-than-world-class auditability requires proof of integrity, not merely logs stored in mutable tables.
-
-**Improvement:** Hash-chain material `nonprofit_program_impact_schema_extension` decisions, documents, emitted events, and release-evidence snapshots to make tampering visible without exposing sensitive payloads. Tie the behavior to `nonprofit_program_impact_record_beneficiary_workflow` where applicable, and make it visible in `NonprofitProgramImpactWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Proof manifests, verification APIs, redacted proof exports, and audit-ledger handoff events. The evidence should be package-local in `src/pyAppGen/pbcs/nonprofit_program_impact` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 23. Privacy, consent, and secrecy controls for Nonprofit Program Impact Control Assertion
-
-**Justification:** Complete domain coverage must account for protected data and restricted operational evidence.
-
-**Improvement:** Add field-level privacy classifications for `nonprofit_program_impact_control_assertion`, consent checks, masking rules, retention schedules, legal holds, and assistant redaction policies. Tie the behavior to `nonprofit_program_impact_create_program_workflow` where applicable, and make it visible in `NonprofitProgramImpactWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Retention tests, masked UI snapshots, consent-blocked mutation fixtures, and export controls. The evidence should be package-local in `src/pyAppGen/pbcs/nonprofit_program_impact` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 24. Multi-tenant operating model for Nonprofit Program Impact Governed Model
-
-**Justification:** The PBC should scale across organizations while preserving independent policy and compliance boundaries.
-
-**Improvement:** Support tenant-specific `nonprofit_program_impact_governed_model` rules, data residency, encryption context, configuration, seed data, and release evidence without allowing cross-tenant leakage. Tie the behavior to `nonprofit_program_impact_record_beneficiary_workflow` where applicable, and make it visible in `NonprofitProgramImpactWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Tenant isolation tests, tenant-scoped parameters, key-rotation evidence, and cross-tenant negative fixtures. The evidence should be package-local in `src/pyAppGen/pbcs/nonprofit_program_impact` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 25. Schema evolution and extension registry for Program
-
-**Justification:** Domain teams will add fields; the PBC must evolve without breaking APIs, events, or workbench projections.
-
-**Improvement:** Make schema extensions for `program` first-class with compatibility checks, migration previews, projection backfills, field ownership, and rollback metadata. Tie the behavior to `nonprofit_program_impact_create_program_workflow` where applicable, and make it visible in `NonprofitProgramImpactWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Extension registry UI, compatibility tests, migration dry-runs, and backfill release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/nonprofit_program_impact` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 26. Master data quality gates for Beneficiary
-
-**Justification:** Many nonprofit program impact errors begin as bad reference data; the PBC should catch them before workflow execution.
-
-**Improvement:** Define reference-data contracts for `beneficiary`: canonical codes, parties, locations, classifications, calendars, units, currencies, products, assets, or service categories as relevant to the domain. Tie the behavior to `nonprofit_program_impact_record_beneficiary_workflow` where applicable, and make it visible in `NonprofitProgramImpactWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Reference validation fixtures, stale-code warnings, mapping tables, and dependency freshness indicators. The evidence should be package-local in `src/pyAppGen/pbcs/nonprofit_program_impact` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 27. Bulk operations and correction workflows for Service Episode
-
-**Justification:** Enterprise-scale Nonprofit Program Impact users cannot operate one record at a time.
-
-**Improvement:** Add bulk load, bulk validate, bulk approve, and bulk correction workflows for `service_episode` with partial success, row-level errors, resumability, and rollback. Tie the behavior to `nonprofit_program_impact_create_program_workflow` where applicable, and make it visible in `NonprofitProgramImpactWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** CSV/API batch fixtures, resumable job state, row-level audit evidence, and assistant-generated correction suggestions. The evidence should be package-local in `src/pyAppGen/pbcs/nonprofit_program_impact` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 28. Lifecycle collaboration and tasking for Outcome Measure
-
-**Justification:** Domain collaboration should live inside the PBC boundary and remain auditable with the record it affects.
-
-**Improvement:** Attach tasks, comments, ownership, due dates, handoffs, and escalation threads to `outcome_measure` without leaking into external shared task tables. Tie the behavior to `nonprofit_program_impact_record_beneficiary_workflow` where applicable, and make it visible in `NonprofitProgramImpactWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Task tables, comment audit history, notification events, escalation SLAs, and role-specific task queues. The evidence should be package-local in `src/pyAppGen/pbcs/nonprofit_program_impact` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 29. SLA and service-level governance for Grant Restriction
-
-**Justification:** Users need to know when programs, beneficiaries, outcomes, grants, services, restrictions, impact evidence, and donor reporting is late, blocked, or at risk before customer or regulator impact.
-
-**Improvement:** Define SLAs for `grant_restriction` across intake, validation, approval, exception resolution, event handling, downstream projection refresh, and release-evidence generation. Tie the behavior to `nonprofit_program_impact_create_program_workflow` where applicable, and make it visible in `NonprofitProgramImpactWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** SLA breach events, timers, configurable calendars, workbench aging buckets, and tests for pause/resume behavior. The evidence should be package-local in `src/pyAppGen/pbcs/nonprofit_program_impact` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 30. Operational analytics cockpit for Impact Evidence
-
-**Justification:** World-class operations require leading indicators, not only record counts.
-
-**Improvement:** Build analytics for `impact_evidence`: throughput, backlog, aging, approval latency, exception rate, risk distribution, automation acceptance, correction rate, and downstream dependency health. Tie the behavior to `nonprofit_program_impact_record_beneficiary_workflow` where applicable, and make it visible in `NonprofitProgramImpactWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Metric definitions, projection tests, drill-through routes, export APIs, and anomaly overlays. The evidence should be package-local in `src/pyAppGen/pbcs/nonprofit_program_impact` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 31. Decision intelligence and recommendations for Donor Report
-
-**Justification:** The PBC should help expert users decide faster while showing evidence and uncertainty.
-
-**Improvement:** Generate ranked recommendations for `donor_report` such as next best action, likely resolution, required evidence, policy adjustment, staffing/capacity response, or downstream handoff. Tie the behavior to `nonprofit_program_impact_create_program_workflow` where applicable, and make it visible in `NonprofitProgramImpactWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Recommendation explanations, confidence intervals, feedback capture, model governance records, and rejection reasons. The evidence should be package-local in `src/pyAppGen/pbcs/nonprofit_program_impact` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 32. Quality and completeness scoring for Nonprofit Program Impact Policy Rule
-
-**Justification:** Operators should see whether a record is truly ready, not just technically saved.
-
-**Improvement:** Score each `nonprofit_program_impact_policy_rule` record for completeness, consistency, policy readiness, dependency readiness, evidence sufficiency, and downstream composability. Tie the behavior to `nonprofit_program_impact_record_beneficiary_workflow` where applicable, and make it visible in `NonprofitProgramImpactWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Scoring rules, missing-evidence lists, readiness badges, and blocking criteria in command handlers. The evidence should be package-local in `src/pyAppGen/pbcs/nonprofit_program_impact` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 33. End-to-end scenario library for Nonprofit Program Impact Runtime Parameter
-
-**Justification:** Release evidence is stronger when every important nonprofit program impact behavior has executable examples.
-
-**Improvement:** Create seeded scenarios for `nonprofit_program_impact_runtime_parameter`: normal flow, urgent path, exception path, corrected path, duplicate path, late event path, and audit export path. Tie the behavior to `nonprofit_program_impact_create_program_workflow` where applicable, and make it visible in `NonprofitProgramImpactWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Scenario seed data, runtime smoke coverage, generated-app fixtures, and story-level workbench screenshots/contracts. The evidence should be package-local in `src/pyAppGen/pbcs/nonprofit_program_impact` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 34. Domain ontology and terminology model for Nonprofit Program Impact Schema Extension
-
-**Justification:** Precise vocabulary prevents the PBC from misclassifying specialist documents or user instructions.
-
-**Improvement:** Add an ontology for `nonprofit_program_impact_schema_extension` terms, synonyms, classifications, relationships, allowed values, and phrase mappings used by the assistant and UI. Tie the behavior to `nonprofit_program_impact_record_beneficiary_workflow` where applicable, and make it visible in `NonprofitProgramImpactWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Ontology files, assistant parsing tests, UI glossary, and mapping evidence for domain-specific abbreviations. The evidence should be package-local in `src/pyAppGen/pbcs/nonprofit_program_impact` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 35. Advanced search and investigation for Nonprofit Program Impact Control Assertion
-
-**Justification:** Investigators and operators need fast, explainable retrieval across the whole domain surface.
-
-**Improvement:** Provide search across `nonprofit_program_impact_control_assertion` records, events, documents, exceptions, tasks, comments, and audit proofs with filters for tenant, status, risk, date, party, and dependency. Tie the behavior to `nonprofit_program_impact_create_program_workflow` where applicable, and make it visible in `NonprofitProgramImpactWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Search index contracts, result provenance, permission-filtered queries, and stale-index warnings. The evidence should be package-local in `src/pyAppGen/pbcs/nonprofit_program_impact` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 36. Reconciliation and closure controls for Nonprofit Program Impact Governed Model
-
-**Justification:** Closure is not complete until the PBC can prove no material domain work remains unresolved.
-
-**Improvement:** Add reconciliation workflows that compare `nonprofit_program_impact_governed_model` state against consumed events, external projections, expected totals/counts, approvals, and release evidence before closure. Tie the behavior to `nonprofit_program_impact_record_beneficiary_workflow` where applicable, and make it visible in `NonprofitProgramImpactWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Reconciliation reports, variance thresholds, closure blockers, and AppGen-X closure events. The evidence should be package-local in `src/pyAppGen/pbcs/nonprofit_program_impact` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 37. Regulatory and policy reporting for Program
-
-**Justification:** World-class PBCs turn operational evidence into credible reporting without spreadsheet reconstruction.
-
-**Improvement:** Generate domain reporting packs for `program` covering statutory, contractual, operational, board, customer, or regulator evidence depending on real-time movement control, capacity commitments, disruptions, asset readiness, safety windows, route constraints, and operational handoff integrity. Tie the behavior to `nonprofit_program_impact_create_program_workflow` where applicable, and make it visible in `NonprofitProgramImpactWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Report schemas, redaction rules, traceable metric sources, and approval/export audit events. The evidence should be package-local in `src/pyAppGen/pbcs/nonprofit_program_impact` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 38. Carbon and resource awareness for Beneficiary
-
-**Justification:** Sustainability evidence should be embedded in operations instead of treated as an after-the-fact report.
-
-**Improvement:** Where relevant, attach carbon, energy, water, travel, capacity, compute, or resource-footprint metadata to `beneficiary` decisions and batch operations. Tie the behavior to `nonprofit_program_impact_record_beneficiary_workflow` where applicable, and make it visible in `NonprofitProgramImpactWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Footprint fields, scheduling parameters, exception rules, and dashboards that expose operational tradeoffs. The evidence should be package-local in `src/pyAppGen/pbcs/nonprofit_program_impact` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 39. Resilience and offline behavior for Service Episode
-
-**Justification:** Real operations keep moving during outages; the PBC must preserve correctness when dependencies are unavailable.
-
-**Improvement:** Define resilience modes for `service_episode`: degraded dependency mode, offline draft capture, delayed event replay, conflict detection, and safe recovery after partial failure. Tie the behavior to `nonprofit_program_impact_create_program_workflow` where applicable, and make it visible in `NonprofitProgramImpactWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Offline fixtures, replay tests, conflict queues, recovery logs, and user-visible degraded-mode warnings. The evidence should be package-local in `src/pyAppGen/pbcs/nonprofit_program_impact` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 40. Human-in-the-loop automation for Outcome Measure
-
-**Justification:** Automation should accelerate programs, beneficiaries, outcomes, grants, services, restrictions, impact evidence, and donor reporting while preserving accountability for high-risk decisions.
-
-**Improvement:** Set explicit automation boundaries for `outcome_measure`: auto-approve, auto-reject, suggest-only, require-review, and block-until-evidence states with policy-based routing. Tie the behavior to `nonprofit_program_impact_record_beneficiary_workflow` where applicable, and make it visible in `NonprofitProgramImpactWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Automation policy tests, reviewer queues, override reasons, and assistant action audit trails. The evidence should be package-local in `src/pyAppGen/pbcs/nonprofit_program_impact` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 41. Package discovery and fit scoring for Grant Restriction
-
-**Justification:** Users selecting PBCs need transparent fit reasoning, especially when domains are adjacent but not overlapping.
-
-**Improvement:** Improve package metadata so composition can explain when `nonprofit_program_impact` fits a prompt, what entities it owns, what APIs/events it exposes, and what adjacent PBCs it depends on. Tie the behavior to `nonprofit_program_impact_create_program_workflow` where applicable, and make it visible in `NonprofitProgramImpactWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Discovery manifests, prompt-selection tests, overlap rationale links, and composition DSL examples. The evidence should be package-local in `src/pyAppGen/pbcs/nonprofit_program_impact` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 42. Configuration deployment pipeline for Impact Evidence
-
-**Justification:** Configuration changes can materially alter nonprofit program impact; they need the same discipline as code releases.
-
-**Improvement:** Add configuration promotion for `impact_evidence` across draft, test, approved, active, deprecated, and rollback states with impact analysis before activation. Tie the behavior to `nonprofit_program_impact_record_beneficiary_workflow` where applicable, and make it visible in `NonprofitProgramImpactWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Config diff views, approval workflows, simulation before activation, and rollback tests. The evidence should be package-local in `src/pyAppGen/pbcs/nonprofit_program_impact` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 43. Workbench command completeness for Donor Report
-
-**Justification:** A PBC does not fully surface its capabilities if users must call hidden APIs for core work.
-
-**Improvement:** Expose every high-value operation for `donor_report` in the UI: create, validate, approve, simulate, correct, assign, export, retry, close, and audit-proof verification. Tie the behavior to `nonprofit_program_impact_create_program_workflow` where applicable, and make it visible in `NonprofitProgramImpactWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** UI action coverage tests, permission-aware disabled states, keyboard paths, and assistant handoff links. The evidence should be package-local in `src/pyAppGen/pbcs/nonprofit_program_impact` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 44. Document packet and evidence vault for Nonprofit Program Impact Policy Rule
-
-**Justification:** Documents often carry the legal or operational truth behind programs, beneficiaries, outcomes, grants, services, restrictions, impact evidence, and donor reporting.
-
-**Improvement:** Create a governed evidence vault for `nonprofit_program_impact_policy_rule` documents, attachments, source spans, extracted fields, signatures, approvals, and retention labels. Tie the behavior to `nonprofit_program_impact_record_beneficiary_workflow` where applicable, and make it visible in `NonprofitProgramImpactWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Evidence models, source-to-field lineage, signature validation, retention policies, and proof exports. The evidence should be package-local in `src/pyAppGen/pbcs/nonprofit_program_impact` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 45. Data correction and amendment history for Nonprofit Program Impact Runtime Parameter
-
-**Justification:** World-class systems correct mistakes without rewriting history or confusing downstream consumers.
-
-**Improvement:** Support formal amendments for `nonprofit_program_impact_runtime_parameter` that preserve original values, correction reason, approving actor, effective date, downstream event impacts, and replay behavior. Tie the behavior to `nonprofit_program_impact_create_program_workflow` where applicable, and make it visible in `NonprofitProgramImpactWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Amendment tables, correction events, projection replay tests, and side-by-side before/after UI. The evidence should be package-local in `src/pyAppGen/pbcs/nonprofit_program_impact` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 46. External participant collaboration for Nonprofit Program Impact Schema Extension
-
-**Justification:** Many nonprofit program impact workflows require outside parties, but they must not gain direct access to internal tables.
-
-**Improvement:** Add controlled collaboration portals or API views for external participants related to `nonprofit_program_impact_schema_extension`, limited to scoped evidence submission, status checks, comments, and dispute responses. Tie the behavior to `nonprofit_program_impact_record_beneficiary_workflow` where applicable, and make it visible in `NonprofitProgramImpactWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Participant role policies, scoped tokens, submission audit trails, and inbound evidence validation. The evidence should be package-local in `src/pyAppGen/pbcs/nonprofit_program_impact` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 47. Advanced dependency freshness scoring for Nonprofit Program Impact Control Assertion
-
-**Justification:** A record may be valid locally but unsafe if dependency evidence is stale or incomplete.
-
-**Improvement:** Score freshness and reliability of dependencies used by `nonprofit_program_impact_control_assertion`, including consumed events PolicyChanged, CustomerUpdated, SupplierQualified, referenced projections, configuration versions, and external submissions. Tie the behavior to `nonprofit_program_impact_create_program_workflow` where applicable, and make it visible in `NonprofitProgramImpactWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Freshness indicators, blocking rules, stale-event simulations, and workbench dependency health panels. The evidence should be package-local in `src/pyAppGen/pbcs/nonprofit_program_impact` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 48. Model governance and explainability for Nonprofit Program Impact Governed Model
-
-**Justification:** Governed AI is mandatory for professional-grade automation in Nonprofit Program Impact.
-
-**Improvement:** For every predictive or agentic feature around `nonprofit_program_impact_governed_model`, record model version, prompt or ruleset version, training/evaluation evidence, confidence, explanation, and human feedback. Tie the behavior to `nonprofit_program_impact_record_beneficiary_workflow` where applicable, and make it visible in `NonprofitProgramImpactWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Model cards, prompt/version manifests, feedback loops, drift tests, and audit proof for recommendations. The evidence should be package-local in `src/pyAppGen/pbcs/nonprofit_program_impact` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 49. High-scale partitioning and archival for Program
-
-**Justification:** Better-than-world-class packages must remain operable after years of high-volume domain history.
-
-**Improvement:** Plan scale behavior for `program`: tenant partitioning, archival policies, cold storage, retention-aware search, projection compaction, and large-batch replay. Tie the behavior to `nonprofit_program_impact_create_program_workflow` where applicable, and make it visible in `NonprofitProgramImpactWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Partition tests, archive/retrieve fixtures, retention enforcement, and replay benchmarks. The evidence should be package-local in `src/pyAppGen/pbcs/nonprofit_program_impact` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 50. Release gate expansion for Beneficiary
-
-**Justification:** The PBC should not claim domain coverage unless release evidence proves the claim end to end.
-
-**Improvement:** Expand release gates for `nonprofit_program_impact` so every schema, service, API, event, handler, UI, rule, parameter, agent skill, seed scenario, and improvement backlog item maps to executable evidence. Tie the behavior to `nonprofit_program_impact_record_beneficiary_workflow` where applicable, and make it visible in `NonprofitProgramImpactWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Release audit checks, manifest traceability, generated-app smoke tests, and missing-capability blockers. The evidence should be package-local in `src/pyAppGen/pbcs/nonprofit_program_impact` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+- Manifest key: `nonprofit_program_impact`.
+- Current purpose: programs, beneficiaries, outcomes, grants, services, restrictions, impact evidence, and donor reporting.
+- Owned tables named in `manifest.py`: `program`, `beneficiary`, `service_episode`, `outcome_measure`, `grant_restriction`, `impact_evidence`, `donor_report`, `nonprofit_program_impact_policy_rule`, `nonprofit_program_impact_runtime_parameter`, `nonprofit_program_impact_schema_extension`, `nonprofit_program_impact_control_assertion`, `nonprofit_program_impact_governed_model`.
+- Current APIs named in `manifest.py`: `POST /programs`, `POST /beneficiarys`, `POST /service-episodes`, `POST /outcome-measures`, `POST /grant-restrictions`, `GET /nonprofit-program-impact-workbench`.
+- Current docs named in `manifest.py`: `SPECIFICATION.md` and `RELEASE_EVIDENCE.md`.
+- Current UI fragments named in `manifest.py`: `NonprofitProgramImpactWorkbench`, `NonprofitProgramImpactDetail`, and `NonprofitProgramImpactAssistantPanel`.
+- Current emitted events named in `manifest.py`: `NonprofitProgramImpactCreated`, `NonprofitProgramImpactUpdated`, `NonprofitProgramImpactApproved`, and `NonprofitProgramImpactExceptionOpened`.
+- Current consumed events named in `manifest.py`: `PolicyChanged`, `CustomerUpdated`, and `SupplierQualified`.
+
+### 1. Theory of change model per program
+**Justification:** Impact claims are weak when a program record does not show the causal chain from activities to outputs, outcomes, and longer-term change.
+**Improvement:** Add a first-class theory-of-change structure on `program` with assumptions, risk factors, target population, intervention components, expected outputs, short-term outcomes, medium-term outcomes, and impact horizon.
+**Acceptance evidence:** Program detail shows a theory-of-change map; contract tests require every approved program to link services, outputs, and outcomes; `RELEASE_EVIDENCE.md` includes screenshots and sample records.
+
+### 2. Outcome hierarchy and results chain linking
+**Justification:** Nonprofit teams need to see whether an output actually contributes to a named outcome instead of storing disconnected counts.
+**Improvement:** Link `service_episode`, output records, and `outcome_measure` entries through a results-chain model that supports one-to-many and many-to-one mappings, with explicit contribution logic.
+**Acceptance evidence:** Tests cover output-to-outcome linking rules, UI drill-through from outcome to supporting services works, and release evidence shows traceability from one beneficiary interaction to one reported outcome.
+
+### 3. Beneficiary identity, household, and cohort structure
+**Justification:** Programs often serve people as individuals, households, or community groups, and impact analysis breaks when only a flat beneficiary record exists.
+**Improvement:** Extend `beneficiary` to support person, household, caregiver-child pair, group, and institution-level beneficiary types, plus cohort membership and deduplication rules.
+**Acceptance evidence:** Seed data includes mixed beneficiary types, duplicate detection tests pass, and the workbench can filter by individual, household, and cohort.
+
+### 4. Beneficiary eligibility and targeting rules
+**Justification:** Eligibility logic is part of program integrity, donor compliance, and fairness to intended participants.
+**Improvement:** Model eligibility criteria on `program` and enforce them at `POST /beneficiarys` and service enrollment, including age bands, geography, vulnerability criteria, referral source, and exclusion rules.
+**Acceptance evidence:** Validation tests reject ineligible enrollment, override flows require approval and rationale, and release evidence shows eligible and blocked examples.
+
+### 5. Service catalog and intervention taxonomy
+**Justification:** Service episodes are hard to analyze if the platform cannot distinguish counseling, training, cash transfer, referral, mentoring, and community outreach.
+**Improvement:** Add a governed intervention taxonomy with service type, delivery channel, dosage unit, session length, recurrence, and implementing team or partner.
+**Acceptance evidence:** Service forms use controlled vocabularies, analytics group by intervention family, and tests prove unknown service types cannot be used in approved programs.
+
+### 6. Service fidelity and dosage tracking
+**Justification:** Counting that a service happened is not enough when program quality depends on how much service was delivered and whether core components were completed.
+**Improvement:** Extend `service_episode` with planned dosage, delivered dosage, attendance, completion markers, fidelity checklist results, and missed-session reasons.
+**Acceptance evidence:** Detail pages show planned-versus-delivered dosage, dashboards expose fidelity gaps, and regression tests verify missed dosage affects outcome interpretation.
+
+### 7. Output register for immediate deliverables
+**Justification:** Many donor reports need verified outputs such as people reached, kits distributed, sessions completed, or referrals closed before outcome results mature.
+**Improvement:** Introduce an output register linked to `service_episode` and `program`, with unit definitions, counting rules, de-duplication rules, and evidence attachments.
+**Acceptance evidence:** Output totals reconcile with service records, counting-rule tests prevent double counting, and release evidence includes one output register export.
+
+### 8. Outcome registry with temporal windows
+**Justification:** Outcome measurement becomes inconsistent when each team interprets "improved wellbeing" or "increased income" differently.
+**Improvement:** Strengthen `outcome_measure` with outcome definition, measurement window, unit of analysis, expected direction, data source, minimum evidence threshold, and attributable intervention scope.
+**Acceptance evidence:** Outcome registry pages expose definitions and timing rules, tests enforce required fields before approval, and sample release evidence shows two outcomes with different follow-up windows.
+
+### 9. Indicator dictionary and calculation logic
+**Justification:** Indicators need precise numerators, denominators, disaggregation, and aggregation rules or dashboards will drift from donor reports.
+**Improvement:** Add an indicator dictionary that defines calculation formulas, rollup rules, missing-data treatment, rounding rules, and allowed disaggregations for every reported indicator.
+**Acceptance evidence:** Calculation tests cover numerator and denominator edge cases, indicator definitions render in the UI, and exported donor packs quote the same values as the dashboard.
+
+### 10. Baselines, targets, and revision history
+**Justification:** Programs need a defensible record of what they expected to achieve, when targets changed, and why.
+**Improvement:** Store baseline values, target values, target periods, target revision reasons, and approval history on the program-outcome pair.
+**Acceptance evidence:** Target history is visible in `NonprofitProgramImpactDetail`, unauthorized target edits are blocked, and release evidence shows one mid-year target revision with sign-off.
+
+### 11. Survey instrument library
+**Justification:** Survey-based outcomes need managed instruments, versioning, and question metadata rather than loose attachments.
+**Improvement:** Add a survey library with instrument version, language, question type, answer options, skip logic, scoring rules, and linkages to outcomes and indicators.
+**Acceptance evidence:** Survey metadata persists across versions, tests cover versioned scoring, and the assistant can cite which instrument version produced an outcome score.
+
+### 12. Sampling, respondent selection, and survey cadence
+**Justification:** Outcome credibility depends on who was surveyed, when, and how respondents were selected.
+**Improvement:** Model sampling frame, sample size target, respondent selection rules, survey wave schedule, response status, and attrition reasons.
+**Acceptance evidence:** Survey dashboards show target versus actual response counts, tests validate wave scheduling, and release evidence includes a sample completion report.
+
+### 13. Consent capture and respondent rights
+**Justification:** Outcome measurement and case evidence collection require explicit consent, withdrawal handling, and visibility into use restrictions.
+**Improvement:** Add consent records on `beneficiary` and survey participation covering data use, photo or story use, contact follow-up, withdrawal date, and guardian consent where applicable.
+**Acceptance evidence:** Blocked workflows prevent use of withdrawn responses, UI shows consent state before evidence assembly, and tests cover guardian and withdrawal scenarios.
+
+### 14. Safeguarding risk flags on beneficiary and service records
+**Justification:** Programs serving vulnerable populations need safeguarding signals embedded in operational workflows, not hidden in a separate narrative.
+**Improvement:** Add safeguarding concern flags, risk level, immediate action needed, referral status, and restricted-view notes on `beneficiary` and `service_episode`.
+**Acceptance evidence:** Sensitive fields are permission-gated, open safeguarding concerns appear in supervisor queues, and release evidence shows redacted screenshots and audit logs.
+
+### 15. Safeguarding incident workflow and escalation
+**Justification:** Recording a concern without escalation ownership or closure evidence creates operational and ethical risk.
+**Improvement:** Build a safeguarding incident flow with intake, triage, assignment, action log, escalation timers, closure criteria, and survivor-centered access controls.
+**Acceptance evidence:** Incident state transitions are tested, overdue escalations trigger events, and release evidence includes incident timeline evidence with protected details redacted.
+
+### 16. Referral network and external service follow-through
+**Justification:** Many nonprofit outcomes depend on referrals being completed outside the immediate program boundary.
+**Improvement:** Extend `service_episode` to support referral issuance, receiving organization, appointment status, completion confirmation, and referral outcome.
+**Acceptance evidence:** Referral completion rates are visible on dashboards, tests cover pending and completed referrals, and donor evidence can show referrals separate from direct service delivery.
+
+### 17. Case evidence pack for qualitative proof
+**Justification:** Donors and evaluators often need stories of change and supporting case evidence alongside numeric indicators.
+**Improvement:** Structure `impact_evidence` to support case narratives, before-and-after snapshots, corroborating documents, quotes, photos, and confidentiality level.
+**Acceptance evidence:** Evidence packs render with source citations, confidentiality labels control visibility, and release evidence includes one redacted case evidence example.
+
+### 18. Evidence quality scoring and verification status
+**Justification:** Numeric counts, survey results, and case stories should not be treated as equally strong evidence by default.
+**Improvement:** Add evidence quality dimensions for source type, verification status, completeness, timeliness, triangulation, and reviewer confidence to `impact_evidence`.
+**Acceptance evidence:** Quality scores recalculate when evidence changes, weak evidence is flagged in dashboards, and tests cover scoring across survey, case, and administrative sources.
+
+### 19. Partner delivery structure and subaward boundaries
+**Justification:** Program delivery often flows through local partners, and the PBC must show which results came from which delivery entity.
+**Improvement:** Add partner organization, site, subaward, and delivery responsibility fields to `program`, `service_episode`, and `impact_evidence`, with clear ownership boundaries.
+**Acceptance evidence:** Dashboards can segment results by partner, tests prove partner attribution persists through donor reporting, and release evidence includes one partner-level scorecard.
+
+### 20. Partner data submission and verification workflow
+**Justification:** Partner-supplied data needs controlled intake, review, and correction loops before it enters official reporting.
+**Improvement:** Build partner submission queues with batch upload status, schema validation, discrepancy comments, approval checkpoints, and resubmission handling.
+**Acceptance evidence:** Invalid partner uploads land in a review queue, accepted submissions create auditable records, and release evidence shows one rejected-then-corrected partner submission.
+
+### 21. Grant restriction to program activity boundary
+**Justification:** Restricted funding must be separated from unrestricted activity or impact claims can cross the wrong financial boundary.
+**Improvement:** Make `grant_restriction` enforce allowed programs, service types, locations, date windows, and beneficiary categories, with explicit boundary checks before activity approval.
+**Acceptance evidence:** Tests prevent disallowed services from being charged to a restricted grant, UI shows boundary failures clearly, and evidence includes one compliant and one blocked scenario.
+
+### 22. Donor reporting boundary and attribution rules
+**Justification:** One beneficiary may receive several services funded by different donors, so donor reports need defensible attribution logic.
+**Improvement:** Add attribution rules on `donor_report` for direct funding, co-funding, proportional allocation, time-bound eligibility, and excluded evidence types.
+**Acceptance evidence:** Attribution calculations are test-covered, donor report previews show allocation rationale, and release evidence includes a report with mixed funding sources.
+
+### 23. Results reporting period and freeze controls
+**Justification:** Donor reports should not silently change after review without a clear reopened-cycle record.
+**Improvement:** Add reporting periods, freeze dates, reopen reasons, and locked indicator snapshots for `donor_report`.
+**Acceptance evidence:** Frozen reports reject mutation without authorized reopen flow, snapshots can be reproduced, and release evidence includes period lock and reopen audit history.
+
+### 24. Indicator disaggregation for equity analysis
+**Justification:** Impact dashboards need to show who benefits, not only how many outcomes were recorded.
+**Improvement:** Add governed disaggregation dimensions such as age band, gender, disability, geography, cohort, partner, and service channel to indicators and outcomes.
+**Acceptance evidence:** Dashboard filters and exports support approved disaggregations, privacy rules suppress unsafe small-cell views, and tests validate rollup consistency.
+
+### 25. Longitudinal follow-up and outcome persistence
+**Justification:** Many nonprofit outcomes decay or strengthen over time, so a one-off measurement can misstate lasting impact.
+**Improvement:** Support repeated follow-up waves on `outcome_measure` with scheduled reassessment dates, persistence classification, and loss-to-follow-up reasons.
+**Acceptance evidence:** Timelines show baseline and follow-up values, attrition is reported explicitly, and tests verify persistence calculations over multiple waves.
+
+### 26. Negative outcomes and unintended effects register
+**Justification:** Responsible impact management requires tracking harm, dropout, stigma, conflict, or other unintended effects rather than publishing only positive results.
+**Improvement:** Add an adverse-effects register linked to program, beneficiary, service, and partner records, with severity, source, mitigation action, and reporting rules.
+**Acceptance evidence:** Dashboards include negative outcome trends, mitigation tasks are visible, and release evidence documents one resolved unintended-effect case.
+
+### 27. Baseline context and comparison group support
+**Justification:** Some programs need stronger causal interpretation than before-and-after snapshots alone.
+**Improvement:** Add optional comparison-group, matched-cohort, and counterfactual metadata to outcomes and indicators, including methodological notes and use restrictions.
+**Acceptance evidence:** Outcome detail shows method flags, unsupported attribution claims are blocked in donor reporting, and tests cover comparison-group availability and absence.
+
+### 28. Community, site, and geography model
+**Justification:** Programs commonly operate across communities and sites, and impact patterns are often geographic.
+**Improvement:** Extend `program`, `beneficiary`, and `service_episode` with site, district, catchment area, and community hierarchy, including service coverage maps.
+**Acceptance evidence:** Workbench filters by geography, partner delivery can be grouped by site, and release evidence includes one geographic heatmap export.
+
+### 29. Impact dashboard for executive and M&E users
+**Justification:** Executives and monitoring teams need different views of the same evidence without rebuilding metrics outside the PBC.
+**Improvement:** Create dashboard modes for executive summary, program management, and M&E analysis, each with throughput, outputs, outcomes, survey completion, safeguarding, and partner performance panels.
+**Acceptance evidence:** Role-based dashboards render from the same governed metrics, stale data warnings appear when projections lag, and release evidence includes screenshots for each mode.
+
+### 30. Program detail UI tuned for causal review
+**Justification:** Program reviewers need to inspect theory of change, target values, services, and outcome evidence on one screen.
+**Improvement:** Redesign `NonprofitProgramImpactDetail` so a program page surfaces results chain, target status, partner mix, grant restrictions, and recent evidence without forcing spreadsheet export.
+**Acceptance evidence:** UI tests cover navigation between theory, services, and outcomes, page load states are handled, and release evidence includes desktop and mobile screenshots.
+
+### 31. Beneficiary timeline UI
+**Justification:** Staff need a single timeline to understand what a participant received, when follow-up happened, and what outcomes were recorded.
+**Improvement:** Add a beneficiary timeline showing enrollment, services, referrals, surveys, outcome observations, safeguarding actions, and case evidence milestones.
+**Acceptance evidence:** Timeline ordering tests pass, sensitive entries respect permissions, and release evidence shows one full beneficiary journey with redactions where required.
+
+### 32. Donor report review UI
+**Justification:** Donor reporting is a distinct workflow from daily service operations and needs its own review surface.
+**Improvement:** Add a `donor_report` review workspace with indicator previews, attribution explanations, evidence quality warnings, narrative sections, and approval checkpoints.
+**Acceptance evidence:** Reviewers can drill from a reported number to its source evidence, freeze controls are visible, and release evidence includes a reviewed report snapshot.
+
+### 33. Assistant skill for theory-of-change drafting
+**Justification:** Program teams often start with narrative proposals, and converting them into a structured results chain is repetitive and error-prone.
+**Improvement:** Add an assistant skill that reads proposals and drafts a theory of change, service taxonomy, outputs, and candidate outcomes into reviewable program fields.
+**Acceptance evidence:** Assistant drafts cite source passages, human approval is required before save, and tests verify the skill cannot bypass policy or approval gates.
+
+### 34. Assistant skill for survey and indicator QA
+**Justification:** Measurement plans fail when questions do not map cleanly to indicators or when skip logic conflicts with scoring.
+**Improvement:** Add an assistant skill that checks survey instruments against indicator definitions, flags missing questions, inconsistent scales, and weak disaggregation coverage.
+**Acceptance evidence:** QA findings appear in `NonprofitProgramImpactAssistantPanel`, each finding links to the underlying survey field, and release evidence includes a resolved QA issue.
+
+### 35. Assistant skill for case evidence assembly
+**Justification:** High-quality case evidence packs require consistent redaction, structure, and linkage to outputs and outcomes.
+**Improvement:** Add an assistant skill that assembles draft case evidence packs from approved notes, survey excerpts, media, and outcome observations while enforcing confidentiality rules.
+**Acceptance evidence:** Draft evidence packs include provenance and redaction markers, reviewers approve before publication, and tests cover blocked use of non-consented materials.
+
+### 36. Domain event expansion for service and outcome lifecycle
+**Justification:** The current event list is too coarse to support replayable operational history for nonprofit impact work.
+**Improvement:** Define finer-grained events for beneficiary enrolled, service completed, output verified, survey submitted, outcome observed, safeguarding incident opened, donor report frozen, and partner submission approved.
+**Acceptance evidence:** Event schemas are documented, replay tests rebuild key projections, and `RELEASE_EVIDENCE.md` includes emitted examples and ordering checks.
+
+### 37. Event lineage from source evidence to reported result
+**Justification:** Users should be able to trace a reported number back to the exact records and review actions that produced it.
+**Improvement:** Link emitted events, `impact_evidence`, `outcome_measure`, and `donor_report` snapshots through lineage metadata and projection checkpoints.
+**Acceptance evidence:** One-click lineage view works from dashboard to source records, tests confirm replay consistency, and release evidence includes a lineage trail example.
+
+### 38. Consumed-event handling for upstream policy and supplier changes
+**Justification:** Upstream policy or supplier events can affect service delivery, safeguarding posture, and donor eligibility.
+**Improvement:** Make `PolicyChanged`, `CustomerUpdated`, and `SupplierQualified` handlers map into program policy reviews, beneficiary contact updates, and partner verification or risk flags where relevant.
+**Acceptance evidence:** Handler tests are idempotent, affected records enter the correct review queues, and release evidence shows one consumed-event driven recalculation.
+
+### 39. Partner performance scorecards
+**Justification:** Delivery partners need comparable views of timeliness, data quality, safeguarding responsiveness, and outcome performance.
+**Improvement:** Build partner scorecards with service volume, output verification rate, survey response rate, evidence quality score, safeguarding closure time, and reporting punctuality.
+**Acceptance evidence:** Scorecards can be filtered by grant and period, tests verify score formulas, and release evidence includes one partner comparison view.
+
+### 40. Release evidence matrix by domain promise
+**Justification:** Release claims should be backed by domain-specific proof, not only generic build artifacts.
+**Improvement:** Structure `RELEASE_EVIDENCE.md` around theory of change, beneficiary management, service delivery, outputs, outcomes, indicators, surveys, safeguarding, donor reporting, partner delivery, dashboards, and events.
+**Acceptance evidence:** Every release item links to a test, screenshot, seed dataset, or event sample; missing evidence blocks approval; and the matrix is referenced from the package docs.
+
+### 41. Exception taxonomy for impact operations
+**Justification:** Staff need a precise vocabulary for data-quality failures, late follow-up, attribution conflict, partner discrepancy, and safeguarding escalation.
+**Improvement:** Add exception types, severity, owner, due date, and closure proof across `impact_evidence`, `donor_report`, and related queues.
+**Acceptance evidence:** Exceptions appear in dedicated queues, overdue items emit alerts, and tests cover creation, reassignment, and closure with evidence.
+
+### 42. Data retention, privacy, and story-use boundaries
+**Justification:** Case evidence, survey responses, and beneficiary history have different retention and sharing constraints.
+**Improvement:** Add retention schedules, field masking, export controls, and story-use restrictions by evidence type, consent state, and safeguarding risk.
+**Acceptance evidence:** Expired data is hidden or purged according to policy, exports redact protected fields, and release evidence includes retention-policy verification.
+
+### 43. Role and attribute-based access for sensitive impact data
+**Justification:** Program staff, M&E analysts, safeguarding leads, and donor reviewers should not see the same data or controls.
+**Improvement:** Extend the current permission set with role and attribute checks for safeguarding notes, survey raw responses, case media, donor freeze controls, and partner correction rights.
+**Acceptance evidence:** Permission matrix tests pass, UI hides unavailable actions cleanly, and assistant commands fail safely when the actor lacks access.
+
+### 44. Predictive underperformance and follow-up risk scoring
+**Justification:** Teams need early warning when outputs are on track but outcomes, survey completion, or safeguarding closure are at risk.
+**Improvement:** Add predictive scoring for low response rates, missed follow-ups, declining outcome trends, weak evidence quality, and partner submission delays.
+**Acceptance evidence:** Risk cards explain main drivers, calibration reports are stored with release evidence, and tests cover low-, medium-, and high-risk examples.
+
+### 45. Scenario simulation for target and funding changes
+**Justification:** Program managers often need to ask what happens to expected impact if target populations, service dosage, or grant coverage changes.
+**Improvement:** Add non-mutating simulations that estimate output and outcome shifts under changed budget, partner capacity, service mix, or follow-up completion assumptions.
+**Acceptance evidence:** Scenario views compare baseline and proposed plans side by side, assumptions are visible, and release evidence includes one budget-reduction scenario.
+
+### 46. Offline and low-connectivity field workflow
+**Justification:** Surveys and service capture often happen in low-connectivity environments, and delayed sync must not corrupt evidence lineage.
+**Improvement:** Support offline drafts for service episodes, survey submissions, and case evidence capture with local validation, sync reconciliation, and conflict handling.
+**Acceptance evidence:** Sync tests cover duplicate upload prevention and conflict review, timestamps preserve capture and sync time, and release evidence includes offline-to-sync proof.
+
+### 47. Localization and culturally appropriate measurement support
+**Justification:** Programs frequently span multiple languages and communities, and meaning can shift across translations.
+**Improvement:** Add localized labels, survey translations, culturally adapted answer options, and language-specific guidance for case evidence and safeguarding prompts.
+**Acceptance evidence:** Instrument versions can be linked across languages, UI locale switching works for core screens, and release evidence includes one translated survey flow.
+
+### 48. Accessibility and inclusive UI for field and review users
+**Justification:** Impact systems should be usable by staff with different abilities and in stressful operational contexts.
+**Improvement:** Improve `NonprofitProgramImpactWorkbench` and related screens for keyboard access, clear focus states, high-contrast charts, readable tables, and mobile-friendly evidence review.
+**Acceptance evidence:** Accessibility checks pass for modified screens, manual keyboard walkthrough evidence is captured, and release evidence includes accessible dashboard screenshots.
+
+### 49. Seed data and test fixtures that reflect real nonprofit impact operations
+**Justification:** Thin fixtures miss the edge cases that matter in programs, surveys, safeguarding, and donor reporting.
+**Improvement:** Expand package seed data to cover multiple programs, partners, grants, beneficiary types, survey waves, safeguarding incidents, negative outcomes, and frozen donor reports.
+**Acceptance evidence:** `seed_data.py` produces a realistic demo environment, contract tests use domain-rich fixtures, and release evidence references the fixture set used in screenshots.
+
+### 50. Go-live readiness gate for nonprofit impact releases
+**Justification:** A release should not be approved until domain-critical flows, controls, and evidence are all proven together.
+**Improvement:** Add a package-local release gate that requires passing evidence for theory-of-change setup, beneficiary enrollment, service capture, output verification, outcome measurement, safeguarding handling, donor reporting, partner submission review, event replay, and dashboard correctness.
+**Acceptance evidence:** Approval is blocked when any domain gate is incomplete, the final release checklist is attached to `RELEASE_EVIDENCE.md`, and the package can show one fully evidenced end-to-end release record.

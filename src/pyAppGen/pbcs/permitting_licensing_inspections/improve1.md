@@ -1,418 +1,412 @@
-# Permitting Licensing and Inspections PBC Better-Than-World-Class Improvement Backlog
-
-## Purpose
-
-This file identifies, justifies, and describes 50 high-impact improvements for `permitting_licensing_inspections`. The backlog is specific to applications, reviews, permits, licenses, fees, inspections, violations, renewals, and citizen workflows and is intended to move the PBC from release-auditable scaffolding toward complete, specialist-grade domain coverage.
+# Permitting Licensing and Inspections Improvement Backlog
 
 ## Current Domain Evidence Used
 
-- Stable PBC key: `permitting_licensing_inspections`.
-- Domain purpose: Applications, reviews, permits, licenses, fees, inspections, violations, renewals, and citizen workflows.
-- Owned domain tables: `application`, `permit`, `license`, `review_task`, `fee_assessment`, `inspection`, `violation`, `permitting_licensing_inspections_policy_rule`, `permitting_licensing_inspections_runtime_parameter`, `permitting_licensing_inspections_schema_extension`, `permitting_licensing_inspections_control_assertion`, `permitting_licensing_inspections_governed_model`.
-- Public APIs: `POST /applications`, `POST /permits`, `POST /licenses`, `POST /review-tasks`, `POST /fee-assessments`, `GET /permitting-licensing-inspections-workbench`.
-- Emitted AppGen-X events: `PermittingLicensingInspectionsCreated`, `PermittingLicensingInspectionsUpdated`, `PermittingLicensingInspectionsApproved`, `PermittingLicensingInspectionsExceptionOpened`.
-- Consumed AppGen-X events: `PolicyChanged`, `CustomerUpdated`, `SupplierQualified`.
-- Current standard surfaces include: `application_management`, `permitting_licensing_inspections_workflow`, `permitting_licensing_inspections_analytics`, `configuration_schema`, `rule_engine`, `parameter_engine`, `owned_schema_migrations_models`, `appgen_x_outbox_inbox_eventing`, `idempotent_handlers`, `retry_dead_letter_evidence`.
-- Current advanced surfaces include: `permitting_licensing_inspections_event_sourced_operational_history`, `permitting_licensing_inspections_multi_tenant_policy_isolation`, `permitting_licensing_inspections_schema_evolution_resilience`, `permitting_licensing_inspections_autonomous_anomaly_detection`, `permitting_licensing_inspections_semantic_document_instruction_understanding`, `permitting_licensing_inspections_predictive_risk_scoring`, `permitting_licensing_inspections_counterfactual_scenario_simulation`, `permitting_licensing_inspections_cryptographic_audit_proofs`.
+- Manifest key: `permitting_licensing_inspections`.
+- Manifest description: applications, reviews, permits, licenses, fees, inspections, violations, renewals, and citizen workflows.
+- Current owned tables: `application`, `permit`, `license`, `review_task`, `fee_assessment`, `inspection`, and `violation`.
+- Current APIs: `POST /applications`, `POST /permits`, `POST /licenses`, `POST /review-tasks`, `POST /fee-assessments`, and `GET /permitting-licensing-inspections-workbench`.
+- Current emitted events: `PermittingLicensingInspectionsCreated`, `PermittingLicensingInspectionsUpdated`, `PermittingLicensingInspectionsApproved`, and `PermittingLicensingInspectionsExceptionOpened`.
+- Current consumed events: `PolicyChanged`, `CustomerUpdated`, and `SupplierQualified`.
+- Current UI fragments: `PermittingLicensingInspectionsWorkbench`, `PermittingLicensingInspectionsDetail`, and `PermittingLicensingInspectionsAssistantPanel`.
+- Current docs: `SPECIFICATION.md` and `RELEASE_EVIDENCE.md`.
 
-## 50 High-Impact Improvements
+### 1. Application intake package completeness
 
-### 1. Canonical lifecycle state model for Application
+**Justification:** Permit and license intake fails early when the system treats every submission as a generic record instead of a package with forms, plans, declarations, signatures, and supporting attachments. A domain backlog should start by making incomplete submittals visible before staff spend review time.
 
-**Justification:** This closes shallow CRUD gaps by making every permitting licensing and inspections transition explainable and testable instead of implicit in free-form status values.
+**Improvement:** Add intake package rules that classify application type, required documents, required attestations, required responsible parties, and required parcel or address data before an `application` can enter active review. Distinguish new applications, revisions, amendments, transfers, renewals, and complaint-triggered cases.
 
-**Improvement:** Define a complete state machine for `application` with explicit draft, validated, blocked, approved, active, suspended, corrected, closed, archived, and reopened states. Tie the behavior to `permitting_licensing_inspections_create_application_workflow` where applicable, and make it visible in `PermittingLicensingInspectionsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Scenario fixtures show accepted and rejected intake packages by application type, the workbench exposes a submission completeness checklist, and `RELEASE_EVIDENCE.md` links each intake rule to UI screenshots, API examples, and failing-to-passing tests.
 
-**Acceptance evidence:** State-transition tests, invalid-transition fixtures, workbench state badges, and emitted AppGen-X transition events for PermittingLicensingInspectionsCreated, PermittingLicensingInspectionsUpdated, PermittingLicensingInspectionsApproved. The evidence should be package-local in `src/pyAppGen/pbcs/permitting_licensing_inspections` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 2. Application identity, parcel, and party normalization
 
-### 2. Domain intake and normalization for Permit
+**Justification:** Permitting and licensing records become unreliable when applicant names, parcel identifiers, contractor numbers, and site addresses drift across submissions. Normalization is a domain control, not a cosmetic cleanup.
 
-**Justification:** The PBC cannot reach complete domain coverage unless it handles the messy front door of applications, reviews, permits, licenses, fees, inspections, violations, renewals, and citizen workflows, not only already-clean records.
+**Improvement:** Normalize applicant, owner, contractor, business, parcel, and site identity fields at intake, and preserve both the submitted values and the canonicalized values on the case. Add duplicate and near-duplicate detection for the same site or party combination.
 
-**Improvement:** Build a typed intake pipeline for `permit` that accepts structured API payloads, document-derived instructions, batch loads, and assistant-generated drafts while normalizing identifiers, dates, units, parties, and jurisdictional context. Tie the behavior to `permitting_licensing_inspections_record_permit_workflow` where applicable, and make it visible in `PermittingLicensingInspectionsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Test data covers duplicate parcel submissions, changed business names, and alternate address formats; case detail UI shows canonical and source values; release evidence includes duplicate-detection outcomes and operator override traces.
 
-**Acceptance evidence:** Golden intake fixtures, rejected-record queues, field-level normalization evidence, and assistant previews before governed datastore mutation. The evidence should be package-local in `src/pyAppGen/pbcs/permitting_licensing_inspections` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 3. Pre-application consultation tracking
 
-### 3. Specialist validation rules for License
+**Justification:** Many jurisdictions use early consultations to steer applicants before formal submission, but the current PBC evidence does not show a first-class place for advisory conversations, preliminary flags, or concept-stage requirements. Without this, the system loses context that explains later review decisions.
 
-**Justification:** World-class Permitting Licensing and Inspections requires rules that domain experts can reason about, version, test, and roll back without code edits.
+**Improvement:** Introduce a pre-application record tied to `application` intake that captures advisory notes, likely review disciplines, known code or ordinance issues, expected fees, and likely public notice or hearing obligations. Promote the record into a formal application without rekeying core facts.
 
-**Improvement:** Add a domain rule compiler for `license` that supports threshold rules, eligibility rules, dependency rules, temporal windows, conflicting-instruction detection, and override justification. Tie the behavior to `permitting_licensing_inspections_create_application_workflow` where applicable, and make it visible in `PermittingLicensingInspectionsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Seed scenarios show conversion from consultation to application, the workbench timeline preserves advisory history, and release evidence includes a no-retyping conversion test with retained notes and actors.
 
-**Acceptance evidence:** Rule simulation tests, versioned rule manifests, rule impact reports, and UI rule editors linked to `PERMITTING_LICENSING_INSPECTIONS_DATABASE_URL, PERMITTING_LICENSING_INSPECTIONS_EVENT_TOPIC, PERMITTING_LICENSING_INSPECTIONS_RETRY_LIMIT`. The evidence should be package-local in `src/pyAppGen/pbcs/permitting_licensing_inspections` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 4. Plan set version control
 
-### 4. Parameter governance and tuning for Review Task
+**Justification:** Plan review is impossible to audit if reviewers cannot tell which plan sheets, drawings, or narratives were in force for a given comment cycle. Version drift is a primary cause of dispute in construction permitting and technical licensing cases.
 
-**Justification:** Parameters are where operations teams tune permitting licensing and inspections; unbounded constants would make the PBC brittle and unsafe in real deployments.
+**Improvement:** Treat each plan upload as a governed plan-set version with sheet inventory, revision dates, resubmittal reason, reviewer comparison notes, and supersession links. Bind review comments and approvals to a specific plan-set version rather than a loose document collection.
 
-**Improvement:** Expose bounded runtime parameters for `review_task` covering risk thresholds, SLA windows, confidence floors, escalation cutoffs, batch sizes, retry limits, and human-confirmation requirements. Tie the behavior to `permitting_licensing_inspections_record_permit_workflow` where applicable, and make it visible in `PermittingLicensingInspectionsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Case detail UI shows plan-set version history, review comments resolve against a specific version, and release evidence includes side-by-side version diffs and a superseded-plan regression test.
 
-**Acceptance evidence:** Parameter schema validation, tenant overrides, approval history, rollback controls, and workbench diff views. The evidence should be package-local in `src/pyAppGen/pbcs/permitting_licensing_inspections` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 5. Multi-discipline plan review routing
 
-### 5. Deep owned schema expansion for Fee Assessment
+**Justification:** Plan review rarely belongs to one reviewer; zoning, structural, fire, utilities, accessibility, environmental, and business-license disciplines often run in parallel or sequence. Generic task routing hides discipline-specific dependencies and approval order.
 
-**Justification:** A single payload column cannot express the full surface of applications, reviews, permits, licenses, fees, inspections, violations, renewals, and citizen workflows or prove cross-PBC boundaries are respected.
+**Improvement:** Expand `review_task` into discipline-aware review routing with dependency graphs, concurrency rules, lead reviewer assignment, and discipline-specific comment templates. Support both sequential gating and parallel review packages.
 
-**Improvement:** Extend the owned schema around `fee_assessment` with normalized child tables for line-level evidence, party roles, approvals, attachments, comments, metrics, exception reasons, and control assertions. Tie the behavior to `permitting_licensing_inspections_create_application_workflow` where applicable, and make it visible in `PermittingLicensingInspectionsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Tests cover sequential and parallel routing paths, the workbench shows discipline swimlanes with blockers, and release evidence includes a review matrix proving the correct order for each application type.
 
-**Acceptance evidence:** Migrations, models, relationship tests, schema contract snapshots, and no shared-table access outside the `permitting_licensing_inspections_` namespace. The evidence should be package-local in `src/pyAppGen/pbcs/permitting_licensing_inspections` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 6. Correction cycle and resubmittal governance
 
-### 6. Event-sourced operational history for Inspection
+**Justification:** The domain lives on correction loops; a case can move through multiple review rounds before approval, denial, or abandonment. The PBC needs explicit correction cycles rather than silent overwrites of comments and plans.
 
-**Justification:** Temporal reconstruction is essential for better-than-world-class auditability and dispute resolution in permitting licensing and inspections.
+**Improvement:** Add correction-round records that link reviewer comments, applicant responses, revised plan sets, due dates, and staff acceptance of each resubmittal. Separate open corrections, accepted corrections, waived corrections, and unresolved corrections.
 
-**Improvement:** Capture every material mutation of `inspection` as immutable AppGen-X events with actor, tenant, command, policy version, idempotency key, before/after summary, and projection checkpoint. Tie the behavior to `permitting_licensing_inspections_record_permit_workflow` where applicable, and make it visible in `PermittingLicensingInspectionsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Scenario tests show multi-round review with carried-forward comments, the detail UI groups comments by correction cycle, and release evidence includes overdue-correction alerts and accepted-resubmittal proofs.
 
-**Acceptance evidence:** Replay tests, projection checksums, event ordering evidence, and point-in-time workbench views. The evidence should be package-local in `src/pyAppGen/pbcs/permitting_licensing_inspections` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 7. Fee assessment boundary and cashiering handoff
 
-### 7. Projection and read-model strategy for Violation
+**Justification:** Fee assessment belongs inside this PBC, but payment posting, treasury reconciliation, and ledger settlement often do not. The boundary must be explicit so the package owns fee logic without quietly absorbing cashiering responsibilities.
 
-**Justification:** The workbench should not force users to infer domain truth from raw tables; each projection should answer a real operating question.
+**Improvement:** Define `fee_assessment` as the authoritative domain for fee calculation, waivers, credits, and refund eligibility while publishing a clear outbound handoff for payment request, payment confirmation, refund execution, and accounting reconciliation. Record payment status as an external dependency instead of an owned financial ledger.
 
-**Improvement:** Create purpose-built projections for `violation`: operational queue, executive KPI rollup, exception aging, compliance evidence, agent task context, and external dependency health. Tie the behavior to `permitting_licensing_inspections_create_application_workflow` where applicable, and make it visible in `PermittingLicensingInspectionsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Architecture and API evidence show the boundary between assessed fees and posted payments, events prove outbound handoff and inbound confirmation behavior, and release evidence includes tests that block permit issuance when payment confirmation is missing.
 
-**Acceptance evidence:** Projection contracts, freshness SLAs, backfill tests, and visible stale-projection warnings. The evidence should be package-local in `src/pyAppGen/pbcs/permitting_licensing_inspections` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 8. Fee schedules, waivers, credits, and refunds
 
-### 8. Exception taxonomy and remediation for Permitting Licensing Inspections Policy Rule
+**Justification:** Fee logic is not a single formula; it depends on use type, valuation, square footage, occupancy, urgency, renewal status, reinspection counts, public-hearing fees, and hardship waivers. A shallow fee table will not survive real permitting operations.
 
-**Justification:** High-value PBCs win on exception throughput; generic “failed” states hide the details operators need.
+**Improvement:** Add rule-driven fee schedules with effective dates, jurisdiction scope, discretionary waivers, fee credits, refund eligibility, and rework charges. Track who approved a waiver, why it was allowed, and whether the waiver changes downstream review or enforcement behavior.
 
-**Improvement:** Model the full exception taxonomy for `permitting_licensing_inspections_policy_rule`, including severity, root cause, blocking dependency, remediation owner, due date, retry eligibility, escalation path, and closure evidence. Tie the behavior to `permitting_licensing_inspections_record_permit_workflow` where applicable, and make it visible in `PermittingLicensingInspectionsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Fee simulations cover new, revised, renewal, reinspection, and hearing scenarios; the workbench displays line-level fee explanations; and release evidence includes waiver approval trails and refund-eligibility tests.
 
-**Acceptance evidence:** Exception queues, aging metrics, remediation playbooks, dead-letter linkage, and closure test fixtures for records retention holds. The evidence should be package-local in `src/pyAppGen/pbcs/permitting_licensing_inspections` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 9. Permit issuance readiness gate
 
-### 9. Predictive risk scoring for Permitting Licensing Inspections Runtime Parameter
+**Justification:** Permit issuance should be a deliberate domain milestone, not the last save after a reviewer clicks approve. Issuance must prove that plan review, fee readiness, conditions, and dependency checks are complete.
 
-**Justification:** The package should warn users before permitting licensing and inspections work fails, breaches policy, or creates downstream cost.
+**Improvement:** Add an issuance gate that requires all mandatory reviews closed, all blocking corrections resolved, all required fees confirmed, all permit conditions assembled, and all public notice or hearing outcomes recorded before a `permit` can move to issued status. Support issuance holds with explicit reasons.
 
-**Improvement:** Add predictive risk scoring for `permitting_licensing_inspections_runtime_parameter` using domain features from owned tables, consumed events PolicyChanged, CustomerUpdated, SupplierQualified, rule outcomes, aging, anomaly signals, and historical corrections. Tie the behavior to `permitting_licensing_inspections_create_application_workflow` where applicable, and make it visible in `PermittingLicensingInspectionsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Issuance blockers appear in the workbench and detail UI, integration tests prove that unresolved dependencies prevent issuance, and release evidence includes a full readiness checklist trace for each permit type.
 
-**Acceptance evidence:** Feature manifests, score explanations, calibration reports, drift alerts, and tests for low/medium/high-risk scenarios. The evidence should be package-local in `src/pyAppGen/pbcs/permitting_licensing_inspections` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 10. License qualification and operating conditions
 
-### 10. Counterfactual simulation for Permitting Licensing Inspections Schema Extension
+**Justification:** A license is more than an approval flag; it usually carries qualifications, scope limits, operating conditions, expiration rules, and disciplinary history. The backlog should make those domain facts first-class.
 
-**Justification:** Advanced users need to ask “what would happen if” before committing changes to live applications, reviews, permits, licenses, fees, inspections, violations, renewals, and citizen workflows operations.
+**Improvement:** Extend `license` records to capture qualified activities, allowed locations, capacity or occupancy limits, staffing requirements, training or insurance proofs, and special operating conditions. Make conditions machine-readable so inspections and renewals can test them automatically.
 
-**Improvement:** Provide scenario simulation for `permitting_licensing_inspections_schema_extension`: policy change, capacity constraint, deadline shift, price/rate change, eligibility change, disruption, and manual override outcomes. Tie the behavior to `permitting_licensing_inspections_record_permit_workflow` where applicable, and make it visible in `PermittingLicensingInspectionsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** License detail UI shows structured conditions, inspection scenarios can evaluate those conditions, and release evidence includes qualification-rule tests plus condition-driven enforcement examples.
 
-**Acceptance evidence:** Simulation APIs, non-mutating sandbox state, comparison reports, and workbench side-by-side scenario panels. The evidence should be package-local in `src/pyAppGen/pbcs/permitting_licensing_inspections` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 11. Temporary permits and provisional licenses
 
-### 11. Autonomous anomaly triage for Permitting Licensing Inspections Control Assertion
+**Justification:** Jurisdictions often issue temporary occupancy approvals, phased permits, event permits, and provisional licenses while full review or corrective work remains open. These are high-risk instruments and need separate rules from permanent approvals.
 
-**Justification:** A world-class PBC should reduce analyst burden without hiding the reasoning behind automated triage.
+**Improvement:** Model temporary permits and provisional licenses with explicit term limits, missing-item lists, auto-expiration behavior, and follow-up review checkpoints. Prevent silent conversion into permanent approval without satisfying remaining conditions.
 
-**Improvement:** Implement anomaly detection for `permitting_licensing_inspections_control_assertion` that identifies outliers, duplicate submissions, impossible sequences, stale dependencies, unusual amounts/counts/durations, and contradictory fields. Tie the behavior to `permitting_licensing_inspections_create_application_workflow` where applicable, and make it visible in `PermittingLicensingInspectionsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Seed data includes temporary and provisional cases, the system auto-flags approaching expiration, and release evidence includes tests that prevent permanent status conversion without documented completion.
 
-**Acceptance evidence:** Explainable anomaly cards, reviewer feedback loops, false-positive tracking, and suppression governance. The evidence should be package-local in `src/pyAppGen/pbcs/permitting_licensing_inspections` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 12. Inspection type matrix and scheduling
 
-### 12. Semantic document understanding for Permitting Licensing Inspections Governed Model
+**Justification:** Inspections are not interchangeable; rough-in, final, complaint, renewal, compliance, and follow-up inspections have different prerequisites, windows, and inspectors. A strong PBC should encode those distinctions directly.
 
-**Justification:** Document-heavy work in Permitting Licensing and Inspections cannot be complete if the assistant only answers questions and cannot prepare accurate governed changes.
+**Improvement:** Add an inspection type matrix that defines prerequisites, allowed outcomes, required evidence, reinspection rules, and default scheduling windows for each `inspection` type. Support route-based scheduling and inspector capacity constraints.
 
-**Improvement:** Train the package assistant to parse domain documents and instructions for `permitting_licensing_inspections_governed_model`, extract obligations, dates, parties, quantities, identifiers, and exceptions, then map them to safe draft mutations. Tie the behavior to `permitting_licensing_inspections_record_permit_workflow` where applicable, and make it visible in `PermittingLicensingInspectionsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Scheduling tests cover prerequisite failures and route assignment, the workbench shows inspection queues by type and aging, and release evidence includes capacity and window calculations for multiple inspection classes.
 
-**Acceptance evidence:** Document extraction tests, confidence thresholds, redaction handling, source span citations, and human confirmation workflows. The evidence should be package-local in `src/pyAppGen/pbcs/permitting_licensing_inspections` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 13. Mobile inspection evidence capture
 
-### 13. Agent-safe CRUD execution for Application
+**Justification:** Field inspectors need to record evidence where the work occurs, not after returning to a desk. If the package does not treat photos, notes, signatures, measurements, and geotags as first-class evidence, later enforcement will be weak.
 
-**Justification:** The PBC agent must be a first-class operator but never a hidden bypass around RBAC, rules, or owned datastore boundaries.
+**Improvement:** Add mobile-friendly capture for inspection observations, photos, annotated plan references, signatures, geolocation, timestamped measurements, and witness notes. Preserve the chain of custody for each evidence item and link it to the exact inspection outcome.
 
-**Improvement:** Add a professional chatbot skill for `application` that can create, update, correct, close, and annotate records only through policy-checked commands, approval gates, and previewed diffs. Tie the behavior to `permitting_licensing_inspections_create_application_workflow` where applicable, and make it visible in `PermittingLicensingInspectionsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Mobile UI flows are demonstrated in release evidence, evidence objects show actor, time, and location lineage, and regression tests prove that captured media and notes remain attached after sync and correction events.
 
-**Acceptance evidence:** Skill manifests, permission tests, preview/confirm flows, blocked-action evidence, and audit events for every assistant mutation. The evidence should be package-local in `src/pyAppGen/pbcs/permitting_licensing_inspections` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 14. Failed inspection corrections and reinspections
 
-### 14. Workbench persona coverage for Permit
+**Justification:** Failed inspections drive correction work, reinspections, and fee consequences. The system should separate an initial failed inspection from the later corrective work and any subsequent reinspection decisions.
 
-**Justification:** A generic detail page underserves the domain; each role needs the exact controls and evidence they use daily.
+**Improvement:** When an inspection fails, automatically open a correction package with failed items, code references, due dates, reinspection eligibility, and reinspection fee triggers. Track whether the next visit is a full reinspection, a partial verification, or an administrative closure.
 
-**Improvement:** Design dedicated workbench panels for `permit`: operator queue, supervisor approvals, analyst exceptions, auditor evidence, configuration owner, and agent-assistance review. Tie the behavior to `permitting_licensing_inspections_record_permit_workflow` where applicable, and make it visible in `PermittingLicensingInspectionsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Failed-inspection scenarios produce linked correction notices and reinspection tasks, the workbench shows open failed items by site and inspector, and release evidence includes a reinspection-fee trigger test.
 
-**Acceptance evidence:** UI contract entries, route tests, empty/error/loading states, and permission-aware action availability. The evidence should be package-local in `src/pyAppGen/pbcs/permitting_licensing_inspections` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 15. Violation taxonomy and severity scoring
 
-### 15. Cross-PBC dependency contracts for License
+**Justification:** Enforcement quality depends on a consistent violation vocabulary. Without a clear taxonomy, the same behavior can be under-classified in one case and over-classified in another.
 
-**Justification:** Composable packages fail when hidden table coupling enters the domain model.
+**Improvement:** Introduce a violation taxonomy for life safety, operational, documentation, occupancy, nuisance, environmental, licensing, and repeat-offender violations with severity, imminence, recurrence, and remedy type. Use the taxonomy to drive notice templates, hearing eligibility, and enforcement ladders.
 
-**Improvement:** Represent dependencies for `license` through declared APIs, consumed events PolicyChanged, CustomerUpdated, SupplierQualified, and projections rather than shared tables, with explicit freshness, ownership, and fallback behavior. Tie the behavior to `permitting_licensing_inspections_create_application_workflow` where applicable, and make it visible in `PermittingLicensingInspectionsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Violation creation tests verify taxonomy-driven defaults, analytics group cases by severity and type, and release evidence includes examples showing how taxonomy changes downstream notice and hearing behavior.
 
-**Acceptance evidence:** Dependency manifests, contract tests, stale dependency alerts, and no foreign-table references in generated artifacts. The evidence should be package-local in `src/pyAppGen/pbcs/permitting_licensing_inspections` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 16. Enforcement ladder and stop-work authority
 
-### 16. API completeness and versioning for Review Task
+**Justification:** Enforcement is rarely a single step; it typically moves from warning to citation to suspension, stop-work, revocation, or referral. The system should encode the ladder and the authority needed for each escalation.
 
-**Justification:** Complete domain coverage requires both command and query surfaces, not only happy-path create endpoints.
+**Improvement:** Add an enforcement ladder with explicit escalation steps, approval authority, emergency powers, and mandatory evidence for each step. Include stop-work order issuance, service, release, and appeal handling as a controlled workflow.
 
-**Improvement:** Expand APIs beyond POST /applications, POST /permits, POST /licenses to cover search, validation-only commands, simulation, bulk intake, exception closure, evidence export, projection reads, and idempotent corrections. Tie the behavior to `permitting_licensing_inspections_record_permit_workflow` where applicable, and make it visible in `PermittingLicensingInspectionsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Enforcement scenarios prove that the right authority is required for each step, stop-work orders generate service records and release checks, and release evidence includes escalation matrices and blocked-override tests.
 
-**Acceptance evidence:** OpenAPI-style route manifests, backward-compatible version tests, deprecation metadata, and idempotency assertions. The evidence should be package-local in `src/pyAppGen/pbcs/permitting_licensing_inspections` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 17. Notice of violation and due-process timeline
 
-### 17. Typed emitted-event expansion for Fee Assessment
+**Justification:** A violation case is defective if the package cannot prove when notice was created, served, acknowledged, cured, or escalated. Due-process dates are central domain facts.
 
-**Justification:** Consumers should understand what happened in Permitting Licensing and Inspections without parsing opaque payloads.
+**Improvement:** Create a notice workflow that records notice generation, delivery channel, service confirmation, cure deadline, extension decisions, and escalation dates. Automatically compute the next legally allowed step based on service status and deadlines.
 
-**Improvement:** Replace generic lifecycle emissions with typed events for each meaningful `fee_assessment` transition, exception, approval, correction, simulation result, and downstream handoff. Tie the behavior to `permitting_licensing_inspections_create_application_workflow` where applicable, and make it visible in `PermittingLicensingInspectionsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Timeline views show notice-to-cure-to-escalation progression, tests cover service failures and deadline extensions, and release evidence includes notice artifacts and statutory clock calculations.
 
-**Acceptance evidence:** Event schema tests, event examples, compatibility checks, and emitted-event coverage in release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/permitting_licensing_inspections` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 18. Public notice publication ledger
 
-### 18. Consumed-event handlers for Inspection
+**Justification:** Some permits, licenses, variances, and hearings require public notice, publication windows, and proof that the notice actually ran. This is often omitted until late in implementation and then handled out of band.
 
-**Justification:** A PBC is composable only when incoming events affect its own domain state predictably and safely.
+**Improvement:** Add a public notice ledger that stores notice text, publication channel, posting dates, mailing lists, site-posting evidence, affidavits of publication, and comment windows. Link notice obligations to application, permit, license, and hearing milestones.
 
-**Improvement:** Implement idempotent handlers for consumed events PolicyChanged, CustomerUpdated, SupplierQualified that update projections, open dependency exceptions, recalculate risk, and preserve source event lineage. Tie the behavior to `permitting_licensing_inspections_record_permit_workflow` where applicable, and make it visible in `PermittingLicensingInspectionsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Cases that require notice cannot advance without publication proof, the detail UI shows notice windows and artifacts, and release evidence includes publication-ledger entries with linked affidavits and comment periods.
 
-**Acceptance evidence:** Duplicate-event tests, handler side-effect boundaries, dead-letter fixtures, and lineage links back to source events. The evidence should be package-local in `src/pyAppGen/pbcs/permitting_licensing_inspections` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 19. Hearing docket, exhibits, and outcomes
 
-### 19. Retry and dead-letter operations for Violation
+**Justification:** Hearings are a specialized domain stage with scheduling, exhibit packets, testimony, continuances, and formal outcomes. Treating them as a generic task would erase key procedural facts.
 
-**Justification:** Dead letters are not just plumbing; they are domain work queues that can block applications, reviews, permits, licenses, fees, inspections, violations, renewals, and citizen workflows.
+**Improvement:** Model hearings with docket numbers, hearing type, notice basis, continuance history, hearing exhibits, participant roles, board or hearing-officer outcomes, and remand or condition results. Tie hearing outcomes back into permit, license, and violation state changes.
 
-**Improvement:** Create operational tools for retrying, quarantining, explaining, and resolving dead-lettered `violation` events with max-attempt policy, poison-message detection, and replay safety. Tie the behavior to `permitting_licensing_inspections_create_application_workflow` where applicable, and make it visible in `PermittingLicensingInspectionsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Hearing scenarios show scheduling through outcome, exhibit packets are visible in case detail, and release evidence includes a continued hearing example plus a decision-to-case-state transition test.
 
-**Acceptance evidence:** Dead-letter workbench, retry eligibility tests, replay audit proof, and operator action logs. The evidence should be package-local in `src/pyAppGen/pbcs/permitting_licensing_inspections` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 20. Renewal calendars and outreach
 
-### 20. RBAC and attribute policy for Permitting Licensing Inspections Policy Rule
+**Justification:** Renewals are predictable workload and should not depend on staff remembering expiration dates. Strong renewal handling reduces lapses, unlicensed activity, and urgent last-minute queues.
 
-**Justification:** High-impact domain operations need finer controls than generic RBAC grants.
+**Improvement:** Create renewal calendars with advance notice cadence, grace-period messaging, missing-document reminders, and role-based queues for expiring permits and licenses. Support high-volume seasonal renewal campaigns without collapsing case history into batch notes.
 
-**Improvement:** Extend permissions for `permitting_licensing_inspections_policy_rule` from coarse read/create/update/admin to action-level and attribute-aware policies based on role, tenant, jurisdiction, monetary/materiality threshold, and exception severity. Tie the behavior to `permitting_licensing_inspections_record_permit_workflow` where applicable, and make it visible in `PermittingLicensingInspectionsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Renewal jobs create the correct notices at the correct lead times, workbench dashboards show expiring populations by window, and release evidence includes campaign results and notice audit logs.
 
-**Acceptance evidence:** Permission matrix docs, ABAC policy tests, denied-action UI states, and assistant skill permission checks. The evidence should be package-local in `src/pyAppGen/pbcs/permitting_licensing_inspections` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 21. Renewal eligibility and continuing conditions
 
-### 21. Continuous control testing for Permitting Licensing Inspections Runtime Parameter
+**Justification:** Renewal is not automatic; the case must prove that ongoing qualifications, inspections, fees, and enforcement history support renewal. Otherwise the system becomes a passive expiration tracker instead of a licensing authority.
 
-**Justification:** Controls should run during operations, not only during release audit or manual review.
+**Improvement:** Add renewal eligibility rules that evaluate continuing education, active violations, unresolved failed inspections, unpaid assessed fees, insurance or bond status, and required attestations. Distinguish full renewal, conditional renewal, denied renewal, and renewal hold.
 
-**Improvement:** Embed control assertions for `permitting_licensing_inspections_runtime_parameter` that continuously test segregation of duties, required approvals, stale exceptions, policy drift, duplicate records, and boundary violations. Tie the behavior to `permitting_licensing_inspections_create_application_workflow` where applicable, and make it visible in `PermittingLicensingInspectionsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Renewal decision tests cover eligible, conditional, denied, and held cases, case detail displays the rule outcomes that drove the decision, and release evidence includes a denied-renewal packet with rule citations.
 
-**Acceptance evidence:** Control dashboards, failing-control events, test fixtures, and release evidence tied to `permitting_licensing_inspections_control_assertion` records. The evidence should be package-local in `src/pyAppGen/pbcs/permitting_licensing_inspections` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 22. Expiration, grace, suspension, and reinstatement
 
-### 22. Cryptographic audit proofing for Permitting Licensing Inspections Schema Extension
+**Justification:** The period between active and revoked status often determines whether the public sees fair treatment or arbitrary administration. Expiration and reinstatement rules need their own lifecycle semantics.
 
-**Justification:** Better-than-world-class auditability requires proof of integrity, not merely logs stored in mutable tables.
+**Improvement:** Expand permit and license lifecycle states to cover expired, grace, suspended, reinstatement pending, reinstated, and revoked. Track the event, reason, authority, and required conditions for each status change.
 
-**Improvement:** Hash-chain material `permitting_licensing_inspections_schema_extension` decisions, documents, emitted events, and release-evidence snapshots to make tampering visible without exposing sensitive payloads. Tie the behavior to `permitting_licensing_inspections_record_permit_workflow` where applicable, and make it visible in `PermittingLicensingInspectionsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** State-transition tests prove illegal jumps are blocked, the workbench separates expired from suspended populations, and release evidence includes reinstatement scenarios with required-condition verification.
 
-**Acceptance evidence:** Proof manifests, verification APIs, redacted proof exports, and audit-ledger handoff events. The evidence should be package-local in `src/pyAppGen/pbcs/permitting_licensing_inspections` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 23. Citizen portal intake and self-service
 
-### 23. Privacy, consent, and secrecy controls for Permitting Licensing Inspections Control Assertion
+**Justification:** Citizen portals are a primary domain surface for applicants, residents, and businesses. If self-service stops at basic form upload, the package still leaves high-friction work to staff.
 
-**Justification:** Complete domain coverage must account for protected data and restricted operational evidence.
+**Improvement:** Add a citizen-facing portal for account creation, guided application intake, document upload, fee estimate preview, status inquiries, correction responses, complaint filing, and hearing participation details. Separate portal permissions for applicants, owners, contractors, and complainants.
 
-**Improvement:** Add field-level privacy classifications for `permitting_licensing_inspections_control_assertion`, consent checks, masking rules, retention schedules, legal holds, and assistant redaction policies. Tie the behavior to `permitting_licensing_inspections_create_application_workflow` where applicable, and make it visible in `PermittingLicensingInspectionsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Portal flows are covered in end-to-end tests, role-restricted views show only the right cases and actions, and release evidence includes screenshots for intake, correction response, and complaint submission.
 
-**Acceptance evidence:** Retention tests, masked UI snapshots, consent-blocked mutation fixtures, and export controls. The evidence should be package-local in `src/pyAppGen/pbcs/permitting_licensing_inspections` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 24. Citizen portal status, transparency, and correspondence
 
-### 24. Multi-tenant operating model for Permitting Licensing Inspections Governed Model
+**Justification:** Applicants and residents need to know what is happening without calling the office for every update. Transparent case status reduces manual inquiry workload and improves trust.
 
-**Justification:** The PBC should scale across organizations while preserving independent policy and compliance boundaries.
+**Improvement:** Publish stage-based status explanations, outstanding items, next-step guidance, upcoming deadlines, and official correspondence history in the citizen portal. Show which review disciplines are complete, which corrections remain open, and whether a hearing or public notice stage is active.
 
-**Improvement:** Support tenant-specific `permitting_licensing_inspections_governed_model` rules, data residency, encryption context, configuration, seed data, and release evidence without allowing cross-tenant leakage. Tie the behavior to `permitting_licensing_inspections_record_permit_workflow` where applicable, and make it visible in `PermittingLicensingInspectionsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Portal UI tests confirm stage explanations and correspondence history, usability scenarios show users locating outstanding items without staff help, and release evidence includes portal screenshots and localized message examples.
 
-**Acceptance evidence:** Tenant isolation tests, tenant-scoped parameters, key-rotation evidence, and cross-tenant negative fixtures. The evidence should be package-local in `src/pyAppGen/pbcs/permitting_licensing_inspections` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 25. Internal workbench queue and dashboard design
 
-### 25. Schema evolution and extension registry for Application
+**Justification:** `PermittingLicensingInspectionsWorkbench` should reflect how permitting offices actually work: intake, plan review, issuance, inspections, renewals, hearings, and enforcement are different operational lanes. One generic queue hides real priorities.
 
-**Justification:** Domain teams will add fields; the PBC must evolve without breaking APIs, events, or workbench projections.
+**Improvement:** Redesign the workbench with lane-specific queues, aging buckets, discipline filters, inspection route views, renewal campaigns, and enforcement dashboards. Add saved views for intake staff, reviewers, inspectors, supervisors, and hearing clerks.
 
-**Improvement:** Make schema extensions for `application` first-class with compatibility checks, migration previews, projection backfills, field ownership, and rollback metadata. Tie the behavior to `permitting_licensing_inspections_create_application_workflow` where applicable, and make it visible in `PermittingLicensingInspectionsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** UI acceptance tests cover each saved view, performance evidence shows large queue loads remain usable, and release evidence includes role-based screenshots plus queue-count reconciliation against seeded cases.
 
-**Acceptance evidence:** Extension registry UI, compatibility tests, migration dry-runs, and backfill release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/permitting_licensing_inspections` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 26. Record detail timeline and evidence graph
 
-### 26. Master data quality gates for Permit
+**Justification:** `PermittingLicensingInspectionsDetail` should tell the procedural story of a case. Staff should not need to inspect tables or log streams to reconstruct plan revisions, notices, hearings, or enforcement actions.
 
-**Justification:** Many permitting licensing and inspections errors begin as bad reference data; the PBC should catch them before workflow execution.
+**Improvement:** Build a timeline and evidence graph that shows application events, review cycles, plan-set versions, fee milestones, issuance, inspections, violations, public notices, hearings, renewals, and correspondence in one traceable view. Link every action to the actor, source event, and attached evidence.
 
-**Improvement:** Define reference-data contracts for `permit`: canonical codes, parties, locations, classifications, calendars, units, currencies, products, assets, or service categories as relevant to the domain. Tie the behavior to `permitting_licensing_inspections_record_permit_workflow` where applicable, and make it visible in `PermittingLicensingInspectionsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Detail-page UI tests confirm timeline ordering and evidence linking, event lineage is visible for every major milestone, and release evidence includes screenshots of a case spanning intake through enforcement closure.
 
-**Acceptance evidence:** Reference validation fixtures, stale-code warnings, mapping tables, and dependency freshness indicators. The evidence should be package-local in `src/pyAppGen/pbcs/permitting_licensing_inspections` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 27. Documents, stamped plans, and attachment governance
 
-### 27. Bulk operations and correction workflows for License
+**Justification:** Permitting decisions depend on controlled documents such as stamped plans, certificates, letters, proofs of publication, and hearing exhibits. The package should govern those artifacts directly rather than treating them as loose files.
 
-**Justification:** Enterprise-scale Permitting Licensing and Inspections users cannot operate one record at a time.
+**Improvement:** Add document classes, retention tags, stamp status, supersession rules, signed-copy indicators, and document-to-case-role links. Distinguish working drafts, accepted submittals, approved stamp sets, and public-facing versions.
 
-**Improvement:** Add bulk load, bulk validate, bulk approve, and bulk correction workflows for `license` with partial success, row-level errors, resumability, and rollback. Tie the behavior to `permitting_licensing_inspections_create_application_workflow` where applicable, and make it visible in `PermittingLicensingInspectionsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Attachment tests prove document classes and supersession behavior, the detail UI shows which plan set is current and stamped, and release evidence includes a document-governance matrix with sample artifacts.
 
-**Acceptance evidence:** CSV/API batch fixtures, resumable job state, row-level audit evidence, and assistant-generated correction suggestions. The evidence should be package-local in `src/pyAppGen/pbcs/permitting_licensing_inspections` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 28. Cross-agency referrals and sign-offs
 
-### 28. Lifecycle collaboration and tasking for Review Task
+**Justification:** Many permits and licenses depend on outside sign-offs such as fire, health, utilities, zoning, environmental, or legal review. Those dependencies should be explicit instead of buried in comment text.
 
-**Justification:** Domain collaboration should live inside the PBC boundary and remain auditable with the record it affects.
+**Improvement:** Add referral objects with requested review scope, due dates, returned conditions, blocking status, and stale-dependency rules. Support both internal cross-department referrals and external agency acknowledgments.
 
-**Improvement:** Attach tasks, comments, ownership, due dates, handoffs, and escalation threads to `review_task` without leaking into external shared task tables. Tie the behavior to `permitting_licensing_inspections_record_permit_workflow` where applicable, and make it visible in `PermittingLicensingInspectionsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Referral scenarios show blocking and non-blocking referrals, stale referrals appear in workbench exception queues, and release evidence includes turnaround tracking and returned-condition capture.
 
-**Acceptance evidence:** Task tables, comment audit history, notification events, escalation SLAs, and role-specific task queues. The evidence should be package-local in `src/pyAppGen/pbcs/permitting_licensing_inspections` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 29. Event catalog expansion for domain milestones
 
-### 29. SLA and service-level governance for Fee Assessment
+**Justification:** The current emitted events are too generic to explain real permitting behavior to downstream consumers. Domain milestones such as plan review completion, permit issuance, failed inspection, violation notice served, public notice posted, hearing decided, and renewal denied need typed events.
 
-**Justification:** Users need to know when applications, reviews, permits, licenses, fees, inspections, violations, renewals, and citizen workflows is late, blocked, or at risk before customer or regulator impact.
+**Improvement:** Expand the event catalog with explicit milestone events and structured payloads for applications, plan review, fee assessment, permit and license lifecycle changes, inspections, violations, corrections, renewals, public notices, hearings, and enforcement actions. Preserve event lineage to the case, actor, and triggering rule.
 
-**Improvement:** Define SLAs for `fee_assessment` across intake, validation, approval, exception resolution, event handling, downstream projection refresh, and release-evidence generation. Tie the behavior to `permitting_licensing_inspections_create_application_workflow` where applicable, and make it visible in `PermittingLicensingInspectionsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Event schema examples exist for each major milestone, event replay tests prove downstream projections can rebuild case history, and `RELEASE_EVIDENCE.md` maps each user-facing stage to its emitted and consumed events.
 
-**Acceptance evidence:** SLA breach events, timers, configurable calendars, workbench aging buckets, and tests for pause/resume behavior. The evidence should be package-local in `src/pyAppGen/pbcs/permitting_licensing_inspections` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 30. Outbound notices, letters, and templates
 
-### 30. Operational analytics cockpit for Inspection
+**Justification:** Permitting offices produce a large volume of official correspondence. If notice generation stays ad hoc, the package cannot guarantee consistent language, deadlines, or service records.
 
-**Justification:** World-class operations require leading indicators, not only record counts.
+**Improvement:** Add governed templates for application deficiency letters, review comments, correction notices, permit issuance letters, renewal notices, inspection results, violation notices, hearing notices, and enforcement orders. Support jurisdiction-level wording overrides with version history.
 
-**Improvement:** Build analytics for `inspection`: throughput, backlog, aging, approval latency, exception rate, risk distribution, automation acceptance, correction rate, and downstream dependency health. Tie the behavior to `permitting_licensing_inspections_record_permit_workflow` where applicable, and make it visible in `PermittingLicensingInspectionsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Template tests render the correct data into each letter type, service channels are logged for each notice, and release evidence includes approved samples plus versioned template history.
 
-**Acceptance evidence:** Metric definitions, projection tests, drill-through routes, export APIs, and anomaly overlays. The evidence should be package-local in `src/pyAppGen/pbcs/permitting_licensing_inspections` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 31. Corrections, amendments, and supersessions
 
-### 31. Decision intelligence and recommendations for Violation
+**Justification:** Case history must distinguish a correction to an existing record from a new application or a replacement permit. Without that distinction, analytics and legal review become unreliable.
 
-**Justification:** The PBC should help expert users decide faster while showing evidence and uncertainty.
+**Improvement:** Model corrections, amendments, revisions, transfers, and supersessions as explicit relationships across `application`, `permit`, and `license` records. Preserve the original issuance or filing record while making the currently effective record obvious.
 
-**Improvement:** Generate ranked recommendations for `violation` such as next best action, likely resolution, required evidence, policy adjustment, staffing/capacity response, or downstream handoff. Tie the behavior to `permitting_licensing_inspections_create_application_workflow` where applicable, and make it visible in `PermittingLicensingInspectionsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Relationship tests cover revised permits and amended licenses, UI badges identify the active superseding record, and release evidence includes a scenario proving historical links remain intact after correction.
 
-**Acceptance evidence:** Recommendation explanations, confidence intervals, feedback capture, model governance records, and rejection reasons. The evidence should be package-local in `src/pyAppGen/pbcs/permitting_licensing_inspections` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 32. Appeals, reconsiderations, and variance workflows
 
-### 32. Quality and completeness scoring for Permitting Licensing Inspections Policy Rule
+**Justification:** Permit denials, license actions, and enforcement outcomes often trigger appeals or variance requests. The domain needs a structured path for reconsideration instead of forcing staff to improvise outside the system.
 
-**Justification:** Operators should see whether a record is truly ready, not just technically saved.
+**Improvement:** Add appeal and variance case types with filing deadlines, record-locking behavior, hearing requirements, evidence packet assembly, and outcome effects on the underlying case. Distinguish administrative reconsideration from formal appeal.
 
-**Improvement:** Score each `permitting_licensing_inspections_policy_rule` record for completeness, consistency, policy readiness, dependency readiness, evidence sufficiency, and downstream composability. Tie the behavior to `permitting_licensing_inspections_record_permit_workflow` where applicable, and make it visible in `PermittingLicensingInspectionsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Appeal scenarios verify deadline enforcement and outcome propagation, hearing packets attach automatically to the appeal record, and release evidence includes a denial-to-appeal-to-remand example.
 
-**Acceptance evidence:** Scoring rules, missing-evidence lists, readiness badges, and blocking criteria in command handlers. The evidence should be package-local in `src/pyAppGen/pbcs/permitting_licensing_inspections` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 33. Role-based delegation and override controls
 
-### 33. End-to-end scenario library for Permitting Licensing Inspections Runtime Parameter
+**Justification:** Permitting work frequently requires delegated sign-off and emergency override, but those actions must be visible and constrained. Hidden delegation is a governance failure.
 
-**Justification:** Release evidence is stronger when every important permitting licensing and inspections behavior has executable examples.
+**Improvement:** Add explicit delegation records, acting-on-behalf-of markers, override reasons, duration limits, and supervisor review for high-impact actions such as permit issuance, stop-work orders, waivers, and license suspension. Enforce finer permissions than the current broad approve and admin grants.
 
-**Improvement:** Create seeded scenarios for `permitting_licensing_inspections_runtime_parameter`: normal flow, urgent path, exception path, corrected path, duplicate path, late event path, and audit export path. Tie the behavior to `permitting_licensing_inspections_create_application_workflow` where applicable, and make it visible in `PermittingLicensingInspectionsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Permission tests show that only authorized delegates can act, UI displays delegated authority and override rationale, and release evidence includes expired-delegation and blocked-override scenarios.
 
-**Acceptance evidence:** Scenario seed data, runtime smoke coverage, generated-app fixtures, and story-level workbench screenshots/contracts. The evidence should be package-local in `src/pyAppGen/pbcs/permitting_licensing_inspections` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 34. Agent skill for application intake triage
 
-### 34. Domain ontology and terminology model for Permitting Licensing Inspections Schema Extension
+**Justification:** `PermittingLicensingInspectionsAssistantPanel` should help staff classify and prepare intake work, not just summarize text. Intake triage is a high-value, low-risk place for governed assistance.
 
-**Justification:** Precise vocabulary prevents the PBC from misclassifying specialist documents or user instructions.
+**Improvement:** Add an agent skill that reviews a submission package, identifies missing items, proposes application type, flags likely hearing or public-notice obligations, and drafts the intake completeness checklist for staff confirmation. Keep the agent in suggest-only mode unless a human confirms the draft record.
 
-**Improvement:** Add an ontology for `permitting_licensing_inspections_schema_extension` terms, synonyms, classifications, relationships, allowed values, and phrase mappings used by the assistant and UI. Tie the behavior to `permitting_licensing_inspections_record_permit_workflow` where applicable, and make it visible in `PermittingLicensingInspectionsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Skill evaluations show correct triage suggestions across seeded applications, the assistant cites source documents for each recommendation, and release evidence includes accepted and rejected assistant drafts with audit trails.
 
-**Acceptance evidence:** Ontology files, assistant parsing tests, UI glossary, and mapping evidence for domain-specific abbreviations. The evidence should be package-local in `src/pyAppGen/pbcs/permitting_licensing_inspections` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 35. Agent skill for plan review summarization
 
-### 35. Advanced search and investigation for Permitting Licensing Inspections Control Assertion
+**Justification:** Reviewers need help consolidating long correction narratives, repeated comment cycles, and discipline conflicts. A domain-tuned skill can reduce review friction without taking away decision authority.
 
-**Justification:** Investigators and operators need fast, explainable retrieval across the whole domain surface.
+**Improvement:** Add an agent skill that summarizes plan-set changes, groups comments by discipline and code topic, highlights unresolved items across resubmittals, and drafts applicant-facing correction summaries. Require reviewer confirmation before any comment set is issued.
 
-**Improvement:** Provide search across `permitting_licensing_inspections_control_assertion` records, events, documents, exceptions, tasks, comments, and audit proofs with filters for tenant, status, risk, date, party, and dependency. Tie the behavior to `permitting_licensing_inspections_create_application_workflow` where applicable, and make it visible in `PermittingLicensingInspectionsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Summary quality tests compare agent output to reviewer-approved examples, the assistant references exact plan sheets or comments, and release evidence includes multi-cycle review examples with human confirmation logs.
 
-**Acceptance evidence:** Search index contracts, result provenance, permission-filtered queries, and stale-index warnings. The evidence should be package-local in `src/pyAppGen/pbcs/permitting_licensing_inspections` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 36. Agent skill for inspection preparation and field assistance
 
-### 36. Reconciliation and closure controls for Permitting Licensing Inspections Governed Model
+**Justification:** Inspectors benefit from a concise case brief before arriving onsite and a structured way to turn findings into complete records afterward. Domain assistance should shorten field time while improving evidence quality.
 
-**Justification:** Closure is not complete until the PBC can prove no material domain work remains unresolved.
+**Improvement:** Add an agent skill that prepares an inspection brief from approved plans, prior inspections, active conditions, open violations, and prior corrections, then helps convert field notes into a structured inspection record. Keep final outcomes and enforcement choices under inspector control.
 
-**Improvement:** Add reconciliation workflows that compare `permitting_licensing_inspections_governed_model` state against consumed events, external projections, expected totals/counts, approvals, and release evidence before closure. Tie the behavior to `permitting_licensing_inspections_record_permit_workflow` where applicable, and make it visible in `PermittingLicensingInspectionsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Field scenarios show the assistant producing accurate pre-visit briefs and post-visit structured drafts, inspectors can accept or reject suggestions item by item, and release evidence includes comparison of raw notes to final recorded findings.
 
-**Acceptance evidence:** Reconciliation reports, variance thresholds, closure blockers, and AppGen-X closure events. The evidence should be package-local in `src/pyAppGen/pbcs/permitting_licensing_inspections` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 37. Agent skill for violation drafting and enforcement recommendations
 
-### 37. Regulatory and policy reporting for Application
+**Justification:** Violation and enforcement work is text-heavy and deadline-sensitive. A governed skill can help produce consistent notices and escalation recommendations while leaving legal and supervisory authority with humans.
 
-**Justification:** World-class PBCs turn operational evidence into credible reporting without spreadsheet reconstruction.
+**Improvement:** Add an agent skill that classifies observed violations, drafts notices, suggests cure deadlines, recommends escalation based on recurrence and severity, and assembles the evidence packet for review. Record the rule basis and source evidence for every recommendation.
 
-**Improvement:** Generate domain reporting packs for `application` covering statutory, contractual, operational, board, customer, or regulator evidence depending on public accountability, eligibility rules, due process, protected records, transparent case history, equitable service delivery, and statutory reporting. Tie the behavior to `permitting_licensing_inspections_create_application_workflow` where applicable, and make it visible in `PermittingLicensingInspectionsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Draft notices generated by the assistant are compared against approved templates and human outcomes, recommendation logs show cited facts and rules, and release evidence includes blocked cases where the agent lacked sufficient evidence.
 
-**Acceptance evidence:** Report schemas, redaction rules, traceable metric sources, and approval/export audit events. The evidence should be package-local in `src/pyAppGen/pbcs/permitting_licensing_inspections` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 38. Geospatial, zoning, and address validation
 
-### 38. Carbon and resource awareness for Permit
+**Justification:** Many permitting and licensing decisions depend on parcel boundaries, zoning districts, overlays, frontage, flood or hazard zones, and jurisdiction limits. The PBC should not accept site data without geospatial validation.
 
-**Justification:** Sustainability evidence should be embedded in operations instead of treated as an after-the-fact report.
+**Improvement:** Add geospatial validation for parcel-to-address matching, zoning district lookup, jurisdiction boundary checks, and overlay-triggered review requirements. Store the geospatial evidence used for each decision so later appeals can reconstruct the basis.
 
-**Improvement:** Where relevant, attach carbon, energy, water, travel, capacity, compute, or resource-footprint metadata to `permit` decisions and batch operations. Tie the behavior to `permitting_licensing_inspections_record_permit_workflow` where applicable, and make it visible in `PermittingLicensingInspectionsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Tests cover valid and invalid site locations, the UI shows zoning and overlay context on case detail, and release evidence includes geospatial lookup artifacts tied to review-routing decisions.
 
-**Acceptance evidence:** Footprint fields, scheduling parameters, exception rules, and dashboards that expose operational tradeoffs. The evidence should be package-local in `src/pyAppGen/pbcs/permitting_licensing_inspections` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 39. Contractor, business, and responsible-party registry synchronization
 
-### 39. Resilience and offline behavior for License
+**Justification:** Permits and licenses often depend on active contractor credentials, business registrations, and designated responsible parties. The current manifest shows consumed events, but the backlog should sharpen how those dependencies affect case progress.
 
-**Justification:** Real operations keep moving during outages; the PBC must preserve correctness when dependencies are unavailable.
+**Improvement:** Tie `CustomerUpdated` and `SupplierQualified` style dependencies to contractor license validity, business standing, insurance or bond status, and responsible-party changes. Open exceptions when dependent registry information becomes stale or disqualifying.
 
-**Improvement:** Define resilience modes for `license`: degraded dependency mode, offline draft capture, delayed event replay, conflict detection, and safe recovery after partial failure. Tie the behavior to `permitting_licensing_inspections_create_application_workflow` where applicable, and make it visible in `PermittingLicensingInspectionsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Consumed-event tests prove that stale or disqualifying registry changes open visible exceptions, case detail shows dependency freshness, and release evidence includes a suspended-contractor scenario that blocks permit progress.
 
-**Acceptance evidence:** Offline fixtures, replay tests, conflict queues, recovery logs, and user-visible degraded-mode warnings. The evidence should be package-local in `src/pyAppGen/pbcs/permitting_licensing_inspections` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 40. SLA calendars, workload balancing, and escalation
 
-### 40. Human-in-the-loop automation for Review Task
+**Justification:** Review timeliness matters in permitting, especially when statutes or published service targets apply. Queue metrics alone are not enough without calendar-aware clocks and escalation rules.
 
-**Justification:** Automation should accelerate applications, reviews, permits, licenses, fees, inspections, violations, renewals, and citizen workflows while preserving accountability for high-risk decisions.
+**Improvement:** Add SLA calendars for intake screening, plan review, inspection response, correction review, renewal processing, hearing preparation, and enforcement follow-up. Support pause rules for applicant waiting periods and escalation when internal deadlines are missed.
 
-**Improvement:** Set explicit automation boundaries for `review_task`: auto-approve, auto-reject, suggest-only, require-review, and block-until-evidence states with policy-based routing. Tie the behavior to `permitting_licensing_inspections_record_permit_workflow` where applicable, and make it visible in `PermittingLicensingInspectionsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** SLA timers respect business calendars and pause states, the workbench highlights at-risk and breached work, and release evidence includes tests for clock start, pause, resume, and escalation behavior.
 
-**Acceptance evidence:** Automation policy tests, reviewer queues, override reasons, and assistant action audit trails. The evidence should be package-local in `src/pyAppGen/pbcs/permitting_licensing_inspections` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 41. Analytics for throughput, aging, and compliance
 
-### 41. Package discovery and fit scoring for Fee Assessment
+**Justification:** A domain workbench should answer operational questions such as where reviews stall, which inspection types re-fail most often, and how long renewals stay in grace. Better analytics make policy and staffing choices defensible.
 
-**Justification:** Users selecting PBCs need transparent fit reasoning, especially when domains are adjacent but not overlapping.
+**Improvement:** Expand analytics to cover intake completeness rates, discipline review turnaround, correction cycle counts, issuance latency, inspection failure rates, violation cure performance, hearing outcomes, renewal conversion, and enforcement escalation patterns. Separate staff workload views from public-service outcomes.
 
-**Improvement:** Improve package metadata so composition can explain when `permitting_licensing_inspections` fits a prompt, what entities it owns, what APIs/events it exposes, and what adjacent PBCs it depends on. Tie the behavior to `permitting_licensing_inspections_create_application_workflow` where applicable, and make it visible in `PermittingLicensingInspectionsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Metrics definitions are published, dashboards reconcile with seeded scenarios and event counts, and release evidence includes screenshots and numeric checks for each major lifecycle stage.
 
-**Acceptance evidence:** Discovery manifests, prompt-selection tests, overlap rationale links, and composition DSL examples. The evidence should be package-local in `src/pyAppGen/pbcs/permitting_licensing_inspections` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 42. Release evidence matrix and traceability
 
-### 42. Configuration deployment pipeline for Inspection
+**Justification:** The backlog should not stop at ideas; it should force proof. `RELEASE_EVIDENCE.md` should be able to show which requirement, test, UI screen, event, and scenario demonstrates each domain capability.
 
-**Justification:** Configuration changes can materially alter permitting licensing and inspections; they need the same discipline as code releases.
+**Improvement:** Build a release evidence matrix that maps every major domain area in this backlog to APIs, events, UI fragments, tests, seed data, and operator walkthroughs. Flag gaps where a claimed capability lacks executable evidence or visible UI coverage.
 
-**Improvement:** Add configuration promotion for `inspection` across draft, test, approved, active, deprecated, and rollback states with impact analysis before activation. Tie the behavior to `permitting_licensing_inspections_record_permit_workflow` where applicable, and make it visible in `PermittingLicensingInspectionsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** `RELEASE_EVIDENCE.md` contains a trace table keyed by backlog section, missing evidence fails the release gate, and release packages include direct links to tests, screenshots, event payloads, and scenario outputs.
 
-**Acceptance evidence:** Config diff views, approval workflows, simulation before activation, and rollback tests. The evidence should be package-local in `src/pyAppGen/pbcs/permitting_licensing_inspections` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 43. Seed scenarios and regression packs
 
-### 43. Workbench command completeness for Violation
+**Justification:** Domain regressions often hide in rare but critical case shapes such as appealed denials, continued hearings, reinspections after corrections, and provisional approvals. Seed scenarios should mirror the real lifecycle, not only happy paths.
 
-**Justification:** A PBC does not fully surface its capabilities if users must call hidden APIs for core work.
+**Improvement:** Add end-to-end seeded cases for standard permit review, phased permit issuance, complaint-led inspection, violation escalation, hearing continuance, renewal denial, reinstatement, public notice, and refund-eligible fee reversal. Use the scenarios for demos, regression tests, and release proof.
 
-**Improvement:** Expose every high-value operation for `violation` in the UI: create, validate, approve, simulate, correct, assign, export, retry, close, and audit-proof verification. Tie the behavior to `permitting_licensing_inspections_create_application_workflow` where applicable, and make it visible in `PermittingLicensingInspectionsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Seed packs can be loaded repeatedly without divergence, regression tests run against those packs, and release evidence includes named scenario traces from intake through final disposition.
 
-**Acceptance evidence:** UI action coverage tests, permission-aware disabled states, keyboard paths, and assistant handoff links. The evidence should be package-local in `src/pyAppGen/pbcs/permitting_licensing_inspections` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 44. Audit trail, chain of custody, and public records
 
-### 44. Document packet and evidence vault for Permitting Licensing Inspections Policy Rule
+**Justification:** Permitting records may be requested in audits, litigation, public-records responses, and appeals. Auditability requires both procedural history and evidence integrity.
 
-**Justification:** Documents often carry the legal or operational truth behind applications, reviews, permits, licenses, fees, inspections, violations, renewals, and citizen workflows.
+**Improvement:** Strengthen audit trails with immutable event lineage, document custody tracking, redaction metadata, public-records export views, and separation between confidential and releasable artifacts. Keep service proofs, hearing exhibits, and field evidence traceable from creation to disclosure.
 
-**Improvement:** Create a governed evidence vault for `permitting_licensing_inspections_policy_rule` documents, attachments, source spans, extracted fields, signatures, approvals, and retention labels. Tie the behavior to `permitting_licensing_inspections_record_permit_workflow` where applicable, and make it visible in `PermittingLicensingInspectionsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Audit exports preserve chronology and redaction state, custody history is visible per artifact, and release evidence includes a public-records export walkthrough with confidential material correctly withheld.
 
-**Acceptance evidence:** Evidence models, source-to-field lineage, signature validation, retention policies, and proof exports. The evidence should be package-local in `src/pyAppGen/pbcs/permitting_licensing_inspections` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 45. Multi-tenant ordinance and policy parameterization
 
-### 45. Data correction and amendment history for Permitting Licensing Inspections Runtime Parameter
+**Justification:** Different jurisdictions apply different ordinances, fee schedules, notice rules, and hearing thresholds. A reusable PBC must vary local policy without forking the core lifecycle.
 
-**Justification:** World-class systems correct mistakes without rewriting history or confusing downstream consumers.
+**Improvement:** Expand `permitting_licensing_inspections_policy_rule` and runtime parameters so each tenant can configure review disciplines, fee formulas, notice windows, hearing triggers, inspection cadences, renewal periods, and enforcement steps. Preserve default patterns while allowing local overrides with effective dates.
 
-**Improvement:** Support formal amendments for `permitting_licensing_inspections_runtime_parameter` that preserve original values, correction reason, approving actor, effective date, downstream event impacts, and replay behavior. Tie the behavior to `permitting_licensing_inspections_create_application_workflow` where applicable, and make it visible in `PermittingLicensingInspectionsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Tenant-specific scenarios produce different but explainable outcomes from the same baseline case, configuration history is visible in the workbench, and release evidence includes cross-tenant comparison packs with no policy leakage.
 
-**Acceptance evidence:** Amendment tables, correction events, projection replay tests, and side-by-side before/after UI. The evidence should be package-local in `src/pyAppGen/pbcs/permitting_licensing_inspections` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 46. Accessibility, language access, and digital equity
 
-### 46. External participant collaboration for Permitting Licensing Inspections Schema Extension
+**Justification:** Citizen-facing permitting software fails the public if it assumes English-only, desktop-only, or expert-only users. Accessibility and language access are domain requirements for public service delivery.
 
-**Justification:** Many permitting licensing and inspections workflows require outside parties, but they must not gain direct access to internal tables.
+**Improvement:** Make the citizen portal and internal UI support accessible workflows, plain-language stage explanations, translated notices, mobile-responsive intake, and assisted channels for users who cannot complete a digital application alone. Track preferred language and accommodation needs on the case.
 
-**Improvement:** Add controlled collaboration portals or API views for external participants related to `permitting_licensing_inspections_schema_extension`, limited to scoped evidence submission, status checks, comments, and dispute responses. Tie the behavior to `permitting_licensing_inspections_record_permit_workflow` where applicable, and make it visible in `PermittingLicensingInspectionsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Accessibility checks pass on portal and workbench flows, translated templates render correctly with case data, and release evidence includes screen-reader, keyboard-only, and mobile-device walkthroughs.
 
-**Acceptance evidence:** Participant role policies, scoped tokens, submission audit trails, and inbound evidence validation. The evidence should be package-local in `src/pyAppGen/pbcs/permitting_licensing_inspections` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 47. Offline field operations and sync recovery
 
-### 47. Advanced dependency freshness scoring for Permitting Licensing Inspections Control Assertion
+**Justification:** Inspectors and enforcement officers often work in areas with weak connectivity. The package should let them capture findings safely offline and then reconcile without losing evidentiary integrity.
 
-**Justification:** A record may be valid locally but unsafe if dependency evidence is stale or incomplete.
+**Improvement:** Add offline capture for inspections, notices served in the field, signatures, photos, and follow-up tasks with conflict-aware sync when the device reconnects. Preserve the original offline timestamps and device actor identity when records are merged.
 
-**Improvement:** Score freshness and reliability of dependencies used by `permitting_licensing_inspections_control_assertion`, including consumed events PolicyChanged, CustomerUpdated, SupplierQualified, referenced projections, configuration versions, and external submissions. Tie the behavior to `permitting_licensing_inspections_create_application_workflow` where applicable, and make it visible in `PermittingLicensingInspectionsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Offline-to-sync scenarios show no lost observations or media, conflict cases are surfaced for human review, and release evidence includes field-mode screenshots and sync reconciliation logs.
 
-**Acceptance evidence:** Freshness indicators, blocking rules, stale-event simulations, and workbench dependency health panels. The evidence should be package-local in `src/pyAppGen/pbcs/permitting_licensing_inspections` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 48. Operational runbooks, dead letters, and exception recovery
 
-### 48. Model governance and explainability for Permitting Licensing Inspections Governed Model
+**Justification:** Real permitting systems fail in production through stuck events, duplicate notifications, stale dependencies, and malformed submissions. Recovery needs domain-aware runbooks, not just infrastructure retries.
 
-**Justification:** Governed AI is mandatory for professional-grade automation in Permitting Licensing and Inspections.
+**Improvement:** Build operational runbooks for intake failures, event dead letters, failed correspondence, stale payment confirmations, hearing reschedules, and registry-sync exceptions. Tie each runbook to a visible exception type, recovery action, and required evidence after recovery.
 
-**Improvement:** For every predictive or agentic feature around `permitting_licensing_inspections_governed_model`, record model version, prompt or ruleset version, training/evaluation evidence, confidence, explanation, and human feedback. Tie the behavior to `permitting_licensing_inspections_record_permit_workflow` where applicable, and make it visible in `PermittingLicensingInspectionsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Exception dashboards expose domain-specific recovery actions, dead-letter scenarios can be replayed safely, and release evidence includes operator runbook walkthroughs plus before-and-after exception state proofs.
 
-**Acceptance evidence:** Model cards, prompt/version manifests, feedback loops, drift tests, and audit proof for recommendations. The evidence should be package-local in `src/pyAppGen/pbcs/permitting_licensing_inspections` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 49. Training assets and operator readiness
 
-### 49. High-scale partitioning and archival for Application
+**Justification:** A deep domain PBC still fails if staff cannot learn the intended lifecycle and controls. Release readiness should include role-based operator guidance, not only technical artifacts.
 
-**Justification:** Better-than-world-class packages must remain operable after years of high-volume domain history.
+**Improvement:** Produce role-specific walkthroughs for intake staff, reviewers, inspectors, supervisors, hearing clerks, and enforcement staff that use seeded cases and the actual UI. Include guidance for assistant usage, override rules, and evidence expectations.
 
-**Improvement:** Plan scale behavior for `application`: tenant partitioning, archival policies, cold storage, retention-aware search, projection compaction, and large-batch replay. Tie the behavior to `permitting_licensing_inspections_create_application_workflow` where applicable, and make it visible in `PermittingLicensingInspectionsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Training packs reference seeded scenarios and live UI states, operator signoff is recorded against each role track, and release evidence includes walkthrough completion records and feedback-based revisions.
 
-**Acceptance evidence:** Partition tests, archive/retrieve fixtures, retention enforcement, and replay benchmarks. The evidence should be package-local in `src/pyAppGen/pbcs/permitting_licensing_inspections` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 50. Go-live readiness and post-release evidence
 
-### 50. Release gate expansion for Permit
+**Justification:** The package should only declare readiness when it can prove the domain lifecycle works in practice across applications, plan review, fees, issuance, licenses, inspections, violations, renewals, public notices, hearings, enforcement, citizen portals, UI, agent skills, and events. Go-live is a domain evidence problem, not a purely technical deploy step.
 
-**Justification:** The PBC should not claim domain coverage unless release evidence proves the claim end to end.
+**Improvement:** Create a go-live gate that requires verified scenarios, queue dashboards, notice templates, event schemas, assistant guardrails, public portal checks, and rollback plans for the full permitting and licensing lifecycle. Extend post-release evidence to show first-run production health, exception rates, and any capability gaps discovered after launch.
 
-**Improvement:** Expand release gates for `permitting_licensing_inspections` so every schema, service, API, event, handler, UI, rule, parameter, agent skill, seed scenario, and improvement backlog item maps to executable evidence. Tie the behavior to `permitting_licensing_inspections_record_permit_workflow` where applicable, and make it visible in `PermittingLicensingInspectionsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Release audit checks, manifest traceability, generated-app smoke tests, and missing-capability blockers. The evidence should be package-local in `src/pyAppGen/pbcs/permitting_licensing_inspections` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** The release gate fails if any major domain lane lacks executable proof, `RELEASE_EVIDENCE.md` includes pre-release and post-release sections with linked artifacts, and the final evidence pack shows path-by-path verification for each backlog area in this file.

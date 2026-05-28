@@ -1,418 +1,361 @@
-# Music Royalties and Rights PBC Better-Than-World-Class Improvement Backlog
-
-## Purpose
-
-This file identifies, justifies, and describes 50 high-impact improvements for `music_royalties_rights`. The backlog is specific to works, recordings, splits, licenses, statements, usage, royalty payments, and rights disputes and is intended to move the PBC from release-auditable scaffolding toward complete, specialist-grade domain coverage.
+# Music Royalties and Rights Improvement Backlog
 
 ## Current Domain Evidence Used
 
-- Stable PBC key: `music_royalties_rights`.
-- Domain purpose: Works, recordings, splits, licenses, statements, usage, royalty payments, and rights disputes.
-- Owned domain tables: `musical_work`, `recording`, `rights_split`, `license`, `usage_report`, `royalty_statement`, `rights_dispute`, `music_royalties_rights_policy_rule`, `music_royalties_rights_runtime_parameter`, `music_royalties_rights_schema_extension`, `music_royalties_rights_control_assertion`, `music_royalties_rights_governed_model`.
-- Public APIs: `POST /musical-works`, `POST /recordings`, `POST /rights-splits`, `POST /licenses`, `POST /usage-reports`, `GET /music-royalties-rights-workbench`.
-- Emitted AppGen-X events: `MusicRoyaltiesRightsCreated`, `MusicRoyaltiesRightsUpdated`, `MusicRoyaltiesRightsApproved`, `MusicRoyaltiesRightsExceptionOpened`.
-- Consumed AppGen-X events: `PolicyChanged`, `AuditEventSealed`, `OperationalKpiChanged`.
-- Current standard surfaces include: `musical_work_management`, `music_royalties_rights_workflow`, `music_royalties_rights_analytics`, `configuration_schema`, `rule_engine`, `parameter_engine`, `owned_schema_migrations_models`, `appgen_x_outbox_inbox_eventing`, `idempotent_handlers`, `retry_dead_letter_evidence`.
-- Current advanced surfaces include: `music_royalties_rights_event_sourced_operational_history`, `music_royalties_rights_multi_tenant_policy_isolation`, `music_royalties_rights_schema_evolution_resilience`, `music_royalties_rights_autonomous_anomaly_detection`, `music_royalties_rights_semantic_document_instruction_understanding`, `music_royalties_rights_predictive_risk_scoring`, `music_royalties_rights_counterfactual_scenario_simulation`, `music_royalties_rights_cryptographic_audit_proofs`.
+- The manifest names the stable PBC key as `music_royalties_rights`, describes the package as covering works, recordings, splits, licenses, usage, royalty statements, payments, and disputes, and exposes the current APIs `POST /musical-works`, `POST /recordings`, `POST /rights-splits`, `POST /licenses`, `POST /usage-reports`, and `GET /music-royalties-rights-workbench`.
+- The current owned tables are `musical_work`, `recording`, `rights_split`, `license`, `usage_report`, `royalty_statement`, `rights_dispute`, plus policy, parameter, schema extension, control assertion, and governed model records.
+- `domain_depth.py` currently centers the operational surface on `create_musical_work`, `record_recording`, `review_rights_split`, `approve_license`, `simulate_usage_report`, `create_royalty_statement`, and `record_rights_dispute`, which leaves several royalties-specific processes implicit rather than explicit.
+- `events.py` shows emitted AppGen-X events `MusicRoyaltiesRightsCreated`, `MusicRoyaltiesRightsUpdated`, `MusicRoyaltiesRightsApproved`, and `MusicRoyaltiesRightsExceptionOpened`, with consumed events `PolicyChanged`, `AuditEventSealed`, and `OperationalKpiChanged`.
+- `ui.py` confirms the current UI fragments `MusicRoyaltiesRightsWorkbench`, `MusicRoyaltiesRightsDetail`, and `MusicRoyaltiesRightsAssistantPanel`, with navigation sections for operations, edge-case triage, advanced intelligence, and release evidence.
+- `agent.py` confirms a governed assistant surface with mutation previews, owned-table guardrails, and package-local skill namespace, which is the right base for repertoire ingestion, statement QA, and dispute support.
+- `release_evidence.py` and `RELEASE_EVIDENCE.md` already organize release readiness into schema, services, events, handlers, UI, agent, and governance sections, but they do not yet prove royalties-domain completeness.
 
-## 50 High-Impact Improvements
+### 1. Canonical musical work identity and title governance
+**Justification:** Royalty leakage starts when the same composition is entered under slightly different titles, writers, or local aliases. The current `musical_work` scope needs a canonical identity model that can survive retitles, translations, medleys, and controlled-title changes across territories.
 
-### 1. Canonical lifecycle state model for Musical Work
+**Improvement:** Expand work intake so each composition carries a canonical title, alternate titles, translated titles, work type, language, duration tolerance, version lineage, and external identifiers such as ISWC when available. Add explicit match confidence and duplicate-review queues before allowing a work to become statement-eligible.
 
-**Justification:** This closes shallow CRUD gaps by making every music royalties and rights transition explainable and testable instead of implicit in free-form status values.
+**Acceptance evidence:** Test fixtures proving duplicate detection on near-match titles, a work detail view showing canonical and alternate titles, and release evidence that new work records cannot bypass title-governance checks before downstream split or usage processing.
 
-**Improvement:** Define a complete state machine for `musical_work` with explicit draft, validated, blocked, approved, active, suspended, corrected, closed, archived, and reopened states. Tie the behavior to `music_royalties_rights_create_musical_work_workflow` where applicable, and make it visible in `MusicRoyaltiesRightsWorkbench` so operators do not need hidden scripts or raw table access.
+### 2. Contributor identity ledger across composer, lyricist, arranger, and adapter roles
+**Justification:** Splits cannot be trusted if contributor roles are flattened into a single free-text field. Music rights administration requires durable contributor identities because composer, lyricist, arranger, translator, and adapter claims drive different royalty flows and dispute outcomes.
 
-**Acceptance evidence:** State-transition tests, invalid-transition fixtures, workbench state badges, and emitted AppGen-X transition events for MusicRoyaltiesRightsCreated, MusicRoyaltiesRightsUpdated, MusicRoyaltiesRightsApproved. The evidence should be package-local in `src/pyAppGen/pbcs/music_royalties_rights` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Improvement:** Add contributor records linked to each work with role type, legal name, professional name, IPI/CAE where present, share basis, contribution notes, and effective dates. Track whether the contributor is self-administered, publisher-administered, or society-administered for each right type.
 
-### 2. Domain intake and normalization for Recording
+**Acceptance evidence:** Schema and UI evidence that one work can hold multiple contributor roles without ambiguity, validation that total writer-side shares remain internally consistent, and release evidence demonstrating contributor-role capture in work creation flows.
 
-**Justification:** The PBC cannot reach complete domain coverage unless it handles the messy front door of works, recordings, splits, licenses, statements, usage, royalty payments, and rights disputes, not only already-clean records.
+### 3. Publisher, administrator, and sub-publisher chain-of-title modeling
+**Justification:** Many royalty failures come from missing administration chains rather than missing works. A PBC that only stores a top-level publisher misses the territorial and right-type delegation needed for payment routing and license approval.
 
-**Improvement:** Build a typed intake pipeline for `recording` that accepts structured API payloads, document-derived instructions, batch loads, and assistant-generated drafts while normalizing identifiers, dates, units, parties, and jurisdictional context. Tie the behavior to `music_royalties_rights_record_recording_workflow` where applicable, and make it visible in `MusicRoyaltiesRightsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Model publisher, administrator, and sub-publisher appointments as effective-dated relationships with territory, right type, collection scope, and termination terms. Make chain-of-title visible from the work and contributor views so operators can see who is entitled to approve licenses or receive statements.
 
-**Acceptance evidence:** Golden intake fixtures, rejected-record queues, field-level normalization evidence, and assistant previews before governed datastore mutation. The evidence should be package-local in `src/pyAppGen/pbcs/music_royalties_rights` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Effective-dated chain-of-title records in the owned schema, tests covering territorial handoffs and expired administrators, and workbench evidence that license review uses the correct current admin chain.
 
-### 3. Specialist validation rules for Rights Split
+### 4. Split versioning with effective-dated rights ownership
+**Justification:** Static split rows are not enough because catalog ownership changes over time. Statements and disputes need to reconstruct the split that was valid on the usage date, not the split visible today.
 
-**Justification:** World-class Music Royalties and Rights requires rules that domain experts can reason about, version, test, and roll back without code edits.
+**Improvement:** Turn `rights_split` into a versioned ledger with proposed, approved, superseded, and disputed versions, plus effective-from and effective-to dates. Require an explicit reason code for each split change, including amendment, settlement, catalog acquisition, or court-directed correction.
 
-**Improvement:** Add a domain rule compiler for `rights_split` that supports threshold rules, eligibility rules, dependency rules, temporal windows, conflicting-instruction detection, and override justification. Tie the behavior to `music_royalties_rights_create_musical_work_workflow` where applicable, and make it visible in `MusicRoyaltiesRightsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Replayable split history for a work, tests proving that statement generation selects the correct historical split version for a prior usage period, and release evidence tying split supersession to auditable events.
 
-**Acceptance evidence:** Rule simulation tests, versioned rule manifests, rule impact reports, and UI rule editors linked to `MUSIC_ROYALTIES_RIGHTS_DATABASE_URL, MUSIC_ROYALTIES_RIGHTS_EVENT_TOPIC, MUSIC_ROYALTIES_RIGHTS_RETRY_LIMIT`. The evidence should be package-local in `src/pyAppGen/pbcs/music_royalties_rights` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 5. Split validation rules for writer, publisher, and recording-side shares
+**Justification:** Music rights operations need more than a simple total-equals-100 check. Different rights buckets can have different share bases, and recording-side participation often differs from composition-side participation.
 
-### 4. Parameter governance and tuning for License
+**Improvement:** Add rule packs that validate composer versus publisher shares, performance versus mechanical participation, and composition-side versus recording-side ownership. Flag impossible cases such as over-assigned publisher shares, missing writer shares, or a recording royalty setup with no master-side owners.
 
-**Justification:** Parameters are where operations teams tune music royalties and rights; unbounded constants would make the PBC brittle and unsafe in real deployments.
+**Acceptance evidence:** Policy tests for common split edge cases, rule explanations visible in `MusicRoyaltiesRightsDetail`, and exception queues that distinguish missing-share issues from conflicting-share issues.
 
-**Improvement:** Expose bounded runtime parameters for `license` covering risk thresholds, SLA windows, confidence floors, escalation cutoffs, batch sizes, retry limits, and human-confirmation requirements. Tie the behavior to `music_royalties_rights_record_recording_workflow` where applicable, and make it visible in `MusicRoyaltiesRightsWorkbench` so operators do not need hidden scripts or raw table access.
+### 6. Recording-to-work linkage and controlled mismatches
+**Justification:** Statements depend on linking sound recordings to the correct compositions, but many recordings legitimately point to multiple works or only partially match them. A shallow one-recording-to-one-work assumption will fail on live versions, samples, medleys, and derivative recordings.
 
-**Acceptance evidence:** Parameter schema validation, tenant overrides, approval history, rollback controls, and workbench diff views. The evidence should be package-local in `src/pyAppGen/pbcs/music_royalties_rights` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Improvement:** Introduce explicit recording-work link records with relationship types such as primary composition, interpolation, sample source, medley component, and derivative adaptation. Give operators a match-confidence queue for recordings that should not flow into statements until the linkage is resolved.
 
-### 5. Deep owned schema expansion for Usage Report
+**Acceptance evidence:** Read models showing one recording mapped to multiple work claims where needed, matching tests for clean and ambiguous links, and release evidence that unmatched recording-work relationships open governed exceptions instead of silently passing through.
 
-**Justification:** A single payload column cannot express the full surface of works, recordings, splits, licenses, statements, usage, royalty payments, and rights disputes or prove cross-PBC boundaries are respected.
+### 7. Recording version families for radio edit, live, acoustic, remix, and stem releases
+**Justification:** Royalty systems need to differentiate a master recording from its commercial variants. Without version families, usage can be matched to the wrong asset and statements can misstate ownership or fee triggers.
 
-**Improvement:** Extend the owned schema around `usage_report` with normalized child tables for line-level evidence, party roles, approvals, attachments, comments, metrics, exception reasons, and control assertions. Tie the behavior to `music_royalties_rights_create_musical_work_workflow` where applicable, and make it visible in `MusicRoyaltiesRightsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add recording family structures that connect original masters with radio edits, clean versions, instrumental versions, live captures, remixes, localized releases, and stems. Track whether a variant inherits rights from its parent or carries unique producer or performer participations.
 
-**Acceptance evidence:** Migrations, models, relationship tests, schema contract snapshots, and no shared-table access outside the `music_royalties_rights_` namespace. The evidence should be package-local in `src/pyAppGen/pbcs/music_royalties_rights` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Recording detail evidence that shows family trees and inheritance overrides, tests covering variant-specific rights, and usage-matching proof that a remix does not inherit the original master split when it should not.
 
-### 6. Event-sourced operational history for Royalty Statement
+### 8. Performer, producer, and neighboring-rights contributor capture
+**Justification:** The current focus on works, recordings, and splits needs explicit neighboring-rights support to handle master-side royalties correctly. Featured artist, non-featured performer, producer, mixer, and session-player participation can drive separate statement lines and claim conflicts.
 
-**Justification:** Temporal reconstruction is essential for better-than-world-class auditability and dispute resolution in music royalties and rights.
+**Improvement:** Extend contributor capture on recordings to include performer class, producer points, neighboring-rights eligibility, union/session notes, and collection path. Make clear which participants are informational only and which create payable or reportable obligations.
 
-**Improvement:** Capture every material mutation of `royalty_statement` as immutable AppGen-X events with actor, tenant, command, policy version, idempotency key, before/after summary, and projection checkpoint. Tie the behavior to `music_royalties_rights_record_recording_workflow` where applicable, and make it visible in `MusicRoyaltiesRightsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Recording-side contributor tables and UI panels, tests demonstrating separate participation on a master versus the underlying composition, and statement prototypes showing master-side payee breakdowns.
 
-**Acceptance evidence:** Replay tests, projection checksums, event ordering evidence, and point-in-time workbench views. The evidence should be package-local in `src/pyAppGen/pbcs/music_royalties_rights` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 9. PRO and CMO affiliation registry for works and contributors
+**Justification:** Performance royalty administration is incomplete without society affiliations. Composer, publisher, and neighboring-rights claims depend on current affiliations to PROs and CMOs, and those affiliations can vary by territory and right type.
 
-### 7. Projection and read-model strategy for Rights Dispute
+**Improvement:** Create a registry for PRO and CMO affiliations tied to contributors, publishers, and recordings, including society name, member number, territory, rights administered, effective dates, and collection exclusions. Show affiliation gaps directly in work and recording readiness views.
 
-**Justification:** The workbench should not force users to infer domain truth from raw tables; each projection should answer a real operating question.
+**Acceptance evidence:** Validation that a work flagged performance-eligible cannot reach ready-for-statement status without society affiliation data or an explicit waiver, plus workbench evidence for affiliation completeness by territory.
 
-**Improvement:** Create purpose-built projections for `rights_dispute`: operational queue, executive KPI rollup, exception aging, compliance evidence, agent task context, and external dependency health. Tie the behavior to `music_royalties_rights_create_musical_work_workflow` where applicable, and make it visible in `MusicRoyaltiesRightsWorkbench` so operators do not need hidden scripts or raw table access.
+### 10. Society conflict and territory-overlap detection
+**Justification:** Duplicate or overlapping society appointments create downstream collection conflicts and disputes. Operators need early detection when two societies or administrators claim the same territory and right type for the same party.
 
-**Acceptance evidence:** Projection contracts, freshness SLAs, backfill tests, and visible stale-projection warnings. The evidence should be package-local in `src/pyAppGen/pbcs/music_royalties_rights` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Improvement:** Add overlap detection for PRO, CMO, publisher-admin, and sub-publisher appointments by right bucket and territory. Present a territory heat map that highlights gaps, overlaps, and revoked appointments before license approval or statement generation.
 
-### 8. Exception taxonomy and remediation for Music Royalties Rights Policy Rule
+**Acceptance evidence:** Conflict-detection tests for overlapping territories, a workbench panel that shows contested territories, and release evidence demonstrating automated exception creation for overlap scenarios.
 
-**Justification:** High-value PBCs win on exception throughput; generic “failed” states hide the details operators need.
+### 11. License taxonomy covering mechanical, performance, sync, master, print, and promo use
+**Justification:** The current `license` surface is too broad for real royalty operations because each license type drives different approvals, fee logic, and evidence requirements. Rights teams need to know exactly which rights were granted and which remain unlicensed.
 
-**Improvement:** Model the full exception taxonomy for `music_royalties_rights_policy_rule`, including severity, root cause, blocking dependency, remediation owner, due date, retry eligibility, escalation path, and closure evidence. Tie the behavior to `music_royalties_rights_record_recording_workflow` where applicable, and make it visible in `MusicRoyaltiesRightsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Break license records into explicit rights bundles with grant type, media type, territory, term, exclusivity, fee basis, royalty rate basis, and approval authority. Support hybrid deals where a sync grant also carries a master-use approval and backend royalty participation.
 
-**Acceptance evidence:** Exception queues, aging metrics, remediation playbooks, dead-letter linkage, and closure test fixtures for sanctions or fraud holds. The evidence should be package-local in `src/pyAppGen/pbcs/music_royalties_rights` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** License forms and API payloads that distinguish mechanical, performance, sync, and master rights, tests for invalid mixed-grant combinations, and workbench evidence that rights not granted remain visibly unlicensed.
 
-### 9. Predictive risk scoring for Music Royalties Rights Runtime Parameter
+### 12. License term, option, embargo, and holdback controls
+**Justification:** A license that exists but is not in force can still cause an erroneous usage approval or payout. Music catalogs often depend on embargo windows, option periods, and media-specific holdbacks that need operational enforcement.
 
-**Justification:** The package should warn users before music royalties and rights work fails, breaches policy, or creates downstream cost.
+**Improvement:** Add license term schedules, option exercises, embargo start and end dates, media-specific holdbacks, and dependency checks against release dates and territory launches. Prevent usage approval from treating a future-dated or expired grant as active.
 
-**Improvement:** Add predictive risk scoring for `music_royalties_rights_runtime_parameter` using domain features from owned tables, consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, rule outcomes, aging, anomaly signals, and historical corrections. Tie the behavior to `music_royalties_rights_create_musical_work_workflow` where applicable, and make it visible in `MusicRoyaltiesRightsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Tests covering pre-release embargoes and expired options, UI warnings on licenses approaching expiry, and event evidence that license-state changes trigger recalculation of downstream readiness.
 
-**Acceptance evidence:** Feature manifests, score explanations, calibration reports, drift alerts, and tests for low/medium/high-risk scenarios. The evidence should be package-local in `src/pyAppGen/pbcs/music_royalties_rights` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 13. Cue sheet, setlist, and program metadata support for performance royalties
+**Justification:** Performance royalties depend on source evidence, not just raw usage lines. Broadcast, live venue, and audiovisual performance income frequently requires cue sheets, setlists, or program logs before a claim or statement is defensible.
 
-### 10. Counterfactual simulation for Music Royalties Rights Schema Extension
+**Improvement:** Add evidence objects linked to works, recordings, and usage reports for cue sheets, setlists, program logs, and broadcaster certifications. Route them through the same governed intake surface as documents handled by `MusicRoyaltiesRightsAssistantPanel`.
 
-**Justification:** Advanced users need to ask “what would happen if” before committing changes to live works, recordings, splits, licenses, statements, usage, royalty payments, and rights disputes operations.
+**Acceptance evidence:** Document-ingestion traces that preserve source metadata, tests proving a performance statement line can reference its cue-sheet evidence, and release evidence showing governed storage of performance-source artifacts.
 
-**Improvement:** Provide scenario simulation for `music_royalties_rights_schema_extension`: policy change, capacity constraint, deadline shift, price/rate change, eligibility change, disruption, and manual override outcomes. Tie the behavior to `music_royalties_rights_record_recording_workflow` where applicable, and make it visible in `MusicRoyaltiesRightsWorkbench` so operators do not need hidden scripts or raw table access.
+### 14. Mechanical royalty rate engine by format, territory, and deal basis
+**Justification:** Mechanical royalties cannot be treated as one flat rule. Physical, download, and streaming mechanicals use different rate structures, and many catalogs override statutory norms through direct deals.
 
-**Acceptance evidence:** Simulation APIs, non-mutating sandbox state, comparison reports, and workbench side-by-side scenario panels. The evidence should be package-local in `src/pyAppGen/pbcs/music_royalties_rights` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Improvement:** Add a rate engine that can evaluate statutory-style rates, percentage-of-revenue deals, minimums, floors, caps, and per-unit rates by territory, format, and effective date. Store the exact rate source and decision path for every mechanical accrual.
 
-### 11. Autonomous anomaly triage for Music Royalties Rights Control Assertion
+**Acceptance evidence:** Calculation fixtures for physical units, downloads, and streaming mechanicals, statement line evidence showing the rate source used, and test coverage for deal overrides that supersede the default rate pack.
 
-**Justification:** A world-class PBC should reduce analyst burden without hiding the reasoning behind automated triage.
+### 15. Performance royalty accrual rules for direct, society, and neighboring-rights flows
+**Justification:** Performance royalties reach the catalog through multiple channels, each with distinct assumptions and evidence. The PBC needs to separate direct-licensed performance income from society-collected income and neighboring-rights collections.
 
-**Improvement:** Implement anomaly detection for `music_royalties_rights_control_assertion` that identifies outliers, duplicate submissions, impossible sequences, stale dependencies, unusual amounts/counts/durations, and contradictory fields. Tie the behavior to `music_royalties_rights_create_musical_work_workflow` where applicable, and make it visible in `MusicRoyaltiesRightsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add performance accrual modes that distinguish direct venue or broadcaster licenses, society-reported performance earnings, and neighboring-rights performance distributions. Track whether income is estimated, reported, or settled and whether it is composer-side, publisher-side, or recording-side.
 
-**Acceptance evidence:** Explainable anomaly cards, reviewer feedback loops, false-positive tracking, and suppression governance. The evidence should be package-local in `src/pyAppGen/pbcs/music_royalties_rights` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Statement prototypes showing separate performance buckets, rules that block accidental mixing of direct and society distributions, and audit-ready traces from usage source to performance accrual mode.
 
-### 12. Semantic document understanding for Music Royalties Rights Governed Model
+### 16. Sync fee and backend participation modeling
+**Justification:** Sync deals often include both upfront fees and downstream backend royalties, and those components are governed by different splits. A single license fee field cannot support sync administration, approvals, or disputes.
 
-**Justification:** Document-heavy work in Music Royalties and Rights cannot be complete if the assistant only answers questions and cannot prepare accurate governed changes.
+**Improvement:** Add sync-specific data structures for quote request, approval chain, license execution, fee schedule, most-favored-nations notes, backend participation, and cue-based follow-on royalties. Tie sync usage back to the approved composition and master-use grants.
 
-**Improvement:** Train the package assistant to parse domain documents and instructions for `music_royalties_rights_governed_model`, extract obligations, dates, parties, quantities, identifiers, and exceptions, then map them to safe draft mutations. Tie the behavior to `music_royalties_rights_record_recording_workflow` where applicable, and make it visible in `MusicRoyaltiesRightsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** License detail views showing upfront and backend components separately, tests for MFN-driven fee adjustments, and statement evidence linking sync backend lines to the originating sync license.
 
-**Acceptance evidence:** Document extraction tests, confidence thresholds, redaction handling, source span citations, and human confirmation workflows. The evidence should be package-local in `src/pyAppGen/pbcs/music_royalties_rights` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 17. Usage ingestion contracts by source type
+**Justification:** Usage reports arrive from digital services, broadcast sources, venues, distributors, and direct clients in incompatible shapes. A single `usage_report` object is not enough unless the source contract, normalization rules, and ingestion confidence are explicit.
 
-### 13. Agent-safe CRUD execution for Musical Work
+**Improvement:** Define source-specific ingestion contracts for DSP statements, broadcaster logs, venue reports, direct licensee reports, and manual corrections. Store the original file fingerprint, source type, reporting period, line counts, unit conventions, and ingestion confidence.
 
-**Justification:** The PBC agent must be a first-class operator but never a hidden bypass around RBAC, rules, or owned datastore boundaries.
+**Acceptance evidence:** File-contract tests for multiple source types, a workbench ingestion queue grouped by source, and release evidence proving the original source fingerprint survives through to statement generation.
 
-**Improvement:** Add a professional chatbot skill for `musical_work` that can create, update, correct, close, and annotate records only through policy-checked commands, approval gates, and previewed diffs. Tie the behavior to `music_royalties_rights_create_musical_work_workflow` where applicable, and make it visible in `MusicRoyaltiesRightsWorkbench` so operators do not need hidden scripts or raw table access.
+### 18. Usage line normalization, deduplication, and fingerprint matching
+**Justification:** Raw usage lines are noisy and duplicate-heavy. If the PBC cannot normalize track titles, identifiers, units, and territory codes before matching, it will produce avoidable black-box income and false disputes.
 
-**Acceptance evidence:** Skill manifests, permission tests, preview/confirm flows, blocked-action evidence, and audit events for every assistant mutation. The evidence should be package-local in `src/pyAppGen/pbcs/music_royalties_rights` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Improvement:** Add line-level normalization for identifiers, titles, territory codes, currencies, unit measures, and reporting periods, plus duplicate detection keyed by source fingerprint and line lineage. Use recording/work matching confidence rather than blind exact-match logic.
 
-### 14. Workbench persona coverage for Recording
+**Acceptance evidence:** Dedupe tests on repeated source loads, usage-line lineage records showing how a normalized line was derived, and exception evidence for lines that remain ambiguous after normalization.
 
-**Justification:** A generic detail page underserves the domain; each role needs the exact controls and evidence they use daily.
+### 19. Unmatched usage and black-box income triage
+**Justification:** Unmatched usage is a core operating queue in music royalties, not an edge case. Teams need a controlled path to research, provisionally allocate, suspend, or reject unmatched income without losing traceability.
 
-**Improvement:** Design dedicated workbench panels for `recording`: operator queue, supervisor approvals, analyst exceptions, auditor evidence, configuration owner, and agent-assistance review. Tie the behavior to `music_royalties_rights_record_recording_workflow` where applicable, and make it visible in `MusicRoyaltiesRightsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Create a dedicated unmatched-usage queue with reason codes such as missing work, missing recording, conflicting split, missing affiliation, low-confidence match, or rights-territory conflict. Support provisional claim decisions with expiry dates and mandatory follow-up evidence.
 
-**Acceptance evidence:** UI contract entries, route tests, empty/error/loading states, and permission-aware action availability. The evidence should be package-local in `src/pyAppGen/pbcs/music_royalties_rights` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Queue views in `MusicRoyaltiesRightsWorkbench`, aging metrics by unmatched reason, and statement rules proving unmatched lines cannot become final payables without either resolution or a documented provisional policy.
 
-### 15. Cross-PBC dependency contracts for Rights Split
+### 20. Royalty run calendars, close rules, and statement-period controls
+**Justification:** Statement quality depends on disciplined close rules. Without period-close logic, late usage, corrected splits, and delayed affiliations can leak into the wrong cycle and produce unstable statements.
 
-**Justification:** Composable packages fail when hidden table coupling enters the domain model.
+**Improvement:** Add configurable royalty run calendars with preliminary, held, final, and reopened states for each accounting period. Tie period close to cutoffs for usage ingestion, split approval, license completeness, and dispute holds.
 
-**Improvement:** Represent dependencies for `rights_split` through declared APIs, consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, and projections rather than shared tables, with explicit freshness, ownership, and fallback behavior. Tie the behavior to `music_royalties_rights_create_musical_work_workflow` where applicable, and make it visible in `MusicRoyaltiesRightsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Tests for late-arriving usage before and after close, workbench controls showing the state of each accounting period, and release evidence that reopened periods preserve a visible restatement reason.
 
-**Acceptance evidence:** Dependency manifests, contract tests, stale dependency alerts, and no foreign-table references in generated artifacts. The evidence should be package-local in `src/pyAppGen/pbcs/music_royalties_rights` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 21. Statement calculation traceability down to line and rule level
+**Justification:** A statement that cannot be explained line by line will become a dispute magnet. Recipients need to see which usage lines, rates, splits, deductions, and policies created each payable amount.
 
-### 16. API completeness and versioning for License
+**Improvement:** Turn `royalty_statement` into a traceable calculation package with statement headers, statement lines, source usage references, applied rates, split versions, deductions, reserves, and payee routing. Surface a human-readable explanation for every line in the statement detail UI.
 
-**Justification:** Complete domain coverage requires both command and query surfaces, not only happy-path create endpoints.
+**Acceptance evidence:** Drill-through from a statement line to its source usage and split version, test fixtures verifying deterministic recalculation, and release evidence that statement exports preserve calculation lineage.
 
-**Improvement:** Expand APIs beyond POST /musical-works, POST /recordings, POST /rights-splits to cover search, validation-only commands, simulation, bulk intake, exception closure, evidence export, projection reads, and idempotent corrections. Tie the behavior to `music_royalties_rights_record_recording_workflow` where applicable, and make it visible in `MusicRoyaltiesRightsWorkbench` so operators do not need hidden scripts or raw table access.
+### 22. Advances, recoupment, and cross-collateralization ledger
+**Justification:** Catalog deals often recoup advances before money becomes payable, and those recoupment rules vary by contract. If recoupment sits outside the PBC, statements will be financially correct only by accident.
 
-**Acceptance evidence:** OpenAPI-style route manifests, backward-compatible version tests, deprecation metadata, and idempotency assertions. The evidence should be package-local in `src/pyAppGen/pbcs/music_royalties_rights` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Improvement:** Add contract-linked advance balances, recoupment buckets, cross-collateralization groups, and recoupment priority rules across works, recordings, or deal groupings. Show whether a statement line is earned, recouped, partially recouped, or payable after recoupment.
 
-### 17. Typed emitted-event expansion for Usage Report
+**Acceptance evidence:** Statement fixtures covering full recoupment, partial recoupment, and post-recoupment payouts, a ledger view for remaining advance balances, and dispute evidence that recoupment decisions can be reconstructed by period.
 
-**Justification:** Consumers should understand what happened in Music Royalties and Rights without parsing opaque payloads.
+### 23. Reserves, holdbacks, suspense, and unapplied-cash handling
+**Justification:** Not all earned royalties should be immediately payable. Operationally, teams need deliberate handling for reserves, pending ownership conflicts, minimum payment thresholds, and unapplied cash from incomplete source data.
 
-**Improvement:** Replace generic lifecycle emissions with typed events for each meaningful `usage_report` transition, exception, approval, correction, simulation result, and downstream handoff. Tie the behavior to `music_royalties_rights_create_musical_work_workflow` where applicable, and make it visible in `MusicRoyaltiesRightsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add reserve rules, suspense buckets, minimum payout thresholds, and unapplied-cash queues with reason codes and release triggers. Separate held money caused by contractual reserves from money held because ownership is unresolved.
 
-**Acceptance evidence:** Event schema tests, event examples, compatibility checks, and emitted-event coverage in release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/music_royalties_rights` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Balance reports distinguishing reserve, suspense, and payable amounts, tests proving reserve releases follow the configured rule pack, and statement views showing held versus payable earnings clearly.
 
-### 18. Consumed-event handlers for Royalty Statement
+### 24. Deductions, administration fees, and pass-through cost governance
+**Justification:** Recipients challenge statements when deductions are opaque or over-applied. The PBC needs explicit deduction categories rather than burying them in net calculations.
 
-**Justification:** A PBC is composable only when incoming events affect its own domain state predictably and safely.
+**Improvement:** Model administration commissions, sub-publisher commissions, society fees, banking costs, taxes, and approved pass-through expenses as typed deductions with basis, caps, and contractual justification. Require each deduction to point to the agreement or policy that authorizes it.
 
-**Improvement:** Implement idempotent handlers for consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged that update projections, open dependency exceptions, recalculate risk, and preserve source event lineage. Tie the behavior to `music_royalties_rights_record_recording_workflow` where applicable, and make it visible in `MusicRoyaltiesRightsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Statement line traces showing gross, deduction, and net values, policy tests for capped fees, and release evidence that deductions without a rule or agreement reference are blocked from final statements.
 
-**Acceptance evidence:** Duplicate-event tests, handler side-effect boundaries, dead-letter fixtures, and lineage links back to source events. The evidence should be package-local in `src/pyAppGen/pbcs/music_royalties_rights` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 25. Beneficiary and payment-instruction controls
+**Justification:** Royalty accuracy is not enough if money is routed to the wrong beneficiary. Payee controls need to distinguish legal owner, administrator, payment recipient, and temporary collection account.
 
-### 19. Retry and dead-letter operations for Rights Dispute
+**Improvement:** Add beneficiary profiles with legal entity, payment method, banking status, payment currency, hold flags, and approval history. Make payment routing effective-dated so a statement reproduces the beneficiary instructions valid at issuance time.
 
-**Justification:** Dead letters are not just plumbing; they are domain work queues that can block works, recordings, splits, licenses, statements, usage, royalty payments, and rights disputes.
+**Acceptance evidence:** Tests for beneficiary changes mid-period, UI evidence showing the payment route history for a payee, and release evidence proving final statements cannot be approved when the beneficiary profile is incomplete or on hold.
 
-**Improvement:** Create operational tools for retrying, quarantining, explaining, and resolving dead-lettered `rights_dispute` events with max-attempt policy, poison-message detection, and replay safety. Tie the behavior to `music_royalties_rights_create_musical_work_workflow` where applicable, and make it visible in `MusicRoyaltiesRightsWorkbench` so operators do not need hidden scripts or raw table access.
+### 26. Tax withholding, treaty treatment, and gross-up support
+**Justification:** Royalty statements frequently cross borders, and withholding rules change the payable outcome. A PBC that ignores tax posture will force downstream manual correction and create payment disputes.
 
-**Acceptance evidence:** Dead-letter workbench, retry eligibility tests, replay audit proof, and operator action logs. The evidence should be package-local in `src/pyAppGen/pbcs/music_royalties_rights` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Improvement:** Capture tax forms, residence claims, withholding percentages, treaty relief status, and gross-up clauses at the beneficiary or contract level. Apply tax logic as a transparent statement component rather than an opaque post-processing adjustment.
 
-### 20. RBAC and attribute policy for Music Royalties Rights Policy Rule
+**Acceptance evidence:** Statement fixtures showing gross, withholding, and net payable values, validation that expired tax documentation triggers a hold, and release evidence that tax treatment is preserved in statement exports and audit traces.
 
-**Justification:** High-impact domain operations need finer controls than generic RBAC grants.
+### 27. Rights dispute intake for ownership, statement, and licensing conflicts
+**Justification:** `rights_dispute` should distinguish what is being contested. Ownership conflicts, statement objections, license overreach claims, and society conflict notices have different evidence needs and resolution paths.
 
-**Improvement:** Extend permissions for `music_royalties_rights_policy_rule` from coarse read/create/update/admin to action-level and attribute-aware policies based on role, tenant, jurisdiction, monetary/materiality threshold, and exception severity. Tie the behavior to `music_royalties_rights_record_recording_workflow` where applicable, and make it visible in `MusicRoyaltiesRightsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Create dispute intake types for ownership claim, split objection, unmatched-usage objection, statement objection, unpaid-balance claim, licensing overreach, and society conflict. Require dispute intake to name the contested work, recording, statement period, or license record.
 
-**Acceptance evidence:** Permission matrix docs, ABAC policy tests, denied-action UI states, and assistant skill permission checks. The evidence should be package-local in `src/pyAppGen/pbcs/music_royalties_rights` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Dispute intake forms with typed evidence requirements, tests showing dispute routing changes by dispute type, and release evidence that dispute records are linked to the exact contested domain object.
 
-### 21. Continuous control testing for Music Royalties Rights Runtime Parameter
+### 28. Dispute workflow, SLA, and evidence-preservation controls
+**Justification:** Disputes become expensive when evidence is scattered and response times are ad hoc. Rights teams need disciplined workflow states and immutable evidence preservation from the first notice onward.
 
-**Justification:** Controls should run during operations, not only during release audit or manual review.
+**Improvement:** Add dispute states such as received, under review, counter-evidence requested, on hold, resolved, settled, rejected, and escalated. Preserve every evidence item, note, calculation snapshot, and communication reference used during dispute handling.
 
-**Improvement:** Embed control assertions for `music_royalties_rights_runtime_parameter` that continuously test segregation of duties, required approvals, stale exceptions, policy drift, duplicate records, and boundary violations. Tie the behavior to `music_royalties_rights_create_musical_work_workflow` where applicable, and make it visible in `MusicRoyaltiesRightsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** SLA timers and aging dashboards for disputes, immutable evidence snapshots attached to each workflow state, and tests proving that settlement or rejection closes the dispute with retained reasoning.
 
-**Acceptance evidence:** Control dashboards, failing-control events, test fixtures, and release evidence tied to `music_royalties_rights_control_assertion` records. The evidence should be package-local in `src/pyAppGen/pbcs/music_royalties_rights` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 29. Restatement, reversal, and correction lineage
+**Justification:** Corrections are inevitable in royalties administration, but opaque corrections destroy trust. Every corrected statement or reversed line needs a direct line back to the original error and the new decision.
 
-### 22. Cryptographic audit proofing for Music Royalties Rights Schema Extension
+**Improvement:** Add explicit correction objects that reference the original statement line, the reason for restatement, the affected period, and the net impact on each payee. Distinguish reversals caused by bad source usage from reversals caused by ownership changes or tax changes.
 
-**Justification:** Better-than-world-class auditability requires proof of integrity, not merely logs stored in mutable tables.
+**Acceptance evidence:** Statement history views that show original, reversed, and corrected lines together, deterministic restatement tests, and release evidence that reopened periods emit visible correction events.
 
-**Improvement:** Hash-chain material `music_royalties_rights_schema_extension` decisions, documents, emitted events, and release-evidence snapshots to make tampering visible without exposing sensitive payloads. Tie the behavior to `music_royalties_rights_record_recording_workflow` where applicable, and make it visible in `MusicRoyaltiesRightsWorkbench` so operators do not need hidden scripts or raw table access.
+### 30. Catalog administration workspace and task ownership
+**Justification:** Rights and royalty operations are continuous catalog administration work, not isolated transactions. Teams need a purpose-built workspace for onboarding, maintenance, renewals, issue follow-up, and release readiness across the repertoire.
 
-**Acceptance evidence:** Proof manifests, verification APIs, redacted proof exports, and audit-ledger handoff events. The evidence should be package-local in `src/pyAppGen/pbcs/music_royalties_rights` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Improvement:** Add catalog administration queues for new works, pending registrations, expiring licenses, unmatched usage, open disputes, and incomplete beneficiary records. Support assignee, due date, escalation path, and workload balancing inside the package boundary.
 
-### 23. Privacy, consent, and secrecy controls for Music Royalties Rights Control Assertion
+**Acceptance evidence:** Workbench queues grouped by admin task type, operator metrics for backlog age and throughput, and release evidence that catalog tasks are package-local rather than hidden in ad hoc external lists.
 
-**Justification:** Complete domain coverage must account for protected data and restricted operational evidence.
+### 31. Reversion, termination, and rights-sunset tracking
+**Justification:** Rights do not last forever in a single shape. Catalog administration must account for contractual reversions, terminations, and sunset clauses that change who can license or collect income.
 
-**Improvement:** Add field-level privacy classifications for `music_royalties_rights_control_assertion`, consent checks, masking rules, retention schedules, legal holds, and assistant redaction policies. Tie the behavior to `music_royalties_rights_create_musical_work_workflow` where applicable, and make it visible in `MusicRoyaltiesRightsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add rights-reversion schedules with trigger date, notice period, affected rights, affected territories, and successor ownership or administration path. Show upcoming reversions in the workbench before any new approval or statement cycle.
 
-**Acceptance evidence:** Retention tests, masked UI snapshots, consent-blocked mutation fixtures, and export controls. The evidence should be package-local in `src/pyAppGen/pbcs/music_royalties_rights` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Effective-dated reversion records, tests proving license approval respects sunset dates, and workbench alerts for rights due to revert within a configurable horizon.
 
-### 24. Multi-tenant operating model for Music Royalties Rights Governed Model
+### 32. Registration deliverables for works, recordings, and society updates
+**Justification:** Good rights data still fails commercially if registrations are not submitted. Work registration, recording metadata delivery, and society updates should be first-class deliverables with their own completion evidence.
 
-**Justification:** The PBC should scale across organizations while preserving independent policy and compliance boundaries.
+**Improvement:** Add registration tasks for work registrations, publisher updates, recording metadata deliveries, neighboring-rights enrollments, and society amendments. Track submission package, recipient, submission date, acknowledgment status, and exception reason.
 
-**Improvement:** Support tenant-specific `music_royalties_rights_governed_model` rules, data residency, encryption context, configuration, seed data, and release evidence without allowing cross-tenant leakage. Tie the behavior to `music_royalties_rights_record_recording_workflow` where applicable, and make it visible in `MusicRoyaltiesRightsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Catalog views that show registration status by asset and territory, tests for missing registration artifacts, and release evidence that registration completeness can be measured per catalog slice.
 
-**Acceptance evidence:** Tenant isolation tests, tenant-scoped parameters, key-rotation evidence, and cross-tenant negative fixtures. The evidence should be package-local in `src/pyAppGen/pbcs/music_royalties_rights` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 33. Mandatory evidence packages for splits, licenses, and statements
+**Justification:** Rights operations are only as strong as their supporting evidence. A split without an agreement, a license without approval proof, or a statement without source lineage should never be treated as complete.
 
-### 25. Schema evolution and extension registry for Musical Work
+**Improvement:** Define evidence bundles by domain object: split support documents, chain-of-title artifacts, license approvals, rate references, source usage files, beneficiary documents, and dispute correspondence. Make readiness badges depend on evidence completeness, not just record presence.
 
-**Justification:** Domain teams will add fields; the PBC must evolve without breaking APIs, events, or workbench projections.
+**Acceptance evidence:** Evidence checklists rendered in `MusicRoyaltiesRightsDetail`, tests showing missing required evidence blocks approval, and release evidence that each major domain object has an evidence-completeness score.
 
-**Improvement:** Make schema extensions for `musical_work` first-class with compatibility checks, migration previews, projection backfills, field ownership, and rollback metadata. Tie the behavior to `music_royalties_rights_create_musical_work_workflow` where applicable, and make it visible in `MusicRoyaltiesRightsWorkbench` so operators do not need hidden scripts or raw table access.
+### 34. AppGen-X emitted event expansion for rights-specific lifecycle changes
+**Justification:** The current emitted event list is too coarse for rich downstream orchestration. Rights and royalties workflows need event granularity around split changes, statement issuance, dispute state changes, and registration actions.
 
-**Acceptance evidence:** Extension registry UI, compatibility tests, migration dry-runs, and backfill release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/music_royalties_rights` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Improvement:** Expand the emitted event design so the package can distinguish work registered, split superseded, license granted, usage matched, statement issued, statement restated, dispute opened, dispute resolved, recoupment applied, and registration submitted. Keep them within the existing AppGen-X contract rather than introducing a new eventing model.
 
-### 26. Master data quality gates for Recording
+**Acceptance evidence:** Updated event manifest showing typed rights events, handler tests proving idempotent replay safety, and release evidence that each material domain transition maps to an emitted event with a stable payload contract.
 
-**Justification:** Many music royalties and rights errors begin as bad reference data; the PBC should catch them before workflow execution.
+### 35. Consumed-event handling for policy, audit, and KPI changes that affect royalty outcomes
+**Justification:** The consumed events in the package should cause visible domain consequences. If `PolicyChanged`, `AuditEventSealed`, or `OperationalKpiChanged` arrive silently, operators cannot trust governance-driven recalculations.
 
-**Improvement:** Define reference-data contracts for `recording`: canonical codes, parties, locations, classifications, calendars, units, currencies, products, assets, or service categories as relevant to the domain. Tie the behavior to `music_royalties_rights_record_recording_workflow` where applicable, and make it visible in `MusicRoyaltiesRightsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Define rights-specific reactions for consumed events, such as reopening license approval when a policy pack changes, sealing a statement period when audit evidence is finalized, or escalating unmatched-usage queues when KPI breach thresholds are crossed. Preserve lineage from the consumed event to the affected work, recording, statement, or dispute records.
 
-**Acceptance evidence:** Reference validation fixtures, stale-code warnings, mapping tables, and dependency freshness indicators. The evidence should be package-local in `src/pyAppGen/pbcs/music_royalties_rights` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Idempotent handler tests tied to concrete domain effects, trace views showing why a record changed after a consumed event, and release evidence proving consumed events do not mutate unrelated domain objects.
 
-### 27. Bulk operations and correction workflows for Rights Split
+### 36. Dead-letter, replay, and reconciliation operations for usage and statement events
+**Justification:** Dead-letter queues in royalties systems are operationally material because missed usage or failed statement events delay money. Teams need to see which usage batches or statement transitions failed and what replay will change.
 
-**Justification:** Enterprise-scale Music Royalties and Rights users cannot operate one record at a time.
+**Improvement:** Add dead-letter classifications for usage ingestion failure, match failure, statement projection failure, notification failure, and downstream acknowledgment failure. Support guarded replay with before-and-after previews so operators understand whether replay will change statements, disputes, or balances.
 
-**Improvement:** Add bulk load, bulk validate, bulk approve, and bulk correction workflows for `rights_split` with partial success, row-level errors, resumability, and rollback. Tie the behavior to `music_royalties_rights_create_musical_work_workflow` where applicable, and make it visible in `MusicRoyaltiesRightsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** A dead-letter triage panel in the workbench, replay preview tests for safe and unsafe retries, and release evidence that replay actions are captured with operator identity and result summaries.
 
-**Acceptance evidence:** CSV/API batch fixtures, resumable job state, row-level audit evidence, and assistant-generated correction suggestions. The evidence should be package-local in `src/pyAppGen/pbcs/music_royalties_rights` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 37. Repertoire-focused workbench redesign
+**Justification:** `MusicRoyaltiesRightsWorkbench` should feel like a repertoire administration console, not a generic table browser. Operators need to pivot quickly between works, recordings, contributors, registrations, statements, disputes, and admin queues.
 
-### 28. Lifecycle collaboration and tasking for License
+**Improvement:** Redesign the workbench around repertoire views such as catalog health, registration gaps, split conflicts, unmatched usage, open disputes, upcoming renewals, and statement readiness. Keep the existing fragment names but make their default navigation speak the language of repertoire management.
 
-**Justification:** Domain collaboration should live inside the PBC boundary and remain auditable with the record it affects.
+**Acceptance evidence:** UI contract updates showing repertoire-first navigation, screenshots or UI tests demonstrating new queue groupings, and release evidence that key music-rights workflows are reachable without raw-table navigation.
 
-**Improvement:** Attach tasks, comments, ownership, due dates, handoffs, and escalation threads to `license` without leaking into external shared task tables. Tie the behavior to `music_royalties_rights_record_recording_workflow` where applicable, and make it visible in `MusicRoyaltiesRightsWorkbench` so operators do not need hidden scripts or raw table access.
+### 38. Statement explainer UI with drill-through from payee to source line
+**Justification:** Statement recipients and operators both need explainability. A good statement UI should answer where the money came from, why it was split that way, what was held back, and whether recoupment or tax altered the amount.
 
-**Acceptance evidence:** Task tables, comment audit history, notification events, escalation SLAs, and role-specific task queues. The evidence should be package-local in `src/pyAppGen/pbcs/music_royalties_rights` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Improvement:** Add statement detail views that can drill from payee summary to statement line, from statement line to usage source, and from usage source to rate and split decision. Highlight held, recouped, taxed, disputed, and corrected components distinctly.
 
-### 29. SLA and service-level governance for Usage Report
+**Acceptance evidence:** UI tests for statement drill-through, evidence that every statement line exposes rate, split, and usage lineage, and release evidence that statement exports remain reconcilable to the on-screen explainer.
 
-**Justification:** Users need to know when works, recordings, splits, licenses, statements, usage, royalty payments, and rights disputes is late, blocked, or at risk before customer or regulator impact.
+### 39. Dispute cockpit UI for investigation and resolution
+**Justification:** Rights disputes require side-by-side evidence review. Operators need a cockpit that compares the claimant’s position with current ownership, statement history, source usage, and license evidence without assembling the case manually.
 
-**Improvement:** Define SLAs for `usage_report` across intake, validation, approval, exception resolution, event handling, downstream projection refresh, and release-evidence generation. Tie the behavior to `music_royalties_rights_create_musical_work_workflow` where applicable, and make it visible in `MusicRoyaltiesRightsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add a dispute cockpit with timeline, contested assets, evidence bundles, statement impacts, ownership snapshots, proposed resolution notes, and approval actions. Make the cockpit accessible from both the dispute queue and the affected work, recording, or statement records.
 
-**Acceptance evidence:** SLA breach events, timers, configurable calendars, workbench aging buckets, and tests for pause/resume behavior. The evidence should be package-local in `src/pyAppGen/pbcs/music_royalties_rights` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** UI tests covering dispute evidence comparison, workflow actions that preserve resolution notes, and release evidence that the cockpit can render the full dispute package for at least one seeded scenario.
 
-### 30. Operational analytics cockpit for Royalty Statement
+### 40. Agent skill for contract and registration extraction
+**Justification:** The current assistant surface is governed, but it is still too generic for rights work. Teams need an agent skill that can extract contract terms, registration details, territories, right types, and approval obligations from documents without mutating data blindly.
 
-**Justification:** World-class operations require leading indicators, not only record counts.
+**Improvement:** Add a package-local agent skill that parses agreements, split sheets, cue sheets, registration confirmations, and society notices into structured previews for human review. Limit the skill to extraction, confidence scoring, and mutation preview until a user confirms the result.
 
-**Improvement:** Build analytics for `royalty_statement`: throughput, backlog, aging, approval latency, exception rate, risk distribution, automation acceptance, correction rate, and downstream dependency health. Tie the behavior to `music_royalties_rights_record_recording_workflow` where applicable, and make it visible in `MusicRoyaltiesRightsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Agent tests showing document-to-preview extraction for multiple rights documents, UI evidence that previews are reviewable in `MusicRoyaltiesRightsAssistantPanel`, and release evidence that no mutation occurs without explicit confirmation.
 
-**Acceptance evidence:** Metric definitions, projection tests, drill-through routes, export APIs, and anomaly overlays. The evidence should be package-local in `src/pyAppGen/pbcs/music_royalties_rights` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 41. Agent skill for split validation and conflict drafting
+**Justification:** Split conflicts often require structured operator support rather than raw automation. The assistant should help explain why a split is invalid and draft the follow-up needed to resolve it.
 
-### 31. Decision intelligence and recommendations for Rights Dispute
+**Improvement:** Add a skill that inspects proposed split versions, explains rule failures, compares them with prior approved splits, and drafts outreach or internal resolution notes. Keep the assistant inside package boundaries by referencing only owned split, work, and contributor data.
 
-**Justification:** The PBC should help expert users decide faster while showing evidence and uncertainty.
+**Acceptance evidence:** Agent fixtures showing invalid split explanations, governed draft-generation evidence for conflict notes, and permission tests proving the skill cannot bypass split approval controls.
 
-**Improvement:** Generate ranked recommendations for `rights_dispute` such as next best action, likely resolution, required evidence, policy adjustment, staffing/capacity response, or downstream handoff. Tie the behavior to `music_royalties_rights_create_musical_work_workflow` where applicable, and make it visible in `MusicRoyaltiesRightsWorkbench` so operators do not need hidden scripts or raw table access.
+### 42. Agent skill for statement QA, leakage explanation, and dispute prep
+**Justification:** Statement review is a high-volume reasoning task where a well-governed assistant can reduce manual effort without taking approval authority away from operators. The skill should explain anomalies, not merely summarize records.
 
-**Acceptance evidence:** Recommendation explanations, confidence intervals, feedback capture, model governance records, and rejection reasons. The evidence should be package-local in `src/pyAppGen/pbcs/music_royalties_rights` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Improvement:** Add a statement QA skill that flags unusual deltas, explains missing income versus prior periods, highlights recoupment changes, and assembles a dispute-prep packet from source lines, split history, and beneficiary changes. Route all outputs through reviewable assistant artifacts.
 
-### 32. Quality and completeness scoring for Music Royalties Rights Policy Rule
+**Acceptance evidence:** QA scenarios showing anomaly explanations on statement drafts, operator-reviewed dispute packets assembled by the agent, and release evidence that generated packets cite only package-local facts and evidence objects.
 
-**Justification:** Operators should see whether a record is truly ready, not just technically saved.
+### 43. Agent skill for catalog administration follow-up
+**Justification:** Catalog administration involves repetitive but sensitive follow-up on missing registrations, incomplete affiliations, and expiring deals. An assistant can help drive these tasks if its scope and write permissions stay constrained.
 
-**Improvement:** Score each `music_royalties_rights_policy_rule` record for completeness, consistency, policy readiness, dependency readiness, evidence sufficiency, and downstream composability. Tie the behavior to `music_royalties_rights_record_recording_workflow` where applicable, and make it visible in `MusicRoyaltiesRightsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add a catalog-admin skill that proposes follow-up tasks, drafts reminder notes, groups missing evidence by account or territory, and prioritizes work based on statement impact. Keep write actions behind explicit confirmation and preserve the proposed action log.
 
-**Acceptance evidence:** Scoring rules, missing-evidence lists, readiness badges, and blocking criteria in command handlers. The evidence should be package-local in `src/pyAppGen/pbcs/music_royalties_rights` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Queue-prioritization examples generated by the skill, approval-gated task creation evidence, and release evidence showing assistant actions are logged with reason and outcome.
 
-### 33. End-to-end scenario library for Music Royalties Rights Runtime Parameter
+### 44. Predictive leakage, underpayment, and anomaly scoring
+**Justification:** The package already advertises predictive risk and anomaly capability, but the backlog should tie that capability to concrete music-rights leakage patterns. Operators need signals for missing registrations, abnormal statement swings, duplicate usage, and under-collected territories.
 
-**Justification:** Release evidence is stronger when every important music royalties and rights behavior has executable examples.
+**Improvement:** Train package-local scoring features around unmatched usage rates, registration gaps, sudden split changes, beneficiary holds, statement reversals, and delayed source ingestion. Score leakage risk by catalog slice, source, territory, and payee rather than only by record type.
 
-**Improvement:** Create seeded scenarios for `music_royalties_rights_runtime_parameter`: normal flow, urgent path, exception path, corrected path, duplicate path, late event path, and audit export path. Tie the behavior to `music_royalties_rights_create_musical_work_workflow` where applicable, and make it visible in `MusicRoyaltiesRightsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Feature manifests for leakage scoring, calibrated risk views in the workbench, and backtests showing the score identifies seeded underpayment and duplicate-usage scenarios with explainable reasons.
 
-**Acceptance evidence:** Scenario seed data, runtime smoke coverage, generated-app fixtures, and story-level workbench screenshots/contracts. The evidence should be package-local in `src/pyAppGen/pbcs/music_royalties_rights` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 45. Release evidence upgraded from technical readiness to royalties-domain proof
+**Justification:** `RELEASE_EVIDENCE.md` currently proves the package exists and its contracts load, but not that it is ready for actual rights administration. Domain release evidence should prove repertoire, statement, dispute, and registration scenarios end to end.
 
-### 34. Domain ontology and terminology model for Music Royalties Rights Schema Extension
+**Improvement:** Extend release evidence to include seeded work, recording, split, license, usage, statement, dispute, recoupment, and registration scenarios with expected outcomes. Add explicit evidence sections for rights completeness, calculation traceability, dispute reproducibility, and agent safety.
 
-**Justification:** Precise vocabulary prevents the PBC from misclassifying specialist documents or user instructions.
+**Acceptance evidence:** A release evidence bundle showing at least one complete lifecycle from work intake to statement issuance and dispute resolution, plus machine-verifiable checks for those scenario outcomes.
 
-**Improvement:** Add an ontology for `music_royalties_rights_schema_extension` terms, synonyms, classifications, relationships, allowed values, and phrase mappings used by the assistant and UI. Tie the behavior to `music_royalties_rights_record_recording_workflow` where applicable, and make it visible in `MusicRoyaltiesRightsWorkbench` so operators do not need hidden scripts or raw table access.
+### 46. Schema expansion for missing rights entities and evidence tables
+**Justification:** The manifest’s current table list is a useful core, but deeper music-rights administration needs more explicit structures. Without dedicated tables for contributors, affiliations, registrations, statement lines, and recoupment balances, too much logic stays hidden in payload blobs.
 
-**Acceptance evidence:** Ontology files, assistant parsing tests, UI glossary, and mapping evidence for domain-specific abbreviations. The evidence should be package-local in `src/pyAppGen/pbcs/music_royalties_rights` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Improvement:** Add owned tables for contributors, contributor affiliations, registration submissions, statement lines, calculation traces, recoupment balances, reserve balances, beneficiary instructions, and evidence artifacts. Keep everything within the `music_royalties_rights_` namespace and package-local migration boundary.
 
-### 35. Advanced search and investigation for Music Royalties Rights Control Assertion
+**Acceptance evidence:** Migration plans and schema contracts for the new tables, tests proving foreign-table mutation is still disallowed, and release evidence that deeper domain records remain discoverable through typed read models.
 
-**Justification:** Investigators and operators need fast, explainable retrieval across the whole domain surface.
+### 47. Territory and policy packs by right type
+**Justification:** Music rights rules vary heavily by territory and right type. A single policy layer for all royalties will not hold up when societies, statutory assumptions, tax posture, and licensing limits differ market by market.
 
-**Improvement:** Provide search across `music_royalties_rights_control_assertion` records, events, documents, exceptions, tasks, comments, and audit proofs with filters for tenant, status, risk, date, party, and dependency. Tie the behavior to `music_royalties_rights_create_musical_work_workflow` where applicable, and make it visible in `MusicRoyaltiesRightsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add territory-aware policy packs for mechanical, performance, sync, master, and neighboring-rights processing, plus parameter packs for close calendars, materiality thresholds, and dispute SLAs. Make policy provenance visible whenever it affects a statement or approval outcome.
 
-**Acceptance evidence:** Search index contracts, result provenance, permission-filtered queries, and stale-index warnings. The evidence should be package-local in `src/pyAppGen/pbcs/music_royalties_rights` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests comparing the same catalog asset under different territory packs, UI evidence that affected records show the policy pack in force, and release evidence that policy changes trigger re-evaluation only where relevant.
 
-### 36. Reconciliation and closure controls for Music Royalties Rights Governed Model
+### 48. Operational rehearsals with seeded catalog portfolios
+**Justification:** Rights software often looks complete until it meets a realistic catalog. Release readiness should include rehearsal datasets that cover co-writes, sub-publishing, remixes, partial ownership, unmatched usage, recoupment, and dispute scenarios.
 
-**Justification:** Closure is not complete until the PBC can prove no material domain work remains unresolved.
+**Improvement:** Create seeded portfolio scenarios representing common and difficult catalogs: a self-published songwriter, a co-published work with split changes, a label catalog with producer points, a sync-heavy catalog, and a dispute-heavy legacy catalog. Use these scenarios across services, UI, agent, and release evidence checks.
 
-**Improvement:** Add reconciliation workflows that compare `music_royalties_rights_governed_model` state against consumed events, external projections, expected totals/counts, approvals, and release evidence before closure. Tie the behavior to `music_royalties_rights_record_recording_workflow` where applicable, and make it visible in `MusicRoyaltiesRightsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Seed data manifests for the rehearsal catalogs, scenario-based tests spanning workbench and statement generation, and release evidence reporting pass or fail by seeded portfolio rather than by abstract contract only.
 
-**Acceptance evidence:** Reconciliation reports, variance thresholds, closure blockers, and AppGen-X closure events. The evidence should be package-local in `src/pyAppGen/pbcs/music_royalties_rights` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 49. Audit-proof hashes for statement, dispute, and evidence artifacts
+**Justification:** The package already points toward cryptographic audit proofs, but the backlog should tie them to royalty-sensitive outputs. Statements, dispute packets, and evidence bundles need tamper visibility because they are the records parties rely on commercially and legally.
 
-### 37. Regulatory and policy reporting for Musical Work
+**Improvement:** Hash and seal statement exports, dispute evidence bundles, calculation traces, and registration submission packages with reproducible package-local proofs. Show proof status in the detail views so operators can confirm whether an artifact matches the sealed version.
 
-**Justification:** World-class PBCs turn operational evidence into credible reporting without spreadsheet reconstruction.
+**Acceptance evidence:** Proof-verification checks on exported statement and dispute artifacts, UI badges for sealed versus changed artifacts, and release evidence that proof generation and verification work on the seeded lifecycle scenarios.
 
-**Improvement:** Generate domain reporting packs for `musical_work` covering statutory, contractual, operational, board, customer, or regulator evidence depending on monetary integrity, funds movement controls, counterparty risk, regulatory evidence, settlement finality, fraud prevention, and financial reconciliation. Tie the behavior to `music_royalties_rights_create_musical_work_workflow` where applicable, and make it visible in `MusicRoyaltiesRightsWorkbench` so operators do not need hidden scripts or raw table access.
+### 50. Go-live scorecard for repertoire, royalties, disputes, UI, agent, events, and release evidence
+**Justification:** The package needs a single readiness view that reflects domain truth, not only technical boot success. Teams should be able to answer whether the PBC is ready to administer a real catalog across works, recordings, splits, licenses, usage, statements, disputes, and collections.
 
-**Acceptance evidence:** Report schemas, redaction rules, traceable metric sources, and approval/export audit events. The evidence should be package-local in `src/pyAppGen/pbcs/music_royalties_rights` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Improvement:** Build a go-live scorecard that measures canonical work coverage, split completeness, affiliation completeness, registration readiness, usage match rate, statement explainability, dispute reproducibility, recoupment accuracy, UI coverage, agent safety, event completeness, and release-evidence completeness. Use the scorecard as the final gate before promoting the package as production-ready for music-rights administration.
 
-### 38. Carbon and resource awareness for Recording
-
-**Justification:** Sustainability evidence should be embedded in operations instead of treated as an after-the-fact report.
-
-**Improvement:** Where relevant, attach carbon, energy, water, travel, capacity, compute, or resource-footprint metadata to `recording` decisions and batch operations. Tie the behavior to `music_royalties_rights_record_recording_workflow` where applicable, and make it visible in `MusicRoyaltiesRightsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Footprint fields, scheduling parameters, exception rules, and dashboards that expose operational tradeoffs. The evidence should be package-local in `src/pyAppGen/pbcs/music_royalties_rights` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 39. Resilience and offline behavior for Rights Split
-
-**Justification:** Real operations keep moving during outages; the PBC must preserve correctness when dependencies are unavailable.
-
-**Improvement:** Define resilience modes for `rights_split`: degraded dependency mode, offline draft capture, delayed event replay, conflict detection, and safe recovery after partial failure. Tie the behavior to `music_royalties_rights_create_musical_work_workflow` where applicable, and make it visible in `MusicRoyaltiesRightsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Offline fixtures, replay tests, conflict queues, recovery logs, and user-visible degraded-mode warnings. The evidence should be package-local in `src/pyAppGen/pbcs/music_royalties_rights` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 40. Human-in-the-loop automation for License
-
-**Justification:** Automation should accelerate works, recordings, splits, licenses, statements, usage, royalty payments, and rights disputes while preserving accountability for high-risk decisions.
-
-**Improvement:** Set explicit automation boundaries for `license`: auto-approve, auto-reject, suggest-only, require-review, and block-until-evidence states with policy-based routing. Tie the behavior to `music_royalties_rights_record_recording_workflow` where applicable, and make it visible in `MusicRoyaltiesRightsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Automation policy tests, reviewer queues, override reasons, and assistant action audit trails. The evidence should be package-local in `src/pyAppGen/pbcs/music_royalties_rights` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 41. Package discovery and fit scoring for Usage Report
-
-**Justification:** Users selecting PBCs need transparent fit reasoning, especially when domains are adjacent but not overlapping.
-
-**Improvement:** Improve package metadata so composition can explain when `music_royalties_rights` fits a prompt, what entities it owns, what APIs/events it exposes, and what adjacent PBCs it depends on. Tie the behavior to `music_royalties_rights_create_musical_work_workflow` where applicable, and make it visible in `MusicRoyaltiesRightsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Discovery manifests, prompt-selection tests, overlap rationale links, and composition DSL examples. The evidence should be package-local in `src/pyAppGen/pbcs/music_royalties_rights` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 42. Configuration deployment pipeline for Royalty Statement
-
-**Justification:** Configuration changes can materially alter music royalties and rights; they need the same discipline as code releases.
-
-**Improvement:** Add configuration promotion for `royalty_statement` across draft, test, approved, active, deprecated, and rollback states with impact analysis before activation. Tie the behavior to `music_royalties_rights_record_recording_workflow` where applicable, and make it visible in `MusicRoyaltiesRightsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Config diff views, approval workflows, simulation before activation, and rollback tests. The evidence should be package-local in `src/pyAppGen/pbcs/music_royalties_rights` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 43. Workbench command completeness for Rights Dispute
-
-**Justification:** A PBC does not fully surface its capabilities if users must call hidden APIs for core work.
-
-**Improvement:** Expose every high-value operation for `rights_dispute` in the UI: create, validate, approve, simulate, correct, assign, export, retry, close, and audit-proof verification. Tie the behavior to `music_royalties_rights_create_musical_work_workflow` where applicable, and make it visible in `MusicRoyaltiesRightsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** UI action coverage tests, permission-aware disabled states, keyboard paths, and assistant handoff links. The evidence should be package-local in `src/pyAppGen/pbcs/music_royalties_rights` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 44. Document packet and evidence vault for Music Royalties Rights Policy Rule
-
-**Justification:** Documents often carry the legal or operational truth behind works, recordings, splits, licenses, statements, usage, royalty payments, and rights disputes.
-
-**Improvement:** Create a governed evidence vault for `music_royalties_rights_policy_rule` documents, attachments, source spans, extracted fields, signatures, approvals, and retention labels. Tie the behavior to `music_royalties_rights_record_recording_workflow` where applicable, and make it visible in `MusicRoyaltiesRightsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Evidence models, source-to-field lineage, signature validation, retention policies, and proof exports. The evidence should be package-local in `src/pyAppGen/pbcs/music_royalties_rights` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 45. Data correction and amendment history for Music Royalties Rights Runtime Parameter
-
-**Justification:** World-class systems correct mistakes without rewriting history or confusing downstream consumers.
-
-**Improvement:** Support formal amendments for `music_royalties_rights_runtime_parameter` that preserve original values, correction reason, approving actor, effective date, downstream event impacts, and replay behavior. Tie the behavior to `music_royalties_rights_create_musical_work_workflow` where applicable, and make it visible in `MusicRoyaltiesRightsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Amendment tables, correction events, projection replay tests, and side-by-side before/after UI. The evidence should be package-local in `src/pyAppGen/pbcs/music_royalties_rights` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 46. External participant collaboration for Music Royalties Rights Schema Extension
-
-**Justification:** Many music royalties and rights workflows require outside parties, but they must not gain direct access to internal tables.
-
-**Improvement:** Add controlled collaboration portals or API views for external participants related to `music_royalties_rights_schema_extension`, limited to scoped evidence submission, status checks, comments, and dispute responses. Tie the behavior to `music_royalties_rights_record_recording_workflow` where applicable, and make it visible in `MusicRoyaltiesRightsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Participant role policies, scoped tokens, submission audit trails, and inbound evidence validation. The evidence should be package-local in `src/pyAppGen/pbcs/music_royalties_rights` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 47. Advanced dependency freshness scoring for Music Royalties Rights Control Assertion
-
-**Justification:** A record may be valid locally but unsafe if dependency evidence is stale or incomplete.
-
-**Improvement:** Score freshness and reliability of dependencies used by `music_royalties_rights_control_assertion`, including consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, referenced projections, configuration versions, and external submissions. Tie the behavior to `music_royalties_rights_create_musical_work_workflow` where applicable, and make it visible in `MusicRoyaltiesRightsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Freshness indicators, blocking rules, stale-event simulations, and workbench dependency health panels. The evidence should be package-local in `src/pyAppGen/pbcs/music_royalties_rights` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 48. Model governance and explainability for Music Royalties Rights Governed Model
-
-**Justification:** Governed AI is mandatory for professional-grade automation in Music Royalties and Rights.
-
-**Improvement:** For every predictive or agentic feature around `music_royalties_rights_governed_model`, record model version, prompt or ruleset version, training/evaluation evidence, confidence, explanation, and human feedback. Tie the behavior to `music_royalties_rights_record_recording_workflow` where applicable, and make it visible in `MusicRoyaltiesRightsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Model cards, prompt/version manifests, feedback loops, drift tests, and audit proof for recommendations. The evidence should be package-local in `src/pyAppGen/pbcs/music_royalties_rights` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 49. High-scale partitioning and archival for Musical Work
-
-**Justification:** Better-than-world-class packages must remain operable after years of high-volume domain history.
-
-**Improvement:** Plan scale behavior for `musical_work`: tenant partitioning, archival policies, cold storage, retention-aware search, projection compaction, and large-batch replay. Tie the behavior to `music_royalties_rights_create_musical_work_workflow` where applicable, and make it visible in `MusicRoyaltiesRightsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Partition tests, archive/retrieve fixtures, retention enforcement, and replay benchmarks. The evidence should be package-local in `src/pyAppGen/pbcs/music_royalties_rights` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 50. Release gate expansion for Recording
-
-**Justification:** The PBC should not claim domain coverage unless release evidence proves the claim end to end.
-
-**Improvement:** Expand release gates for `music_royalties_rights` so every schema, service, API, event, handler, UI, rule, parameter, agent skill, seed scenario, and improvement backlog item maps to executable evidence. Tie the behavior to `music_royalties_rights_record_recording_workflow` where applicable, and make it visible in `MusicRoyaltiesRightsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Release audit checks, manifest traceability, generated-app smoke tests, and missing-capability blockers. The evidence should be package-local in `src/pyAppGen/pbcs/music_royalties_rights` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** A workbench scorecard panel, release evidence exporting the scorecard with seeded scenario results, and package tests that fail when a required readiness dimension falls below its defined threshold.

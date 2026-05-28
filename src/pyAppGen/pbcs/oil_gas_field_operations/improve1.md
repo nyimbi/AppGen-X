@@ -1,418 +1,262 @@
-# Oil and Gas Field Operations PBC Better-Than-World-Class Improvement Backlog
-
-## Purpose
-
-This file identifies, justifies, and describes 50 high-impact improvements for `oil_gas_field_operations`. The backlog is specific to wells, production, maintenance, field logistics, hse, reserves, lifting costs, and operating events and is intended to move the PBC from release-auditable scaffolding toward complete, specialist-grade domain coverage.
+# Oil and Gas Field Operations Improvement Backlog
 
 ## Current Domain Evidence Used
 
-- Stable PBC key: `oil_gas_field_operations`.
-- Domain purpose: Wells, production, maintenance, field logistics, HSE, reserves, lifting costs, and operating events.
-- Owned domain tables: `well`, `production_reading`, `field_ticket`, `workover_plan`, `hse_event`, `reserve_estimate`, `lifting_cost`, `oil_gas_field_operations_policy_rule`, `oil_gas_field_operations_runtime_parameter`, `oil_gas_field_operations_schema_extension`, `oil_gas_field_operations_control_assertion`, `oil_gas_field_operations_governed_model`.
-- Public APIs: `POST /wells`, `POST /production-readings`, `POST /field-tickets`, `POST /workover-plans`, `POST /hse-events`, `GET /oil-gas-field-operations-workbench`.
-- Emitted AppGen-X events: `OilGasFieldOperationsCreated`, `OilGasFieldOperationsUpdated`, `OilGasFieldOperationsApproved`, `OilGasFieldOperationsExceptionOpened`.
-- Consumed AppGen-X events: `PolicyChanged`, `AuditEventSealed`, `OperationalKpiChanged`.
-- Current standard surfaces include: `well_management`, `oil_gas_field_operations_workflow`, `oil_gas_field_operations_analytics`, `configuration_schema`, `rule_engine`, `parameter_engine`, `owned_schema_migrations_models`, `appgen_x_outbox_inbox_eventing`, `idempotent_handlers`, `retry_dead_letter_evidence`.
-- Current advanced surfaces include: `oil_gas_field_operations_event_sourced_operational_history`, `oil_gas_field_operations_multi_tenant_policy_isolation`, `oil_gas_field_operations_schema_evolution_resilience`, `oil_gas_field_operations_autonomous_anomaly_detection`, `oil_gas_field_operations_semantic_document_instruction_understanding`, `oil_gas_field_operations_predictive_risk_scoring`, `oil_gas_field_operations_counterfactual_scenario_simulation`, `oil_gas_field_operations_cryptographic_audit_proofs`.
-
-## 50 High-Impact Improvements
-
-### 1. Canonical lifecycle state model for Well
-
-**Justification:** This closes shallow CRUD gaps by making every oil and gas field operations transition explainable and testable instead of implicit in free-form status values.
-
-**Improvement:** Define a complete state machine for `well` with explicit draft, validated, blocked, approved, active, suspended, corrected, closed, archived, and reopened states. Tie the behavior to `oil_gas_field_operations_create_well_workflow` where applicable, and make it visible in `OilGasFieldOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** State-transition tests, invalid-transition fixtures, workbench state badges, and emitted AppGen-X transition events for OilGasFieldOperationsCreated, OilGasFieldOperationsUpdated, OilGasFieldOperationsApproved. The evidence should be package-local in `src/pyAppGen/pbcs/oil_gas_field_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 2. Domain intake and normalization for Production Reading
-
-**Justification:** The PBC cannot reach complete domain coverage unless it handles the messy front door of wells, production, maintenance, field logistics, hse, reserves, lifting costs, and operating events, not only already-clean records.
-
-**Improvement:** Build a typed intake pipeline for `production_reading` that accepts structured API payloads, document-derived instructions, batch loads, and assistant-generated drafts while normalizing identifiers, dates, units, parties, and jurisdictional context. Tie the behavior to `oil_gas_field_operations_record_production_reading_workflow` where applicable, and make it visible in `OilGasFieldOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Golden intake fixtures, rejected-record queues, field-level normalization evidence, and assistant previews before governed datastore mutation. The evidence should be package-local in `src/pyAppGen/pbcs/oil_gas_field_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 3. Specialist validation rules for Field Ticket
-
-**Justification:** World-class Oil and Gas Field Operations requires rules that domain experts can reason about, version, test, and roll back without code edits.
-
-**Improvement:** Add a domain rule compiler for `field_ticket` that supports threshold rules, eligibility rules, dependency rules, temporal windows, conflicting-instruction detection, and override justification. Tie the behavior to `oil_gas_field_operations_create_well_workflow` where applicable, and make it visible in `OilGasFieldOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Rule simulation tests, versioned rule manifests, rule impact reports, and UI rule editors linked to `OIL_GAS_FIELD_OPERATIONS_DATABASE_URL, OIL_GAS_FIELD_OPERATIONS_EVENT_TOPIC, OIL_GAS_FIELD_OPERATIONS_RETRY_LIMIT`. The evidence should be package-local in `src/pyAppGen/pbcs/oil_gas_field_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 4. Parameter governance and tuning for Workover Plan
-
-**Justification:** Parameters are where operations teams tune oil and gas field operations; unbounded constants would make the PBC brittle and unsafe in real deployments.
-
-**Improvement:** Expose bounded runtime parameters for `workover_plan` covering risk thresholds, SLA windows, confidence floors, escalation cutoffs, batch sizes, retry limits, and human-confirmation requirements. Tie the behavior to `oil_gas_field_operations_record_production_reading_workflow` where applicable, and make it visible in `OilGasFieldOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Parameter schema validation, tenant overrides, approval history, rollback controls, and workbench diff views. The evidence should be package-local in `src/pyAppGen/pbcs/oil_gas_field_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 5. Deep owned schema expansion for Hse Event
-
-**Justification:** A single payload column cannot express the full surface of wells, production, maintenance, field logistics, hse, reserves, lifting costs, and operating events or prove cross-PBC boundaries are respected.
-
-**Improvement:** Extend the owned schema around `hse_event` with normalized child tables for line-level evidence, party roles, approvals, attachments, comments, metrics, exception reasons, and control assertions. Tie the behavior to `oil_gas_field_operations_create_well_workflow` where applicable, and make it visible in `OilGasFieldOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Migrations, models, relationship tests, schema contract snapshots, and no shared-table access outside the `oil_gas_field_operations_` namespace. The evidence should be package-local in `src/pyAppGen/pbcs/oil_gas_field_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 6. Event-sourced operational history for Reserve Estimate
-
-**Justification:** Temporal reconstruction is essential for better-than-world-class auditability and dispute resolution in oil and gas field operations.
-
-**Improvement:** Capture every material mutation of `reserve_estimate` as immutable AppGen-X events with actor, tenant, command, policy version, idempotency key, before/after summary, and projection checkpoint. Tie the behavior to `oil_gas_field_operations_record_production_reading_workflow` where applicable, and make it visible in `OilGasFieldOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Replay tests, projection checksums, event ordering evidence, and point-in-time workbench views. The evidence should be package-local in `src/pyAppGen/pbcs/oil_gas_field_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 7. Projection and read-model strategy for Lifting Cost
-
-**Justification:** The workbench should not force users to infer domain truth from raw tables; each projection should answer a real operating question.
-
-**Improvement:** Create purpose-built projections for `lifting_cost`: operational queue, executive KPI rollup, exception aging, compliance evidence, agent task context, and external dependency health. Tie the behavior to `oil_gas_field_operations_create_well_workflow` where applicable, and make it visible in `OilGasFieldOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Projection contracts, freshness SLAs, backfill tests, and visible stale-projection warnings. The evidence should be package-local in `src/pyAppGen/pbcs/oil_gas_field_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 8. Exception taxonomy and remediation for Oil Gas Field Operations Policy Rule
-
-**Justification:** High-value PBCs win on exception throughput; generic “failed” states hide the details operators need.
-
-**Improvement:** Model the full exception taxonomy for `oil_gas_field_operations_policy_rule`, including severity, root cause, blocking dependency, remediation owner, due date, retry eligibility, escalation path, and closure evidence. Tie the behavior to `oil_gas_field_operations_record_production_reading_workflow` where applicable, and make it visible in `OilGasFieldOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Exception queues, aging metrics, remediation playbooks, dead-letter linkage, and closure test fixtures for yield variance. The evidence should be package-local in `src/pyAppGen/pbcs/oil_gas_field_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 9. Predictive risk scoring for Oil Gas Field Operations Runtime Parameter
-
-**Justification:** The package should warn users before oil and gas field operations work fails, breaches policy, or creates downstream cost.
-
-**Improvement:** Add predictive risk scoring for `oil_gas_field_operations_runtime_parameter` using domain features from owned tables, consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, rule outcomes, aging, anomaly signals, and historical corrections. Tie the behavior to `oil_gas_field_operations_create_well_workflow` where applicable, and make it visible in `OilGasFieldOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Feature manifests, score explanations, calibration reports, drift alerts, and tests for low/medium/high-risk scenarios. The evidence should be package-local in `src/pyAppGen/pbcs/oil_gas_field_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 10. Counterfactual simulation for Oil Gas Field Operations Schema Extension
-
-**Justification:** Advanced users need to ask “what would happen if” before committing changes to live wells, production, maintenance, field logistics, hse, reserves, lifting costs, and operating events operations.
-
-**Improvement:** Provide scenario simulation for `oil_gas_field_operations_schema_extension`: policy change, capacity constraint, deadline shift, price/rate change, eligibility change, disruption, and manual override outcomes. Tie the behavior to `oil_gas_field_operations_record_production_reading_workflow` where applicable, and make it visible in `OilGasFieldOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Simulation APIs, non-mutating sandbox state, comparison reports, and workbench side-by-side scenario panels. The evidence should be package-local in `src/pyAppGen/pbcs/oil_gas_field_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 11. Autonomous anomaly triage for Oil Gas Field Operations Control Assertion
-
-**Justification:** A world-class PBC should reduce analyst burden without hiding the reasoning behind automated triage.
-
-**Improvement:** Implement anomaly detection for `oil_gas_field_operations_control_assertion` that identifies outliers, duplicate submissions, impossible sequences, stale dependencies, unusual amounts/counts/durations, and contradictory fields. Tie the behavior to `oil_gas_field_operations_create_well_workflow` where applicable, and make it visible in `OilGasFieldOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Explainable anomaly cards, reviewer feedback loops, false-positive tracking, and suppression governance. The evidence should be package-local in `src/pyAppGen/pbcs/oil_gas_field_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 12. Semantic document understanding for Oil Gas Field Operations Governed Model
-
-**Justification:** Document-heavy work in Oil and Gas Field Operations cannot be complete if the assistant only answers questions and cannot prepare accurate governed changes.
-
-**Improvement:** Train the package assistant to parse domain documents and instructions for `oil_gas_field_operations_governed_model`, extract obligations, dates, parties, quantities, identifiers, and exceptions, then map them to safe draft mutations. Tie the behavior to `oil_gas_field_operations_record_production_reading_workflow` where applicable, and make it visible in `OilGasFieldOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Document extraction tests, confidence thresholds, redaction handling, source span citations, and human confirmation workflows. The evidence should be package-local in `src/pyAppGen/pbcs/oil_gas_field_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 13. Agent-safe CRUD execution for Well
-
-**Justification:** The PBC agent must be a first-class operator but never a hidden bypass around RBAC, rules, or owned datastore boundaries.
-
-**Improvement:** Add a professional chatbot skill for `well` that can create, update, correct, close, and annotate records only through policy-checked commands, approval gates, and previewed diffs. Tie the behavior to `oil_gas_field_operations_create_well_workflow` where applicable, and make it visible in `OilGasFieldOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Skill manifests, permission tests, preview/confirm flows, blocked-action evidence, and audit events for every assistant mutation. The evidence should be package-local in `src/pyAppGen/pbcs/oil_gas_field_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 14. Workbench persona coverage for Production Reading
-
-**Justification:** A generic detail page underserves the domain; each role needs the exact controls and evidence they use daily.
-
-**Improvement:** Design dedicated workbench panels for `production_reading`: operator queue, supervisor approvals, analyst exceptions, auditor evidence, configuration owner, and agent-assistance review. Tie the behavior to `oil_gas_field_operations_record_production_reading_workflow` where applicable, and make it visible in `OilGasFieldOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** UI contract entries, route tests, empty/error/loading states, and permission-aware action availability. The evidence should be package-local in `src/pyAppGen/pbcs/oil_gas_field_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 15. Cross-PBC dependency contracts for Field Ticket
-
-**Justification:** Composable packages fail when hidden table coupling enters the domain model.
-
-**Improvement:** Represent dependencies for `field_ticket` through declared APIs, consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, and projections rather than shared tables, with explicit freshness, ownership, and fallback behavior. Tie the behavior to `oil_gas_field_operations_create_well_workflow` where applicable, and make it visible in `OilGasFieldOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Dependency manifests, contract tests, stale dependency alerts, and no foreign-table references in generated artifacts. The evidence should be package-local in `src/pyAppGen/pbcs/oil_gas_field_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 16. API completeness and versioning for Workover Plan
-
-**Justification:** Complete domain coverage requires both command and query surfaces, not only happy-path create endpoints.
-
-**Improvement:** Expand APIs beyond POST /wells, POST /production-readings, POST /field-tickets to cover search, validation-only commands, simulation, bulk intake, exception closure, evidence export, projection reads, and idempotent corrections. Tie the behavior to `oil_gas_field_operations_record_production_reading_workflow` where applicable, and make it visible in `OilGasFieldOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** OpenAPI-style route manifests, backward-compatible version tests, deprecation metadata, and idempotency assertions. The evidence should be package-local in `src/pyAppGen/pbcs/oil_gas_field_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 17. Typed emitted-event expansion for Hse Event
-
-**Justification:** Consumers should understand what happened in Oil and Gas Field Operations without parsing opaque payloads.
-
-**Improvement:** Replace generic lifecycle emissions with typed events for each meaningful `hse_event` transition, exception, approval, correction, simulation result, and downstream handoff. Tie the behavior to `oil_gas_field_operations_create_well_workflow` where applicable, and make it visible in `OilGasFieldOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Event schema tests, event examples, compatibility checks, and emitted-event coverage in release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/oil_gas_field_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 18. Consumed-event handlers for Reserve Estimate
-
-**Justification:** A PBC is composable only when incoming events affect its own domain state predictably and safely.
-
-**Improvement:** Implement idempotent handlers for consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged that update projections, open dependency exceptions, recalculate risk, and preserve source event lineage. Tie the behavior to `oil_gas_field_operations_record_production_reading_workflow` where applicable, and make it visible in `OilGasFieldOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Duplicate-event tests, handler side-effect boundaries, dead-letter fixtures, and lineage links back to source events. The evidence should be package-local in `src/pyAppGen/pbcs/oil_gas_field_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 19. Retry and dead-letter operations for Lifting Cost
-
-**Justification:** Dead letters are not just plumbing; they are domain work queues that can block wells, production, maintenance, field logistics, hse, reserves, lifting costs, and operating events.
-
-**Improvement:** Create operational tools for retrying, quarantining, explaining, and resolving dead-lettered `lifting_cost` events with max-attempt policy, poison-message detection, and replay safety. Tie the behavior to `oil_gas_field_operations_create_well_workflow` where applicable, and make it visible in `OilGasFieldOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Dead-letter workbench, retry eligibility tests, replay audit proof, and operator action logs. The evidence should be package-local in `src/pyAppGen/pbcs/oil_gas_field_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 20. RBAC and attribute policy for Oil Gas Field Operations Policy Rule
-
-**Justification:** High-impact domain operations need finer controls than generic RBAC grants.
-
-**Improvement:** Extend permissions for `oil_gas_field_operations_policy_rule` from coarse read/create/update/admin to action-level and attribute-aware policies based on role, tenant, jurisdiction, monetary/materiality threshold, and exception severity. Tie the behavior to `oil_gas_field_operations_record_production_reading_workflow` where applicable, and make it visible in `OilGasFieldOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Permission matrix docs, ABAC policy tests, denied-action UI states, and assistant skill permission checks. The evidence should be package-local in `src/pyAppGen/pbcs/oil_gas_field_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 21. Continuous control testing for Oil Gas Field Operations Runtime Parameter
-
-**Justification:** Controls should run during operations, not only during release audit or manual review.
-
-**Improvement:** Embed control assertions for `oil_gas_field_operations_runtime_parameter` that continuously test segregation of duties, required approvals, stale exceptions, policy drift, duplicate records, and boundary violations. Tie the behavior to `oil_gas_field_operations_create_well_workflow` where applicable, and make it visible in `OilGasFieldOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Control dashboards, failing-control events, test fixtures, and release evidence tied to `oil_gas_field_operations_control_assertion` records. The evidence should be package-local in `src/pyAppGen/pbcs/oil_gas_field_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 22. Cryptographic audit proofing for Oil Gas Field Operations Schema Extension
-
-**Justification:** Better-than-world-class auditability requires proof of integrity, not merely logs stored in mutable tables.
-
-**Improvement:** Hash-chain material `oil_gas_field_operations_schema_extension` decisions, documents, emitted events, and release-evidence snapshots to make tampering visible without exposing sensitive payloads. Tie the behavior to `oil_gas_field_operations_record_production_reading_workflow` where applicable, and make it visible in `OilGasFieldOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Proof manifests, verification APIs, redacted proof exports, and audit-ledger handoff events. The evidence should be package-local in `src/pyAppGen/pbcs/oil_gas_field_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 23. Privacy, consent, and secrecy controls for Oil Gas Field Operations Control Assertion
-
-**Justification:** Complete domain coverage must account for protected data and restricted operational evidence.
-
-**Improvement:** Add field-level privacy classifications for `oil_gas_field_operations_control_assertion`, consent checks, masking rules, retention schedules, legal holds, and assistant redaction policies. Tie the behavior to `oil_gas_field_operations_create_well_workflow` where applicable, and make it visible in `OilGasFieldOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Retention tests, masked UI snapshots, consent-blocked mutation fixtures, and export controls. The evidence should be package-local in `src/pyAppGen/pbcs/oil_gas_field_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 24. Multi-tenant operating model for Oil Gas Field Operations Governed Model
-
-**Justification:** The PBC should scale across organizations while preserving independent policy and compliance boundaries.
-
-**Improvement:** Support tenant-specific `oil_gas_field_operations_governed_model` rules, data residency, encryption context, configuration, seed data, and release evidence without allowing cross-tenant leakage. Tie the behavior to `oil_gas_field_operations_record_production_reading_workflow` where applicable, and make it visible in `OilGasFieldOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Tenant isolation tests, tenant-scoped parameters, key-rotation evidence, and cross-tenant negative fixtures. The evidence should be package-local in `src/pyAppGen/pbcs/oil_gas_field_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 25. Schema evolution and extension registry for Well
-
-**Justification:** Domain teams will add fields; the PBC must evolve without breaking APIs, events, or workbench projections.
-
-**Improvement:** Make schema extensions for `well` first-class with compatibility checks, migration previews, projection backfills, field ownership, and rollback metadata. Tie the behavior to `oil_gas_field_operations_create_well_workflow` where applicable, and make it visible in `OilGasFieldOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Extension registry UI, compatibility tests, migration dry-runs, and backfill release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/oil_gas_field_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 26. Master data quality gates for Production Reading
-
-**Justification:** Many oil and gas field operations errors begin as bad reference data; the PBC should catch them before workflow execution.
-
-**Improvement:** Define reference-data contracts for `production_reading`: canonical codes, parties, locations, classifications, calendars, units, currencies, products, assets, or service categories as relevant to the domain. Tie the behavior to `oil_gas_field_operations_record_production_reading_workflow` where applicable, and make it visible in `OilGasFieldOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Reference validation fixtures, stale-code warnings, mapping tables, and dependency freshness indicators. The evidence should be package-local in `src/pyAppGen/pbcs/oil_gas_field_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 27. Bulk operations and correction workflows for Field Ticket
-
-**Justification:** Enterprise-scale Oil and Gas Field Operations users cannot operate one record at a time.
-
-**Improvement:** Add bulk load, bulk validate, bulk approve, and bulk correction workflows for `field_ticket` with partial success, row-level errors, resumability, and rollback. Tie the behavior to `oil_gas_field_operations_create_well_workflow` where applicable, and make it visible in `OilGasFieldOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** CSV/API batch fixtures, resumable job state, row-level audit evidence, and assistant-generated correction suggestions. The evidence should be package-local in `src/pyAppGen/pbcs/oil_gas_field_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 28. Lifecycle collaboration and tasking for Workover Plan
-
-**Justification:** Domain collaboration should live inside the PBC boundary and remain auditable with the record it affects.
-
-**Improvement:** Attach tasks, comments, ownership, due dates, handoffs, and escalation threads to `workover_plan` without leaking into external shared task tables. Tie the behavior to `oil_gas_field_operations_record_production_reading_workflow` where applicable, and make it visible in `OilGasFieldOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Task tables, comment audit history, notification events, escalation SLAs, and role-specific task queues. The evidence should be package-local in `src/pyAppGen/pbcs/oil_gas_field_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 29. SLA and service-level governance for Hse Event
-
-**Justification:** Users need to know when wells, production, maintenance, field logistics, hse, reserves, lifting costs, and operating events is late, blocked, or at risk before customer or regulator impact.
-
-**Improvement:** Define SLAs for `hse_event` across intake, validation, approval, exception resolution, event handling, downstream projection refresh, and release-evidence generation. Tie the behavior to `oil_gas_field_operations_create_well_workflow` where applicable, and make it visible in `OilGasFieldOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** SLA breach events, timers, configurable calendars, workbench aging buckets, and tests for pause/resume behavior. The evidence should be package-local in `src/pyAppGen/pbcs/oil_gas_field_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 30. Operational analytics cockpit for Reserve Estimate
-
-**Justification:** World-class operations require leading indicators, not only record counts.
-
-**Improvement:** Build analytics for `reserve_estimate`: throughput, backlog, aging, approval latency, exception rate, risk distribution, automation acceptance, correction rate, and downstream dependency health. Tie the behavior to `oil_gas_field_operations_record_production_reading_workflow` where applicable, and make it visible in `OilGasFieldOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Metric definitions, projection tests, drill-through routes, export APIs, and anomaly overlays. The evidence should be package-local in `src/pyAppGen/pbcs/oil_gas_field_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 31. Decision intelligence and recommendations for Lifting Cost
-
-**Justification:** The PBC should help expert users decide faster while showing evidence and uncertainty.
-
-**Improvement:** Generate ranked recommendations for `lifting_cost` such as next best action, likely resolution, required evidence, policy adjustment, staffing/capacity response, or downstream handoff. Tie the behavior to `oil_gas_field_operations_create_well_workflow` where applicable, and make it visible in `OilGasFieldOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Recommendation explanations, confidence intervals, feedback capture, model governance records, and rejection reasons. The evidence should be package-local in `src/pyAppGen/pbcs/oil_gas_field_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 32. Quality and completeness scoring for Oil Gas Field Operations Policy Rule
-
-**Justification:** Operators should see whether a record is truly ready, not just technically saved.
-
-**Improvement:** Score each `oil_gas_field_operations_policy_rule` record for completeness, consistency, policy readiness, dependency readiness, evidence sufficiency, and downstream composability. Tie the behavior to `oil_gas_field_operations_record_production_reading_workflow` where applicable, and make it visible in `OilGasFieldOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Scoring rules, missing-evidence lists, readiness badges, and blocking criteria in command handlers. The evidence should be package-local in `src/pyAppGen/pbcs/oil_gas_field_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 33. End-to-end scenario library for Oil Gas Field Operations Runtime Parameter
-
-**Justification:** Release evidence is stronger when every important oil and gas field operations behavior has executable examples.
-
-**Improvement:** Create seeded scenarios for `oil_gas_field_operations_runtime_parameter`: normal flow, urgent path, exception path, corrected path, duplicate path, late event path, and audit export path. Tie the behavior to `oil_gas_field_operations_create_well_workflow` where applicable, and make it visible in `OilGasFieldOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Scenario seed data, runtime smoke coverage, generated-app fixtures, and story-level workbench screenshots/contracts. The evidence should be package-local in `src/pyAppGen/pbcs/oil_gas_field_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 34. Domain ontology and terminology model for Oil Gas Field Operations Schema Extension
-
-**Justification:** Precise vocabulary prevents the PBC from misclassifying specialist documents or user instructions.
-
-**Improvement:** Add an ontology for `oil_gas_field_operations_schema_extension` terms, synonyms, classifications, relationships, allowed values, and phrase mappings used by the assistant and UI. Tie the behavior to `oil_gas_field_operations_record_production_reading_workflow` where applicable, and make it visible in `OilGasFieldOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Ontology files, assistant parsing tests, UI glossary, and mapping evidence for domain-specific abbreviations. The evidence should be package-local in `src/pyAppGen/pbcs/oil_gas_field_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 35. Advanced search and investigation for Oil Gas Field Operations Control Assertion
-
-**Justification:** Investigators and operators need fast, explainable retrieval across the whole domain surface.
-
-**Improvement:** Provide search across `oil_gas_field_operations_control_assertion` records, events, documents, exceptions, tasks, comments, and audit proofs with filters for tenant, status, risk, date, party, and dependency. Tie the behavior to `oil_gas_field_operations_create_well_workflow` where applicable, and make it visible in `OilGasFieldOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Search index contracts, result provenance, permission-filtered queries, and stale-index warnings. The evidence should be package-local in `src/pyAppGen/pbcs/oil_gas_field_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 36. Reconciliation and closure controls for Oil Gas Field Operations Governed Model
-
-**Justification:** Closure is not complete until the PBC can prove no material domain work remains unresolved.
-
-**Improvement:** Add reconciliation workflows that compare `oil_gas_field_operations_governed_model` state against consumed events, external projections, expected totals/counts, approvals, and release evidence before closure. Tie the behavior to `oil_gas_field_operations_record_production_reading_workflow` where applicable, and make it visible in `OilGasFieldOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Reconciliation reports, variance thresholds, closure blockers, and AppGen-X closure events. The evidence should be package-local in `src/pyAppGen/pbcs/oil_gas_field_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 37. Regulatory and policy reporting for Well
-
-**Justification:** World-class PBCs turn operational evidence into credible reporting without spreadsheet reconstruction.
-
-**Improvement:** Generate domain reporting packs for `well` covering statutory, contractual, operational, board, customer, or regulator evidence depending on production traceability, safety permits, batch genealogy, field conditions, quality evidence, environmental constraints, and asset-intensive operations. Tie the behavior to `oil_gas_field_operations_create_well_workflow` where applicable, and make it visible in `OilGasFieldOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Report schemas, redaction rules, traceable metric sources, and approval/export audit events. The evidence should be package-local in `src/pyAppGen/pbcs/oil_gas_field_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 38. Carbon and resource awareness for Production Reading
-
-**Justification:** Sustainability evidence should be embedded in operations instead of treated as an after-the-fact report.
-
-**Improvement:** Where relevant, attach carbon, energy, water, travel, capacity, compute, or resource-footprint metadata to `production_reading` decisions and batch operations. Tie the behavior to `oil_gas_field_operations_record_production_reading_workflow` where applicable, and make it visible in `OilGasFieldOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Footprint fields, scheduling parameters, exception rules, and dashboards that expose operational tradeoffs. The evidence should be package-local in `src/pyAppGen/pbcs/oil_gas_field_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 39. Resilience and offline behavior for Field Ticket
-
-**Justification:** Real operations keep moving during outages; the PBC must preserve correctness when dependencies are unavailable.
-
-**Improvement:** Define resilience modes for `field_ticket`: degraded dependency mode, offline draft capture, delayed event replay, conflict detection, and safe recovery after partial failure. Tie the behavior to `oil_gas_field_operations_create_well_workflow` where applicable, and make it visible in `OilGasFieldOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Offline fixtures, replay tests, conflict queues, recovery logs, and user-visible degraded-mode warnings. The evidence should be package-local in `src/pyAppGen/pbcs/oil_gas_field_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 40. Human-in-the-loop automation for Workover Plan
-
-**Justification:** Automation should accelerate wells, production, maintenance, field logistics, hse, reserves, lifting costs, and operating events while preserving accountability for high-risk decisions.
-
-**Improvement:** Set explicit automation boundaries for `workover_plan`: auto-approve, auto-reject, suggest-only, require-review, and block-until-evidence states with policy-based routing. Tie the behavior to `oil_gas_field_operations_record_production_reading_workflow` where applicable, and make it visible in `OilGasFieldOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Automation policy tests, reviewer queues, override reasons, and assistant action audit trails. The evidence should be package-local in `src/pyAppGen/pbcs/oil_gas_field_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 41. Package discovery and fit scoring for Hse Event
-
-**Justification:** Users selecting PBCs need transparent fit reasoning, especially when domains are adjacent but not overlapping.
-
-**Improvement:** Improve package metadata so composition can explain when `oil_gas_field_operations` fits a prompt, what entities it owns, what APIs/events it exposes, and what adjacent PBCs it depends on. Tie the behavior to `oil_gas_field_operations_create_well_workflow` where applicable, and make it visible in `OilGasFieldOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Discovery manifests, prompt-selection tests, overlap rationale links, and composition DSL examples. The evidence should be package-local in `src/pyAppGen/pbcs/oil_gas_field_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 42. Configuration deployment pipeline for Reserve Estimate
-
-**Justification:** Configuration changes can materially alter oil and gas field operations; they need the same discipline as code releases.
-
-**Improvement:** Add configuration promotion for `reserve_estimate` across draft, test, approved, active, deprecated, and rollback states with impact analysis before activation. Tie the behavior to `oil_gas_field_operations_record_production_reading_workflow` where applicable, and make it visible in `OilGasFieldOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Config diff views, approval workflows, simulation before activation, and rollback tests. The evidence should be package-local in `src/pyAppGen/pbcs/oil_gas_field_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 43. Workbench command completeness for Lifting Cost
-
-**Justification:** A PBC does not fully surface its capabilities if users must call hidden APIs for core work.
-
-**Improvement:** Expose every high-value operation for `lifting_cost` in the UI: create, validate, approve, simulate, correct, assign, export, retry, close, and audit-proof verification. Tie the behavior to `oil_gas_field_operations_create_well_workflow` where applicable, and make it visible in `OilGasFieldOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** UI action coverage tests, permission-aware disabled states, keyboard paths, and assistant handoff links. The evidence should be package-local in `src/pyAppGen/pbcs/oil_gas_field_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 44. Document packet and evidence vault for Oil Gas Field Operations Policy Rule
-
-**Justification:** Documents often carry the legal or operational truth behind wells, production, maintenance, field logistics, hse, reserves, lifting costs, and operating events.
-
-**Improvement:** Create a governed evidence vault for `oil_gas_field_operations_policy_rule` documents, attachments, source spans, extracted fields, signatures, approvals, and retention labels. Tie the behavior to `oil_gas_field_operations_record_production_reading_workflow` where applicable, and make it visible in `OilGasFieldOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Evidence models, source-to-field lineage, signature validation, retention policies, and proof exports. The evidence should be package-local in `src/pyAppGen/pbcs/oil_gas_field_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 45. Data correction and amendment history for Oil Gas Field Operations Runtime Parameter
-
-**Justification:** World-class systems correct mistakes without rewriting history or confusing downstream consumers.
-
-**Improvement:** Support formal amendments for `oil_gas_field_operations_runtime_parameter` that preserve original values, correction reason, approving actor, effective date, downstream event impacts, and replay behavior. Tie the behavior to `oil_gas_field_operations_create_well_workflow` where applicable, and make it visible in `OilGasFieldOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Amendment tables, correction events, projection replay tests, and side-by-side before/after UI. The evidence should be package-local in `src/pyAppGen/pbcs/oil_gas_field_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 46. External participant collaboration for Oil Gas Field Operations Schema Extension
-
-**Justification:** Many oil and gas field operations workflows require outside parties, but they must not gain direct access to internal tables.
-
-**Improvement:** Add controlled collaboration portals or API views for external participants related to `oil_gas_field_operations_schema_extension`, limited to scoped evidence submission, status checks, comments, and dispute responses. Tie the behavior to `oil_gas_field_operations_record_production_reading_workflow` where applicable, and make it visible in `OilGasFieldOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Participant role policies, scoped tokens, submission audit trails, and inbound evidence validation. The evidence should be package-local in `src/pyAppGen/pbcs/oil_gas_field_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 47. Advanced dependency freshness scoring for Oil Gas Field Operations Control Assertion
-
-**Justification:** A record may be valid locally but unsafe if dependency evidence is stale or incomplete.
-
-**Improvement:** Score freshness and reliability of dependencies used by `oil_gas_field_operations_control_assertion`, including consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, referenced projections, configuration versions, and external submissions. Tie the behavior to `oil_gas_field_operations_create_well_workflow` where applicable, and make it visible in `OilGasFieldOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Freshness indicators, blocking rules, stale-event simulations, and workbench dependency health panels. The evidence should be package-local in `src/pyAppGen/pbcs/oil_gas_field_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 48. Model governance and explainability for Oil Gas Field Operations Governed Model
-
-**Justification:** Governed AI is mandatory for professional-grade automation in Oil and Gas Field Operations.
-
-**Improvement:** For every predictive or agentic feature around `oil_gas_field_operations_governed_model`, record model version, prompt or ruleset version, training/evaluation evidence, confidence, explanation, and human feedback. Tie the behavior to `oil_gas_field_operations_record_production_reading_workflow` where applicable, and make it visible in `OilGasFieldOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Model cards, prompt/version manifests, feedback loops, drift tests, and audit proof for recommendations. The evidence should be package-local in `src/pyAppGen/pbcs/oil_gas_field_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 49. High-scale partitioning and archival for Well
-
-**Justification:** Better-than-world-class packages must remain operable after years of high-volume domain history.
-
-**Improvement:** Plan scale behavior for `well`: tenant partitioning, archival policies, cold storage, retention-aware search, projection compaction, and large-batch replay. Tie the behavior to `oil_gas_field_operations_create_well_workflow` where applicable, and make it visible in `OilGasFieldOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Partition tests, archive/retrieve fixtures, retention enforcement, and replay benchmarks. The evidence should be package-local in `src/pyAppGen/pbcs/oil_gas_field_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 50. Release gate expansion for Production Reading
-
-**Justification:** The PBC should not claim domain coverage unless release evidence proves the claim end to end.
-
-**Improvement:** Expand release gates for `oil_gas_field_operations` so every schema, service, API, event, handler, UI, rule, parameter, agent skill, seed scenario, and improvement backlog item maps to executable evidence. Tie the behavior to `oil_gas_field_operations_record_production_reading_workflow` where applicable, and make it visible in `OilGasFieldOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Release audit checks, manifest traceability, generated-app smoke tests, and missing-capability blockers. The evidence should be package-local in `src/pyAppGen/pbcs/oil_gas_field_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+- PBC key in manifest: `oil_gas_field_operations`
+- Manifest description: wells, production, maintenance, field logistics, HSE, reserves, lifting costs, and operating events
+- Current owned tables in `manifest.py`: `well`, `production_reading`, `field_ticket`, `workover_plan`, `hse_event`, `reserve_estimate`, `lifting_cost`, policy/rule/runtime/control/governed-model tables
+- Current APIs in `manifest.py`: `POST /wells`, `POST /production-readings`, `POST /field-tickets`, `POST /workover-plans`, `POST /hse-events`, `GET /oil-gas-field-operations-workbench`
+- Current emitted events in `manifest.py`: `OilGasFieldOperationsCreated`, `OilGasFieldOperationsUpdated`, `OilGasFieldOperationsApproved`, `OilGasFieldOperationsExceptionOpened`
+- Current consumed events in `manifest.py`: `PolicyChanged`, `AuditEventSealed`, `OperationalKpiChanged`
+- UI fragments already declared in `manifest.py`: `OilGasFieldOperationsWorkbench`, `OilGasFieldOperationsDetail`, `OilGasFieldOperationsAssistantPanel`
+- Existing backlog direction already points at event history, anomaly detection, governed agent execution, release evidence, and operational workbench depth; this rewrite narrows those themes into field-operations-specific execution gaps
+
+### 1. Canonical well, pad, and lease hierarchy
+**Justification:** Field teams cannot reconcile production, downtime, tickets, or workovers when a single well is referenced differently across surface pad, lease, route, and reporting contexts.
+**Improvement:** Expand the `well` domain to explicitly model operator, field, area, pad, lease, well, wellbore, completion, and producing interval hierarchy with effective-dated aliases, route codes, and retired identifiers.
+**Acceptance evidence:** Fixtures show one well moving between reporting aliases without losing history; UI detail pages display the full hierarchy; API validation rejects production or field tickets that reference an unknown pad-to-well relationship.
+
+### 2. Wellbore and completion interval granularity
+**Justification:** Oil and gas operations decisions are often made at the completion or interval level, not at the lease-header level.
+**Improvement:** Add structures for lateral sections, perforated intervals, completion strings, zone names, and current producing interval so production tests, artificial lift, and workovers can target the right physical asset.
+**Acceptance evidence:** Test data includes a multi-completion well with interval-specific status changes; workover plans can reference a completion rather than only a well; assistant summaries cite the affected interval in generated recommendations.
+
+### 3. End-to-end well lifecycle state model
+**Justification:** Spud, drill, complete, flowback, produce, shut-in, suspend, plug, and abandon states drive different controls, approvals, and downstream reporting.
+**Improvement:** Replace generic status handling with a governed lifecycle for `well` that tracks operational readiness, first production date, temporary abandonment, return-to-service, and final abandonment milestones.
+**Acceptance evidence:** State-transition tests block invalid jumps such as producing after final abandonment; workbench badges show current lifecycle and last approved transition; release evidence includes lifecycle coverage for representative well scenarios.
+
+### 4. Daily production capture by phase and disposition
+**Justification:** Lease operations need oil, gas, water, and injected volumes with a clear split between produced, sold, flared, vented, trucked, transferred, and disposed quantities.
+**Improvement:** Extend `production_reading` to capture gross and net phase volumes, disposition pathways, measurement basis, effective production date, reporting date, and revision reason.
+**Acceptance evidence:** Example records show the same production day with gross test values, final allocated values, and a later correction; validation blocks missing disposition on gas; workbench totals reconcile daily phase balances.
+
+### 5. Production test workflow with validity windows
+**Justification:** Test data becomes dangerous when users cannot tell whether a separator test is current, superseded, partial, or invalid for allocation.
+**Improvement:** Create a dedicated production-test flow covering planned test, in-progress test, validated test, superseded test, failed test, and allocation-approved test states with start/stop timestamps and reasoned invalidation.
+**Acceptance evidence:** Scenario tests prove a late-entered test cannot retroactively change allocations until approved; UI shows valid-through windows; event history records who superseded a prior test and why.
+
+### 6. Test separator, gauge, and sample quality checks
+**Justification:** Field test numbers are only trustworthy if separator condition, gauge calibration, and sample integrity are captured alongside the rates.
+**Improvement:** Add metadata for test separator ID, meter/gauge used, calibration date, sample condition, stabilization duration, choke setting, line pressure, and witness signoff for production tests.
+**Acceptance evidence:** Invalid tests are automatically flagged when calibration is expired; detail screens show sample quality warnings; release evidence includes approved and rejected test cases with instrument metadata.
+
+### 7. Allocation engine for commingled pads
+**Justification:** Pads with shared facilities need defendable allocation logic when individual well tests, meter runs, and facility totals do not line up perfectly.
+**Improvement:** Build allocation rules for commingled wells using latest valid test, fallback hierarchy, shrink factors, downtime adjustments, and tolerance thresholds between facility totals and summed well allocations.
+**Acceptance evidence:** Backlog evidence includes a pad with three wells sharing a battery; tolerance breaches raise an exception rather than silently forcing a balance; workbench shows the allocation basis per well-day.
+
+### 8. Meter hierarchy and meter-factor history
+**Justification:** Production and custody volumes depend on meter lineage, proving factor changes and device swaps over time.
+**Improvement:** Add metering entities and history to tie `production_reading` to meter runs, LACT units, tank gauges, gas meters, water meters, and effective-dated meter factors with calibration evidence.
+**Acceptance evidence:** Historical queries show which meter and factor were active on any production date; audit views explain a volume change after factor revision; tests cover meter replacement without breaking prior reports.
+
+### 9. Tank, LACT, and ticket reconciliation
+**Justification:** Lease operators need a closed chain from tank inventory to run tickets and sales transfer evidence.
+**Improvement:** Introduce reconciliation logic between tank gauges, automatic transfer measurements, truck tickets, and sales statements so oil movement out of lease storage is tied back to production and inventory variance.
+**Acceptance evidence:** A reconciliation screen shows beginning inventory, produced oil, transferred oil, ending inventory, and unexplained variance; exceptions open when variance exceeds tolerance; evidence packs include linked ticket images and meter values.
+
+### 10. Artificial lift equipment registry
+**Justification:** Lift performance cannot be analyzed if the system only knows that a well is “on lift” without tracking equipment type and operating envelope.
+**Improvement:** Add an equipment registry for rod pump, ESP, gas lift, plunger lift, progressive cavity pump, intermittent gas, and flowing wells, including install date, vendor/model, stage count, pump size, controller settings, and retrieval date.
+**Acceptance evidence:** Each producing well shows current and prior lift systems; workover plans can target lift component replacement; analytics segment downtime and rate loss by lift type.
+
+### 11. Rod pump surveillance and failure coding
+**Justification:** Rod-pumped wells need disciplined capture of stroke rate, pump fillage, surface unit issues, and recurring failure modes.
+**Improvement:** Add rod-pump-specific surveillance fields and exception logic for fluid pound, pump-off, tubing leak suspicion, parted rod, gearbox issues, and high polished-rod load.
+**Acceptance evidence:** Daily surveillance screens flag wells whose cards or operating data imply suboptimal settings; failure codes from pulled jobs roll back into analytics; agent skills can draft a pumping-unit follow-up ticket with cited evidence.
+
+### 12. ESP run-life and shutdown diagnostics
+**Justification:** ESP economics are driven by run life, restart success, current imbalance, intake pressure, and trips, not only by production volumes.
+**Improvement:** Add ESP-oriented operating history for shutdown reason, amperage/current imbalance, VSD alarms, intake/discharge pressure, restart attempts, and last run-life reset.
+**Acceptance evidence:** Workbench views show ESP shutdown timelines and repeat-trip patterns; downtime analytics separate electrical from reservoir causes; acceptance packs include a run-life leaderboard and trip-cause distribution.
+
+### 13. Gas lift configuration and optimization
+**Justification:** Gas-lifted wells need visibility into injection allocation, valve strategy, and instability to avoid losing oil while wasting lift gas.
+**Improvement:** Capture gas lift design parameters, daily injected gas, available injection source, valve depth set, operating valve assumptions, and instability notes, then surface optimization opportunities when gas is constrained.
+**Acceptance evidence:** Simulated scenarios show which wells lose lift first when compressor availability drops; allocation screens separate produced gas from injected gas; workover candidates include gas-lift hardware problems backed by recent history.
+
+### 14. Plunger and intermittent-lift cycle handling
+**Justification:** Intermittent wells behave differently from steady-state wells and need event-aware production interpretation.
+**Improvement:** Add cycle-aware handling for plunger arrivals, missed arrivals, shut-in windows, open-flow windows, timer settings, and gas buildup periods so volumes and downtime are not mislabeled.
+**Acceptance evidence:** Production charts distinguish cycle windows from true facility downtime; control assertions catch impossible arrival sequences; operator UI shows the last several cycle outcomes before recommending intervention.
+
+### 15. Downtime event model with start-stop discipline
+**Justification:** Deferred production and root-cause analysis are unreliable when downtime is captured as a single free-text note at the end of the day.
+**Improvement:** Add a structured downtime event model with start time, end time, partial-rate flag, responsible system, root cause, failed component, operational impact, and restoration action.
+**Acceptance evidence:** Tests cover overlapping downtime, partial downtime, and unclosed downtime; daily deferred production is calculated from duration and baseline; event history shows who closed each outage and on what evidence.
+
+### 16. Deferred production calculation
+**Justification:** Operations leaders need defendable lost-oil and lost-gas estimates from downtime and curtailment, not a hand-entered placeholder number.
+**Improvement:** Calculate deferred production using a configurable baseline derived from recent valid tests, decline-adjusted trend, or approved engineering target, with separate treatment for full shut-in versus reduced-rate operation.
+**Acceptance evidence:** Exception reports explain the baseline used for each deferred estimate; users can compare calculated versus manually overridden deferment with approval trace; release evidence includes variance checks against sample field spreadsheets.
+
+### 17. Workover candidate ranking
+**Justification:** Workover dollars should flow to wells with the strongest production recovery, risk reduction, or compliance need.
+**Improvement:** Rank `workover_plan` candidates using recent decline, repeated downtime, artificial lift instability, integrity flags, chemical consumption anomalies, and deferred volume exposure, while preserving engineer override with written rationale.
+**Acceptance evidence:** Candidate queues show machine-ranked score plus engineer rationale; historical evidence compares recommended ranking to executed jobs; audit output shows why a lower-ranked well was advanced.
+
+### 18. Workover scope, readiness, and after-action capture
+**Justification:** A workover record without scope depth, equipment needs, and return-to-service evidence cannot support field execution or later learning.
+**Improvement:** Extend `workover_plan` to capture target interval, pulling depth, suspected failure, required equipment, crew readiness, kill-fluid assumptions, planned chemicals, expected downtime, and after-action findings.
+**Acceptance evidence:** Completed workovers include discovered-failure code, replaced components, days offline, and restored test result; readiness views block approval if critical equipment or permits are missing; lessons learned roll into failure analytics.
+
+### 19. Field ticket discipline for lease operations
+**Justification:** Lease operators rely on tickets for rounds, repairs, tank runs, chemical drops, and observations; those tickets need more than a generic task record.
+**Improvement:** Specialize `field_ticket` for route type, visit objective, well/pad/facility reference, ticket source, urgency, service performed, materials used, and follow-up requirement.
+**Acceptance evidence:** Tickets can be filtered by route, lease, or service type; mobile-ready screens show the exact asset context; acceptance evidence includes linked photos, timestamps, and closeout notes for sample daily rounds.
+
+### 20. Lease operating rounds and route optimization
+**Justification:** Pad visits consume time and cost; the system should help supervisors group field work around geography, urgency, and production impact.
+**Improvement:** Build lease-route planning that groups wells and pads by route, flags must-visit sites based on downtime or HSE conditions, and creates a reasoned visit sequence for the day.
+**Acceptance evidence:** Route views show travel grouping and production-impact ordering; closed tickets feed back into missed-route analytics; supervisors can see which high-risk sites were not visited and why.
+
+### 21. Chemical program tracking by well and facility
+**Justification:** Corrosion inhibitor, demulsifier, paraffin treatment, biocide, and scale inhibitor performance directly affect uptime, treating cost, and integrity.
+**Improvement:** Add chemical program entities tied to wells, pads, separators, and water systems, including chemical type, target dosage, actual dosage, delivery method, vendor, and exception reason when treatment is skipped.
+**Acceptance evidence:** The workbench highlights wells with missed treatment or unusual dosage variance; field tickets can close a chemical drop against the active program; release evidence includes dosage history and exception coverage.
+
+### 22. Chemical effectiveness and spend correlation
+**Justification:** Teams need to know whether chemical spend is reducing corrosion, emulsions, paraffin, scale, or water-handling trouble.
+**Improvement:** Link chemical program records to downtime causes, corrosion findings, emulsion severity, BS&W outcomes, and lifting cost so the PBC can surface ineffective or over-applied treatments.
+**Acceptance evidence:** Analytics compare treatment spend to repeat failure frequency; recommended program changes cite field outcomes rather than only dosage variance; evidence packs include before-and-after case histories for selected wells.
+
+### 23. HSE boundary between operational upset and reportable incident
+**Justification:** Not every outage is an HSE event, and not every HSE event should be buried inside downtime; the system needs a clear boundary.
+**Improvement:** Define explicit handoff rules between downtime, `field_ticket`, and `hse_event` for spills, gas releases, line strikes, vehicle incidents, confined-space exposure, and permit breaches, with cross-links instead of duplicate records.
+**Acceptance evidence:** A boundary matrix shows when a downtime event must open an HSE record; tests prevent double-counting one incident as multiple independent cases; UI cross-links let auditors trace from production loss to incident investigation.
+
+### 24. Permit, isolation, and job-safety gating
+**Justification:** Workovers and many field tasks need proof that isolation, permits, and hazard reviews were in place before work started.
+**Improvement:** Add permit-to-work, lockout/isolation, gas test, line-break, confined-space, and job-safety-analysis checkpoints to `workover_plan` and high-risk `field_ticket` flows.
+**Acceptance evidence:** Approval cannot advance if required safety checkpoints are incomplete; closeout evidence includes permit references and gas-test timestamps; release evidence contains blocked-action examples that prove the safety gates are active.
+
+### 25. Regulatory production, flare, and vent reporting packs
+**Justification:** Monthly and daily regulatory submissions require more than internal production totals; they need defensible classifications and correction history.
+**Improvement:** Build reporting packs for oil, gas, water, injected volumes, flared gas, vented gas, downtime explanation, and revision reason with effective-dated mappings to regulatory categories.
+**Acceptance evidence:** Sample monthly packs trace each reported figure back to allocated production days and corrections; workbench exports show original and revised numbers; events capture when a filed value is later restated.
+
+### 26. Spill, release, and environmental evidence packs
+**Justification:** Environmental reporting depends on rapid evidence assembly across field observations, containment actions, cleanup progress, and closure.
+**Improvement:** Extend `hse_event` with spill volume estimate basis, affected media, containment status, remediation milestones, sampling references, agency-notification timestamps, and closure signoff.
+**Acceptance evidence:** Incident detail pages show evidence chronology from initial field ticket to closure; required fields differ by incident class; release evidence includes a fully documented spill and a non-reportable release boundary case.
+
+### 27. Water handling, injection, and disposal tracking
+**Justification:** Produced-water movement affects cost, environmental exposure, and field uptime, especially when disposal or injection capacity is constrained.
+**Improvement:** Add support for produced-water disposition to disposal, reuse, or injection, including transfer point, trucked versus piped movement, injection well destination, and disposal exception reason.
+**Acceptance evidence:** Water balances can be reconciled at well, pad, and field level; downtime alerts fire when disposal constraints curtail production; regulatory packs can separate produced, injected, and disposed water totals.
+
+### 28. Haul-off and third-party ticket verification
+**Justification:** Trucked oil, water, and chemical movements create leakage and reconciliation risk if third-party ticket details are not validated.
+**Improvement:** Capture hauler, truck number, ticket sequence, origin asset, destination, loaded quantity, unloaded quantity, seal status, and mismatch reason for trucked movements tied to field tickets and production records.
+**Acceptance evidence:** Reconciliation logic flags duplicate or out-of-sequence truck tickets; workbench audit views show ticket chains by day; acceptance evidence includes linked origin and destination quantities with variance handling.
+
+### 29. Well integrity and barrier surveillance
+**Justification:** Annulus pressure, tubing-casing communication, packer integrity, and barrier failures affect safety, production, and workover priority.
+**Improvement:** Add integrity monitoring for annulus readings, bleed-down tests, sustained casing pressure observations, integrity status, and required follow-up actions on affected wells.
+**Acceptance evidence:** Wells can be filtered by integrity risk class; control assertions open exceptions when pressure thresholds or overdue bleed-down actions are breached; workover ranking incorporates unresolved barrier issues.
+
+### 30. Pressure survey, fluid-level, and surveillance ingestion
+**Justification:** Field optimization depends on pressure and fluid-level data that often lives outside daily production entry.
+**Improvement:** Introduce surveillance capture for casing pressure, tubing pressure, line pressure, fluid level, pump intake estimate, and test notes, with links to artificial lift recommendations and downtime diagnosis.
+**Acceptance evidence:** Trend views overlay surveillance points against production and downtime; invalid readings are rejected when unit or asset context is missing; assistant recommendations cite the exact survey values used.
+
+### 31. Event taxonomy and idempotent operational messaging
+**Justification:** Generic create/update events are not enough for field operations where downstream consumers care about tests validated, downtime opened, meter factors changed, and workovers closed.
+**Improvement:** Expand emitted events into typed operational events for well lifecycle changes, production test validation, allocation finalization, downtime opened/closed, lift system changed, chemical exception raised, and regulatory pack issued.
+**Acceptance evidence:** Event contracts include domain-specific payload examples; duplicate-message tests prove idempotent handling; release evidence maps each major operational action to an emitted event type.
+
+### 32. Replayable operational timeline
+**Justification:** Supervisors and auditors need to replay what the field believed on a given date, not only what the database shows after later corrections.
+**Improvement:** Use event-sourced history to reconstruct the timeline of well status, production revisions, downtime, workovers, and HSE handoffs as-of any cutoff date and time.
+**Acceptance evidence:** A point-in-time timeline view recreates the state before and after a correction; tests prove a restated production day does not rewrite earlier approval evidence; release packs include replay snapshots for sample incidents.
+
+### 33. Release evidence tailored to operations readiness
+**Justification:** Technical tests alone do not prove field readiness; the package needs evidence that operators, engineers, and auditors can execute core workflows with domain fidelity.
+**Improvement:** Add a release-evidence structure covering daily production entry, well test approval, allocation close, downtime handling, workover closeout, HSE boundary, and regulatory export for representative field scenarios.
+**Acceptance evidence:** `RELEASE_EVIDENCE.md` references packaged scenario runs with screenshots, event traces, and reconciled numbers; every critical workflow has pass/fail evidence; unresolved gaps are visible rather than implied away.
+
+### 34. Production surveillance workbench UI
+**Justification:** Lease operations need a single screen that shows which wells are underperforming today and why.
+**Improvement:** Expand `OilGasFieldOperationsWorkbench` with a production surveillance view showing yesterday versus rolling baseline, current downtime, latest test, lift type, integrity flags, and open field tickets per well.
+**Acceptance evidence:** Mocked UI tests confirm sorting by deferred volume and latest exception severity; empty, stale, and degraded data states are covered; supervisors can drill from a bad actor well into its full evidence chain.
+
+### 35. Pad map and route-first UI
+**Justification:** Field personnel think in routes and pad clusters, not in a flat list of record IDs.
+**Improvement:** Add a route-oriented UI that groups wells by field, pad, and lease, shows current operating condition at pad level, and exposes quick actions for field tickets, downtime start, and chemical delivery confirmation.
+**Acceptance evidence:** Route screens display pad-level counts for producing, shut-in, and exception wells; mobile-width layouts preserve key actions; acceptance evidence includes route drilldowns for a multi-pad day.
+
+### 36. Mobile-friendly field ticket capture
+**Justification:** Ticket quality degrades when operators have to remember details until they return to the office.
+**Improvement:** Make `field_ticket` capture resilient on low-connectivity devices with draft save, photo attachment queueing, timestamp confidence, and later conflict resolution for the same ticket.
+**Acceptance evidence:** Offline-to-online sync scenarios preserve attachments and field timestamps; conflict resolution is visible when two users touch the same ticket; release evidence includes a disconnected capture and later reconciliation.
+
+### 37. Allocation and metering audit UI
+**Justification:** Allocation exceptions are hard to resolve without an interface that explains how numbers rolled from meter totals to allocated well volumes.
+**Improvement:** Add dedicated audit screens for meter totals, tests used, tolerance breaches, fallback rules, manual overrides, and final approved allocations with an explicit “why this number” trace.
+**Acceptance evidence:** Users can open any allocated well-day and see the exact meter totals and test basis; override history is visible with approver identity; UI tests cover toleranced and non-toleranced allocations.
+
+### 38. Assistant skill for morning production review
+**Justification:** A field operations assistant should reduce supervisor scan time without inventing facts or bypassing approvals.
+**Improvement:** Add an agent skill that assembles a morning production brief covering new downtime, major rate drops, invalid tests, meter reconciliation issues, integrity alerts, and high-priority tickets, each backed by cited domain records.
+**Acceptance evidence:** Skill outputs include links to underlying wells and events; blocked cases show when evidence is insufficient; acceptance scenarios prove the assistant cannot mutate data from a read-only morning review flow.
+
+### 39. Assistant skill for workover readiness packs
+**Justification:** Engineers waste time pulling the same evidence before every workover authorization.
+**Improvement:** Add an assistant skill that prepares a workover readiness pack with decline trend, latest test, downtime history, lift history, integrity notes, chemical history, required permits, and expected production recovery basis.
+**Acceptance evidence:** Generated packs include source citations and missing-information flags; approval flows require human confirmation before any plan update; release evidence compares a generated pack to manually assembled engineer evidence.
+
+### 40. Assistant skill for regulatory draft preparation
+**Justification:** Regulatory work benefits from automation only if draft numbers remain traceable and corrections are explicit.
+**Improvement:** Add a governed agent flow that drafts monthly production and flare/vent reporting packs from approved allocations, highlights missing classifications, and blocks submission when supporting evidence is incomplete.
+**Acceptance evidence:** Draft packs show source allocations, correction history, and unresolved exceptions; tests confirm no final filing state is set by the assistant alone; audit logs capture every generated draft and reviewer action.
+
+### 41. Assistant skill for downtime root-cause summarization
+**Justification:** Repeat failures are missed when supervisors must manually read every ticket and outage note across many wells.
+**Improvement:** Add a skill that summarizes repeated downtime drivers by well, pad, lift type, and failed component, with recommendation categories such as operating adjustment, field repair, chemical change, or workover candidate.
+**Acceptance evidence:** Summaries cite the exact downtime and field ticket records used; users can reject a recommendation and provide a reason; evidence shows the model distinguishes repeat repair noise from a true recurring cause.
+
+### 42. Escalation rules tied to operational impact
+**Justification:** Exception queues become background noise unless escalation honors deferred production, HSE severity, and reporting deadlines.
+**Improvement:** Implement policy-driven escalation for downtime, meter variance, invalid tests, integrity concerns, HSE incidents, and overdue workover actions using deferred-volume exposure and regulatory due dates.
+**Acceptance evidence:** Policy simulations show how the same issue escalates differently by severity and deadline; notifications are deduplicated; release evidence includes expired, acknowledged, and resolved escalation paths.
+
+### 43. Asset, tenant, and operator boundary controls
+**Justification:** Contract operators, joint interests, and multi-asset organizations require strong separation of what each team can see or change.
+**Improvement:** Tighten multi-tenant and policy isolation so wells, tickets, workovers, and evidence are scoped by operator, asset, and authorized lease or pad boundaries, including assistant responses and exported reports.
+**Acceptance evidence:** Negative tests prove one operator cannot see another operator’s wells or tickets; assistant outputs are filtered by the same policy boundary; exports carry the same boundary constraints as the UI.
+
+### 44. Lease operating cost evidence and lifting-cost traceability
+**Justification:** Lifting cost is only useful operationally when linked back to the wells, chemicals, workovers, hauling, and downtime that caused it.
+**Improvement:** Extend `lifting_cost` with cost category, cost driver, affected asset scope, linked field ticket or workover, service date, and allocation basis so lease operating expense can be explained at field level.
+**Acceptance evidence:** Cost views show per-well and per-pad operating spend alongside production and deferment; users can trace a chemical invoice or hauling charge back to the operational event that generated it; sample evidence includes month-end rollups with drill-through.
+
+### 45. Shift handover and daily production notes
+**Justification:** Important context is lost between day and night shift when handover comments remain outside the operating system.
+**Improvement:** Add a shift-handover record tied to wells, pads, downtime, workovers, and HSE observations, with unresolved watch items and explicit owner for the next shift.
+**Acceptance evidence:** Handover notes appear in the morning production brief and pad views; unresolved watch items persist until closed; evidence includes a shift change during an active outage without loss of context.
+
+### 46. Shut-in, startup, and return-to-service checklists
+**Justification:** Wells coming back online after outage or workover need consistent restart evidence to avoid repeated trips and unsafe starts.
+**Improvement:** Create checklist-driven workflows for planned shut-in, emergency shut-in, startup, and return-to-service with required line-up confirmation, meter readiness, lift-system readiness, and HSE gate completion.
+**Acceptance evidence:** Restart cannot be approved if mandatory checks are incomplete; event history records each checklist milestone; release evidence includes a well shut-in for workover and successfully returned to production.
+
+### 47. Injection and secondary-recovery operations support
+**Justification:** Many fields depend on injection wells and pressure support, so field operations coverage is incomplete without them.
+**Improvement:** Add support for injection wells, injected water or gas volumes, injection downtime, pressure-support exceptions, and links between injector constraints and producer performance on the same pattern.
+**Acceptance evidence:** Pattern views show injector-producer relationships; reporting separates produced and injected volumes correctly; candidate lists can identify producers impacted by nearby injector outages.
+
+### 48. Forecast-versus-actual and target tracking
+**Justification:** Supervisors need to know not only what happened, but how far operations are from field plan and recovery targets.
+**Improvement:** Add daily and monthly target tracking for oil, gas, water, deferment, test frequency, and workover execution, with reason codes for variance and drill-through to supporting well events.
+**Acceptance evidence:** Workbench dashboards show actual versus target at field, pad, and well level; variance explanations link directly to downtime, test, or workover records; release evidence includes a month with plan miss and resolved causation.
+
+### 49. Domain fixtures and regression scenarios
+**Justification:** Field-operations software regresses when tests use toy data that ignores commingling, lift diversity, route work, and reporting corrections.
+**Improvement:** Build a durable scenario set with flowing wells, rod-pumped wells, ESP wells, gas-lift wells, an injection pattern, a shared pad battery, workover history, chemical programs, trucked water, and a reportable HSE event.
+**Acceptance evidence:** Contract, workflow, and UI tests all run against the same realistic fixtures; release evidence references those scenarios by name; failures clearly show which operational story broke.
+
+### 50. Go-live readiness evidence for the PBC
+**Justification:** The package should not be considered ready until operations, engineering, HSE, and audit stakeholders can see proof that the core field stories work end to end.
+**Improvement:** Require a go-live evidence gate for `oil_gas_field_operations` that bundles workflow passes, UI screenshots, event traces, allocation reconciliations, regulatory draft outputs, assistant-skill evidence, and unresolved-risk disclosure.
+**Acceptance evidence:** The release bundle lists exact scenarios executed, exact evidence artifacts produced, and exact open gaps accepted for launch; the path from manifest capabilities to operational proof is visible without reading source code.

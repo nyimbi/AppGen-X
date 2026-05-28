@@ -1,418 +1,416 @@
-# Insurance Policy Administration PBC Better-Than-World-Class Improvement Backlog
+# Insurance Policy Administration PBC Manual Improvement Backlog
 
 ## Purpose
 
-This file identifies, justifies, and describes 50 high-impact improvements for `policy_administration_insurance`. The backlog is specific to insurance policy lifecycle, endorsements, renewals, cancellations, billing status, coverage changes, and documents and is intended to move the PBC from release-auditable scaffolding toward complete, specialist-grade domain coverage.
+This hand-crafted backlog replaces generic roadmap text for `policy_administration_insurance` with insurance-policy-administration-specific improvements for policy issuance, coverage schedules, endorsements, renewals, cancellations, reinstatements, billing status, documents, compliance notices, workbench operations, and governed agent assistance.
 
 ## Current Domain Evidence Used
 
 - Stable PBC key: `policy_administration_insurance`.
-- Domain purpose: Insurance policy lifecycle, endorsements, renewals, cancellations, billing status, coverage changes, and documents.
-- Owned domain tables: `insurance_policy`, `coverage_item`, `endorsement`, `renewal_notice`, `cancellation_event`, `billing_status`, `policy_document`, `policy_administration_insurance_policy_rule`, `policy_administration_insurance_runtime_parameter`, `policy_administration_insurance_schema_extension`, `policy_administration_insurance_control_assertion`, `policy_administration_insurance_governed_model`.
-- Public APIs: `POST /insurance-policys`, `POST /coverage-items`, `POST /endorsements`, `POST /renewal-notices`, `POST /cancellation-events`, `GET /policy-administration-insurance-workbench`.
-- Emitted AppGen-X events: `PolicyAdministrationInsuranceCreated`, `PolicyAdministrationInsuranceUpdated`, `PolicyAdministrationInsuranceApproved`, `PolicyAdministrationInsuranceExceptionOpened`.
-- Consumed AppGen-X events: `PolicyChanged`, `AuditEventSealed`, `OperationalKpiChanged`.
-- Current standard surfaces include: `insurance_policy_management`, `policy_administration_insurance_workflow`, `policy_administration_insurance_analytics`, `configuration_schema`, `rule_engine`, `parameter_engine`, `owned_schema_migrations_models`, `appgen_x_outbox_inbox_eventing`, `idempotent_handlers`, `retry_dead_letter_evidence`.
-- Current advanced surfaces include: `policy_administration_insurance_event_sourced_operational_history`, `policy_administration_insurance_multi_tenant_policy_isolation`, `policy_administration_insurance_schema_evolution_resilience`, `policy_administration_insurance_autonomous_anomaly_detection`, `policy_administration_insurance_semantic_document_instruction_understanding`, `policy_administration_insurance_predictive_risk_scoring`, `policy_administration_insurance_counterfactual_scenario_simulation`, `policy_administration_insurance_cryptographic_audit_proofs`.
+- Domain purpose: insurance policy lifecycle, endorsements, renewals, cancellations, billing status, coverage changes, and documents.
+- Owned records include `insurance_policy`, `coverage_item`, `endorsement`, `renewal_notice`, `cancellation_event`, `billing_status`, `policy_document`, policy rules, runtime parameters, schema extensions, control assertions, and governed models.
+- Public APIs include `POST /insurance-policys`, `POST /coverage-items`, `POST /endorsements`, `POST /renewal-notices`, `POST /cancellation-events`, and `GET /policy-administration-insurance-workbench`.
+- Workbench surfaces include `PolicyAdministrationInsuranceWorkbench`, `PolicyAdministrationInsuranceDetail`, and `PolicyAdministrationInsuranceAssistantPanel`.
+- AppGen-X events include `PolicyAdministrationInsuranceCreated`, `PolicyAdministrationInsuranceUpdated`, `PolicyAdministrationInsuranceApproved`, and `PolicyAdministrationInsuranceExceptionOpened`.
 
 ## 50 High-Impact Improvements
 
-### 1. Canonical lifecycle state model for Insurance Policy
+### 1. Policy issuance readiness gate
 
-**Justification:** This closes shallow CRUD gaps by making every insurance policy administration transition explainable and testable instead of implicit in free-form status values.
+**Justification:** Issuing a policy requires bound quote evidence, insured details, coverage schedule, effective dates, billing status, required documents, and authority.
 
-**Improvement:** Define a complete state machine for `insurance_policy` with explicit draft, validated, blocked, approved, active, suspended, corrected, closed, archived, and reopened states. Tie the behavior to `policy_administration_insurance_create_insurance_policy_workflow` where applicable, and make it visible in `PolicyAdministrationInsuranceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add issuance checks that validate required policy facts, coverage items, document templates, billing projection, underwriting decision projection, and approval evidence.
 
-**Acceptance evidence:** State-transition tests, invalid-transition fixtures, workbench state badges, and emitted AppGen-X transition events for PolicyAdministrationInsuranceCreated, PolicyAdministrationInsuranceUpdated, PolicyAdministrationInsuranceApproved. The evidence should be package-local in `src/pyAppGen/pbcs/policy_administration_insurance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must block active policy state until all issuance prerequisites are present and visible in `PolicyAdministrationInsuranceWorkbench`.
 
-### 2. Domain intake and normalization for Coverage Item
+### 2. Insurance policy lifecycle state machine
 
-**Justification:** The PBC cannot reach complete domain coverage unless it handles the messy front door of insurance policy lifecycle, endorsements, renewals, cancellations, billing status, coverage changes, and documents, not only already-clean records.
+**Justification:** Policies move through quoted, issued, active, endorsed, renewed, pending cancel, cancelled, reinstated, expired, non-renewed, and archived states.
 
-**Improvement:** Build a typed intake pipeline for `coverage_item` that accepts structured API payloads, document-derived instructions, batch loads, and assistant-generated drafts while normalizing identifiers, dates, units, parties, and jurisdictional context. Tie the behavior to `policy_administration_insurance_record_coverage_item_workflow` where applicable, and make it visible in `PolicyAdministrationInsuranceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add explicit `insurance_policy` states with transition reasons, effective dates, allowed commands, approval rules, and AppGen-X event emission.
 
-**Acceptance evidence:** Golden intake fixtures, rejected-record queues, field-level normalization evidence, and assistant previews before governed datastore mutation. The evidence should be package-local in `src/pyAppGen/pbcs/policy_administration_insurance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Invalid transition tests must fail and the workbench must show next allowed actions by policy state.
 
-### 3. Specialist validation rules for Endorsement
+### 3. Policy term and version governance
 
-**Justification:** World-class Insurance Policy Administration requires rules that domain experts can reason about, version, test, and roll back without code edits.
+**Justification:** Policy administration must preserve every term, renewal, rewrite, mid-term change, and correction without overwriting historical obligations.
 
-**Improvement:** Add a domain rule compiler for `endorsement` that supports threshold rules, eligibility rules, dependency rules, temporal windows, conflicting-instruction detection, and override justification. Tie the behavior to `policy_administration_insurance_create_insurance_policy_workflow` where applicable, and make it visible in `PolicyAdministrationInsuranceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add term versions with policy period, transaction type, predecessor, successor, transaction effective date, processing date, and supersession reason.
 
-**Acceptance evidence:** Rule simulation tests, versioned rule manifests, rule impact reports, and UI rule editors linked to `POLICY_ADMINISTRATION_INSURANCE_DATABASE_URL, POLICY_ADMINISTRATION_INSURANCE_EVENT_TOPIC, POLICY_ADMINISTRATION_INSURANCE_RETRY_LIMIT`. The evidence should be package-local in `src/pyAppGen/pbcs/policy_administration_insurance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must reconstruct policy coverage as of any date across endorsements and renewals.
 
-### 4. Parameter governance and tuning for Renewal Notice
+### 4. Coverage item schedule depth
 
-**Justification:** Parameters are where operations teams tune insurance policy administration; unbounded constants would make the PBC brittle and unsafe in real deployments.
+**Justification:** Coverage details include limits, deductibles, forms, exclusions, rating attributes, locations, vehicles, assets, or insured interests.
 
-**Improvement:** Expose bounded runtime parameters for `renewal_notice` covering risk thresholds, SLA windows, confidence floors, escalation cutoffs, batch sizes, retry limits, and human-confirmation requirements. Tie the behavior to `policy_administration_insurance_record_coverage_item_workflow` where applicable, and make it visible in `PolicyAdministrationInsuranceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand `coverage_item` with coverage type, covered object, limit structure, deductible, form reference, effective window, and coverage status.
 
-**Acceptance evidence:** Parameter schema validation, tenant overrides, approval history, rollback controls, and workbench diff views. The evidence should be package-local in `src/pyAppGen/pbcs/policy_administration_insurance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must validate coverage schedules and reject active policies with incomplete required coverage fields.
 
-### 5. Deep owned schema expansion for Cancellation Event
+### 5. Named insured and additional interest handling
 
-**Justification:** A single payload column cannot express the full surface of insurance policy lifecycle, endorsements, renewals, cancellations, billing status, coverage changes, and documents or prove cross-PBC boundaries are respected.
+**Justification:** Policies need accurate named insureds, additional insureds, lienholders, mortgagees, loss payees, and certificate holders.
 
-**Improvement:** Extend the owned schema around `cancellation_event` with normalized child tables for line-level evidence, party roles, approvals, attachments, comments, metrics, exception reasons, and control assertions. Tie the behavior to `policy_administration_insurance_create_insurance_policy_workflow` where applicable, and make it visible in `PolicyAdministrationInsuranceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Store party role projections, role effective dates, interest type, document requirements, and communication eligibility without owning external party records.
 
-**Acceptance evidence:** Migrations, models, relationship tests, schema contract snapshots, and no shared-table access outside the `policy_administration_insurance_` namespace. The evidence should be package-local in `src/pyAppGen/pbcs/policy_administration_insurance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Boundary tests must prove party data is consumed as projection evidence and no external party table is mutated.
 
-### 6. Event-sourced operational history for Billing Status
+### 6. Endorsement transaction model
 
-**Justification:** Temporal reconstruction is essential for better-than-world-class auditability and dispute resolution in insurance policy administration.
+**Justification:** Mid-term changes require request, quote, approval, effective date, premium impact, forms, documents, and policy versioning.
 
-**Improvement:** Capture every material mutation of `billing_status` as immutable AppGen-X events with actor, tenant, command, policy version, idempotency key, before/after summary, and projection checkpoint. Tie the behavior to `policy_administration_insurance_record_coverage_item_workflow` where applicable, and make it visible in `PolicyAdministrationInsuranceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand `endorsement` with change set, requested effective date, accepted effective date, changed coverage items, premium delta, approval, and document output.
 
-**Acceptance evidence:** Replay tests, projection checksums, event ordering evidence, and point-in-time workbench views. The evidence should be package-local in `src/pyAppGen/pbcs/policy_administration_insurance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must create endorsement transactions and show before/after coverage comparisons.
 
-### 7. Projection and read-model strategy for Policy Document
+### 7. Endorsement eligibility rules
 
-**Justification:** The workbench should not force users to infer domain truth from raw tables; each projection should answer a real operating question.
+**Justification:** Some changes are prohibited after cancellation, outside policy period, during nonpayment, or without underwriting approval.
 
-**Improvement:** Create purpose-built projections for `policy_document`: operational queue, executive KPI rollup, exception aging, compliance evidence, agent task context, and external dependency health. Tie the behavior to `policy_administration_insurance_create_insurance_policy_workflow` where applicable, and make it visible in `PolicyAdministrationInsuranceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add eligibility rules by transaction type, policy status, product, jurisdiction, underwriting projection, billing status, and effective date.
 
-**Acceptance evidence:** Projection contracts, freshness SLAs, backfill tests, and visible stale-projection warnings. The evidence should be package-local in `src/pyAppGen/pbcs/policy_administration_insurance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must reject ineligible endorsements with cited rule versions.
 
-### 8. Exception taxonomy and remediation for Policy Administration Insurance Policy Rule
+### 8. Premium-impact handoff boundary
 
-**Justification:** High-value PBCs win on exception throughput; generic “failed” states hide the details operators need.
+**Justification:** Policy administration needs premium deltas and billing status but should not own rating or accounts receivable.
 
-**Improvement:** Model the full exception taxonomy for `policy_administration_insurance_policy_rule`, including severity, root cause, blocking dependency, remediation owner, due date, retry eligibility, escalation path, and closure evidence. Tie the behavior to `policy_administration_insurance_record_coverage_item_workflow` where applicable, and make it visible in `PolicyAdministrationInsuranceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Store premium-impact projections, billing-account status, invoice readiness, and receivable handoff events through declared APIs/events.
 
-**Acceptance evidence:** Exception queues, aging metrics, remediation playbooks, dead-letter linkage, and closure test fixtures for sanctions or fraud holds. The evidence should be package-local in `src/pyAppGen/pbcs/policy_administration_insurance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Boundary tests must show no mutation of rating or billing tables while preserving premium impact evidence.
 
-### 9. Predictive risk scoring for Policy Administration Insurance Runtime Parameter
+### 9. Cancellation workflow
 
-**Justification:** The package should warn users before insurance policy administration work fails, breaches policy, or creates downstream cost.
+**Justification:** Cancellation requires reason, notice period, effective date, refund calculation projection, legal basis, and stop conditions.
 
-**Improvement:** Add predictive risk scoring for `policy_administration_insurance_runtime_parameter` using domain features from owned tables, consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, rule outcomes, aging, anomaly signals, and historical corrections. Tie the behavior to `policy_administration_insurance_create_insurance_policy_workflow` where applicable, and make it visible in `PolicyAdministrationInsuranceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand `cancellation_event` with initiator, reason, notice deadline, rescission window, required approvals, proof of mailing, and cancellation outcome.
 
-**Acceptance evidence:** Feature manifests, score explanations, calibration reports, drift alerts, and tests for low/medium/high-risk scenarios. The evidence should be package-local in `src/pyAppGen/pbcs/policy_administration_insurance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must block cancellation finalization before required notice and approval evidence.
 
-### 10. Counterfactual simulation for Policy Administration Insurance Schema Extension
+### 10. Nonpayment cancellation controls
 
-**Justification:** Advanced users need to ask “what would happen if” before committing changes to live insurance policy lifecycle, endorsements, renewals, cancellations, billing status, coverage changes, and documents operations.
+**Justification:** Nonpayment cancellation is sensitive because billing, grace periods, protected status, and reinstatement rules interact.
 
-**Improvement:** Provide scenario simulation for `policy_administration_insurance_schema_extension`: policy change, capacity constraint, deadline shift, price/rate change, eligibility change, disruption, and manual override outcomes. Tie the behavior to `policy_administration_insurance_record_coverage_item_workflow` where applicable, and make it visible in `PolicyAdministrationInsuranceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add nonpayment cancellation checklist with billing status projection, grace date, notice sequence, payment cure evidence, and suppression reason.
 
-**Acceptance evidence:** Simulation APIs, non-mutating sandbox state, comparison reports, and workbench side-by-side scenario panels. The evidence should be package-local in `src/pyAppGen/pbcs/policy_administration_insurance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must cancel only when grace and notice conditions are satisfied.
 
-### 11. Autonomous anomaly triage for Policy Administration Insurance Control Assertion
+### 11. Flat cancellation and rescission handling
 
-**Justification:** A world-class PBC should reduce analyst burden without hiding the reasoning behind automated triage.
+**Justification:** Some policies are voided from inception or rescinded due to misrepresentation, duplicate issuance, or legal requirement.
 
-**Improvement:** Implement anomaly detection for `policy_administration_insurance_control_assertion` that identifies outliers, duplicate submissions, impossible sequences, stale dependencies, unusual amounts/counts/durations, and contradictory fields. Tie the behavior to `policy_administration_insurance_create_insurance_policy_workflow` where applicable, and make it visible in `PolicyAdministrationInsuranceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add flat-cancel and rescission transaction types with authority, evidence, effective handling, document set, and downstream event contract.
 
-**Acceptance evidence:** Explainable anomaly cards, reviewer feedback loops, false-positive tracking, and suppression governance. The evidence should be package-local in `src/pyAppGen/pbcs/policy_administration_insurance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must distinguish flat cancellation from earned-premium cancellation and preserve reason evidence.
 
-### 12. Semantic document understanding for Policy Administration Insurance Governed Model
+### 12. Reinstatement workflow
 
-**Justification:** Document-heavy work in Insurance Policy Administration cannot be complete if the assistant only answers questions and cannot prepare accurate governed changes.
+**Justification:** Reinstatement needs payment cure, no-loss statements, underwriting approval, lapse handling, and document reissue.
 
-**Improvement:** Train the package assistant to parse domain documents and instructions for `policy_administration_insurance_governed_model`, extract obligations, dates, parties, quantities, identifiers, and exceptions, then map them to safe draft mutations. Tie the behavior to `policy_administration_insurance_record_coverage_item_workflow` where applicable, and make it visible in `PolicyAdministrationInsuranceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add reinstatement records with request date, cure evidence, lapse period, required statements, approval, new effective status, and document output.
 
-**Acceptance evidence:** Document extraction tests, confidence thresholds, redaction handling, source span citations, and human confirmation workflows. The evidence should be package-local in `src/pyAppGen/pbcs/policy_administration_insurance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must prevent reinstatement when configured prerequisites are missing.
 
-### 13. Agent-safe CRUD execution for Insurance Policy
+### 13. Renewal preparation timeline
 
-**Justification:** The PBC agent must be a first-class operator but never a hidden bypass around RBAC, rules, or owned datastore boundaries.
+**Justification:** Renewals need underwriting review, updated exposure data, billing status, offer terms, notices, and non-renewal decisions.
 
-**Improvement:** Add a professional chatbot skill for `insurance_policy` that can create, update, correct, close, and annotate records only through policy-checked commands, approval gates, and previewed diffs. Tie the behavior to `policy_administration_insurance_create_insurance_policy_workflow` where applicable, and make it visible in `PolicyAdministrationInsuranceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand `renewal_notice` with renewal cycle, review status, data refresh requirements, offer terms, non-renewal option, and mailing evidence.
 
-**Acceptance evidence:** Skill manifests, permission tests, preview/confirm flows, blocked-action evidence, and audit events for every assistant mutation. The evidence should be package-local in `src/pyAppGen/pbcs/policy_administration_insurance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must generate renewal work queues and block late notices.
 
-### 14. Workbench persona coverage for Coverage Item
+### 14. Non-renewal governance
 
-**Justification:** A generic detail page underserves the domain; each role needs the exact controls and evidence they use daily.
+**Justification:** Non-renewal decisions are jurisdiction-sensitive and require reasons, notice timing, approval, and documentation.
 
-**Improvement:** Design dedicated workbench panels for `coverage_item`: operator queue, supervisor approvals, analyst exceptions, auditor evidence, configuration owner, and agent-assistance review. Tie the behavior to `policy_administration_insurance_record_coverage_item_workflow` where applicable, and make it visible in `PolicyAdministrationInsuranceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add non-renewal records with reason, allowed basis, notice deadline, approval authority, delivery proof, and appeal/reconsideration status.
 
-**Acceptance evidence:** UI contract entries, route tests, empty/error/loading states, and permission-aware action availability. The evidence should be package-local in `src/pyAppGen/pbcs/policy_administration_insurance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must reject non-renewal without valid reason and timely notice evidence.
 
-### 15. Cross-PBC dependency contracts for Endorsement
+### 15. Lapse and expiration handling
 
-**Justification:** Composable packages fail when hidden table coupling enters the domain model.
+**Justification:** Expired or lapsed policies must stop endorsements, renewal offers, certificates, and coverage confirmations unless reinstatement applies.
 
-**Improvement:** Represent dependencies for `endorsement` through declared APIs, consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, and projections rather than shared tables, with explicit freshness, ownership, and fallback behavior. Tie the behavior to `policy_administration_insurance_create_insurance_policy_workflow` where applicable, and make it visible in `PolicyAdministrationInsuranceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add lapse and expiration controls that update allowed actions, document availability, coverage status, and downstream event emissions.
 
-**Acceptance evidence:** Dependency manifests, contract tests, stale dependency alerts, and no foreign-table references in generated artifacts. The evidence should be package-local in `src/pyAppGen/pbcs/policy_administration_insurance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must block coverage-confirming actions on expired or lapsed policies.
 
-### 16. API completeness and versioning for Renewal Notice
+### 16. Billing status projection
 
-**Justification:** Complete domain coverage requires both command and query surfaces, not only happy-path create endpoints.
+**Justification:** Billing determines active, nonpayment, cancellation, reinstatement, and renewal eligibility but belongs outside this PBC.
 
-**Improvement:** Expand APIs beyond POST /insurance-policys, POST /coverage-items, POST /endorsements to cover search, validation-only commands, simulation, bulk intake, exception closure, evidence export, projection reads, and idempotent corrections. Tie the behavior to `policy_administration_insurance_record_coverage_item_workflow` where applicable, and make it visible in `PolicyAdministrationInsuranceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand `billing_status` as a projection with account state, amount due, delinquency date, last payment, invoice status, and freshness.
 
-**Acceptance evidence:** OpenAPI-style route manifests, backward-compatible version tests, deprecation metadata, and idempotency assertions. The evidence should be package-local in `src/pyAppGen/pbcs/policy_administration_insurance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must reject stale billing projections for nonpayment decisions.
 
-### 17. Typed emitted-event expansion for Cancellation Event
+### 17. Policy document generation package
 
-**Justification:** Consumers should understand what happened in Insurance Policy Administration without parsing opaque payloads.
+**Justification:** Policies require declarations, forms, endorsements, notices, certificates, binders, and evidence of delivery.
 
-**Improvement:** Replace generic lifecycle emissions with typed events for each meaningful `cancellation_event` transition, exception, approval, correction, simulation result, and downstream handoff. Tie the behavior to `policy_administration_insurance_create_insurance_policy_workflow` where applicable, and make it visible in `PolicyAdministrationInsuranceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand `policy_document` with document type, template version, included forms, jurisdiction, language, render hash, delivery status, and correction link.
 
-**Acceptance evidence:** Event schema tests, event examples, compatibility checks, and emitted-event coverage in release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/policy_administration_insurance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must generate required document manifests for new policy, endorsement, renewal, cancellation, and reinstatement.
 
-### 18. Consumed-event handlers for Billing Status
+### 18. Forms library and edition control
 
-**Justification:** A PBC is composable only when incoming events affect its own domain state predictably and safely.
+**Justification:** Wrong form editions create coverage, regulatory, and dispute risk.
 
-**Improvement:** Implement idempotent handlers for consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged that update projections, open dependency exceptions, recalculate risk, and preserve source event lineage. Tie the behavior to `policy_administration_insurance_record_coverage_item_workflow` where applicable, and make it visible in `PolicyAdministrationInsuranceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add form edition projections with effective dates, jurisdiction, product, coverage applicability, replacement, and mandatory/optional status.
 
-**Acceptance evidence:** Duplicate-event tests, handler side-effect boundaries, dead-letter fixtures, and lineage links back to source events. The evidence should be package-local in `src/pyAppGen/pbcs/policy_administration_insurance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must reject policy issuance when required forms are missing or obsolete.
 
-### 19. Retry and dead-letter operations for Policy Document
+### 19. Certificate and evidence of insurance workflow
 
-**Justification:** Dead letters are not just plumbing; they are domain work queues that can block insurance policy lifecycle, endorsements, renewals, cancellations, billing status, coverage changes, and documents.
+**Justification:** Insureds and third parties frequently request certificates that must reflect current coverage without altering policy terms.
 
-**Improvement:** Create operational tools for retrying, quarantining, explaining, and resolving dead-lettered `policy_document` events with max-attempt policy, poison-message detection, and replay safety. Tie the behavior to `policy_administration_insurance_create_insurance_policy_workflow` where applicable, and make it visible in `PolicyAdministrationInsuranceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add certificate requests with requester, holder, purpose, coverage snapshot, delivery method, disclaimer, and expiration.
 
-**Acceptance evidence:** Dead-letter workbench, retry eligibility tests, replay audit proof, and operator action logs. The evidence should be package-local in `src/pyAppGen/pbcs/policy_administration_insurance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must generate certificates from current policy state and block certificates on inactive policies.
 
-### 20. RBAC and attribute policy for Policy Administration Insurance Policy Rule
+### 20. Binder management
 
-**Justification:** High-impact domain operations need finer controls than generic RBAC grants.
+**Justification:** Temporary binders need precise duration, terms, subjectivities, authority, and conversion to policy documents.
 
-**Improvement:** Extend permissions for `policy_administration_insurance_policy_rule` from coarse read/create/update/admin to action-level and attribute-aware policies based on role, tenant, jurisdiction, monetary/materiality threshold, and exception severity. Tie the behavior to `policy_administration_insurance_record_coverage_item_workflow` where applicable, and make it visible in `PolicyAdministrationInsuranceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add binder records with effective window, coverage summary, conditions, conversion deadline, issuer, and cancellation behavior.
 
-**Acceptance evidence:** Permission matrix docs, ABAC policy tests, denied-action UI states, and assistant skill permission checks. The evidence should be package-local in `src/pyAppGen/pbcs/policy_administration_insurance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must expire binders automatically and prevent overlap with issued policy terms unless linked.
 
-### 21. Continuous control testing for Policy Administration Insurance Runtime Parameter
+### 21. Audit trail for policy transactions
 
-**Justification:** Controls should run during operations, not only during release audit or manual review.
+**Justification:** Disputes and regulator reviews require tamper-evident reconstruction of every transaction.
 
-**Improvement:** Embed control assertions for `policy_administration_insurance_runtime_parameter` that continuously test segregation of duties, required approvals, stale exceptions, policy drift, duplicate records, and boundary violations. Tie the behavior to `policy_administration_insurance_create_insurance_policy_workflow` where applicable, and make it visible in `PolicyAdministrationInsuranceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add event-sourced transaction history with command, actor, role, effective date, processing date, source document, and projection checkpoint.
 
-**Acceptance evidence:** Control dashboards, failing-control events, test fixtures, and release evidence tied to `policy_administration_insurance_control_assertion` records. The evidence should be package-local in `src/pyAppGen/pbcs/policy_administration_insurance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must replay owned events to reconstruct historical policy state.
 
-### 22. Cryptographic audit proofing for Policy Administration Insurance Schema Extension
+### 22. Backdated transaction controls
 
-**Justification:** Better-than-world-class auditability requires proof of integrity, not merely logs stored in mutable tables.
+**Justification:** Backdating endorsements, cancellations, and corrections can alter coverage and notices retroactively.
 
-**Improvement:** Hash-chain material `policy_administration_insurance_schema_extension` decisions, documents, emitted events, and release-evidence snapshots to make tampering visible without exposing sensitive payloads. Tie the behavior to `policy_administration_insurance_record_coverage_item_workflow` where applicable, and make it visible in `PolicyAdministrationInsuranceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add backdate rules with allowed transaction types, maximum days, authority, affected downstream records, and impact simulation.
 
-**Acceptance evidence:** Proof manifests, verification APIs, redacted proof exports, and audit-ledger handoff events. The evidence should be package-local in `src/pyAppGen/pbcs/policy_administration_insurance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must block unauthorized backdated transactions and show impact evidence for approved ones.
 
-### 23. Privacy, consent, and secrecy controls for Policy Administration Insurance Control Assertion
+### 23. Correction versus endorsement distinction
 
-**Justification:** Complete domain coverage must account for protected data and restricted operational evidence.
+**Justification:** Data correction should not be confused with a contractual coverage change.
 
-**Improvement:** Add field-level privacy classifications for `policy_administration_insurance_control_assertion`, consent checks, masking rules, retention schedules, legal holds, and assistant redaction policies. Tie the behavior to `policy_administration_insurance_create_insurance_policy_workflow` where applicable, and make it visible in `PolicyAdministrationInsuranceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add correction transaction type with non-contractual field scope, reason, approval, audit note, and document reissue option.
 
-**Acceptance evidence:** Retention tests, masked UI snapshots, consent-blocked mutation fixtures, and export controls. The evidence should be package-local in `src/pyAppGen/pbcs/policy_administration_insurance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must preserve original contractual terms while correcting administrative fields.
 
-### 24. Multi-tenant operating model for Policy Administration Insurance Governed Model
+### 24. Coverage gap detection
 
-**Justification:** The PBC should scale across organizations while preserving independent policy and compliance boundaries.
+**Justification:** Policy changes can accidentally create uncovered periods, duplicate coverage, or inconsistent effective dates.
 
-**Improvement:** Support tenant-specific `policy_administration_insurance_governed_model` rules, data residency, encryption context, configuration, seed data, and release evidence without allowing cross-tenant leakage. Tie the behavior to `policy_administration_insurance_record_coverage_item_workflow` where applicable, and make it visible in `PolicyAdministrationInsuranceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add coverage timeline validation across terms, endorsements, cancellations, reinstatements, and renewals.
 
-**Acceptance evidence:** Tenant isolation tests, tenant-scoped parameters, key-rotation evidence, and cross-tenant negative fixtures. The evidence should be package-local in `src/pyAppGen/pbcs/policy_administration_insurance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must flag gaps, overlaps, and conflicting effective dates.
 
-### 25. Schema evolution and extension registry for Insurance Policy
+### 25. Jurisdiction-specific notice rules
 
-**Justification:** Domain teams will add fields; the PBC must evolve without breaking APIs, events, or workbench projections.
+**Justification:** Cancellation, non-renewal, renewal, and material-change notices vary by jurisdiction and product.
 
-**Improvement:** Make schema extensions for `insurance_policy` first-class with compatibility checks, migration previews, projection backfills, field ownership, and rollback metadata. Tie the behavior to `policy_administration_insurance_create_insurance_policy_workflow` where applicable, and make it visible in `PolicyAdministrationInsuranceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add rule tables for notice lead times, delivery proof, required reason, template, language, and exception handling.
 
-**Acceptance evidence:** Extension registry UI, compatibility tests, migration dry-runs, and backfill release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/policy_administration_insurance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must generate different notice requirements by jurisdiction and policy type.
 
-### 26. Master data quality gates for Coverage Item
+### 26. Communication preference controls
 
-**Justification:** Many insurance policy administration errors begin as bad reference data; the PBC should catch them before workflow execution.
+**Justification:** Policyholders may have preferences or consent restrictions for electronic delivery, language, accessibility, and authorized contacts.
 
-**Improvement:** Define reference-data contracts for `coverage_item`: canonical codes, parties, locations, classifications, calendars, units, currencies, products, assets, or service categories as relevant to the domain. Tie the behavior to `policy_administration_insurance_record_coverage_item_workflow` where applicable, and make it visible in `PolicyAdministrationInsuranceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Store communication projections with consent, language, accessibility, delivery channel, and authorized-contact constraints.
 
-**Acceptance evidence:** Reference validation fixtures, stale-code warnings, mapping tables, and dependency freshness indicators. The evidence should be package-local in `src/pyAppGen/pbcs/policy_administration_insurance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must choose delivery channels based on preference and block unauthorized contact updates.
 
-### 27. Bulk operations and correction workflows for Endorsement
+### 27. Producer and broker boundary
 
-**Justification:** Enterprise-scale Insurance Policy Administration users cannot operate one record at a time.
+**Justification:** Policy administration needs producer-of-record and commission impact context without becoming broker management.
 
-**Improvement:** Add bulk load, bulk validate, bulk approve, and bulk correction workflows for `endorsement` with partial success, row-level errors, resumability, and rollback. Tie the behavior to `policy_administration_insurance_create_insurance_policy_workflow` where applicable, and make it visible in `PolicyAdministrationInsuranceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Store producer projection, appointment status, effective period, servicing role, and producer-change evidence through declared dependencies.
 
-**Acceptance evidence:** CSV/API batch fixtures, resumable job state, row-level audit evidence, and assistant-generated correction suggestions. The evidence should be package-local in `src/pyAppGen/pbcs/policy_administration_insurance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Boundary tests must prove producer data remains a projection and policy events carry only declared handoff data.
 
-### 28. Lifecycle collaboration and tasking for Renewal Notice
+### 28. Claims impact projection
 
-**Justification:** Domain collaboration should live inside the PBC boundary and remain auditable with the record it affects.
+**Justification:** Open claims can affect cancellation, non-renewal, reinstatement, renewals, and document requests.
 
-**Improvement:** Attach tasks, comments, ownership, due dates, handoffs, and escalation threads to `renewal_notice` without leaking into external shared task tables. Tie the behavior to `policy_administration_insurance_record_coverage_item_workflow` where applicable, and make it visible in `PolicyAdministrationInsuranceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Store claims-status projections with open claim count, loss date, coverage affected, claim hold, and freshness.
 
-**Acceptance evidence:** Task tables, comment audit history, notification events, escalation SLAs, and role-specific task queues. The evidence should be package-local in `src/pyAppGen/pbcs/policy_administration_insurance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must block configured transactions when claims projection shows prohibited open claims.
 
-### 29. SLA and service-level governance for Cancellation Event
+### 29. Underwriting referral projection
 
-**Justification:** Users need to know when insurance policy lifecycle, endorsements, renewals, cancellations, billing status, coverage changes, and documents is late, blocked, or at risk before customer or regulator impact.
+**Justification:** Certain endorsements, renewals, reinstatements, and non-renewals require underwriting approval.
 
-**Improvement:** Define SLAs for `cancellation_event` across intake, validation, approval, exception resolution, event handling, downstream projection refresh, and release-evidence generation. Tie the behavior to `policy_administration_insurance_create_insurance_policy_workflow` where applicable, and make it visible in `PolicyAdministrationInsuranceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Store underwriting decision projections with approval status, conditions, authority, expiration, and linked transaction.
 
-**Acceptance evidence:** SLA breach events, timers, configurable calendars, workbench aging buckets, and tests for pause/resume behavior. The evidence should be package-local in `src/pyAppGen/pbcs/policy_administration_insurance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must block transaction finalization when required underwriting approval is missing or expired.
 
-### 30. Operational analytics cockpit for Billing Status
+### 30. Policy search and servicing workbench
 
-**Justification:** World-class operations require leading indicators, not only record counts.
+**Justification:** Servicing teams need rapid lookup by policy, insured, coverage, document, cancellation, renewal, and exception status.
 
-**Improvement:** Build analytics for `billing_status`: throughput, backlog, aging, approval latency, exception rate, risk distribution, automation acceptance, correction rate, and downstream dependency health. Tie the behavior to `policy_administration_insurance_record_coverage_item_workflow` where applicable, and make it visible in `PolicyAdministrationInsuranceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add workbench filters, saved queues, role-specific views, transaction timeline, coverage snapshot, and next-best-action panel.
 
-**Acceptance evidence:** Metric definitions, projection tests, drill-through routes, export APIs, and anomaly overlays. The evidence should be package-local in `src/pyAppGen/pbcs/policy_administration_insurance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** UI tests must expose queues for pending issuance, endorsement, renewal, cancellation, document, and exception work.
 
-### 31. Decision intelligence and recommendations for Policy Document
+### 31. Exception taxonomy
 
-**Justification:** The PBC should help expert users decide faster while showing evidence and uncertainty.
+**Justification:** Issuance, coverage, billing, document, cancellation, renewal, compliance, and data-quality exceptions need different ownership.
 
-**Improvement:** Generate ranked recommendations for `policy_document` such as next best action, likely resolution, required evidence, policy adjustment, staffing/capacity response, or downstream handoff. Tie the behavior to `policy_administration_insurance_create_insurance_policy_workflow` where applicable, and make it visible in `PolicyAdministrationInsuranceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add exception categories, severity, blocked action, owner, SLA, escalation, closure evidence, and reopen reason.
 
-**Acceptance evidence:** Recommendation explanations, confidence intervals, feedback capture, model governance records, and rejection reasons. The evidence should be package-local in `src/pyAppGen/pbcs/policy_administration_insurance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must route exception types to correct workbench queues and emit exception events.
 
-### 32. Quality and completeness scoring for Policy Administration Insurance Policy Rule
+### 32. Renewal offer comparison
 
-**Justification:** Operators should see whether a record is truly ready, not just technically saved.
+**Justification:** Renewal specialists need to compare expiring terms, proposed terms, premium projection, forms, and conditions.
 
-**Improvement:** Score each `policy_administration_insurance_policy_rule` record for completeness, consistency, policy readiness, dependency readiness, evidence sufficiency, and downstream composability. Tie the behavior to `policy_administration_insurance_record_coverage_item_workflow` where applicable, and make it visible in `PolicyAdministrationInsuranceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add renewal comparison view with changed coverages, forms, deductibles, limits, premium impact, and required policyholder action.
 
-**Acceptance evidence:** Scoring rules, missing-evidence lists, readiness badges, and blocking criteria in command handlers. The evidence should be package-local in `src/pyAppGen/pbcs/policy_administration_insurance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must generate comparison evidence for renewal offer, non-renewal, and rewrite scenarios.
 
-### 33. End-to-end scenario library for Policy Administration Insurance Runtime Parameter
+### 33. Bulk renewal batch controls
 
-**Justification:** Release evidence is stronger when every important insurance policy administration behavior has executable examples.
+**Justification:** Renewal cycles can involve thousands of policies and require throttling, exception handling, and reproducible evidence.
 
-**Improvement:** Create seeded scenarios for `policy_administration_insurance_runtime_parameter`: normal flow, urgent path, exception path, corrected path, duplicate path, late event path, and audit export path. Tie the behavior to `policy_administration_insurance_create_insurance_policy_workflow` where applicable, and make it visible in `PolicyAdministrationInsuranceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add renewal batches with selection criteria, dry-run counts, excluded policies, approval, execution progress, and rollback plan.
 
-**Acceptance evidence:** Scenario seed data, runtime smoke coverage, generated-app fixtures, and story-level workbench screenshots/contracts. The evidence should be package-local in `src/pyAppGen/pbcs/policy_administration_insurance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must simulate renewal batches and show per-policy outcomes.
 
-### 34. Domain ontology and terminology model for Policy Administration Insurance Schema Extension
+### 34. Regulatory hold and moratorium support
 
-**Justification:** Precise vocabulary prevents the PBC from misclassifying specialist documents or user instructions.
+**Justification:** Disasters, market exits, legal orders, or regulatory directives may pause cancellations or non-renewals.
 
-**Improvement:** Add an ontology for `policy_administration_insurance_schema_extension` terms, synonyms, classifications, relationships, allowed values, and phrase mappings used by the assistant and UI. Tie the behavior to `policy_administration_insurance_record_coverage_item_workflow` where applicable, and make it visible in `PolicyAdministrationInsuranceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add hold rules by jurisdiction, peril, policy type, effective dates, blocked actions, and release criteria.
 
-**Acceptance evidence:** Ontology files, assistant parsing tests, UI glossary, and mapping evidence for domain-specific abbreviations. The evidence should be package-local in `src/pyAppGen/pbcs/policy_administration_insurance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must block transactions during active holds and require release evidence.
 
-### 35. Advanced search and investigation for Policy Administration Insurance Control Assertion
+### 35. Product configuration boundary
 
-**Justification:** Investigators and operators need fast, explainable retrieval across the whole domain surface.
+**Justification:** Policy administration applies product rules but should not own product catalog or rating definitions.
 
-**Improvement:** Provide search across `policy_administration_insurance_control_assertion` records, events, documents, exceptions, tasks, comments, and audit proofs with filters for tenant, status, risk, date, party, and dependency. Tie the behavior to `policy_administration_insurance_create_insurance_policy_workflow` where applicable, and make it visible in `PolicyAdministrationInsuranceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Store product version projections with allowed coverages, forms, transaction types, and effective dates from declared dependencies.
 
-**Acceptance evidence:** Search index contracts, result provenance, permission-filtered queries, and stale-index warnings. The evidence should be package-local in `src/pyAppGen/pbcs/policy_administration_insurance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Boundary tests must prove product data is projected and not mutated.
 
-### 36. Reconciliation and closure controls for Policy Administration Insurance Governed Model
+### 36. Policyholder service request intake
 
-**Justification:** Closure is not complete until the PBC can prove no material domain work remains unresolved.
+**Justification:** Address changes, coverage questions, document requests, cancellations, and endorsement requests arrive through service channels.
 
-**Improvement:** Add reconciliation workflows that compare `policy_administration_insurance_governed_model` state against consumed events, external projections, expected totals/counts, approvals, and release evidence before closure. Tie the behavior to `policy_administration_insurance_record_coverage_item_workflow` where applicable, and make it visible in `PolicyAdministrationInsuranceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add request intake with type, requester authority, requested change, source channel, linked policy, and governed command preview.
 
-**Acceptance evidence:** Reconciliation reports, variance thresholds, closure blockers, and AppGen-X closure events. The evidence should be package-local in `src/pyAppGen/pbcs/policy_administration_insurance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must require authorization checks before converting service requests into policy transactions.
 
-### 37. Regulatory and policy reporting for Insurance Policy
+### 37. Agent-assisted document interpretation
 
-**Justification:** World-class PBCs turn operational evidence into credible reporting without spreadsheet reconstruction.
+**Justification:** Signed forms, cancellation requests, reinstatement evidence, and policyholder instructions arrive as unstructured documents.
 
-**Improvement:** Generate domain reporting packs for `insurance_policy` covering statutory, contractual, operational, board, customer, or regulator evidence depending on monetary integrity, funds movement controls, counterparty risk, regulatory evidence, settlement finality, fraud prevention, and financial reconciliation. Tie the behavior to `policy_administration_insurance_create_insurance_policy_workflow` where applicable, and make it visible in `PolicyAdministrationInsuranceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add assistant extraction for request type, effective date, party role, coverage changes, signatures, and missing fields with confidence scores.
 
-**Acceptance evidence:** Report schemas, redaction rules, traceable metric sources, and approval/export audit events. The evidence should be package-local in `src/pyAppGen/pbcs/policy_administration_insurance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must require human confirmation and retain source-page evidence for accepted fields.
 
-### 38. Carbon and resource awareness for Coverage Item
+### 38. Agent-guided policy transaction drafting
 
-**Justification:** Sustainability evidence should be embedded in operations instead of treated as an after-the-fact report.
+**Justification:** Users need help creating accurate endorsements, cancellations, renewals, and document requests without raw datastore access.
 
-**Improvement:** Where relevant, attach carbon, energy, water, travel, capacity, compute, or resource-footprint metadata to `coverage_item` decisions and batch operations. Tie the behavior to `policy_administration_insurance_record_coverage_item_workflow` where applicable, and make it visible in `PolicyAdministrationInsuranceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add assistant skills that propose transaction drafts, cite rules, show document requirements, and produce governed CRUD previews.
 
-**Acceptance evidence:** Footprint fields, scheduling parameters, exception rules, and dashboards that expose operational tradeoffs. The evidence should be package-local in `src/pyAppGen/pbcs/policy_administration_insurance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must reject agent proposals that lack affected record, rule version, and approval requirement.
 
-### 39. Resilience and offline behavior for Endorsement
+### 39. Agent safety restrictions
 
-**Justification:** Real operations keep moving during outages; the PBC must preserve correctness when dependencies are unavailable.
+**Justification:** AI must not silently cancel coverage, issue policies, non-renew policies, or alter contractual terms.
 
-**Improvement:** Define resilience modes for `endorsement`: degraded dependency mode, offline draft capture, delayed event replay, conflict detection, and safe recovery after partial failure. Tie the behavior to `policy_administration_insurance_create_insurance_policy_workflow` where applicable, and make it visible in `PolicyAdministrationInsuranceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Require high-impact agent proposals to be explicitly labeled, approval-routed, and blocked until authorized by a permitted user.
 
-**Acceptance evidence:** Offline fixtures, replay tests, conflict queues, recovery logs, and user-visible degraded-mode warnings. The evidence should be package-local in `src/pyAppGen/pbcs/policy_administration_insurance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must block unapproved AI writes for cancellation, issuance, endorsement, and renewal actions.
 
-### 40. Human-in-the-loop automation for Renewal Notice
+### 40. Transaction impact simulation
 
-**Justification:** Automation should accelerate insurance policy lifecycle, endorsements, renewals, cancellations, billing status, coverage changes, and documents while preserving accountability for high-risk decisions.
+**Justification:** Users need to understand downstream effects before changing coverage or status.
 
-**Improvement:** Set explicit automation boundaries for `renewal_notice`: auto-approve, auto-reject, suggest-only, require-review, and block-until-evidence states with policy-based routing. Tie the behavior to `policy_administration_insurance_record_coverage_item_workflow` where applicable, and make it visible in `PolicyAdministrationInsuranceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add simulation for coverage timeline, documents, premium projection, billing status, notices, renewal eligibility, and dependency events.
 
-**Acceptance evidence:** Automation policy tests, reviewer queues, override reasons, and assistant action audit trails. The evidence should be package-local in `src/pyAppGen/pbcs/policy_administration_insurance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must show simulation outputs and prove simulations do not mutate owned records.
 
-### 41. Package discovery and fit scoring for Cancellation Event
+### 41. AppGen-X event specialization
 
-**Justification:** Users selecting PBCs need transparent fit reasoning, especially when domains are adjacent but not overlapping.
+**Justification:** Policy administration composes with underwriting, billing, claims, documents, producers, product, and compliance by events.
 
-**Improvement:** Improve package metadata so composition can explain when `policy_administration_insurance` fits a prompt, what entities it owns, what APIs/events it exposes, and what adjacent PBCs it depends on. Tie the behavior to `policy_administration_insurance_create_insurance_policy_workflow` where applicable, and make it visible in `PolicyAdministrationInsuranceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Define typed events for policy issued, coverage changed, endorsement approved, renewal offered, cancellation noticed, reinstatement approved, and document rendered.
 
-**Acceptance evidence:** Discovery manifests, prompt-selection tests, overlap rationale links, and composition DSL examples. The evidence should be package-local in `src/pyAppGen/pbcs/policy_administration_insurance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Event tests must verify idempotency keys, retry behavior, dead-letter evidence, and declared dependency usage.
 
-### 42. Configuration deployment pipeline for Billing Status
+### 42. Policy document correction and reissue
 
-**Justification:** Configuration changes can materially alter insurance policy administration; they need the same discipline as code releases.
+**Justification:** Document errors require corrected output without changing underlying contractual transaction unless needed.
 
-**Improvement:** Add configuration promotion for `billing_status` across draft, test, approved, active, deprecated, and rollback states with impact analysis before activation. Tie the behavior to `policy_administration_insurance_record_coverage_item_workflow` where applicable, and make it visible in `PolicyAdministrationInsuranceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add reissue records with reason, affected document, corrected template, delivery proof, supersession, and audit note.
 
-**Acceptance evidence:** Config diff views, approval workflows, simulation before activation, and rollback tests. The evidence should be package-local in `src/pyAppGen/pbcs/policy_administration_insurance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must preserve superseded document hashes and show current document status.
 
-### 43. Workbench command completeness for Policy Document
+### 43. Data-quality score for policies
 
-**Justification:** A PBC does not fully surface its capabilities if users must call hidden APIs for core work.
+**Justification:** Missing insured roles, stale projections, invalid coverage dates, and document mismatches create service and compliance risk.
 
-**Improvement:** Expose every high-value operation for `policy_document` in the UI: create, validate, approve, simulate, correct, assign, export, retry, close, and audit-proof verification. Tie the behavior to `policy_administration_insurance_create_insurance_policy_workflow` where applicable, and make it visible in `PolicyAdministrationInsuranceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add data-quality scoring by policy with issue type, severity, owner, remediation task, and trend.
 
-**Acceptance evidence:** UI action coverage tests, permission-aware disabled states, keyboard paths, and assistant handoff links. The evidence should be package-local in `src/pyAppGen/pbcs/policy_administration_insurance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must flag incomplete policies and show remediation queues.
 
-### 44. Document packet and evidence vault for Policy Administration Insurance Policy Rule
+### 44. Portfolio operation analytics
 
-**Justification:** Documents often carry the legal or operational truth behind insurance policy lifecycle, endorsements, renewals, cancellations, billing status, coverage changes, and documents.
+**Justification:** Managers need insight into renewal workload, cancellation risk, document defects, endorsement volume, and exception aging.
 
-**Improvement:** Create a governed evidence vault for `policy_administration_insurance_policy_rule` documents, attachments, source spans, extracted fields, signatures, approvals, and retention labels. Tie the behavior to `policy_administration_insurance_record_coverage_item_workflow` where applicable, and make it visible in `PolicyAdministrationInsuranceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add analytics for transaction throughput, SLA, backlog, exception age, renewal retention, cancellation reasons, and document delivery success.
 
-**Acceptance evidence:** Evidence models, source-to-field lineage, signature validation, retention policies, and proof exports. The evidence should be package-local in `src/pyAppGen/pbcs/policy_administration_insurance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** UI tests must expose metric cards and drilldowns tied to owned records.
 
-### 45. Data correction and amendment history for Policy Administration Insurance Runtime Parameter
+### 45. Cryptographic policy evidence packet
 
-**Justification:** World-class systems correct mistakes without rewriting history or confusing downstream consumers.
+**Justification:** Policy disputes require tamper-evident evidence of terms, notices, transactions, and documents.
 
-**Improvement:** Support formal amendments for `policy_administration_insurance_runtime_parameter` that preserve original values, correction reason, approving actor, effective date, downstream event impacts, and replay behavior. Tie the behavior to `policy_administration_insurance_create_insurance_policy_workflow` where applicable, and make it visible in `PolicyAdministrationInsuranceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add hash-linked packets for issuance, endorsement, renewal, cancellation, reinstatement, and document delivery evidence.
 
-**Acceptance evidence:** Amendment tables, correction events, projection replay tests, and side-by-side before/after UI. The evidence should be package-local in `src/pyAppGen/pbcs/policy_administration_insurance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must detect altered packet contents and verify packet generation from owned records.
 
-### 46. External participant collaboration for Policy Administration Insurance Schema Extension
+### 46. Tenant and book-of-business isolation
 
-**Justification:** Many insurance policy administration workflows require outside parties, but they must not gain direct access to internal tables.
+**Justification:** Carriers, programs, products, and managing agencies may need separated rules, permissions, templates, and data visibility.
 
-**Improvement:** Add controlled collaboration portals or API views for external participants related to `policy_administration_insurance_schema_extension`, limited to scoped evidence submission, status checks, comments, and dispute responses. Tie the behavior to `policy_administration_insurance_record_coverage_item_workflow` where applicable, and make it visible in `PolicyAdministrationInsuranceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add tenant, program, and book-of-business scoping to policy actions, workbench queues, rules, documents, and projections.
 
-**Acceptance evidence:** Participant role policies, scoped tokens, submission audit trails, and inbound evidence validation. The evidence should be package-local in `src/pyAppGen/pbcs/policy_administration_insurance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must prevent cross-tenant policy reads or transaction commands.
 
-### 47. Advanced dependency freshness scoring for Policy Administration Insurance Control Assertion
+### 47. Release smoke scenarios
 
-**Justification:** A record may be valid locally but unsafe if dependency evidence is stale or incomplete.
+**Justification:** Generated apps need evidence that realistic policy administration workflows execute after composition.
 
-**Improvement:** Score freshness and reliability of dependencies used by `policy_administration_insurance_control_assertion`, including consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, referenced projections, configuration versions, and external submissions. Tie the behavior to `policy_administration_insurance_create_insurance_policy_workflow` where applicable, and make it visible in `PolicyAdministrationInsuranceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add smoke scenarios for policy issuance, endorsement, renewal, cancellation, reinstatement, document generation, and non-renewal.
 
-**Acceptance evidence:** Freshness indicators, blocking rules, stale-event simulations, and workbench dependency health panels. The evidence should be package-local in `src/pyAppGen/pbcs/policy_administration_insurance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Release evidence must show owned records, AppGen-X events, UI artifacts, and boundary checks for every scenario.
 
-### 48. Model governance and explainability for Policy Administration Insurance Governed Model
+### 48. Cross-PBC boundary proof
 
-**Justification:** Governed AI is mandatory for professional-grade automation in Insurance Policy Administration.
+**Justification:** Policy administration touches underwriting, claims, billing, product, documents, producers, compliance, and customer domains without owning them.
 
-**Improvement:** For every predictive or agentic feature around `policy_administration_insurance_governed_model`, record model version, prompt or ruleset version, training/evaluation evidence, confidence, explanation, and human feedback. Tie the behavior to `policy_administration_insurance_record_coverage_item_workflow` where applicable, and make it visible in `PolicyAdministrationInsuranceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add automated proof that generated models, services, routes, handlers, projections, and agent commands use only owned tables plus declared APIs/events.
 
-**Acceptance evidence:** Model cards, prompt/version manifests, feedback loops, drift tests, and audit proof for recommendations. The evidence should be package-local in `src/pyAppGen/pbcs/policy_administration_insurance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must fail on undeclared table references and pass for declared projection or event dependency references.
 
-### 49. High-scale partitioning and archival for Insurance Policy
+### 49. Cancellation and reinstatement dashboard
 
-**Justification:** Better-than-world-class packages must remain operable after years of high-volume domain history.
+**Justification:** Operations teams need a focused surface for high-risk policy status changes.
 
-**Improvement:** Plan scale behavior for `insurance_policy`: tenant partitioning, archival policies, cold storage, retention-aware search, projection compaction, and large-batch replay. Tie the behavior to `policy_administration_insurance_create_insurance_policy_workflow` where applicable, and make it visible in `PolicyAdministrationInsuranceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add dashboard queues for pending notices, cure windows, moratorium holds, reinstatement requests, proof of delivery, and blocked cancellations.
 
-**Acceptance evidence:** Partition tests, archive/retrieve fixtures, retention enforcement, and replay benchmarks. The evidence should be package-local in `src/pyAppGen/pbcs/policy_administration_insurance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** UI tests must show countdowns, blockers, and next actions for cancellation and reinstatement cases.
 
-### 50. Release gate expansion for Coverage Item
+### 50. Renewal command center
 
-**Justification:** The PBC should not claim domain coverage unless release evidence proves the claim end to end.
+**Justification:** Renewal teams need one surface for data refresh, underwriting review, offers, notices, non-renewals, and exceptions.
 
-**Improvement:** Expand release gates for `policy_administration_insurance` so every schema, service, API, event, handler, UI, rule, parameter, agent skill, seed scenario, and improvement backlog item maps to executable evidence. Tie the behavior to `policy_administration_insurance_record_coverage_item_workflow` where applicable, and make it visible in `PolicyAdministrationInsuranceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add renewal command center with cycle filters, policy cohorts, offer status, required actions, document status, and assistant-guided review.
 
-**Acceptance evidence:** Release audit checks, manifest traceability, generated-app smoke tests, and missing-capability blockers. The evidence should be package-local in `src/pyAppGen/pbcs/policy_administration_insurance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** UI tests must expose renewal cycle queues and allow governed renewal actions without raw datastore access.
