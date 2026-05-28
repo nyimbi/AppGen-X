@@ -2771,4 +2771,4 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   diagnostic mapping, debug preview, watch validation, package transaction
   replay, toolchain adapters, compiler-surface modules, and deep runtime
   surfaces without unpacking nested payloads. Verification is focused under
-  the low-battery delivery constraint. Commit: pending.
+  the low-battery delivery constraint. Commit: `2f3c8e6`.
