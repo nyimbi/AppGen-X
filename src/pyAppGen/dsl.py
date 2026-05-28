@@ -98,10 +98,10 @@ def fix_dsl_file(path: str | Path, *, fix_ids: Iterable[str] | None = None) -> d
     return result
 
 
-def format_dsl_file(path: str | Path) -> dict:
+def format_dsl_file(path: str | Path, *, organize: bool = False) -> dict:
     """Format an AppGen DSL file in place and return before/after metadata."""
     path = Path(path)
-    result = format_dsl(path.read_text(), source_name=str(path))
+    result = format_dsl(path.read_text(), source_name=str(path), organize=organize)
     if result["changed"]:
         path.write_text(result["formatted"])
     return result
@@ -209,14 +209,17 @@ def apply_lint_fixes(
     }
 
 
-def format_dsl(text: str, *, source_name: str | None = None) -> dict:
+def format_dsl(text: str, *, source_name: str | None = None, organize: bool = False) -> dict:
     """Return deterministic DSL formatting plus before/after lint metadata."""
     original = text or ""
     formatted = _format_dsl_source(original)
+    if organize:
+        formatted = _organize_formatted_table_fields(formatted)
     return {
         "format": "appgen.dsl-format-result.v1",
         "source": source_name,
         "changed": formatted != original,
+        "organize": organize,
         "original": original,
         "formatted": formatted,
         "before": lint_dsl(original, source_name=source_name),
@@ -931,6 +934,7 @@ def dsl_tooling_cli(argv: Iterable[str] | None = None) -> int:
     format_parser.add_argument("path")
     format_parser.add_argument("--check", action="store_true")
     format_parser.add_argument("--write", action="store_true")
+    format_parser.add_argument("--organize", action="store_true")
     format_parser.add_argument("--json", action="store_true")
 
     validate_parser = subparsers.add_parser("validate")
@@ -1034,7 +1038,7 @@ def dsl_tooling_cli(argv: Iterable[str] | None = None) -> int:
         _emit_tooling_payload(report, as_json=args.json)
         return 0 if report["ok"] else 1
     if args.command == "format":
-        report = format_report_dsl(source, source_name=str(path), include_text=True)
+        report = format_report_dsl(source, source_name=str(path), include_text=True, organize=args.organize)
         if args.write and report["changed"]:
             path.write_text(report["text"], encoding="utf-8")
         printable = report if args.json else {key: value for key, value in report.items() if key != "text"}
@@ -1293,14 +1297,16 @@ def format_report_dsl(
     *,
     source_name: str | None = None,
     include_text: bool = True,
+    organize: bool = False,
 ) -> dict:
     """Return the docs/tooling.md appgen.format-result.v1 contract."""
-    result = format_dsl(text, source_name=source_name)
-    second = format_dsl(result["formatted"], source_name=source_name)
+    result = format_dsl(text, source_name=source_name, organize=organize)
+    second = format_dsl(result["formatted"], source_name=source_name, organize=organize)
     payload = {
         "format": "appgen.format-result.v1",
         "source": source_name,
         "changed": result["changed"],
+        "organize": organize,
         "idempotent": second["formatted"] == result["formatted"],
         "diagnostics": lint_report_dsl(result["formatted"], source_name=source_name)["diagnostics"],
     }
@@ -5081,6 +5087,68 @@ def _format_dsl_source(source: str) -> str:
         previous_closed_top_level = False
 
     return "\n".join(lines).rstrip() + ("\n" if lines else "")
+
+
+def _organize_formatted_table_fields(source: str) -> str:
+    lines = source.splitlines()
+    organized: list[str] = []
+    index = 0
+    while index < len(lines):
+        line = lines[index]
+        if re.match(r"^table\s+[A-Za-z_][A-Za-z0-9_]*\s+\{$", line):
+            organized.append(line)
+            index += 1
+            body: list[str] = []
+            while index < len(lines) and lines[index] != "}":
+                body.append(lines[index])
+                index += 1
+            organized.extend(_organize_table_body_lines(body))
+            if index < len(lines):
+                organized.append(lines[index])
+            index += 1
+            continue
+        organized.append(line)
+        index += 1
+    return "\n".join(organized).rstrip() + ("\n" if organized else "")
+
+
+def _organize_table_body_lines(lines: list[str]) -> list[str]:
+    items: list[tuple[int, list[str]]] = []
+    pending_comments: list[str] = []
+    for line in lines:
+        if line.strip().startswith("//"):
+            pending_comments.append(line)
+            continue
+        items.append((len(items), [*pending_comments, line]))
+        pending_comments = []
+    for comment in pending_comments:
+        items.append((len(items), [comment]))
+
+    sorted_items = sorted(items, key=lambda item: (_format_table_body_category(item[1]), item[0]))
+    return [line for _index, item_lines in sorted_items for line in item_lines]
+
+
+def _format_table_body_category(lines: list[str]) -> int:
+    primary = next((line.strip() for line in lines if line.strip() and not line.strip().startswith("//")), "")
+    if not primary:
+        return 7
+    if primary.startswith("..."):
+        return 0
+    if ":" not in primary:
+        return 6
+    field_name, rest = primary.split(":", 1)
+    rest = rest.strip()
+    if field_name == "id" or re.search(r"\bpk\b", rest):
+        return 0
+    if re.search(r"\bunique\b", rest) or field_name in {"code", "number", "name", "title", "email"}:
+        return 1
+    if " -> " in primary or field_name.endswith("_id"):
+        return 2
+    if " = " in primary:
+        return 4
+    if field_name in {"created_at", "updated_at", "created_by", "updated_by", "deleted_at", "version"}:
+        return 5
+    return 3
 
 
 def _dsl_format_units(source: str) -> tuple[str, ...]:

@@ -524,6 +524,10 @@ appgen format app.appgen --json
 ```
 
 `--check` exits `1` when formatting changes are needed.
+`--organize` enables the optional table-body organization profile: identity
+fields and spreads, business keys, relationships, editable scalar fields,
+calculated fields, audit fields, and directives are ordered inside each table
+without reordering top-level declarations.
 
 ### `appgen validate`
 

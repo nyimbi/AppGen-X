@@ -338,6 +338,64 @@ view CustomerForm for Customer { Main: name, parent.name }
     assert "  parent_id: int required search default 0 -> Customer.id [many-to-one]" in report["text"]
 
 
+def test_formatter_organize_orders_table_fields_without_reordering_top_level_declarations(tmp_path: Path) -> None:
+    source = """
+app OrganizeDemo { targets: web }
+
+table Invoice {
+  total: decimal = subtotal + tax
+  description: string
+  // customer link
+  customer_id: int -> Customer.id
+  updated_at: string
+  invoice_number: string unique
+  subtotal: decimal
+  tax: decimal
+  id: int pk
+  index(total)
+}
+
+table Customer {
+  name: string
+  id: int pk
+}
+"""
+    source_path = tmp_path / "organize.appgen"
+    source_path.write_text(source, encoding="utf-8")
+
+    report = format_report_dsl(source, source_name="organize.appgen", organize=True)
+    result = subprocess.run(
+        [sys.executable, "-m", "pyAppGen", "format", str(source_path), "--organize", "--json"],
+        check=False,
+        cwd=Path(__file__).resolve().parents[1],
+        text=True,
+        capture_output=True,
+    )
+    payload = json.loads(result.stdout)
+
+    assert report["format"] == "appgen.format-result.v1"
+    assert report["organize"] is True
+    assert report["idempotent"] is True
+    assert report["text"].index("table Invoice") < report["text"].index("table Customer")
+    assert (
+        "table Invoice {\n"
+        "  id: int pk\n"
+        "  invoice_number: string unique\n"
+        "  // customer link\n"
+        "  customer_id: int -> Customer.id\n"
+        "  description: string\n"
+        "  subtotal: decimal\n"
+        "  tax: decimal\n"
+        "  total: decimal = subtotal + tax\n"
+        "  updated_at: string\n"
+        "  index(total)\n"
+        "}"
+    ) in report["text"]
+    assert result.returncode == 0, result.stderr
+    assert payload["organize"] is True
+    assert "  id: int pk" in payload["text"]
+
+
 def test_graph_suite_report_covers_required_kinds_and_formats() -> None:
     report = graph_suite_report_dsl(RELEASE_SAMPLE, source_name="release.appgen")
 
