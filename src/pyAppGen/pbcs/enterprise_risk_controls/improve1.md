@@ -2,314 +2,314 @@
 
 ## Purpose
 
-This backlog identifies 50 high-impact, high-value improvements for `enterprise_risk_controls`. Each item is specific to the domain surface currently declared by the PBC and is intended to move the package beyond world-class breadth toward complete specialist-grade coverage.
+This backlog identifies 50 high-impact, high-value improvements for `enterprise_risk_controls`. Each item is specific to enterprise risk, control, compliance, and assurance operations: risk registers, risk taxonomies, assessments, appetite statements, KRIs, control libraries, control objectives, tests, evidence, attestations, exceptions, incidents, remediation, policy-control mapping, assurance packets, heatmaps, scenarios, model output, committee reporting, and executive risk posture. The intent is complete domain coverage for a better-than-world-class risk and controls PBC while preserving AppGen-X package boundaries.
 
 ## Current Domain Evidence Used
 
-- Domain purpose: Owns risk registers, controls, attestations, incidents, KRIs, tests, remediation, policy mapping, assurance evidence, and executive risk posture across composed applications.
-- Representative owned tables: `enterprise_risk_controls_risk_register`, `enterprise_risk_controls_risk_taxonomy`, `enterprise_risk_controls_risk_assessment`, `enterprise_risk_controls_risk_appetite_statement`, `enterprise_risk_controls_risk_indicator`, `enterprise_risk_controls_risk_indicator_observation`, `enterprise_risk_controls_control_library`, `enterprise_risk_controls_control_objective`, `enterprise_risk_controls_control_test`, `enterprise_risk_controls_control_test_evidence`, `enterprise_risk_controls_control_attestation`, `enterprise_risk_controls_control_exception`, ...
-- Representative operations/APIs: `register_risk`, `classify_risk`, `assess_inherent_risk`, `define_control`, `map_policy_control`, `schedule_control_test`, `capture_test_evidence`, `record_attestation`, `open_control_exception`, `record_incident`, `open_remediation`, `track_remediation_action`, ...
-- Representative events: `RiskRegistered`, `RiskAssessed`, `ControlTested`, `ControlExceptionOpened`, `RemediationOpened`, `AssurancePacketGenerated`.
-- Representative advanced capabilities: `continuous control monitoring`, `risk scenario simulation`, `cryptographic evidence packet proof`, `policy-to-control semantic mapping`, `automated assurance sampling`, `multi-tenant risk posture isolation`.
+- Domain purpose: owns risk registers, controls, attestations, incidents, KRIs, tests, remediation, policy mapping, assurance evidence, and executive risk posture across composed applications.
+- Owned tables include risk register, risk taxonomy, risk assessment, risk appetite statement, risk indicator, risk indicator observation, control library, control objective, control test, control evidence, attestation, control exception, control owner assignment, incident record, remediation issue, remediation action, policy-control mapping, audit evidence packet, heatmap snapshot, risk scenario, risk model output, risk committee packet, rules, parameters, schema extensions, controls, governed models, outbox, inbox, and dead-letter evidence.
+- Operations include `register_risk`, `classify_risk`, `assess_inherent_risk`, `define_control`, `map_policy_control`, `schedule_control_test`, `capture_test_evidence`, `record_attestation`, `open_control_exception`, `record_incident`, `open_remediation`, `track_remediation_action`, `observe_indicator`, `publish_heatmap`, `simulate_risk_scenario`, `compile_control_rule`, and `generate_assurance_packet`.
+- Events include `RiskRegistered`, `RiskAssessed`, `ControlTested`, `ControlExceptionOpened`, `RemediationOpened`, and `AssurancePacketGenerated`; consumed events include policy, audit proof, access policy, and workflow signals.
+- Existing advanced claims include continuous control monitoring, risk scenario simulation, cryptographic evidence packet proof, policy-to-control semantic mapping, automated assurance sampling, and multi-tenant risk posture isolation.
 
 ## 50 Better-Than-World-Class Improvements
 
-### 1. Deep specialist lifecycle semantics for `enterprise_risk_controls_risk_register`
+### 1. Enterprise Risk Taxonomy and Ontology Governance
 
-**Justification:** This owned table is part of the Enterprise Risk and Controls operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns risk registers, controls, attestations, incidents, KRIs, tests, remediation, policy mapping, assurance evidence, and executive risk posture across composed applications.
+**Justification:** Risk registers become inconsistent when operational, financial, technology, cyber, privacy, compliance, third-party, model, safety, and strategic risks use local labels. Complete risk coverage requires a governed taxonomy and relationship model.
 
-**Improvement:** Extend `enterprise_risk_controls_risk_register` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `risk_register_management`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Expand `classify_risk` with a versioned risk ontology covering categories, subcategories, causal drivers, impacted objectives, affected PBCs, regulatory domains, risk owners, and cross-risk relationships. The UI should show taxonomy lineage, retired terms, mapping confidence, and required approvals for taxonomy changes.
 
-### 2. Deep specialist lifecycle semantics for `enterprise_risk_controls_risk_taxonomy`
+### 2. Risk Intake and Registration Readiness
 
-**Justification:** This owned table is part of the Enterprise Risk and Controls operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns risk registers, controls, attestations, incidents, KRIs, tests, remediation, policy mapping, assurance evidence, and executive risk posture across composed applications.
+**Justification:** Risk records need enough context to be actionable: source, objective, event, cause, consequence, owner, appetite linkage, affected processes, indicators, controls, and evidence. Generic registration creates low-quality registers.
 
-**Improvement:** Extend `enterprise_risk_controls_risk_taxonomy` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `enterprise_risk_controls_workflow`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Upgrade `register_risk` with readiness checks for risk statement quality, cause-event-impact structure, owner, taxonomy, affected PBC, inherent exposure, related incidents, indicators, control candidates, and evidence attachments. Block promotion from draft until required fields are complete or waived with authority.
 
-### 3. Deep specialist lifecycle semantics for `enterprise_risk_controls_risk_assessment`
+### 3. Inherent, Residual, and Target Risk Separation
 
-**Justification:** This owned table is part of the Enterprise Risk and Controls operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns risk registers, controls, attestations, incidents, KRIs, tests, remediation, policy mapping, assurance evidence, and executive risk posture across composed applications.
+**Justification:** Risk teams need to distinguish exposure before controls, current residual exposure, and desired target posture. Collapsing these into one score hides control effectiveness and remediation needs.
 
-**Improvement:** Extend `enterprise_risk_controls_risk_assessment` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `enterprise_risk_controls_analytics`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Extend `assess_inherent_risk` with separate inherent, residual, and target assessments, each with likelihood, impact, velocity, persistence, confidence, assumptions, and reviewer approval. Show delta drivers and control contribution to residual posture.
 
-### 4. Deep specialist lifecycle semantics for `enterprise_risk_controls_risk_appetite_statement`
+### 4. Risk Appetite Statement Compiler
 
-**Justification:** This owned table is part of the Enterprise Risk and Controls operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns risk registers, controls, attestations, incidents, KRIs, tests, remediation, policy mapping, assurance evidence, and executive risk posture across composed applications.
+**Justification:** Risk appetite is often written as policy prose but operational decisions need thresholds, tolerances, escalation routes, and breach handling. Without compilation, appetite statements do not govern behavior.
 
-**Improvement:** Extend `enterprise_risk_controls_risk_appetite_statement` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `configuration_schema`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add a compiler for risk appetite statements that produces measurable thresholds, qualitative tolerances, indicator limits, escalation rules, and reporting obligations. Simulate policy impact before activation and link every breach to the governing appetite version.
 
-### 5. Deep specialist lifecycle semantics for `enterprise_risk_controls_risk_indicator`
+### 5. KRI Definition and Data Quality Controls
 
-**Justification:** This owned table is part of the Enterprise Risk and Controls operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns risk registers, controls, attestations, incidents, KRIs, tests, remediation, policy mapping, assurance evidence, and executive risk posture across composed applications.
+**Justification:** Key risk indicators are useful only when their definition, source, frequency, threshold, owner, and data quality are trustworthy. Poor KRIs create false assurance.
 
-**Improvement:** Extend `enterprise_risk_controls_risk_indicator` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `rule_engine`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Expand risk indicators with formula, source projection, measurement grain, frequency, thresholds, owner, stale-data rules, quality checks, and exception handling. `observe_indicator` should reject or quarantine observations that fail quality or freshness checks.
 
-### 6. Deep specialist lifecycle semantics for `enterprise_risk_controls_risk_indicator_observation`
+### 6. KRI Breach and Early Warning Engine
 
-**Justification:** This owned table is part of the Enterprise Risk and Controls operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns risk registers, controls, attestations, incidents, KRIs, tests, remediation, policy mapping, assurance evidence, and executive risk posture across composed applications.
+**Justification:** Risk teams need to detect deteriorating conditions before incidents or losses occur. Simple threshold alerts miss trends, velocity, clustering, and correlated control failures.
 
-**Improvement:** Extend `enterprise_risk_controls_risk_indicator_observation` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `parameter_engine`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add early warning logic for KRI trend, acceleration, threshold proximity, correlated indicators, seasonality, and cross-PBC signals. Emit risk posture changes when warnings cross configurable limits and show explainable breach drivers.
 
-### 7. Deep specialist lifecycle semantics for `enterprise_risk_controls_control_library`
+### 7. Control Library Architecture
 
-**Justification:** This owned table is part of the Enterprise Risk and Controls operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns risk registers, controls, attestations, incidents, KRIs, tests, remediation, policy mapping, assurance evidence, and executive risk posture across composed applications.
+**Justification:** Controls need ownership, objective, frequency, type, nature, automation level, assertion, evidence, system dependency, and regulatory mapping. A flat control record cannot support mature assurance.
 
-**Improvement:** Extend `enterprise_risk_controls_control_library` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `owned_schema_migrations_models`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Upgrade `define_control` with control type, objective, risk linkage, frequency, preventive/detective/corrective nature, manual/automated status, key/non-key flag, system dependency, evidence expectations, owner, reviewer, and version lineage.
 
-### 8. Deep specialist lifecycle semantics for `enterprise_risk_controls_control_objective`
+### 8. Control Objective and Assertion Mapping
 
-**Justification:** This owned table is part of the Enterprise Risk and Controls operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns risk registers, controls, attestations, incidents, KRIs, tests, remediation, policy mapping, assurance evidence, and executive risk posture across composed applications.
+**Justification:** Controls exist to satisfy objectives and assertions such as completeness, accuracy, authorization, timeliness, confidentiality, availability, and compliance. Without assertion mapping, tests lack purpose.
 
-**Improvement:** Extend `enterprise_risk_controls_control_objective` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `appgen_x_outbox_inbox_eventing`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add explicit control objective and assertion maps with coverage gaps, duplicate controls, compensating controls, and unsupported risks. The control studio should show which risks, policies, and assertions each control covers.
 
-### 9. Deep specialist lifecycle semantics for `enterprise_risk_controls_control_test`
+### 9. Policy-to-Control Semantic Mapping
 
-**Justification:** This owned table is part of the Enterprise Risk and Controls operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns risk registers, controls, attestations, incidents, KRIs, tests, remediation, policy mapping, assurance evidence, and executive risk posture across composed applications.
+**Justification:** Policy obligations often remain disconnected from controls, causing audit gaps and manual mapping exercises. Semantic mapping must be governed and explainable.
 
-**Improvement:** Extend `enterprise_risk_controls_control_test` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `idempotent_handlers`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Enhance `map_policy_control` with clause extraction, obligation taxonomy, semantic similarity, mapping confidence, reviewer approval, effective dates, orphan obligations, and control coverage evidence. Store mapping rationale and policy version used.
 
-### 10. Deep specialist lifecycle semantics for `enterprise_risk_controls_control_test_evidence`
+### 10. Control Test Plan Generator
 
-**Justification:** This owned table is part of the Enterprise Risk and Controls operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns risk registers, controls, attestations, incidents, KRIs, tests, remediation, policy mapping, assurance evidence, and executive risk posture across composed applications.
+**Justification:** Control tests need population, sample method, frequency, period, evidence request, tester independence, procedure steps, and pass/fail criteria. Generic test scheduling under-specifies assurance work.
 
-**Improvement:** Extend `enterprise_risk_controls_control_test_evidence` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `retry_dead_letter_evidence`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Upgrade `schedule_control_test` with test procedures, scope period, sample population, sampling strategy, expected evidence, tester role, independence check, due date, and test objective. Generate test plans from control metadata and risk level.
 
-### 11. Make `register_risk` a complete command lifecycle
+### 11. Automated Evidence Collection
 
-**Justification:** High-value users need `register_risk` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Manual evidence collection is slow, incomplete, and easy to manipulate. Better-than-world-class controls should collect evidence from declared events, APIs, and projections where possible.
 
-**Improvement:** Implement `register_risk` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `RiskRegistered`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add automated evidence requests from AppGen-X events, source APIs, and read-only projections, with source, timestamp, hash, freshness, completeness, and collection status. Keep external context boundary-safe and store only package-owned evidence metadata.
 
-### 12. Make `classify_risk` a complete command lifecycle
+### 12. Evidence Sufficiency and Authenticity Scoring
 
-**Justification:** High-value users need `classify_risk` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Evidence can be stale, incomplete, altered, irrelevant, or unsupported. Testers need a structured way to assess evidence quality before concluding control effectiveness.
 
-**Improvement:** Implement `classify_risk` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `RiskAssessed`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Expand `capture_test_evidence` with evidence sufficiency, relevance, period coverage, source authenticity, tamper hash, completeness score, exception flags, and reviewer notes. Block test completion when critical evidence is missing or questionable.
 
-### 13. Make `assess_inherent_risk` a complete command lifecycle
+### 13. Continuous Control Monitoring
 
-**Justification:** High-value users need `assess_inherent_risk` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Periodic testing misses failures between cycles. Some controls should be monitored continuously from system events and control assertions.
 
-**Improvement:** Implement `assess_inherent_risk` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `ControlTested`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add continuous control monitoring definitions that subscribe to declared event types, evaluate control assertions, produce observations, raise exceptions, and maintain evidence trails. The UI should distinguish continuous, periodic, and hybrid controls.
 
-### 14. Make `define_control` a complete command lifecycle
+### 14. Risk-Based Assurance Sampling
 
-**Justification:** High-value users need `define_control` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Sampling should focus on materiality, risk, control history, transaction anomalies, and prior failures instead of static percentages.
 
-**Improvement:** Implement `define_control` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `ControlExceptionOpened`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add sampling algorithms that consider risk rating, population size, anomalies, control failures, owner history, regulatory importance, and confidence level. Store sampling rationale and allow auditor override with evidence.
 
-### 15. Make `map_policy_control` a complete command lifecycle
+### 15. Control Test Execution Workbench
 
-**Justification:** High-value users need `map_policy_control` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Testers need one workspace for procedure steps, evidence, exceptions, retesting, reviewer notes, and conclusions. Scattered records slow assurance.
 
-**Improvement:** Implement `map_policy_control` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `RemediationOpened`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Build a test execution workbench with test steps, evidence checklist, sample list, pass/fail criteria, observed deviations, reviewer comments, retest tasks, and final conclusion. Every conclusion should be tied to evidence and tester identity.
 
-### 16. Make `schedule_control_test` a complete command lifecycle
+### 16. Attestation Campaign Governance
 
-**Justification:** High-value users need `schedule_control_test` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Attestations are unreliable when owners certify without understanding scope, evidence, exceptions, and legal accountability. Campaigns need governance.
 
-**Improvement:** Implement `schedule_control_test` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `AssurancePacketGenerated`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Expand `record_attestation` with campaign scope, attestor role, control set, certification text, evidence summary, known exceptions, delegation rules, reminders, non-response escalation, and legal acknowledgement. Track attestation quality and late responses.
 
-### 17. Make `capture_test_evidence` a complete command lifecycle
+### 17. Control Owner Assignment and Delegation
 
-**Justification:** High-value users need `capture_test_evidence` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Control ownership changes with organizations, systems, processes, and outsourcing. Unclear ownership creates missed tests and stale attestations.
 
-**Improvement:** Implement `capture_test_evidence` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `RiskRegistered`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add owner assignment history, delegate authority, backup owner, effective dates, segregation rules, role requirements, and vacancy alerts. Block ownership changes that break independence or leave key controls without accountable owners.
 
-### 18. Make `record_attestation` a complete command lifecycle
+### 18. Control Exception Lifecycle
 
-**Justification:** High-value users need `record_attestation` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Exceptions need severity, root cause, compensating controls, exposure, expiration, acceptance, approvals, and retest. A simple exception record underrepresents risk.
 
-**Improvement:** Implement `record_attestation` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `RiskAssessed`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Upgrade `open_control_exception` with exception type, exposure, materiality, compensating control, risk acceptance, expiry, owner, approval chain, retest requirement, and escalation rules. Show exception impact on residual risk and heatmaps.
 
-### 19. Make `open_control_exception` a complete command lifecycle
+### 19. Incident-to-Risk Linkage
 
-**Justification:** High-value users need `open_control_exception` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Incidents reveal realized risks and control failures. If incidents are not linked back to risks and controls, organizations repeat failures.
 
-**Improvement:** Implement `open_control_exception` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `ControlTested`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Expand `record_incident` with realized risk linkage, affected controls, loss estimate, operational impact, root cause, detection method, time to detect, time to contain, lessons learned, and required reassessment. Publish risk update events when incidents change posture.
 
-### 20. Make `record_incident` a complete command lifecycle
+### 20. Remediation Issue Governance
 
-**Justification:** High-value users need `record_incident` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Remediation without ownership, milestones, funding, dependencies, validation, and residual-risk updates becomes a task list rather than risk reduction.
 
-**Improvement:** Implement `record_incident` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `ControlExceptionOpened`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Upgrade `open_remediation` with issue severity, root cause, risk/control linkage, target state, owner, sponsor, milestones, budget, dependencies, validation plan, and acceptance criteria. Track impact on residual risk and control effectiveness.
 
-### 21. Operationalize `continuous control monitoring` as a governed decision system
+### 21. Remediation Action Tracking and Retest
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Enterprise Risk and Controls and measurably improves enterprise risk controls risk score without hiding assumptions.
+**Justification:** Closing actions without verifying design and operating effectiveness creates false assurance. Retesting must be built into remediation.
 
-**Improvement:** Promote `continuous control monitoring` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `enterprise_risk_controls_risk_score`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Expand `track_remediation_action` with action evidence, completion criteria, blocker reasons, due-date changes, implementation proof, retest schedule, validation owner, and closure approval. Prevent remediation closure until validation evidence is accepted.
 
-### 22. Operationalize `risk scenario simulation` as a governed decision system
+### 22. Risk Acceptance and Waiver Governance
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Enterprise Risk and Controls and measurably improves enterprise risk controls workbench metric without hiding assumptions.
+**Justification:** Some risks and exceptions are accepted temporarily or permanently. Acceptance requires authority, expiry, rationale, compensating controls, and re-review.
 
-**Improvement:** Promote `risk scenario simulation` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `enterprise_risk_controls_workbench_metric`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add risk acceptance records with approver authority, scope, duration, rationale, residual exposure, compensating controls, review date, and revocation triggers. Show accepted risk separately from remediated risk.
 
-### 23. Operationalize `cryptographic evidence packet proof` as a governed decision system
+### 23. Executive Risk Heatmaps
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Enterprise Risk and Controls and measurably improves enterprise risk controls risk score without hiding assumptions.
+**Justification:** Heatmaps are often subjective snapshots with weak traceability. Executives need drillable heatmaps backed by current risks, indicators, incidents, controls, and remediation.
 
-**Improvement:** Promote `cryptographic evidence packet proof` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `enterprise_risk_controls_risk_score`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Upgrade `publish_heatmap` with heatmap methodology, source risks, scoring version, appetite overlays, trend arrows, confidence, stale-data flags, and drilldown evidence. Store immutable heatmap snapshots for committee review.
 
-### 24. Operationalize `policy-to-control semantic mapping` as a governed decision system
+### 24. Risk Scenario Library and Stress Testing
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Enterprise Risk and Controls and measurably improves enterprise risk controls workbench metric without hiding assumptions.
+**Justification:** Risk teams need scenario planning across cyber events, supplier disruption, fraud, regulatory change, liquidity, outages, safety, privacy breaches, and macro shocks.
 
-**Improvement:** Promote `policy-to-control semantic mapping` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `enterprise_risk_controls_workbench_metric`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Expand `simulate_risk_scenario` with scenario library, assumptions, affected PBCs, risk drivers, control responses, impact ranges, recovery times, dependencies, and executive summaries. Save scenario versions and compare outcomes.
 
-### 25. Operationalize `automated assurance sampling` as a governed decision system
+### 25. Control Failure Blast-Radius Analysis
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Enterprise Risk and Controls and measurably improves enterprise risk controls risk score without hiding assumptions.
+**Justification:** A failed key control can affect multiple risks, processes, systems, policies, reports, and obligations. Teams need to know the blast radius immediately.
 
-**Improvement:** Promote `automated assurance sampling` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `enterprise_risk_controls_risk_score`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add blast-radius analysis for control failures showing affected risks, policy obligations, owners, evidence packets, open attestations, remediations, and executive reports. Trigger review tasks when key controls fail.
 
-### 26. Operationalize `multi-tenant risk posture isolation` as a governed decision system
+### 26. Assurance Evidence Packet Assembly
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Enterprise Risk and Controls and measurably improves enterprise risk controls workbench metric without hiding assumptions.
+**Justification:** Auditors and executives need coherent evidence packets, not scattered screenshots and notes. Evidence must be complete, tamper-evident, and scoped.
 
-**Improvement:** Promote `multi-tenant risk posture isolation` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `enterprise_risk_controls_workbench_metric`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Upgrade `generate_assurance_packet` with packet scope, included controls, tests, evidence hashes, attestations, exceptions, remediation status, event lineage, reviewer signoff, and export manifest. Provide cryptographic proof for packet integrity.
 
-### 27. Operationalize `continuous control monitoring` as a governed decision system
+### 27. Risk Committee Packet Builder
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Enterprise Risk and Controls and measurably improves enterprise risk controls risk score without hiding assumptions.
+**Justification:** Risk committees need curated material: top risks, emerging threats, appetite breaches, incidents, control failures, remediation status, scenarios, and decisions requested.
 
-**Improvement:** Promote `continuous control monitoring` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `enterprise_risk_controls_risk_score`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add committee packet workflows with agenda, narrative, exhibits, heatmaps, issue decisions, voting records, action items, and follow-up tracking. Link committee decisions to risk acceptance, remediation, and appetite updates.
 
-### 28. Operationalize `risk scenario simulation` as a governed decision system
+### 28. Emerging Risk Radar
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Enterprise Risk and Controls and measurably improves enterprise risk controls workbench metric without hiding assumptions.
+**Justification:** Risk management should identify weak signals from incidents, KRIs, external events, policy changes, customer complaints, supplier disruptions, and model outputs before formal risks are registered.
 
-**Improvement:** Promote `risk scenario simulation` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `enterprise_risk_controls_workbench_metric`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add emerging-risk candidates with source signals, confidence, affected objectives, proposed taxonomy, owner, and promotion workflow. The agent should suggest risk registration plans with evidence and uncertainty.
 
-### 29. Operationalize `cryptographic evidence packet proof` as a governed decision system
+### 29. Model Risk and Governed Analytics Controls
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Enterprise Risk and Controls and measurably improves enterprise risk controls risk score without hiding assumptions.
+**Justification:** Risk scoring, anomaly detection, and scenario outputs can influence executive decisions. Models require governance, validation, bias checks, and drift monitoring.
 
-**Improvement:** Promote `cryptographic evidence packet proof` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `enterprise_risk_controls_risk_score`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Expand risk model outputs with model version, input data, assumptions, validation status, drift metrics, limitations, reviewer approval, and override records. Block automated risk posture changes from unapproved models.
 
-### 30. Operationalize `policy-to-control semantic mapping` as a governed decision system
+### 30. Third-Party and Concentration Risk View
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Enterprise Risk and Controls and measurably improves enterprise risk controls workbench metric without hiding assumptions.
+**Justification:** Enterprise risk often concentrates across vendors, regions, systems, customers, financial institutions, and outsourced processes. Risk teams need portfolio concentration views without owning supplier or customer tables.
 
-**Improvement:** Promote `policy-to-control semantic mapping` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `enterprise_risk_controls_workbench_metric`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add concentration projections that reference external entities through declared APIs/events, with exposure type, dependency strength, criticality, and freshness. Show concentration heatmaps and scenario impacts.
 
-### 31. Create simulation-grade governance for `risk_appetite_policy` and `high_risk_threshold`
+### 31. Cyber, Access, and Identity Control Coverage
 
-**Justification:** Complete Enterprise Risk and Controls coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Access policy changes and identity events can materially affect control posture. Risk teams must assess access-related controls without owning identity data.
 
-**Improvement:** Add a policy cockpit where `risk_appetite_policy` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `high_risk_threshold` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Consume access policy events into package-local control observations, map identity controls to risks, track privileged access attestations, and flag segregation or access review failures through declared projections and evidence records.
 
-### 32. Create simulation-grade governance for `control_frequency_policy` and `control_test_interval_days`
+### 32. Regulatory Obligation Coverage Matrix
 
-**Justification:** Complete Enterprise Risk and Controls coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Controls must map to obligations across regulations, policies, standards, contracts, and audit commitments. Missing mappings create compliance blind spots.
 
-**Improvement:** Add a policy cockpit where `control_frequency_policy` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `control_test_interval_days` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add obligation coverage matrices with obligation source, clause, effective date, mapped control, test frequency, evidence requirement, owner, and gap status. Use semantic mapping to recommend missing controls.
 
-### 33. Create simulation-grade governance for `attestation_policy` and `remediation_sla_days`
+### 33. Control Automation Maturity Scoring
 
-**Justification:** Complete Enterprise Risk and Controls coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Risk posture improves when manual controls become automated, preventive, embedded, and continuously monitored. Teams need maturity evidence to prioritize improvements.
 
-**Improvement:** Add a policy cockpit where `attestation_policy` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `remediation_sla_days` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add maturity scores for manual effort, automation level, preventive/detective balance, evidence automation, failure history, and monitoring coverage. Recommend control modernization actions and estimate assurance effort reduction.
 
-### 34. Create simulation-grade governance for `remediation_sla_policy` and `attestation_window_days`
+### 34. Remediation Portfolio Prioritization
 
-**Justification:** Complete Enterprise Risk and Controls coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Organizations usually have more remediation issues than capacity. Prioritization must account for risk reduction, regulatory deadlines, dependencies, cost, and control criticality.
 
-**Improvement:** Add a policy cockpit where `remediation_sla_policy` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `attestation_window_days` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add remediation portfolio ranking with weighted risk impact, appetite breach, due dates, dependencies, cost, owners, blockers, and expected residual-risk reduction. Provide scenario views for funding or staffing decisions.
 
-### 35. Create simulation-grade governance for `evidence_retention_policy` and `evidence_retention_years`
+### 35. Loss Event and Near-Miss Capture
 
-**Justification:** Complete Enterprise Risk and Controls coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Risk management needs actual loss and near-miss events to calibrate assessments, KRIs, and controls. Incidents alone may miss operational loss detail.
 
-**Improvement:** Add a policy cockpit where `evidence_retention_policy` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `evidence_retention_years` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add loss event and near-miss attributes to incidents: financial loss, non-financial impact, avoided loss, cause, business line, insurance recovery, control failure, and lessons learned. Feed outcomes into assessments and scenarios.
 
-### 36. Upgrade `risk register workbench` into a full specialist command center
+### 36. Risk Appetite Breach Workflow
 
-**Justification:** The PBC UI must expose the complete Enterprise Risk and Controls surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Appetite breaches require immediate visibility, owner accountability, mitigation, acceptance, or escalation. Without a workflow, breaches become dashboard noise.
 
-**Improvement:** Expand `risk register workbench` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add appetite breach records with source KRI/risk/control, severity, owner, required action, escalation level, committee visibility, acceptance option, and closure evidence. Link breaches to heatmaps and executive packets.
 
-### 37. Upgrade `control library studio` into a full specialist command center
+### 37. Assurance Independence and Conflict Checks
 
-**Justification:** The PBC UI must expose the complete Enterprise Risk and Controls surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Control testers and attestors must be independent where required. Conflicted assurance creates unreliable results and audit findings.
 
-**Improvement:** Expand `control library studio` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add independence rules for testers, reviewers, control owners, remediation owners, and attestors. Block or flag assignments where the same party owns, operates, tests, and approves a control without approved exception.
 
-### 38. Upgrade `control testing board` into a full specialist command center
+### 38. Sensitive Risk Access Partitions
 
-**Justification:** The PBC UI must expose the complete Enterprise Risk and Controls surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Some risks involve mergers, litigation, investigations, security incidents, executive conduct, or regulated events. Overexposure creates legal and operational risk.
 
-**Improvement:** Expand `control testing board` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add sensitive risk partitions with access groups, field masking, export controls, break-glass procedures, agent restrictions, and audit alerts. Enforce partitions consistently in UI, APIs, and assistant output.
 
-### 39. Upgrade `attestation console` into a full specialist command center
+### 39. Agent-Assisted Risk and Control Intake
 
-**Justification:** The PBC UI must expose the complete Enterprise Risk and Controls surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Risk teams receive policies, audit reports, incident writeups, regulatory notices, and meeting minutes that need structured risk/control updates without unsafe autonomous writes.
 
-**Improvement:** Expand `attestation console` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Give the PBC agent skills to parse documents into proposed risks, controls, mappings, tests, evidence, incidents, and remediation plans. Require source-grounded extraction, confidence, affected tables, AppGen-X event plans, and human confirmation.
 
-### 40. Upgrade `remediation tracker` into a full specialist command center
+### 40. Policy and Control Rule Studio
 
-**Justification:** The PBC UI must expose the complete Enterprise Risk and Controls surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Risk appetite, control frequency, attestation, remediation SLA, evidence retention, and escalation rules change over time and need governed simulation.
 
-**Improvement:** Expand `remediation tracker` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Expand runtime rules into a rule studio with versioning, simulation against historical risks and controls, approval workflow, effective dates, rollback, test cases, and agent explanations before activation.
 
-### 41. Prove cross-PBC federation for `POST /risks` and `PolicyChanged`
+### 41. Cross-PBC Control Assertions
 
-**Justification:** Enterprise Risk and Controls must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Enterprise controls often assert behavior in other PBCs, such as approval segregation, policy enforcement, event delivery, or evidence retention. These must be observed without mutating other PBCs.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /risks` and consumed event `PolicyChanged` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Define cross-PBC control assertion contracts with source PBC, observed event/API, expected invariant, evidence window, freshness, and failure handling. Add tests proving only package-owned records and AppGen-X events are mutated.
 
-### 42. Prove cross-PBC federation for `POST /controls` and `AuditProofGenerated`
+### 42. Continuous Control Failure Triage
 
-**Justification:** Enterprise Risk and Controls must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Continuous monitoring can produce many exceptions. Teams need triage for severity, false positives, duplicate failures, known issues, and remediation linkage.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /controls` and consumed event `AuditProofGenerated` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Add triage queues for automated control failures with severity, confidence, duplicate grouping, owner, compensating control, false-positive reason, and remediation link. Feed adjudicated results back into monitoring rules.
 
-### 43. Prove cross-PBC federation for `POST /control-tests` and `AccessPolicyChanged`
+### 43. Risk Data Lineage and Provenance
 
-**Justification:** Enterprise Risk and Controls must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Risk scores, heatmaps, and committee reports must be traceable to source risks, indicators, incidents, controls, and evidence. Without lineage, executives cannot trust reports.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /control-tests` and consumed event `AccessPolicyChanged` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Add lineage metadata to assessments, indicators, heatmaps, scenarios, model outputs, and packets. Show source records, versions, timestamps, transformations, and confidence for every material risk posture output.
 
-### 44. Prove cross-PBC federation for `POST /attestations` and `WorkflowTaskCompleted`
+### 44. Carbon and Sustainability Risk Controls
 
-**Justification:** Enterprise Risk and Controls must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Sustainability, climate, and carbon risks affect strategy, operations, regulatory reporting, supply chain, and reputation. Risk PBCs should cover these risks as first-class categories.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /attestations` and consumed event `WorkflowTaskCompleted` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Add sustainability risk categories, climate scenarios, carbon-control objectives, ESG control mappings, indicator templates, evidence requirements, and executive reporting views while integrating with sustainability PBCs through projections.
 
-### 45. Temporal reconstruction and bitemporal audit for Enterprise Risk and Controls
+### 45. Control and Risk Change Impact Analysis
 
-**Justification:** Regulated and operationally complex domains need to answer what was known, valid, processed, and visible at any point in time.
+**Justification:** Changing a control, risk taxonomy, appetite threshold, or policy mapping can alter tests, evidence, attestations, heatmaps, and committee reporting.
 
-**Improvement:** Add transaction-time, valid-time, and processing-time fields to core records, temporal query APIs, projection rebuild tooling, and UI time travel so specialists can reconstruct decisions, reports, and automation outcomes.
+**Improvement:** Add change impact analysis showing affected risks, controls, mappings, tests, evidence packets, dashboards, rules, and external dependencies before activation. Require approval for material governance changes.
 
-### 46. Bulk operations and migration-grade controls for Enterprise Risk and Controls
+### 46. Risk Posture Time Travel
 
-**Justification:** World-class deployments must handle imports, mass corrections, high-volume operating days, and cutovers without bypassing governance.
+**Justification:** Auditors and executives often ask what the organization knew at a prior date. Current-state dashboards cannot answer historical posture questions.
 
-**Improvement:** Add staged bulk upload, duplicate detection, chunked validation, approval sampling, partial failure handling, retry dashboards, reconciliation summaries, and agent-generated remediation plans for large batches.
+**Improvement:** Add temporal reconstruction APIs and UI for risk posture at past points in transaction time, valid time, and reporting time. Include risk scores, KRIs, control status, exceptions, incidents, and remediation as-of views.
 
-### 47. Specialist edge-case playbooks for Enterprise Risk and Controls
+### 47. Operational Resilience and Crisis Risk Links
 
-**Justification:** Rare cases often carry the highest financial, legal, safety, service, or compliance risk.
+**Justification:** Risk registers should connect to resilience, continuity, incident response, recovery time, critical services, and dependency maps.
 
-**Improvement:** Create a playbook catalog with detection rules, required evidence, escalation paths, fallback actions, owner roles, and release-audited tests for high-severity edge cases and exception queues.
+**Improvement:** Add resilience attributes for critical service, dependency, RTO/RPO target, scenario stress, continuity plan linkage, and crisis owner. Use incidents and KRIs to update resilience risk posture.
 
-### 48. Pre-mutation simulation and blast-radius analysis for Enterprise Risk and Controls
+### 48. Executive Narrative Generation With Evidence
 
-**Justification:** Users should understand consequences before committing irreversible, customer-visible, operationally disruptive, or financially material changes.
+**Justification:** Risk reporting requires concise narratives, but unsupported AI summaries can mislead executives. Narratives must cite evidence and disclose uncertainty.
 
-**Improvement:** Add what-if simulation for every material command, showing impacted records, emitted events, dependent projections, rule outcomes, approvals, downstream PBC dependencies, and rollback limits.
+**Improvement:** Add governed narrative generation for risk committee packets, heatmaps, appetite breaches, and remediation summaries. Every narrative should cite source records, show confidence, flag stale data, and require owner approval before publication.
 
-### 49. Continuous control testing and operational assurance for Enterprise Risk and Controls
+### 49. Release Evidence for Risk-Control Integrity
 
-**Justification:** Better-than-world-class PBCs prove controls continuously, not only at release or during periodic audits.
+**Justification:** The risk PBC itself must prove its schemas, rules, controls, events, handlers, UI, agent skills, and cross-PBC boundaries work before it can be trusted to assure other PBCs.
 
-**Improvement:** Add executable control assertions, sampled evidence checks, anomaly thresholds, control-owner dashboards, breach/recovery events, and release gates that fail when domain controls lose evidence.
+**Improvement:** Generate release evidence packs containing schema hashes, migration manifests, service contracts, route contracts, event schemas, handler idempotency proofs, retry/dead-letter tests, rule simulations, control assertion smoke tests, UI coverage, and agent skill manifests.
 
-### 50. Human-in-the-loop domain agent execution for Enterprise Risk and Controls
+### 50. Complete Enterprise Risk Workbench Coverage
 
-**Justification:** The PBC chatbot must help specialists perform real work while preventing unsafe autonomous mutation.
+**Justification:** Risk officers, control owners, auditors, executives, and remediation owners need full operational surfaces. Hidden functionality behind APIs prevents mature risk management.
 
-**Improvement:** Add domain-specific skills, document parsing, task planning, CRUD previews, confidence/risk scoring, confirmation gates, redaction, policy explanations, and post-action evidence packets for every supported command and query.
+**Improvement:** Expand the UI into role-specific workbenches for risk manager, control owner, tester, attestor, remediation owner, auditor, committee secretary, executive sponsor, and administrator. Cover risk registers, taxonomy, assessments, appetite, KRIs, controls, tests, evidence, attestations, exceptions, incidents, remediation, heatmaps, scenarios, committee packets, policies, agent panels, and release-evidence status.
