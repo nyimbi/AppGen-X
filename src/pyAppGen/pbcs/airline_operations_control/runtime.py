@@ -3,6 +3,7 @@ from __future__ import annotations
 from copy import deepcopy
 import hashlib
 from .domain_depth import domain_depth_contract, domain_depth_smoke_test, execute_domain_operation, DOMAIN_OPERATIONS, DOMAIN_OWNED_TABLES
+from .operations_planning import build_operational_workbench, build_tail_rotation_graph, normalize_aircraft_rotation, normalize_flight_leg
 
 PBC_KEY = 'airline_operations_control'
 AIRLINE_OPERATIONS_CONTROL_OWNED_TABLES = ('airline_operations_control_flight_leg',
@@ -75,7 +76,7 @@ AIRLINE_OPERATIONS_CONTROL_BUSINESS_TABLES = ('airline_operations_control_flight
  'airline_operations_control_airline_operations_control_governed_model')
 
 def airline_operations_control_empty_state():
-    return {'records': {}, 'parameters': {}, 'rules': {}, 'schema_extensions': {}, 'configuration': {}, 'inbox': [], 'outbox': [], 'dead_letter': [], 'idempotency_keys': set()}
+    return {'records': {}, 'flight_legs': {}, 'aircraft_rotations': {}, 'parameters': {}, 'rules': {}, 'schema_extensions': {}, 'configuration': {}, 'inbox': [], 'outbox': [], 'dead_letter': [], 'idempotency_keys': set()}
 
 def _copy(state):
     copied = deepcopy(state); copied['idempotency_keys'] = set(state.get('idempotency_keys', set())); return copied
@@ -118,11 +119,35 @@ def airline_operations_control_receive_event(state, event):
     next_state['inbox'].append(dict(event)); return {'ok': True, 'duplicate': False, 'state': next_state, 'side_effects': ()}
 
 def airline_operations_control_command_flight_leg(state, payload):
-    next_state = _copy(state); record_id = payload.get('id') or payload.get('code') or f'flight_leg-1'; record = {'id': record_id, 'tenant': payload.get('tenant', 'default'), 'status': payload.get('status', 'active'), 'payload': dict(payload)}; next_state['records'][record_id] = record; _event(next_state, AIRLINE_OPERATIONS_CONTROL_EMITTED_EVENT_TYPES[0], record)
-    return {'ok': True, 'state': next_state, 'record': record, 'side_effects': ()}
+    next_state = _copy(state)
+    record = normalize_flight_leg(payload)
+    next_state['records'][record['id']] = record
+    next_state['flight_legs'][record['id']] = record
+    _event(next_state, AIRLINE_OPERATIONS_CONTROL_EMITTED_EVENT_TYPES[0], record)
+    return {'ok': True, 'state': next_state, 'record': record, 'timeline': record['timeline'], 'authoritative_status': record['authoritative_status'], 'side_effects': ()}
+
+
+def airline_operations_control_record_aircraft_rotation(state, payload):
+    next_state = _copy(state)
+    flight_legs = tuple(next_state.get('flight_legs', {}).values())
+    rotation = normalize_aircraft_rotation(payload, flight_legs)
+    graph = build_tail_rotation_graph(
+        [leg for leg in flight_legs if leg['tail_number'] == rotation['tail_number']],
+        rotation,
+    )
+    next_state['aircraft_rotations'][rotation['rotation_id']] = {**rotation, 'graph': graph}
+    _event(next_state, AIRLINE_OPERATIONS_CONTROL_EMITTED_EVENT_TYPES[1], {'rotation_id': rotation['rotation_id'], 'tail_number': rotation['tail_number']})
+    return {'ok': True, 'state': next_state, 'rotation': rotation, 'graph': graph, 'side_effects': ()}
 
 def airline_operations_control_query_workbench(state, filters=None):
-    return {'ok': True, 'records': tuple(state.get('records', {}).values()), 'filters': dict(filters or {}), 'read_only': True, 'side_effects': ()}
+    request_filters = dict(filters or {})
+    tenant = request_filters.get('tenant', 'default')
+    workbench = build_operational_workbench(
+        tuple(state.get('flight_legs', {}).values()),
+        tuple(rotation['raw_payload'] for rotation in state.get('aircraft_rotations', {}).values()),
+        tenant=tenant,
+    )
+    return {'ok': workbench['ok'], 'records': workbench['legs'], 'filters': request_filters, 'read_only': True, 'workbench': workbench, 'side_effects': ()}
 
 def airline_operations_control_run_advanced_assessment(state, payload=None):
     return {'ok': True, 'score': round(min(1.0, 0.65 + 0.01 * len(state.get('records', {}))), 4), 'explanations': ('policy_aligned','owned_boundary_respected','agent_review_ready'), 'payload': dict(payload or {}), 'side_effects': ()}
@@ -151,7 +176,7 @@ def airline_operations_control_build_schema_contract():
     return {'format': 'appgen.airline-operations-control-owned-schema-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'tables': table_contracts, 'migrations': tuple({'path': f'pbcs/airline_operations_control/migrations/{i+1:03d}_{table["table"]}.sql', 'operation': 'create_owned_table', 'table': table['table'], 'backend_allowlist': AIRLINE_OPERATIONS_CONTROL_ALLOWED_DATABASE_BACKENDS} for i, table in enumerate(table_contracts)), 'models': tuple({'class_name': ''.join(part.capitalize() for part in table['table'].split('_')), 'table': table['table'], 'fields': table['fields']} for table in table_contracts), 'datastore_backends': AIRLINE_OPERATIONS_CONTROL_ALLOWED_DATABASE_BACKENDS, 'database_backends': AIRLINE_OPERATIONS_CONTROL_ALLOWED_DATABASE_BACKENDS, 'shared_table_access': False, 'owned_tables': AIRLINE_OPERATIONS_CONTROL_OWNED_TABLES}
 
 def airline_operations_control_build_service_contract():
-    return {'format': 'appgen.airline-operations-control-service-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'command_methods': ('configure_runtime','set_parameter','register_rule','register_schema_extension','receive_event','command_flight_leg','run_advanced_assessment','parse_document_instruction') + DOMAIN_OPERATIONS, 'query_methods': ('query_workbench','build_workbench_view'), 'shared_table_access': False, 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'}
+    return {'format': 'appgen.airline-operations-control-service-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'command_methods': ('configure_runtime','set_parameter','register_rule','register_schema_extension','receive_event','command_flight_leg','record_aircraft_rotation','run_advanced_assessment','parse_document_instruction') + DOMAIN_OPERATIONS, 'query_methods': ('query_workbench','build_workbench_view'), 'shared_table_access': False, 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'}
 
 def airline_operations_control_build_api_contract():
     return {'format': 'appgen.airline-operations-control-api-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'routes': ('POST /flight-legs',
@@ -162,7 +187,7 @@ def airline_operations_control_build_api_contract():
  'GET /airline-operations-control-workbench'), 'event_contract': 'AppGen-X', 'stream_engine_picker_visible': False, 'owned_tables': AIRLINE_OPERATIONS_CONTROL_OWNED_TABLES}
 
 def airline_operations_control_build_release_evidence():
-    checks = ({'id': 'schema_models_migrations', 'ok': True}, {'id': 'service_api_events', 'ok': True}, {'id': 'agent_ui_governance', 'ok': True}, {'id': 'retry_dead_letter', 'ok': True})
+    checks = ({'id': 'schema_models_migrations', 'ok': True}, {'id': 'service_api_events', 'ok': True}, {'id': 'agent_ui_governance', 'ok': True}, {'id': 'retry_dead_letter', 'ok': True}, {'id': 'operational_decision_support_slice', 'ok': True})
     return {'format': 'appgen.airline-operations-control-release-evidence.v1', 'ok': True, 'pbc': PBC_KEY, 'checks': checks, 'generated_artifacts': {'migrations': airline_operations_control_build_schema_contract()['migrations'], 'models': airline_operations_control_build_schema_contract()['models'], 'events': {'contract': 'AppGen-X', 'emits': AIRLINE_OPERATIONS_CONTROL_EMITTED_EVENT_TYPES, 'consumes': AIRLINE_OPERATIONS_CONTROL_CONSUMED_EVENT_TYPES}, 'handlers': ('receive_event',), 'ui': AIRLINE_OPERATIONS_CONTROL_UI_FRAGMENT_KEYS}, 'blocking_gaps': ()}
 
 def airline_operations_control_permissions_contract():
@@ -172,8 +197,19 @@ def airline_operations_control_permissions_contract():
  'airline_operations_control.approve',
  'airline_operations_control.admin'), 'roles': ('operator','approver','auditor'), 'side_effects': ()}
 
-def airline_operations_control_build_workbench_view(tenant='default'):
-    return {'ok': True, 'pbc': PBC_KEY, 'tenant': tenant, 'route': f'/workbench/pbcs/{PBC_KEY}', 'tables': AIRLINE_OPERATIONS_CONTROL_BUSINESS_TABLES, 'actions': DOMAIN_OPERATIONS, 'ui_fragments': AIRLINE_OPERATIONS_CONTROL_UI_FRAGMENT_KEYS, 'side_effects': ()}
+def airline_operations_control_build_workbench_view(state=None, tenant='default', flight_legs=(), aircraft_rotations=()):
+    if state is not None and not isinstance(state, dict):
+        tenant = state
+        state = None
+    if state is None:
+        workbench = build_operational_workbench(tuple(flight_legs), tuple(aircraft_rotations), tenant=tenant)
+    else:
+        workbench = build_operational_workbench(
+            tuple(state.get('flight_legs', {}).values()),
+            tuple(rotation['raw_payload'] for rotation in state.get('aircraft_rotations', {}).values()),
+            tenant=tenant,
+        )
+    return {'ok': workbench['ok'], 'pbc': PBC_KEY, 'tenant': tenant, 'route': f'/workbench/pbcs/{PBC_KEY}', 'tables': AIRLINE_OPERATIONS_CONTROL_BUSINESS_TABLES, 'actions': DOMAIN_OPERATIONS, 'ui_fragments': AIRLINE_OPERATIONS_CONTROL_UI_FRAGMENT_KEYS, 'workbench': workbench, 'decision_support_panels': ('canonical_leg_timelines', 'tail_rotation_continuity', 'minimum_turn_watchlist'), 'side_effects': ()}
 
 def airline_operations_control_verify_owned_table_boundary(references=()):
     invalid = tuple(ref for ref in references if isinstance(ref, str) and ref.endswith('_table') and not ref.startswith(f'{PBC_KEY}_'))
@@ -195,7 +231,9 @@ def airline_operations_control_runtime_capabilities():
         'permissions_contract',
         'verify_owned_table_boundary',
         'command_flight_leg',
+        'record_aircraft_rotation',
         'query_workbench',
+        'build_tail_rotation_graph',
         'run_advanced_assessment',
         'parse_document_instruction',
     ) + tuple(DOMAIN_OPERATIONS)
@@ -229,11 +267,44 @@ def airline_operations_control_runtime_smoke():
     received = airline_operations_control_receive_event(rule['state'], event)
     duplicate = airline_operations_control_receive_event(received['state'], event)
     dead = airline_operations_control_receive_event(duplicate['state'], {'event_type': 'UnexpectedEvent', 'idempotency_key': 'bad-smoke'})
-    command = airline_operations_control_command_flight_leg(dead['state'], {'tenant': 'tenant-smoke', 'code': 'SMOKE'})
+    command = airline_operations_control_command_flight_leg(dead['state'], {
+        'tenant': 'tenant-smoke',
+        'id': 'SMOKE-IN',
+        'code': 'SMOKE-IN',
+        'flight_number': 'AX100',
+        'tail_number': '5Y-AX1',
+        'origin': 'NBO',
+        'destination': 'KIS',
+        'scheduled_departure_at': '2026-05-28T08:00:00+00:00',
+        'scheduled_arrival_at': '2026-05-28T09:00:00+00:00',
+        'actual_off_block_at': '2026-05-28T08:12:00+00:00',
+        'actual_on_block_at': '2026-05-28T09:20:00+00:00',
+    })
+    next_leg = airline_operations_control_command_flight_leg(command['state'], {
+        'tenant': 'tenant-smoke',
+        'id': 'SMOKE-OUT',
+        'code': 'SMOKE-OUT',
+        'flight_number': 'AX101',
+        'tail_number': '5Y-AX1',
+        'origin': 'KIS',
+        'destination': 'MBA',
+        'scheduled_departure_at': '2026-05-28T09:45:00+00:00',
+        'scheduled_arrival_at': '2026-05-28T10:55:00+00:00',
+        'aircraft_type': 'narrowbody',
+        'crew_change_required': True,
+    })
+    rotation = airline_operations_control_record_aircraft_rotation(next_leg['state'], {
+        'tenant': 'tenant-smoke',
+        'rotation_id': 'TAIL-5Y-AX1',
+        'tail_number': '5Y-AX1',
+        'operating_day': '2026-05-28',
+        'leg_ids': ('SMOKE-IN', 'SMOKE-OUT'),
+        'spare_tail_candidates': ('5Y-AX9',),
+    })
     schema = airline_operations_control_build_schema_contract()
     service = airline_operations_control_build_service_contract()
     release = airline_operations_control_build_release_evidence()
-    workbench = airline_operations_control_build_workbench_view()
+    workbench = airline_operations_control_build_workbench_view(rotation['state'], tenant='tenant-smoke')
     boundary = airline_operations_control_verify_owned_table_boundary(AIRLINE_OPERATIONS_CONTROL_OWNED_TABLES + ('foreign_table',))
     domain = domain_depth_contract()
     checks = (
@@ -244,10 +315,12 @@ def airline_operations_control_runtime_smoke():
         {'id': 'idempotent_duplicate', 'ok': duplicate.get('duplicate') is True},
         {'id': 'dead_letter_retry', 'ok': dead['ok'] is False and bool(dead.get('dead_letter_table'))},
         {'id': 'command_flight_leg', 'ok': command['ok']},
+        {'id': 'record_aircraft_rotation', 'ok': rotation['ok']},
         {'id': 'build_schema_contract', 'ok': schema['ok']},
         {'id': 'build_service_contract', 'ok': service['ok']},
         {'id': 'build_release_evidence', 'ok': release['ok']},
-        {'id': 'build_workbench_view', 'ok': workbench['ok']},
+        {'id': 'build_workbench_view', 'ok': workbench['ok'] and workbench['workbench']['metrics']['flight_leg_count'] == 2},
+        {'id': 'minimum_turn_watchlist', 'ok': workbench['workbench']['metrics']['broken_turn_count'] == 1},
         {'id': 'owned_boundary_rejects_foreign_table', 'ok': boundary['ok'] is False},
         {'id': 'domain_depth', 'ok': domain['ok']},
     ) + tuple({'id': capability, 'ok': True} for capability in AIRLINE_OPERATIONS_CONTROL_RUNTIME_CAPABILITY_KEYS)

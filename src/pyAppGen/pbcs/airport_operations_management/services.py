@@ -1,9 +1,11 @@
 """Service layer for the airport_operations_management PBC."""
+from .compatibility import build_gate_assignment_decision
+from .domain_depth import DOMAIN_OPERATIONS as DOMAIN_DEPTH_COMMAND_OPERATIONS, DOMAIN_OWNED_TABLES as DOMAIN_DEPTH_OWNED_TABLES, execute_domain_operation as execute_domain_depth_operation
+
 PBC_KEY = 'airport_operations_management'
 EVENT_CONTRACT = {'outbox_table': f'{PBC_KEY}_appgen_outbox_event', 'inbox_table': f'{PBC_KEY}_appgen_inbox_event', 'dead_letter_table': f'{PBC_KEY}_appgen_dead_letter_event', 'event_contract': 'AppGen-X'}
-from .domain_depth import DOMAIN_OPERATIONS as DOMAIN_DEPTH_COMMAND_OPERATIONS, DOMAIN_OWNED_TABLES as DOMAIN_DEPTH_OWNED_TABLES, execute_domain_operation as execute_domain_depth_operation
 COMMAND_OPERATIONS = tuple(dict.fromkeys(('command_gate_assignment','configure_runtime','set_parameter','register_rule') + tuple(DOMAIN_DEPTH_COMMAND_OPERATIONS)))
-QUERY_OPERATIONS = ('query_workbench',)
+QUERY_OPERATIONS = ('query_workbench','evaluate_gate_assignment_compatibility')
 OWNED_TABLES = DOMAIN_DEPTH_OWNED_TABLES
 
 def _operation_contract(name, kind):
@@ -26,6 +28,13 @@ class AirportOperationsManagementService:
         contract = _operation_contract(name, 'command')
         return {'ok': True, 'operation': name, 'operation_kind': 'command', 'read_only': False, 'payload': dict(payload), 'operation_contract': contract, 'outbox_table': EVENT_CONTRACT['outbox_table'], 'emits': (contract['emitted_event'],), 'transaction_boundary': 'owned_datastore_plus_outbox', 'side_effects': ()}
     def _query(self, name, payload):
+        if name == 'evaluate_gate_assignment_compatibility':
+            plan = build_gate_assignment_decision(
+                payload.get('request', payload),
+                stands=payload.get('candidate_stands'),
+                occupied_stands=payload.get('occupied_stands', ()),
+            )
+            return {'ok': plan['ok'], 'operation': name, 'operation_kind': 'query', 'read_only': True, 'payload': dict(payload), 'operation_contract': _operation_contract(name, 'query'), 'outbox_table': None, 'emits': (), 'compatibility_plan': plan, 'event_contract': 'AppGen-X', 'side_effects': ()}
         contract = _operation_contract(name, 'query')
         return {'ok': True, 'operation': name, 'operation_kind': 'query', 'read_only': True, 'payload': dict(payload), 'operation_contract': contract, 'outbox_table': None, 'emits': (), 'side_effects': ()}
 

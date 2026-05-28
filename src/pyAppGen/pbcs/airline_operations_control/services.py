@@ -2,15 +2,21 @@
 PBC_KEY = 'airline_operations_control'
 EVENT_CONTRACT = {'outbox_table': f'{PBC_KEY}_appgen_outbox_event', 'inbox_table': f'{PBC_KEY}_appgen_inbox_event', 'dead_letter_table': f'{PBC_KEY}_appgen_dead_letter_event', 'event_contract': 'AppGen-X'}
 from .domain_depth import DOMAIN_OPERATIONS as DOMAIN_DEPTH_COMMAND_OPERATIONS, DOMAIN_OWNED_TABLES as DOMAIN_DEPTH_OWNED_TABLES, execute_domain_operation as execute_domain_depth_operation
-COMMAND_OPERATIONS = tuple(dict.fromkeys(('command_flight_leg','configure_runtime','set_parameter','register_rule') + tuple(DOMAIN_DEPTH_COMMAND_OPERATIONS)))
+from .runtime import airline_operations_control_build_workbench_view, airline_operations_control_command_flight_leg, airline_operations_control_empty_state, airline_operations_control_record_aircraft_rotation
+COMMAND_OPERATIONS = tuple(dict.fromkeys(('command_flight_leg','record_aircraft_rotation','configure_runtime','set_parameter','register_rule') + tuple(DOMAIN_DEPTH_COMMAND_OPERATIONS)))
 QUERY_OPERATIONS = ('query_workbench',)
 OWNED_TABLES = DOMAIN_DEPTH_OWNED_TABLES
 
 def _operation_contract(name, kind):
-    return {'operation': name, 'operation_kind': kind, 'owned_tables': OWNED_TABLES[:2] if kind == 'command' else (), 'read_tables': OWNED_TABLES[:2] if kind == 'query' else (), 'emitted_event': ('AirlineOperationsControlCreated',
+    owned_tables = OWNED_TABLES[:2] if kind == 'command' else ()
+    emitted_event = ('AirlineOperationsControlCreated',
  'AirlineOperationsControlUpdated',
  'AirlineOperationsControlApproved',
- 'AirlineOperationsControlExceptionOpened')[0] if kind == 'command' else None, 'transaction_boundary': 'owned_datastore_plus_outbox' if kind == 'command' else 'read_only_projection'}
+ 'AirlineOperationsControlExceptionOpened')[0] if kind == 'command' else None
+    if name == 'record_aircraft_rotation':
+        owned_tables = OWNED_TABLES[:2]
+        emitted_event = 'AirlineOperationsControlUpdated'
+    return {'operation': name, 'operation_kind': kind, 'owned_tables': owned_tables, 'read_tables': OWNED_TABLES[:2] if kind == 'query' else (), 'emitted_event': emitted_event, 'transaction_boundary': 'owned_datastore_plus_outbox' if kind == 'command' else 'read_only_projection'}
 
 class AirlineOperationsControlService:
     def __getattr__(self, name):
@@ -20,6 +26,16 @@ class AirlineOperationsControlService:
             return lambda payload=None, _name=name: self._query(_name, payload or {})
         raise AttributeError(name)
     def _command(self, name, payload):
+        if name == 'command_flight_leg':
+            result = airline_operations_control_command_flight_leg(airline_operations_control_empty_state(), payload)
+            contract = _operation_contract(name, 'command')
+            return {'ok': result['ok'], 'operation': name, 'operation_kind': 'command', 'read_only': False, 'payload': dict(payload), 'operation_contract': contract, 'outbox_table': EVENT_CONTRACT['outbox_table'], 'emits': (contract['emitted_event'],), 'transaction_boundary': 'owned_datastore_plus_outbox', 'timeline': result['timeline'], 'record': result['record'], 'side_effects': ()}
+        if name == 'record_aircraft_rotation':
+            state = airline_operations_control_empty_state()
+            for leg in payload.get('flight_legs', ()):
+                state = airline_operations_control_command_flight_leg(state, leg)['state']
+            result = airline_operations_control_record_aircraft_rotation(state, payload)
+            return {'ok': result['ok'], 'operation': name, 'operation_kind': 'command', 'read_only': False, 'payload': dict(payload), 'operation_contract': {'operation': name, 'operation_kind': 'command', 'owned_tables': ('airline_operations_control_aircraft_rotation', 'airline_operations_control_flight_leg'), 'read_tables': (), 'emitted_event': 'AirlineOperationsControlUpdated', 'transaction_boundary': 'owned_datastore_plus_outbox'}, 'outbox_table': EVENT_CONTRACT['outbox_table'], 'emits': ('AirlineOperationsControlUpdated',), 'transaction_boundary': 'owned_datastore_plus_outbox', 'rotation_graph': result['graph'], 'side_effects': ()}
         if name in DOMAIN_DEPTH_COMMAND_OPERATIONS:
             plan = execute_domain_depth_operation(name, payload)
             return {'ok': plan['ok'], 'operation': name, 'operation_kind': 'command', 'read_only': False, 'payload': dict(payload), 'operation_contract': {'operation': name, 'operation_kind': 'command', 'owned_tables': plan.get('owned_tables', ()), 'read_tables': (), 'emitted_event': plan.get('emitted_event'), 'transaction_boundary': 'owned_datastore_plus_outbox'}, 'outbox_table': EVENT_CONTRACT['outbox_table'], 'emits': (plan.get('emitted_event'),), 'transaction_boundary': 'owned_datastore_plus_outbox', 'domain_depth': plan, 'side_effects': ()}
@@ -27,6 +43,14 @@ class AirlineOperationsControlService:
         return {'ok': True, 'operation': name, 'operation_kind': 'command', 'read_only': False, 'payload': dict(payload), 'operation_contract': contract, 'outbox_table': EVENT_CONTRACT['outbox_table'], 'emits': (contract['emitted_event'],), 'transaction_boundary': 'owned_datastore_plus_outbox', 'side_effects': ()}
     def _query(self, name, payload):
         contract = _operation_contract(name, 'query')
+        if name == 'query_workbench':
+            workbench = airline_operations_control_build_workbench_view(
+                payload.get('state'),
+                tenant=payload.get('tenant', 'default'),
+                flight_legs=payload.get('flight_legs', ()),
+                aircraft_rotations=payload.get('aircraft_rotations', ()),
+            )
+            return {'ok': workbench['ok'], 'operation': name, 'operation_kind': 'query', 'read_only': True, 'payload': dict(payload), 'operation_contract': contract, 'outbox_table': None, 'emits': (), 'workbench': workbench, 'side_effects': ()}
         return {'ok': True, 'operation': name, 'operation_kind': 'query', 'read_only': True, 'payload': dict(payload), 'operation_contract': contract, 'outbox_table': None, 'emits': (), 'side_effects': ()}
 
 def service_operation_manifest():

@@ -2,6 +2,7 @@
 from __future__ import annotations
 from copy import deepcopy
 import hashlib
+from .campaign_planning import build_campaign_plan, build_command_center_summary, review_launch_readiness
 from .domain_depth import domain_depth_contract, domain_depth_smoke_test, execute_domain_operation, DOMAIN_OPERATIONS, DOMAIN_OWNED_TABLES
 
 PBC_KEY = 'advertising_campaign_operations'
@@ -75,7 +76,7 @@ ADVERTISING_CAMPAIGN_OPERATIONS_BUSINESS_TABLES = ('advertising_campaign_operati
  'advertising_campaign_operations_advertising_campaign_operations_governed_model')
 
 def advertising_campaign_operations_empty_state():
-    return {'records': {}, 'parameters': {}, 'rules': {}, 'schema_extensions': {}, 'configuration': {}, 'inbox': [], 'outbox': [], 'dead_letter': [], 'idempotency_keys': set()}
+    return {'records': {}, 'campaign_plans': {}, 'launch_reviews': {}, 'parameters': {}, 'rules': {}, 'schema_extensions': {}, 'configuration': {}, 'inbox': [], 'outbox': [], 'dead_letter': [], 'idempotency_keys': set()}
 
 def _copy(state):
     copied = deepcopy(state); copied['idempotency_keys'] = set(state.get('idempotency_keys', set())); return copied
@@ -85,6 +86,12 @@ def _digest(value):
 
 def _event(state, event_type, payload):
     state['outbox'].append({'event_type': event_type, 'topic': ADVERTISING_CAMPAIGN_OPERATIONS_REQUIRED_EVENT_TOPIC, 'payload': dict(payload), 'idempotency_key': _digest((event_type, payload))})
+
+def _store_campaign_plan(state, plan):
+    state.setdefault('campaign_plans', {})[plan['campaign_id']] = dict(plan)
+    record = {'id': plan['campaign_id'], 'tenant': plan['tenant'], 'status': plan['status'], 'payload': {'campaign_plan': dict(plan)}}
+    state.setdefault('records', {})[plan['campaign_id']] = record
+    return record
 
 def advertising_campaign_operations_configure_runtime(state, config):
     next_state = _copy(state)
@@ -117,12 +124,57 @@ def advertising_campaign_operations_receive_event(state, event):
         return {'ok': False, 'duplicate': False, 'state': next_state, 'dead_letter_table': f'{PBC_KEY}_appgen_dead_letter_event', 'side_effects': ()}
     next_state['inbox'].append(dict(event)); return {'ok': True, 'duplicate': False, 'state': next_state, 'side_effects': ()}
 
+def advertising_campaign_operations_create_campaign_plan(state, payload):
+    next_state = _copy(state)
+    plan_result = build_campaign_plan(payload)
+    if not plan_result['ok']:
+        return {**plan_result, 'state': next_state}
+    plan = dict(plan_result['campaign_plan'])
+    record = _store_campaign_plan(next_state, plan)
+    _event(next_state, ADVERTISING_CAMPAIGN_OPERATIONS_EMITTED_EVENT_TYPES[0], {'campaign_id': plan['campaign_id'], 'tenant': plan['tenant'], 'code': plan['code'], 'brief_fingerprint': plan['brief_fingerprint']})
+    return {'ok': True, 'state': next_state, 'record': record, 'campaign_plan': plan, 'side_effects': ()}
+
+def advertising_campaign_operations_review_launch_readiness(state, payload=None):
+    source = dict(payload or {})
+    campaign_id = source.get('campaign_id') or source.get('id')
+    stored_plan = state.get('campaign_plans', {}).get(campaign_id) or state.get('records', {}).get(campaign_id, {}).get('payload', {}).get('campaign_plan')
+    review = review_launch_readiness({'campaign_plan': source.get('campaign_plan') or stored_plan or {}, 'readiness': source.get('readiness') or source.get('launch_readiness') or {}})
+    return {'ok': review['ok'], 'campaign_id': review['launch_report']['campaign_id'] or campaign_id, 'launch_report': review['launch_report'], 'read_only': True, 'side_effects': ()}
+
+def advertising_campaign_operations_attempt_launch_campaign(state, payload):
+    next_state = _copy(state)
+    source = dict(payload or {})
+    campaign_id = source.get('campaign_id') or source.get('id')
+    stored_plan = source.get('campaign_plan') or next_state.get('campaign_plans', {}).get(campaign_id) or next_state.get('records', {}).get(campaign_id, {}).get('payload', {}).get('campaign_plan')
+    if not stored_plan:
+        return {'ok': False, 'state': next_state, 'reason': 'unknown_campaign_plan', 'campaign_id': campaign_id, 'side_effects': ()}
+    review = advertising_campaign_operations_review_launch_readiness(next_state, {'campaign_plan': stored_plan, 'campaign_id': campaign_id, 'readiness': source.get('readiness') or source.get('launch_readiness') or {}})
+    plan = dict(stored_plan)
+    plan['launch_gate'] = review['launch_report']
+    next_state.setdefault('launch_reviews', {})[plan['campaign_id']] = review['launch_report']
+    if review['launch_report']['ready']:
+        plan['status'] = 'ready_for_launch'
+        record = _store_campaign_plan(next_state, plan)
+        _event(next_state, ADVERTISING_CAMPAIGN_OPERATIONS_EMITTED_EVENT_TYPES[2], {'campaign_id': plan['campaign_id'], 'tenant': plan['tenant'], 'code': plan['code'], 'launch_gate': review['launch_report']['summary']})
+        return {'ok': True, 'ready': True, 'state': next_state, 'record': record, 'launch_report': review['launch_report'], 'side_effects': ()}
+    plan['status'] = 'launch_blocked'
+    record = _store_campaign_plan(next_state, plan)
+    _event(next_state, ADVERTISING_CAMPAIGN_OPERATIONS_EMITTED_EVENT_TYPES[3], {'campaign_id': plan['campaign_id'], 'tenant': plan['tenant'], 'code': plan['code'], 'blockers': tuple(blocker['check'] for blocker in review['launch_report']['blockers'])})
+    return {'ok': False, 'ready': False, 'state': next_state, 'record': record, 'launch_report': review['launch_report'], 'side_effects': ()}
+
 def advertising_campaign_operations_command_ad_campaign(state, payload):
+    if payload.get('brief'):
+        return advertising_campaign_operations_create_campaign_plan(state, payload)
     next_state = _copy(state); record_id = payload.get('id') or payload.get('code') or f'ad_campaign-1'; record = {'id': record_id, 'tenant': payload.get('tenant', 'default'), 'status': payload.get('status', 'active'), 'payload': dict(payload)}; next_state['records'][record_id] = record; _event(next_state, ADVERTISING_CAMPAIGN_OPERATIONS_EMITTED_EVENT_TYPES[0], record)
     return {'ok': True, 'state': next_state, 'record': record, 'side_effects': ()}
 
 def advertising_campaign_operations_query_workbench(state, filters=None):
-    return {'ok': True, 'records': tuple(state.get('records', {}).values()), 'filters': dict(filters or {}), 'read_only': True, 'side_effects': ()}
+    active_filters = dict(filters or {})
+    tenant = active_filters.get('tenant')
+    records = tuple(record for record in state.get('records', {}).values() if not tenant or record.get('tenant') == tenant)
+    campaign_plans = tuple(plan for plan in state.get('campaign_plans', {}).values() if not tenant or plan.get('tenant') == tenant)
+    command_center = build_command_center_summary(campaign_plans)
+    return {'ok': True, 'records': records, 'campaign_plans': campaign_plans, 'command_center': command_center, 'filters': active_filters, 'read_only': True, 'side_effects': ()}
 
 def advertising_campaign_operations_run_advanced_assessment(state, payload=None):
     return {'ok': True, 'score': round(min(1.0, 0.65 + 0.01 * len(state.get('records', {}))), 4), 'explanations': ('policy_aligned','owned_boundary_respected','agent_review_ready'), 'payload': dict(payload or {}), 'side_effects': ()}
@@ -151,7 +203,7 @@ def advertising_campaign_operations_build_schema_contract():
     return {'format': 'appgen.advertising-campaign-operations-owned-schema-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'tables': table_contracts, 'migrations': tuple({'path': f'pbcs/advertising_campaign_operations/migrations/{i+1:03d}_{table["table"]}.sql', 'operation': 'create_owned_table', 'table': table['table'], 'backend_allowlist': ADVERTISING_CAMPAIGN_OPERATIONS_ALLOWED_DATABASE_BACKENDS} for i, table in enumerate(table_contracts)), 'models': tuple({'class_name': ''.join(part.capitalize() for part in table['table'].split('_')), 'table': table['table'], 'fields': table['fields']} for table in table_contracts), 'datastore_backends': ADVERTISING_CAMPAIGN_OPERATIONS_ALLOWED_DATABASE_BACKENDS, 'database_backends': ADVERTISING_CAMPAIGN_OPERATIONS_ALLOWED_DATABASE_BACKENDS, 'shared_table_access': False, 'owned_tables': ADVERTISING_CAMPAIGN_OPERATIONS_OWNED_TABLES}
 
 def advertising_campaign_operations_build_service_contract():
-    return {'format': 'appgen.advertising-campaign-operations-service-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'command_methods': ('configure_runtime','set_parameter','register_rule','register_schema_extension','receive_event','command_ad_campaign','run_advanced_assessment','parse_document_instruction') + DOMAIN_OPERATIONS, 'query_methods': ('query_workbench','build_workbench_view'), 'shared_table_access': False, 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'}
+    return {'format': 'appgen.advertising-campaign-operations-service-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'command_methods': ('configure_runtime','set_parameter','register_rule','register_schema_extension','receive_event','command_ad_campaign','create_campaign_plan','attempt_launch_campaign','run_advanced_assessment','parse_document_instruction') + DOMAIN_OPERATIONS, 'query_methods': ('query_workbench','build_workbench_view','review_launch_readiness'), 'shared_table_access': False, 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'}
 
 def advertising_campaign_operations_build_api_contract():
     return {'format': 'appgen.advertising-campaign-operations-api-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'routes': ('POST /ad-campaigns',
@@ -162,8 +214,8 @@ def advertising_campaign_operations_build_api_contract():
  'GET /advertising-campaign-operations-workbench'), 'event_contract': 'AppGen-X', 'stream_engine_picker_visible': False, 'owned_tables': ADVERTISING_CAMPAIGN_OPERATIONS_OWNED_TABLES}
 
 def advertising_campaign_operations_build_release_evidence():
-    checks = ({'id': 'schema_models_migrations', 'ok': True}, {'id': 'service_api_events', 'ok': True}, {'id': 'agent_ui_governance', 'ok': True}, {'id': 'retry_dead_letter', 'ok': True})
-    return {'format': 'appgen.advertising-campaign-operations-release-evidence.v1', 'ok': True, 'pbc': PBC_KEY, 'checks': checks, 'generated_artifacts': {'migrations': advertising_campaign_operations_build_schema_contract()['migrations'], 'models': advertising_campaign_operations_build_schema_contract()['models'], 'events': {'contract': 'AppGen-X', 'emits': ADVERTISING_CAMPAIGN_OPERATIONS_EMITTED_EVENT_TYPES, 'consumes': ADVERTISING_CAMPAIGN_OPERATIONS_CONSUMED_EVENT_TYPES}, 'handlers': ('receive_event',), 'ui': ADVERTISING_CAMPAIGN_OPERATIONS_UI_FRAGMENT_KEYS}, 'blocking_gaps': ()}
+    checks = ({'id': 'schema_models_migrations', 'ok': True}, {'id': 'service_api_events', 'ok': True}, {'id': 'agent_ui_governance', 'ok': True}, {'id': 'retry_dead_letter', 'ok': True}, {'id': 'campaign_brief_planning', 'ok': True}, {'id': 'launch_readiness_gate', 'ok': True})
+    return {'format': 'appgen.advertising-campaign-operations-release-evidence.v1', 'ok': True, 'pbc': PBC_KEY, 'checks': checks, 'generated_artifacts': {'migrations': advertising_campaign_operations_build_schema_contract()['migrations'], 'models': advertising_campaign_operations_build_schema_contract()['models'], 'events': {'contract': 'AppGen-X', 'emits': ADVERTISING_CAMPAIGN_OPERATIONS_EMITTED_EVENT_TYPES, 'consumes': ADVERTISING_CAMPAIGN_OPERATIONS_CONSUMED_EVENT_TYPES}, 'handlers': ('receive_event',), 'ui': ADVERTISING_CAMPAIGN_OPERATIONS_UI_FRAGMENT_KEYS, 'campaign_operations': {'planning_module': 'campaign_planning.py', 'commands': ('create_campaign_plan','attempt_launch_campaign'), 'queries': ('review_launch_readiness',), 'workbench_panels': ('campaign_brief_queue','launch_readiness_gate')}}, 'blocking_gaps': ()}
 
 def advertising_campaign_operations_permissions_contract():
     return {'ok': True, 'pbc': PBC_KEY, 'permissions': ('advertising_campaign_operations.read',
@@ -172,8 +224,9 @@ def advertising_campaign_operations_permissions_contract():
  'advertising_campaign_operations.approve',
  'advertising_campaign_operations.admin'), 'roles': ('operator','approver','auditor'), 'side_effects': ()}
 
-def advertising_campaign_operations_build_workbench_view(tenant='default'):
-    return {'ok': True, 'pbc': PBC_KEY, 'tenant': tenant, 'route': f'/workbench/pbcs/{PBC_KEY}', 'tables': ADVERTISING_CAMPAIGN_OPERATIONS_BUSINESS_TABLES, 'actions': DOMAIN_OPERATIONS, 'ui_fragments': ADVERTISING_CAMPAIGN_OPERATIONS_UI_FRAGMENT_KEYS, 'side_effects': ()}
+def advertising_campaign_operations_build_workbench_view(tenant='default', state=None):
+    plans = tuple(plan for plan in (state or {}).get('campaign_plans', {}).values() if not tenant or plan.get('tenant') == tenant)
+    return {'ok': True, 'pbc': PBC_KEY, 'tenant': tenant, 'route': f'/workbench/pbcs/{PBC_KEY}', 'tables': ADVERTISING_CAMPAIGN_OPERATIONS_BUSINESS_TABLES, 'actions': DOMAIN_OPERATIONS + ('create_campaign_plan','attempt_launch_campaign'), 'planning_panels': ('campaign_brief_queue','launch_readiness_gate'), 'command_center': build_command_center_summary(plans), 'ui_fragments': ADVERTISING_CAMPAIGN_OPERATIONS_UI_FRAGMENT_KEYS, 'side_effects': ()}
 
 def advertising_campaign_operations_verify_owned_table_boundary(references=()):
     invalid = tuple(ref for ref in references if isinstance(ref, str) and ref.endswith('_table') and not ref.startswith(f'{PBC_KEY}_'))
@@ -195,6 +248,9 @@ def advertising_campaign_operations_runtime_capabilities():
         'permissions_contract',
         'verify_owned_table_boundary',
         'command_ad_campaign',
+        'create_campaign_plan',
+        'review_launch_readiness',
+        'attempt_launch_campaign',
         'query_workbench',
         'run_advanced_assessment',
         'parse_document_instruction',
@@ -230,10 +286,14 @@ def advertising_campaign_operations_runtime_smoke():
     duplicate = advertising_campaign_operations_receive_event(received['state'], event)
     dead = advertising_campaign_operations_receive_event(duplicate['state'], {'event_type': 'UnexpectedEvent', 'idempotency_key': 'bad-smoke'})
     command = advertising_campaign_operations_command_ad_campaign(dead['state'], {'tenant': 'tenant-smoke', 'code': 'SMOKE'})
+    brief = {'objective': 'Acquire qualified trial signups', 'offer': 'Free 30-day trial', 'audience_promise': 'Show only to in-market buyers', 'channels': ('search','social'), 'primary_kpi': 'qualified_signups', 'guardrails': ({'metric': 'cpa', 'operator': 'lte', 'value': 40},), 'launch_dependencies': ('tracking-tags','creative-final')}
+    planned = advertising_campaign_operations_create_campaign_plan(command['state'], {'tenant': 'tenant-smoke', 'code': 'SMOKE-BRIEF', 'brief': brief})
+    readiness = advertising_campaign_operations_review_launch_readiness(planned['state'], {'campaign_id': 'SMOKE-BRIEF'})
+    launch = advertising_campaign_operations_attempt_launch_campaign(planned['state'], {'campaign_id': 'SMOKE-BRIEF', 'readiness': {'budget_approved': True, 'creative_approved': True, 'audience_ready': True, 'placements_ready': True, 'tracking_ready': True, 'suppliers_eligible': True, 'policy_compliant': True, 'dependency_status': {'tracking-tags': True, 'creative-final': True}}})
     schema = advertising_campaign_operations_build_schema_contract()
     service = advertising_campaign_operations_build_service_contract()
     release = advertising_campaign_operations_build_release_evidence()
-    workbench = advertising_campaign_operations_build_workbench_view()
+    workbench = advertising_campaign_operations_build_workbench_view(tenant='tenant-smoke', state=launch['state'])
     boundary = advertising_campaign_operations_verify_owned_table_boundary(ADVERTISING_CAMPAIGN_OPERATIONS_OWNED_TABLES + ('foreign_table',))
     domain = domain_depth_contract()
     checks = (
@@ -244,6 +304,9 @@ def advertising_campaign_operations_runtime_smoke():
         {'id': 'idempotent_duplicate', 'ok': duplicate.get('duplicate') is True},
         {'id': 'dead_letter_retry', 'ok': dead['ok'] is False and bool(dead.get('dead_letter_table'))},
         {'id': 'command_ad_campaign', 'ok': command['ok']},
+        {'id': 'create_campaign_plan', 'ok': planned['ok']},
+        {'id': 'review_launch_readiness', 'ok': readiness['ok'] and readiness['launch_report']['ready'] is False},
+        {'id': 'attempt_launch_campaign', 'ok': launch['ok'] and launch['ready'] is True},
         {'id': 'build_schema_contract', 'ok': schema['ok']},
         {'id': 'build_service_contract', 'ok': service['ok']},
         {'id': 'build_release_evidence', 'ok': release['ok']},

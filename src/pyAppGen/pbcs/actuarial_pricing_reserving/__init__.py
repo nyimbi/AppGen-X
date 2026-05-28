@@ -3,6 +3,21 @@ from .manifest import PBC_MANIFEST
 from ..source_contract import source_pbc_package_contract, source_package_metadata, validate_source_package_metadata, source_registration_plan
 from .runtime import *
 from .ui import actuarial_pricing_reserving_ui_contract, actuarial_pricing_reserving_render_workbench
+from .actuarial_engine import (
+    activate_rating_model,
+    actuarial_engine_release_evidence,
+    assumption_impact_analysis,
+    calculate_development_factors,
+    calculate_premium_trace,
+    chain_ladder_reserve,
+    expected_loss_reserve,
+    reserve_rollforward,
+    select_active_assumption,
+    select_rating_model,
+    validate_experience_study,
+    validate_loss_triangle,
+    validate_rating_model,
+)
 
 PBC_KEY = 'actuarial_pricing_reserving'
 

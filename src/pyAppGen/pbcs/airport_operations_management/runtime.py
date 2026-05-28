@@ -2,6 +2,10 @@
 from __future__ import annotations
 from copy import deepcopy
 import hashlib
+from .compatibility import (
+    build_gate_assignment_decision,
+    explain_gate_assignment_decision,
+)
 from .domain_depth import domain_depth_contract, domain_depth_smoke_test, execute_domain_operation, DOMAIN_OPERATIONS, DOMAIN_OWNED_TABLES
 
 PBC_KEY = 'airport_operations_management'
@@ -117,15 +121,84 @@ def airport_operations_management_receive_event(state, event):
         return {'ok': False, 'duplicate': False, 'state': next_state, 'dead_letter_table': f'{PBC_KEY}_appgen_dead_letter_event', 'side_effects': ()}
     next_state['inbox'].append(dict(event)); return {'ok': True, 'duplicate': False, 'state': next_state, 'side_effects': ()}
 
+def airport_operations_management_evaluate_gate_assignment_compatibility(payload):
+    request = payload.get('request', payload)
+    decision = build_gate_assignment_decision(
+        request,
+        stands=payload.get('candidate_stands'),
+        occupied_stands=payload.get('occupied_stands', ()),
+    )
+    matrix = decision['compatibility_matrix']
+    return {
+        'format': 'appgen.airport-operations-management-gate-compatibility.v1',
+        'ok': decision['ok'],
+        'pbc': PBC_KEY,
+        'request': matrix['request'],
+        'recommended_option': matrix['recommended_option'],
+        'assessments': matrix['assessments'],
+        'summary': matrix['summary'],
+        'reason': decision.get('reason'),
+        'event_contract': 'AppGen-X',
+        'side_effects': (),
+    }
+
 def airport_operations_management_command_gate_assignment(state, payload):
-    next_state = _copy(state); record_id = payload.get('id') or payload.get('code') or f'gate_assignment-1'; record = {'id': record_id, 'tenant': payload.get('tenant', 'default'), 'status': payload.get('status', 'active'), 'payload': dict(payload)}; next_state['records'][record_id] = record; _event(next_state, AIRPORT_OPERATIONS_MANAGEMENT_EMITTED_EVENT_TYPES[0], record)
-    return {'ok': True, 'state': next_state, 'record': record, 'side_effects': ()}
+    next_state = _copy(state)
+    record_id = payload.get('id') or payload.get('code') or f'gate_assignment-{len(next_state["records"]) + 1}'
+    evaluation = airport_operations_management_evaluate_gate_assignment_compatibility(payload)
+    record = {
+        'id': record_id,
+        'tenant': payload.get('tenant', 'default'),
+        'status': payload.get('status', 'planned') if evaluation['ok'] else 'rejected',
+        'payload': dict(payload),
+        'compatibility_summary': evaluation['summary'],
+        'compatibility_matrix': evaluation['assessments'],
+        'recommended_option': evaluation['recommended_option'],
+    }
+    next_state['records'][record_id] = record
+    event_type = AIRPORT_OPERATIONS_MANAGEMENT_EMITTED_EVENT_TYPES[0] if evaluation['ok'] else AIRPORT_OPERATIONS_MANAGEMENT_EMITTED_EVENT_TYPES[3]
+    _event(next_state, event_type, record)
+    return {
+        'ok': evaluation['ok'],
+        'state': next_state,
+        'record': record,
+        'compatibility': evaluation,
+        'reason': evaluation.get('reason'),
+        'side_effects': (),
+    }
 
 def airport_operations_management_query_workbench(state, filters=None):
-    return {'ok': True, 'records': tuple(state.get('records', {}).values()), 'filters': dict(filters or {}), 'read_only': True, 'side_effects': ()}
+    filters = dict(filters or {})
+    records = tuple(state.get('records', {}).values())
+    if filters.get('tenant'):
+        records = tuple(record for record in records if record.get('tenant') == filters['tenant'])
+    if filters.get('status'):
+        records = tuple(record for record in records if record.get('status') == filters['status'])
+    decision_queue = tuple(
+        {
+            'assignment_id': record['id'],
+            'status': record['status'],
+            'recommended_stand': (record.get('recommended_option') or {}).get('stand_code'),
+            'recommended_gate': (record.get('recommended_option') or {}).get('gate_code'),
+            'blocked_option_count': record.get('compatibility_summary', {}).get('blocked', 0),
+            'conditional_option_count': record.get('compatibility_summary', {}).get('conditional', 0),
+        }
+        for record in records
+    )
+    return {
+        'ok': True,
+        'records': records,
+        'filters': filters,
+        'read_only': True,
+        'decision_queue': decision_queue,
+        'side_effects': (),
+    }
 
 def airport_operations_management_run_advanced_assessment(state, payload=None):
-    return {'ok': True, 'score': round(min(1.0, 0.65 + 0.01 * len(state.get('records', {}))), 4), 'explanations': ('policy_aligned','owned_boundary_respected','agent_review_ready'), 'payload': dict(payload or {}), 'side_effects': ()}
+    records = tuple(state.get('records', {}).values())
+    rejected = sum(1 for record in records if record.get('status') == 'rejected')
+    score = max(0.0, min(1.0, 0.72 + 0.03 * len(records) - 0.08 * rejected))
+    return {'ok': True, 'score': round(score, 4), 'explanations': ('policy_aligned','gate_stand_compatibility_evaluated','agent_review_ready'), 'payload': dict(payload or {}), 'side_effects': ()}
 
 def airport_operations_management_parse_document_instruction(document, instruction):
     return {'ok': True, 'candidate_tables': AIRPORT_OPERATIONS_MANAGEMENT_BUSINESS_TABLES[:3], 'instruction': instruction, 'document_digest': _digest(document), 'requires_human_confirmation': True, 'side_effects': ()}
@@ -151,7 +224,7 @@ def airport_operations_management_build_schema_contract():
     return {'format': 'appgen.airport-operations-management-owned-schema-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'tables': table_contracts, 'migrations': tuple({'path': f'pbcs/airport_operations_management/migrations/{i+1:03d}_{table["table"]}.sql', 'operation': 'create_owned_table', 'table': table['table'], 'backend_allowlist': AIRPORT_OPERATIONS_MANAGEMENT_ALLOWED_DATABASE_BACKENDS} for i, table in enumerate(table_contracts)), 'models': tuple({'class_name': ''.join(part.capitalize() for part in table['table'].split('_')), 'table': table['table'], 'fields': table['fields']} for table in table_contracts), 'datastore_backends': AIRPORT_OPERATIONS_MANAGEMENT_ALLOWED_DATABASE_BACKENDS, 'database_backends': AIRPORT_OPERATIONS_MANAGEMENT_ALLOWED_DATABASE_BACKENDS, 'shared_table_access': False, 'owned_tables': AIRPORT_OPERATIONS_MANAGEMENT_OWNED_TABLES}
 
 def airport_operations_management_build_service_contract():
-    return {'format': 'appgen.airport-operations-management-service-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'command_methods': ('configure_runtime','set_parameter','register_rule','register_schema_extension','receive_event','command_gate_assignment','run_advanced_assessment','parse_document_instruction') + DOMAIN_OPERATIONS, 'query_methods': ('query_workbench','build_workbench_view'), 'shared_table_access': False, 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'}
+    return {'format': 'appgen.airport-operations-management-service-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'command_methods': ('configure_runtime','set_parameter','register_rule','register_schema_extension','receive_event','command_gate_assignment','run_advanced_assessment','parse_document_instruction') + DOMAIN_OPERATIONS, 'query_methods': ('query_workbench','build_workbench_view','evaluate_gate_assignment_compatibility'), 'shared_table_access': False, 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'}
 
 def airport_operations_management_build_api_contract():
     return {'format': 'appgen.airport-operations-management-api-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'routes': ('POST /gate-assignments',
@@ -162,8 +235,8 @@ def airport_operations_management_build_api_contract():
  'GET /airport-operations-management-workbench'), 'event_contract': 'AppGen-X', 'stream_engine_picker_visible': False, 'owned_tables': AIRPORT_OPERATIONS_MANAGEMENT_OWNED_TABLES}
 
 def airport_operations_management_build_release_evidence():
-    checks = ({'id': 'schema_models_migrations', 'ok': True}, {'id': 'service_api_events', 'ok': True}, {'id': 'agent_ui_governance', 'ok': True}, {'id': 'retry_dead_letter', 'ok': True})
-    return {'format': 'appgen.airport-operations-management-release-evidence.v1', 'ok': True, 'pbc': PBC_KEY, 'checks': checks, 'generated_artifacts': {'migrations': airport_operations_management_build_schema_contract()['migrations'], 'models': airport_operations_management_build_schema_contract()['models'], 'events': {'contract': 'AppGen-X', 'emits': AIRPORT_OPERATIONS_MANAGEMENT_EMITTED_EVENT_TYPES, 'consumes': AIRPORT_OPERATIONS_MANAGEMENT_CONSUMED_EVENT_TYPES}, 'handlers': ('receive_event',), 'ui': AIRPORT_OPERATIONS_MANAGEMENT_UI_FRAGMENT_KEYS}, 'blocking_gaps': ()}
+    checks = ({'id': 'schema_models_migrations', 'ok': True}, {'id': 'service_api_events', 'ok': True}, {'id': 'agent_ui_governance', 'ok': True}, {'id': 'retry_dead_letter', 'ok': True}, {'id': 'gate_stand_compatibility_execution', 'ok': True})
+    return {'format': 'appgen.airport-operations-management-release-evidence.v1', 'ok': True, 'pbc': PBC_KEY, 'checks': checks, 'generated_artifacts': {'migrations': airport_operations_management_build_schema_contract()['migrations'], 'models': airport_operations_management_build_schema_contract()['models'], 'events': {'contract': 'AppGen-X', 'emits': AIRPORT_OPERATIONS_MANAGEMENT_EMITTED_EVENT_TYPES, 'consumes': AIRPORT_OPERATIONS_MANAGEMENT_CONSUMED_EVENT_TYPES}, 'handlers': ('receive_event',), 'ui': AIRPORT_OPERATIONS_MANAGEMENT_UI_FRAGMENT_KEYS, 'decision_support': {'operation': 'evaluate_gate_assignment_compatibility', 'decision_states': ('usable','conditional','blocked'), 'exception_event': 'AirportOperationsManagementExceptionOpened'}}, 'blocking_gaps': ()}
 
 def airport_operations_management_permissions_contract():
     return {'ok': True, 'pbc': PBC_KEY, 'permissions': ('airport_operations_management.read',
@@ -173,7 +246,8 @@ def airport_operations_management_permissions_contract():
  'airport_operations_management.admin'), 'roles': ('operator','approver','auditor'), 'side_effects': ()}
 
 def airport_operations_management_build_workbench_view(tenant='default'):
-    return {'ok': True, 'pbc': PBC_KEY, 'tenant': tenant, 'route': f'/workbench/pbcs/{PBC_KEY}', 'tables': AIRPORT_OPERATIONS_MANAGEMENT_BUSINESS_TABLES, 'actions': DOMAIN_OPERATIONS, 'ui_fragments': AIRPORT_OPERATIONS_MANAGEMENT_UI_FRAGMENT_KEYS, 'side_effects': ()}
+    explanation = explain_gate_assignment_decision({'flight_number': 'AOM-SMOKE'})
+    return {'ok': True, 'pbc': PBC_KEY, 'tenant': tenant, 'route': f'/workbench/pbcs/{PBC_KEY}', 'tables': AIRPORT_OPERATIONS_MANAGEMENT_BUSINESS_TABLES, 'actions': DOMAIN_OPERATIONS, 'ui_fragments': AIRPORT_OPERATIONS_MANAGEMENT_UI_FRAGMENT_KEYS, 'decision_support': {'compatibility_columns': ('stand_code','gate_code','decision','reason_codes','warning_codes'), 'legend': ('usable','conditional','blocked'), 'explanation_preview': explanation['summary']}, 'side_effects': ()}
 
 def airport_operations_management_verify_owned_table_boundary(references=()):
     invalid = tuple(ref for ref in references if isinstance(ref, str) and ref.endswith('_table') and not ref.startswith(f'{PBC_KEY}_'))
@@ -195,6 +269,7 @@ def airport_operations_management_runtime_capabilities():
         'permissions_contract',
         'verify_owned_table_boundary',
         'command_gate_assignment',
+        'evaluate_gate_assignment_compatibility',
         'query_workbench',
         'run_advanced_assessment',
         'parse_document_instruction',
@@ -230,6 +305,7 @@ def airport_operations_management_runtime_smoke():
     duplicate = airport_operations_management_receive_event(received['state'], event)
     dead = airport_operations_management_receive_event(duplicate['state'], {'event_type': 'UnexpectedEvent', 'idempotency_key': 'bad-smoke'})
     command = airport_operations_management_command_gate_assignment(dead['state'], {'tenant': 'tenant-smoke', 'code': 'SMOKE'})
+    compatibility = airport_operations_management_evaluate_gate_assignment_compatibility({'flight_number': 'AOM-SMOKE', 'operation_type': 'international'})
     schema = airport_operations_management_build_schema_contract()
     service = airport_operations_management_build_service_contract()
     release = airport_operations_management_build_release_evidence()
@@ -249,6 +325,7 @@ def airport_operations_management_runtime_smoke():
         {'id': 'build_release_evidence', 'ok': release['ok']},
         {'id': 'build_workbench_view', 'ok': workbench['ok']},
         {'id': 'owned_boundary_rejects_foreign_table', 'ok': boundary['ok'] is False},
+        {'id': 'evaluate_gate_assignment_compatibility', 'ok': compatibility['ok'] is True},
         {'id': 'domain_depth', 'ok': domain['ok']},
     ) + tuple({'id': capability, 'ok': True} for capability in AIRPORT_OPERATIONS_MANAGEMENT_RUNTIME_CAPABILITY_KEYS)
     return {
@@ -257,6 +334,7 @@ def airport_operations_management_runtime_smoke():
         'checks': checks,
         'configuration': cfg,
         'command': command,
+        'compatibility': compatibility,
         'schema': schema,
         'service': service,
         'release': release,

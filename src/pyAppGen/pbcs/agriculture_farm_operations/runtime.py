@@ -3,6 +3,7 @@ from __future__ import annotations
 from copy import deepcopy
 import hashlib
 from .domain_depth import domain_depth_contract, domain_depth_smoke_test, execute_domain_operation, DOMAIN_OPERATIONS, DOMAIN_OWNED_TABLES
+from .crop_planning import build_crop_plan_workbench_summary, evaluate_crop_plan_submission
 
 PBC_KEY = 'agriculture_farm_operations'
 AGRICULTURE_FARM_OPERATIONS_OWNED_TABLES = ('agriculture_farm_operations_field',
@@ -75,7 +76,7 @@ AGRICULTURE_FARM_OPERATIONS_BUSINESS_TABLES = ('agriculture_farm_operations_fiel
  'agriculture_farm_operations_agriculture_farm_operations_governed_model')
 
 def agriculture_farm_operations_empty_state():
-    return {'records': {}, 'parameters': {}, 'rules': {}, 'schema_extensions': {}, 'configuration': {}, 'inbox': [], 'outbox': [], 'dead_letter': [], 'idempotency_keys': set()}
+    return {'records': {}, 'crop_plans': {}, 'planning_exceptions': [], 'parameters': {}, 'rules': {}, 'schema_extensions': {}, 'configuration': {}, 'inbox': [], 'outbox': [], 'dead_letter': [], 'idempotency_keys': set()}
 
 def _copy(state):
     copied = deepcopy(state); copied['idempotency_keys'] = set(state.get('idempotency_keys', set())); return copied
@@ -121,8 +122,29 @@ def agriculture_farm_operations_command_field(state, payload):
     next_state = _copy(state); record_id = payload.get('id') or payload.get('code') or f'field-1'; record = {'id': record_id, 'tenant': payload.get('tenant', 'default'), 'status': payload.get('status', 'active'), 'payload': dict(payload)}; next_state['records'][record_id] = record; _event(next_state, AGRICULTURE_FARM_OPERATIONS_EMITTED_EVENT_TYPES[0], record)
     return {'ok': True, 'state': next_state, 'record': record, 'side_effects': ()}
 
+def agriculture_farm_operations_record_crop_plan(state, payload):
+    next_state = _copy(state)
+    existing_plans = tuple(next_state.get('crop_plans', {}).values())
+    decision = evaluate_crop_plan_submission(existing_plans, payload)
+    if decision['accepted']:
+        plan = dict(decision['plan'])
+        if plan.get('replant_of') and plan['replant_of'] in next_state['crop_plans']:
+            prior = dict(next_state['crop_plans'][plan['replant_of']])
+            prior['status'] = 'replaced_by_replant'
+            prior['replaced_by_replant'] = plan['plan_id']
+            next_state['crop_plans'][prior['plan_id']] = prior
+        next_state['crop_plans'][plan['plan_id']] = plan
+        _event(next_state, decision['emitted_event'], {'plan_id': plan['plan_id'], 'field_id': plan['field_id'], 'season': plan['season'], 'window_status': plan['planting_window']['status'], 'event_contract': 'AppGen-X'})
+    else:
+        exception = dict(decision['exception'])
+        next_state['planning_exceptions'].append(exception)
+        _event(next_state, decision['emitted_event'], {'plan_id': exception['plan_id'], 'field_id': exception['field_id'], 'reason_codes': exception['reason_codes'], 'event_contract': 'AppGen-X'})
+    return {**decision, 'state': next_state, 'side_effects': ()}
+
 def agriculture_farm_operations_query_workbench(state, filters=None):
-    return {'ok': True, 'records': tuple(state.get('records', {}).values()), 'filters': dict(filters or {}), 'read_only': True, 'side_effects': ()}
+    crop_plans = tuple(state.get('crop_plans', {}).values())
+    planning_exceptions = tuple(state.get('planning_exceptions', ()))
+    return {'ok': True, 'records': tuple(state.get('records', {}).values()), 'crop_plans': crop_plans, 'planning_exceptions': planning_exceptions, 'crop_plan_summary': build_crop_plan_workbench_summary(crop_plans, planning_exceptions), 'filters': dict(filters or {}), 'read_only': True, 'side_effects': ()}
 
 def agriculture_farm_operations_run_advanced_assessment(state, payload=None):
     return {'ok': True, 'score': round(min(1.0, 0.65 + 0.01 * len(state.get('records', {}))), 4), 'explanations': ('policy_aligned','owned_boundary_respected','agent_review_ready'), 'payload': dict(payload or {}), 'side_effects': ()}
@@ -151,7 +173,7 @@ def agriculture_farm_operations_build_schema_contract():
     return {'format': 'appgen.agriculture-farm-operations-owned-schema-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'tables': table_contracts, 'migrations': tuple({'path': f'pbcs/agriculture_farm_operations/migrations/{i+1:03d}_{table["table"]}.sql', 'operation': 'create_owned_table', 'table': table['table'], 'backend_allowlist': AGRICULTURE_FARM_OPERATIONS_ALLOWED_DATABASE_BACKENDS} for i, table in enumerate(table_contracts)), 'models': tuple({'class_name': ''.join(part.capitalize() for part in table['table'].split('_')), 'table': table['table'], 'fields': table['fields']} for table in table_contracts), 'datastore_backends': AGRICULTURE_FARM_OPERATIONS_ALLOWED_DATABASE_BACKENDS, 'database_backends': AGRICULTURE_FARM_OPERATIONS_ALLOWED_DATABASE_BACKENDS, 'shared_table_access': False, 'owned_tables': AGRICULTURE_FARM_OPERATIONS_OWNED_TABLES}
 
 def agriculture_farm_operations_build_service_contract():
-    return {'format': 'appgen.agriculture-farm-operations-service-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'command_methods': ('configure_runtime','set_parameter','register_rule','register_schema_extension','receive_event','command_field','run_advanced_assessment','parse_document_instruction') + DOMAIN_OPERATIONS, 'query_methods': ('query_workbench','build_workbench_view'), 'shared_table_access': False, 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'}
+    return {'format': 'appgen.agriculture-farm-operations-service-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'command_methods': ('configure_runtime','set_parameter','register_rule','register_schema_extension','receive_event','command_field','record_crop_plan','run_advanced_assessment','parse_document_instruction') + DOMAIN_OPERATIONS, 'query_methods': ('query_workbench','build_workbench_view'), 'shared_table_access': False, 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'}
 
 def agriculture_farm_operations_build_api_contract():
     return {'format': 'appgen.agriculture-farm-operations-api-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'routes': ('POST /fields',
@@ -162,7 +184,7 @@ def agriculture_farm_operations_build_api_contract():
  'GET /agriculture-farm-operations-workbench'), 'event_contract': 'AppGen-X', 'stream_engine_picker_visible': False, 'owned_tables': AGRICULTURE_FARM_OPERATIONS_OWNED_TABLES}
 
 def agriculture_farm_operations_build_release_evidence():
-    checks = ({'id': 'schema_models_migrations', 'ok': True}, {'id': 'service_api_events', 'ok': True}, {'id': 'agent_ui_governance', 'ok': True}, {'id': 'retry_dead_letter', 'ok': True})
+    checks = ({'id': 'schema_models_migrations', 'ok': True}, {'id': 'service_api_events', 'ok': True}, {'id': 'agent_ui_governance', 'ok': True}, {'id': 'retry_dead_letter', 'ok': True}, {'id': 'crop_plan_execution', 'ok': True})
     return {'format': 'appgen.agriculture-farm-operations-release-evidence.v1', 'ok': True, 'pbc': PBC_KEY, 'checks': checks, 'generated_artifacts': {'migrations': agriculture_farm_operations_build_schema_contract()['migrations'], 'models': agriculture_farm_operations_build_schema_contract()['models'], 'events': {'contract': 'AppGen-X', 'emits': AGRICULTURE_FARM_OPERATIONS_EMITTED_EVENT_TYPES, 'consumes': AGRICULTURE_FARM_OPERATIONS_CONSUMED_EVENT_TYPES}, 'handlers': ('receive_event',), 'ui': AGRICULTURE_FARM_OPERATIONS_UI_FRAGMENT_KEYS}, 'blocking_gaps': ()}
 
 def agriculture_farm_operations_permissions_contract():
@@ -173,7 +195,7 @@ def agriculture_farm_operations_permissions_contract():
  'agriculture_farm_operations.admin'), 'roles': ('operator','approver','auditor'), 'side_effects': ()}
 
 def agriculture_farm_operations_build_workbench_view(tenant='default'):
-    return {'ok': True, 'pbc': PBC_KEY, 'tenant': tenant, 'route': f'/workbench/pbcs/{PBC_KEY}', 'tables': AGRICULTURE_FARM_OPERATIONS_BUSINESS_TABLES, 'actions': DOMAIN_OPERATIONS, 'ui_fragments': AGRICULTURE_FARM_OPERATIONS_UI_FRAGMENT_KEYS, 'side_effects': ()}
+    return {'ok': True, 'pbc': PBC_KEY, 'tenant': tenant, 'route': f'/workbench/pbcs/{PBC_KEY}', 'tables': AGRICULTURE_FARM_OPERATIONS_BUSINESS_TABLES, 'actions': DOMAIN_OPERATIONS, 'widgets': ('crop_plan_timeline', 'planting_window_alerts', 'preplant_readiness_blockers'), 'ui_fragments': AGRICULTURE_FARM_OPERATIONS_UI_FRAGMENT_KEYS, 'side_effects': ()}
 
 def agriculture_farm_operations_verify_owned_table_boundary(references=()):
     invalid = tuple(ref for ref in references if isinstance(ref, str) and ref.endswith('_table') and not ref.startswith(f'{PBC_KEY}_'))
@@ -230,6 +252,35 @@ def agriculture_farm_operations_runtime_smoke():
     duplicate = agriculture_farm_operations_receive_event(received['state'], event)
     dead = agriculture_farm_operations_receive_event(duplicate['state'], {'event_type': 'UnexpectedEvent', 'idempotency_key': 'bad-smoke'})
     command = agriculture_farm_operations_command_field(dead['state'], {'tenant': 'tenant-smoke', 'code': 'SMOKE'})
+    crop_plan = agriculture_farm_operations_record_crop_plan(command['state'], {
+        'tenant': 'tenant-smoke',
+        'field_id': 'field-smoke',
+        'crop': 'maize',
+        'season': 'long_rains',
+        'market_year': 2026,
+        'planting_date': '2026-04-24',
+        'planting_window': {
+            'start': '2026-04-10',
+            'optimal_start': '2026-04-20',
+            'optimal_end': '2026-05-05',
+            'latest': '2026-05-15',
+            'minimum_soil_temperature_c': 12,
+            'maximum_frost_risk': 0.2,
+            'minimum_rainfall_outlook_mm': 20,
+        },
+        'conditions': {
+            'soil_temperature_c': 15,
+            'frost_risk': 0.05,
+            'rainfall_outlook_mm': 26,
+        },
+        'readiness': {
+            'soil_fit': True,
+            'fertility_ready': True,
+            'equipment_ready': True,
+            'crew_assigned': True,
+            'irrigation_ready': True,
+        },
+    })
     schema = agriculture_farm_operations_build_schema_contract()
     service = agriculture_farm_operations_build_service_contract()
     release = agriculture_farm_operations_build_release_evidence()
@@ -244,6 +295,7 @@ def agriculture_farm_operations_runtime_smoke():
         {'id': 'idempotent_duplicate', 'ok': duplicate.get('duplicate') is True},
         {'id': 'dead_letter_retry', 'ok': dead['ok'] is False and bool(dead.get('dead_letter_table'))},
         {'id': 'command_field', 'ok': command['ok']},
+        {'id': 'record_crop_plan', 'ok': crop_plan['ok'] and crop_plan['plan']['planting_window']['status'] == 'optimal'},
         {'id': 'build_schema_contract', 'ok': schema['ok']},
         {'id': 'build_service_contract', 'ok': service['ok']},
         {'id': 'build_release_evidence', 'ok': release['ok']},
@@ -257,6 +309,7 @@ def agriculture_farm_operations_runtime_smoke():
         'checks': checks,
         'configuration': cfg,
         'command': command,
+        'crop_plan': crop_plan,
         'schema': schema,
         'service': service,
         'release': release,

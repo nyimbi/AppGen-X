@@ -1,16 +1,20 @@
 """Service layer for the advertising_campaign_operations PBC."""
 PBC_KEY = 'advertising_campaign_operations'
 EVENT_CONTRACT = {'outbox_table': f'{PBC_KEY}_appgen_outbox_event', 'inbox_table': f'{PBC_KEY}_appgen_inbox_event', 'dead_letter_table': f'{PBC_KEY}_appgen_dead_letter_event', 'event_contract': 'AppGen-X'}
+from .campaign_planning import build_campaign_plan, review_launch_readiness
 from .domain_depth import DOMAIN_OPERATIONS as DOMAIN_DEPTH_COMMAND_OPERATIONS, DOMAIN_OWNED_TABLES as DOMAIN_DEPTH_OWNED_TABLES, execute_domain_operation as execute_domain_depth_operation
-COMMAND_OPERATIONS = tuple(dict.fromkeys(('command_ad_campaign','configure_runtime','set_parameter','register_rule') + tuple(DOMAIN_DEPTH_COMMAND_OPERATIONS)))
-QUERY_OPERATIONS = ('query_workbench',)
+COMMAND_OPERATIONS = tuple(dict.fromkeys(('command_ad_campaign','create_campaign_plan','attempt_launch_campaign','configure_runtime','set_parameter','register_rule') + tuple(DOMAIN_DEPTH_COMMAND_OPERATIONS)))
+QUERY_OPERATIONS = ('query_workbench','review_launch_readiness')
 OWNED_TABLES = DOMAIN_DEPTH_OWNED_TABLES
 
 def _operation_contract(name, kind):
-    return {'operation': name, 'operation_kind': kind, 'owned_tables': OWNED_TABLES[:2] if kind == 'command' else (), 'read_tables': OWNED_TABLES[:2] if kind == 'query' else (), 'emitted_event': ('AdvertisingCampaignOperationsCreated',
- 'AdvertisingCampaignOperationsUpdated',
- 'AdvertisingCampaignOperationsApproved',
- 'AdvertisingCampaignOperationsExceptionOpened')[0] if kind == 'command' else None, 'transaction_boundary': 'owned_datastore_plus_outbox' if kind == 'command' else 'read_only_projection'}
+    emitted_event = None
+    if kind == 'command':
+        if name == 'attempt_launch_campaign':
+            emitted_event = 'AdvertisingCampaignOperationsApproved'
+        else:
+            emitted_event = 'AdvertisingCampaignOperationsCreated'
+    return {'operation': name, 'operation_kind': kind, 'owned_tables': OWNED_TABLES[:2] if kind == 'command' else (), 'read_tables': OWNED_TABLES[:2] if kind == 'query' else (), 'emitted_event': emitted_event, 'transaction_boundary': 'owned_datastore_plus_outbox' if kind == 'command' else 'read_only_projection'}
 
 class AdvertisingCampaignOperationsService:
     def __getattr__(self, name):
@@ -23,10 +27,23 @@ class AdvertisingCampaignOperationsService:
         if name in DOMAIN_DEPTH_COMMAND_OPERATIONS:
             plan = execute_domain_depth_operation(name, payload)
             return {'ok': plan['ok'], 'operation': name, 'operation_kind': 'command', 'read_only': False, 'payload': dict(payload), 'operation_contract': {'operation': name, 'operation_kind': 'command', 'owned_tables': plan.get('owned_tables', ()), 'read_tables': (), 'emitted_event': plan.get('emitted_event'), 'transaction_boundary': 'owned_datastore_plus_outbox'}, 'outbox_table': EVENT_CONTRACT['outbox_table'], 'emits': (plan.get('emitted_event'),), 'transaction_boundary': 'owned_datastore_plus_outbox', 'domain_depth': plan, 'side_effects': ()}
+        if name == 'create_campaign_plan':
+            plan = build_campaign_plan(payload)
+            contract = _operation_contract(name, 'command')
+            return {'ok': plan['ok'], 'operation': name, 'operation_kind': 'command', 'read_only': False, 'payload': dict(payload), 'campaign_plan': plan.get('campaign_plan'), 'missing_fields': plan.get('missing_fields', ()), 'operation_contract': contract, 'outbox_table': EVENT_CONTRACT['outbox_table'], 'emits': (contract['emitted_event'],), 'transaction_boundary': 'owned_datastore_plus_outbox', 'side_effects': ()}
+        if name == 'attempt_launch_campaign':
+            report = review_launch_readiness(payload)
+            ready = report['launch_report']['ready']
+            event_type = 'AdvertisingCampaignOperationsApproved' if ready else 'AdvertisingCampaignOperationsExceptionOpened'
+            contract = {**_operation_contract(name, 'command'), 'emitted_event': event_type}
+            return {'ok': ready, 'operation': name, 'operation_kind': 'command', 'read_only': False, 'payload': dict(payload), 'launch_report': report['launch_report'], 'operation_contract': contract, 'outbox_table': EVENT_CONTRACT['outbox_table'], 'emits': (event_type,), 'transaction_boundary': 'owned_datastore_plus_outbox', 'side_effects': ()}
         contract = _operation_contract(name, 'command')
         return {'ok': True, 'operation': name, 'operation_kind': 'command', 'read_only': False, 'payload': dict(payload), 'operation_contract': contract, 'outbox_table': EVENT_CONTRACT['outbox_table'], 'emits': (contract['emitted_event'],), 'transaction_boundary': 'owned_datastore_plus_outbox', 'side_effects': ()}
     def _query(self, name, payload):
         contract = _operation_contract(name, 'query')
+        if name == 'review_launch_readiness':
+            report = review_launch_readiness(payload)
+            return {'ok': report['ok'], 'operation': name, 'operation_kind': 'query', 'read_only': True, 'payload': dict(payload), 'launch_report': report['launch_report'], 'operation_contract': contract, 'outbox_table': None, 'emits': (), 'side_effects': ()}
         return {'ok': True, 'operation': name, 'operation_kind': 'query', 'read_only': True, 'payload': dict(payload), 'operation_contract': contract, 'outbox_table': None, 'emits': (), 'side_effects': ()}
 
 def service_operation_manifest():
