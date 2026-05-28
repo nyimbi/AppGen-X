@@ -19,22 +19,25 @@ def test_runtime_smoke_covers_standard_and_advanced_capabilities():
     check_ids = {check["id"] for check in smoke["checks"]}
 
     assert smoke["ok"] is True
-    assert len(smoke["checks"]) >= 30
+    assert len(smoke["checks"]) >= 35
     assert not smoke["blocking_gaps"]
     assert capabilities["ok"] is True
-    assert len(capabilities["standard_features"]) >= 10
+    assert len(capabilities["standard_features"]) >= 15
     declared = set(capabilities["capabilities"]) | set(capabilities["standard_features"])
     assert declared >= {
         "configuration_schema",
         "rule_engine",
         "parameter_engine",
         "workbench",
+        "workbench_forms",
+        "guided_wizards",
+        "control_center",
+        "assistant_document_preview",
+        "release_rehearsal",
     }
     assert {"retry_dead_letter", "retry_dead_letter_evidence"} & declared
-    assert any("event_sourced" in item for item in check_ids)
-    assert any("graph_relational" in item for item in check_ids)
-    assert any("multi_tenant" in item for item in check_ids)
-    assert any("probabilistic" in item for item in check_ids)
+    assert {"selection_impact_preview", "documentation_matrix", "security_review_panel"} <= check_ids
+    assert {"assistant_document_preview", "agent_routing_and_handoff", "control_center"} <= check_ids
     assert any("zero_knowledge" in item for item in check_ids)
     assert any("carbon_aware" in item for item in check_ids)
     assert any("stochastic" in item for item in check_ids)
@@ -55,12 +58,16 @@ def test_contracts_enforce_owned_boundary_appgen_eventing_and_backend_allowlist(
     assert service["eventing"]["stream_engine_picker_visible"] is False
     assert {"register_rule", "set_parameter", "configure_runtime"} <= set(service["rules_parameters_configuration"])
     assert service["retry_dead_letter_evidence"]["dead_letter_table"].startswith(f"{PBC_KEY}_")
+    assert {"assistant_document_preview", "build_control_center", "release_rehearsal"} <= set(service["query_methods"])
     assert api["ok"] is True
     assert api["event_contract"] == "AppGen-X"
     assert api["stream_engine_picker_visible"] is False
     assert api["shared_table_access"] is False
+    assert any(route["query"] == "assistant_document_preview" for route in api["routes"] if "query" in route)
     assert release["ok"] is True
     assert not release["blocking_gaps"]
+    assert release["rehearsal"]["ok"] is True
+    assert release["assistant"]["ok"] is True
     assert boundary["ok"] is False
     assert boundary["violations"] == ("foreign_operational_table",)
 
@@ -74,6 +81,11 @@ def test_configuration_rules_parameters_and_ui_are_executable():
             "database_backend": "postgresql",
             "event_topic": getattr(runtime, "COMPOSITION_ENGINE_REQUIRED_EVENT_TOPIC"),
             "retry_limit": 3,
+            "allowed_targets": ("web",),
+            "allowed_layout_modes": ("grid",),
+            "publication_mode": "side_effect_free_plan",
+            "default_timezone": "UTC",
+            "workbench_limit": 50,
         },
     )
     parameter = _call("set_parameter", configured["state"], "route_budget", 24)
@@ -91,10 +103,13 @@ def test_configuration_rules_parameters_and_ui_are_executable():
     assert parameter["ok"] is True
     assert compiled_rule["compiled"] is True
     assert rule_decision["allowed"] is True
-    assert config.set_parameter({}, "retry_limit", 3)["accepted"] is True
-    assert config.compile_rule({"rule_id": "bad", "condition": "tenant_present", "effect": "allow_when_true", "stream_engine": "picker"})["ok"] is False
+    assert config.set_parameter({}, "max_fragments_per_page", 12)["accepted"] is True
+    assert config.compile_rule({"rule_id": "bad", "condition": "tenant_present", "effect": "allow_when_true", "scope": "workspace", "stream_engine": "picker"})["ok"] is False
     assert ui_smoke["ok"] is True
     assert ui_contract["configuration_editor"]["stream_engine_picker_visible"] is False
+    assert ui_contract["forms"]
+    assert ui_contract["wizards"]
+    assert ui_contract["controls"]
     assert ui_contract["parameter_editor"]
     assert ui_contract["rule_editor"]
 

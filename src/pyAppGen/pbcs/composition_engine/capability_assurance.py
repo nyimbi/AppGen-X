@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from . import config
 from . import events
+from . import forms
 from . import handlers
 from . import permissions
 from . import routes
@@ -11,6 +12,9 @@ from . import schema_contract
 from . import seed_data
 from . import services
 from . import ui
+from . import wizards
+from . import controls
+from . import agent
 from . import runtime
 from .manifest import PBC_MANIFEST
 
@@ -113,6 +117,10 @@ def table_stakes_capability_manifest() -> dict:
     permission_smoke = permissions.smoke_test()
     seed_smoke = seed_data.smoke_test()
     schema_smoke = schema_contract.smoke_test()
+    forms_smoke = forms.smoke_test()
+    wizard_smoke = wizards.smoke_test()
+    control_smoke = controls.smoke_test()
+    agent_smoke = agent.smoke_test()
     boundary_probe = _runtime_function("verify_owned_table_boundary")(("foreign_operational_table",))
 
     standard_features = tuple(PBC_MANIFEST.get("standard_features", ()))
@@ -151,6 +159,10 @@ def table_stakes_capability_manifest() -> dict:
         "permissions": permission_smoke,
         "seed_data": seed_smoke,
         "schema": schema_smoke,
+        "forms": forms_smoke,
+        "wizards": wizard_smoke,
+        "controls": control_smoke,
+        "agent": agent_smoke,
         "schema_contract": schema,
         "boundary_probe": boundary_probe,
         "required_operation_groups": _REQUIRED_OPERATION_GROUPS,
@@ -214,6 +226,10 @@ def validate_table_stakes_capability_coverage() -> dict:
         and manifest["permissions"].get("ok") is True
         and manifest["seed_data"].get("ok") is True
         and manifest["schema"].get("ok") is True
+        and manifest["forms"].get("ok") is True
+        and manifest["wizards"].get("ok") is True
+        and manifest["controls"].get("ok") is True
+        and manifest["agent"].get("ok") is True
         and manifest["handler_smoke"].get("ok") is True
         and boundary_probe.get("ok") is False
         and "foreign_operational_table" in tuple(boundary_probe.get("violations", ())),

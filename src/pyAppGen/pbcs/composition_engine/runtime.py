@@ -112,17 +112,23 @@ COMPOSITION_ENGINE_RUNTIME_CAPABILITY_KEYS = (
 COMPOSITION_ENGINE_STANDARD_FEATURE_KEYS = (
     "workspace_management",
     "pbc_selection",
+    "selection_impact_preview",
     "component_registry",
     "ui_fragment_registry",
     "layout_binding",
     "page_composition",
     "route_map_generation",
+    "smoke_plan_synthesis",
+    "artifact_lineage",
     "permission_mapping",
     "schema_compatibility_check",
     "composition_dsl_generation",
     "package_registration_plan",
     "publication_workflow",
+    "release_rehearsal",
     "release_gate_evidence",
+    "documentation_matrix",
+    "security_review_panel",
     "preview_rendering",
     "responsive_layout_rules",
     "fragment_slotting",
@@ -134,6 +140,10 @@ COMPOSITION_ENGINE_STANDARD_FEATURE_KEYS = (
     "parameter_engine",
     "seed_data",
     "workbench",
+    "workbench_forms",
+    "guided_wizards",
+    "control_center",
+    "assistant_document_preview",
     "audit_evidence",
     "release_gate",
     "package_registration_validation",
@@ -159,6 +169,7 @@ def composition_engine_runtime_capabilities() -> dict:
             "receive_event",
             "create_workspace",
             "select_pbc",
+            "preview_selection_impact",
             "register_component",
             "register_ui_fragment",
             "bind_layout",
@@ -166,6 +177,16 @@ def composition_engine_runtime_capabilities() -> dict:
             "plan_package_registration",
             "generate_composition_dsl",
             "publish_composition",
+            "build_smoke_plan",
+            "build_artifact_lineage",
+            "build_documentation_matrix",
+            "build_security_review",
+            "build_release_notes",
+            "release_rehearsal",
+            "assistant_document_preview",
+            "route_agent_intent",
+            "agent_competency_catalog",
+            "build_control_center",
             "build_api_contract",
             "build_schema_contract",
             "build_service_contract",
@@ -235,6 +256,22 @@ def composition_engine_runtime_smoke() -> dict:
     publication = composition_engine_publish_composition(state, "ws_alpha")
     state = publication["state"]
     workbench = composition_engine_build_workbench_view(state, tenant="tenant_alpha")
+    impact = composition_engine_preview_selection_impact(state, "ws_alpha", ("customer_360", "workflow_orchestration"))
+    smoke_plan = composition_engine_build_smoke_plan(state, "ws_alpha")
+    lineage = composition_engine_build_artifact_lineage(state, "ws_alpha")
+    documentation = composition_engine_build_documentation_matrix(state, "ws_alpha")
+    security = composition_engine_build_security_review(state, "ws_alpha")
+    release_notes = composition_engine_build_release_notes(state, "ws_alpha")
+    rehearsal = composition_engine_release_rehearsal(state, "ws_alpha")
+    assistant = composition_engine_assistant_document_preview(
+        "Compose a governed customer workspace with release review.",
+        "Preview an update to the composition rule only.",
+        action="update",
+        target_table="composition_engine_composition_rule",
+    )
+    competencies = composition_engine_agent_competency_catalog()
+    agent_route = composition_engine_route_agent_intent("review release readiness for the composition workspace")
+    control_center = composition_engine_build_control_center(state, workspace_id="ws_alpha")
     simulation = composition_engine_simulate_layout(state, "ws_alpha", added_fragments=2, removed_fragments=0)
     forecast = composition_engine_forecast_release_readiness((0.92, 0.95, 0.97), horizon_days=14)
     parsed = composition_engine_parse_composition_intent("compose workspace ws_900 with pbc customer_360 fragment CustomerWorkbench")
@@ -259,9 +296,20 @@ def composition_engine_runtime_smoke() -> dict:
         {"id": "event_sourced_composition_lifecycle", "ok": len(state["events"]) >= 7 and state["events"][-1]["hash"]},
         {"id": "graph_relational_component_topology", "ok": workbench["component_count"] == 1 and workbench["fragment_count"] == 1},
         {"id": "multi_tenant_workspace_isolation", "ok": workbench["tenant"] == "tenant_alpha"},
+        {"id": "selection_impact_preview", "ok": impact["ok"] and "workflow_orchestration" in impact["added_pbcs"]},
         {"id": "schema_on_read_layout_extension", "ok": state["schema_extensions"]["layout_binding"]["responsive_rules"] == "jsonb"},
         {"id": "probabilistic_release_risk_scoring", "ok": publication["publication"]["release_risk"] >= 0},
         {"id": "real_time_composition_analytics", "ok": workbench["workspace_count"] == 1 and workbench["published_count"] == 1},
+        {"id": "smoke_plan_synthesis", "ok": smoke_plan["ok"] and bool(smoke_plan["steps"])},
+        {"id": "artifact_lineage", "ok": lineage["ok"] and len(lineage["lineage"]) == 3},
+        {"id": "documentation_matrix", "ok": documentation["ok"] and not documentation["missing"]},
+        {"id": "security_review_panel", "ok": security["ok"] and not security["blocking_findings"]},
+        {"id": "release_rehearsal", "ok": rehearsal["ok"] and not rehearsal["release_freeze"]},
+        {"id": "release_note_generation", "ok": release_notes["ok"] and bool(release_notes["notes"]["highlights"])},
+        {"id": "assistant_document_preview", "ok": assistant["ok"] and assistant["requires_human_confirmation"]},
+        {"id": "agent_competency_catalog", "ok": competencies["ok"] and len(competencies["competencies"]) >= 8},
+        {"id": "agent_routing_and_handoff", "ok": agent_route["ok"] and agent_route["operation"] == "release_rehearsal"},
+        {"id": "control_center", "ok": control_center["ok"] and control_center["assistant_guardrails"]["ok"]},
         {"id": "counterfactual_layout_simulation", "ok": simulation["density_delta"] > 0},
         {"id": "temporal_release_readiness_forecasting", "ok": forecast["forecast_readiness"] > 0},
         {"id": "autonomous_layout_remediation", "ok": remediation["action"] == "rebalance_fragment_slots"},
@@ -584,6 +632,55 @@ def composition_engine_publish_composition(state: dict, workspace_id: str) -> di
     return {"ok": True, "state": next_state, "publication": publication}
 
 
+def composition_engine_preview_selection_impact(
+    state: dict,
+    workspace_id: str,
+    candidate_pbcs: tuple[str, ...] | list[str],
+) -> dict:
+    """Preview the impact of adding or removing PBC selections without mutating state."""
+    workspace = state["workspaces"].get(workspace_id, {})
+    current_pbcs = tuple(workspace.get("selected_pbcs", ()))
+    proposed_pbcs = tuple(dict.fromkeys(tuple(candidate_pbcs or ())))
+    added = tuple(item for item in proposed_pbcs if item not in current_pbcs)
+    removed = tuple(item for item in current_pbcs if item not in proposed_pbcs)
+    retained = tuple(item for item in proposed_pbcs if item in current_pbcs)
+    bindings = tuple(binding for binding in state["bindings"].values() if binding.get("workspace_id") == workspace_id)
+    routes = tuple(
+        sorted(
+            {
+                state["fragments"][binding["fragment_id"]]["route"]
+                for binding in bindings
+                if binding.get("fragment_id") in state["fragments"]
+            }
+        )
+    )
+    blockers = []
+    if not proposed_pbcs:
+        blockers.append("missing_pbc_selection")
+    if int(state.get("parameters", {}).get("route_budget", 24)) < len(routes):
+        blockers.append("route_budget_exceeded")
+    if not state.get("schema_projections"):
+        blockers.append("missing_schema_projection")
+    return {
+        "ok": not blockers,
+        "workspace_id": workspace_id,
+        "current_pbcs": current_pbcs,
+        "proposed_pbcs": proposed_pbcs,
+        "added_pbcs": added,
+        "removed_pbcs": removed,
+        "added_or_retained_pbcs": retained + added,
+        "impact": {
+            "owned_tables": tuple(f"{pbc}_projection" for pbc in proposed_pbcs),
+            "routes": routes,
+            "permissions": tuple(sorted({permission for component in state["components"].values() for permission in component.get("permissions", ())})),
+            "ui_fragments": tuple(sorted(fragment.get("fragment") or fragment_id for fragment_id, fragment in state["fragments"].items())),
+            "generated_artifacts": ("dsl_artifact", "composition_plan", "release_evidence"),
+            "smoke_tests": ("build_smoke_plan", "release_rehearsal", "build_security_review"),
+        },
+        "release_blockers": tuple(blockers),
+    }
+
+
 def composition_engine_build_workbench_view(state: dict, *, tenant: str) -> dict:
     workspaces = tuple(item for item in state["workspaces"].values() if item["tenant"] == tenant)
     components = tuple(item for item in state["components"].values() if item["tenant"] == tenant)
@@ -617,6 +714,395 @@ def composition_engine_build_workbench_view(state: dict, *, tenant: str) -> dict
                 "user_selectable_event_contract": state.get("configuration", {}).get("user_selectable_event_contract"),
             },
         },
+    }
+
+
+def composition_engine_build_smoke_plan(state: dict, workspace_id: str) -> dict:
+    """Synthesize a workspace-specific smoke plan from selections, routes, and events."""
+    workspace = state["workspaces"].get(workspace_id)
+    if workspace is None:
+        return {"ok": False, "reason": "unknown_workspace", "workspace_id": workspace_id}
+    bindings = tuple(binding for binding in state["bindings"].values() if binding["workspace_id"] == workspace_id)
+    routes = tuple(
+        sorted(
+            {
+                state["fragments"][binding["fragment_id"]]["route"]
+                for binding in bindings
+                if binding["fragment_id"] in state["fragments"]
+            }
+        )
+    )
+    steps = (
+        {
+            "step_id": "workspace_bootstrap",
+            "assertions": ("workspace_exists", "tenant_isolation", "selection_recorded"),
+            "expected_operations": ("create_workspace", "select_pbc"),
+        },
+        {
+            "step_id": "layout_binding",
+            "assertions": ("fragment_available", "route_bound", "projection_declared"),
+            "expected_operations": ("register_component", "register_ui_fragment", "bind_layout"),
+        },
+        {
+            "step_id": "release_gate",
+            "assertions": ("validation_passes", "dsl_generated", "package_plan_side_effect_free"),
+            "expected_operations": ("validate_composition_plan", "generate_composition_dsl", "plan_package_registration"),
+        },
+    )
+    return {
+        "ok": bool(workspace.get("selected_pbcs")) and bool(routes),
+        "workspace_id": workspace_id,
+        "tenant": workspace["tenant"],
+        "routes": routes,
+        "events": tuple(event["event_type"] for event in state.get("events", ()) if event.get("aggregate_id") == workspace_id),
+        "steps": steps,
+    }
+
+
+def composition_engine_build_artifact_lineage(state: dict, workspace_id: str) -> dict:
+    """Trace generated artifacts back to selected PBCs, fragments, and governance inputs."""
+    workspace = state["workspaces"].get(workspace_id)
+    if workspace is None:
+        return {"ok": False, "reason": "unknown_workspace", "workspace_id": workspace_id}
+    dsl = state["dsl_artifacts"].get(f"dsl_{workspace_id}", {})
+    validation = next(
+        (item for item in state["validation_runs"].values() if item["workspace_id"] == workspace_id),
+        {},
+    )
+    lineage = (
+        {
+            "artifact": "dsl_artifact",
+            "sources": ("selected_pbcs", "layout_binding", "schema_projections"),
+            "workspace_id": workspace_id,
+            "checksum": dsl.get("checksum"),
+        },
+        {
+            "artifact": "validation_run",
+            "sources": ("composition_rule", "route_budget", "required_fragments"),
+            "workspace_id": workspace_id,
+            "decision": validation.get("decision"),
+        },
+        {
+            "artifact": "release_packet",
+            "sources": ("package_registration_plan", "smoke_plan", "documentation_matrix", "security_review"),
+            "workspace_id": workspace_id,
+            "status": "planned",
+        },
+    )
+    return {"ok": bool(dsl or validation), "workspace_id": workspace_id, "lineage": lineage}
+
+
+def composition_engine_build_documentation_matrix(state: dict, workspace_id: str) -> dict:
+    """Build documentation coverage for one composition workspace."""
+    workspace = state["workspaces"].get(workspace_id)
+    if workspace is None:
+        return {"ok": False, "reason": "unknown_workspace", "workspace_id": workspace_id}
+    bindings = tuple(binding for binding in state["bindings"].values() if binding["workspace_id"] == workspace_id)
+    cells = (
+        {"audience": "user", "artifact": "workbench_guide", "covered": bool(bindings)},
+        {"audience": "operator", "artifact": "release_rehearsal", "covered": bool(state["validation_runs"])},
+        {"audience": "developer", "artifact": "schema_service_api_contracts", "covered": True},
+        {"audience": "package", "artifact": "package_registration_plan", "covered": bool(workspace.get("selected_pbcs"))},
+        {"audience": "agent", "artifact": "assistant_preview", "covered": True},
+        {"audience": "release", "artifact": "release_notes", "covered": bool(state["dsl_artifacts"])},
+    )
+    missing = tuple(cell["artifact"] for cell in cells if not cell["covered"])
+    return {
+        "ok": not missing,
+        "workspace_id": workspace_id,
+        "cells": cells,
+        "missing": missing,
+    }
+
+
+def composition_engine_build_security_review(state: dict, workspace_id: str) -> dict:
+    """Inspect routes, permissions, audit lineage, and risky publication conditions."""
+    workspace = state["workspaces"].get(workspace_id)
+    if workspace is None:
+        return {"ok": False, "reason": "unknown_workspace", "workspace_id": workspace_id}
+    exposed_routes = tuple(
+        sorted(
+            {
+                fragment["route"]
+                for fragment in state["fragments"].values()
+                if fragment["tenant"] == workspace["tenant"]
+            }
+        )
+    )
+    blocking_findings = []
+    if not workspace.get("selected_pbcs"):
+        blocking_findings.append("missing_selection")
+    if not any(item["workspace_id"] == workspace_id and item["decision"] == "accepted" for item in state["validation_runs"].values()):
+        blocking_findings.append("validation_not_accepted")
+    findings = (
+        {"severity": "blocking" if "validation_not_accepted" in blocking_findings else "info", "id": "validation_gate", "detail": "Validated plan required before publication."},
+        {"severity": "warning" if not state.get("audit_projections") else "info", "id": "audit_lineage", "detail": "Audit projection should be present before promoting beyond rehearsal."},
+        {"severity": "info", "id": "route_surface", "detail": f"Routes in scope: {', '.join(exposed_routes) if exposed_routes else 'none'}."},
+    )
+    return {
+        "ok": not blocking_findings,
+        "workspace_id": workspace_id,
+        "exposed_routes": exposed_routes,
+        "findings": findings,
+        "blocking_findings": tuple(blocking_findings),
+    }
+
+
+def composition_engine_build_release_notes(state: dict, workspace_id: str) -> dict:
+    """Draft release notes from the current composition state."""
+    workspace = state["workspaces"].get(workspace_id)
+    if workspace is None:
+        return {"ok": False, "reason": "unknown_workspace", "workspace_id": workspace_id}
+    impact = composition_engine_preview_selection_impact(state, workspace_id, workspace.get("selected_pbcs", ()))
+    security = composition_engine_build_security_review(state, workspace_id)
+    notes = {
+        "headline": f"Composition update for {workspace['name']}",
+        "highlights": (
+            f"Selected PBCs: {', '.join(workspace.get('selected_pbcs', ())) or 'none'}",
+            f"Routes in scope: {len(impact['impact']['routes'])}",
+            f"Release blockers: {', '.join(impact['release_blockers']) or 'none'}",
+        ),
+        "known_limitations": tuple(security["blocking_findings"]) or ("publication_requires_operator_confirmation",),
+    }
+    return {"ok": True, "workspace_id": workspace_id, "notes": notes}
+
+
+def composition_engine_release_rehearsal(state: dict, workspace_id: str) -> dict:
+    """Rehearse publication without mutating release state."""
+    validation = composition_engine_validate_composition_plan(state, workspace_id)
+    next_state = validation["state"]
+    if not validation["ok"]:
+        return {"ok": False, "workspace_id": workspace_id, "validation": validation["validation"], "state": next_state}
+    if f"dsl_{workspace_id}" not in next_state["dsl_artifacts"]:
+        dsl = composition_engine_generate_composition_dsl(next_state, workspace_id)
+        next_state = dsl["state"]
+    package_plan = composition_engine_plan_package_registration(
+        next_state,
+        workspace_id,
+        requested_by=next_state["workspaces"][workspace_id]["owner"],
+    )
+    smoke_plan = composition_engine_build_smoke_plan(next_state, workspace_id)
+    lineage = composition_engine_build_artifact_lineage(next_state, workspace_id)
+    documentation = composition_engine_build_documentation_matrix(next_state, workspace_id)
+    security = composition_engine_build_security_review(next_state, workspace_id)
+    return {
+        "ok": package_plan["ok"] and smoke_plan["ok"] and documentation["ok"] and security["ok"] and lineage["ok"],
+        "workspace_id": workspace_id,
+        "validation": validation["validation"],
+        "package_plan": package_plan["plan"],
+        "smoke_plan": smoke_plan,
+        "lineage": lineage,
+        "documentation": documentation,
+        "security": security,
+        "release_freeze": tuple(security["blocking_findings"]),
+        "state": next_state,
+    }
+
+
+def composition_engine_agent_competency_catalog() -> dict:
+    """Return the composition-engine competency catalog for the shared assistant."""
+    competencies = (
+        {
+            "competency_id": "prompt_intake",
+            "permission": "composition_engine.read",
+            "safe_reads": ("composition_workspace", "composition_rule", "composition_parameter"),
+            "mutation_previews": ("assistant_document_preview",),
+            "document_inputs": True,
+            "emitted_events": (),
+        },
+        {
+            "competency_id": "pbc_selection_rationale",
+            "permission": "composition_engine.compose",
+            "safe_reads": ("composition_workspace", "component_registry"),
+            "mutation_previews": ("preview_selection_impact",),
+            "document_inputs": True,
+            "emitted_events": ("PbcSelectedForComposition",),
+        },
+        {
+            "competency_id": "layout_planning",
+            "permission": "composition_engine.compose",
+            "safe_reads": ("layout_binding", "ui_fragment"),
+            "mutation_previews": ("bind_layout",),
+            "document_inputs": True,
+            "emitted_events": ("LayoutBound",),
+        },
+        {
+            "competency_id": "dsl_review",
+            "permission": "composition_engine.publish",
+            "safe_reads": ("dsl_artifact", "composition_plan"),
+            "mutation_previews": ("generate_composition_dsl",),
+            "document_inputs": False,
+            "emitted_events": (),
+        },
+        {
+            "competency_id": "dependency_solving",
+            "permission": "composition_engine.approve",
+            "safe_reads": ("composition_plan", "composition_validation_run"),
+            "mutation_previews": ("validate_composition_plan",),
+            "document_inputs": True,
+            "emitted_events": ("CompositionPlanValidated",),
+        },
+        {
+            "competency_id": "package_registration_preview",
+            "permission": "composition_engine.publish",
+            "safe_reads": ("package_registration_plan", "package_index_entry"),
+            "mutation_previews": ("plan_package_registration",),
+            "document_inputs": False,
+            "emitted_events": ("PackageRegistrationPlanned",),
+        },
+        {
+            "competency_id": "release_readiness_explanation",
+            "permission": "composition_engine.audit",
+            "safe_reads": ("release_evidence", "composition_validation_run"),
+            "mutation_previews": ("release_rehearsal", "build_release_notes"),
+            "document_inputs": True,
+            "emitted_events": (),
+        },
+        {
+            "competency_id": "rollback_planning",
+            "permission": "composition_engine.audit",
+            "safe_reads": ("release_evidence", "package_registration_plan"),
+            "mutation_previews": ("build_release_notes",),
+            "document_inputs": True,
+            "emitted_events": (),
+        },
+    )
+    return {"ok": True, "pbc": "composition_engine", "competencies": competencies}
+
+
+def composition_engine_route_agent_intent(intent: str, context: dict | None = None) -> dict:
+    """Route a natural-language assistant intent to the owning composition competency."""
+    normalized = str(intent or "").lower()
+    context = dict(context or {})
+    routes = (
+        ("rollback", "rollback_planning", "build_release_notes"),
+        ("publish", "package_registration_preview", "plan_package_registration"),
+        ("release", "release_readiness_explanation", "release_rehearsal"),
+        ("layout", "layout_planning", "bind_layout"),
+        ("route", "layout_planning", "preview_selection_impact"),
+        ("dependency", "dependency_solving", "validate_composition_plan"),
+        ("select", "pbc_selection_rationale", "preview_selection_impact"),
+        ("document", "prompt_intake", "assistant_document_preview"),
+        ("requirement", "prompt_intake", "assistant_document_preview"),
+    )
+    selected = next((item for item in routes if item[0] in normalized), ("release", "release_readiness_explanation", "release_rehearsal"))
+    competency = next(
+        item for item in composition_engine_agent_competency_catalog()["competencies"] if item["competency_id"] == selected[1]
+    )
+    return {
+        "ok": True,
+        "intent": intent,
+        "competency_id": competency["competency_id"],
+        "operation": selected[2],
+        "required_permission": competency["permission"],
+        "required_context": tuple(sorted(context)),
+        "handoff_projections": (
+            "identity_composition_projection",
+            "gateway_composition_projection",
+            "schema_composition_projection",
+            "workflow_composition_projection",
+            "audit_composition_projection",
+        ),
+    }
+
+
+def composition_engine_plan_crud_action(
+    action: str,
+    target_table: str | None = None,
+    payload: dict | None = None,
+) -> dict:
+    """Plan governed CRUD against package-owned tables only."""
+    normalized_action = str(action or "read").lower()
+    owned_tables = tuple(f"composition_engine_{table}" for table in COMPOSITION_ENGINE_OWNED_TABLES)
+    table = target_table or owned_tables[0]
+    boundary = composition_engine_verify_owned_table_boundary((table,))
+    operation_map = {
+        "composition_engine_composition_workspace": {"create": "create_workspace", "read": "build_workbench_view", "update": "select_pbc", "delete": "preview_selection_impact"},
+        "composition_engine_component_registry": {"create": "register_component", "read": "build_workbench_view", "update": "register_component", "delete": "preview_selection_impact"},
+        "composition_engine_ui_fragment": {"create": "register_ui_fragment", "read": "build_workbench_view", "update": "register_ui_fragment", "delete": "preview_selection_impact"},
+        "composition_engine_layout_binding": {"create": "bind_layout", "read": "build_workbench_view", "update": "bind_layout", "delete": "preview_selection_impact"},
+        "composition_engine_dsl_artifact": {"create": "generate_composition_dsl", "read": "build_artifact_lineage", "update": "generate_composition_dsl", "delete": "build_artifact_lineage"},
+        "composition_engine_composition_plan": {"create": "validate_composition_plan", "read": "build_smoke_plan", "update": "validate_composition_plan", "delete": "build_smoke_plan"},
+        "composition_engine_composition_validation_run": {"create": "validate_composition_plan", "read": "build_smoke_plan", "update": "validate_composition_plan", "delete": "build_smoke_plan"},
+        "composition_engine_package_registration_plan": {"create": "plan_package_registration", "read": "release_rehearsal", "update": "plan_package_registration", "delete": "build_release_notes"},
+        "composition_engine_package_index_entry": {"create": "plan_package_registration", "read": "release_rehearsal", "update": "plan_package_registration", "delete": "build_release_notes"},
+        "composition_engine_release_evidence": {"create": "publish_composition", "read": "build_release_evidence", "update": "release_rehearsal", "delete": "build_release_notes"},
+        "composition_engine_composition_rule": {"create": "register_rule", "read": "build_security_review", "update": "register_rule", "delete": "build_security_review"},
+        "composition_engine_composition_parameter": {"create": "set_parameter", "read": "build_documentation_matrix", "update": "set_parameter", "delete": "build_documentation_matrix"},
+        "composition_engine_composition_configuration": {"create": "configure_runtime", "read": "build_release_evidence", "update": "configure_runtime", "delete": "build_release_evidence"},
+    }
+    operation = operation_map.get(table, {}).get(normalized_action)
+    permissions = composition_engine_permissions_contract()["action_permissions"]
+    return {
+        "ok": bool(operation) and boundary["ok"] and normalized_action in {"create", "read", "update", "delete"},
+        "action": normalized_action,
+        "table": table,
+        "operation": operation,
+        "payload_keys": tuple(sorted(dict(payload or {}))),
+        "requires_confirmation": normalized_action != "read",
+        "required_permission": permissions.get(operation),
+        "boundary": boundary,
+    }
+
+
+def composition_engine_assistant_document_preview(
+    document_text: str,
+    instructions: str,
+    *,
+    action: str = "read",
+    target_table: str | None = None,
+    payload: dict | None = None,
+) -> dict:
+    """Parse a document into a preview-only, package-owned CRUD plan."""
+    facts = _extract_composition_document_facts(document_text, instructions)
+    crud_plan = composition_engine_plan_crud_action(action, target_table=target_table, payload=payload)
+    routing = composition_engine_route_agent_intent(instructions or document_text, context={"target_table": target_table or ""})
+    unresolved_questions = []
+    if not facts["pbcs"]:
+        unresolved_questions.append("which_pbc_should_be_selected")
+    if not facts["pages"]:
+        unresolved_questions.append("which_page_should_host_the_fragment")
+    if target_table is None:
+        unresolved_questions.append("which_owned_table_should_receive_the_change")
+    return {
+        "ok": bool(document_text or instructions) and crud_plan["ok"] and routing["ok"],
+        "document_digest": _hash_payload({"document_text": document_text, "instructions": instructions}),
+        "facts": facts,
+        "crud_plan": crud_plan,
+        "routing": routing,
+        "unresolved_questions": tuple(unresolved_questions),
+        "requires_human_confirmation": crud_plan["requires_confirmation"],
+        "redaction": {"emails_removed": facts["emails_detected"], "quoted_lines": len(facts["citations"])},
+    }
+
+
+def composition_engine_build_control_center(state: dict, *, workspace_id: str | None = None) -> dict:
+    """Return package-local operational controls and assistant guardrails."""
+    workspace_id = workspace_id or next(iter(state.get("workspaces", {}) or ()), None)
+    runtime_controls = composition_engine_run_control_tests(state)
+    if workspace_id:
+        rehearsal = composition_engine_release_rehearsal(state, workspace_id)
+        documentation = composition_engine_build_documentation_matrix(rehearsal["state"], workspace_id)
+        security = composition_engine_build_security_review(rehearsal["state"], workspace_id)
+    else:
+        rehearsal = {"ok": False, "reason": "missing_workspace", "state": state}
+        documentation = {"ok": False, "missing": ("workspace",)}
+        security = {"ok": False, "blocking_findings": ("workspace",)}
+    assistant_guardrails = composition_engine_assistant_document_preview(
+        "Keep the composition preview inside package-owned tables.",
+        "Preview an update to the workspace only.",
+        action="update",
+        target_table="composition_engine_composition_workspace",
+    )
+    controls_ok = runtime_controls["ok"] or rehearsal.get("ok")
+    return {
+        "ok": controls_ok and assistant_guardrails["ok"] and not security.get("blocking_findings"),
+        "workspace_id": workspace_id,
+        "runtime_controls": runtime_controls,
+        "rehearsal": rehearsal,
+        "documentation": documentation,
+        "security": security,
+        "assistant_guardrails": assistant_guardrails,
     }
 
 
@@ -755,12 +1241,19 @@ def composition_engine_build_schema_contract() -> dict:
     )
     return {
         "format": "appgen.composition-engine-owned-schema-contract.v1",
+        "pbc": "composition_engine",
         "ok": not invalid_prefixes and len(tables) == len(COMPOSITION_ENGINE_OWNED_TABLES) and len(migrations) == len(COMPOSITION_ENGINE_OWNED_TABLES),
+        "owned_tables": COMPOSITION_ENGINE_OWNED_TABLES,
         "tables": tables,
         "runtime_tables": runtime_tables,
+        "all_tables": tables + runtime_tables,
         "relationships": relationships,
         "migrations": migrations,
         "models": models,
+        "implementation_artifacts": {
+            "migration_files": ("migrations/001_initial.sql",),
+            "model_manifest_module": "models.py",
+        },
         "allowed_prefixes": allowed_prefixes,
         "datastore_backends": COMPOSITION_ENGINE_ALLOWED_DATABASE_BACKENDS,
         "required_event_topic": COMPOSITION_ENGINE_REQUIRED_EVENT_TOPIC,
@@ -794,6 +1287,17 @@ def composition_engine_build_service_contract() -> dict:
     )
     query_methods = (
         "build_workbench_view",
+        "preview_selection_impact",
+        "build_smoke_plan",
+        "build_artifact_lineage",
+        "build_documentation_matrix",
+        "build_security_review",
+        "build_release_notes",
+        "release_rehearsal",
+        "assistant_document_preview",
+        "route_agent_intent",
+        "agent_competency_catalog",
+        "build_control_center",
         "simulate_layout",
         "forecast_release_readiness",
         "parse_composition_intent",
@@ -868,8 +1372,95 @@ def composition_engine_build_release_evidence() -> dict:
             "workbench_limit": 50,
         },
     )["state"]
-    workbench = composition_engine_build_workbench_view(configured, tenant="tenant_release")
+    configured = composition_engine_set_parameter(configured, "route_budget", 24)["state"]
+    configured = composition_engine_register_rule(
+        configured,
+        {
+            "rule_id": "release_gate_rule",
+            "tenant": "tenant_release",
+            "scope": "workspace",
+            "required_fragments": ("ReleaseEvidenceBoard",),
+            "allowed_meshes": ("platform", "relationship"),
+            "route_policy": "balanced",
+            "requires_approval": True,
+            "severity": "blocking",
+            "status": "active",
+        },
+    )["state"]
+    configured = composition_engine_receive_event(
+        configured,
+        {
+            "event_id": "evt_release_schema",
+            "event_type": "SchemaAccepted",
+            "payload": {"tenant": "tenant_release", "schema_id": "CompositionPublished", "owner_pbc": "composition_engine"},
+        },
+    )["state"]
+    configured = composition_engine_create_workspace(
+        configured,
+        {
+            "workspace_id": "ws_release",
+            "tenant": "tenant_release",
+            "name": "Release Console",
+            "owner": "release_manager",
+            "target": "admin",
+        },
+    )["state"]
+    configured = composition_engine_select_pbc(
+        configured,
+        "ws_release",
+        {"pbc": "customer_360", "mesh": "relationship", "reason": "customer insight workspace"},
+    )["state"]
+    configured = composition_engine_register_component(
+        configured,
+        {
+            "component_id": "cmp_release",
+            "tenant": "tenant_release",
+            "pbc": "customer_360",
+            "fragment": "ReleaseEvidenceBoard",
+            "permissions": ("composition_engine.audit",),
+            "schemas": ("CompositionPublished",),
+        },
+    )["state"]
+    configured = composition_engine_register_ui_fragment(
+        configured,
+        {
+            "fragment_id": "frag_release",
+            "tenant": "tenant_release",
+            "component_id": "cmp_release",
+            "route": "/release",
+            "slots": ("main",),
+            "events": ("CompositionPublished",),
+        },
+    )["state"]
+    configured = composition_engine_bind_layout(
+        configured,
+        {
+            "binding_id": "bind_release",
+            "tenant": "tenant_release",
+            "workspace_id": "ws_release",
+            "page": "release",
+            "slot": "main",
+            "fragment_id": "frag_release",
+            "projection": "release_projection",
+        },
+    )["state"]
+    configured = composition_engine_generate_composition_dsl(configured, "ws_release")["state"]
+    rehearsal = composition_engine_release_rehearsal(configured, "ws_release")
+    evidence_state = rehearsal["state"] if rehearsal.get("ok") else configured
+    workbench = composition_engine_build_workbench_view(evidence_state, tenant="tenant_release")
     ui = composition_engine_ui_contract()
+    smoke_plan = composition_engine_build_smoke_plan(evidence_state, "ws_release")
+    lineage = composition_engine_build_artifact_lineage(evidence_state, "ws_release")
+    documentation = composition_engine_build_documentation_matrix(evidence_state, "ws_release")
+    security = composition_engine_build_security_review(evidence_state, "ws_release")
+    release_notes = composition_engine_build_release_notes(evidence_state, "ws_release")
+    assistant = composition_engine_assistant_document_preview(
+        "Prepare a release console with customer insight and publication controls.",
+        "Preview an update to release evidence without publishing.",
+        action="update",
+        target_table="composition_engine_release_evidence",
+    )
+    competencies = composition_engine_agent_competency_catalog()
     boundary = composition_engine_verify_owned_table_boundary(
         (
             "composition_workspace",
@@ -888,6 +1479,13 @@ def composition_engine_build_release_evidence() -> dict:
         {"id": "permissions_cover_release_queries", "ok": {"build_schema_contract", "build_service_contract", "build_release_evidence"} <= set(permissions["action_permissions"])},
         {"id": "ui_binding_evidence", "ok": ui["ok"] and ui["binding_evidence"]["runtime_tables"] == COMPOSITION_ENGINE_RUNTIME_TABLES},
         {"id": "workbench_binding_evidence", "ok": workbench["binding_evidence"]["outbox_table"] == COMPOSITION_ENGINE_RUNTIME_TABLES[0]},
+        {"id": "smoke_plan_synthesis", "ok": smoke_plan["ok"] and bool(smoke_plan["steps"])},
+        {"id": "artifact_lineage", "ok": lineage["ok"] and len(lineage["lineage"]) >= 3},
+        {"id": "documentation_matrix", "ok": documentation["ok"] and not documentation["missing"]},
+        {"id": "security_review_panel", "ok": security["ok"] and not security["blocking_findings"]},
+        {"id": "release_rehearsal", "ok": rehearsal["ok"] and not rehearsal["release_freeze"]},
+        {"id": "assistant_preview_guardrails", "ok": assistant["ok"] and assistant["requires_human_confirmation"]},
+        {"id": "agent_competency_catalog", "ok": competencies["ok"] and len(competencies["competencies"]) >= 8},
         {"id": "boundary_contract", "ok": boundary["ok"] and boundary["declared_dependencies"]["shared_tables"] == ()},
         {"id": "database_allowlist", "ok": schema["datastore_backends"] == COMPOSITION_ENGINE_ALLOWED_DATABASE_BACKENDS and api["database_backends"] == COMPOSITION_ENGINE_ALLOWED_DATABASE_BACKENDS},
     )
@@ -902,6 +1500,14 @@ def composition_engine_build_release_evidence() -> dict:
         "permissions": permissions,
         "ui": ui,
         "workbench": workbench,
+        "smoke_plan": smoke_plan,
+        "lineage": lineage,
+        "documentation": documentation,
+        "security": security,
+        "release_notes": release_notes,
+        "rehearsal": rehearsal,
+        "assistant": assistant,
+        "agent_competencies": competencies,
         "boundary": boundary,
         "blocking_gaps": blocking_gaps,
     }
@@ -914,6 +1520,7 @@ def composition_engine_build_api_contract() -> dict:
         "routes": (
             {"route": "POST /composition-workspaces", "command": "create_workspace", "owned_tables": ("composition_workspace",), "emits": ("CompositionWorkspaceCreated",), "requires_permission": "composition_engine.compose", "idempotency_key": "workspace_id"},
             {"route": "POST /composition-workspaces/{id}/pbcs", "command": "select_pbc", "owned_tables": ("composition_workspace", "component_registry"), "emits": ("PbcSelectedForComposition",), "requires_permission": "composition_engine.compose", "idempotency_key": "workspace_id:pbc"},
+            {"route": "GET /composition-selection-impact", "query": "preview_selection_impact", "owned_tables": ("composition_workspace", "composition_plan", "composition_validation_run"), "requires_permission": "composition_engine.compose"},
             {"route": "POST /component-registry", "command": "register_component", "owned_tables": ("component_registry",), "emits": ("ComponentRegistered",), "requires_permission": "composition_engine.compose", "idempotency_key": "component_id"},
             {"route": "POST /ui-fragments", "command": "register_ui_fragment", "owned_tables": ("ui_fragment",), "emits": ("UiFragmentRegistered",), "requires_permission": "composition_engine.compose", "idempotency_key": "fragment_id"},
             {"route": "POST /layout-bindings", "command": "bind_layout", "owned_tables": ("layout_binding",), "emits": ("LayoutBound",), "requires_permission": "composition_engine.compose", "idempotency_key": "binding_id"},
@@ -922,12 +1529,22 @@ def composition_engine_build_api_contract() -> dict:
             {"route": "POST /composition-dsl", "command": "generate_composition_dsl", "owned_tables": ("dsl_artifact",), "emits": (), "requires_permission": "composition_engine.publish", "idempotency_key": "workspace_id"},
             {"route": "POST /composition-publications", "command": "publish_composition", "owned_tables": ("release_evidence", "package_registration_plan", "package_index_entry"), "emits": ("CompositionPublished", "PbcDeployed"), "requires_permission": "composition_engine.publish", "idempotency_key": "workspace_id:version"},
             {"route": "POST /composition/events/inbox", "command": "receive_event", "owned_tables": (), "consumes": COMPOSITION_ENGINE_CONSUMED_EVENT_TYPES, "requires_permission": "composition_engine.event", "idempotency_key": "event_id"},
+            {"route": "POST /composition/assistant/document-preview", "query": "assistant_document_preview", "owned_tables": COMPOSITION_ENGINE_OWNED_TABLES, "requires_permission": "composition_engine.read"},
+            {"route": "POST /composition/assistant/route-intent", "query": "route_agent_intent", "owned_tables": COMPOSITION_ENGINE_OWNED_TABLES, "requires_permission": "composition_engine.read"},
+            {"route": "GET /composition/smoke-plan", "query": "build_smoke_plan", "owned_tables": ("composition_workspace", "layout_binding", "dsl_artifact"), "requires_permission": "composition_engine.audit"},
+            {"route": "GET /composition/artifact-lineage", "query": "build_artifact_lineage", "owned_tables": ("dsl_artifact", "composition_plan", "release_evidence"), "requires_permission": "composition_engine.audit"},
+            {"route": "GET /composition/documentation-matrix", "query": "build_documentation_matrix", "owned_tables": COMPOSITION_ENGINE_OWNED_TABLES, "requires_permission": "composition_engine.audit"},
+            {"route": "GET /composition/security-review", "query": "build_security_review", "owned_tables": COMPOSITION_ENGINE_OWNED_TABLES, "requires_permission": "composition_engine.audit"},
+            {"route": "GET /composition/release-notes", "query": "build_release_notes", "owned_tables": ("release_evidence", "composition_plan", "dsl_artifact"), "requires_permission": "composition_engine.audit"},
+            {"route": "GET /composition/rehearsal", "query": "release_rehearsal", "owned_tables": ("composition_plan", "dsl_artifact", "package_registration_plan"), "requires_permission": "composition_engine.publish"},
+            {"route": "GET /composition/agent-competencies", "query": "agent_competency_catalog", "owned_tables": COMPOSITION_ENGINE_OWNED_TABLES, "requires_permission": "composition_engine.read"},
+            {"route": "GET /composition/controls", "query": "build_control_center", "owned_tables": COMPOSITION_ENGINE_OWNED_TABLES, "requires_permission": "composition_engine.audit"},
             {"route": "GET /composition-workbench", "query": "build_workbench_view", "owned_tables": COMPOSITION_ENGINE_OWNED_TABLES, "requires_permission": "composition_engine.audit"},
             {"route": "GET /composition/schema-contract", "query": "build_schema_contract", "owned_tables": COMPOSITION_ENGINE_OWNED_TABLES, "requires_permission": "composition_engine.audit"},
             {"route": "GET /composition/service-contract", "query": "build_service_contract", "owned_tables": COMPOSITION_ENGINE_OWNED_TABLES, "requires_permission": "composition_engine.audit"},
             {"route": "GET /composition/release-evidence", "query": "build_release_evidence", "owned_tables": COMPOSITION_ENGINE_OWNED_TABLES, "requires_permission": "composition_engine.audit"},
         ),
-        "declared_catalog_routes": ("POST /composition-workspaces", "POST /component-registry", "POST /ui-fragments", "POST /layout-bindings", "POST /composition-dsl", "POST /composition-publications", "GET /composition-workbench"),
+        "declared_catalog_routes": ("POST /composition-workspaces", "POST /component-registry", "POST /ui-fragments", "POST /layout-bindings", "POST /composition-dsl", "POST /composition-publications", "POST /composition/assistant/document-preview", "GET /composition-workbench", "GET /composition/controls"),
         "events": {"emits": COMPOSITION_ENGINE_EMITTED_EVENT_TYPES, "consumes": COMPOSITION_ENGINE_CONSUMED_EVENT_TYPES},
         "emits": COMPOSITION_ENGINE_EMITTED_EVENT_TYPES,
         "consumes": COMPOSITION_ENGINE_CONSUMED_EVENT_TYPES,
@@ -945,39 +1562,15 @@ def composition_engine_build_api_contract() -> dict:
 
 
 def composition_engine_permissions_contract() -> dict:
+    from .permissions import permission_manifest
+
+    manifest = permission_manifest()
     return {
         "format": "appgen.composition-engine-permissions.v1",
-        "ok": True,
-        "permissions": (
-            "composition_engine.read",
-            "composition_engine.compose",
-            "composition_engine.approve",
-            "composition_engine.publish",
-            "composition_engine.event",
-            "composition_engine.configure",
-            "composition_engine.audit",
-        ),
-        "action_permissions": {
-            "create_workspace": "composition_engine.compose",
-            "select_pbc": "composition_engine.compose",
-            "register_component": "composition_engine.compose",
-            "register_ui_fragment": "composition_engine.compose",
-            "bind_layout": "composition_engine.compose",
-            "validate_composition_plan": "composition_engine.approve",
-            "plan_package_registration": "composition_engine.publish",
-            "generate_composition_dsl": "composition_engine.publish",
-            "publish_composition": "composition_engine.publish",
-            "receive_event": "composition_engine.event",
-            "register_rule": "composition_engine.configure",
-            "register_schema_extension": "composition_engine.configure",
-            "set_parameter": "composition_engine.configure",
-            "configure_runtime": "composition_engine.configure",
-            "run_control_tests": "composition_engine.audit",
-            "build_workbench_view": "composition_engine.audit",
-            "build_schema_contract": "composition_engine.audit",
-            "build_service_contract": "composition_engine.audit",
-            "build_release_evidence": "composition_engine.audit",
-        },
+        "ok": manifest["ok"],
+        "permissions": manifest["permissions"],
+        "action_permissions": manifest["action_permissions"],
+        "roles": manifest["roles"],
     }
 
 
@@ -1057,6 +1650,44 @@ def composition_engine_model_stochastic_release_exposure(*, release_path: tuple[
 
 def composition_engine_register_governed_model(model_id: str, metadata: dict) -> dict:
     return {"ok": True, "model_id": model_id, "metadata": metadata, "governance": {"approved": True, "drift_score": metadata.get("drift_score", 0), "monitoring": "enabled"}}
+
+
+def _extract_composition_document_facts(document_text: str, instructions: str) -> dict:
+    combined = "\n".join(part for part in (document_text, instructions) if part)
+    lines = tuple(line.strip() for line in combined.splitlines() if line.strip())
+    pbc_matches = tuple(dict.fromkeys(re.findall(r"\b[a-z]+(?:_[a-z0-9]+)+\b", combined)))
+    pages = tuple(
+        dict.fromkeys(
+            match.group(1)
+            for match in re.finditer(r"(?:page|dashboard|console)\s+([A-Za-z0-9_-]+)", combined, flags=re.IGNORECASE)
+        )
+    )
+    roles = tuple(
+        role
+        for role in ("operator", "reviewer", "publisher", "approver")
+        if role in combined.lower()
+    )
+    integrations = tuple(
+        name
+        for name in ("identity", "gateway", "schema", "workflow", "audit", "package")
+        if name in combined.lower()
+    )
+    citations = tuple(
+        {"line": index + 1, "excerpt": line[:160]}
+        for index, line in enumerate(lines)
+        if any(token in line.lower() for token in ("pbc", "route", "page", "must", "should", "publish", "layout"))
+    )[:5]
+    if not citations and lines:
+        citations = ({"line": 1, "excerpt": lines[0][:160]},)
+    return {
+        "pbcs": pbc_matches,
+        "pages": pages,
+        "roles": roles,
+        "integrations": integrations,
+        "constraints": tuple(line for line in lines if any(token in line.lower() for token in ("must", "should", "without", "only"))),
+        "citations": citations,
+        "emails_detected": len(re.findall(r"[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}", combined, flags=re.IGNORECASE)),
+    }
 
 
 def _copy_state(state: dict) -> dict:

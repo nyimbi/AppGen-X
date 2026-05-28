@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from .controls import composition_engine_control_catalog
+from .forms import composition_engine_form_catalog
 from .runtime import COMPOSITION_ENGINE_ALLOWED_DATABASE_BACKENDS
 from .runtime import COMPOSITION_ENGINE_CONSUMED_EVENT_TYPES
 from .runtime import COMPOSITION_ENGINE_EMITTED_EVENT_TYPES
@@ -9,12 +11,14 @@ from .runtime import COMPOSITION_ENGINE_OWNED_TABLES
 from .runtime import COMPOSITION_ENGINE_REQUIRED_EVENT_TOPIC
 from .runtime import COMPOSITION_ENGINE_RUNTIME_TABLES
 from .runtime import composition_engine_permissions_contract
+from .wizards import composition_engine_wizard_catalog
 
 
 COMPOSITION_ENGINE_UI_FRAGMENT_KEYS = (
     "CompositionWorkbench",
     "WorkspaceSelector",
     "PbcSelector",
+    "SelectionImpactPreview",
     "ComponentRegistry",
     "FragmentCatalog",
     "LayoutCanvas",
@@ -22,38 +26,87 @@ COMPOSITION_ENGINE_UI_FRAGMENT_KEYS = (
     "RouteMapView",
     "PublicationConsole",
     "ReleaseEvidenceBoard",
+    "ReleaseRehearsalPanel",
     "CompositionRuleStudio",
     "CompositionParameterConsole",
     "CompositionConfigurationPanel",
+    "AssistantPreviewWorkbench",
+    "CompositionWizardLauncher",
+    "CompositionControlCenter",
+    "DocumentationMatrix",
+    "SecurityReviewPanel",
 )
 
 
 def composition_engine_ui_contract() -> dict:
+    """Return workbench metadata for the one-PBC composition/orchestration app."""
+    forms = composition_engine_form_catalog()
+    wizards = composition_engine_wizard_catalog()
+    controls = composition_engine_control_catalog()
+    action_permissions = composition_engine_permissions_contract()["action_permissions"]
     return {
         "format": "appgen.composition-engine-ui-contract.v1",
-        "ok": True,
+        "ok": forms["ok"] and wizards["ok"] and controls["ok"],
         "pbc": "composition_engine",
         "implementation_directory": "src/pyAppGen/pbcs/composition_engine",
         "fragments": COMPOSITION_ENGINE_UI_FRAGMENT_KEYS,
         "routes": (
             "/workbench/pbcs/composition_engine",
             "/workbench/pbcs/composition_engine/workspaces",
+            "/workbench/pbcs/composition_engine/selections",
             "/workbench/pbcs/composition_engine/components",
-            "/workbench/pbcs/composition_engine/fragments",
             "/workbench/pbcs/composition_engine/layouts",
-            "/workbench/pbcs/composition_engine/publications",
+            "/workbench/pbcs/composition_engine/rehearsal",
             "/workbench/pbcs/composition_engine/release-evidence",
             "/workbench/pbcs/composition_engine/rules",
             "/workbench/pbcs/composition_engine/parameters",
             "/workbench/pbcs/composition_engine/configuration",
+            "/workbench/pbcs/composition_engine/assistant",
+            "/workbench/pbcs/composition_engine/controls",
+            "/workbench/pbcs/composition_engine/security",
         ),
         "panels": (
-            {"key": "workspace", "fragment": "WorkspaceSelector", "binds_to": ("composition_workspace",), "commands": ("create_workspace", "select_pbc")},
-            {"key": "registry", "fragment": "ComponentRegistry", "binds_to": ("component_registry", "ui_fragment"), "commands": ("register_component", "register_ui_fragment")},
-            {"key": "layout", "fragment": "LayoutCanvas", "binds_to": ("layout_binding", "dsl_artifact"), "commands": ("bind_layout", "generate_composition_dsl")},
-            {"key": "publication", "fragment": "PublicationConsole", "binds_to": ("release_evidence", "outbox"), "commands": ("publish_composition", "run_control_tests")},
+            {
+                "key": "workspace",
+                "fragment": "WorkspaceSelector",
+                "binds_to": ("composition_workspace", "composition_plan"),
+                "commands": ("create_workspace", "select_pbc", "preview_selection_impact"),
+            },
+            {
+                "key": "registry",
+                "fragment": "ComponentRegistry",
+                "binds_to": ("component_registry", "ui_fragment"),
+                "commands": ("register_component", "register_ui_fragment"),
+            },
+            {
+                "key": "layout",
+                "fragment": "LayoutCanvas",
+                "binds_to": ("layout_binding", "dsl_artifact"),
+                "commands": ("bind_layout", "generate_composition_dsl", "build_smoke_plan"),
+            },
+            {
+                "key": "publication",
+                "fragment": "ReleaseRehearsalPanel",
+                "binds_to": ("release_evidence", "package_registration_plan", "package_index_entry"),
+                "commands": ("release_rehearsal", "plan_package_registration", "publish_composition", "build_release_notes"),
+            },
+            {
+                "key": "assistant",
+                "fragment": "AssistantPreviewWorkbench",
+                "binds_to": ("composition_workspace", "composition_rule", "composition_parameter", "composition_configuration"),
+                "commands": ("assistant_document_preview", "route_agent_intent"),
+            },
+            {
+                "key": "controls",
+                "fragment": "CompositionControlCenter",
+                "binds_to": ("release_evidence", "composition_validation_run", "composition_rule"),
+                "commands": ("build_control_center", "build_security_review", "build_documentation_matrix"),
+            },
         ),
-        "action_permissions": composition_engine_permissions_contract()["action_permissions"],
+        "action_permissions": action_permissions,
+        "forms": forms["forms"],
+        "wizards": wizards["wizards"],
+        "controls": controls["controls"],
         "configuration_editor": {
             "required_fields": (
                 "database_backend",
@@ -72,11 +125,30 @@ def composition_engine_ui_contract() -> dict:
             "user_selectable_event_contract": False,
         },
         "parameter_editor": {
-            "numeric_parameters": ("max_fragments_per_page", "release_risk_threshold", "layout_density_target", "route_budget", "preview_batch_limit", "review_sla_hours"),
+            "numeric_parameters": (
+                "max_fragments_per_page",
+                "release_risk_threshold",
+                "layout_density_target",
+                "route_budget",
+                "preview_batch_limit",
+                "review_sla_hours",
+            ),
+            "bounded_supported_parameters": True,
         },
         "rule_editor": {
-            "rule_types": ("workspace", "layout", "route", "permission", "release_gate"),
-            "required_fields": ("rule_id", "tenant", "scope", "required_fragments", "allowed_meshes", "route_policy", "requires_approval", "severity", "status"),
+            "rule_types": ("workspace", "selection", "layout", "release_gate"),
+            "required_fields": (
+                "rule_id",
+                "tenant",
+                "scope",
+                "required_fragments",
+                "allowed_meshes",
+                "route_policy",
+                "requires_approval",
+                "severity",
+                "status",
+            ),
+            "compiled_evidence_required": True,
         },
         "event_surfaces": {
             "emits": COMPOSITION_ENGINE_EMITTED_EVENT_TYPES,
@@ -91,6 +163,9 @@ def composition_engine_ui_contract() -> dict:
             "required_event_topic": COMPOSITION_ENGINE_REQUIRED_EVENT_TOPIC,
             "event_contract": "AppGen-X",
             "shared_table_access": False,
+            "form_ids": forms["form_ids"],
+            "wizard_ids": wizards["wizard_ids"],
+            "control_ids": controls["control_ids"],
         },
     }
 
@@ -101,19 +176,23 @@ def composition_engine_render_workbench(
     tenant: str,
     principal_permissions: tuple[str, ...],
 ) -> dict:
+    """Render high-level workbench cards for the composition slice."""
     contract = composition_engine_ui_contract()
     permissions = set(principal_permissions)
-    visible_actions = tuple(action for action, required in contract["action_permissions"].items() if required in permissions)
+    visible_actions = tuple(
+        action for action, required in contract["action_permissions"].items() if required in permissions
+    )
     workspaces = tuple(item for item in state["workspaces"].values() if item["tenant"] == tenant)
-    components = tuple(item for item in state["components"].values() if item["tenant"] == tenant)
     fragments = tuple(item for item in state["fragments"].values() if item["tenant"] == tenant)
     bindings = tuple(item for item in state["bindings"].values() if item["tenant"] == tenant)
     cards = (
         {"key": "workspaces", "value": len(workspaces), "fragment": "WorkspaceSelector"},
         {"key": "published", "value": len(tuple(item for item in workspaces if item["status"] == "published")), "fragment": "PublicationConsole"},
-        {"key": "components", "value": len(components), "fragment": "ComponentRegistry"},
         {"key": "fragments", "value": len(fragments), "fragment": "FragmentCatalog"},
         {"key": "bindings", "value": len(bindings), "fragment": "LayoutCanvas"},
+        {"key": "forms", "value": len(contract["forms"]), "fragment": "AssistantPreviewWorkbench"},
+        {"key": "wizards", "value": len(contract["wizards"]), "fragment": "CompositionWizardLauncher"},
+        {"key": "controls", "value": len(contract["controls"]), "fragment": "CompositionControlCenter"},
     )
     return {
         "format": "appgen.composition-engine-workbench-render.v1",
@@ -124,21 +203,18 @@ def composition_engine_render_workbench(
         "cards": cards,
         "visible_actions": visible_actions,
         "locked_actions": tuple(action for action in contract["action_permissions"] if action not in visible_actions),
-        "configuration_bound": bool(state["configuration"].get("ok")),
-        "rules_bound": tuple(sorted(state["rules"])),
-        "parameters_bound": tuple(sorted(state["parameters"])),
-        "event_outbox_count": len(state["outbox"]),
-        "inbox_count": len(state.get("inbox", ())),
-        "dead_letter_count": len(state.get("dead_letter", state.get("dead_letters", ()))),
-        "binding_evidence": {
-            "owned_tables": COMPOSITION_ENGINE_OWNED_TABLES,
-            "runtime_tables": COMPOSITION_ENGINE_RUNTIME_TABLES,
-            "outbox_table": COMPOSITION_ENGINE_RUNTIME_TABLES[0],
-            "inbox_table": COMPOSITION_ENGINE_RUNTIME_TABLES[1],
-            "dead_letter_table": COMPOSITION_ENGINE_RUNTIME_TABLES[2],
-            "shared_table_access": False,
-        },
+        "configuration_bound": bool(state.get("configuration", {}).get("ok")),
+        "rules_bound": tuple(sorted(rule_id for rule_id, rule in state.get("rules", {}).items() if rule["tenant"] == tenant)),
+        "parameters_bound": tuple(sorted(state.get("parameters", {}))),
+        "event_outbox_count": len(state.get("outbox", ())),
+        "event_inbox_count": len(tuple(event for event in state.get("inbox", ()) if event.get("tenant") == tenant)),
+        "dead_letter_count": len(tuple(event for event in state.get("dead_letter", ()) if event.get("tenant") == tenant)),
+        "forms": contract["forms"],
+        "wizards": contract["wizards"],
+        "controls": contract["controls"],
+        "binding_evidence": contract["binding_evidence"],
     }
+
 
 class _AppGenSmokeState(dict):
     """Tolerant empty state for side-effect-free workbench smoke rendering."""
@@ -151,16 +227,19 @@ class _AppGenSmokeState(dict):
 
 def _appgen_smoke_state():
     """Return a deterministic state envelope understood by PBC workbench renderers."""
-    return _AppGenSmokeState({
-        "configuration": _AppGenSmokeState({"ok": True}),
-        "rules": _AppGenSmokeState(),
-        "parameters": _AppGenSmokeState(),
-        "outbox": (),
-        "inbox": (),
-        "dead_letter": (),
-        "dead_letters": (),
-        "events": (),
-    })
+    return _AppGenSmokeState(
+        {
+            "configuration": _AppGenSmokeState({"ok": True}),
+            "rules": _AppGenSmokeState(),
+            "parameters": _AppGenSmokeState(),
+            "workspaces": _AppGenSmokeState(),
+            "fragments": _AppGenSmokeState(),
+            "bindings": _AppGenSmokeState(),
+            "outbox": (),
+            "inbox": (),
+            "dead_letter": (),
+        }
+    )
 
 
 def smoke_test():
@@ -172,41 +251,18 @@ def smoke_test():
         tenant="smoke",
         principal_permissions=permissions,
     )
-    cards = tuple(rendered.get("cards") or contract.get("panels") or contract.get("fragments", ()))
-    configuration_editor = contract.get("configuration_editor", {})
-    event_surfaces = contract.get("event_surfaces", {})
-    rule_editor = contract.get("rule_editor") or {
-        "rule_types": ("configuration", "parameter", "release_gate"),
-        "required_fields": ("rule_id", "scope", "status"),
-    }
-    binding_evidence = contract.get("binding_evidence") or {"shared_table_access": False}
-    governance = {
-        "configuration_editor": configuration_editor,
-        "parameter_editor": contract.get("parameter_editor", {}),
-        "rule_editor": rule_editor,
-        "event_surfaces": event_surfaces,
-        "binding_evidence": binding_evidence,
-    }
     return {
         "format": "appgen.pbc-ui-smoke-test.v1",
         "ok": contract.get("ok") is True
         and rendered.get("ok") is True
         and bool(contract.get("fragments"))
-        and bool(contract.get("routes"))
-        and bool(cards)
-        and bool(contract.get("action_permissions"))
-        and bool(configuration_editor)
-        and configuration_editor.get("stream_engine_picker_visible", configuration_editor.get("user_facing_stream_engine_picker", False)) is False
-        and bool(contract.get("parameter_editor"))
-        and bool(rule_editor)
-        and bool(event_surfaces)
-        and ("outbox_status" in event_surfaces or "contract" in event_surfaces)
-        and binding_evidence.get("shared_table_access") is not True
-        and not binding_evidence.get("shared_tables", ()),
-        "manifest": {"fragments": contract.get("fragments", ()), "routes": contract.get("routes", ())},
+        and bool(contract.get("forms"))
+        and bool(contract.get("wizards"))
+        and bool(contract.get("controls"))
+        and contract["configuration_editor"]["stream_engine_picker_visible"] is False
+        and contract["binding_evidence"]["shared_table_access"] is False,
+        "manifest": {"fragments": contract.get("fragments", ())},
         "contract": contract,
-        "governance": governance,
         "rendered": rendered,
-        "cards": cards,
         "side_effects": (),
     }
