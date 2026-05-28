@@ -2,314 +2,314 @@
 
 ## Purpose
 
-This backlog identifies 50 high-impact, high-value improvements for `facilities_space_management`. Each item is specific to the domain surface currently declared by the PBC and is intended to move the package beyond world-class breadth toward complete specialist-grade coverage.
+This backlog identifies 50 high-impact, high-value improvements for `facilities_space_management`. Each item is specific to facilities and workplace operations: sites, buildings, floors, spaces, occupancy, reservations, moves, maintenance blocks, access constraints, safety inspections, utilization, capacity, hybrid work, wayfinding, leases, emergency readiness, and workplace intelligence. The intent is complete domain coverage for a better-than-world-class facilities and space PBC while preserving AppGen-X package boundaries.
 
 ## Current Domain Evidence Used
 
-- Domain purpose: Owns facilities, floors, spaces, occupancy, reservations, moves, maintenance signals, access constraints, utilization, safety status, and workplace intelligence.
-- Representative owned tables: `facilities_space_management_facility_site`, `facilities_space_management_facility_floor`, `facilities_space_management_space_record`, `facilities_space_management_space_type`, `facilities_space_management_occupancy_plan`, `facilities_space_management_occupancy_assignment`, `facilities_space_management_space_reservation`, `facilities_space_management_move_request`, `facilities_space_management_move_task`, `facilities_space_management_maintenance_signal`, `facilities_space_management_space_availability_snapshot`, `facilities_space_management_access_constraint`, ...
-- Representative operations/APIs: `create_facility_site`, `define_floor`, `create_space_record`, `classify_space_type`, `create_occupancy_plan`, `assign_occupant`, `reserve_space`, `open_move_request`, `complete_move_task`, `record_maintenance_signal`, `publish_availability_snapshot`, `define_access_constraint`, ...
-- Representative events: `FacilityCreated`, `SpaceReserved`, `MoveRequested`, `MaintenanceSignalRecorded`, `SafetyInspectionRecorded`, `CapacityPlanPublished`.
-- Representative advanced capabilities: `space demand forecasting`, `reservation conflict optimization`, `occupancy scenario simulation`, `safety-risk scoring`, `maintenance-aware availability`, `hybrid workplace recommendation`.
+- Domain purpose: owns facilities, floors, spaces, occupancy, reservations, moves, maintenance signals, access constraints, utilization, safety status, and workplace intelligence.
+- Owned tables include facility site, floor, space record, space type, occupancy plan, occupancy assignment, space reservation, move request, move task, maintenance signal, availability snapshot, access constraint, safety inspection, utilization observation, capacity plan, exception case, policy rules, runtime parameters, schema extensions, control assertions, governed models, outbox, inbox, and dead-letter evidence.
+- Operations include `create_facility_site`, `define_floor`, `create_space_record`, `classify_space_type`, `create_occupancy_plan`, `assign_occupant`, `reserve_space`, `open_move_request`, `complete_move_task`, `record_maintenance_signal`, `publish_availability_snapshot`, `define_access_constraint`, `record_safety_inspection`, `observe_utilization`, `build_capacity_plan`, `compile_facility_rule`, and `simulate_space_demand`.
+- Events include `FacilityCreated`, `SpaceReserved`, `MoveRequested`, `MaintenanceSignalRecorded`, `SafetyInspectionRecorded`, and `CapacityPlanPublished`; consumed events include employee, work-order, access-policy, policy, lease, and maintenance signals.
+- Existing advanced claims include space demand forecasting, reservation conflict optimization, occupancy scenario simulation, safety-risk scoring, maintenance-aware availability, and hybrid workplace recommendation.
 
 ## 50 Better-Than-World-Class Improvements
 
-### 1. Deep specialist lifecycle semantics for `facilities_space_management_facility_site`
+### 1. Facility Site Master and Campus Topology
 
-**Justification:** This owned table is part of the Facilities and Space Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns facilities, floors, spaces, occupancy, reservations, moves, maintenance signals, access constraints, utilization, safety status, and workplace intelligence.
+**Justification:** A facility is more than a name and address. Facilities teams need campus relationships, buildings, wings, entrances, parking, loading docks, emergency zones, amenities, and operational ownership to manage space accurately.
 
-**Improvement:** Extend `facilities_space_management_facility_site` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `facility_site_management`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Expand `create_facility_site` with campus hierarchy, geospatial boundary, building group, operating hours, facility owner, service zones, emergency zones, parking assets, visitor entrances, loading areas, and site status. The UI should render a navigable site topology instead of a flat facility list.
 
-### 2. Deep specialist lifecycle semantics for `facilities_space_management_facility_floor`
+### 2. Building and Floor Digital Twin Model
 
-**Justification:** This owned table is part of the Facilities and Space Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns facilities, floors, spaces, occupancy, reservations, moves, maintenance signals, access constraints, utilization, safety status, and workplace intelligence.
+**Justification:** Floor definitions need usable geometry, adjacency, zones, vertical circulation, accessibility routes, safety exits, and maintenance areas. Generic floors cannot support reservations, moves, occupancy, and emergency planning.
 
-**Improvement:** Extend `facilities_space_management_facility_floor` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `facilities_space_management_workflow`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Upgrade `define_floor` with floor maps, coordinate systems, zones, entrances, elevators, stairs, exits, restrooms, amenities, restricted areas, and map versioning. Link every space to a floor-map version and provide change impact when floor plans are updated.
 
-### 3. Deep specialist lifecycle semantics for `facilities_space_management_space_record`
+### 3. Space Record Precision and Area Standards
 
-**Justification:** This owned table is part of the Facilities and Space Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns facilities, floors, spaces, occupancy, reservations, moves, maintenance signals, access constraints, utilization, safety status, and workplace intelligence.
+**Justification:** Space management depends on accurate areas, capacity, seating, room features, and usage standards. Inconsistent measurements distort utilization, chargeback, and planning.
 
-**Improvement:** Extend `facilities_space_management_space_record` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `facilities_space_management_analytics`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Expand `create_space_record` with gross, rentable, usable, assignable, and net area; capacity method; seating count; neighborhood; amenities; accessibility; AV features; environmental profile; and measurement evidence. Track area standards and effective dates.
 
-### 4. Deep specialist lifecycle semantics for `facilities_space_management_space_type`
+### 4. Space Type and Usage Taxonomy
 
-**Justification:** This owned table is part of the Facilities and Space Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns facilities, floors, spaces, occupancy, reservations, moves, maintenance signals, access constraints, utilization, safety status, and workplace intelligence.
+**Justification:** Offices, desks, conference rooms, labs, clean rooms, clinics, classrooms, warehouses, storage, hoteling desks, wellness rooms, and secure rooms have very different rules. A generic type list underserves facilities operations.
 
-**Improvement:** Extend `facilities_space_management_space_type` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `configuration_schema`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Upgrade `classify_space_type` with governed space taxonomies, usage constraints, safety requirements, reservation eligibility, capacity method, access rules, amenities, compliance attributes, and lifecycle states. Use taxonomy rules in reservations, moves, and capacity planning.
 
-### 5. Deep specialist lifecycle semantics for `facilities_space_management_occupancy_plan`
+### 5. Occupancy Plan Versioning and Scenario Control
 
-**Justification:** This owned table is part of the Facilities and Space Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns facilities, floors, spaces, occupancy, reservations, moves, maintenance signals, access constraints, utilization, safety status, and workplace intelligence.
+**Justification:** Occupancy plans change during reorganizations, hybrid work shifts, renovations, mergers, and lease decisions. Planners need versions and scenarios, not one mutable plan.
 
-**Improvement:** Extend `facilities_space_management_occupancy_plan` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `rule_engine`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Expand `create_occupancy_plan` with plan versions, baseline, scenario assumptions, target utilization, department allocations, effective dates, approval status, freeze windows, and rollback. Compare current, approved, and proposed occupancy states in the workbench.
 
-### 6. Deep specialist lifecycle semantics for `facilities_space_management_occupancy_assignment`
+### 6. Occupant Assignment Governance
 
-**Justification:** This owned table is part of the Facilities and Space Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns facilities, floors, spaces, occupancy, reservations, moves, maintenance signals, access constraints, utilization, safety status, and workplace intelligence.
+**Justification:** Assigning people or teams to space depends on role, department, accessibility needs, hybrid pattern, security, adjacency, equipment, and capacity. Poor assignments create safety and productivity issues.
 
-**Improvement:** Extend `facilities_space_management_occupancy_assignment` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `parameter_engine`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Upgrade `assign_occupant` with assignment type, occupant source projection, department, work pattern, required equipment, accessibility needs, security clearance, adjacency requirements, start/end dates, and approval evidence. Validate capacity and access constraints before assignment.
 
-### 7. Deep specialist lifecycle semantics for `facilities_space_management_space_reservation`
+### 7. Hybrid Work Pattern Modeling
 
-**Justification:** This owned table is part of the Facilities and Space Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns facilities, floors, spaces, occupancy, reservations, moves, maintenance signals, access constraints, utilization, safety status, and workplace intelligence.
+**Justification:** Modern occupancy is probabilistic: workers use spaces by schedule, team rituals, remote days, travel, and peak attendance. Static seat counts do not model real demand.
 
-**Improvement:** Extend `facilities_space_management_space_reservation` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `owned_schema_migrations_models`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add hybrid work patterns for teams and occupants, including anchor days, visit frequency, booking preferences, peak windows, and team collocation needs. Feed patterns into demand forecasts, reservations, and capacity plans without mutating HR records.
 
-### 8. Deep specialist lifecycle semantics for `facilities_space_management_move_request`
+### 8. Space Reservation Eligibility Engine
 
-**Justification:** This owned table is part of the Facilities and Space Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns facilities, floors, spaces, occupancy, reservations, moves, maintenance signals, access constraints, utilization, safety status, and workplace intelligence.
+**Justification:** A reservation should respect space type, capacity, setup, equipment, access, safety, maintenance blocks, privacy, neighborhood rules, and policy. Simple calendar availability is not enough.
 
-**Improvement:** Extend `facilities_space_management_move_request` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `appgen_x_outbox_inbox_eventing`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Upgrade `reserve_space` with eligibility checks for capacity, requester role, attendee count, equipment, accessibility, maintenance blocks, access constraints, booking horizon, catering/setup buffers, and conflict policies. Explain blocked reservations in the UI and agent.
 
-### 9. Deep specialist lifecycle semantics for `facilities_space_management_move_task`
+### 9. Reservation Conflict Optimization
 
-**Justification:** This owned table is part of the Facilities and Space Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns facilities, floors, spaces, occupancy, reservations, moves, maintenance signals, access constraints, utilization, safety status, and workplace intelligence.
+**Justification:** Reservation conflicts are not binary. Teams need alternatives, swaps, priority rules, split bookings, equipment substitutions, and setup-time optimization.
 
-**Improvement:** Extend `facilities_space_management_move_task` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `idempotent_handlers`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add conflict optimization that recommends alternate spaces, times, layouts, nearby rooms, split rooms, equipment moves, and priority-based conflict resolution. Store tradeoffs and required approvals before modifying reservations.
 
-### 10. Deep specialist lifecycle semantics for `facilities_space_management_maintenance_signal`
+### 10. Meeting Room Setup and Service Dependencies
 
-**Justification:** This owned table is part of the Facilities and Space Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns facilities, floors, spaces, occupancy, reservations, moves, maintenance signals, access constraints, utilization, safety status, and workplace intelligence.
+**Justification:** Many spaces require setup, cleaning, AV checks, catering, security, or maintenance before use. Reservations must orchestrate those dependencies.
 
-**Improvement:** Extend `facilities_space_management_maintenance_signal` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `retry_dead_letter_evidence`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add setup requirements, service tasks, setup/teardown buffers, provider assignments, readiness checks, and completion evidence. Prevent reservations from becoming confirmed when dependent setup tasks are incomplete.
 
-### 11. Make `create_facility_site` a complete command lifecycle
+### 11. Hot Desk and Neighborhood Management
 
-**Justification:** High-value users need `create_facility_site` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Hoteling requires desk pools, neighborhoods, amenities, quiet zones, team proximity, check-in windows, release rules, and no-show handling.
 
-**Improvement:** Implement `create_facility_site` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `FacilityCreated`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add hot-desk pools, neighborhoods, desk features, booking rules, auto-release on no-show, desk check-in evidence, team adjacency preferences, and utilization feedback. Provide a desk-finder UI with policy-aware recommendations.
 
-### 12. Make `define_floor` a complete command lifecycle
+### 12. Occupancy Sensing and Observation Confidence
 
-**Justification:** High-value users need `define_floor` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Utilization observations may come from badge data, Wi-Fi, sensors, reservations, manual counts, or check-ins, each with accuracy and privacy constraints.
 
-**Improvement:** Implement `define_floor` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `SpaceReserved`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Expand `observe_utilization` with observation source, confidence, sampling method, privacy basis, time window, occupancy estimate, sensor health, and reconciliation against reservations and assignments. Show confidence intervals in utilization analytics.
 
-### 13. Make `create_space_record` a complete command lifecycle
+### 13. Privacy-Safe Workplace Analytics
 
-**Justification:** High-value users need `create_space_record` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Occupancy and utilization data can reveal employee movement and behavior. Facilities analytics must be privacy-preserving and purpose-limited.
 
-**Improvement:** Implement `create_space_record` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `MoveRequested`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add aggregation thresholds, anonymization policies, retention periods, consent/projection basis, role-based masking, and forbidden drilldowns. Reject utilization views that expose individuals beyond configured policy.
 
-### 14. Make `classify_space_type` a complete command lifecycle
+### 14. Space Availability Snapshot Semantics
 
-**Justification:** High-value users need `classify_space_type` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Availability depends on reservation, occupancy, maintenance, safety, access, capacity, setup, and policy status. A simple available flag is misleading.
 
-**Improvement:** Implement `classify_space_type` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `MaintenanceSignalRecorded`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Upgrade `publish_availability_snapshot` with availability reason, blocked intervals, confidence, source records, capacity remaining, maintenance state, safety state, access constraints, and reservation eligibility. Emit snapshots when material availability changes.
 
-### 15. Make `create_occupancy_plan` a complete command lifecycle
+### 15. Maintenance-Aware Space Blocking
 
-**Justification:** High-value users need `create_occupancy_plan` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Maintenance work can make spaces unavailable, partially usable, noisy, unsafe, or restricted. Facilities planning must reflect maintenance state.
 
-**Improvement:** Implement `create_occupancy_plan` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `SafetyInspectionRecorded`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Expand `record_maintenance_signal` with affected spaces, severity, expected duration, usable capacity, noise/odor/access impact, safety impact, required buffers, and release criteria. Integrate work-order completion events through declared projections.
 
-### 16. Make `assign_occupant` a complete command lifecycle
+### 16. Move Request Lifecycle
 
-**Justification:** High-value users need `assign_occupant` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Moves involve approvals, source/destination readiness, equipment, IT, access, furniture, labels, movers, downtime, and occupant communication. Generic requests do not cover move logistics.
 
-**Improvement:** Implement `assign_occupant` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `CapacityPlanPublished`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Upgrade `open_move_request` with move type, affected occupants, source/destination spaces, approval routing, move date, dependencies, risk, communication plan, and readiness checklist. Show move impact on capacity and reservations.
 
-### 17. Make `reserve_space` a complete command lifecycle
+### 17. Move Task Dependency Orchestration
 
-**Justification:** High-value users need `reserve_space` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Move tasks need sequencing across packing, IT setup, access provisioning, furniture, cleaning, signage, and occupant confirmation. Out-of-order tasks disrupt work.
 
-**Improvement:** Implement `reserve_space` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `FacilityCreated`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Expand `complete_move_task` with dependency graph, task role, due date, evidence, blocker, handoff, confirmation, and rollback. Prevent move completion while critical dependent tasks remain open.
 
-### 18. Make `open_move_request` a complete command lifecycle
+### 18. Access Constraint Governance
 
-**Justification:** High-value users need `open_move_request` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Spaces can be restricted by security clearance, visitor rules, lab safety, privacy, tenant boundaries, union rules, emergency status, or temporary incidents. Access must be explicit.
 
-**Improvement:** Implement `open_move_request` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `SpaceReserved`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Upgrade `define_access_constraint` with constraint type, affected spaces, allowed roles, effective window, reason, policy basis, emergency override, and access-system projection. Apply constraints to reservations, assignments, and wayfinding.
 
-### 19. Make `complete_move_task` a complete command lifecycle
+### 19. Visitor and Guest Space Controls
 
-**Justification:** High-value users need `complete_move_task` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Visitor use of rooms, desks, lobbies, labs, and secure spaces creates security, safety, and capacity requirements. Facilities systems need visitor-aware space logic.
 
-**Improvement:** Implement `complete_move_task` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `MoveRequested`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add visitor eligibility rules, escort requirements, visitor capacity, check-in dependencies, badge prerequisites, confidentiality restrictions, and guest-host linkage. Surface visitor constraints during reservation and event planning.
 
-### 20. Make `record_maintenance_signal` a complete command lifecycle
+### 20. Safety Inspection Program
 
-**Justification:** High-value users need `record_maintenance_signal` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Facilities safety includes fire exits, occupancy limits, equipment, labs, ergonomics, environmental conditions, hazards, and regulatory inspections. One safety status is too weak.
 
-**Improvement:** Implement `record_maintenance_signal` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `MaintenanceSignalRecorded`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Expand `record_safety_inspection` with inspection type, checklist, inspector, hazard severity, affected spaces, required remediation, recurrence, due dates, and evidence attachments. Block spaces when safety findings exceed policy thresholds.
 
-### 21. Operationalize `space demand forecasting` as a governed decision system
+### 21. Hazard and Incident Linkage
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Facilities and Space Management and measurably improves facilities space management risk score without hiding assumptions.
+**Justification:** Safety incidents and hazards should update space availability, risk posture, maintenance blocks, and capacity. Without linkage, unsafe spaces can remain reservable.
 
-**Improvement:** Promote `space demand forecasting` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `facilities_space_management_risk_score`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add hazard records tied to spaces, floors, inspections, maintenance signals, and incident projections. Trigger access restrictions, reservation cancellations, remediation tasks, and safety reinspection requirements.
 
-### 22. Operationalize `reservation conflict optimization` as a governed decision system
+### 22. Capacity Plan Demand Forecasting
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Facilities and Space Management and measurably improves facilities space management workbench metric without hiding assumptions.
+**Justification:** Facilities teams need forecasts for seat demand, meeting room demand, specialty space demand, hybrid peaks, growth, contractions, and relocation plans.
 
-**Improvement:** Promote `reservation conflict optimization` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `facilities_space_management_workbench_metric`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Upgrade `build_capacity_plan` and `simulate_space_demand` with demand drivers, headcount projections, hybrid patterns, reservation trends, utilization observations, occupancy targets, and scenario assumptions. Compare capacity shortfalls and surplus by site, floor, department, and space type.
 
-### 23. Operationalize `occupancy scenario simulation` as a governed decision system
+### 23. Workplace Utilization Heatmaps
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Facilities and Space Management and measurably improves facilities space management risk score without hiding assumptions.
+**Justification:** Utilization analytics should reveal underused spaces, crowding, peak patterns, no-show behavior, and mismatch between assigned and actual use.
 
-**Improvement:** Promote `occupancy scenario simulation` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `facilities_space_management_risk_score`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Build heatmaps by site, floor, zone, room, desk pool, space type, day, and hour using privacy-safe observations. Show confidence, observation source, and recommendations for redesign or policy changes.
 
-### 24. Operationalize `safety-risk scoring` as a governed decision system
+### 24. Space Demand Scenario Simulation
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Facilities and Space Management and measurably improves facilities space management workbench metric without hiding assumptions.
+**Justification:** Leaders need to test office attendance mandates, lease exits, renovations, hiring plans, and team relocations before disrupting people.
 
-**Improvement:** Promote `safety-risk scoring` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `facilities_space_management_workbench_metric`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add scenario simulations for attendance policies, department moves, site closures, lease changes, renovation phases, and emergency closures. Show impacts on utilization, capacity, commute, reservations, safety, and cost.
 
-### 25. Operationalize `maintenance-aware availability` as a governed decision system
+### 25. Lease and Cost Context Projections
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Facilities and Space Management and measurably improves facilities space management risk score without hiding assumptions.
+**Justification:** Space decisions depend on leases, rent, options, service charges, expirations, and cost allocation, but the facilities PBC should not own contract or finance tables.
 
-**Improvement:** Promote `maintenance-aware availability` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `facilities_space_management_risk_score`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add lease and cost projections with source, freshness, allowed fields, cost per area, expiration, options, restrictions, and chargeback context. Use them in capacity planning and executive dashboards.
 
-### 26. Operationalize `hybrid workplace recommendation` as a governed decision system
+### 26. Space Chargeback and Allocation Evidence
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Facilities and Space Management and measurably improves facilities space management workbench metric without hiding assumptions.
+**Justification:** Departments often pay for assigned, occupied, or consumed space. Chargeback needs defensible allocation rules and evidence.
 
-**Improvement:** Promote `hybrid workplace recommendation` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `facilities_space_management_workbench_metric`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add allocation snapshots for department, cost center projection, space, area, utilization basis, time period, and rule version. Publish finance handoff events without mutating finance records.
 
-### 27. Operationalize `space demand forecasting` as a governed decision system
+### 27. Accessibility and Inclusive Workplace Controls
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Facilities and Space Management and measurably improves facilities space management risk score without hiding assumptions.
+**Justification:** Space management must support accessibility, ergonomic needs, wellness rooms, quiet rooms, lactation rooms, accessible paths, and accommodation requirements.
 
-**Improvement:** Promote `space demand forecasting` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `facilities_space_management_risk_score`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add accessibility attributes, accommodation constraints, accessible route mapping, privacy controls, and reservation filters. Prevent moves or assignments that violate recorded accessibility requirements.
 
-### 28. Operationalize `reservation conflict optimization` as a governed decision system
+### 28. Environmental Comfort and Indoor Quality Signals
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Facilities and Space Management and measurably improves facilities space management workbench metric without hiding assumptions.
+**Justification:** Temperature, humidity, air quality, noise, light, and crowding affect workplace performance and safety. Facilities decisions need environmental context.
 
-**Improvement:** Promote `reservation conflict optimization` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `facilities_space_management_workbench_metric`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add environmental observations with source, time window, thresholds, affected spaces, comfort score, and remediation link. Use environmental signals in space recommendations, incidents, and maintenance blocks.
 
-### 29. Operationalize `occupancy scenario simulation` as a governed decision system
+### 29. Energy and Carbon-Aware Space Operations
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Facilities and Space Management and measurably improves facilities space management risk score without hiding assumptions.
+**Justification:** Space utilization affects heating, cooling, lighting, cleaning, and emissions. Facilities optimization should include energy and carbon outcomes.
 
-**Improvement:** Promote `occupancy scenario simulation` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `facilities_space_management_risk_score`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add energy/carbon estimates by site, floor, zone, and utilization scenario. Recommend consolidation, closure days, HVAC scheduling, and reservation clustering with tradeoffs against employee experience.
 
-### 30. Operationalize `safety-risk scoring` as a governed decision system
+### 30. Emergency Preparedness and Muster Zones
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Facilities and Space Management and measurably improves facilities space management workbench metric without hiding assumptions.
+**Justification:** Facilities systems must support evacuations, shelter-in-place, muster points, emergency capacity, blocked exits, and safety communications.
 
-**Improvement:** Promote `safety-risk scoring` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `facilities_space_management_workbench_metric`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add emergency zones, muster areas, route constraints, floor wardens, capacity limits, emergency contacts, and drill evidence. Link safety inspections and access constraints to emergency readiness.
 
-### 31. Create simulation-grade governance for `space_reservation_policy` and `reservation_horizon_days`
+### 31. Wayfinding and Occupant Experience
 
-**Justification:** Complete Facilities and Space Management coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Large facilities need routes to rooms, desks, amenities, exits, and accessible paths. Poor wayfinding wastes time and creates accessibility issues.
 
-**Improvement:** Add a policy cockpit where `space_reservation_policy` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `reservation_horizon_days` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add wayfinding graph data for spaces, paths, elevators, stairs, entrances, amenities, and accessible routes. Generate directions that respect access constraints and temporary closures.
 
-### 32. Create simulation-grade governance for `occupancy_policy` and `occupancy_capacity_buffer`
+### 32. Amenities and Service Level Management
 
-**Justification:** Complete Facilities and Space Management coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Amenities such as parking, lockers, cafes, AV, quiet rooms, and wellness spaces affect reservation choice and occupancy satisfaction.
 
-**Improvement:** Add a policy cockpit where `occupancy_policy` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `occupancy_capacity_buffer` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add amenity records with capacity, location, availability, service hours, restrictions, support owner, and incident state. Use amenities in space discovery, reservations, and workplace recommendations.
 
-### 33. Create simulation-grade governance for `move_policy` and `move_sla_days`
+### 33. Cleaning and Turnover Scheduling
 
-**Justification:** Complete Facilities and Space Management coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** High-use spaces require cleaning, reset, inspection, and readiness windows. Reservations and utilization must account for turnover.
 
-**Improvement:** Add a policy cockpit where `move_policy` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `move_sla_days` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add cleaning policies, turnover buffers, cleaning task evidence, high-use triggers, post-event cleaning, and readiness status. Block back-to-back bookings when turnover requirements are unmet.
 
-### 34. Create simulation-grade governance for `maintenance_block_policy` and `utilization_warning_percent`
+### 34. Event and Large Gathering Planning
 
-**Justification:** Complete Facilities and Space Management coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Large meetings and events require rooms, overflow, safety capacity, catering, security, AV, setup, signage, and visitor handling.
 
-**Improvement:** Add a policy cockpit where `maintenance_block_policy` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `utilization_warning_percent` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add event planning records that coordinate multiple spaces, setup tasks, service dependencies, attendee capacity, visitor rules, emergency capacity, and approval workflows.
 
-### 35. Create simulation-grade governance for `safety_policy` and `safety_review_days`
+### 35. Renovation and Construction Phasing
 
-**Justification:** Complete Facilities and Space Management coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Renovations disrupt occupancy, reservations, safety, access, and maintenance. Phased plans need space-level impacts and temporary moves.
 
-**Improvement:** Add a policy cockpit where `safety_policy` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `safety_review_days` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add renovation phases, affected spaces, closure windows, temporary assignments, safety constraints, noise impacts, contractor access, and communication plans. Simulate occupancy and reservation impacts before approval.
 
-### 36. Upgrade `facilities workbench` into a full specialist command center
+### 36. Facility Exception Workflow
 
-**Justification:** The PBC UI must expose the complete Facilities and Space Management surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Facilities teams regularly handle exceptions: over-capacity events, restricted-space access, safety waivers, emergency reservations, move accelerations, and maintenance overrides.
 
-**Improvement:** Expand `facilities workbench` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Upgrade `resolve_facility_exception` with exception type, scope, approver authority, expiry, compensating controls, affected spaces, user impact, and closure evidence.
 
-### 37. Upgrade `space map` into a full specialist command center
+### 37. Reservation No-Show and Release Optimization
 
-**Justification:** The PBC UI must expose the complete Facilities and Space Management surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** No-shows waste scarce spaces and distort utilization. Policies need evidence and fair enforcement.
 
-**Improvement:** Expand `space map` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add check-in tracking, no-show detection, grace periods, auto-release, repeated no-show patterns, notification, and exception handling. Feed no-show signals into reservation recommendations and policy tuning.
 
-### 38. Upgrade `reservation calendar` into a full specialist command center
+### 38. Neighborhood and Team Adjacency Planning
 
-**Justification:** The PBC UI must expose the complete Facilities and Space Management surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Workplace design depends on team adjacency, collaboration needs, noise compatibility, security, and shared equipment. Random assignments degrade productivity.
 
-**Improvement:** Expand `reservation calendar` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add adjacency requirements, team neighborhoods, compatibility rules, collaboration frequency, quiet/noisy zones, and scenario scoring. Use them in occupancy plans and moves.
 
-### 39. Upgrade `move board` into a full specialist command center
+### 39. Space Search and Recommendation Engine
 
-**Justification:** The PBC UI must expose the complete Facilities and Space Management surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Users need to find suitable spaces by purpose, capacity, equipment, location, accessibility, privacy, availability, and policy constraints.
 
-**Improvement:** Expand `move board` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add search ranking and recommendations for rooms, desks, neighborhoods, and specialty spaces based on intent, attendees, amenities, access eligibility, distance, utilization, and setup needs.
 
-### 40. Upgrade `maintenance block panel` into a full specialist command center
+### 40. Agent-Assisted Facility Document Intake
 
-**Justification:** The PBC UI must expose the complete Facilities and Space Management surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Facilities teams receive floor plans, lease abstracts, move sheets, safety reports, maintenance notes, occupancy spreadsheets, and employee requests that need structured updates.
 
-**Improvement:** Expand `maintenance block panel` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Give the PBC agent skills to parse documents into proposed sites, floors, spaces, reservations, move tasks, maintenance blocks, access constraints, safety findings, and capacity plans. Require source citations, confidence, affected tables, event plans, and human confirmation.
 
-### 41. Prove cross-PBC federation for `POST /facility-sites` and `EmployeeCreated`
+### 41. Floor Plan Change Impact Analysis
 
-**Justification:** Facilities and Space Management must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Changing a floor plan affects spaces, reservations, assignments, wayfinding, safety exits, access constraints, utilization history, and capacity.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /facility-sites` and consumed event `EmployeeCreated` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Add impact analysis for map and space changes showing affected reservations, occupants, safety zones, moves, maintenance, and reporting. Require approval for material plan changes.
 
-### 42. Prove cross-PBC federation for `POST /buildings` and `WorkOrderCompleted`
+### 42. Portfolio Rationalization and Lease Decision Support
 
-**Justification:** Facilities and Space Management must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Facilities leaders need to decide whether to renew, exit, consolidate, expand, or redesign sites based on utilization, cost, demand, safety, and employee experience.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /buildings` and consumed event `WorkOrderCompleted` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Add portfolio decision models combining capacity, utilization, cost projections, lease dates, commute impact, amenities, safety, and carbon. Generate scenario comparisons and executive recommendations.
 
-### 43. Prove cross-PBC federation for `POST /spaces` and `AccessPolicyChanged`
+### 43. Maintenance Dependency Boundary Proofs
 
-**Justification:** Facilities and Space Management must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Facilities and maintenance overlap, but facilities should not mutate maintenance work orders. Availability still needs maintenance awareness.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /spaces` and consumed event `AccessPolicyChanged` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Define projection contracts for maintenance signals and work-order completions, including affected spaces, downtime, readiness, freshness, and fallback. Add tests proving facilities services mutate only `facilities_space_management_` tables.
 
-### 44. Prove cross-PBC federation for `POST /space-reservations` and `PolicyChanged`
+### 44. Access Policy Boundary Proofs
 
-**Justification:** Facilities and Space Management must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Access controls may be owned by identity or security PBCs, while facilities owns spatial constraints. Composition must be explicit.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /space-reservations` and consumed event `PolicyChanged` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Add access policy projections with allowed fields, source PBC, effective date, freshness, and emergency override semantics. Ensure reservations and wayfinding use projections without shared-table mutation.
 
-### 45. Temporal reconstruction and bitemporal audit for Facilities and Space Management
+### 45. Workplace Experience Feedback Loop
 
-**Justification:** Regulated and operationally complex domains need to answer what was known, valid, processed, and visible at any point in time.
+**Justification:** Utilization data alone misses employee sentiment about noise, comfort, amenities, safety, and productivity.
 
-**Improvement:** Add transaction-time, valid-time, and processing-time fields to core records, temporal query APIs, projection rebuild tooling, and UI time travel so specialists can reconstruct decisions, reports, and automation outcomes.
+**Improvement:** Add workplace feedback records tied to spaces, reservations, floors, amenities, and issues. Analyze themes, severity, and recurrence, then feed recommendations into space planning and maintenance blocks.
 
-### 46. Bulk operations and migration-grade controls for Facilities and Space Management
+### 46. Facility Policy and Parameter Studio
 
-**Justification:** World-class deployments must handle imports, mass corrections, high-volume operating days, and cutovers without bypassing governance.
+**Justification:** Reservation horizons, occupancy buffers, move SLAs, utilization thresholds, safety review windows, and access policies vary by site and evolve.
 
-**Improvement:** Add staged bulk upload, duplicate detection, chunked validation, approval sampling, partial failure handling, retry dashboards, reconciliation summaries, and agent-generated remediation plans for large batches.
+**Improvement:** Expand `compile_facility_rule` into a policy studio with versioning, simulations, approvals, effective dates, rollback, test cases, and impact analysis on reservations, assignments, moves, and capacity plans.
 
-### 47. Specialist edge-case playbooks for Facilities and Space Management
+### 47. Time-Travel Space and Occupancy Reconstruction
 
-**Justification:** Rare cases often carry the highest financial, legal, safety, service, or compliance risk.
+**Justification:** Auditors, planners, and investigators may need to know who was assigned, what was reservable, which constraints applied, and what safety status existed at a past time.
 
-**Improvement:** Create a playbook catalog with detection rules, required evidence, escalation paths, fallback actions, owner roles, and release-audited tests for high-severity edge cases and exception queues.
+**Improvement:** Add temporal reconstruction for space records, reservations, occupancy assignments, access constraints, safety inspections, maintenance blocks, and availability snapshots across transaction time and effective time.
 
-### 48. Pre-mutation simulation and blast-radius analysis for Facilities and Space Management
+### 48. Facilities Release Evidence Packs
 
-**Justification:** Users should understand consequences before committing irreversible, customer-visible, operationally disruptive, or financially material changes.
+**Justification:** Generated facilities capabilities must prove schemas, services, events, handlers, rules, UI, agent skills, and boundary contracts before users rely on space decisions.
 
-**Improvement:** Add what-if simulation for every material command, showing impacted records, emitted events, dependent projections, rule outcomes, approvals, downstream PBC dependencies, and rollback limits.
+**Improvement:** Generate release evidence packs with schema hashes, migration manifests, service contracts, event schemas, idempotent handler proofs, retry/dead-letter tests, reservation simulations, safety gates, UI coverage, and agent skill manifests.
 
-### 49. Continuous control testing and operational assurance for Facilities and Space Management
+### 49. Dead-Letter and Replay Operations for Space Events
 
-**Justification:** Better-than-world-class PBCs prove controls continuously, not only at release or during periodic audits.
+**Justification:** Employee, maintenance, access, lease, and policy events can arrive late, duplicate, or malformed. Facilities decisions must remain safe under event failure.
 
-**Improvement:** Add executable control assertions, sampled evidence checks, anomaly thresholds, control-owner dashboards, breach/recovery events, and release gates that fail when domain controls lose evidence.
+**Improvement:** Add operational views for inbox, outbox, retry, quarantine, dead-letter events, payload lineage, idempotency keys, and replay. Unknown events should be visible but unable to mutate facility state.
 
-### 50. Human-in-the-loop domain agent execution for Facilities and Space Management
+### 50. Complete Facilities Workbench Coverage
 
-**Justification:** The PBC chatbot must help specialists perform real work while preventing unsafe autonomous mutation.
+**Justification:** Facilities managers, space planners, move coordinators, safety reviewers, employees, executives, and workplace analysts need full operational surfaces. Hidden APIs are not enough.
 
-**Improvement:** Add domain-specific skills, document parsing, task planning, CRUD previews, confidence/risk scoring, confirmation gates, redaction, policy explanations, and post-action evidence packets for every supported command and query.
+**Improvement:** Expand the UI into role-specific workbenches for facility manager, space planner, employee, move coordinator, safety reviewer, maintenance liaison, workplace analyst, and executive sponsor. Cover sites, floors, maps, spaces, reservations, occupancy, moves, maintenance blocks, access constraints, safety, utilization, capacity, scenarios, policies, agent panels, and release evidence.
