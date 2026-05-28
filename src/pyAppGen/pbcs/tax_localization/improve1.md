@@ -1,315 +1,314 @@
-# Tax Compliance and Localization PBC Improvement Backlog
+# Tax Localization PBC Improvement Backlog
 
 ## Purpose
 
-This backlog identifies 50 high-impact, high-value improvements for `tax_localization`. Each item is specific to the domain surface currently declared by the PBC and is intended to move the package beyond world-class breadth toward complete specialist-grade coverage.
+This backlog identifies 50 high-impact, high-value improvements for `tax_localization`. The items are specific to tax compliance and localization operations: jurisdiction topology, nexus, product taxability, indirect tax calculation, invoice tax evidence, exemptions, reverse charge, withholding, cross-border duties, environmental levies, digital tax documents, filings, remittance, authority notices, reconciliation, audit proof, and agent-assisted tax work.
 
 ## Current Domain Evidence Used
 
-- Domain purpose: Regional tax, product taxability, nexus, quote calculation, invoice tax, exemptions, duties, filings, remittance, and tax controls.
-- Representative owned tables: `tax_localization_tax_jurisdiction`, `tax_localization_tax_jurisdiction_topology`, `tax_localization_tax_authority_channel`, `tax_localization_tax_authority_submission`, `tax_localization_tax_filing_calendar`, `tax_localization_tax_nexus_profile`, `tax_localization_tax_rule`, `tax_localization_tax_rule_version`, `tax_localization_tax_rule_impact_analysis`, `tax_localization_product_taxability`, `tax_localization_counterparty_tax_profile`, `tax_localization_tax_exemption_review`, ...
-- Representative operations/APIs: `command_tax_jurisdictions`, `command_tax_rules`, `command_tax_quotes`, `command_tax_invoices_id_tax_records`, `command_tax_filings`, `command_tax_events_inbox`, `query_tax_workbench`.
-- Representative events: `TaxJurisdictionRegistered`, `TaxRuleActivated`, `TaxCalculated`, `InvoiceTaxRecorded`, `TaxFilingPrepared`.
-- Representative advanced capabilities: `event_sourced_tax_lifecycle`, `graph_relational_jurisdiction_topology`, `multi_tenant_compliance_isolation`, `schema_evolution_resilient_tax_schema`, `probabilistic_taxability_classification`, `real_time_tax_quote_convergence`, `counterfactual_tax_policy_simulation`, `temporal_tax_liability_forecasting`, `autonomous_filing_reconciliation`, `semantic_tax_document_parsing`, ...
+- Domain purpose: tax compliance, localization, indirect tax calculation, jurisdiction topology, authority connectivity, nexus profiles, product taxability, counterparty tax profiles, exemption evidence, invoice tax, cross-border duties, reverse charge, withholding, environmental levies, filings, remittance, payment evidence, refunds, notices, digital tax documents, audit proofs, rules, parameters, configuration, UI fragments, and release evidence.
+- Owned boundary: jurisdictions, topology, authority channels/submissions, filing calendars, nexus profiles, tax rules/versions/impact analyses, product taxability, counterparty tax profiles, exemption reviews/certificates, calculations/lines, invoice tax records, reverse charge, withholding, environmental levies, cross-border duties, duty classifications, landed-cost components, filings/lines, reconciliations, remittance batches, payment evidence, refund claims, adjustments, notices, digital tax documents, document parses, liability forecasts, policy simulations, federation, identity credentials, audit proofs, allocations, anomaly signals, model registries, rules, parameters, configuration, controls, inbox/outbox, and dead-letter evidence.
+- Existing command/query surface: jurisdictions, rules, quotes, invoice tax records, filings, AppGen-X inbox, tax workbench, configuration, parameters, governance rules, tax rules, schema extensions, and release evidence.
+- Existing events and dependencies: emits `TaxJurisdictionRegistered`, `TaxRuleActivated`, `TaxCalculated`, `InvoiceTaxRecorded`, and `TaxFilingPrepared`; consumes product, invoice, order, payment, and access-policy events through AppGen-X projections and declared APIs only.
 
 ## 50 Better-Than-World-Class Improvements
 
-### 1. Deep specialist lifecycle semantics for `tax_localization_tax_jurisdiction`
+### 1. Jurisdiction topology lifecycle
 
-**Justification:** This owned table is part of the Tax Compliance and Localization operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Regional tax, product taxability, nexus, quote calculation, invoice tax, exemptions, duties, filings, remittance, and tax controls.
+**Justification:** Tax jurisdiction is not a flat country code. Rates, authorities, filing calendars, local taxes, home-rule cities, and parent-child relationships change over time.
 
-**Improvement:** Extend `tax_localization_tax_jurisdiction` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `jurisdiction_master`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add jurisdiction topology lifecycle records with country, region, locality, authority, parent jurisdiction, effective dates, currency, tax types, risk level, and retirement state. Calculation and filing should always reference the topology version used.
 
-### 2. Deep specialist lifecycle semantics for `tax_localization_tax_jurisdiction_topology`
+### 2. Authority channel certification
 
-**Justification:** This owned table is part of the Tax Compliance and Localization operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Regional tax, product taxability, nexus, quote calculation, invoice tax, exemptions, duties, filings, remittance, and tax controls.
+**Justification:** Digital tax and filing submissions depend on authority endpoints, credentials, formats, service levels, maintenance windows, and acknowledgements.
 
-**Improvement:** Extend `tax_localization_tax_jurisdiction_topology` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `jurisdiction_topology`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add authority-channel certification with endpoint type, credential evidence, supported document types, retry policy, SLA, sandbox/prod status, certificate expiry, and fallback route. Block production submission through uncertified channels.
 
-### 3. Deep specialist lifecycle semantics for `tax_localization_tax_authority_channel`
+### 3. Filing calendar intelligence
 
-**Justification:** This owned table is part of the Tax Compliance and Localization operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Regional tax, product taxability, nexus, quote calculation, invoice tax, exemptions, duties, filings, remittance, and tax controls.
+**Justification:** Filing due dates depend on frequency, holidays, weekends, local rules, fiscal calendars, extensions, and authority downtime.
 
-**Improvement:** Extend `tax_localization_tax_authority_channel` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `authority_channel`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add filing-calendar generation with period rules, due-day logic, holiday adjustment, extension evidence, authority blackout windows, and alert thresholds. The workbench should show upcoming filings and late-risk reasons.
 
-### 4. Deep specialist lifecycle semantics for `tax_localization_tax_authority_submission`
+### 4. Nexus threshold monitoring
 
-**Justification:** This owned table is part of the Tax Compliance and Localization operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Regional tax, product taxability, nexus, quote calculation, invoice tax, exemptions, duties, filings, remittance, and tax controls.
+**Justification:** Tax obligations begin or change when sales, transaction count, payroll, inventory, marketplace activity, or physical presence crosses thresholds.
 
-**Improvement:** Extend `tax_localization_tax_authority_submission` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `authority_submission`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add nexus threshold monitors by jurisdiction and entity, including threshold basis, measurement period, projected crossing date, supporting transaction projections, and registration workflow trigger.
 
-### 5. Deep specialist lifecycle semantics for `tax_localization_tax_filing_calendar`
+### 5. Registration and deregistration workflow
 
-**Justification:** This owned table is part of the Tax Compliance and Localization operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Regional tax, product taxability, nexus, quote calculation, invoice tax, exemptions, duties, filings, remittance, and tax controls.
+**Justification:** Tax compliance requires controlled registration with authorities and deregistration when obligations end.
 
-**Improvement:** Extend `tax_localization_tax_filing_calendar` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `filing_calendar`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add registration lifecycle records with jurisdiction, tax type, registration number, effective date, evidence, authority acknowledgement, responsible owner, and deregistration conditions. Link active registration to calculation and filing eligibility.
 
-### 6. Deep specialist lifecycle semantics for `tax_localization_tax_nexus_profile`
+### 6. Tax rule effective-date compiler
 
-**Justification:** This owned table is part of the Tax Compliance and Localization operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Regional tax, product taxability, nexus, quote calculation, invoice tax, exemptions, duties, filings, remittance, and tax controls.
+**Justification:** Tax rules change frequently and must be applied by transaction date, invoice date, ship date, service date, or payment date depending on jurisdiction.
 
-**Improvement:** Extend `tax_localization_tax_nexus_profile` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `nexus_profile`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Compile rule versions with effective/expiry dates, trigger date basis, precedence, product class, counterparty class, rate, exemptions, and reverse-charge behavior. Store compiled hashes and rule fixtures.
 
-### 7. Deep specialist lifecycle semantics for `tax_localization_tax_rule`
+### 7. Tax rule impact simulation
 
-**Justification:** This owned table is part of the Tax Compliance and Localization operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Regional tax, product taxability, nexus, quote calculation, invoice tax, exemptions, duties, filings, remittance, and tax controls.
+**Justification:** Rate and rule changes affect open quotes, invoices, filings, remittances, and customer pricing.
 
-**Improvement:** Extend `tax_localization_tax_rule` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `tax_rule_authoring`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Simulate proposed rule changes against historical and open transaction projections, showing tax delta, affected jurisdictions, products, customers, invoices, filing lines, and release blockers.
 
-### 8. Deep specialist lifecycle semantics for `tax_localization_tax_rule_version`
+### 8. Product taxability evidence workflow
 
-**Justification:** This owned table is part of the Tax Compliance and Localization operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Regional tax, product taxability, nexus, quote calculation, invoice tax, exemptions, duties, filings, remittance, and tax controls.
+**Justification:** Product taxability is one of the highest-error areas in indirect tax and depends on product attributes, use, jurisdiction, and authority guidance.
 
-**Improvement:** Extend `tax_localization_tax_rule_version` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `tax_rule_impact_analysis`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add taxability decisions with product class, jurisdiction, evidence source, confidence, reviewer, effective dates, and uncertain classification state. Route low-confidence or high-risk classes to specialist review.
 
-### 9. Deep specialist lifecycle semantics for `tax_localization_tax_rule_impact_analysis`
+### 9. Taxability model governance
 
-**Justification:** This owned table is part of the Tax Compliance and Localization operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Regional tax, product taxability, nexus, quote calculation, invoice tax, exemptions, duties, filings, remittance, and tax controls.
+**Justification:** AI-assisted product classification affects legal obligations and must be explainable.
 
-**Improvement:** Extend `tax_localization_tax_rule_impact_analysis` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `product_taxability`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Govern taxability models with feature lineage, training data class, drift, excluded features, deterministic fallback, confidence thresholds, and human override evidence. Release audit should fail if high-risk classifications lack review.
 
-### 10. Deep specialist lifecycle semantics for `tax_localization_product_taxability`
+### 10. Counterparty tax profile completeness
 
-**Justification:** This owned table is part of the Tax Compliance and Localization operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Regional tax, product taxability, nexus, quote calculation, invoice tax, exemptions, duties, filings, remittance, and tax controls.
+**Justification:** Customer/vendor tax treatment depends on registrations, exemptions, use type, residency, reverse-charge status, and withholding eligibility.
 
-**Improvement:** Extend `tax_localization_product_taxability` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `counterparty_tax_profile`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add counterparty profile completeness gates with registration IDs, tax residency, exemption status, certificate links, use codes, treaty eligibility, and expiry warnings. Tax quotes should show missing profile evidence.
 
-### 11. Make `command_tax_jurisdictions` a complete command lifecycle
+### 11. Exemption certificate lifecycle
 
-**Justification:** High-value users need `command_tax_jurisdictions` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Exemptions must be valid for jurisdiction, customer, product, date, and transaction purpose, and certificates expire or are revoked.
 
-**Improvement:** Implement `command_tax_jurisdictions` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `TaxJurisdictionRegistered`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add certificate intake, parsing, validation, jurisdiction scope, product/use restrictions, expiry, renewal reminders, revocation, and audit proof. Block exempt treatment when evidence is stale or out of scope.
 
-### 12. Make `command_tax_rules` a complete command lifecycle
+### 12. Exemption review queue
 
-**Justification:** High-value users need `command_tax_rules` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Tax specialists need to review questionable or ambiguous exemption evidence before invoices are finalized.
 
-**Improvement:** Implement `command_tax_rules` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `TaxRuleActivated`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add review tasks with certificate extract, transaction impact, missing fields, confidence, due date, reviewer, decision, and customer communication evidence.
 
-### 13. Make `command_tax_quotes` a complete command lifecycle
+### 13. Quote-time tax calculation trace
 
-**Justification:** High-value users need `command_tax_quotes` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Tax quotes must be fast and explainable, especially when rates, exemptions, nexus, and product taxability interact.
 
-**Improvement:** Implement `command_tax_quotes` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `TaxCalculated`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Store calculation traces with jurisdiction path, rule versions, taxable basis, exemptions, sourcing decision, rounding, currency, and confidence. Return user-readable reasons for every tax line.
 
-### 14. Make `command_tax_invoices_id_tax_records` a complete command lifecycle
+### 14. Invoice tax recording lock
 
-**Justification:** High-value users need `command_tax_invoices_id_tax_records` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Invoice tax should be immutable once issued except through controlled adjustments or credit/rebill flows.
 
-**Improvement:** Implement `command_tax_invoices_id_tax_records` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `InvoiceTaxRecorded`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add invoice tax state transitions for quoted, recorded, adjusted, reversed, credited, and reported. Adjustments must link to original calculation, reason, approval, and filing impact.
 
-### 15. Make `command_tax_filings` a complete command lifecycle
+### 15. Tax rounding and precision policy
 
-**Justification:** High-value users need `command_tax_filings` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Rounding rules differ by jurisdiction, document type, currency, line/header level, and filing return.
 
-**Improvement:** Implement `command_tax_filings` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `TaxFilingPrepared`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add rounding policies with precision, mode, line/header basis, currency minor unit, and reconciliation tolerance. Tax calculations and filing lines should cite the rounding policy used.
 
-### 16. Make `command_tax_events_inbox` a complete command lifecycle
+### 16. Sourcing rule engine
 
-**Justification:** High-value users need `command_tax_events_inbox` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Tax jurisdiction often depends on ship-from, ship-to, bill-to, service location, origin, destination, marketplace, and digital delivery rules.
 
-**Improvement:** Implement `command_tax_events_inbox` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `TaxJurisdictionRegistered`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add sourcing rules with precedence, address evidence, digital goods treatment, service situs, marketplace facilitator behavior, and fallback decision. Tax quotes should surface sourcing uncertainty.
 
-### 17. Turn `query_tax_workbench` into an expert read-model experience
+### 17. Marketplace facilitator handling
 
-**Justification:** Domain experts rely on `query_tax_workbench` for operational decisions; a world-class read path must be explainable, filterable, temporally accurate, and safe under stale projections.
+**Justification:** Marketplace transactions can shift collection/remittance obligation from seller to marketplace.
 
-**Improvement:** Build `query_tax_workbench` as a dedicated query contract with projection freshness, filter validation, pagination, saved views, temporal/as-of reads, row-level permissions, traceable source records, and UI drilldowns. Add agent explanations for how the answer was produced, what events like `TaxRuleActivated` last changed the projection, and where uncertainty or missing data affects confidence.
+**Improvement:** Add facilitator rules with marketplace identity, jurisdiction registration, transaction type, collection party, reporting party, and proof. Filing reconciliation should separate seller-collected and marketplace-collected tax.
 
-### 18. Make `command_tax_jurisdictions` a complete command lifecycle
+### 18. Reverse-charge determination
 
-**Justification:** High-value users need `command_tax_jurisdictions` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Reverse charge depends on counterparty registration, cross-border rules, service/goods type, and document wording.
 
-**Improvement:** Implement `command_tax_jurisdictions` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `TaxCalculated`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add reverse-charge decision records with registration validation, jurisdiction rule, product/service class, invoice disclosure text, and reporting box mapping.
 
-### 19. Make `command_tax_rules` a complete command lifecycle
+### 19. Withholding tax determination
 
-**Justification:** High-value users need `command_tax_rules` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Withholding depends on income type, treaty, residency, certificate, payment date, and gross-up rules.
 
-**Improvement:** Implement `command_tax_rules` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `InvoiceTaxRecorded`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add withholding decisions with income type, treaty article, rate, base, certificate evidence, gross-up method, payment link, and remittance obligation. Integrate AP/AR through projections only.
 
-### 20. Make `command_tax_quotes` a complete command lifecycle
+### 20. Environmental levy and fee engine
 
-**Justification:** High-value users need `command_tax_quotes` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Product taxes increasingly include battery, packaging, carbon, recycling, plastic, and other levies.
 
-**Improvement:** Implement `command_tax_quotes` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `TaxFilingPrepared`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add levy rules with product attributes, unit basis, weight/volume, jurisdiction, exemptions, rates, and filing mapping. Calculation lines should distinguish tax, duty, levy, and fee.
 
-### 21. Operationalize `event_sourced_tax_lifecycle` as a governed decision system
+### 21. Cross-border duty classification
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Tax Compliance and Localization and measurably improves accuracy rate without hiding assumptions.
+**Justification:** Duties depend on HS classification, origin, destination, value, Incoterms, preference programs, and documentation.
 
-**Improvement:** Promote `event_sourced_tax_lifecycle` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `accuracy_rate`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add duty classification records with HS code, confidence, origin rule, preference eligibility, document evidence, landed-cost basis, and reviewer approval for uncertain classifications.
 
-### 22. Operationalize `graph_relational_jurisdiction_topology` as a governed decision system
+### 22. Landed cost calculation
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Tax Compliance and Localization and measurably improves close cycle time without hiding assumptions.
+**Justification:** Cross-border pricing and inventory valuation need duties, taxes, freight, insurance, brokerage, and fees.
 
-**Improvement:** Promote `graph_relational_jurisdiction_topology` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `close_cycle_time`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add landed-cost component calculations linked to order/shipments projections, with duty, import VAT/GST, brokerage, freight allocation, currency conversion, and proof.
 
-### 23. Operationalize `multi_tenant_compliance_isolation` as a governed decision system
+### 23. Digital tax document lifecycle
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Tax Compliance and Localization and measurably improves cash impact without hiding assumptions.
+**Justification:** Many jurisdictions require digital invoice clearance, QR codes, fiscal signatures, cancellation, or buyer acknowledgement.
 
-**Improvement:** Promote `multi_tenant_compliance_isolation` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `cash_impact`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add digital document states for draft, submitted, accepted, rejected, cancelled, corrected, archived, and expired. Store authority acknowledgement, signature, QR/hash, validation errors, and retry evidence.
 
-### 24. Operationalize `schema_evolution_resilient_tax_schema` as a governed decision system
+### 24. Authority acknowledgement reconciliation
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Tax Compliance and Localization and measurably improves compliance exceptions without hiding assumptions.
+**Justification:** Submissions are incomplete until authority acknowledgement is matched, interpreted, and reflected in tax state.
 
-**Improvement:** Promote `schema_evolution_resilient_tax_schema` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `compliance_exceptions`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add acknowledgement matching by submission id, document id, authority status, timestamp, rejection reason, retry eligibility, and affected invoices/filings. Surface stale pending acknowledgements as operational risk.
 
-### 25. Operationalize `probabilistic_taxability_classification` as a governed decision system
+### 25. Filing preparation workbench
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Tax Compliance and Localization and measurably improves tax jurisdiction registered throughput without hiding assumptions.
+**Justification:** Tax filings require aggregation, exclusions, adjustments, credits, exemptions, remittances, and approvals.
 
-**Improvement:** Promote `probabilistic_taxability_classification` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `tax_jurisdiction_registered_throughput`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add filing prep workbench with source calculation lines, filing boxes, jurisdiction totals, adjustments, prior-period corrections, reconciliation status, approval state, and submit readiness.
 
-### 26. Operationalize `real_time_tax_quote_convergence` as a governed decision system
+### 26. Filing line provenance
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Tax Compliance and Localization and measurably improves tax rule activated throughput without hiding assumptions.
+**Justification:** Every filing number should trace to calculation lines, invoice tax records, adjustments, and payments.
 
-**Improvement:** Promote `real_time_tax_quote_convergence` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `tax_rule_activated_throughput`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Store filing-line provenance with source record ids, tax types, jurisdiction, period, calculation hash, and inclusion/exclusion reason. Auditors should drill from filing total to transaction evidence.
 
-### 27. Operationalize `counterfactual_tax_policy_simulation` as a governed decision system
+### 27. Filing amendment and correction workflow
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Tax Compliance and Localization and measurably improves accuracy rate without hiding assumptions.
+**Justification:** Tax filings often require amendments due to late invoices, corrections, authority notices, or exemption changes.
 
-**Improvement:** Promote `counterfactual_tax_policy_simulation` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `accuracy_rate`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add amendment records with original filing, corrected lines, reason, authority procedure, payment/refund delta, approval, and audit proof. Preserve original submitted filing evidence.
 
-### 28. Operationalize `temporal_tax_liability_forecasting` as a governed decision system
+### 28. Tax remittance batch controls
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Tax Compliance and Localization and measurably improves close cycle time without hiding assumptions.
+**Justification:** Remittance batches move cash and must reconcile to filings, liabilities, payment evidence, and bank settlement.
 
-**Improvement:** Promote `temporal_tax_liability_forecasting` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `close_cycle_time`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add remittance controls for jurisdiction, period, due date, amount, payment route, approval, bank reference, authority acknowledgement, and under/overpayment handling.
 
-### 29. Operationalize `autonomous_filing_reconciliation` as a governed decision system
+### 29. Tax payment evidence reconciliation
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Tax Compliance and Localization and measurably improves cash impact without hiding assumptions.
+**Justification:** Payment evidence must reconcile to filing liability and treasury settlement.
 
-**Improvement:** Promote `autonomous_filing_reconciliation` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `cash_impact`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add reconciliation between filing liability, remittance batch, tax payment evidence, bank statement projection, and authority acknowledgement. Flag variances and stale payment proofs.
 
-### 30. Operationalize `semantic_tax_document_parsing` as a governed decision system
+### 30. Tax refund claim management
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Tax Compliance and Localization and measurably improves compliance exceptions without hiding assumptions.
+**Justification:** Refunds need eligibility, documentation, authority submission, expected cash timing, and dispute handling.
 
-**Improvement:** Promote `semantic_tax_document_parsing` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `compliance_exceptions`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add refund claim lifecycle with source overpayment/credit, jurisdiction, filing period, documents, claim amount, submission, expected receipt, received amount, and appeal state.
 
-### 31. Create simulation-grade governance for `TAX_LOCALIZATION_DATABASE_URL` and `TAX_LOCALIZATION_DATABASE_URL`
+### 31. Authority notice case management
 
-**Justification:** Complete Tax Compliance and Localization coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Notices, audits, penalties, and inquiries require structured case handling and evidence.
 
-**Improvement:** Add a policy cockpit where `TAX_LOCALIZATION_DATABASE_URL` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `TAX_LOCALIZATION_DATABASE_URL` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add notice cases with authority, jurisdiction, period, issue type, due date, penalty exposure, assigned owner, response documents, resolution, and follow-up control.
 
-### 32. Create simulation-grade governance for `TAX_LOCALIZATION_EVENT_TOPIC` and `TAX_LOCALIZATION_EVENT_TOPIC`
+### 32. Tax reconciliation control framework
 
-**Justification:** Complete Tax Compliance and Localization coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Collected, accrued, reported, remitted, refunded, and adjusted tax must reconcile by jurisdiction and period.
 
-**Improvement:** Add a policy cockpit where `TAX_LOCALIZATION_EVENT_TOPIC` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `TAX_LOCALIZATION_EVENT_TOPIC` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add reconciliation controls comparing calculation totals, invoice tax records, filing lines, remittance evidence, refunds, and GL handoff events. Open variances should block filing or close where policy requires.
 
-### 33. Create simulation-grade governance for `TAX_LOCALIZATION_RETRY_LIMIT` and `TAX_LOCALIZATION_RETRY_LIMIT`
+### 33. Tax liability forecasting
 
-**Justification:** Complete Tax Compliance and Localization coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Treasury and finance need expected tax cash outflows and tail risk before filing deadlines.
 
-**Improvement:** Add a policy cockpit where `TAX_LOCALIZATION_RETRY_LIMIT` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `TAX_LOCALIZATION_RETRY_LIMIT` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Forecast liabilities by jurisdiction, entity, tax type, period, confidence, open transaction volume, rule changes, and refund/notice exposure. Publish projection freshness and assumptions.
 
-### 34. Create simulation-grade governance for `TAX_LOCALIZATION_DATABASE_URL` and `TAX_LOCALIZATION_DATABASE_URL`
+### 34. Counterfactual policy simulation
 
-**Justification:** Complete Tax Compliance and Localization coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Tax teams need to evaluate rate changes, nexus expansion, product reclassification, exemption expiry, and filing frequency changes before they hit operations.
 
-**Improvement:** Add a policy cockpit where `TAX_LOCALIZATION_DATABASE_URL` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `TAX_LOCALIZATION_DATABASE_URL` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add policy simulations with scenario assumptions, affected tax quotes, invoices, filings, remittance cash, customer pricing, and compliance workload.
 
-### 35. Create simulation-grade governance for `TAX_LOCALIZATION_EVENT_TOPIC` and `TAX_LOCALIZATION_EVENT_TOPIC`
+### 35. Tax anomaly detection
 
-**Justification:** Complete Tax Compliance and Localization coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Tax errors often appear as unusual rate usage, exempt spikes, jurisdiction gaps, filing variances, or authority rejections.
 
-**Improvement:** Add a policy cockpit where `TAX_LOCALIZATION_EVENT_TOPIC` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `TAX_LOCALIZATION_EVENT_TOPIC` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add anomaly signals by jurisdiction, product class, counterparty, exemption, rate, filing box, and submission channel. Each anomaly should have an explanation and suggested investigation path.
 
-### 36. Upgrade `TaxLocalizationWorkbench` into a full specialist command center
+### 36. Audit proof and disclosure minimization
 
-**Justification:** The PBC UI must expose the complete Tax Compliance and Localization surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Tax audits need detailed evidence, but not every reviewer should see all commercial transaction details.
 
-**Improvement:** Expand `TaxLocalizationWorkbench` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Generate proof bundles for calculations, exemptions, filings, remittances, and digital documents with minimized claims, hashes, disclosed fields, verifier instructions, and expiry.
 
-### 37. Upgrade `TaxLocalizationDetail` into a full specialist command center
+### 37. Tax identity credential lifecycle
 
-**Justification:** The PBC UI must expose the complete Tax Compliance and Localization surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Authority and counterparty tax identities must be verified and revocation-aware.
 
-**Improvement:** Expand `TaxLocalizationDetail` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add credentials for tax authorities, taxpayers, counterparties, representatives, and submission channels with issuer, validity, revocation, assurance level, and use scope.
 
-### 38. Upgrade `TaxLocalizationWorkbench` into a full specialist command center
+### 38. Localized invoice disclosure text
 
-**Justification:** The PBC UI must expose the complete Tax Compliance and Localization surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Jurisdictions require specific invoice wording for exemptions, reverse charge, withholding, fiscalization, and customer rights.
 
-**Improvement:** Expand `TaxLocalizationWorkbench` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add localized disclosure text rules with language, tax type, condition, effective date, and required placement. Invoice tax records should cite the disclosure rule used.
 
-### 39. Upgrade `TaxLocalizationDetail` into a full specialist command center
+### 39. Multi-language authority document parsing
 
-**Justification:** The PBC UI must expose the complete Tax Compliance and Localization surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Certificates, notices, and authority responses arrive in many languages and formats.
 
-**Improvement:** Expand `TaxLocalizationDetail` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add document parsing with language detection, field extraction, confidence, source spans, translation evidence, and human review for low-confidence tax facts.
 
-### 40. Upgrade `TaxLocalizationWorkbench` into a full specialist command center
+### 40. Tax agent safe calculation assistance
 
-**Justification:** The PBC UI must expose the complete Tax Compliance and Localization surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** The tax chatbot can help calculate and explain tax, but incorrect tax output has regulatory impact.
 
-**Improvement:** Expand `TaxLocalizationWorkbench` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Require agent calculation previews with jurisdiction, sourcing, rule versions, taxability, exemptions, rates, basis, confidence, and caveats. Low-confidence outputs should be marked draft and routed to review.
 
-### 41. Prove cross-PBC federation for `POST /tax/jurisdictions` and `ProductClassified`
+### 41. Agent-safe filing preparation
 
-**Justification:** Tax Compliance and Localization must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Filing submissions are legally significant and should not be autonomously filed from a chat instruction.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /tax/jurisdictions` and consumed event `ProductClassified` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Define agent competencies for filing prep, variance explanation, notice summarization, and evidence gathering. Filing submission should require explicit authorized human approval with previewed totals and proof.
 
-### 42. Prove cross-PBC federation for `POST /tax/rules` and `InvoiceIssued`
+### 42. Agent-safe tax document ingestion
 
-**Justification:** Tax Compliance and Localization must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** AI can extract certificates, notices, and authority acknowledgements, but extracted facts must be traceable and reviewable.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /tax/rules` and consumed event `InvoiceIssued` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Add ingestion previews with extracted fields, confidence, source citations, affected records, validation errors, and required approvals before creating certificate, notice, or submission records.
 
-### 43. Prove cross-PBC federation for `POST /tax/quotes` and `OrderPriced`
+### 43. Tax rules and parameter simulation
 
-**Justification:** Tax Compliance and Localization must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Precision, reconciliation tolerance, retry limits, exemption warning days, and nexus thresholds materially change compliance outcomes.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /tax/quotes` and consumed event `OrderPriced` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Simulate rule/parameter changes against historical and open tax records, showing changes in tax quotes, filing variances, authority retries, exemption warnings, nexus triggers, and workload.
 
-### 44. Prove cross-PBC federation for `POST /tax/invoices/{id}/tax-records` and `PaymentCollected`
+### 44. Cross-PBC tax boundary proof
 
-**Justification:** Tax Compliance and Localization must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Tax must integrate with products, invoices, orders, payments, identity, and audit without sharing their operational tables.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /tax/invoices/{id}/tax-records` and consumed event `PaymentCollected` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Add static/runtime checks proving every command uses only tax-owned tables plus declared APIs/events/projections. Include failing fixtures for direct foreign-table references.
 
-### 45. Temporal reconstruction and bitemporal audit for Tax Compliance and Localization
+### 45. Tax authority resilience drills
 
-**Justification:** Regulated and operationally complex domains need to answer what was known, valid, processed, and visible at any point in time.
+**Justification:** Authority channels fail or reject submissions during deadlines, and the PBC must degrade safely.
 
-**Improvement:** Add transaction-time, valid-time, and processing-time fields to core records, temporal query APIs, projection rebuild tooling, and UI time travel so specialists can reconstruct decisions, reports, and automation outcomes.
+**Improvement:** Add drills for authority outage, credential expiry, duplicate submission, rejected digital document, delayed acknowledgement, and dead-letter replay. Store recovery path and filing-risk evidence.
 
-### 46. Bulk operations and migration-grade controls for Tax Compliance and Localization
+### 46. Continuous tax controls
 
-**Justification:** World-class deployments must handle imports, mass corrections, high-volume operating days, and cutovers without bypassing governance.
+**Justification:** Compliance needs continuous controls, not just filing-time review.
 
-**Improvement:** Add staged bulk upload, duplicate detection, chunked validation, approval sampling, partial failure handling, retry dashboards, reconciliation summaries, and agent-generated remediation plans for large batches.
+**Improvement:** Add control assertions for expired exemptions, missing nexus review, inactive tax rules, filing-calendar gaps, unreconciled tax, unaccepted digital documents, overdue notices, and boundary violations.
 
-### 47. Specialist edge-case playbooks for Tax Compliance and Localization
+### 47. Tax workbench coverage for all capabilities
 
-**Justification:** Rare cases often carry the highest financial, legal, safety, service, or compliance risk.
+**Justification:** Tax specialists need end-to-end surfaces for jurisdiction, rules, calculation, filing, remittance, notices, and evidence.
 
-**Improvement:** Create a playbook catalog with detection rules, required evidence, escalation paths, fallback actions, owner roles, and release-audited tests for high-severity edge cases and exception queues.
+**Improvement:** Expand UI into jurisdiction topology, authority channels, nexus monitor, rule editor, taxability workbench, exemption queue, quote trace, invoice tax, cross-border duty, filing cockpit, remittance, notices, audit proof, model governance, and agent panels.
 
-### 48. Pre-mutation simulation and blast-radius analysis for Tax Compliance and Localization
+### 48. Tax release readiness score
 
-**Justification:** Users should understand consequences before committing irreversible, customer-visible, operationally disruptive, or financially material changes.
+**Justification:** Users need a concise measure of whether tax localization is complete enough for production compliance.
 
-**Improvement:** Add what-if simulation for every material command, showing impacted records, emitted events, dependent projections, rule outcomes, approvals, downstream PBC dependencies, and rollback limits.
+**Improvement:** Compute readiness from jurisdiction coverage, active rules, nexus profiles, taxability confidence, exemption validity, calculation traceability, filing readiness, remittance reconciliation, authority channel health, UI coverage, boundary proof, and agent safety.
 
-### 49. Continuous control testing and operational assurance for Tax Compliance and Localization
+### 49. End-to-end tax obligation trace
 
-**Justification:** Better-than-world-class PBCs prove controls continuously, not only at release or during periodic audits.
+**Justification:** Tax compliance requires tracing obligation from product/order/invoice/payment through calculation, document, filing, remittance, notice, and audit proof.
 
-**Improvement:** Add executable control assertions, sampled evidence checks, anomaly thresholds, control-owner dashboards, breach/recovery events, and release gates that fail when domain controls lose evidence.
+**Improvement:** Build an obligation trace view using tax-owned records and declared projections. The agent should answer why tax was charged, exempted, reversed, withheld, filed, or remitted from this trace.
 
-### 50. Human-in-the-loop domain agent execution for Tax Compliance and Localization
+### 50. Tax localization pack governance
 
-**Justification:** The PBC chatbot must help specialists perform real work while preventing unsafe autonomous mutation.
+**Justification:** Complete localization depends on curated jurisdiction packs containing rates, rules, forms, authority channels, text, calendars, and tests.
 
-**Improvement:** Add domain-specific skills, document parsing, task planning, CRUD previews, confidence/risk scoring, confirmation gates, redaction, policy explanations, and post-action evidence packets for every supported command and query.
+**Improvement:** Add localization pack metadata with jurisdiction, version, included rules, forms, document text, filing calendars, authority channels, fixtures, effective dates, and release evidence. Packages should be tested before activation.
