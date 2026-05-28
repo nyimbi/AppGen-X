@@ -3123,3 +3123,12 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   Verification passed: Python compile for touched tooling entrypoints, focused
   tooling-audit contract test, `tests/test_dsl_tooling_contracts.py -q`,
   scoped diff whitespace check, and restricted-name scan. Commit: `b11d46e0`.
+- Current LSP JSON-RPC audit pass strengthens the `docs/tooling.md`
+  language-server proof. `appgen.tooling-audit.v1` now embeds
+  `appgen.lsp-json-rpc-audit.v1`, which exercises initialize, didOpen,
+  didChange, completion, hover, definition, references, document symbols,
+  rename, workspace symbol, code-action, and formatting request handlers
+  through the same in-memory document cache used by `appgen lsp --stdio`.
+  Verification passed: Python compile for touched DSL modules, focused
+  JSON-RPC/audit tests, `tests/test_dsl_tooling_contracts.py -q`, scoped diff
+  whitespace check, and restricted-name scan. Commit: `9ca46852`.
