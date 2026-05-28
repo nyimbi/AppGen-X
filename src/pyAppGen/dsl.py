@@ -597,6 +597,13 @@ def dsl_tooling_cli(argv: Iterable[str] | None = None) -> int:
     nl_parser.add_argument("--backend", default="postgresql")
     nl_parser.add_argument("--json", action="store_true")
 
+    lsp_parser = subparsers.add_parser("lsp")
+    lsp_parser.add_argument("path")
+    lsp_parser.add_argument("--position")
+    lsp_parser.add_argument("--prefix", default="")
+    lsp_parser.add_argument("--rename")
+    lsp_parser.add_argument("--json", action="store_true")
+
     args = parser.parse_args(tuple(argv or ()))
     path = Path(args.path) if hasattr(args, "path") else None
     source = path.read_text(encoding="utf-8") if path is not None else ""
@@ -654,6 +661,16 @@ def dsl_tooling_cli(argv: Iterable[str] | None = None) -> int:
             prompt=args.prompt,
             source_name=str(path),
             backend=args.backend,
+        )
+        _emit_tooling_payload(report, as_json=args.json)
+        return 0 if report["ok"] else 1
+    if args.command == "lsp":
+        report = lsp_service_dsl(
+            source,
+            source_name=str(path),
+            position=_parse_lsp_position(args.position),
+            prefix=args.prefix,
+            rename_to=args.rename,
         )
         _emit_tooling_payload(report, as_json=args.json)
         return 0 if report["ok"] else 1
@@ -1022,6 +1039,499 @@ def nl_plan_dsl(
         "token_budget_notes": _nl_token_budget_notes(),
         "diagnostics": diagnostics,
     }
+
+
+def lsp_capabilities_dsl() -> dict:
+    """Return the AppGen-X language-server capability contract."""
+    return {
+        "format": "appgen.lsp-capabilities.v1",
+        "language_id": "appgen",
+        "extensions": (".appgen", ".ag", ".ags"),
+        "features": {
+            "textDocument/didOpen": True,
+            "textDocument/didChange": True,
+            "textDocument/completion": True,
+            "textDocument/hover": True,
+            "textDocument/definition": True,
+            "textDocument/references": True,
+            "textDocument/documentSymbol": True,
+            "textDocument/rename": True,
+            "textDocument/codeAction": True,
+            "textDocument/formatting": True,
+            "workspace/symbol": True,
+        },
+        "sync": "full-document-with-semantic-cache",
+        "source_of_truth": "appgen.semantic-model.v1",
+    }
+
+
+def lsp_service_dsl(
+    text: str,
+    *,
+    source_name: str | None = None,
+    position: dict | None = None,
+    prefix: str = "",
+    rename_to: str | None = None,
+) -> dict:
+    """Return LSP-shaped data built from the shared semantic model."""
+    source = text or ""
+    semantic = semantic_model_dsl(source, source_name=source_name)
+    active_position = position or {"line": 0, "character": 0}
+    return {
+        "format": "appgen.lsp-service.v1",
+        "ok": semantic["ok"],
+        "source": source_name,
+        "capabilities": lsp_capabilities_dsl(),
+        "semantic_model_format": semantic["format"],
+        "publishDiagnostics": lsp_diagnostics_dsl(source, source_name=source_name),
+        "completion": lsp_completion_dsl(source, source_name=source_name, position=active_position, prefix=prefix),
+        "hover": lsp_hover_dsl(source, source_name=source_name, position=active_position),
+        "definition": lsp_definition_dsl(source, source_name=source_name, position=active_position),
+        "references": lsp_references_dsl(source, source_name=source_name, position=active_position),
+        "documentSymbol": lsp_document_symbols_dsl(source, source_name=source_name),
+        "codeAction": lsp_code_actions_dsl(source, source_name=source_name),
+        "formatting": lsp_formatting_dsl(source, source_name=source_name),
+        "rename": lsp_rename_dsl(source, source_name=source_name, position=active_position, new_name=rename_to)
+        if rename_to
+        else None,
+        "workspaceSymbol": lsp_workspace_symbols_dsl(source, source_name=source_name, query=prefix),
+    }
+
+
+def lsp_diagnostics_dsl(text: str, *, source_name: str | None = None) -> dict:
+    lint = lint_report_dsl(text, source_name=source_name)
+    return {
+        "format": "appgen.lsp-diagnostics.v1",
+        "uri": source_name,
+        "diagnostics": tuple(_lsp_diagnostic(item) for item in lint["diagnostics"]),
+        "source_report": lint,
+    }
+
+
+def lsp_completion_dsl(
+    text: str,
+    *,
+    source_name: str | None = None,
+    position: dict | None = None,
+    prefix: str = "",
+) -> dict:
+    del source_name
+    semantic = semantic_model_dsl(text)
+    items: list[dict] = []
+    for item in dsl_completion_items(prefix, source=text):
+        items.append(
+            {
+                "label": item["label"],
+                "kind": _lsp_completion_kind(item.get("kind", "")),
+                "detail": item.get("detail") or item.get("kind"),
+                "insertText": item.get("insert", item["label"]),
+                "data": {"source": "dsl_completion_items", "kind": item.get("kind")},
+            }
+        )
+    for key, pbc in semantic.get("pbcs", {}).items():
+        items.append(
+            {
+                "label": key,
+                "kind": 9,
+                "detail": "PBC catalog entry" if pbc.get("catalog_resolved") else "PBC declaration",
+                "insertText": key,
+                "data": {"source": "pbc_catalog", "catalog_resolved": pbc.get("catalog_resolved", False)},
+            }
+        )
+    for flow_name in semantic.get("flows", {}):
+        items.append(
+            {
+                "label": flow_name,
+                "kind": 3,
+                "detail": "workflow target",
+                "insertText": flow_name,
+                "data": {"source": "semantic_model", "kind": "flow"},
+            }
+        )
+    deduped = tuple({(item["label"], item["detail"]): item for item in items}.values())
+    return {
+        "format": "appgen.lsp-completion.v1",
+        "position": position,
+        "isIncomplete": False,
+        "items": deduped,
+    }
+
+
+def lsp_hover_dsl(text: str, *, source_name: str | None = None, position: dict | None = None) -> dict:
+    token = _lsp_token_at_position(text, position)
+    symbol = _lsp_symbol_for_token(text, token, source_name=source_name)
+    diagnostic = _lsp_diagnostic_for_token(text, token, source_name=source_name)
+    contents: list[str] = []
+    if symbol:
+        contents.append(f"{symbol['kind']} `{symbol['name']}`")
+        if symbol.get("detail"):
+            contents.append(json.dumps(symbol["detail"], sort_keys=True, default=list))
+    if diagnostic:
+        contents.append(f"{diagnostic['code']}: {diagnostic['message']}")
+    if token in CORE_KEYWORDS:
+        contents.append(f"AppGen-X keyword `{token}`")
+    return {
+        "format": "appgen.lsp-hover.v1",
+        "ok": bool(contents),
+        "token": token,
+        "contents": tuple(contents),
+        "range": _lsp_token_range(text, position, token),
+    }
+
+
+def lsp_definition_dsl(text: str, *, source_name: str | None = None, position: dict | None = None) -> dict:
+    token = _lsp_token_at_position(text, position)
+    symbol = _lsp_symbol_for_token(text, token, source_name=source_name)
+    location = _lsp_location(source_name, symbol.get("range")) if symbol else None
+    return {
+        "format": "appgen.lsp-definition.v1",
+        "ok": location is not None,
+        "token": token,
+        "location": location,
+    }
+
+
+def lsp_references_dsl(text: str, *, source_name: str | None = None, position: dict | None = None) -> dict:
+    token = _lsp_token_at_position(text, position)
+    locations = tuple(_lsp_location(source_name, item) for item in _lsp_occurrence_ranges(text, token))
+    return {
+        "format": "appgen.lsp-references.v1",
+        "ok": bool(locations),
+        "token": token,
+        "locations": locations,
+    }
+
+
+def lsp_document_symbols_dsl(text: str, *, source_name: str | None = None) -> dict:
+    semantic = semantic_model_dsl(text, source_name=source_name)
+    symbols = []
+    for symbol in semantic.get("symbols", {}).values():
+        parent = symbol.get("parent")
+        if parent:
+            continue
+        children = tuple(
+            _lsp_document_symbol(child)
+            for child in semantic.get("symbols", {}).values()
+            if child.get("parent") == symbol["id"]
+        )
+        symbols.append({**_lsp_document_symbol(symbol), "children": children})
+    return {
+        "format": "appgen.lsp-document-symbols.v1",
+        "ok": semantic["ok"],
+        "symbols": tuple(symbols),
+    }
+
+
+def lsp_workspace_symbols_dsl(text: str, *, source_name: str | None = None, query: str = "") -> dict:
+    semantic = semantic_model_dsl(text, source_name=source_name)
+    needle = (query or "").lower()
+    symbols = tuple(
+        {
+            "name": symbol["name"],
+            "kind": _lsp_symbol_kind(symbol["kind"]),
+            "location": _lsp_location(source_name, symbol.get("range")),
+            "containerName": symbol.get("parent"),
+            "data": {"id": symbol["id"], "kind": symbol["kind"]},
+        }
+        for symbol in semantic.get("symbols", {}).values()
+        if not needle or needle in symbol["name"].lower() or needle in symbol["id"].lower()
+    )
+    return {"format": "appgen.lsp-workspace-symbols.v1", "ok": semantic["ok"], "symbols": symbols}
+
+
+def lsp_code_actions_dsl(text: str, *, source_name: str | None = None) -> dict:
+    actions = []
+    for action in dsl_code_actions(text, source_name=source_name):
+        actions.append(
+            {
+                "title": action["title"],
+                "kind": "quickfix",
+                "diagnostics": tuple(_lsp_diagnostic(item) for item in action.get("diagnostics", ())),
+                "edit": {"changes": {source_name or "memory://appgen": action.get("edits", ())}},
+                "command": action.get("command"),
+                "data": {"id": action["id"], "changed": action["changed"]},
+            }
+        )
+    actions.extend(_lsp_create_handler_actions(text, source_name=source_name))
+    return {"format": "appgen.lsp-code-actions.v1", "ok": True, "actions": tuple(actions)}
+
+
+def lsp_formatting_dsl(text: str, *, source_name: str | None = None) -> dict:
+    formatted = format_report_dsl(text, source_name=source_name, include_text=True)
+    full_range = {
+        "start": {"line": 0, "character": 0},
+        "end": {"line": len((text or "").splitlines()), "character": 0},
+    }
+    return {
+        "format": "appgen.lsp-formatting.v1",
+        "ok": not any(item["severity"] == "error" for item in formatted["diagnostics"]),
+        "edits": (
+            {
+                "range": full_range,
+                "newText": formatted["text"],
+            },
+        )
+        if formatted["changed"]
+        else (),
+        "format_report": formatted,
+    }
+
+
+def lsp_rename_dsl(
+    text: str,
+    *,
+    source_name: str | None = None,
+    position: dict | None = None,
+    new_name: str | None = None,
+) -> dict:
+    source = text or ""
+    token = _lsp_token_at_position(source, position)
+    if not token or not new_name or not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", new_name):
+        return {
+            "format": "appgen.lsp-rename.v1",
+            "ok": False,
+            "token": token,
+            "diagnostics": (
+                _spec_diagnostic(source, "AGX0100", "error", "Rename requires a valid identifier."),
+            ),
+        }
+    symbol = _lsp_symbol_for_token(source, token, source_name=source_name)
+    if not symbol:
+        return {
+            "format": "appgen.lsp-rename.v1",
+            "ok": False,
+            "token": token,
+            "diagnostics": (
+                _spec_diagnostic(source, "AGX0100", "error", f"Cannot rename unknown symbol: {token}"),
+            ),
+        }
+    new_text = re.sub(rf"\b{re.escape(token)}\b", new_name, source)
+    lint = lint_report_dsl(new_text, source_name=source_name)
+    migration = migration_plan_dsl(source, new_text, previous_name=source_name, current_name=source_name)
+    return {
+        "format": "appgen.lsp-rename.v1",
+        "ok": lint["ok"],
+        "token": token,
+        "new_name": new_name,
+        "symbol": symbol,
+        "workspace_edit": {
+            "changes": {
+                source_name or "memory://appgen": (
+                    {
+                        "range": {
+                            "start": {"line": 0, "character": 0},
+                            "end": {"line": len(source.splitlines()), "character": 0},
+                        },
+                        "newText": new_text,
+                    },
+                )
+            }
+        },
+        "lint": lint,
+        "migration_preview": migration,
+    }
+
+
+def _parse_lsp_position(value: str | None) -> dict | None:
+    if not value:
+        return None
+    match = re.match(r"(?P<line>\d+):(?P<char>\d+)$", value.strip())
+    if not match:
+        return None
+    return {"line": int(match.group("line")), "character": int(match.group("char"))}
+
+
+def _lsp_diagnostic(diagnostic: dict) -> dict:
+    return {
+        "range": _lsp_range(diagnostic.get("range")),
+        "severity": {"error": 1, "warning": 2, "info": 3, "hint": 4}.get(diagnostic.get("severity"), 3),
+        "code": diagnostic.get("code"),
+        "source": "appgen",
+        "message": diagnostic.get("message"),
+        "data": {
+            "title": diagnostic.get("title"),
+            "docs_url": diagnostic.get("docs_url"),
+            "fixes": diagnostic.get("fixes", ()),
+        },
+    }
+
+
+def _lsp_completion_kind(kind: str) -> int:
+    return {
+        "keyword": 14,
+        "snippet": 15,
+        "table": 7,
+        "field": 5,
+        "reference": 18,
+        "llm": 9,
+        "flow": 3,
+    }.get(kind, 12)
+
+
+def _lsp_symbol_kind(kind: str) -> int:
+    return {
+        "app": 2,
+        "table": 5,
+        "field": 8,
+        "enum": 10,
+        "enum_value": 22,
+        "view": 5,
+        "handler": 12,
+        "flow": 12,
+        "flow_state": 13,
+        "operation": 12,
+        "role": 5,
+        "rule": 12,
+        "llm": 13,
+        "agent": 5,
+        "pbc": 5,
+        "composition": 5,
+        "api": 12,
+        "event": 12,
+        "package": 5,
+    }.get(kind, 13)
+
+
+def _lsp_document_symbol(symbol: dict) -> dict:
+    symbol_range = _lsp_range(symbol.get("range"))
+    return {
+        "name": symbol["name"],
+        "kind": _lsp_symbol_kind(symbol["kind"]),
+        "range": symbol_range,
+        "selectionRange": symbol_range,
+        "detail": symbol["kind"],
+        "data": {"id": symbol["id"]},
+    }
+
+
+def _lsp_range(range_value: dict | None) -> dict:
+    if not range_value:
+        return {
+            "start": {"line": 0, "character": 0},
+            "end": {"line": 0, "character": 0},
+        }
+    return {
+        "start": {
+            "line": max(int(range_value["start"]["line"]) - 1, 0),
+            "character": int(range_value["start"]["character"]),
+        },
+        "end": {
+            "line": max(int(range_value["end"]["line"]) - 1, 0),
+            "character": int(range_value["end"]["character"]),
+        },
+    }
+
+
+def _lsp_location(source_name: str | None, range_value: dict | None) -> dict:
+    return {"uri": source_name or "memory://appgen", "range": _lsp_range(range_value)}
+
+
+def _lsp_token_at_position(source: str, position: dict | None) -> str:
+    if not source:
+        return ""
+    if not position:
+        match = re.search(r"[A-Za-z_][A-Za-z0-9_]*", source)
+        return match.group(0) if match else ""
+    lines = source.splitlines()
+    line_index = int(position.get("line", 0))
+    if line_index < 0 or line_index >= len(lines):
+        return ""
+    line = lines[line_index]
+    character = max(min(int(position.get("character", 0)), len(line)), 0)
+    for match in re.finditer(r"[A-Za-z_][A-Za-z0-9_]*", line):
+        if match.start() <= character <= match.end():
+            return match.group(0)
+    return ""
+
+
+def _lsp_token_range(source: str, position: dict | None, token: str) -> dict:
+    if not token:
+        return _lsp_range(None)
+    lines = source.splitlines()
+    line_index = int((position or {}).get("line", 0))
+    if 0 <= line_index < len(lines):
+        index = lines[line_index].find(token)
+        if index >= 0:
+            return {
+                "start": {"line": line_index, "character": index},
+                "end": {"line": line_index, "character": index + len(token)},
+            }
+    line, column = _locate_token(source, token)
+    return _lsp_range(_semantic_range(line, column, token))
+
+
+def _lsp_symbol_for_token(source: str, token: str, *, source_name: str | None = None) -> dict | None:
+    if not token:
+        return None
+    semantic = semantic_model_dsl(source, source_name=source_name)
+    exact_candidates = [
+        symbol
+        for symbol in semantic.get("symbols", {}).values()
+        if symbol.get("name") == token or symbol.get("id") == token
+    ]
+    if exact_candidates:
+        return sorted(exact_candidates, key=lambda item: 0 if item["kind"] in {"table", "view", "flow", "operation"} else 1)[0]
+    return semantic.get("symbols", {}).get(_symbol_query_to_id(token))
+
+
+def _lsp_diagnostic_for_token(source: str, token: str, *, source_name: str | None = None) -> dict | None:
+    if not token:
+        return None
+    for diagnostic in lint_report_dsl(source, source_name=source_name)["diagnostics"]:
+        if token in diagnostic.get("message", ""):
+            return diagnostic
+    return None
+
+
+def _lsp_occurrence_ranges(source: str, token: str) -> tuple[dict, ...]:
+    if not token:
+        return ()
+    ranges = []
+    for line_index, line in enumerate(source.splitlines()):
+        for match in re.finditer(rf"\b{re.escape(token)}\b", line):
+            ranges.append(
+                {
+                    "start": {"line": line_index + 1, "character": match.start()},
+                    "end": {"line": line_index + 1, "character": match.end()},
+                }
+            )
+    return tuple(ranges)
+
+
+def _lsp_create_handler_actions(text: str, *, source_name: str | None = None) -> tuple[dict, ...]:
+    actions = []
+    report = lint_report_dsl(text, source_name=source_name)
+    for diagnostic in report["diagnostics"]:
+        if diagnostic["code"] != "AGX0403":
+            continue
+        token = _diagnostic_token(diagnostic["message"])
+        if not token:
+            match = re.search(r"Unknown handler target:\s+[A-Za-z_][A-Za-z0-9_]*\.([A-Za-z_][A-Za-z0-9_]*)", diagnostic["message"])
+            token = match.group(1) if match else None
+        if not token:
+            continue
+        actions.append(
+            {
+                "title": f"Create operation {token}",
+                "kind": "quickfix",
+                "diagnostics": (_lsp_diagnostic(diagnostic),),
+                "edit": {
+                    "changes": {
+                        source_name or "memory://appgen": (
+                            {
+                                "range": {
+                                    "start": {"line": len((text or "").splitlines()), "character": 0},
+                                    "end": {"line": len((text or "").splitlines()), "character": 0},
+                                },
+                                "newText": f"\noperation {token} {{\n  step validate -> complete\n}}\n",
+                            },
+                        )
+                    }
+                },
+                "data": {"id": "create_operation_from_handler", "target": token},
+            }
+        )
+    return tuple(actions)
 
 
 def _parse_rename_hints(rename_hints: Iterable[str]) -> dict[tuple[str, str], dict]:

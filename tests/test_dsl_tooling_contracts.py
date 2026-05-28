@@ -6,6 +6,7 @@ from pathlib import Path
 from pyAppGen.dsl import format_report_dsl
 from pyAppGen.dsl import graph_report_dsl
 from pyAppGen.dsl import lint_report_dsl
+from pyAppGen.dsl import lsp_service_dsl
 from pyAppGen.dsl import migration_plan_dsl
 from pyAppGen.dsl import nl_plan_dsl
 from pyAppGen.dsl import semantic_model_dsl
@@ -48,6 +49,14 @@ composition FinanceSuite {
   require database postgresql
 }
 """
+
+
+def _position_of(source: str, token: str) -> dict:
+    index = source.index(token)
+    line = source.count("\n", 0, index)
+    previous_newline = source.rfind("\n", 0, index)
+    character = index if previous_newline < 0 else index - previous_newline - 1
+    return {"line": line, "character": character}
 
 
 def test_semantic_model_exposes_spec_contract_for_tables_views_flows_and_pbcs() -> None:
@@ -223,3 +232,71 @@ table Payment {
     payload = json.loads(result.stdout)
     assert payload["format"] == "appgen.migration-plan.v1"
     assert any(change["kind"] == "add_table" and change["table"] == "Payment" for change in payload["changes"])
+
+
+def test_lsp_service_uses_shared_semantic_model_for_core_editor_features() -> None:
+    report = lsp_service_dsl(
+        TOOLING_SAMPLE,
+        source_name="finance.appgen",
+        position=_position_of(TOOLING_SAMPLE, "Invoice"),
+        prefix="In",
+        rename_to="SalesInvoice",
+    )
+
+    assert report["format"] == "appgen.lsp-service.v1"
+    assert report["ok"] is True
+    assert report["semantic_model_format"] == "appgen.semantic-model.v1"
+    assert report["capabilities"]["features"]["textDocument/completion"] is True
+    assert not any(item["severity"] == 1 for item in report["publishDiagnostics"]["diagnostics"])
+    assert any(item["label"] == "Invoice" for item in report["completion"]["items"])
+    assert report["hover"]["ok"] is True
+    assert report["definition"]["ok"] is True
+    assert len(report["references"]["locations"]) >= 2
+    assert any(symbol["name"] == "Invoice" for symbol in report["documentSymbol"]["symbols"])
+    assert report["formatting"]["format"] == "appgen.lsp-formatting.v1"
+    assert report["rename"]["ok"] is True
+    assert "SalesInvoice" in report["rename"]["workspace_edit"]["changes"]["finance.appgen"][0]["newText"]
+    assert any(symbol["name"] == "Invoice" for symbol in report["workspaceSymbol"]["symbols"])
+
+
+def test_lsp_service_exposes_code_action_for_missing_handler_target() -> None:
+    source = """
+    app Bad { targets: web }
+    table Invoice { id: int pk }
+    view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
+    """
+
+    report = lsp_service_dsl(source, source_name="bad.appgen", position=_position_of(source, "SubmitInvoice"))
+
+    assert report["ok"] is False
+    assert any(item["code"] == "AGX0403" for item in report["publishDiagnostics"]["source_report"]["diagnostics"])
+    assert any(action["data"]["id"] == "create_operation_from_handler" for action in report["codeAction"]["actions"])
+
+
+def test_appgen_lsp_subcommand_emits_json_contract(tmp_path: Path) -> None:
+    path = tmp_path / "finance.appgen"
+    path.write_text(TOOLING_SAMPLE, encoding="utf-8")
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pyAppGen",
+            "lsp",
+            str(path),
+            "--position",
+            "9:6",
+            "--prefix",
+            "In",
+            "--json",
+        ],
+        check=False,
+        cwd=Path(__file__).resolve().parents[1],
+        text=True,
+        capture_output=True,
+    )
+
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["format"] == "appgen.lsp-service.v1"
+    assert payload["capabilities"]["source_of_truth"] == "appgen.semantic-model.v1"

@@ -15,6 +15,7 @@ _TOOLING_SUBCOMMANDS = {
     "explain",
     "migration-plan",
     "nl-plan",
+    "lsp",
 }
 _legacy_click_main = main.main
 
