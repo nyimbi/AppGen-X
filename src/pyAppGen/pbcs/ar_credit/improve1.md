@@ -2,314 +2,313 @@
 
 ## Purpose
 
-This backlog identifies 50 high-impact, high-value improvements for `ar_credit`. Each item is specific to the domain surface currently declared by the PBC and is intended to move the package beyond world-class breadth toward complete specialist-grade coverage.
+This backlog identifies 50 high-impact, high-value improvements for `ar_credit`. The items are specific to accounts receivable and customer credit operations: customer credit governance, invoice issuance, tax evidence, revenue schedules, cash receipts, remittance parsing, cash application, deductions, disputes, collections, dunning, refunds, write-offs, statements, and agent-assisted AR work.
 
 ## Current Domain Evidence Used
 
-- Domain purpose: Customer credit, receivables, invoicing, cash application, collections, revenue schedules, and AR controls.
-- Representative owned tables: `ar_credit_customer`, `ar_credit_customer_site`, `ar_credit_customer_graph`, `ar_credit_customer_credit_profile`, `ar_credit_customer_payment_terms`, `ar_credit_customer_risk_signal`, `ar_credit_invoice`, `ar_credit_invoice_line`, `ar_credit_invoice_tax`, `ar_credit_invoice_performance_obligation`, `ar_credit_delivery_confirmation`, `ar_credit_cash_receipt`, ...
-- Representative operations/APIs: `command_ar_customers`, `command_ar_invoices`, `command_ar_deliveries`, `command_ar_remittances_parse`, `command_ar_cash_applications`, `command_ar_unapplied_cash`, `command_ar_credit_memos`, `command_ar_write_offs`, `command_ar_refunds`, `command_ar_disputes`, `command_ar_collections`, `command_ar_e_invoices`, ...
-- Representative events: `CustomerOnboarded`, `InvoiceIssued`, `DeliveryConfirmed`, `PaymentReceived`, `UnappliedCashRecorded`, `CreditMemoIssued`, `ReceivableWrittenOff`, `CustomerRefundScheduled`, `CollectionActionScheduled`.
-- Representative advanced capabilities: `event_sourced_receivable_lifecycle`, `graph_relational_customer_topology`, `multi_tenant_cash_application_isolation`, `schema_evolution_resilient_receivable_schema`, `probabilistic_cash_application`, `real_time_liquidity_aware_credit_extension`, `counterfactual_collection_strategy_optimization`, `temporal_revenue_to_cash_forecasting`, `autonomous_dispute_resolution`, `semantic_remittance_parsing`, ...
+- Domain purpose: quote-to-cash financial boundary after customer identity and fulfillment signals, including credit, invoices, receivable subledger, cash receipts, remittance interpretation, cash application, disputes, credit memos, refunds, write-offs, aging, dunning, statements, revenue schedules, credit decisions, e-invoice evidence, cross-border receivables, invoice finance, controls, rules, parameters, governed models, and workbench evidence.
+- Owned boundary: customers, sites, customer graph, credit profiles, payment terms, risk signals, invoices, invoice lines, invoice tax, performance obligations, delivery confirmations, cash receipts, remittance advice, cash applications, unapplied cash, credit memos, write-offs, refunds, dispute cases, collection actions, dunning notices, statements, revenue schedules, cash pools, credit decisions, e-invoice submissions, cross-border receivables, invoice finance programs, rules, parameters, schema extensions, controls, governed models, inbox/outbox, and dead-letter evidence.
+- Existing command/query surface: customers, invoices, deliveries, remittance parsing, cash application, unapplied cash, credit memos, write-offs, refunds, disputes, collections, e-invoices, aging, statements, revenue schedules, runtime configuration, rules, parameters, and workbench views.
+- Existing events and dependencies: emits customer, invoice, delivery, payment, unapplied cash, credit memo, write-off, refund, and collection events; consumes order, tax, treasury, identity, workflow, audit, and gateway signals only through APIs, AppGen-X events, and projections.
 
 ## 50 Better-Than-World-Class Improvements
 
-### 1. Deep specialist lifecycle semantics for `ar_credit_customer`
+### 1. Customer credit onboarding evidence pack
 
-**Justification:** This owned table is part of the Accounts Receivable and Credit operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Customer credit, receivables, invoicing, cash application, collections, revenue schedules, and AR controls.
+**Justification:** Credit exposure begins before the first invoice. A customer record without verified identity, payment terms, risk grade, credit authority, and related-party context cannot support controlled receivables growth.
 
-**Improvement:** Extend `ar_credit_customer` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `configuration_schema`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add an onboarding evidence pack with customer identity projection, beneficial-owner graph, site validation, credit application, references, payment terms, tax profile, approved limit, reviewer, and activation decision. Block credit-enabled status until mandatory evidence is complete.
 
-### 2. Deep specialist lifecycle semantics for `ar_credit_customer_site`
+### 2. Credit limit lifecycle governance
 
-**Justification:** This owned table is part of the Accounts Receivable and Credit operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Customer credit, receivables, invoicing, cash application, collections, revenue schedules, and AR controls.
+**Justification:** Credit limits change with risk, payment behavior, order volume, seasonality, disputes, and macro conditions. A static limit field is not enough.
 
-**Improvement:** Extend `ar_credit_customer_site` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `rule_engine`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Model credit limit requests, temporary limits, permanent limits, expiries, review cadence, approver authority, customer exposure, and override reasons. Store every credit decision with risk score, policy version, and expected exposure impact.
 
-### 3. Deep specialist lifecycle semantics for `ar_credit_customer_graph`
+### 3. Customer exposure aggregation
 
-**Justification:** This owned table is part of the Accounts Receivable and Credit operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Customer credit, receivables, invoicing, cash application, collections, revenue schedules, and AR controls.
+**Justification:** Credit decisions need exposure across open invoices, unapplied cash, orders pending invoice, disputed amounts, credit memos, refunds, and related entities.
 
-**Improvement:** Extend `ar_credit_customer_graph` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `parameter_engine`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add exposure views by customer, parent, site, currency, aging bucket, disputed/open/secured amount, and pending order projection. Credit checks should use exposure snapshots with freshness evidence.
 
-### 4. Deep specialist lifecycle semantics for `ar_credit_customer_credit_profile`
+### 4. Related-party and parent-child credit graph
 
-**Justification:** This owned table is part of the Accounts Receivable and Credit operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Customer credit, receivables, invoicing, cash application, collections, revenue schedules, and AR controls.
+**Justification:** Customers may operate through subsidiaries, buying groups, franchised sites, or shared beneficial owners that concentrate credit risk.
 
-**Improvement:** Extend `ar_credit_customer_credit_profile` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `appgen_x_inbox`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Expand customer graph records with parent hierarchy, guarantees, shared owners, shared payment instruments, site relationships, and risk propagation. Support group credit limits and local sublimits with explainable allocation.
 
-### 5. Deep specialist lifecycle semantics for `ar_credit_customer_payment_terms`
+### 5. Payment terms optimization
 
-**Justification:** This owned table is part of the Accounts Receivable and Credit operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Customer credit, receivables, invoicing, cash application, collections, revenue schedules, and AR controls.
+**Justification:** Terms affect DSO, bad debt, sales conversion, discount behavior, and working capital.
 
-**Improvement:** Extend `ar_credit_customer_payment_terms` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `appgen_x_outbox`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add term recommendation logic based on credit grade, historical payment behavior, margin, customer segment, country, dispute history, and treasury liquidity. Store counterfactual DSO and revenue impact for proposed term changes.
 
-### 6. Deep specialist lifecycle semantics for `ar_credit_customer_risk_signal`
+### 6. Invoice issuance completeness gate
 
-**Justification:** This owned table is part of the Accounts Receivable and Credit operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Customer credit, receivables, invoicing, cash application, collections, revenue schedules, and AR controls.
+**Justification:** Invoices should not be issued without required customer, delivery, tax, contract, performance obligation, and account evidence.
 
-**Improvement:** Extend `ar_credit_customer_risk_signal` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `idempotent_handlers`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add an invoice readiness gate that checks customer status, credit hold, bill-to site, tax quote, delivery confirmation where required, line totals, revenue obligation mapping, and e-invoice jurisdiction rules before `InvoiceIssued`.
 
-### 7. Deep specialist lifecycle semantics for `ar_credit_invoice`
+### 7. Invoice correction and cancellation lifecycle
 
-**Justification:** This owned table is part of the Accounts Receivable and Credit operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Customer credit, receivables, invoicing, cash application, collections, revenue schedules, and AR controls.
+**Justification:** Invoice mistakes require controlled cancellation, rebilling, credit memo, and audit linkage.
 
-**Improvement:** Extend `ar_credit_invoice` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `retry_dead_letter_evidence`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add correction records linking original invoice, correction reason, cancellation state, replacement invoice, credit memo, tax impact, revenue impact, and customer communication. Corrections should preserve immutable invoice history.
 
-### 8. Deep specialist lifecycle semantics for `ar_credit_invoice_line`
+### 8. Performance obligation allocation
 
-**Justification:** This owned table is part of the Accounts Receivable and Credit operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Customer credit, receivables, invoicing, cash application, collections, revenue schedules, and AR controls.
+**Justification:** AR invoices may include bundled obligations whose revenue schedule differs from billing and cash timing.
 
-**Improvement:** Extend `ar_credit_invoice_line` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `permissions`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add allocation controls for obligation identification, standalone selling price, satisfaction pattern, deferred revenue, recognized revenue, and schedule updates. Link invoice lines to revenue schedule lines with proof.
 
-### 9. Deep specialist lifecycle semantics for `ar_credit_invoice_tax`
+### 9. Delivery and acceptance evidence policy
 
-**Justification:** This owned table is part of the Accounts Receivable and Credit operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Customer credit, receivables, invoicing, cash application, collections, revenue schedules, and AR controls.
+**Justification:** Some invoices require shipment, service completion, milestone acceptance, or customer signoff before billing or revenue treatment.
 
-**Improvement:** Extend `ar_credit_invoice_tax` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `customer_master`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add delivery evidence rules by product/service, contract, customer, and jurisdiction. Store delivery proof hash, acceptance status, exception reason, and invoice/revenue impact.
 
-### 10. Deep specialist lifecycle semantics for `ar_credit_invoice_performance_obligation`
+### 10. Tax and e-invoice clearance gate
 
-**Justification:** This owned table is part of the Accounts Receivable and Credit operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Customer credit, receivables, invoicing, cash application, collections, revenue schedules, and AR controls.
+**Justification:** AR invoices can be legally invalid if tax or electronic clearance rules are incomplete.
 
-**Improvement:** Extend `ar_credit_invoice_performance_obligation` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `customer_site_management`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add jurisdiction-specific clearance checks for invoice fields, tax rates, invoice numbering, digital signatures, submission response, cancellation rules, and archival proof. Block dispatch where required clearance has not been accepted.
 
-### 11. Make `command_ar_customers` a complete command lifecycle
+### 11. Invoice numbering and statutory sequence control
 
-**Justification:** High-value users need `command_ar_customers` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Many jurisdictions require strict invoice number sequences, gap handling, cancellation proof, and legal entity separation.
 
-**Improvement:** Implement `command_ar_customers` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `CustomerOnboarded`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add sequence policies by entity, country, invoice type, and fiscal period. Track reserved, issued, cancelled, voided, and gap-explained numbers with release audit checks.
 
-### 12. Make `command_ar_invoices` a complete command lifecycle
+### 12. Receivable subledger to GL reconciliation
 
-**Justification:** High-value users need `command_ar_invoices` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** AR open balances, revenue, tax, cash, write-offs, refunds, and discounts must reconcile to GL without shared tables.
 
-**Improvement:** Implement `command_ar_invoices` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `InvoiceIssued`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add reconciliation records comparing AR subledger balances and emitted GL handoff events, with variance classification, source invoice/cash/write-off links, and close-blocking status.
 
-### 13. Make `command_ar_deliveries` a complete command lifecycle
+### 13. Cash receipt intake normalization
 
-**Justification:** High-value users need `command_ar_deliveries` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Receipts arrive from bank statements, lockboxes, cards, wallets, bank transfers, and payment processors with inconsistent references.
 
-**Improvement:** Implement `command_ar_deliveries` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `DeliveryConfirmed`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Normalize all receipts into a canonical cash receipt record with source, bank reference, payer identity, currency, value date, fees, chargeback risk, and duplicate-detection evidence.
 
-### 14. Make `command_ar_remittances_parse` a complete command lifecycle
+### 14. Semantic remittance parsing
 
-**Justification:** High-value users need `command_ar_remittances_parse` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Customers often send unstructured remittance text that references multiple invoices, deductions, credits, or disputes.
 
-**Improvement:** Implement `command_ar_remittances_parse` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `PaymentReceived`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Parse remittances into candidate invoice references, amounts, deductions, reason codes, confidence, source spans, and unresolved fragments. The agent should show citations and request review for low-confidence allocations.
 
-### 15. Make `command_ar_cash_applications` a complete command lifecycle
+### 15. Probabilistic cash application workbench
 
-**Justification:** High-value users need `command_ar_cash_applications` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Automatic cash application must be explainable because wrong application damages customer balances and collections.
 
-**Improvement:** Implement `command_ar_cash_applications` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `UnappliedCashRecorded`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Store candidate invoices, scores, tolerance rules, partial-payment treatment, currency match, remittance evidence, and final application decision. UI should support accept, split, reassign, park as unapplied, or open dispute.
 
-### 16. Make `command_ar_unapplied_cash` a complete command lifecycle
+### 16. Short-pay and deduction management
 
-**Justification:** High-value users need `command_ar_unapplied_cash` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Customers frequently short-pay for claims, promotions, returns, taxes, service credits, or disputes.
 
-**Improvement:** Implement `command_ar_unapplied_cash` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `CreditMemoIssued`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add deduction records with reason, linked invoice lines, customer claim, supporting documents, approval path, expected recovery, write-off eligibility, and customer communication status.
 
-### 17. Make `command_ar_credit_memos` a complete command lifecycle
+### 17. Unapplied cash triage lifecycle
 
-**Justification:** High-value users need `command_ar_credit_memos` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Unapplied cash distorts aging, customer statements, cash forecasts, and collections.
 
-**Improvement:** Implement `command_ar_credit_memos` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `ReceivableWrittenOff`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add triage categories for missing remittance, unknown payer, duplicate receipt, overpayment, refund candidate, customer credit, and bank error. Track owner, SLA, evidence, resolution action, and aging.
 
-### 18. Make `command_ar_write_offs` a complete command lifecycle
+### 18. Credit memo governance
 
-**Justification:** High-value users need `command_ar_write_offs` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Credit memos reduce receivables and revenue and can be abused without policy controls.
 
-**Improvement:** Implement `command_ar_write_offs` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `CustomerRefundScheduled`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add credit memo request, reason taxonomy, invoice linkage, tax impact, revenue impact, approval threshold, customer communication, and application policy. Require SoD approval for high-risk or manual credits.
 
-### 19. Make `command_ar_refunds` a complete command lifecycle
+### 19. Refund approval and payment handoff
 
-**Justification:** High-value users need `command_ar_refunds` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Customer refunds require eligibility, bank/payment method verification, fraud controls, treasury funding, and GL handoff.
 
-**Improvement:** Implement `command_ar_refunds` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `CollectionActionScheduled`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add refund lifecycle states with source credit/unapplied cash, customer verification, payment route, approval, idempotency, remittance, and settlement evidence. Integrate through declared treasury APIs/events.
 
-### 20. Make `command_ar_disputes` a complete command lifecycle
+### 20. Write-off policy and recovery controls
 
-**Justification:** High-value users need `command_ar_disputes` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Write-offs affect bad debt, revenue quality, collections, and audit controls.
 
-**Improvement:** Implement `command_ar_disputes` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `CustomerOnboarded`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add write-off policies by amount, age, customer risk, dispute status, recovery exhaustion, and approver authority. Store recovery history, tax impact, GL handoff, and post-write-off monitoring.
 
-### 21. Operationalize `event_sourced_receivable_lifecycle` as a governed decision system
+### 21. Dispute case management
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Accounts Receivable and Credit and measurably improves accuracy rate without hiding assumptions.
+**Justification:** Disputes are multi-step cases involving reasons, documents, customer communication, internal owners, deductions, and resolution.
 
-**Improvement:** Promote `event_sourced_receivable_lifecycle` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `accuracy_rate`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Expand dispute cases with root cause, disputed lines, evidence, owner, customer contact, SLA, promised action, resolution decision, credit/write-off/refund linkage, and recurrence classification.
 
-### 22. Operationalize `graph_relational_customer_topology` as a governed decision system
+### 22. Collections strategy orchestration
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Accounts Receivable and Credit and measurably improves close cycle time without hiding assumptions.
+**Justification:** Collection actions should adapt to customer risk, amount, relationship value, dispute status, geography, and communication preferences.
 
-**Improvement:** Promote `graph_relational_customer_topology` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `close_cycle_time`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add strategy records with action sequence, channel, tone, timing, owner, escalation, legal handoff threshold, and pause rules. Use counterfactual simulations to compare DSO impact and customer-risk cost.
 
-### 23. Operationalize `multi_tenant_cash_application_isolation` as a governed decision system
+### 23. Dunning policy compiler
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Accounts Receivable and Credit and measurably improves cash impact without hiding assumptions.
+**Justification:** Dunning levels and messages vary by country, customer segment, dispute status, and legal requirements.
 
-**Improvement:** Promote `multi_tenant_cash_application_isolation` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `cash_impact`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Compile dunning rules with grace days, aging bucket, excluded invoices, required language, channel, notice content, and escalation behavior. Store proof of sent notices and customer responses.
 
-### 24. Operationalize `schema_evolution_resilient_receivable_schema` as a governed decision system
+### 24. Promise-to-pay management
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Accounts Receivable and Credit and measurably improves compliance exceptions without hiding assumptions.
+**Justification:** Collections depends on tracking customer commitments and following up when promises are missed.
 
-**Improvement:** Promote `schema_evolution_resilient_receivable_schema` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `compliance_exceptions`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add promise records with promised amount, date, invoices, collector, customer contact, confidence, reminder schedule, kept/broken status, and effect on collection strategy.
 
-### 25. Operationalize `probabilistic_cash_application` as a governed decision system
+### 25. Customer statement generation and proof
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Accounts Receivable and Credit and measurably improves customer onboarded throughput without hiding assumptions.
+**Justification:** Statements must be accurate, explainable, and reconcilable to invoices, receipts, credits, disputes, and unapplied cash.
 
-**Improvement:** Promote `probabilistic_cash_application` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `customer_onboarded_throughput`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add statement generation with as-of date, included transactions, excluded disputes, balance hash, delivery channel, customer acknowledgement, and dispute initiation link.
 
-### 26. Operationalize `real_time_liquidity_aware_credit_extension` as a governed decision system
+### 26. Aging analytics with explainable buckets
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Accounts Receivable and Credit and measurably improves invoice issued throughput without hiding assumptions.
+**Justification:** Aging reports drive collections, reserves, covenants, and management reporting, so bucket assignment must be defensible.
 
-**Improvement:** Promote `real_time_liquidity_aware_credit_extension` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `invoice_issued_throughput`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Store aging snapshots by invoice, due date, payment terms, dispute/hold status, customer, currency, and entity. Show why each item is in a bucket and how credits/unapplied cash affect exposure.
 
-### 27. Operationalize `counterfactual_collection_strategy_optimization` as a governed decision system
+### 27. Bad-debt reserve recommendations
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Accounts Receivable and Credit and measurably improves accuracy rate without hiding assumptions.
+**Justification:** Credit losses require forward-looking assessment using aging, customer risk, disputes, macro signals, and payment behavior.
 
-**Improvement:** Promote `counterfactual_collection_strategy_optimization` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `accuracy_rate`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add reserve recommendation records with expected loss, model version, scenario, customer risk factors, manual overlay, approval, and GL handoff. Keep model governance and deterministic fallback.
 
-### 28. Operationalize `temporal_revenue_to_cash_forecasting` as a governed decision system
+### 28. Customer default prediction governance
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Accounts Receivable and Credit and measurably improves close cycle time without hiding assumptions.
+**Justification:** Default scores influence credit holds and collections, so they need explainability and controls.
 
-**Improvement:** Promote `temporal_revenue_to_cash_forecasting` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `close_cycle_time`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Govern default models with feature lineage, drift, protected-feature exclusion evidence, override reason, review cadence, and confidence. Surface risk contributors in customer credit views.
 
-### 29. Operationalize `autonomous_dispute_resolution` as a governed decision system
+### 29. Credit hold and release lifecycle
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Accounts Receivable and Credit and measurably improves cash impact without hiding assumptions.
+**Justification:** Credit holds affect order release, customer relationships, and revenue timing.
 
-**Improvement:** Promote `autonomous_dispute_resolution` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `cash_impact`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add hold records with cause, exposure, customer group, affected orders/invoices, release conditions, approver, expiry, and communication evidence. Emit AppGen-X events for downstream order gating.
 
-### 30. Operationalize `semantic_remittance_parsing` as a governed decision system
+### 30. Credit insurance and collateral tracking
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Accounts Receivable and Credit and measurably improves compliance exceptions without hiding assumptions.
+**Justification:** Receivable risk can be mitigated by insurance, guarantees, deposits, letters of credit, and collateral.
 
-**Improvement:** Promote `semantic_remittance_parsing` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `compliance_exceptions`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add risk mitigation records with coverage amount, expiry, insured customer, deductible, claim process, collateral value, and credit-limit effect. Include coverage in exposure calculations.
 
-### 31. Create simulation-grade governance for `AR_CREDIT_DATABASE_URL` and `AR_CREDIT_DATABASE_URL`
+### 31. Cross-border receivables controls
 
-**Justification:** Complete Accounts Receivable and Credit coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** International receivables involve currency, local invoicing, withholding, collection laws, settlement timing, and banking restrictions.
 
-**Improvement:** Add a policy cockpit where `AR_CREDIT_DATABASE_URL` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `AR_CREDIT_DATABASE_URL` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add cross-border requirements by country/currency, including e-invoice, tax, payment method, FX exposure, local collection constraints, and settlement proof. Flag invoices with incomplete cross-border evidence.
 
-### 32. Create simulation-grade governance for `AR_CREDIT_EVENT_TOPIC` and `AR_CREDIT_EVENT_TOPIC`
+### 32. FX exposure and realized gain/loss handoff
 
-**Justification:** Complete Accounts Receivable and Credit coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Foreign-currency invoices and receipts create exposure and realized/unrealized gains or losses.
 
-**Improvement:** Add a policy cockpit where `AR_CREDIT_EVENT_TOPIC` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `AR_CREDIT_EVENT_TOPIC` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Track invoice currency, functional currency, rates, revaluation exposure, receipt rate, realized gain/loss, and GL handoff evidence. Connect exposure to treasury projections through declared contracts.
 
-### 33. Create simulation-grade governance for `AR_CREDIT_RETRY_LIMIT` and `AR_CREDIT_RETRY_LIMIT`
+### 33. Invoice finance program lifecycle
 
-**Justification:** Complete Accounts Receivable and Credit coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Receivables can be financed, sold, pledged, or factored, changing cash, risk, and customer communication.
 
-**Improvement:** Add a policy cockpit where `AR_CREDIT_RETRY_LIMIT` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `AR_CREDIT_RETRY_LIMIT` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add finance program records with eligible invoices, advance rate, counterparty, recourse/non-recourse status, fees, assignment notice, settlement, and accounting handoff.
 
-### 34. Create simulation-grade governance for `AR_CREDIT_DATABASE_URL` and `AR_CREDIT_DATABASE_URL`
+### 34. Chargeback and payment reversal management
 
-**Justification:** Complete Accounts Receivable and Credit coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Card, wallet, and bank payments can be reversed or charged back after cash application.
 
-**Improvement:** Add a policy cockpit where `AR_CREDIT_DATABASE_URL` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `AR_CREDIT_DATABASE_URL` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add reversal lifecycle with original receipt, reason, dispute evidence, response deadline, provisional status, recovered/lost outcome, and invoice reopening logic.
 
-### 35. Create simulation-grade governance for `AR_CREDIT_EVENT_TOPIC` and `AR_CREDIT_EVENT_TOPIC`
+### 35. Lockbox and bank file reconciliation
 
-**Justification:** Complete Accounts Receivable and Credit coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** High-volume AR depends on reconciling bank/lockbox files, receipt batches, and remittance details.
 
-**Improvement:** Add a policy cockpit where `AR_CREDIT_EVENT_TOPIC` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `AR_CREDIT_EVENT_TOPIC` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add file ingestion evidence, batch totals, line totals, duplicate files, rejected lines, correction workflow, and proof that bank totals equal created receipts.
 
-### 36. Upgrade `ArCreditWorkbench` into a full specialist command center
+### 36. Customer communication workspace
 
-**Justification:** The PBC UI must expose the complete Accounts Receivable and Credit surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Collections, disputes, statements, refunds, and credit holds need controlled communication history.
 
-**Improvement:** Expand `ArCreditWorkbench` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add communication records linked to customer, invoice, dispute, collection action, statement, or promise-to-pay with channel, template, send proof, response summary, and next action.
 
-### 37. Upgrade `ArCreditDetail` into a full specialist command center
+### 37. AR close cockpit
 
-**Justification:** The PBC UI must expose the complete Accounts Receivable and Credit surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** AR close requires visibility into unissued invoices, unapplied cash, disputes, write-offs, revenue schedules, tax exceptions, and GL reconciliation.
 
-**Improvement:** Expand `ArCreditDetail` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add close dashboards by entity/period showing open blockers, subledger-to-GL reconciliation, aging snapshots, reserve recommendations, e-invoice failures, and revenue schedule exceptions.
 
-### 38. Upgrade `ArCreditWorkbench` into a full specialist command center
+### 38. Revenue-to-cash forecasting
 
-**Justification:** The PBC UI must expose the complete Accounts Receivable and Credit surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** AR is a core input to liquidity and revenue planning.
 
-**Improvement:** Expand `ArCreditWorkbench` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Forecast collections by customer, invoice, due date, payment behavior, dispute state, collection strategy, and macro risk. Publish forecast projections with confidence intervals and freshness evidence.
 
-### 39. Upgrade `ArCreditDetail` into a full specialist command center
+### 39. Collection effectiveness analytics
 
-**Justification:** The PBC UI must expose the complete Accounts Receivable and Credit surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Teams need to know which strategies improve DSO, reduce bad debt, and preserve customer relationships.
 
-**Improvement:** Expand `ArCreditDetail` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Track action-to-outcome metrics by collector, channel, customer segment, aging bucket, dispute type, and promise-to-pay behavior. Recommend strategy improvements with evidence.
 
-### 40. Upgrade `ArCreditWorkbench` into a full specialist command center
+### 40. Customer portal AR task queue
 
-**Justification:** The PBC UI must expose the complete Accounts Receivable and Credit surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Customers can resolve remittance gaps, disputes, statement questions, and payment promises faster through structured tasks.
 
-**Improvement:** Expand `ArCreditWorkbench` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add customer-facing task descriptors for missing remittance, dispute documentation, statement acknowledgement, payment promise, refund information, and credit application updates. Keep mutations behind AR-owned review workflows.
 
-### 41. Prove cross-PBC federation for `POST /ar/customers` and `CustomerIdentityVerified`
+### 41. Agent-safe cash application
 
-**Justification:** Accounts Receivable and Credit must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** The AR chatbot should help apply cash, but incorrect application is financially damaging.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /ar/customers` and consumed event `CustomerIdentityVerified` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Define agent previews for cash application with receipt, candidate invoices, confidence, unapplied impact, customer statement impact, and reversal path. Require human confirmation below confidence or above materiality thresholds.
 
-### 42. Prove cross-PBC federation for `POST /ar/invoices` and `DeliveryConfirmed`
+### 42. Agent-safe collections assistance
 
-**Justification:** Accounts Receivable and Credit must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Collection messages affect customer relationships and legal posture.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /ar/invoices` and consumed event `DeliveryConfirmed` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Give the agent skills to draft collection actions, dispute summaries, statement explanations, and promise follow-ups from owned evidence. Require policy checks for tone, jurisdiction, disputed invoices, and contact permissions before sending.
 
-### 43. Prove cross-PBC federation for `POST /ar/deliveries` and `TaxPolicyChanged`
+### 43. Agent-safe credit decisions
 
-**Justification:** Accounts Receivable and Credit must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Credit changes can block orders or increase bad-debt exposure.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /ar/deliveries` and consumed event `TaxPolicyChanged` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Require credit decision previews showing exposure, limit, risk factors, payment history, open disputes, mitigation, model confidence, and approval route. Agent actions should draft recommendations, not directly change limits without authority.
 
-### 44. Prove cross-PBC federation for `POST /ar/remittances/parse` and `CashForecastUpdated`
+### 44. Rules and parameter simulation
 
-**Justification:** Accounts Receivable and Credit must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Cash thresholds, credit buffers, dunning grace days, write-off limits, and collection risk thresholds materially change AR outcomes.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /ar/remittances/parse` and consumed event `CashForecastUpdated` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Simulate rule/parameter changes against historical and open receivables. Show impact on auto-application rate, unapplied cash, collection workload, write-offs, credit holds, DSO, and release blockers.
 
-### 45. Temporal reconstruction and bitemporal audit for Accounts Receivable and Credit
+### 45. Continuous AR controls
 
-**Justification:** Regulated and operationally complex domains need to answer what was known, valid, processed, and visible at any point in time.
+**Justification:** AR controls should run continuously, not only at month end.
 
-**Improvement:** Add transaction-time, valid-time, and processing-time fields to core records, temporal query APIs, projection rebuild tooling, and UI time travel so specialists can reconstruct decisions, reports, and automation outcomes.
+**Improvement:** Add control assertions for open amount integrity, receipt application, write-off approval, refund approval, credit-limit breach, aging completeness, e-invoice acceptance, and subledger reconciliation.
 
-### 46. Bulk operations and migration-grade controls for Accounts Receivable and Credit
+### 46. Boundary proof for AR-only ownership
 
-**Justification:** World-class deployments must handle imports, mass corrections, high-volume operating days, and cutovers without bypassing governance.
+**Justification:** AR must integrate with order, tax, treasury, GL, workflow, identity, and audit without direct table access.
 
-**Improvement:** Add staged bulk upload, duplicate detection, chunked validation, approval sampling, partial failure handling, retry dashboards, reconciliation summaries, and agent-generated remediation plans for large batches.
+**Improvement:** Add static/runtime checks proving every command uses only AR-owned tables plus declared APIs/events/projections. Include failing fixtures for direct foreign-table references.
 
-### 47. Specialist edge-case playbooks for Accounts Receivable and Credit
+### 47. Workbench surface for all AR capabilities
 
-**Justification:** Rare cases often carry the highest financial, legal, safety, service, or compliance risk.
+**Justification:** AR specialists need operational surfaces for every major workflow, not hidden backend commands.
 
-**Improvement:** Create a playbook catalog with detection rules, required evidence, escalation paths, fallback actions, owner roles, and release-audited tests for high-severity edge cases and exception queues.
+**Improvement:** Expand UI into credit cockpit, invoice issuance, cash application, unapplied cash, dispute board, collections planner, dunning console, statement generator, refunds/write-offs, revenue schedule view, close cockpit, analytics, and agent assistant.
 
-### 48. Pre-mutation simulation and blast-radius analysis for Accounts Receivable and Credit
+### 48. Customer-facing explanation packets
 
-**Justification:** Users should understand consequences before committing irreversible, customer-visible, operationally disruptive, or financially material changes.
+**Justification:** Customers often need understandable explanations for balances, disputes, credits, dunning, and statements.
 
-**Improvement:** Add what-if simulation for every material command, showing impacted records, emitted events, dependent projections, rule outcomes, approvals, downstream PBC dependencies, and rollback limits.
+**Improvement:** Generate explanation packets from invoices, receipts, credits, disputes, promises, and statements with redaction and approved wording. Store delivery proof and customer acknowledgement.
 
-### 49. Continuous control testing and operational assurance for Accounts Receivable and Credit
+### 49. AR release readiness score
 
-**Justification:** Better-than-world-class PBCs prove controls continuously, not only at release or during periodic audits.
+**Justification:** Users need a defensible measure of whether AR is complete enough for production finance operations.
 
-**Improvement:** Add executable control assertions, sampled evidence checks, anomaly thresholds, control-owner dashboards, breach/recovery events, and release gates that fail when domain controls lose evidence.
+**Improvement:** Compute readiness from customer evidence, credit governance, invoice readiness, cash application accuracy, dispute aging, collection controls, refund/write-off approvals, revenue schedules, GL/treasury/tax handoffs, UI coverage, and agent safety.
 
-### 50. Human-in-the-loop domain agent execution for Accounts Receivable and Credit
+### 50. End-to-end order-to-cash trace
 
-**Justification:** The PBC chatbot must help specialists perform real work while preventing unsafe autonomous mutation.
+**Justification:** AR excellence depends on tracing customer obligation from order/delivery through invoice, tax, revenue, receipt, application, dispute, collection, GL, and statement.
 
-**Improvement:** Add domain-specific skills, document parsing, task planning, CRUD previews, confidence/risk scoring, confirmation gates, redaction, policy explanations, and post-action evidence packets for every supported command and query.
+**Improvement:** Build an order-to-cash trace view using AR-owned records and declared projections. The agent should answer status and balance questions from this trace with source evidence and confidence.
