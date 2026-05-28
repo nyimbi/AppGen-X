@@ -18,7 +18,9 @@ usage
 platform-guide
 architecture
 app-generation-guide
-language-tutorials
+language-tutorials/index
+language-manual/index
+learning-appgen/index
 deployment-guide
 dsl
 dsl-grammar

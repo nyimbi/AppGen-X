@@ -3,12 +3,18 @@
 AppGen's DSL is the primary low-code language for describing an application in
 one readable file.  It intentionally keeps the core vocabulary small:
 
-For deeper documentation, see the grammar reference (`docs/dsl-grammar.md`),
-user guide (`docs/dsl-user-guide.md`), tutorial (`docs/dsl-tutorial.md`), and
-linter guide (`docs/dsl-linter.md`).
+For deeper documentation, see the language manual
+(`docs/language-manual/index.md`), language tutorials
+(`docs/language-tutorials/index.md`), textbook
+(`docs/learning-appgen/index.md`), grammar reference
+(`docs/dsl-grammar.md`), user guide (`docs/dsl-user-guide.md`), tutorial
+(`docs/dsl-tutorial.md`), and linter guide (`docs/dsl-linter.md`).
 
-`app`, `table`, `enum`, `view`, `for`, `flow`, `role`, `rule`, `pk`,
-`required`, `unique`, `hidden`, `search`, `default`, `in`, `llm`, and `agent`.
+Canonical keywords are `app`, `table`, `enum`, `view`, `for`, `flow`, `role`,
+`rule`, `pbc`, `composition`, `audit`, `deploy`, `version`, `operation`,
+`security`, `api`, `event`, `job`, `report`, `menu`, `component`, `package`,
+`test`, `pk`, `required`, `unique`, `hidden`, `search`, `default`, `in`,
+`llm`, and `agent`.
 
 Reusable field groups, arrays, and derived fields do not add keywords:
 declare a bare field block, spread it with `...GroupName`, write arrays as
@@ -42,6 +48,12 @@ all supported schema source families.
 `dsl_antlr_integrity_report()` additionally proves the canonical grammar and
 generated lexer/parser metadata are synchronized, including token names, parser
 rules, required DSL constructs, and compact keyword literals.
+
+The current language surface also covers table-level directives for indexes,
+lookups, keys, and constraints; validated multi-hop form lookup paths; workflow
+participants, human tasks, timers, and compensation directives; agent skills
+and permissions; PBC composition; enterprise contracts; deployment topology;
+and package targets.
 
 The optional `app { ... }` block carries app-level options such as `theme`,
 `primary`, `accent`, `logo`, `tagline`, explicit row-level security targets,
