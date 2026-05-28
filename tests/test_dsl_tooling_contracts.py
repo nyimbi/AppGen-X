@@ -2350,6 +2350,15 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
         "code_action_request",
         "formatting_request",
     } <= {check["check"] for check in lsp_check["detail"]["rpc"]["checks"]}
+    cli_check = next(check for check in report["checks"] if check["id"] == "cli_validation_and_generation_contracts")
+    assert cli_check["detail"]["validate_generate_cli"]["format"] == "appgen.validate-generate-cli-audit.v1"
+    assert cli_check["detail"]["validate_generate_cli"]["ok"] is True
+    assert {
+        "validate_targets",
+        "generate_writes_artifacts",
+        "generate_blocks_warnings",
+        "generate_allows_warnings_when_requested",
+    } <= {case["case"] for case in cli_check["detail"]["validate_generate_cli"]["cases"]}
     assert all(check["section"].startswith("docs/tooling.md#") for check in report["checks"])
     assert cli_json.returncode == 0, cli_json.stderr
     assert json.loads(cli_json.stdout)["format"] == "appgen.tooling-audit.v1"

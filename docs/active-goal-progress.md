@@ -3238,6 +3238,15 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   Verification passed: Python compile for touched tooling entrypoints and full
   `appgen tooling-audit --json` with `16/16` checks and no blocking gaps.
   Commit: `141d6c96`.
+- Current validate/generate CLI audit pass closes the gap between helper-level
+  validation/generation evidence and the documented `appgen validate` plus
+  `appgen generate` command contracts. `appgen.tooling-audit.v1` now embeds
+  `appgen.validate-generate-cli-audit.v1`, which runs `validate --targets`
+  through the CLI, proves generation writes artifacts and a manifest, proves
+  warning-only sources are blocked by default, and proves `--allow-warnings`
+  is the explicit command-line override. Verification passed: Python compile
+  for touched tooling entrypoints and full `appgen tooling-audit --json` with
+  `16/16` checks and no blocking gaps. Commit: pending.
 - Current parallel PBC implementation pass delivered executable code for six
   PBCs rather than plan-only artifacts: `actuarial_pricing_reserving`,
   `advertising_campaign_operations`, `agri_supply_chain_traceability`,

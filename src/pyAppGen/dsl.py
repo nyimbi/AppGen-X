@@ -2133,6 +2133,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
         internal_error_exit = _tooling_audit_internal_error_exit(Path(tmp))
         missing_input_exit = _tooling_audit_missing_input_exit(Path(tmp))
         invalid_choice_exit = _tooling_audit_invalid_choice_exit(Path(tmp))
+        validate_generate_cli = _tooling_audit_validate_generate_cli(Path(tmp), source)
         designer_sync_cli = _tooling_audit_designer_sync_cli(Path(tmp), source)
         graph_cli = _tooling_audit_graph_cli_formats(Path(tmp), source)
         explain_cli = _tooling_audit_explain_cli_formats(Path(tmp), source)
@@ -2229,6 +2230,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and internal_error_exit["ok"]
             and missing_input_exit["ok"]
             and invalid_choice_exit["ok"]
+            and validate_generate_cli["ok"]
             and cli_help_surface["ok"]
             and generation["ok"]
             and generation["generated"]
@@ -2243,6 +2245,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                 "internal_error_exit": internal_error_exit,
                 "missing_input_exit": missing_input_exit,
                 "invalid_choice_exit": invalid_choice_exit,
+                "validate_generate_cli": validate_generate_cli,
                 "cli_help_surface": cli_help_surface,
                 "generate": generation.get("format"),
                 "warning_block": warning_generation_blocked.get("blocking_gaps"),
@@ -2845,6 +2848,93 @@ def _tooling_audit_invalid_choice_exit(tmp: Path) -> dict:
         "format": "appgen.invalid-choice-exit-audit.v1",
         "ok": all(result["ok"] for result in results),
         "cases": tuple(results),
+    }
+
+
+def _tooling_audit_validate_generate_cli(tmp: Path, source: str) -> dict:
+    source_path = tmp / "validate-generate.appgen"
+    warning_path = tmp / "warning-generate.appgen"
+    output_dir = tmp / "generated-cli"
+    warning_blocked_dir = tmp / "warning-blocked-cli"
+    warning_allowed_dir = tmp / "warning-allowed-cli"
+    source_path.write_text(source, encoding="utf-8")
+    warning_path.write_text(_tooling_audit_warning_generation_sample(), encoding="utf-8")
+
+    def run_json(argv: tuple[str, ...]) -> tuple[int, dict]:
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            exit_code = dsl_tooling_cli(argv)
+        try:
+            payload = json.loads(output.getvalue())
+        except json.JSONDecodeError:
+            payload = {}
+        return exit_code, payload
+
+    validate_exit, validate_payload = run_json(
+        ("validate", str(source_path), "--targets", "web,mobile,desktop", "--json")
+    )
+    generate_exit, generate_payload = run_json(
+        ("generate", str(source_path), "--target", "web", "--out", str(output_dir), "--json")
+    )
+    warning_blocked_exit, warning_blocked_payload = run_json(
+        ("generate", str(warning_path), "--out", str(warning_blocked_dir), "--json")
+    )
+    warning_allowed_exit, warning_allowed_payload = run_json(
+        ("generate", str(warning_path), "--out", str(warning_allowed_dir), "--allow-warnings", "--json")
+    )
+    cases = (
+        {
+            "case": "validate_targets",
+            "ok": validate_exit == 0
+            and validate_payload.get("format") == "appgen.validate-report.v1"
+            and tuple(validate_payload.get("requested_targets", ())) == ("web", "mobile", "desktop")
+            and any(
+                check.get("check") == "target_compatibility" and check.get("ok")
+                for check in validate_payload.get("checks", ())
+            ),
+            "exit_code": validate_exit,
+            "payload_format": validate_payload.get("format"),
+            "requested_targets": tuple(validate_payload.get("requested_targets", ())),
+        },
+        {
+            "case": "generate_writes_artifacts",
+            "ok": generate_exit == 0
+            and generate_payload.get("format") == "appgen.generate-report.v1"
+            and generate_payload.get("generated") is True
+            and Path(str(generate_payload.get("manifest", ""))).exists()
+            and bool(generate_payload.get("artifacts")),
+            "exit_code": generate_exit,
+            "payload_format": generate_payload.get("format"),
+            "artifact_count": len(generate_payload.get("artifacts", ())),
+            "manifest": generate_payload.get("manifest"),
+        },
+        {
+            "case": "generate_blocks_warnings",
+            "ok": warning_blocked_exit == 1
+            and warning_blocked_payload.get("format") == "appgen.generate-report.v1"
+            and warning_blocked_payload.get("generated") is False
+            and "lint_warnings" in warning_blocked_payload.get("blocking_gaps", ()),
+            "exit_code": warning_blocked_exit,
+            "payload_format": warning_blocked_payload.get("format"),
+            "blocking_gaps": tuple(warning_blocked_payload.get("blocking_gaps", ())),
+        },
+        {
+            "case": "generate_allows_warnings_when_requested",
+            "ok": warning_allowed_exit == 0
+            and warning_allowed_payload.get("format") == "appgen.generate-report.v1"
+            and warning_allowed_payload.get("generated") is True
+            and warning_allowed_payload.get("allow_warnings") is True
+            and Path(str(warning_allowed_payload.get("manifest", ""))).exists(),
+            "exit_code": warning_allowed_exit,
+            "payload_format": warning_allowed_payload.get("format"),
+            "allow_warnings": warning_allowed_payload.get("allow_warnings"),
+            "manifest": warning_allowed_payload.get("manifest"),
+        },
+    )
+    return {
+        "format": "appgen.validate-generate-cli-audit.v1",
+        "ok": all(case["ok"] for case in cases),
+        "cases": cases,
     }
 
 
