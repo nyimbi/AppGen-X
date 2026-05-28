@@ -16,6 +16,9 @@ _TOOLING_SUBCOMMANDS = {
     "migration-plan",
     "nl-plan",
     "lsp",
+    "verify",
+    "package",
+    "pbc",
 }
 _legacy_click_main = main.main
 

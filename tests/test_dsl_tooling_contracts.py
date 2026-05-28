@@ -9,6 +9,8 @@ from pyAppGen.dsl import lint_report_dsl
 from pyAppGen.dsl import lsp_service_dsl
 from pyAppGen.dsl import migration_plan_dsl
 from pyAppGen.dsl import nl_plan_dsl
+from pyAppGen.dsl import pbc_verifier_report
+from pyAppGen.dsl import release_verifier_report_dsl
 from pyAppGen.dsl import semantic_model_dsl
 from pyAppGen.dsl import validate_report_dsl
 
@@ -47,6 +49,58 @@ flow SubmitInvoice {
 composition FinanceSuite {
   include pbc gl_core version 1.0.0
   require database postgresql
+}
+"""
+
+RELEASE_SAMPLE = """
+app ReleaseDemo { targets: web, mobile, desktop }
+
+table Invoice {
+  id: int pk
+  total: decimal
+}
+
+view InvoiceForm for Invoice {
+  Main: id, total
+}
+
+operation SubmitInvoice {
+  draft -> done
+}
+
+menu MainMenu {
+  on Open -> SubmitInvoice
+}
+
+package ReleaseMobile {
+  target: mobile
+  signing: yes
+  offline: yes
+  permission: camera, explained
+  smoke: launch
+}
+
+package ReleaseDesktop {
+  target: desktop
+  format: installer
+  splash: declared
+  menu_ref: MainMenu
+  smoke: launch
+}
+
+test ReleaseSmoke {
+  run happy_path -> SubmitInvoice
+}
+
+composition FinanceSuite {
+  include pbc gl_core version 1.0.0
+}
+
+deploy Production {
+  unit SubmitInvoice as worker
+  health SubmitInvoice "/health"
+  resource SubmitInvoice cpu 1
+  env SubmitInvoice DATABASE_URL
 }
 """
 
@@ -300,3 +354,60 @@ def test_appgen_lsp_subcommand_emits_json_contract(tmp_path: Path) -> None:
     payload = json.loads(result.stdout)
     assert payload["format"] == "appgen.lsp-service.v1"
     assert payload["capabilities"]["source_of_truth"] == "appgen.semantic-model.v1"
+
+
+def test_release_verifier_report_covers_package_pbc_and_deployment_evidence() -> None:
+    report = release_verifier_report_dsl(RELEASE_SAMPLE, source_name="release.appgen", targets=("all",))
+
+    assert report["format"] == "appgen.release-verifier-report.v1"
+    assert report["ok"] is True
+    assert set(report["reports"]) == {"web", "mobile", "desktop", "pbc", "deployment"}
+    assert report["reports"]["web"]["format"] == "appgen.web-verifier.v1"
+    assert report["reports"]["mobile"]["format"] == "appgen.mobile-verifier.v1"
+    assert report["reports"]["desktop"]["format"] == "appgen.desktop-verifier.v1"
+    assert report["reports"]["pbc"]["format"] == "appgen.pbc-verifier.v1"
+    assert report["reports"]["deployment"]["format"] == "appgen.deployment-verifier.v1"
+    assert report["evidence_bundle"]["format"] == "appgen.release-evidence-bundle.v1"
+
+
+def test_release_verifier_reports_blocking_gaps_for_missing_mobile_package_metadata() -> None:
+    report = release_verifier_report_dsl(TOOLING_SAMPLE, source_name="finance.appgen", targets=("mobile",))
+
+    assert report["ok"] is False
+    assert "package_metadata_exists" in report["reports"]["mobile"]["blocking_gaps"]
+    assert "smoke_launch_not_declared" in report["reports"]["mobile"]["blocking_gaps"]
+
+
+def test_pbc_verifier_accepts_catalog_package_with_release_evidence() -> None:
+    report = pbc_verifier_report("gl_core")
+
+    assert report["format"] == "appgen.pbc-package-verifier.v1"
+    assert report["ok"] is True
+    assert report["catalog"]["pbc"] == "gl_core"
+
+
+def test_appgen_verify_and_pbc_subcommands_emit_json_contracts(tmp_path: Path) -> None:
+    path = tmp_path / "release.appgen"
+    path.write_text(RELEASE_SAMPLE, encoding="utf-8")
+
+    verify = subprocess.run(
+        [sys.executable, "-m", "pyAppGen", "verify", str(path), "--target", "all", "--json"],
+        check=False,
+        cwd=Path(__file__).resolve().parents[1],
+        text=True,
+        capture_output=True,
+    )
+    pbc = subprocess.run(
+        [sys.executable, "-m", "pyAppGen", "pbc", "verify", "gl_core", "--json"],
+        check=False,
+        cwd=Path(__file__).resolve().parents[1],
+        text=True,
+        capture_output=True,
+    )
+
+    assert verify.returncode == 0, verify.stderr
+    assert pbc.returncode == 0, pbc.stderr
+    verify_payload = json.loads(verify.stdout)
+    pbc_payload = json.loads(pbc.stdout)
+    assert verify_payload["format"] == "appgen.release-verifier-report.v1"
+    assert pbc_payload["format"] == "appgen.pbc-package-verifier.v1"

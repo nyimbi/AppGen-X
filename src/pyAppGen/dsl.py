@@ -588,7 +588,7 @@ def dsl_tooling_cli(argv: Iterable[str] | None = None) -> int:
     migration_parser.add_argument("previous")
     migration_parser.add_argument("current")
     migration_parser.add_argument("--backend", default="postgresql")
-    migration_parser.add_argument("--rename-hint", action="append", default=())
+    migration_parser.add_argument("--rename-hint", action="append", default=[])
     migration_parser.add_argument("--json", action="store_true")
 
     nl_parser = subparsers.add_parser("nl-plan")
@@ -603,6 +603,25 @@ def dsl_tooling_cli(argv: Iterable[str] | None = None) -> int:
     lsp_parser.add_argument("--prefix", default="")
     lsp_parser.add_argument("--rename")
     lsp_parser.add_argument("--json", action="store_true")
+
+    verify_parser = subparsers.add_parser("verify")
+    verify_parser.add_argument("path")
+    verify_parser.add_argument("--target", action="append", default=[])
+    verify_parser.add_argument("--json", action="store_true")
+
+    package_parser = subparsers.add_parser("package")
+    package_parser.add_argument("path")
+    package_parser.add_argument("--target", action="append", default=[])
+    package_parser.add_argument("--out")
+    package_parser.add_argument("--json", action="store_true")
+
+    pbc_parser = subparsers.add_parser("pbc")
+    pbc_subparsers = pbc_parser.add_subparsers(dest="pbc_command", required=True)
+    pbc_list_parser = pbc_subparsers.add_parser("list")
+    pbc_list_parser.add_argument("--json", action="store_true")
+    pbc_verify_parser = pbc_subparsers.add_parser("verify")
+    pbc_verify_parser.add_argument("pbc")
+    pbc_verify_parser.add_argument("--json", action="store_true")
 
     args = parser.parse_args(tuple(argv or ()))
     path = Path(args.path) if hasattr(args, "path") else None
@@ -672,6 +691,31 @@ def dsl_tooling_cli(argv: Iterable[str] | None = None) -> int:
             prefix=args.prefix,
             rename_to=args.rename,
         )
+        _emit_tooling_payload(report, as_json=args.json)
+        return 0 if report["ok"] else 1
+    if args.command == "verify":
+        report = release_verifier_report_dsl(
+            source,
+            source_name=str(path),
+            targets=args.target,
+        )
+        _emit_tooling_payload(report, as_json=args.json)
+        return 0 if report["ok"] else 1
+    if args.command == "package":
+        report = release_verifier_report_dsl(
+            source,
+            source_name=str(path),
+            targets=args.target or ("web", "mobile", "desktop"),
+            output_dir=args.out,
+        )
+        _emit_tooling_payload(report, as_json=args.json)
+        return 0 if report["ok"] else 1
+    if args.command == "pbc":
+        if args.pbc_command == "list":
+            report = pbc_verifier_catalog_report()
+            _emit_tooling_payload(report, as_json=args.json)
+            return 0 if report["ok"] else 1
+        report = pbc_verifier_report(args.pbc)
         _emit_tooling_payload(report, as_json=args.json)
         return 0 if report["ok"] else 1
     return 2
@@ -1532,6 +1576,432 @@ def _lsp_create_handler_actions(text: str, *, source_name: str | None = None) ->
             }
         )
     return tuple(actions)
+
+
+def release_verifier_report_dsl(
+    text: str,
+    *,
+    source_name: str | None = None,
+    targets: Iterable[str] | None = None,
+    output_dir: str | None = None,
+) -> dict:
+    """Return machine-readable release verifier evidence for DSL tooling."""
+    source = text or ""
+    semantic = semantic_model_dsl(source, source_name=source_name)
+    requested_targets = _release_requested_targets(targets, semantic)
+    reports = {
+        "web": web_verifier_report_dsl(source, source_name=source_name, semantic=semantic),
+        "mobile": mobile_verifier_report_dsl(source, source_name=source_name, semantic=semantic),
+        "desktop": desktop_verifier_report_dsl(source, source_name=source_name, semantic=semantic),
+        "pbc": pbc_composition_verifier_report_dsl(source, source_name=source_name, semantic=semantic),
+        "deployment": deployment_verifier_report_dsl(source, source_name=source_name, semantic=semantic),
+    }
+    selected_keys = tuple(key for key in ("web", "mobile", "desktop", "pbc", "deployment") if key in requested_targets)
+    if not selected_keys:
+        selected_keys = ("web", "mobile", "desktop", "pbc", "deployment")
+    selected_reports = {key: reports[key] for key in selected_keys}
+    checks = tuple(
+        {
+            "verifier": key,
+            "ok": report["ok"],
+            "blocking_gaps": report.get("blocking_gaps", ()),
+        }
+        for key, report in selected_reports.items()
+    )
+    return {
+        "format": "appgen.release-verifier-report.v1",
+        "ok": semantic["ok"] and all(check["ok"] for check in checks),
+        "source": source_name,
+        "output_dir": output_dir,
+        "semantic_model_format": semantic["format"],
+        "targets": selected_keys,
+        "checks": checks,
+        "reports": selected_reports,
+        "diagnostics": semantic["diagnostics"],
+        "evidence_bundle": {
+            "format": "appgen.release-evidence-bundle.v1",
+            "source": source_name,
+            "artifacts": tuple(f"{key}:{report['format']}" for key, report in selected_reports.items()),
+            "requires_generation": any(
+                gap in {"app_build_not_observed", "smoke_tests_not_declared", "smoke_launch_not_declared"}
+                for report in selected_reports.values()
+                for gap in report.get("blocking_gaps", ())
+            ),
+        },
+    }
+
+
+def web_verifier_report_dsl(
+    text: str,
+    *,
+    source_name: str | None = None,
+    semantic: dict | None = None,
+) -> dict:
+    semantic = semantic or semantic_model_dsl(text, source_name=source_name)
+    lint = lint_report_dsl(text, source_name=source_name)
+    app_targets = semantic.get("app", {}).get("targets", ())
+    route_sources = _release_route_sources(semantic)
+    checks = (
+        _release_check("target_declared", "web" in app_targets or "pwa" in app_targets),
+        _release_check("app_build_contract", bool(semantic.get("packages")) or bool(semantic.get("app"))),
+        _release_check("routes_exist", bool(route_sources) or bool(semantic.get("views"))),
+        _release_check("generated_forms_bind_valid_fields", not _has_diagnostic(lint, {"AGX0401", "AGX0402", "AGX0303"})),
+        _release_check("handler_targets_resolve", not _has_diagnostic(lint, {"AGX0403"})),
+        _release_check("smoke_tests_declared", bool(semantic.get("contracts", {}).get("test")) or _package_option_present(semantic, "smoke")),
+    )
+    return _release_verifier_payload("web", "appgen.web-verifier.v1", checks, semantic)
+
+
+def mobile_verifier_report_dsl(
+    text: str,
+    *,
+    source_name: str | None = None,
+    semantic: dict | None = None,
+) -> dict:
+    semantic = semantic or semantic_model_dsl(text, source_name=source_name)
+    mobile_packages = _packages_for_target(semantic, "mobile")
+    checks = (
+        _release_check("target_declared", "mobile" in semantic.get("app", {}).get("targets", ())),
+        _release_check("package_metadata_exists", bool(mobile_packages)),
+        _release_check("signing_posture_declared", any(_contract_option_present(package, "signing", "signature") for package in mobile_packages)),
+        _release_check("offline_policy_declared", any(_contract_option_present(package, "offline", "cache", "sync") for package in mobile_packages)),
+        _release_check("permissions_explained", any(_contract_option_present(package, "permission", "permissions") for package in mobile_packages) or bool(semantic.get("roles"))),
+        _release_check("screens_fit_target_density", _components_fit_density(semantic, max_width=12, max_height=24)),
+        _release_check("smoke_launch_path_exists", any(_contract_option_present(package, "smoke", "launch") for package in mobile_packages)),
+    )
+    return _release_verifier_payload("mobile", "appgen.mobile-verifier.v1", checks, semantic)
+
+
+def desktop_verifier_report_dsl(
+    text: str,
+    *,
+    source_name: str | None = None,
+    semantic: dict | None = None,
+) -> dict:
+    semantic = semantic or semantic_model_dsl(text, source_name=source_name)
+    desktop_packages = _packages_for_target(semantic, "desktop")
+    checks = (
+        _release_check("target_declared", "desktop" in semantic.get("app", {}).get("targets", ())),
+        _release_check("package_metadata_exists", bool(desktop_packages)),
+        _release_check("installer_or_update_posture_declared", any(_contract_option_present(package, "installer", "update", "format") for package in desktop_packages)),
+        _release_check("splash_or_startup_assets_declared_when_used", any(_contract_option_present(package, "splash", "startup", "asset", "assets") for package in desktop_packages)),
+        _release_check("menus_and_context_menus_bind_to_handlers", _menus_bind_to_handlers(semantic)),
+        _release_check("smoke_launch_path_exists", any(_contract_option_present(package, "smoke", "launch") for package in desktop_packages)),
+    )
+    return _release_verifier_payload("desktop", "appgen.desktop-verifier.v1", checks, semantic)
+
+
+def pbc_composition_verifier_report_dsl(
+    text: str,
+    *,
+    source_name: str | None = None,
+    semantic: dict | None = None,
+) -> dict:
+    del text, source_name
+    semantic = semantic or {}
+    pbcs = semantic.get("pbcs", {})
+    composition = semantic.get("composition", {})
+    checks = (
+        _release_check("manifest_validates", all(pbc.get("catalog_resolved") for pbc in pbcs.values()) if pbcs else True),
+        _release_check("package_artifacts_exist", all(_pbc_catalog_has_artifacts(pbc.get("catalog")) for pbc in pbcs.values()) if pbcs else True),
+        _release_check("owned_tables_have_migrations_models", all(_pbc_catalog_has_schema_artifacts(pbc.get("catalog")) for pbc in pbcs.values()) if pbcs else True),
+        _release_check("apis_events_handlers_declared", all(_pbc_catalog_has_contracts(pbc.get("catalog")) for pbc in pbcs.values()) if pbcs else True),
+        _release_check("no_private_cross_pbc_table_mutation", not _composition_uses_private_tables(composition)),
+        _release_check("self_registration_side_effect_free", all(_pbc_catalog_side_effect_free(pbc.get("catalog")) for pbc in pbcs.values()) if pbcs else True),
+        _release_check("release_evidence_exists", all(_pbc_catalog_has_release_evidence(pbc.get("catalog")) for pbc in pbcs.values()) if pbcs else True),
+    )
+    return _release_verifier_payload("pbc", "appgen.pbc-verifier.v1", checks, semantic, {"pbcs": tuple(pbcs)})
+
+
+def deployment_verifier_report_dsl(
+    text: str,
+    *,
+    source_name: str | None = None,
+    semantic: dict | None = None,
+) -> dict:
+    del text, source_name
+    semantic = semantic or {}
+    deployments = semantic.get("deployment", {})
+    checks_by_deployment = {
+        name: _deployment_verifier_checks(name, deployment)
+        for name, deployment in deployments.items()
+    }
+    checks = tuple(
+        check
+        for deployment_checks in checks_by_deployment.values()
+        for check in deployment_checks
+    )
+    if not checks:
+        checks = (_release_check("units_declared", True),)
+    return _release_verifier_payload(
+        "deployment",
+        "appgen.deployment-verifier.v1",
+        checks,
+        semantic,
+        {"deployments": checks_by_deployment},
+    )
+
+
+def pbc_verifier_catalog_report() -> dict:
+    catalog = _pbc_catalog_by_key()
+    items = tuple(
+        {
+            "pbc": key,
+            "ok": pbc_verifier_report(key)["ok"],
+            "label": item.get("label"),
+            "mesh": item.get("mesh"),
+            "datastore_backend": item.get("datastore_backend"),
+        }
+        for key, item in sorted(catalog.items())
+    )
+    return {
+        "format": "appgen.pbc-verifier-catalog.v1",
+        "ok": all(item["ok"] for item in items),
+        "count": len(items),
+        "pbcs": items,
+    }
+
+
+def pbc_verifier_report(pbc_key_or_path: str) -> dict:
+    key = Path(pbc_key_or_path).name
+    catalog = _pbc_catalog_by_key()
+    item = catalog.get(key) or catalog.get(str(pbc_key_or_path))
+    checks = (
+        _release_check("manifest_validates", item is not None),
+        _release_check("package_artifacts_exist", _pbc_catalog_has_artifacts(item)),
+        _release_check("owned_tables_have_migrations_models", _pbc_catalog_has_schema_artifacts(item)),
+        _release_check("apis_events_handlers_declared", _pbc_catalog_has_contracts(item)),
+        _release_check("no_private_cross_pbc_table_mutation", item is not None and not item.get("shared_table_access", False)),
+        _release_check("self_registration_side_effect_free", _pbc_catalog_side_effect_free(item)),
+        _release_check("release_evidence_exists", _pbc_catalog_has_release_evidence(item)),
+    )
+    payload = _release_verifier_payload(
+        "pbc",
+        "appgen.pbc-package-verifier.v1",
+        checks,
+        {},
+        {"pbc": key, "catalog": item or {}},
+    )
+    return payload
+
+
+def _release_requested_targets(targets: Iterable[str] | None, semantic: dict) -> tuple[str, ...]:
+    explicit = tuple(str(target).strip().lower() for target in (targets or ()) if str(target).strip())
+    if explicit:
+        if "all" in explicit:
+            return ("web", "mobile", "desktop", "pbc", "deployment")
+        return tuple(dict.fromkeys(explicit))
+    app_targets = tuple(semantic.get("app", {}).get("targets", ()))
+    requested = [target for target in ("web", "mobile", "desktop") if target in app_targets or (target == "web" and "pwa" in app_targets)]
+    if semantic.get("pbcs") or semantic.get("composition"):
+        requested.append("pbc")
+    if semantic.get("deployment"):
+        requested.append("deployment")
+    return tuple(dict.fromkeys(requested or ("web", "mobile", "desktop", "pbc", "deployment")))
+
+
+def _release_check(check: str, ok: bool, *, detail: dict | None = None) -> dict:
+    return {"check": check, "ok": bool(ok), "detail": detail or {}}
+
+
+def _release_verifier_payload(kind: str, payload_format: str, checks: tuple[dict, ...], semantic: dict, extra: dict | None = None) -> dict:
+    blocking = tuple(_release_gap_name(check["check"]) for check in checks if not check["ok"])
+    payload = {
+        "format": payload_format,
+        "kind": kind,
+        "ok": not blocking and semantic.get("ok", True),
+        "checks": checks,
+        "blocking_gaps": blocking,
+    }
+    if extra:
+        payload.update(extra)
+    return payload
+
+
+def _release_gap_name(check: str) -> str:
+    mapping = {
+        "app_build_contract": "app_build_not_observed",
+        "smoke_tests_declared": "smoke_tests_not_declared",
+        "smoke_launch_path_exists": "smoke_launch_not_declared",
+    }
+    return mapping.get(check, check)
+
+
+def _has_diagnostic(report: dict, codes: set[str]) -> bool:
+    return any(item.get("code") in codes for item in report.get("diagnostics", ()))
+
+
+def _release_route_sources(semantic: dict) -> tuple[str, ...]:
+    contracts = semantic.get("contracts", {})
+    route_sources = []
+    route_sources.extend(contracts.get("api", {}).keys())
+    route_sources.extend(semantic.get("views", {}).keys())
+    return tuple(route_sources)
+
+
+def _packages_for_target(semantic: dict, target: str) -> tuple[dict, ...]:
+    packages = semantic.get("contracts", {}).get("package", {})
+    matched = []
+    for package in packages.values():
+        raw_targets = package.get("options", {}).get("target", ()) or package.get("options", {}).get("targets", ())
+        normalized, _unknown = normalize_platform_targets(raw_targets, default=())
+        if target in normalized:
+            matched.append(package)
+    return tuple(matched)
+
+
+def _package_option_present(semantic: dict, *names: str) -> bool:
+    packages = semantic.get("contracts", {}).get("package", {})
+    return any(_contract_option_present(package, *names) for package in packages.values())
+
+
+def _contract_option_present(contract: dict, *names: str) -> bool:
+    options = contract.get("options", {})
+    lowered = {key.lower(): value for key, value in options.items()}
+    for name in names:
+        if name.lower() in lowered and lowered[name.lower()]:
+            return True
+        if any(name.lower() in str(value).lower() for values in lowered.values() for value in values):
+            return True
+    statements = contract.get("statements", ())
+    return any(name.lower() in statement.get("verb", "").lower() for name in names for statement in statements)
+
+
+def _components_fit_density(semantic: dict, *, max_width: int, max_height: int) -> bool:
+    for view in semantic.get("views", {}).values():
+        for component in view.get("components", ()):
+            if component.get("x", 0) < 0 or component.get("y", 0) < 0:
+                return False
+            if component.get("w", 1) <= 0 or component.get("h", 1) <= 0:
+                return False
+            if component.get("x", 0) + component.get("w", 1) > max_width:
+                return False
+            if component.get("y", 0) + component.get("h", 1) > max_height:
+                return False
+    return True
+
+
+def _menus_bind_to_handlers(semantic: dict) -> bool:
+    contracts = semantic.get("contracts", {})
+    menus = contracts.get("menu", {})
+    if not menus:
+        return True
+    targets = _handler_targets(semantic)
+    for menu in menus.values():
+        for handler in menu.get("handlers", ()):
+            if handler.get("target") not in targets:
+                return False
+    return True
+
+
+def _handler_targets(semantic: dict) -> set[str]:
+    targets = set(semantic.get("operations", {}))
+    targets.update(semantic.get("flows", {}))
+    for contracts in semantic.get("contracts", {}).values():
+        targets.update(contracts.keys())
+    targets.update(semantic.get("agents", {}))
+    return targets
+
+
+def _pbc_catalog_has_artifacts(item: dict | None) -> bool:
+    if not item:
+        return False
+    return bool(item.get("package_dir") or item.get("package_directory") or item.get("template") or _pbc_package_dir(item).exists())
+
+
+def _pbc_catalog_has_schema_artifacts(item: dict | None) -> bool:
+    if not item:
+        return False
+    package_dir = _pbc_package_dir(item)
+    has_files = (package_dir / "migrations").exists() and (
+        (package_dir / "models.py").exists() or (package_dir / "schema_contract.py").exists()
+    )
+    return bool(item.get("tables")) and item.get("datastore_backend") in {"postgresql", "mysql", "mariadb"} and (has_files or not package_dir.exists())
+
+
+def _pbc_catalog_has_contracts(item: dict | None) -> bool:
+    if not item:
+        return False
+    return bool(item.get("apis") or item.get("emits") or item.get("consumes"))
+
+
+def _pbc_catalog_side_effect_free(item: dict | None) -> bool:
+    if not item:
+        return False
+    return item.get("self_registration_side_effect_free", True) is not False
+
+
+def _pbc_catalog_has_release_evidence(item: dict | None) -> bool:
+    if not item:
+        return False
+    package_dir = _pbc_package_dir(item)
+    evidence_files = ("RELEASE_EVIDENCE.md", "release_evidence.py", "capability_assurance.py")
+    return bool(item.get("implemented") or item.get("release_evidence") or item.get("tests") or item.get("capabilities")) or any(
+        (package_dir / name).exists() for name in evidence_files
+    )
+
+
+def _pbc_package_dir(item: dict | None) -> Path:
+    if not item:
+        return Path("__missing_pbc__")
+    raw = item.get("package_directory") or item.get("package_dir") or item.get("pbc")
+    path = Path(str(raw))
+    if path.is_absolute():
+        return path
+    if str(path).startswith("pbcs/"):
+        return Path(__file__).resolve().parent / path
+    return Path(__file__).resolve().parent / "pbcs" / item.get("pbc", str(path))
+
+
+def _composition_uses_private_tables(composition: dict) -> bool:
+    for block in composition.values():
+        for connection in block.get("connections", ()):
+            if connection.get("from_kind") == "table" or connection.get("to_kind") == "table":
+                return True
+    return False
+
+
+def _deployment_verifier_checks(name: str, deployment: dict) -> tuple[dict, ...]:
+    units = tuple(deployment.get("units", ()))
+    health = tuple(deployment.get("health", ()))
+    statements = tuple(deployment.get("statements", ()))
+    unit_targets = {unit.get("target") for unit in units}
+    health_targets = {item.get("target") for item in health}
+    env_statements = tuple(item for item in statements if item.get("verb") == "env")
+    resource_statements = tuple(item for item in statements if item.get("verb") == "resource")
+    production_like = name.lower() in {"prod", "production", "live"} or deployment.get("options", {}).get("environment") == ("production",)
+    return (
+        _release_check("units_declared", bool(units), detail={"deployment": name}),
+        _release_check("health_checks_declared", bool(health) and unit_targets <= health_targets, detail={"deployment": name}),
+        _release_check("environment_variables_named", all(_valid_env_binding(item) for item in env_statements), detail={"deployment": name}),
+        _release_check("secret_values_absent", not any(_looks_like_secret_literal(value) for item in statements for value in item.get("values", ())), detail={"deployment": name}),
+        _release_check("resource_hints_present_for_production_units", bool(resource_statements) or not production_like, detail={"deployment": name}),
+        _release_check("topology_graph_connected_and_explainable", _deployment_topology_connected(units, health), detail={"deployment": name}),
+    )
+
+
+def _valid_env_binding(statement: dict) -> bool:
+    values = statement.get("values", ())
+    return bool(values) and all(re.fullmatch(r"[A-Z][A-Z0-9_]*", value or "") for value in values)
+
+
+def _looks_like_secret_literal(value: str) -> bool:
+    text = str(value or "")
+    lowered = text.lower()
+    return (
+        any(marker in lowered for marker in ("secret=", "password=", "token=", "apikey=", "api_key="))
+        or bool(re.match(r"(sk|pk|whsec|xoxb|ghp)_[A-Za-z0-9_\\-]{8,}", text))
+    )
+
+
+def _deployment_topology_connected(units: tuple[dict, ...], health: tuple[dict, ...]) -> bool:
+    if not units:
+        return False
+    if len(units) == 1:
+        return True
+    health_targets = {item.get("target") for item in health}
+    unit_targets = {unit.get("target") for unit in units}
+    return bool(unit_targets & health_targets)
 
 
 def _parse_rename_hints(rename_hints: Iterable[str]) -> dict[tuple[str, str], dict]:
