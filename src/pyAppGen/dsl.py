@@ -1444,7 +1444,7 @@ def _dsl_tooling_cli_impl(argv: Iterable[str] | None = None) -> int:
         _emit_tooling_payload(report, as_json=args.json)
         return 0 if report["ok"] else 1
     if args.command == "designer-sync":
-        edit = json.loads(args.edit_json) if args.edit_json else None
+        edit = _parse_tooling_json_argument(parser, args, "edit_json", "--edit-json")
         report = designer_sync_report_dsl(source, source_name=str(path), visual_edit=edit)
         _emit_tooling_payload(report, as_json=args.json)
         return 0 if report["ok"] else 1
@@ -1483,6 +1483,19 @@ def _validate_tooling_cli_paths(parser: argparse.ArgumentParser, args: argparse.
             parser.error(f"{args.command}: path does not exist: {value}")
         if attr == "path" and args.command != "lint" and candidate.is_dir():
             parser.error(f"{args.command}: expected a file path, got directory: {value}")
+
+
+def _parse_tooling_json_argument(parser: argparse.ArgumentParser, args: argparse.Namespace, attr: str, option: str) -> dict | None:
+    value = getattr(args, attr, None)
+    if not value:
+        return None
+    try:
+        payload = json.loads(value)
+    except json.JSONDecodeError as exc:
+        parser.error(f"{args.command}: invalid JSON for {option}: {exc.msg}")
+    if not isinstance(payload, dict):
+        parser.error(f"{args.command}: {option} must be a JSON object")
+    return payload
 
 
 def _emit_tooling_payload(payload: dict, *, as_json: bool) -> None:
@@ -1995,6 +2008,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
         internal_error_exit = _tooling_audit_internal_error_exit(Path(tmp))
         missing_input_exit = _tooling_audit_missing_input_exit(Path(tmp))
         invalid_choice_exit = _tooling_audit_invalid_choice_exit(Path(tmp))
+        designer_sync_cli = _tooling_audit_designer_sync_cli(Path(tmp), source)
         generation = generate_report_dsl(
             source,
             source_name="tooling-audit.appgen",
@@ -2137,10 +2151,11 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             "ide_visual_designer_round_trip",
             designer["ok"]
             and designer["semantic_model_format"] == "appgen.semantic-model.v1"
-            and designer["visual_edit"]["round_trip_ok"],
+            and designer["visual_edit"]["round_trip_ok"]
+            and designer_sync_cli["ok"],
             "Studio designer projections and visual edits round-trip through linted DSL patches.",
             "docs/tooling.md#ide-integration",
-            {"format": designer.get("format"), "surfaces": designer.get("surfaces")},
+            {"format": designer.get("format"), "surfaces": designer.get("surfaces"), "cli": designer_sync_cli},
         ),
         _tooling_audit_check(
             "vscode_extension_surface",
@@ -2674,6 +2689,44 @@ def _tooling_audit_invalid_choice_exit(tmp: Path) -> dict:
         "format": "appgen.invalid-choice-exit-audit.v1",
         "ok": all(result["ok"] for result in results),
         "cases": tuple(results),
+    }
+
+
+def _tooling_audit_designer_sync_cli(tmp: Path, source: str) -> dict:
+    source_path = tmp / "designer-sync.appgen"
+    source_path.write_text(source, encoding="utf-8")
+    edit = {
+        "kind": "add_field",
+        "table": "Invoice",
+        "field": "sync_note",
+        "type": "string",
+    }
+    output = io.StringIO()
+    with contextlib.redirect_stdout(output):
+        valid_exit = dsl_tooling_cli(("designer-sync", str(source_path), "--edit-json", json.dumps(edit), "--json"))
+    valid_payload = json.loads(output.getvalue())
+    invalid_output = io.StringIO()
+    invalid_error = io.StringIO()
+    invalid_exit = 0
+    with contextlib.redirect_stdout(invalid_output), contextlib.redirect_stderr(invalid_error):
+        try:
+            invalid_exit = dsl_tooling_cli(("designer-sync", str(source_path), "--edit-json", "{bad", "--json"))
+        except SystemExit as exc:
+            invalid_exit = int(exc.code or 0)
+    invalid_stderr = invalid_error.getvalue()
+    return {
+        "format": "appgen.designer-sync-cli-audit.v1",
+        "ok": valid_exit == 0
+        and valid_payload.get("visual_edit", {}).get("accepted") is True
+        and "sync_note" in valid_payload.get("visual_edit", {}).get("patched_source", "")
+        and invalid_exit == 2
+        and "invalid JSON for --edit-json" in invalid_stderr
+        and "Traceback" not in invalid_stderr,
+        "valid_exit": valid_exit,
+        "valid_payload_format": valid_payload.get("format"),
+        "valid_round_trip": valid_payload.get("visual_edit", {}).get("round_trip_ok"),
+        "invalid_exit": invalid_exit,
+        "invalid_stderr": invalid_stderr.strip(),
     }
 
 

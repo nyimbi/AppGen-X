@@ -1790,9 +1790,29 @@ def test_designer_sync_visual_edits_apply_real_dsl_mutations_and_diff_previews()
 def test_appgen_designer_sync_subcommand_emits_json_contract(tmp_path: Path) -> None:
     path = tmp_path / "finance.appgen"
     path.write_text(TOOLING_SAMPLE, encoding="utf-8")
+    edit = {
+        "kind": "add_field",
+        "table": "Invoice",
+        "field": "sync_note",
+        "type": "string",
+    }
 
     result = subprocess.run(
         [sys.executable, "-m", "pyAppGen", "designer-sync", str(path), "--json"],
+        check=False,
+        cwd=Path(__file__).resolve().parents[1],
+        text=True,
+        capture_output=True,
+    )
+    edit_result = subprocess.run(
+        [sys.executable, "-m", "pyAppGen", "designer-sync", str(path), "--edit-json", json.dumps(edit), "--json"],
+        check=False,
+        cwd=Path(__file__).resolve().parents[1],
+        text=True,
+        capture_output=True,
+    )
+    invalid_edit_result = subprocess.run(
+        [sys.executable, "-m", "pyAppGen", "designer-sync", str(path), "--edit-json", "{bad", "--json"],
         check=False,
         cwd=Path(__file__).resolve().parents[1],
         text=True,
@@ -1803,6 +1823,13 @@ def test_appgen_designer_sync_subcommand_emits_json_contract(tmp_path: Path) -> 
     payload = json.loads(result.stdout)
     assert payload["format"] == "appgen.designer-sync-report.v1"
     assert payload["projections"]["dsl_editor"]["semantic_model_format"] == "appgen.semantic-model.v1"
+    assert edit_result.returncode == 0, edit_result.stderr
+    edit_payload = json.loads(edit_result.stdout)
+    assert edit_payload["visual_edit"]["accepted"] is True
+    assert "sync_note" in edit_payload["visual_edit"]["patched_source"]
+    assert invalid_edit_result.returncode == 2
+    assert "invalid JSON for --edit-json" in invalid_edit_result.stderr
+    assert "Traceback" not in invalid_edit_result.stderr
 
 
 def test_diagnostic_catalog_and_fixture_audit_cover_required_agx_codes() -> None:

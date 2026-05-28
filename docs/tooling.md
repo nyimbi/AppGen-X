@@ -833,6 +833,9 @@ diff previews, patched source, the after-edit semantic model, changed designer
 surfaces, and refreshed projections for accepted visual edits. Form, database,
 workflow, PBC composition, and package/deployment edit paths must validate the
 patched DSL before the Studio accepts the visual operation.
+`--edit-json` must be a JSON object; malformed edit payloads are CLI
+configuration errors and return exit code `2` before any designer mutation is
+accepted.
 
 The package-level Studio now exposes `appgen.studio-semantic-service.v1` as the
 shared web IDE bridge. That contract composes `appgen.lsp-service.v1`,
