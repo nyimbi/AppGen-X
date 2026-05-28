@@ -3353,4 +3353,15 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   range, with more precise token lookup for common semantic diagnostics.
   Verification passed: Python compile for touched tooling entrypoints, focused
   diagnostic/LSP/tooling tests (`3 passed`), full `appgen tooling-audit --json`
+  with `16/16` checks and no blocking gaps. Commit: `f832d5c8`.
+- Current semantic-symbol audit hardening pass closes a `docs/tooling.md`
+  evidence gap where `appgen.tooling-audit.v1` only checked that
+  `appgen.symbol-coverage.v1` existed. The shared semantic-model audit now
+  requires the symbol-coverage fixture to report zero missing required symbol
+  kinds, so app, table, field, group, enum, enum value, view, component binding,
+  handler, flow, flow state, operation, role, permission, rule, LLM, agent,
+  agent skill, PBC, composition, API, event, job, report, menu, component,
+  package, deployment unit, audit, version, and security symbols are explicitly
+  proven. Verification passed: Python compile for touched tooling entrypoints,
+  focused symbol/tooling tests (`2 passed`), full `appgen tooling-audit --json`
   with `16/16` checks and no blocking gaps. Commit: pending.

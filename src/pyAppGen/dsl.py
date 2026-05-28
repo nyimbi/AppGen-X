@@ -2073,6 +2073,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
 """
 
     semantic = semantic_model_dsl(source, source_name="tooling-audit.appgen")
+    symbol_coverage = symbol_coverage_dsl(_symbol_coverage_sample(), source_name="symbol-tooling-audit.appgen")
     lint = lint_report_dsl(source, source_name="tooling-audit.appgen")
     strict_lint = lint_report_dsl(source, source_name="tooling-audit.appgen", strict=True)
     catalog_lint = lint_report_dsl(
@@ -2176,10 +2177,15 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             "shared_semantic_model",
             semantic["format"] == "appgen.semantic-model.v1"
             and semantic["ok"]
-            and _tooling_audit_semantic_keys_present(semantic),
-            "Semantic model emits required top-level sections and symbol coverage.",
+            and _tooling_audit_semantic_keys_present(semantic)
+            and symbol_coverage.get("missing") == (),
+            "Semantic model emits required top-level sections and complete required symbol coverage.",
             "docs/tooling.md#semantic-model-contract",
-            {"format": semantic.get("format"), "symbol_coverage": semantic.get("symbol_coverage", {}).get("format")},
+            {
+                "format": semantic.get("format"),
+                "symbol_coverage": symbol_coverage.get("format"),
+                "symbol_coverage_missing": symbol_coverage.get("missing"),
+            },
         ),
         _tooling_audit_check(
             "diagnostic_registry_and_fixtures",
