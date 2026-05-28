@@ -67,6 +67,7 @@ REQUIRED_GRAPH_KINDS = (
     "package",
 )
 GRAPH_TEXT_FORMATS = ("json", "mermaid", "dot")
+SUPPORTED_DATABASE_BACKENDS = ("postgresql", "mysql", "mariadb")
 REQUIRED_MIGRATION_DETECTIONS = (
     "added_table",
     "dropped_table",
@@ -1212,8 +1213,8 @@ def _dsl_tooling_cli_impl(argv: Iterable[str] | None = None) -> int:
 
     graph_parser = subparsers.add_parser("graph")
     graph_parser.add_argument("path")
-    graph_parser.add_argument("--kind", default="er")
-    graph_parser.add_argument("--format", default="json", choices=("json", "mermaid", "dot"))
+    graph_parser.add_argument("--kind", default="er", choices=REQUIRED_GRAPH_KINDS)
+    graph_parser.add_argument("--format", default="json", choices=GRAPH_TEXT_FORMATS)
 
     graph_suite_parser = subparsers.add_parser("graph-suite")
     graph_suite_parser.add_argument("path")
@@ -1230,14 +1231,14 @@ def _dsl_tooling_cli_impl(argv: Iterable[str] | None = None) -> int:
     migration_parser = subparsers.add_parser("migration-plan")
     migration_parser.add_argument("previous")
     migration_parser.add_argument("current")
-    migration_parser.add_argument("--backend", default="postgresql")
+    migration_parser.add_argument("--backend", default="postgresql", choices=SUPPORTED_DATABASE_BACKENDS)
     migration_parser.add_argument("--rename-hint", action="append", default=[])
     migration_parser.add_argument("--json", action="store_true")
 
     nl_parser = subparsers.add_parser("nl-plan")
     nl_parser.add_argument("path")
     nl_parser.add_argument("--prompt", required=True)
-    nl_parser.add_argument("--backend", default="postgresql")
+    nl_parser.add_argument("--backend", default="postgresql", choices=SUPPORTED_DATABASE_BACKENDS)
     nl_parser.add_argument("--json", action="store_true")
 
     lsp_parser = subparsers.add_parser("lsp")
@@ -1992,6 +1993,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
         format_write = _tooling_audit_format_write(Path(tmp))
         internal_error_exit = _tooling_audit_internal_error_exit(Path(tmp))
         missing_input_exit = _tooling_audit_missing_input_exit(Path(tmp))
+        invalid_choice_exit = _tooling_audit_invalid_choice_exit(Path(tmp))
         generation = generate_report_dsl(
             source,
             source_name="tooling-audit.appgen",
@@ -2072,6 +2074,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and format_write["ok"]
             and internal_error_exit["ok"]
             and missing_input_exit["ok"]
+            and invalid_choice_exit["ok"]
             and cli_help_surface["ok"]
             and generation["ok"]
             and generation["generated"]
@@ -2085,6 +2088,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                 "format_write": format_write,
                 "internal_error_exit": internal_error_exit,
                 "missing_input_exit": missing_input_exit,
+                "invalid_choice_exit": invalid_choice_exit,
                 "cli_help_surface": cli_help_surface,
                 "generate": generation.get("format"),
                 "warning_block": warning_generation_blocked.get("blocking_gaps"),
@@ -2590,6 +2594,41 @@ def _tooling_audit_missing_input_exit(tmp: Path) -> dict:
         "exit_code": exit_code,
         "stderr": stderr.strip(),
         "stdout": output.getvalue().strip(),
+    }
+
+
+def _tooling_audit_invalid_choice_exit(tmp: Path) -> dict:
+    source_path = tmp / "invalid-choice.appgen"
+    source_path.write_text("app InvalidChoice { targets: web }\ntable Thing { id: int pk }\n", encoding="utf-8")
+    cases = (
+        ("graph_kind", ("graph", str(source_path), "--kind", "unknown", "--format", "json")),
+        ("migration_backend", ("migration-plan", str(source_path), str(source_path), "--backend", "oracle")),
+        ("nl_backend", ("nl-plan", str(source_path), "--prompt", "Add memo", "--backend", "oracle")),
+    )
+    results = []
+    for name, argv in cases:
+        output = io.StringIO()
+        error = io.StringIO()
+        exit_code = 0
+        with contextlib.redirect_stdout(output), contextlib.redirect_stderr(error):
+            try:
+                exit_code = dsl_tooling_cli(argv)
+            except SystemExit as exc:
+                exit_code = int(exc.code or 0)
+        stderr = error.getvalue()
+        results.append(
+            {
+                "name": name,
+                "ok": exit_code == 2 and "invalid choice" in stderr and "Traceback" not in stderr,
+                "exit_code": exit_code,
+                "stderr": stderr.strip(),
+                "stdout": output.getvalue().strip(),
+            }
+        )
+    return {
+        "format": "appgen.invalid-choice-exit-audit.v1",
+        "ok": all(result["ok"] for result in results),
+        "cases": tuple(results),
     }
 
 
@@ -3233,7 +3272,7 @@ def migration_plan_dsl(
 ) -> dict:
     """Compare two DSL semantic models and return appgen.migration-plan.v1."""
     normalized_backend = backend.strip().lower().replace("-", "_")
-    allowed_backends = {"postgresql", "mysql", "mariadb"}
+    allowed_backends = set(SUPPORTED_DATABASE_BACKENDS)
     previous = semantic_model_dsl(previous_text, source_name=previous_name)
     current = semantic_model_dsl(current_text, source_name=current_name)
     hints = _parse_rename_hints(rename_hints or ())
