@@ -2763,3 +2763,12 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   was not completed because it stops on an unrelated existing
   `ideas_release_audit`/`palette_breadth` assertion before PBC coverage.
   Commit: `0729fee`.
+- Current native language/runtime workbench pass exposes required compiler,
+  debug, package, symbol, diagnostic, and runtime-surface operations plus
+  collected operation, pipeline, guard, transaction, module, and replay names
+  directly from source and generated workbench contracts. Generated consumers
+  can now inspect language frontend, static analysis, target package emit,
+  diagnostic mapping, debug preview, watch validation, package transaction
+  replay, toolchain adapters, compiler-surface modules, and deep runtime
+  surfaces without unpacking nested payloads. Verification is focused under
+  the low-battery delivery constraint. Commit: pending.

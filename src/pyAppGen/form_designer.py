@@ -6085,6 +6085,79 @@ def pascal_runtime_workbench(design: dict | None = None) -> dict:
             + tuple(authoring_scenario["pipeline"])
         )
     )
+    required_compiler_runtime_operations = (
+        "run_language_frontend",
+        "run_static_analysis",
+        "emit_target_packages",
+        "normalize_diagnostics",
+        "map_diagnostics_to_design_surface",
+        "load_symbol_map",
+        "bind_breakpoints",
+        "evaluate_safe_watches",
+        "trace_resource_dependencies",
+        "route_debug_diagnostics",
+        "start_runtime_preview",
+        "conditional_breakpoints_resolve_before_preview_attach",
+        "watch_evaluation_never_executes_user_code",
+        "watch_scope_validated_before_evaluation",
+        "unsafe_watch_expressions_blocked",
+        "watch_values_redacted_before_publish",
+        "source_stream_before_unit_semantics",
+        "dependency_graph_before_target_package_plan",
+        "rollback_proves_no_persisted_writes",
+        "symbol_table_reviewable",
+        "symbol_table_complete",
+        "event_signatures_checked",
+        "fatal_errors_block_emit",
+        "source_spans_stable",
+        "owner_releases_children",
+        "diagnostics_normalized",
+        "runtime_workbench",
+        "run_compiler_surface",
+        "run_runtime_surface",
+    )
+
+    def _collect_strings(value) -> tuple[str, ...]:
+        if isinstance(value, str):
+            return (value,)
+        if isinstance(value, dict):
+            return tuple(text for item in value.values() for text in _collect_strings(item))
+        if isinstance(value, (tuple, list, set)):
+            return tuple(text for item in value for text in _collect_strings(item))
+        return ()
+
+    compiler_runtime_operations = tuple(
+        dict.fromkeys(
+            stream_runtime_operations
+            + tuple(
+                text
+                for surface in (
+                    compiler,
+                    unit_parse,
+                    semantic_validation,
+                    incremental,
+                    diagnostics,
+                    package_dependencies,
+                    language_frontend,
+                    static_analysis,
+                    compiler_recovery,
+                    debug_symbols,
+                    debug_session,
+                    debug_transaction_replay,
+                    debug_watch_replay,
+                    compile_package_replay,
+                    runtime_memory_model,
+                    toolchain_adapters,
+                    compiler_runtime_modules,
+                    compiler_runtime_module_tests,
+                    deep_runtime_modules,
+                    deep_runtime_module_tests,
+                    runtime_module_replay_matrix,
+                )
+                for text in _collect_strings(surface)
+            )
+        )
+    )
     checks = (
         {"id": "dfm_serialization", "ok": "object " in round_trip["dfm"] and "AppGenField" in round_trip["dfm"], "evidence": round_trip["dfm"]},
         {"id": "dfm_parse_round_trip", "ok": round_trip["ok"], "evidence": round_trip},
@@ -6378,6 +6451,12 @@ def pascal_runtime_workbench(design: dict | None = None) -> dict:
             "passing": tuple(operation for operation in required_stream_runtime_operations if operation in stream_runtime_operations),
         },
         {
+            "id": "compiler_runtime_operations_exposed",
+            "ok": set(required_compiler_runtime_operations) <= set(compiler_runtime_operations),
+            "required": required_compiler_runtime_operations,
+            "passing": tuple(operation for operation in required_compiler_runtime_operations if operation in compiler_runtime_operations),
+        },
+        {
             "id": "native_form_modules",
             "ok": len(native_form_modules) == 6
             and all(item["ok"] and "native_form_manifest" in item["exports"] for item in native_form_modules),
@@ -6502,6 +6581,8 @@ def pascal_runtime_workbench(design: dict | None = None) -> dict:
         "actionable_operations": actionable_operations,
         "required_stream_runtime_operations": required_stream_runtime_operations,
         "stream_runtime_operations": stream_runtime_operations,
+        "required_compiler_runtime_operations": required_compiler_runtime_operations,
+        "compiler_runtime_operations": compiler_runtime_operations,
         "authoring_scenario": authoring_scenario,
         "readiness": readiness,
         "authoring_replay_matrix": authoring_replay_matrix,

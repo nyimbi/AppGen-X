@@ -3358,6 +3358,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "visual_designer_transaction_replay",
         "visual_lifecycle_replay",
         "visual_runtime_package",
+        "runtime_artifact_transaction_replay",
         "visual_component_specs",
         "visual_component_modules",
         "visual_component_module_tests",
@@ -4411,6 +4412,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "runtime_readiness_contract",
         "runtime_authoring_replay_matrix",
         "stream_runtime_operations_exposed",
+        "compiler_runtime_operations_exposed",
         "native_form_modules",
         "native_form_module_tests",
         "runtime_operation_modules",
@@ -4430,6 +4432,16 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "reload_runtime_preview",
         "rollback_proves_no_persisted_writes",
     } <= set(runtime["required_stream_runtime_operations"]) <= set(runtime["stream_runtime_operations"])
+    assert {
+        "run_language_frontend",
+        "run_static_analysis",
+        "bind_breakpoints",
+        "watch_scope_validated_before_evaluation",
+        "dependency_graph_before_target_package_plan",
+        "diagnostics_normalized",
+        "run_compiler_surface",
+        "run_runtime_surface",
+    } <= set(runtime["required_compiler_runtime_operations"]) <= set(runtime["compiler_runtime_operations"])
     assert runtime["binary_round_trip"]["decoded"] == dfm_text
     assert {"text", "binary", "json"} <= {item["format"] for item in runtime["stream_variants"]["variants"]}
     assert "package_manager" in runtime["diagnostics"]["designer_surfaces"]
@@ -16663,6 +16675,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "runtime_readiness_contract",
         "runtime_authoring_replay_matrix",
         "stream_runtime_operations_exposed",
+        "compiler_runtime_operations_exposed",
         "native_form_modules",
         "native_form_module_tests",
         "runtime_operation_modules",
@@ -16683,6 +16696,16 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "reload_runtime_preview",
         "rollback_proves_no_persisted_writes",
     } <= set(generated_runtime["required_stream_runtime_operations"]) <= set(generated_runtime["stream_runtime_operations"])
+    assert {
+        "run_language_frontend",
+        "run_static_analysis",
+        "bind_breakpoints",
+        "watch_scope_validated_before_evaluation",
+        "dependency_graph_before_target_package_plan",
+        "diagnostics_normalized",
+        "run_compiler_surface",
+        "run_runtime_surface",
+    } <= set(generated_runtime["required_compiler_runtime_operations"]) <= set(generated_runtime["compiler_runtime_operations"])
     assert generated_runtime["compiler"]["outputs"] == (
         "runtime_package",
         "design_package",
@@ -19097,6 +19120,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "visual_designer_transaction_replay",
         "visual_lifecycle_replay",
         "visual_runtime_package",
+        "runtime_artifact_transaction_replay",
         "visual_component_specs",
         "visual_component_modules",
         "visual_component_module_tests",
