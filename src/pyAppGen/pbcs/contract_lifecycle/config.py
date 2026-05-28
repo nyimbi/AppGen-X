@@ -1,44 +1,51 @@
 """Configuration, rules, and parameters for the contract_lifecycle PBC."""
-PBC_KEY = 'contract_lifecycle'
-DOMAIN_PARAMETER_SCHEMA = ({'key': 'domain_threshold', 'scope': 'domain', 'default': 1}, {'key': 'advanced_score_floor', 'scope': 'advanced', 'default': 0.75}, {'key': 'workflow_sla_hours', 'scope': 'workflow', 'default': 24}, {'key': 'owned_table_policy', 'scope': 'data_boundary', 'default': 'owned_only'})
-DOMAIN_RULE_SCHEMA = ({'rule_id': 'capability_available', 'scope': 'domain', 'condition': 'capability_available'}, {'rule_id': 'workflow_declared', 'scope': 'workflow', 'condition': 'workflow_declared'}, {'rule_id': 'owned_table_boundary', 'scope': 'data_boundary', 'condition': 'owned_table_boundary'}, {'rule_id': 'approval_required', 'scope': 'advanced', 'condition': 'approval_required'})
+
+from .application import (
+    PARAMETER_DEFINITIONS as DOMAIN_PARAMETER_SCHEMA,
+    RULE_DEFINITIONS as DOMAIN_RULE_SCHEMA,
+    compile_rule as _compile_rule,
+    configuration_manifest as _configuration_manifest,
+    evaluate_rule as _evaluate_rule,
+    governance_smoke_test as _governance_smoke_test,
+    parameter_manifest as _parameter_manifest,
+    rule_manifest as _rule_manifest,
+    set_parameter as _set_parameter,
+    validate_configuration as _validate_configuration,
+)
+
+PBC_KEY = "contract_lifecycle"
+
+
+def validate_configuration(configuration=None):
+    return _validate_configuration(configuration)
 
 
 def configuration_manifest():
-    return {'ok': True, 'pbc': PBC_KEY, 'database_backends': ('postgresql','mysql','mariadb'), 'event_contract': 'AppGen-X', 'stream_engine_picker_visible': False, 'domain_parameter_schema': DOMAIN_PARAMETER_SCHEMA, 'domain_rule_schema': DOMAIN_RULE_SCHEMA, 'side_effects': ()}
+    return _configuration_manifest()
 
 
 def parameter_manifest():
-    return {'ok': True, 'pbc': PBC_KEY, 'parameters': DOMAIN_PARAMETER_SCHEMA, 'side_effects': ()}
+    return _parameter_manifest()
+
+
+def set_parameter(name, value):
+    return _set_parameter({}, name, value)
 
 
 def rule_manifest():
-    return {'ok': True, 'pbc': PBC_KEY, 'rules': DOMAIN_RULE_SCHEMA, 'side_effects': ()}
-
-
-def validate_configuration(config=None):
-    config = dict(config or {'database_backend': 'postgresql'})
-    return {'ok': config.get('database_backend', 'postgresql') in ('postgresql','mysql','mariadb'), 'config': config, 'side_effects': ()}
-
-
-def set_parameter(state, key, value):
-    schema = next((item for item in DOMAIN_PARAMETER_SCHEMA if item['key'] == key), None)
-    return {'ok': schema is not None, 'parameter': key, 'value': value, 'parameter_scope': schema['scope'] if schema else None, 'side_effects': ()}
+    return _rule_manifest()
 
 
 def compile_rule(rule):
-    if 'stream_engine' in rule or 'stream_engine_picker' in rule:
-        return {'ok': False, 'compiled': False, 'reason': 'stream_engine_picker_disallowed', 'side_effects': ()}
-    return {'ok': True, 'compiled': True, 'rule': dict(rule), 'scope': rule.get('scope'), 'condition': rule.get('condition'), 'side_effects': ()}
+    return _compile_rule(rule)
 
 
-def evaluate_rule(compiled, context=None):
-    return {'ok': compiled.get('ok') is True, 'allowed': compiled.get('ok') is True, 'scope': compiled.get('scope'), 'context': dict(context or {}), 'side_effects': ()}
+def evaluate_rule(rule, context=None):
+    return _evaluate_rule(rule, context or {})
 
 
 def governance_smoke_test():
-    compiled = compile_rule(DOMAIN_RULE_SCHEMA[0])
-    return {'ok': configuration_manifest()['ok'] and parameter_manifest()['ok'] and rule_manifest()['ok'] and evaluate_rule(compiled)['allowed'], 'side_effects': ()}
+    return _governance_smoke_test()
 
 
 def smoke_test():

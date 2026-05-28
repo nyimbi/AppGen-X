@@ -1,15 +1,23 @@
 """Permission descriptors for the contract_lifecycle PBC."""
-PBC_KEY = 'contract_lifecycle'
-PERMISSIONS = ('contract_lifecycle.read', 'contract_lifecycle.create', 'contract_lifecycle.update', 'contract_lifecycle.approve', 'contract_lifecycle.admin')
+
+from .application import PERMISSIONS as _PERMISSIONS
+from .application import authorize as _authorize
+from .application import permission_manifest as _permission_manifest
+
+PBC_KEY = "contract_lifecycle"
+PERMISSIONS = _PERMISSIONS
 
 
 def permission_manifest():
-    return {'ok': True, 'pbc': PBC_KEY, 'permissions': PERMISSIONS, 'rbac_roles': ('reader','operator','approver','admin'), 'side_effects': ()}
+    return _permission_manifest()
 
 
 def authorize(actor, permission):
-    return {'ok': permission in PERMISSIONS, 'allowed': permission in PERMISSIONS, 'actor': actor, 'permission': permission, 'side_effects': ()}
+    return _authorize(actor, permission)
 
 
 def smoke_test():
-    return {'ok': permission_manifest()['ok'] and authorize('system', PERMISSIONS[0])['allowed'], 'side_effects': ()}
+    return {
+        "ok": permission_manifest()["ok"] and authorize({"roles": ("admin",)}, PERMISSIONS[0])["allowed"],
+        "manifest": permission_manifest(),
+    }
