@@ -2,314 +2,314 @@
 
 ## Purpose
 
-This backlog identifies 50 high-impact, high-value improvements for `contract_lifecycle`. Each item is specific to the domain surface currently declared by the PBC and is intended to move the package beyond world-class breadth toward complete specialist-grade coverage.
+This backlog identifies 50 high-impact, high-value improvements for `contract_lifecycle`. Each item is specific to contract intake, classification, parties, clause libraries, clause variants, document packets, authoring workspaces, negotiation rounds, redline events, approval policies, signature packets, obligations, performance events, milestones, renewals, amendments, compliance checks, risk assessments, value snapshots, search, exception cases, agent assistance, and AppGen-X event reliability.
 
 ## Current Domain Evidence Used
 
-- Domain purpose: Owns enterprise contract intake, authoring, negotiation, clause governance, obligation execution, approval policy, amendments, renewals, counterparty risk, documents, and contract intelligence.
-- Representative owned tables: `contract_lifecycle_contract_record`, `contract_lifecycle_contract_party`, `contract_lifecycle_clause_library`, `contract_lifecycle_clause_variant`, `contract_lifecycle_contract_document_packet`, `contract_lifecycle_contract_authoring_workspace`, `contract_lifecycle_contract_negotiation_round`, `contract_lifecycle_contract_redline_event`, `contract_lifecycle_contract_approval_policy`, `contract_lifecycle_contract_approval_task`, `contract_lifecycle_contract_signature_packet`, `contract_lifecycle_contract_obligation`, ...
-- Representative operations/APIs: `intake_contract`, `classify_contract`, `create_authoring_workspace`, `select_clause`, `negotiate_redline`, `route_approval`, `capture_signature`, `activate_obligation`, `record_obligation_performance`, `track_milestone`, `schedule_renewal`, `execute_amendment`, ...
-- Representative events: `ContractIntaked`, `ClauseSelected`, `ContractApproved`, `ContractSigned`, `ObligationActivated`, `RenewalScheduled`, `ContractRiskChanged`.
-- Representative advanced capabilities: `semantic clause extraction`, `counterfactual obligation impact simulation`, `cryptographic signature and document proof`, `continuous obligation control testing`, `risk-aware renewal recommendation`, `multi-tenant legal-policy isolation`.
+- Domain purpose: enterprise contract intake, authoring, negotiation, clause governance, obligation execution, approval policy, amendments, renewals, counterparty risk, documents, and contract intelligence.
+- Owned operational surface: contract records, parties, clause library, clause variants, document packets, authoring workspaces, negotiation rounds, redline events, approval policies and tasks, signature packets, obligations, obligation performance events, milestones, renewal events, amendments, compliance checks, risk assessments, value snapshots, search indexes, exception cases, policy rules, runtime parameters, schema extensions, control assertions, governed models, and AppGen-X runtime event tables.
+- Declared operations: contract intake, classification, authoring workspace creation, clause selection, redline negotiation, approval routing, signature capture, obligation activation, obligation performance recording, milestone tracking, renewal scheduling, amendment execution, compliance checks, risk scoring, document indexing, exception resolution, contract rule compilation, and counterparty impact simulation.
+- Declared events and integrations: emits `ContractIntaked`, `ClauseSelected`, `ContractApproved`, `ContractSigned`, `ObligationActivated`, `RenewalScheduled`, and `ContractRiskChanged`; consumes `CustomerUpdated`, `SupplierQualified`, `PolicyChanged`, and `IdentityVerified`.
+- Advanced capability evidence: semantic clause extraction, counterfactual obligation impact simulation, cryptographic signature and document proof, continuous obligation control testing, risk-aware renewal recommendation, multi-tenant legal-policy isolation, event-sourced operational history, autonomous anomaly detection, predictive risk scoring, scenario simulation, continuous control testing, cross-PBC event federation, and governed agent execution.
 
 ## 50 Better-Than-World-Class Improvements
 
-### 1. Deep specialist lifecycle semantics for `contract_lifecycle_contract_record`
+### 1. Contract intake readiness gate
 
-**Justification:** This owned table is part of the Contract Lifecycle Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns enterprise contract intake, authoring, negotiation, clause governance, obligation execution, approval policy, amendments, renewals, counterparty risk, documents, and contract intelligence.
+**Justification:** Intake quality determines whether a contract can be classified, authored, approved, signed, and obligated without rework.
 
-**Improvement:** Extend `contract_lifecycle_contract_record` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `contract_record_management`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add readiness checks for request purpose, counterparty, contract type, jurisdiction, value, term, source documents, template need, risk flags, identity verification, supplier/customer projection, and required metadata before a contract record advances.
 
-### 2. Deep specialist lifecycle semantics for `contract_lifecycle_contract_party`
+### 2. Contract lifecycle state machine
 
-**Justification:** This owned table is part of the Contract Lifecycle Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns enterprise contract intake, authoring, negotiation, clause governance, obligation execution, approval policy, amendments, renewals, counterparty risk, documents, and contract intelligence.
+**Justification:** Contracts move through draft, intake, authoring, negotiation, approval, signature, active, amended, renewal pending, expired, terminated, suspended, and archived states.
 
-**Improvement:** Extend `contract_lifecycle_contract_party` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `contract_lifecycle_workflow`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Implement strict transitions with required evidence, owner, permissions, document effects, obligation effects, renewal effects, and audit proof. Release tests should reject signature capture before approvals are complete.
 
-### 3. Deep specialist lifecycle semantics for `contract_lifecycle_clause_library`
+### 3. Contract type taxonomy governance
 
-**Justification:** This owned table is part of the Contract Lifecycle Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns enterprise contract intake, authoring, negotiation, clause governance, obligation execution, approval policy, amendments, renewals, counterparty risk, documents, and contract intelligence.
+**Justification:** Contract type drives template selection, clause playbooks, approvals, obligations, risk scoring, and renewal rules.
 
-**Improvement:** Extend `contract_lifecycle_clause_library` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `contract_lifecycle_analytics`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Govern contract types with category, jurisdiction, party role, value thresholds, mandatory clauses, fallback clauses, approval policy, obligation templates, and retention requirements. Store taxonomy version on each contract.
 
-### 4. Deep specialist lifecycle semantics for `contract_lifecycle_clause_variant`
+### 4. Counterparty party model
 
-**Justification:** This owned table is part of the Contract Lifecycle Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns enterprise contract intake, authoring, negotiation, clause governance, obligation execution, approval policy, amendments, renewals, counterparty risk, documents, and contract intelligence.
+**Justification:** Contract parties may include customers, suppliers, affiliates, guarantors, data processors, subcontractors, and signatories with different rights and obligations.
 
-**Improvement:** Extend `contract_lifecycle_clause_variant` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `configuration_schema`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Model party role, legal identity, authority, address, jurisdiction, relationship to other parties, verification state, and signing authority. Link only through declared customer, supplier, and identity projections.
 
-### 5. Deep specialist lifecycle semantics for `contract_lifecycle_contract_document_packet`
+### 5. Signing authority verification
 
-**Justification:** This owned table is part of the Contract Lifecycle Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns enterprise contract intake, authoring, negotiation, clause governance, obligation execution, approval policy, amendments, renewals, counterparty risk, documents, and contract intelligence.
+**Justification:** A signed contract can still be invalid or disputed if the signer lacked authority.
 
-**Improvement:** Extend `contract_lifecycle_contract_document_packet` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `rule_engine`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add signing authority checks using party role, identity verification, delegation, title, board/authorization evidence, signature packet, and policy rules. Block signature completion when authority evidence is missing or stale.
 
-### 6. Deep specialist lifecycle semantics for `contract_lifecycle_contract_authoring_workspace`
+### 6. Clause library governance
 
-**Justification:** This owned table is part of the Contract Lifecycle Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns enterprise contract intake, authoring, negotiation, clause governance, obligation execution, approval policy, amendments, renewals, counterparty risk, documents, and contract intelligence.
+**Justification:** Clauses are legal controls and must be versioned, approved, scoped, and retired deliberately.
 
-**Improvement:** Extend `contract_lifecycle_contract_authoring_workspace` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `parameter_engine`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add clause owner, jurisdiction, contract type, risk category, approved language, effective dates, fallback options, mandatory/optional status, and retirement rules. Store every selected clause version in the contract record.
 
-### 7. Deep specialist lifecycle semantics for `contract_lifecycle_contract_negotiation_round`
+### 7. Clause variant fallback playbooks
 
-**Justification:** This owned table is part of the Contract Lifecycle Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns enterprise contract intake, authoring, negotiation, clause governance, obligation execution, approval policy, amendments, renewals, counterparty risk, documents, and contract intelligence.
+**Justification:** Negotiation needs approved fallback language and escalation paths when counterparties reject standard clauses.
 
-**Improvement:** Extend `contract_lifecycle_contract_negotiation_round` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `owned_schema_migrations_models`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Define fallback variants by risk tier, jurisdiction, counterparty type, value, and approval requirement. Redline review should show whether a negotiated clause stays within approved fallback boundaries.
 
-### 8. Deep specialist lifecycle semantics for `contract_lifecycle_contract_redline_event`
+### 8. Semantic clause extraction
 
-**Justification:** This owned table is part of the Contract Lifecycle Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns enterprise contract intake, authoring, negotiation, clause governance, obligation execution, approval policy, amendments, renewals, counterparty risk, documents, and contract intelligence.
+**Justification:** Uploaded contracts and counterparty paper contain obligations, risks, and nonstandard terms that are hard to see manually.
 
-**Improvement:** Extend `contract_lifecycle_contract_redline_event` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `appgen_x_outbox_inbox_eventing`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Let the agent extract clause families, deviations, obligations, dates, termination rights, indemnity caps, data terms, payment terms, and unusual provisions with source citations and confidence for reviewer approval.
 
-### 9. Deep specialist lifecycle semantics for `contract_lifecycle_contract_approval_policy`
+### 9. Clause deviation scoring
 
-**Justification:** This owned table is part of the Contract Lifecycle Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns enterprise contract intake, authoring, negotiation, clause governance, obligation execution, approval policy, amendments, renewals, counterparty risk, documents, and contract intelligence.
+**Justification:** Legal teams need to focus on material deviations, not every formatting or wording change.
 
-**Improvement:** Extend `contract_lifecycle_contract_approval_policy` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `idempotent_handlers`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Score clause deviations by semantic distance, risk category, financial exposure, jurisdiction, fallback position, and policy threshold. Route high-impact deviations to specialist approval.
 
-### 10. Deep specialist lifecycle semantics for `contract_lifecycle_contract_approval_task`
+### 10. Document packet integrity
 
-**Justification:** This owned table is part of the Contract Lifecycle Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns enterprise contract intake, authoring, negotiation, clause governance, obligation execution, approval policy, amendments, renewals, counterparty risk, documents, and contract intelligence.
+**Justification:** Contract packets may contain drafts, exhibits, statements of work, order forms, amendments, attachments, and signature pages that must remain consistent.
 
-**Improvement:** Extend `contract_lifecycle_contract_approval_task` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `retry_dead_letter_evidence`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add document packet versioning with file fingerprints, included exhibits, cross-reference validation, missing attachment checks, redaction state, and final executed packet proof.
 
-### 11. Make `intake_contract` a complete command lifecycle
+### 11. Authoring workspace controls
 
-**Justification:** High-value users need `intake_contract` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Authoring workspaces need to preserve template lineage, clause selection, collaborator actions, and draft versions.
 
-**Improvement:** Implement `intake_contract` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `ContractIntaked`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Track template, clause set, draft versions, collaborators, locked sections, generated text, manual edits, comments, and approval-impacting changes. The agent should propose edits as drafts with policy explanations.
 
-### 12. Make `classify_contract` a complete command lifecycle
+### 12. Template and playbook selection
 
-**Justification:** High-value users need `classify_contract` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Starting from the wrong template leads to missing terms, incorrect approvals, and rework.
 
-**Improvement:** Implement `classify_contract` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `ClauseSelected`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Recommend templates from contract type, jurisdiction, counterparty, value, product/service, data sensitivity, and risk. Store selected and rejected template rationale.
 
-### 13. Make `create_authoring_workspace` a complete command lifecycle
+### 13. Negotiation round lifecycle
 
-**Justification:** High-value users need `create_authoring_workspace` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Negotiations involve offers, counteroffers, owner assignments, redlines, comments, and concessions that need lineage.
 
-**Improvement:** Implement `create_authoring_workspace` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `ContractApproved`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Model rounds with sender, receiver, dates, document version, open positions, concession summary, response due date, and escalation state. UI should show negotiation timeline and unresolved issues.
 
-### 14. Make `select_clause` a complete command lifecycle
+### 14. Redline event analytics
 
-**Justification:** High-value users need `select_clause` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Redlines reveal risk, negotiation friction, clause performance, and counterparty behavior.
 
-**Improvement:** Implement `select_clause` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `ContractSigned`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Capture redline events with changed clause, semantic effect, risk score, fallback status, financial term impact, negotiator, and resolution. Aggregate analytics by clause, counterparty, template, and legal owner.
 
-### 15. Make `negotiate_redline` a complete command lifecycle
+### 15. Approval policy compiler
 
-**Justification:** High-value users need `negotiate_redline` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Contract approvals depend on value, risk, clause deviations, jurisdiction, privacy terms, payment terms, counterparty risk, and renewal commitments.
 
-**Improvement:** Implement `negotiate_redline` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `ObligationActivated`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Compile approval rules into executable routes with thresholds, approver roles, escalation, delegation, conflict checks, and test cases. Store rule version and route rationale on every approval task.
 
-### 16. Make `route_approval` a complete command lifecycle
+### 16. Approval task SLA and escalation
 
-**Justification:** High-value users need `route_approval` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Contracts stall when approval owners miss deadlines or unclear tasks bounce between teams.
 
-**Improvement:** Implement `route_approval` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `RenewalScheduled`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add SLA, due dates, delegation, escalation, approval dependency, blocker reason, and reminder evidence to approval tasks. Show approval bottlenecks by team and clause/risk driver.
 
-### 17. Make `capture_signature` a complete command lifecycle
+### 17. Segregation-of-duty controls
 
-**Justification:** High-value users need `capture_signature` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Requesters, negotiators, approvers, and signatories may have conflicts that weaken governance.
 
-**Improvement:** Implement `capture_signature` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `ContractRiskChanged`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Enforce conflict checks for requester self-approval, unauthorized signer, legal reviewer bypass, procurement/sales conflict, and emergency override. Preserve override evidence and escalation.
 
-### 18. Make `activate_obligation` a complete command lifecycle
+### 18. Signature packet lifecycle
 
-**Justification:** High-value users need `activate_obligation` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Signature execution must prove document finality, signer authority, order, completion, and tamper evidence.
 
-**Improvement:** Implement `activate_obligation` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `ContractIntaked`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Model signature packet states with final document hash, signers, routing order, authentication evidence, signature timestamps, failed attempts, void/reissue reason, and executed packet proof.
 
-### 19. Make `record_obligation_performance` a complete command lifecycle
+### 19. Cryptographic document and signature proof
 
-**Justification:** High-value users need `record_obligation_performance` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Contract enforceability and audit trust depend on proving that executed documents were not altered.
 
-**Improvement:** Implement `record_obligation_performance` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `ClauseSelected`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Generate cryptographic proofs for document packets, approval state, signature packet, signer identity, final hash, and execution certificate. Provide redacted verifier exports.
 
-### 20. Make `track_milestone` a complete command lifecycle
+### 20. Obligation extraction and activation
 
-**Justification:** High-value users need `track_milestone` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Contract value is realized only when obligations are identified, owned, scheduled, and tracked.
 
-**Improvement:** Implement `track_milestone` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `ContractApproved`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Extract obligations for deliverables, notices, payments, reporting, insurance, SLAs, data handling, audit rights, renewals, termination, and compliance. Activate obligations with owner, due date, evidence requirement, and escalation path.
 
-### 21. Operationalize `semantic clause extraction` as a governed decision system
+### 21. Obligation performance evidence
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Contract Lifecycle Management and measurably improves contract lifecycle risk score without hiding assumptions.
+**Justification:** Obligations should not be closed based on vague notes; performance needs evidence and reviewer confidence.
 
-**Improvement:** Promote `semantic clause extraction` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `contract_lifecycle_risk_score`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Record performance events with obligation, evidence artifact, date, source system projection, performer, reviewer, completeness, and exception flags. Keep obligation status tied to verified performance.
 
-### 22. Operationalize `counterfactual obligation impact simulation` as a governed decision system
+### 22. Continuous obligation control testing
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Contract Lifecycle Management and measurably improves contract lifecycle workbench metric without hiding assumptions.
+**Justification:** Missed notices, insurance renewals, reports, SLAs, and audit rights can create liability after signature.
 
-**Improvement:** Promote `counterfactual obligation impact simulation` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `contract_lifecycle_workbench_metric`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Run controls for upcoming obligations, overdue obligations, missing evidence, stale owners, breached SLAs, and recurring obligations. Create exception cases for high-risk failures.
 
-### 23. Operationalize `cryptographic signature and document proof` as a governed decision system
+### 23. Contract milestone calendar
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Contract Lifecycle Management and measurably improves contract lifecycle risk score without hiding assumptions.
+**Justification:** Milestones such as effective date, delivery dates, notice windows, audit windows, price reviews, and termination dates need proactive management.
 
-**Improvement:** Promote `cryptographic signature and document proof` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `contract_lifecycle_risk_score`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Build milestone calendars with owner, lead time, dependency, notice requirement, recurrence, and completion evidence. Surface upcoming deadlines in the contract workbench.
 
-### 24. Operationalize `continuous obligation control testing` as a governed decision system
+### 24. Renewal recommendation engine
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Contract Lifecycle Management and measurably improves contract lifecycle workbench metric without hiding assumptions.
+**Justification:** Renewals should consider value, performance, risk, price, obligations, and notice deadlines before automatic renewal or termination.
 
-**Improvement:** Promote `continuous obligation control testing` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `contract_lifecycle_workbench_metric`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Recommend renew, renegotiate, terminate, rebid, or extend based on value snapshot, counterparty performance, obligation history, risk, clause deviations, market conditions, and notice window.
 
-### 25. Operationalize `risk-aware renewal recommendation` as a governed decision system
+### 25. Renewal notice compliance
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Contract Lifecycle Management and measurably improves contract lifecycle risk score without hiding assumptions.
+**Justification:** Missing renewal or termination notice windows can lock organizations into unfavorable terms.
 
-**Improvement:** Promote `risk-aware renewal recommendation` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `contract_lifecycle_risk_score`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add notice-window tracking with earliest/latest notice date, channel, recipient, proof requirement, owner, reminder cadence, and completion evidence. Escalate missed critical windows.
 
-### 26. Operationalize `multi-tenant legal-policy isolation` as a governed decision system
+### 26. Amendment lifecycle governance
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Contract Lifecycle Management and measurably improves contract lifecycle workbench metric without hiding assumptions.
+**Justification:** Amendments can change obligations, value, term, parties, clauses, renewals, and risk.
 
-**Improvement:** Promote `multi-tenant legal-policy isolation` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `contract_lifecycle_workbench_metric`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add amendment states, affected clauses, changed obligations, value impact, approval route, signature requirement, effective date, and supersession logic. Show before/after contract summary and obligation delta.
 
-### 27. Operationalize `semantic clause extraction` as a governed decision system
+### 27. Contract compliance check library
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Contract Lifecycle Management and measurably improves contract lifecycle risk score without hiding assumptions.
+**Justification:** Contracts require checks for required clauses, approvals, signatures, obligations, regulatory terms, and renewal notices.
 
-**Improvement:** Promote `semantic clause extraction` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `contract_lifecycle_risk_score`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Ship compliance checks for missing clauses, unapproved fallback, missing signature, overdue obligation, expired insurance, invalid notice, stale party verification, and unmanaged amendment. Store pass/fail evidence.
 
-### 28. Operationalize `counterfactual obligation impact simulation` as a governed decision system
+### 28. Counterparty risk assessment
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Contract Lifecycle Management and measurably improves contract lifecycle workbench metric without hiding assumptions.
+**Justification:** Contract terms should reflect counterparty financial, operational, compliance, sanctions, and performance risk.
 
-**Improvement:** Promote `counterfactual obligation impact simulation` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `contract_lifecycle_workbench_metric`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Score counterparty risk from declared customer/supplier/identity projections, obligations, payment terms, sanctions flags, dispute history, and performance. Store drivers and recommended contractual protections.
 
-### 29. Operationalize `cryptographic signature and document proof` as a governed decision system
+### 29. Counterparty impact simulation
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Contract Lifecycle Management and measurably improves contract lifecycle risk score without hiding assumptions.
+**Justification:** Users need to understand the operational and financial impact if a counterparty fails, breaches, or terminates.
 
-**Improvement:** Promote `cryptographic signature and document proof` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `contract_lifecycle_risk_score`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Simulate impact on obligations, revenue, procurement, delivery, service commitments, renewal options, and termination rights. Store assumptions, exposure, mitigations, and fallback options.
 
-### 30. Operationalize `continuous obligation control testing` as a governed decision system
+### 30. Contract value snapshot
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Contract Lifecycle Management and measurably improves contract lifecycle workbench metric without hiding assumptions.
+**Justification:** Contract decisions need value context: committed spend/revenue, options, penalties, discounts, rebates, and renewal value.
 
-**Improvement:** Promote `continuous obligation control testing` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `contract_lifecycle_workbench_metric`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Store value snapshots with amount, currency, term, committed/optional value, consumed value, remaining value, source projection, confidence, and date. Use snapshots in approvals, renewals, and risk.
 
-### 31. Create simulation-grade governance for `clause_fallback_policy` and `default_notice_days`
+### 31. Search and semantic retrieval index
 
-**Justification:** Complete Contract Lifecycle Management coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Contract users need to find agreements by clause, party, obligation, risk, value, dates, and document content.
 
-**Improvement:** Add a policy cockpit where `clause_fallback_policy` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `default_notice_days` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Build owned search indexes with extracted clauses, metadata, obligations, parties, dates, risk, and document fingerprints. Enforce tenant, permission, and legal-hold access during search.
 
-### 32. Create simulation-grade governance for `approval_threshold_policy` and `approval_value_limit`
+### 32. Contract anomaly detection
 
-**Justification:** Complete Contract Lifecycle Management coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Unusual clause deviations, missing documents, repeated emergency approvals, or abnormal renewal patterns can indicate process risk.
 
-**Improvement:** Add a policy cockpit where `approval_threshold_policy` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `approval_value_limit` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Detect anomalies by template, clause, counterparty, value, approval route, negotiation duration, obligation breaches, renewal timing, and amendment frequency. Route high-risk anomalies to exception cases.
 
-### 33. Create simulation-grade governance for `renewal_notice_policy` and `risk_review_threshold`
+### 33. Legal hold and retention controls
 
-**Justification:** Complete Contract Lifecycle Management coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Contracts may be subject to retention rules, litigation holds, regulatory preservation, or confidential destruction schedules.
 
-**Improvement:** Add a policy cockpit where `renewal_notice_policy` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `risk_review_threshold` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add retention categories, legal hold state, destruction eligibility, access restrictions, evidence export, and deletion approval. Block deletion or archive changes while holds are active.
 
-### 34. Create simulation-grade governance for `jurisdiction_playbook` and `redline_materiality_score`
+### 34. Privacy and data-processing clause governance
 
-**Justification:** Complete Contract Lifecycle Management coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Contracts often contain data protection, confidentiality, processing, transfer, and security obligations.
 
-**Improvement:** Add a policy cockpit where `jurisdiction_playbook` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `redline_materiality_score` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add clause classification for data processing, data transfer, retention, security controls, audit rights, breach notice, and subprocessors. Route high-risk privacy deviations to specialist approval.
 
-### 35. Create simulation-grade governance for `counterparty_risk_policy` and `obligation_sla_hours`
+### 35. Insurance and indemnity controls
 
-**Justification:** Complete Contract Lifecycle Management coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Insurance and indemnity terms materially affect risk allocation and obligation monitoring.
 
-**Improvement:** Add a policy cockpit where `counterparty_risk_policy` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `obligation_sla_hours` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Extract insurance requirements, certificate due dates, coverage amounts, indemnity caps, exclusions, and renewal needs. Create obligations and compliance checks for certificate maintenance.
 
-### 36. Upgrade `contract workbench` into a full specialist command center
+### 36. Payment and commercial term extraction
 
-**Justification:** The PBC UI must expose the complete Contract Lifecycle Management surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Payment terms, price escalators, rebates, credits, late fees, and invoicing requirements drive finance and supplier/customer operations.
 
-**Improvement:** Expand `contract workbench` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Extract commercial terms with amount, currency, payment timing, escalation formula, discount, penalty, invoice requirements, and source citation. Store as value snapshot inputs and obligation candidates.
 
-### 37. Upgrade `clause library studio` into a full specialist command center
+### 37. Jurisdiction playbook governance
 
-**Justification:** The PBC UI must expose the complete Contract Lifecycle Management surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Legal requirements and fallback positions differ by governing law, venue, language, and regulatory environment.
 
-**Improvement:** Expand `clause library studio` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add jurisdiction playbooks with mandatory clauses, prohibited language, approval requirements, fallback positions, and local counsel routing. Compile playbooks into clause and approval policies.
 
-### 38. Upgrade `redline negotiation board` into a full specialist command center
+### 38. Multi-language contract handling
 
-**Justification:** The PBC UI must expose the complete Contract Lifecycle Management surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Contracts may have bilingual documents, translations, controlling-language clauses, and localized exhibits.
 
-**Improvement:** Expand `redline negotiation board` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Track language variants, controlling language, translation certification, localized clause variants, and cross-language clause alignment. Flag inconsistent translations before signature.
 
-### 39. Upgrade `approval queue` into a full specialist command center
+### 39. Contract exception case workflow
 
-**Justification:** The PBC UI must expose the complete Contract Lifecycle Management surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Exceptions such as missing approvals, unauthorized clauses, failed signatures, overdue obligations, and renewal misses need structured resolution.
 
-**Improvement:** Expand `approval queue` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add exception cases with type, severity, contract link, owner, SLA, required evidence, financial/risk exposure, remediation action, and closure proof.
 
-### 40. Upgrade `obligation command center` into a full specialist command center
+### 40. Policy change impact analysis
 
-**Justification:** The PBC UI must expose the complete Contract Lifecycle Management surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Changes to clause playbooks, approval thresholds, risk policies, or renewal rules can affect active and pending contracts.
 
-**Improvement:** Expand `obligation command center` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Simulate policy changes against active contracts, draft workspaces, obligations, and renewals. Identify contracts requiring review, amendment, notice, or new approval.
 
-### 41. Prove cross-PBC federation for `POST /contracts` and `CustomerUpdated`
+### 41. AppGen-X event reliability proof
 
-**Justification:** Contract Lifecycle Management must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Contract workflows depend on customer, supplier, identity, and policy events; lost or duplicate events can break approvals or risk state.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /contracts` and consumed event `CustomerUpdated` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Harden event descriptors with schema versions, idempotency keys, ordering assumptions, retry envelopes, dead-letter taxonomy, replay eligibility, and handler evidence. Add tests for duplicate policy changes and late identity verification.
 
-### 42. Prove cross-PBC federation for `POST /contracts/{id}/clauses` and `SupplierQualified`
+### 42. Cross-PBC boundary proof
 
-**Justification:** Contract Lifecycle Management must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** CLM needs customer, supplier, identity, procurement, revenue, and payment context without direct foreign-table reads.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /contracts/{id}/clauses` and consumed event `SupplierQualified` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Generate a boundary proof listing each declared event, API, projection, cached field, freshness rule, and retention rule. Release audits should fail undeclared customer, supplier, identity, or finance table access.
 
-### 43. Prove cross-PBC federation for `POST /contracts/{id}/obligations` and `PolicyChanged`
+### 43. Agent-assisted contract intake
 
-**Justification:** Contract Lifecycle Management must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Contract intake is document-heavy and benefits from AI extraction, but wrong extraction can create legal and operational risk.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /contracts/{id}/obligations` and consumed event `PolicyChanged` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Let the agent parse contract requests and documents into proposed record, parties, type, clauses, dates, obligations, value, and risk flags with citations, confidence, missing data, and approval-required CRUD plans.
 
-### 44. Prove cross-PBC federation for `POST /contracts/{id}/approvals` and `IdentityVerified`
+### 44. Agent-assisted redline review
 
-**Justification:** Contract Lifecycle Management must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Legal teams need faster redline triage while preserving human judgment over risk.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /contracts/{id}/approvals` and consumed event `IdentityVerified` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Let the agent summarize redlines, compare against approved variants, identify material deviations, draft negotiation positions, and route approvals. It must never accept redlines without authorized confirmation.
 
-### 45. Temporal reconstruction and bitemporal audit for Contract Lifecycle Management
+### 45. Agent-assisted obligation management
 
-**Justification:** Regulated and operationally complex domains need to answer what was known, valid, processed, and visible at any point in time.
+**Justification:** Obligations buried in executed contracts are often missed after signature.
 
-**Improvement:** Add transaction-time, valid-time, and processing-time fields to core records, temporal query APIs, projection rebuild tooling, and UI time travel so specialists can reconstruct decisions, reports, and automation outcomes.
+**Improvement:** Let the agent extract, group, assign, and schedule obligations with evidence citations, owner suggestions, recurrence detection, and performance proof requirements. All obligation activation should remain reviewable before commit.
 
-### 46. Bulk operations and migration-grade controls for Contract Lifecycle Management
+### 46. Contract workbench command center
 
-**Justification:** World-class deployments must handle imports, mass corrections, high-volume operating days, and cutovers without bypassing governance.
+**Justification:** Contract teams need operational visibility into intake, negotiation, approvals, signatures, obligations, renewals, risks, and exceptions.
 
-**Improvement:** Add staged bulk upload, duplicate detection, chunked validation, approval sampling, partial failure handling, retry dashboards, reconciliation summaries, and agent-generated remediation plans for large batches.
+**Improvement:** Build command-center panels for queue status, aging, high-risk redlines, approval bottlenecks, signature failures, obligations due, renewal windows, policy exceptions, and dead letters.
 
-### 47. Specialist edge-case playbooks for Contract Lifecycle Management
+### 47. UI capability surface proof
 
-**Justification:** Rare cases often carry the highest financial, legal, safety, service, or compliance risk.
+**Justification:** A complete CLM PBC must expose its full domain operations in dedicated UI surfaces.
 
-**Improvement:** Create a playbook catalog with detection rules, required evidence, escalation paths, fallback actions, owner roles, and release-audited tests for high-severity edge cases and exception queues.
+**Improvement:** Add release checks proving UI coverage for records, parties, clauses, variants, documents, workspaces, negotiation rounds, redlines, approval policies/tasks, signatures, obligations, performance events, milestones, renewals, amendments, compliance, risk, value, search, exceptions, rules, parameters, controls, models, events, and agent tools.
 
-### 48. Pre-mutation simulation and blast-radius analysis for Contract Lifecycle Management
+### 48. Contract resilience drills
 
-**Justification:** Users should understand consequences before committing irreversible, customer-visible, operationally disruptive, or financially material changes.
+**Justification:** Contract operations must recover from document indexing failures, policy misdeployment, signature provider outages, approval backlogs, and event dead letters.
 
-**Improvement:** Add what-if simulation for every material command, showing impacted records, emitted events, dependent projections, rule outcomes, approvals, downstream PBC dependencies, and rollback limits.
+**Improvement:** Add drills for signature outage, document packet corruption, policy rollback, redline import failure, approval queue surge, obligation event replay, and dead-letter recovery. Store recovery time and affected contracts.
 
-### 49. Continuous control testing and operational assurance for Contract Lifecycle Management
+### 49. Contract readiness score
 
-**Justification:** Better-than-world-class PBCs prove controls continuously, not only at release or during periodic audits.
+**Justification:** Operators need a concise signal showing whether the PBC is ready for production CLM operations.
 
-**Improvement:** Add executable control assertions, sampled evidence checks, anomaly thresholds, control-owner dashboards, breach/recovery events, and release gates that fail when domain controls lose evidence.
+**Improvement:** Compute readiness from template coverage, clause governance, approval policy, document proof, signature controls, obligation controls, renewal monitoring, event health, UI coverage, boundary proof, and agent safety. Show blockers and remediation.
 
-### 50. Human-in-the-loop domain agent execution for Contract Lifecycle Management
+### 50. End-to-end contract release proof
 
-**Justification:** The PBC chatbot must help specialists perform real work while preventing unsafe autonomous mutation.
+**Justification:** A world-class Contract Lifecycle PBC needs one evidence package proving that contracts can flow from intake through authoring, negotiation, approval, signature, obligation execution, renewal, and amendment safely.
 
-**Improvement:** Add domain-specific skills, document parsing, task planning, CRUD previews, confidence/risk scoring, confirmation gates, redaction, policy explanations, and post-action evidence packets for every supported command and query.
+**Improvement:** Create an end-to-end proof exercising intake, classification, party verification, clause selection, authoring workspace, redline negotiation, approval route, signature capture, obligation activation, performance event, milestone, renewal scheduling, amendment, compliance check, risk scoring, document indexing, UI coverage, AppGen-X eventing, boundary verification, and agent-safe CRUD planning.
