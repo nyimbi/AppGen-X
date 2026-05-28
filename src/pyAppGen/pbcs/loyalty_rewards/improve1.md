@@ -1,315 +1,315 @@
-# Customer Loyalty Points and Rewards PBC Improvement Backlog
+# Loyalty Rewards PBC Improvement Backlog
 
 ## Purpose
 
-This backlog identifies 50 high-impact, high-value improvements for `loyalty_rewards`. Each item is specific to the domain surface currently declared by the PBC and is intended to move the package beyond world-class breadth toward complete specialist-grade coverage.
+This backlog identifies 50 high-impact, high-value improvements for `loyalty_rewards`. Each item is specific to loyalty member enrollment, rewards wallets, points ledgers, earning rules, redemption reservations, tier qualification, partner accrual, referrals, offer eligibility, liability controls, breakage forecasting, fraud review, policy screening, customer reward intelligence, agent assistance, and AppGen-X event reliability.
 
 ## Current Domain Evidence Used
 
-- Domain purpose: Member wallets, point accrual, adjustments, redemptions, tiers, earning rules, referrals, partner accruals, fraud controls, liability, forecasting, governance, and AppGen-X event orchestration.
-- Representative owned tables: `loyalty_rewards_reward_account`, `loyalty_rewards_points_ledger`, `loyalty_rewards_earning_rule`, `loyalty_rewards_redemption`, `loyalty_rewards_reward_tier`, `loyalty_rewards_tier_benefit`, `loyalty_rewards_referral_reward`, `loyalty_rewards_partner_accrual`, `loyalty_rewards_offer_eligibility`, `loyalty_rewards_expiration_schedule`, `loyalty_rewards_liability_snapshot`, `loyalty_rewards_fraud_review`, ...
-- Representative operations/APIs: `configure_runtime`, `set_parameter`, `register_rule`, `register_earning_rule`, `register_schema_extension`, `enroll_member`, `receive_event`, `issue_points`, `adjust_points`, `create_redemption`, `expire_points`, `qualify_tier`, ...
-- Representative events: `RewardBalanceChanged`, `CustomerSegmentUpdated`.
-- Representative advanced capabilities: `event_sourced_rewards_lifecycle`, `owned_rewards_schema_boundary`, `multi_tenant_rewards_isolation`, `schema_evolution_resilient_rewards_context`, `member_enrollment_and_wallets`, `points_earn_and_adjustment_ledger`, `redemption_validation_and_reservation`, `tier_qualification_and_benefits`, `earning_rule_management`, `partner_accrual_and_offer_projection`, ...
+- Domain purpose: loyalty member enrollment, rewards wallets, points ledgers, earning rules, redemptions, tiering, partner accrual, promotional bonuses, liability controls, fraud review, and customer-segment reward intelligence.
+- Owned operational surface: reward accounts, points ledger, earning rules, redemptions, reward tiers, tier benefits, referral rewards, partner accruals, offer eligibility, offer simulation, breakage forecasts, expiration schedules, liability snapshots, liability control assertions, fraud reviews, churn risk scores, rewards policy screenings, loyalty exceptions, balance reconciliations, reward balance proofs, audit entries, federation views, governed models, and AppGen-X runtime event tables.
+- Declared commands and APIs: runtime configuration, parameter/rule/schema registration, earning-rule registration, member enrollment, event receipt, point issue/adjustment/expiration, redemption creation, tier qualification, referral rewards, partner accruals, offer eligibility, expiration scheduling, liability snapshots, fraud review, churn scoring, breakage forecasting, offer simulation, exception resolution, balance reconciliation, balance proof generation, rewards policy screening, liability controls, federation views, governed model registration, workbench construction, permissions, and owned-boundary verification.
+- Declared events and integrations: consumes `PaymentCaptured` and `PromotionApplied`; emits `RewardBalanceChanged` and `CustomerSegmentUpdated`; uses declared payment, promotion, and customer-segment projections without shared-table access.
+- Advanced capability evidence: event-sourced rewards lifecycle, owned rewards schema boundary, multi-tenant rewards isolation, schema-evolution-safe reward context, wallet management, points earn/adjust/redeem/expire ledgering, tier qualification and benefits, partner accrual, offer projection, liability controls, probabilistic breakage/customer-value/churn/fraud scoring, counterfactual offer simulation, temporal liability forecasting, exception resolution, semantic rewards-rule understanding, self-healing reconciliation, cryptographic balance proofs, immutable audit trail, dynamic policy screening, AppGen-X eventing, retry/dead-letter evidence, permissions, configuration, seed data, and governed models.
 
 ## 50 Better-Than-World-Class Improvements
 
-### 1. Deep specialist lifecycle semantics for `loyalty_rewards_reward_account`
+### 1. Member enrollment eligibility gate
 
-**Justification:** This owned table is part of the Customer Loyalty Points and Rewards operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Member wallets, point accrual, adjustments, redemptions, tiers, earning rules, referrals, partner accruals, fraud controls, liability, forecasting, governance, and AppGen-X event orchestration.
+**Justification:** Loyalty programs need controlled enrollment so duplicate accounts, ineligible regions, unsupported currencies, underage customers, employee exclusions, and missing consent do not create invalid wallets or liability.
 
-**Improvement:** Extend `loyalty_rewards_reward_account` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `member_accounts`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add an enrollment gate that checks customer identity confidence, region, currency, consent, account uniqueness, existing wallet links, fraud risk, partner-program eligibility, and required disclosures. Store eligibility evidence and allow the agent to prepare enrollment plans without creating accounts until approved.
 
-### 2. Deep specialist lifecycle semantics for `loyalty_rewards_points_ledger`
+### 2. Reward account lifecycle state machine
 
-**Justification:** This owned table is part of the Customer Loyalty Points and Rewards operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Member wallets, point accrual, adjustments, redemptions, tiers, earning rules, referrals, partner accruals, fraud controls, liability, forecasting, governance, and AppGen-X event orchestration.
+**Justification:** Reward accounts move through pending, active, suspended, merged, closed, fraud-hold, deceased/estate, migrated, and archived states with different ledger and redemption rules.
 
-**Improvement:** Extend `loyalty_rewards_points_ledger` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `member_enrollment`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Implement a strict account state machine with allowed transitions, required approvals, ledger effects, redemption restrictions, customer communication requirements, and audit proof. Release checks should reject point activity on accounts in disallowed states.
 
-### 3. Deep specialist lifecycle semantics for `loyalty_rewards_earning_rule`
+### 3. Wallet currency and unit governance
 
-**Justification:** This owned table is part of the Customer Loyalty Points and Rewards operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Member wallets, point accrual, adjustments, redemptions, tiers, earning rules, referrals, partner accruals, fraud controls, liability, forecasting, governance, and AppGen-X event orchestration.
+**Justification:** Loyalty balances can represent points, miles, credits, stamps, cashback, or partner units, each with conversion and liability implications.
 
-**Improvement:** Extend `loyalty_rewards_earning_rule` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `points_ledger`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add wallet unit metadata for unit type, precision, base currency, redemption value, liability method, partner conversion rate, rounding policy, and expiration behavior. UI should show both member-facing balance and finance-facing liability values.
 
-### 4. Deep specialist lifecycle semantics for `loyalty_rewards_redemption`
+### 4. Immutable points ledger controls
 
-**Justification:** This owned table is part of the Customer Loyalty Points and Rewards operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Member wallets, point accrual, adjustments, redemptions, tiers, earning rules, referrals, partner accruals, fraud controls, liability, forecasting, governance, and AppGen-X event orchestration.
+**Justification:** The points ledger is the source of truth for member trust and financial liability; direct balance edits are unsafe.
 
-**Improvement:** Extend `loyalty_rewards_redemption` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `points_earning`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Enforce append-only ledger entries with entry type, source event, rule version, account state, idempotency key, reversal link, balance-after proof, and liability impact. Provide correction entries instead of mutable point balances.
 
-### 5. Deep specialist lifecycle semantics for `loyalty_rewards_reward_tier`
+### 5. Ledger reversal and adjustment governance
 
-**Justification:** This owned table is part of the Customer Loyalty Points and Rewards operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Member wallets, point accrual, adjustments, redemptions, tiers, earning rules, referrals, partner accruals, fraud controls, liability, forecasting, governance, and AppGen-X event orchestration.
+**Justification:** Returns, cancellations, fraud, customer goodwill, partner corrections, and operational mistakes require controlled ledger changes.
 
-**Improvement:** Extend `loyalty_rewards_reward_tier` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `points_adjustment`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add adjustment and reversal workflows with reason taxonomy, source evidence, approver thresholds, customer visibility, expiration impact, tier impact, and liability recalculation. The agent should show before/after balance, tier, and liability effects.
 
-### 6. Deep specialist lifecycle semantics for `loyalty_rewards_tier_benefit`
+### 6. Earning rule version control
 
-**Justification:** This owned table is part of the Customer Loyalty Points and Rewards operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Member wallets, point accrual, adjustments, redemptions, tiers, earning rules, referrals, partner accruals, fraud controls, liability, forecasting, governance, and AppGen-X event orchestration.
+**Justification:** Earn rates change by campaign, tier, product, region, channel, currency, partner, and time window; historical earnings must remain tied to the active rule version.
 
-**Improvement:** Extend `loyalty_rewards_tier_benefit` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `redemptions`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Version earning rules with effective intervals, eligibility predicates, tier multipliers, promotion stacking, partner overrides, rounding, caps, and compiled hashes. Ledger entries should store the exact rule version and calculation trace.
 
-### 7. Deep specialist lifecycle semantics for `loyalty_rewards_referral_reward`
+### 7. Earning simulation sandbox
 
-**Justification:** This owned table is part of the Customer Loyalty Points and Rewards operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Member wallets, point accrual, adjustments, redemptions, tiers, earning rules, referrals, partner accruals, fraud controls, liability, forecasting, governance, and AppGen-X event orchestration.
+**Justification:** Program managers need to preview how rule changes affect member value, liability, fraud exposure, partner settlement, and customer behavior.
 
-**Improvement:** Extend `loyalty_rewards_referral_reward` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `tier_qualification`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add earning simulations over historical payments, promotions, partner events, customer segments, and tier mix. Show expected points issued, incremental liability, impacted members, edge cases, and recommended guardrails before activation.
 
-### 8. Deep specialist lifecycle semantics for `loyalty_rewards_partner_accrual`
+### 8. Promotion stacking governance
 
-**Justification:** This owned table is part of the Customer Loyalty Points and Rewards operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Member wallets, point accrual, adjustments, redemptions, tiers, earning rules, referrals, partner accruals, fraud controls, liability, forecasting, governance, and AppGen-X event orchestration.
+**Justification:** Loyalty earn bonuses can accidentally stack with promotions, referrals, partners, and tier multipliers to create excessive liability or unfair eligibility.
 
-**Improvement:** Extend `loyalty_rewards_partner_accrual` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `earning_rules`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add stacking rules, exclusion groups, maximum earn caps, precedence, campaign budgets, and conflict detection. Offer readiness should show which bonuses apply, suppress, or require approval.
 
-### 9. Deep specialist lifecycle semantics for `loyalty_rewards_offer_eligibility`
+### 9. Tier qualification calendar
 
-**Justification:** This owned table is part of the Customer Loyalty Points and Rewards operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Member wallets, point accrual, adjustments, redemptions, tiers, earning rules, referrals, partner accruals, fraud controls, liability, forecasting, governance, and AppGen-X event orchestration.
+**Justification:** Tier qualification depends on calendar model, rolling windows, grace periods, soft landings, status matches, lifetime status, and exception handling.
 
-**Improvement:** Extend `loyalty_rewards_offer_eligibility` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `referrals`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Model tier calendars with qualification period, benefit period, grace period, downgrade policy, lifetime thresholds, status-match evidence, and tier-freeze rules. Store tier decisions with window, points counted, exclusions, and next-review date.
 
-### 10. Deep specialist lifecycle semantics for `loyalty_rewards_expiration_schedule`
+### 10. Tier benefit entitlement ledger
 
-**Justification:** This owned table is part of the Customer Loyalty Points and Rewards operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Member wallets, point accrual, adjustments, redemptions, tiers, earning rules, referrals, partner accruals, fraud controls, liability, forecasting, governance, and AppGen-X event orchestration.
+**Justification:** Benefits such as free shipping, support priority, discounts, upgrades, credits, or exclusive access must be traceable and revocable when tier changes.
 
-**Improvement:** Extend `loyalty_rewards_expiration_schedule` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `partner_accruals`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add a benefit ledger linking tiers to granted, consumed, expired, revoked, and transferred benefits with eligibility, source tier decision, usage evidence, and downstream projection payloads. UI should separate point balance from benefit inventory.
 
-### 11. Make `configure_runtime` a complete command lifecycle
+### 11. Tier downgrade fairness controls
 
-**Justification:** High-value users need `configure_runtime` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Downgrades can harm customer trust when late postings, refunds, exceptional events, or system outages affected qualification.
 
-**Improvement:** Implement `configure_runtime` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `RewardBalanceChanged`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add downgrade review checks for late partner accruals, pending disputes, goodwill policies, outage windows, protected cohorts, and manual exceptions. Generate member communication evidence for downgrades and soft landings.
 
-### 12. Make `set_parameter` a complete command lifecycle
+### 12. Redemption reservation lifecycle
 
-**Justification:** High-value users need `set_parameter` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Redemptions need reservation, confirmation, cancellation, expiry, reversal, partial fulfillment, and fraud-hold states to avoid double-spend and customer disputes.
 
-**Improvement:** Implement `set_parameter` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `CustomerSegmentUpdated`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Implement redemption reservations with hold expiry, points lock, order/reference link, monetary value, confirmation event, reversal policy, partial release, and duplicate protection. The UI should show available, held, and redeemable balances separately.
 
-### 13. Make `register_rule` a complete command lifecycle
+### 13. Redemption catalog governance
 
-**Justification:** High-value users need `register_rule` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Members need valid redemption options with pricing, stock/capacity, region, tier, partner, expiration, and fulfillment rules.
 
-**Improvement:** Implement `register_rule` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `RewardBalanceChanged`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add redemption catalog descriptors for reward type, point cost, cash value, inventory/capacity, fulfillment method, eligible tiers, regions, blackout dates, partner obligations, and policy proof. Block redemptions against retired or exhausted offers.
 
-### 14. Make `register_earning_rule` a complete command lifecycle
+### 14. Redemption value optimization
 
-**Justification:** High-value users need `register_earning_rule` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Programs must balance member delight, margin, liability, breakage, and partner economics when presenting redemption choices.
 
-**Improvement:** Implement `register_earning_rule` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `CustomerSegmentUpdated`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add recommendation models that rank redemption options by member preference, liability reduction, cost, partner capacity, margin, and fairness constraints. Store why each recommendation was shown and allow deterministic rule-only mode.
 
-### 15. Make `register_schema_extension` a complete command lifecycle
+### 15. Point expiration fairness workflow
 
-**Justification:** High-value users need `register_schema_extension` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Expiration is financially important but customer-sensitive, especially when members lacked notice or had pending activity.
 
-**Improvement:** Implement `register_schema_extension` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `RewardBalanceChanged`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add expiration schedules with notice requirements, rescue offers, grace windows, protected statuses, jurisdiction rules, and late-activity recalculation. Store notification evidence and member-facing explanation for every expired point batch.
 
-### 16. Make `enroll_member` a complete command lifecycle
+### 16. Expiration batch simulation
 
-**Justification:** High-value users need `enroll_member` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Before expiring points, operators need to understand balance impact, member sentiment risk, liability release, and customer-service volume.
 
-**Improvement:** Implement `enroll_member` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `CustomerSegmentUpdated`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Simulate expiration batches by segment, tier, geography, balance size, last activity, notice state, and support-risk score. Provide projected liability release, complaint risk, reactivation opportunity, and recommended exclusions.
 
-### 17. Make `receive_event` a complete command lifecycle
+### 17. Liability snapshot drilldown
 
-**Justification:** High-value users need `receive_event` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Rewards liability must reconcile outstanding points, redemption value, breakage assumptions, partner obligations, and finance reporting.
 
-**Improvement:** Implement `receive_event` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `RewardBalanceChanged`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add liability snapshots with account-level rollups, tier/value bands, expiration schedules, redemption reservations, partner receivables/payables, breakage assumptions, and reconciliation deltas. Provide drilldowns from liability total to ledger entries.
 
-### 18. Make `issue_points` a complete command lifecycle
+### 18. Liability control assertions
 
-**Justification:** High-value users need `issue_points` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Loyalty liability can materially affect financial statements and requires continuous control evidence.
 
-**Improvement:** Implement `issue_points` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `CustomerSegmentUpdated`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add controls for ledger immutability, balance reconciliation, expiration authorization, redemption holds, partner accrual completeness, breakage model approval, and rule change approvals. Store pass/fail assertions and remediation tasks.
 
-### 19. Make `adjust_points` a complete command lifecycle
+### 19. Breakage forecasting governance
 
-**Justification:** High-value users need `adjust_points` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Breakage estimates are sensitive, model-driven, and financially material; unsupported assumptions create audit risk.
 
-**Improvement:** Implement `adjust_points` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `RewardBalanceChanged`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Govern breakage forecasts with cohort definitions, historical redemption behavior, expiry rules, member activity, tier status, promotional effects, model version, confidence intervals, and approval evidence. Provide scenario comparisons and assumption sensitivity.
 
-### 20. Make `create_redemption` a complete command lifecycle
+### 20. Partner accrual reconciliation
 
-**Justification:** High-value users need `create_redemption` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Partner earns can arrive late, duplicate, disputed, or valued under different conversion agreements.
 
-**Improvement:** Implement `create_redemption` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `CustomerSegmentUpdated`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add partner accrual reconciliation by partner, contract, event source, external reference, conversion rate, settlement period, duplicate status, dispute state, and ledger posting. Surface unmatched and late accruals in a dedicated console.
 
-### 21. Operationalize `event_sourced_rewards_lifecycle` as a governed decision system
+### 21. Partner settlement evidence
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Customer Loyalty Points and Rewards and measurably improves points earned without hiding assumptions.
+**Justification:** Partner loyalty programs require clear settlement of issued points, redeemed benefits, reversals, breakage, and fees.
 
-**Improvement:** Promote `event_sourced_rewards_lifecycle` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `points_earned`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add settlement statements with partner obligations, customer-visible points, finance liability, invoice/export payloads, exception items, and approval workflow. Keep all settlement data inside owned tables or declared projections.
 
-### 22. Operationalize `owned_rewards_schema_boundary` as a governed decision system
+### 22. Referral fraud controls
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Customer Loyalty Points and Rewards and measurably improves points redeemed without hiding assumptions.
+**Justification:** Referral programs attract self-referrals, synthetic accounts, collusion, returns abuse, and incentive gaming.
 
-**Improvement:** Promote `owned_rewards_schema_boundary` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `points_redeemed`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Score referrals using identity overlap, device/address similarity, purchase quality, return history, velocity, geographic patterns, and reward value. Hold suspicious rewards, generate review cases, and preserve explainable fraud evidence.
 
-### 23. Operationalize `multi_tenant_rewards_isolation` as a governed decision system
+### 23. Referral lifecycle management
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Customer Loyalty Points and Rewards and measurably improves liability amount without hiding assumptions.
+**Justification:** Referrals need invite, click, signup, qualified action, pending reward, approved reward, rejected reward, reversal, and expiry states.
 
-**Improvement:** Promote `multi_tenant_rewards_isolation` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `liability_amount`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add referral lifecycle tracking with eligibility, qualification criteria, attribution window, source campaign, referrer/referee rules, reward timing, and customer communication state. UI should show referral progress and reasons for pending or rejected rewards.
 
-### 24. Operationalize `schema_evolution_resilient_rewards_context` as a governed decision system
+### 24. Offer eligibility decision traces
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Customer Loyalty Points and Rewards and measurably improves breakage risk without hiding assumptions.
+**Justification:** Members and operators need to understand why a loyalty offer was shown, hidden, blocked, or expired.
 
-**Improvement:** Promote `schema_evolution_resilient_rewards_context` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `breakage_risk`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Store offer eligibility traces with segment projection, tier, balance, purchase history projection, promotion context, consent, region, fraud risk, budget, and rule version. Provide customer-safe and operator-detailed explanations.
 
-### 25. Operationalize `member_enrollment_and_wallets` as a governed decision system
+### 25. Offer fatigue and fairness controls
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Customer Loyalty Points and Rewards and measurably improves fraud review rate without hiding assumptions.
+**Justification:** Over-targeting loyal members or excluding borderline members can reduce trust and create inequitable outcomes.
 
-**Improvement:** Promote `member_enrollment_and_wallets` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `fraud_review_rate`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add offer fatigue caps, diversity constraints, cohort fairness checks, protected-rule restrictions, exposure history, and suppression explanations. Simulations should show overexposed and under-served cohorts.
 
-### 26. Operationalize `points_earn_and_adjustment_ledger` as a governed decision system
+### 26. Churn-aware reward interventions
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Customer Loyalty Points and Rewards and measurably improves tier progression without hiding assumptions.
+**Justification:** Rewards can reduce churn when targeted carefully, but indiscriminate incentives waste liability and train customers to wait for offers.
 
-**Improvement:** Promote `points_earn_and_adjustment_ledger` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `tier_progression`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Combine churn risk, customer value, tier, breakage, engagement, and offer history to recommend retention rewards with guardrails. Store expected impact, cost, confidence, and ethical-use constraints.
 
-### 27. Operationalize `redemption_validation_and_reservation` as a governed decision system
+### 27. Fraud review case workflow
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Customer Loyalty Points and Rewards and measurably improves reward balance changed throughput without hiding assumptions.
+**Justification:** Loyalty fraud review needs consistent intake, evidence, investigation, decision, customer communication, and ledger action.
 
-**Improvement:** Promote `redemption_validation_and_reservation` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `reward_balance_changed_throughput`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add fraud review states, risk drivers, linked accounts, suspicious ledger entries, investigator notes, hold/release actions, reversal actions, and appeal handling. The agent should summarize evidence without exposing unrelated customers.
 
-### 28. Operationalize `tier_qualification_and_benefits` as a governed decision system
+### 28. Account merge and split workflow
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Customer Loyalty Points and Rewards and measurably improves customer segment updated throughput without hiding assumptions.
+**Justification:** Duplicate loyalty accounts and mistaken merges affect balances, tiers, referrals, redemptions, and liability.
 
-**Improvement:** Promote `tier_qualification_and_benefits` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `customer_segment_updated_throughput`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add merge/split workflows with identity evidence, ledger consolidation preview, tier recalculation, referral handling, redemption hold review, consent/preference checks, and rollback plan. Require approval for high-value accounts.
 
-### 29. Operationalize `earning_rule_management` as a governed decision system
+### 29. Balance reconciliation automation
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Customer Loyalty Points and Rewards and measurably improves points earned without hiding assumptions.
+**Justification:** Wallet balance must equal ledger-derived balance after earns, adjustments, redemptions, expirations, reversals, and partner events.
 
-**Improvement:** Promote `earning_rule_management` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `points_earned`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Run reconciliation that recomputes balances, flags mismatches, isolates offending entries, proposes correction entries, and records proof. UI should show reconciled, unreconciled, and corrected accounts.
 
-### 30. Operationalize `partner_accrual_and_offer_projection` as a governed decision system
+### 30. Cryptographic reward balance proof
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Customer Loyalty Points and Rewards and measurably improves points redeemed without hiding assumptions.
+**Justification:** Members, partners, finance, and auditors may need proof that balances and liabilities were computed from untampered ledger entries.
 
-**Improvement:** Promote `partner_accrual_and_offer_projection` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `points_redeemed`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Generate cryptographic proofs for account balance, tier status, redemption reservations, liability snapshots, and partner accrual statements. Support redacted verifier artifacts that do not reveal unrelated member activity.
 
-### 31. Create simulation-grade governance for `LOYALTY_REWARDS_DATABASE_URL` and `LOYALTY_REWARDS_DATABASE_URL`
+### 31. Rewards policy compiler
 
-**Justification:** Complete Customer Loyalty Points and Rewards coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Program rules are complex and change frequently across regions, products, partners, tiers, and promotions.
 
-**Improvement:** Add a policy cockpit where `LOYALTY_REWARDS_DATABASE_URL` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `LOYALTY_REWARDS_DATABASE_URL` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Compile policy from structured rules and natural-language program documents into validated predicates with effective dates, conflict detection, test cases, and approval evidence. The agent should explain ambiguous language and request missing thresholds.
 
-### 32. Create simulation-grade governance for `LOYALTY_REWARDS_EVENT_TOPIC` and `LOYALTY_REWARDS_EVENT_TOPIC`
+### 32. Rewards rule impact analysis
 
-**Justification:** Complete Customer Loyalty Points and Rewards coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Changing earning, redemption, tier, expiration, or referral rules can shift liability and member experience at scale.
 
-**Improvement:** Add a policy cockpit where `LOYALTY_REWARDS_EVENT_TOPIC` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `LOYALTY_REWARDS_EVENT_TOPIC` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add impact analysis for affected members, point issuance, liability, tier movement, redemption cost, breakage, partner settlement, and complaint risk. Require review for high-impact changes before activation.
 
-### 33. Create simulation-grade governance for `LOYALTY_REWARDS_RETRY_LIMIT` and `LOYALTY_REWARDS_RETRY_LIMIT`
+### 33. Customer segment synchronization
 
-**Justification:** Complete Customer Loyalty Points and Rewards coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Loyalty tiers and reward behaviors feed customer segments, while customer segments influence offers and earning rules.
 
-**Improvement:** Add a policy cockpit where `LOYALTY_REWARDS_RETRY_LIMIT` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `LOYALTY_REWARDS_RETRY_LIMIT` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Define bidirectional but boundary-safe segment synchronization through declared events/projections only. Store projection freshness, segment source, allowed usage, and member-impact evidence for segment-driven loyalty decisions.
 
-### 34. Create simulation-grade governance for `LOYALTY_REWARDS_DEFAULT_CURRENCY` and `LOYALTY_REWARDS_DEFAULT_CURRENCY`
+### 34. Payment and promotion event hardening
 
-**Justification:** Complete Customer Loyalty Points and Rewards coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Points issued from payments and promotions must be idempotent, reversible, and explainable despite late captures, refunds, duplicate events, or promotion corrections.
 
-**Improvement:** Add a policy cockpit where `LOYALTY_REWARDS_DEFAULT_CURRENCY` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `LOYALTY_REWARDS_DEFAULT_CURRENCY` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Harden consumed event handling with schema versions, idempotency keys, source references, reversal detection, promotion stacking evidence, retry envelopes, and dead-letter reason taxonomy. Add generated tests for earn, duplicate, failure, and replay scenarios.
 
-### 35. Create simulation-grade governance for `LOYALTY_REWARDS_DEFAULT_TIMEZONE` and `LOYALTY_REWARDS_DEFAULT_TIMEZONE`
+### 35. Return and refund point clawback
 
-**Justification:** Complete Customer Loyalty Points and Rewards coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Returned purchases should reverse or adjust earned points without unfairly penalizing unrelated balances or confirmed redemptions.
 
-**Improvement:** Add a policy cockpit where `LOYALTY_REWARDS_DEFAULT_TIMEZONE` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `LOYALTY_REWARDS_DEFAULT_TIMEZONE` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add clawback rules for full returns, partial returns, exchanges, refund delays, negative balances, tier impact, and expired points. Store member-facing explanations and fraud-review triggers for suspicious return patterns.
 
-### 36. Upgrade `LoyaltyRewardsWorkbench` into a full specialist command center
+### 36. Negative balance governance
 
-**Justification:** The PBC UI must expose the complete Customer Loyalty Points and Rewards surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Reversals can create negative point balances, creating disputes and future earn-capture questions.
 
-**Improvement:** Expand `LoyaltyRewardsWorkbench` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Define negative-balance policies by tier, reason, amount, customer status, and jurisdiction. Decide whether to hold redemptions, offset future earns, forgive balances, or create exception reviews with audit evidence.
 
-### 37. Upgrade `RewardAccountRegistry` into a full specialist command center
+### 37. Member-facing rewards statement
 
-**Justification:** The PBC UI must expose the complete Customer Loyalty Points and Rewards surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Members need a clear statement of earns, adjustments, redemptions, expirations, holds, tier progress, and upcoming changes.
 
-**Improvement:** Expand `RewardAccountRegistry` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Generate statement views with ledger entries, rule explanations, expiration schedule, pending redemptions, tier progress, benefits, partner accruals, and dispute links. Ensure sensitive internal fraud or policy notes remain hidden.
 
-### 38. Upgrade `PointsLedgerPanel` into a full specialist command center
+### 38. Loyalty operations cockpit
 
-**Justification:** The PBC UI must expose the complete Customer Loyalty Points and Rewards surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Operators need a unified view of balances, liability, fraud reviews, partner accruals, redemptions, expirations, tiers, exceptions, and AppGen-X event health.
 
-**Improvement:** Expand `PointsLedgerPanel` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Build cockpit panels for program KPIs, liability movement, high-risk accounts, pending redemptions, partner exceptions, tier movement, expiration batches, fraud queues, dead letters, and controls. Every action should map to a permissioned service command.
 
-### 39. Upgrade `EarningRuleStudio` into a full specialist command center
+### 39. Rewards anomaly detection
 
-**Justification:** The PBC UI must expose the complete Customer Loyalty Points and Rewards surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Sudden earn spikes, redemption bursts, partner event anomalies, referral rings, or tier jumps can indicate fraud or integration defects.
 
-**Improvement:** Expand `EarningRuleStudio` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add anomaly detection for ledger velocity, balance jumps, redemption frequency, partner accrual spikes, referral clusters, expiration reversals, and tier movement outliers. Route severe anomalies to fraud review or operational hold.
 
-### 40. Upgrade `RedemptionConsole` into a full specialist command center
+### 40. Loyalty exception resolution
 
-**Justification:** The PBC UI must expose the complete Customer Loyalty Points and Rewards surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Programs need controlled handling for disputed points, missing earns, failed redemptions, partner delays, tier appeals, and goodwill adjustments.
 
-**Improvement:** Expand `RedemptionConsole` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add exception case types with required evidence, SLA, owner, customer communication, ledger action, partner action, and closure criteria. The agent should prepare exception-resolution plans with balance and liability impact.
 
-### 41. Prove cross-PBC federation for `POST /reward-accounts` and `PaymentCaptured`
+### 41. Customer value and reward ROI analytics
 
-**Justification:** Customer Loyalty Points and Rewards must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Loyalty programs must prove incremental value, not merely issue points.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /reward-accounts` and consumed event `PaymentCaptured` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Add analytics for incremental revenue, redemption lift, retention impact, tier migration, member engagement, offer ROI, liability cost, breakage, and control cohorts. Store assumptions and confidence intervals to avoid overstating causality.
 
-### 42. Prove cross-PBC federation for `POST /points` and `PromotionApplied`
+### 42. Loyalty experiment framework
 
-**Justification:** Customer Loyalty Points and Rewards must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Earn rates, offers, expiration notices, and tier benefits should be tested with holdouts and controlled cohorts.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /points` and consumed event `PromotionApplied` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Add experiment cells, holdouts, randomization, eligibility constraints, exposure tracking, outcome capture, and statistical reporting. Tie experiment results to rule versions and future recommendations.
 
-### 43. Prove cross-PBC federation for `POST /points/adjustments` and `PaymentCaptured`
+### 43. Agent-assisted loyalty service
 
-**Justification:** Customer Loyalty Points and Rewards must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Support agents and members need help understanding balances, missing points, redemptions, and tier status without unsafe direct mutation.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /points/adjustments` and consumed event `PaymentCaptured` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Let the PBC agent answer balance questions, explain ledger entries, find missing earn evidence, draft adjustment requests, and preview redemptions. Any CRUD action should show before/after balance, tier, liability, and policy checks before approval.
 
-### 44. Prove cross-PBC federation for `POST /redemptions` and `PromotionApplied`
+### 44. Agent-assisted program design
 
-**Justification:** Customer Loyalty Points and Rewards must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Loyalty managers often describe desired programs in documents, spreadsheets, or natural-language rules.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /redemptions` and consumed event `PromotionApplied` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Add agent skills to parse program documents into earning rules, tier calendars, benefit catalogs, redemption policies, expiration rules, and test cases. The agent should surface ambiguity and generate side-effect-free activation plans.
 
-### 45. Temporal reconstruction and bitemporal audit for Customer Loyalty Points and Rewards
+### 45. Privacy and consent-aware rewards
 
-**Justification:** Regulated and operationally complex domains need to answer what was known, valid, processed, and visible at any point in time.
+**Justification:** Loyalty operations use customer behavior, segments, and preferences that may be subject to consent, privacy, and purpose restrictions.
 
-**Improvement:** Add transaction-time, valid-time, and processing-time fields to core records, temporal query APIs, projection rebuild tooling, and UI time travel so specialists can reconstruct decisions, reports, and automation outcomes.
+**Improvement:** Add consent/purpose checks for offer eligibility, segment use, member statements, partner sharing, and analytics. Store the consent state used and block reward decisions where allowed purpose is missing.
 
-### 46. Bulk operations and migration-grade controls for Customer Loyalty Points and Rewards
+### 46. Multi-tenant program isolation proof
 
-**Justification:** World-class deployments must handle imports, mass corrections, high-volume operating days, and cutovers without bypassing governance.
+**Justification:** Reward balances, program rules, partner contracts, and liability must never bleed across tenants or brands.
 
-**Improvement:** Add staged bulk upload, duplicate detection, chunked validation, approval sampling, partial failure handling, retry dashboards, reconciliation summaries, and agent-generated remediation plans for large batches.
+**Improvement:** Generate tenant isolation proofs for accounts, ledgers, rules, redemptions, tiers, partner accruals, liability snapshots, models, events, and UI queries. Release audits should fail any cross-tenant query or undeclared shared table access.
 
-### 47. Specialist edge-case playbooks for Customer Loyalty Points and Rewards
+### 47. AppGen-X event reliability proof
 
-**Justification:** Rare cases often carry the highest financial, legal, safety, service, or compliance risk.
+**Justification:** Loyalty rewards depend on payment and promotion events and emit balance and segment events; duplication or loss directly affects member trust and liability.
 
-**Improvement:** Create a playbook catalog with detection rules, required evidence, escalation paths, fallback actions, owner roles, and release-audited tests for high-severity edge cases and exception queues.
+**Improvement:** Add event reliability proof for consumed and emitted schemas, idempotency, ordering, retries, dead letters, replay, and recovery. Include payment duplicate, promotion correction, handler failure, and outbox replay scenarios.
 
-### 48. Pre-mutation simulation and blast-radius analysis for Customer Loyalty Points and Rewards
+### 48. UI capability surface proof
 
-**Justification:** Users should understand consequences before committing irreversible, customer-visible, operationally disruptive, or financially material changes.
+**Justification:** A complete Loyalty Rewards PBC must expose its domain operations through dedicated UI surfaces, not generic tables.
 
-**Improvement:** Add what-if simulation for every material command, showing impacted records, emitted events, dependent projections, rule outcomes, approvals, downstream PBC dependencies, and rollback limits.
+**Improvement:** Add release checks proving UI coverage for enrollment, accounts, ledger, earning rules, adjustments, redemptions, tiers, benefits, referrals, partners, offers, expiration, liability, fraud, churn, breakage, simulations, exceptions, reconciliation, proofs, policy screening, events, controls, and agent tools.
 
-### 49. Continuous control testing and operational assurance for Customer Loyalty Points and Rewards
+### 49. Rewards resilience drills
 
-**Justification:** Better-than-world-class PBCs prove controls continuously, not only at release or during periodic audits.
+**Justification:** Rewards systems must recover from event backlogs, partner feed outages, bad rule deployments, balance mismatches, fraud spikes, and redemption failures.
 
-**Improvement:** Add executable control assertions, sampled evidence checks, anomaly thresholds, control-owner dashboards, breach/recovery events, and release gates that fail when domain controls lose evidence.
+**Improvement:** Add resilience drills for payment event replay, promotion rollback, partner outage, invalid rule activation, redemption provider failure, reconciliation mismatch, and dead-letter surge. Store recovery time, duplicate-risk assessment, liability impact, and corrective actions.
 
-### 50. Human-in-the-loop domain agent execution for Customer Loyalty Points and Rewards
+### 50. End-to-end loyalty release proof
 
-**Justification:** The PBC chatbot must help specialists perform real work while preventing unsafe autonomous mutation.
+**Justification:** A world-class Loyalty Rewards PBC needs a single evidence package proving that a member can enroll, earn, adjust, redeem, qualify, receive benefits, handle partner/referral activity, reconcile balances, forecast liability, and operate safely.
 
-**Improvement:** Add domain-specific skills, document parsing, task planning, CRUD previews, confidence/risk scoring, confirmation gates, redaction, policy explanations, and post-action evidence packets for every supported command and query.
+**Improvement:** Create an end-to-end proof exercising enrollment, earning rule compilation, payment earn, promotion bonus, adjustment, redemption reservation, tier qualification, benefit grant, referral reward, partner accrual, expiration schedule, liability snapshot, fraud review, breakage forecast, offer simulation, exception resolution, balance reconciliation, cryptographic proof, UI coverage, AppGen-X eventing, boundary verification, and agent-safe CRUD planning.
