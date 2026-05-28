@@ -3105,3 +3105,11 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   for touched DSL modules, focused semantic symbol/doctor tests,
   `tests/test_dsl_tooling_contracts.py -q`, scoped diff whitespace check, and
   restricted-name scan. Commit: `bae9a900`.
+- Current LSP code-action application pass makes quick fixes executable.
+  `appgen.lsp-code-action-apply.v1` now applies a selected LSP quick fix to
+  produce patched DSL, applied text edits, and post-apply lint evidence. The
+  CLI exposes this through `appgen lsp app.appgen --apply-code-action <id>
+  --json`, with tests covering missing-operation and lookup-directive edit
+  application. Verification passed: Python compile for touched DSL modules,
+  focused code-action apply tests, `tests/test_dsl_tooling_contracts.py -q`,
+  scoped diff whitespace check, and restricted-name scan. Commit: `7b1b62b3`.
