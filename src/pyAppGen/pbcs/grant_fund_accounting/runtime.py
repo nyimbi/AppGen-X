@@ -199,3 +199,41 @@ def grant_fund_accounting_runtime_smoke():
 def grant_fund_accounting_runtime_capabilities():
     smoke = grant_fund_accounting_runtime_smoke()
     return {'format': 'appgen.grant-fund-accounting-runtime-capabilities.v1', 'ok': smoke['ok'], 'pbc': PBC_KEY, 'implementation_directory': 'src/pyAppGen/pbcs/grant_fund_accounting', 'owned_tables': GRANT_FUND_ACCOUNTING_OWNED_TABLES, 'allowed_database_backends': GRANT_FUND_ACCOUNTING_ALLOWED_DATABASE_BACKENDS, 'capabilities': GRANT_FUND_ACCOUNTING_RUNTIME_CAPABILITY_KEYS, 'standard_features': GRANT_FUND_ACCOUNTING_STANDARD_FEATURE_KEYS, 'operations': ('configure_runtime', 'set_parameter', 'register_rule', 'register_schema_extension', 'receive_event', 'build_workbench_view', 'build_schema_contract', 'build_service_contract', 'build_release_evidence', 'permissions_contract', 'verify_owned_table_boundary', 'command_grant_award', 'query_workbench', 'run_advanced_assessment', 'parse_document_instruction'), 'smoke': smoke, 'side_effects': ()}
+
+# World-class domain-depth extension. Generated from package-local domain blueprint.
+from .domain_depth import domain_depth_contract as grant_fund_accounting_domain_depth_contract
+from .domain_depth import domain_depth_smoke_test as grant_fund_accounting_domain_depth_smoke_test
+from .domain_depth import execute_domain_operation as grant_fund_accounting_execute_domain_operation
+
+_GRANT_FUND_ACCOUNTING_BASE_BUILD_RELEASE_EVIDENCE = grant_fund_accounting_build_release_evidence
+_GRANT_FUND_ACCOUNTING_BASE_RUNTIME_CAPABILITIES = grant_fund_accounting_runtime_capabilities
+
+
+def grant_fund_accounting_build_release_evidence():
+    evidence = dict(_GRANT_FUND_ACCOUNTING_BASE_BUILD_RELEASE_EVIDENCE())
+    domain = grant_fund_accounting_domain_depth_contract()
+    checks = tuple(evidence.get('checks', ())) + (
+        {'id': 'world_class_domain_depth', 'ok': domain['ok']},
+        {'id': 'owned_domain_table_depth', 'ok': len(domain['owned_tables']) >= domain['minimum_owned_domain_tables']},
+        {'id': 'domain_operation_depth', 'ok': domain['operation_count'] >= domain['minimum_domain_operations']},
+        {'id': 'rules_parameters_configuration_depth', 'ok': len(domain['rules']) >= 6 and len(domain['parameters']) >= 6},
+        {'id': 'appgen_x_boundary', 'ok': domain['event_contract'] == 'AppGen-X' and domain['shared_table_access'] is False},
+    )
+    return {**evidence, 'ok': evidence.get('ok') is True and all(check['ok'] for check in checks), 'checks': checks, 'world_class_domain_depth': domain, 'blocking_gaps': tuple(check for check in checks if not check['ok'])}
+
+
+def grant_fund_accounting_runtime_capabilities():
+    runtime = dict(_GRANT_FUND_ACCOUNTING_BASE_RUNTIME_CAPABILITIES())
+    domain = grant_fund_accounting_domain_depth_contract()
+    smoke = grant_fund_accounting_domain_depth_smoke_test()
+    return {
+        **runtime,
+        'ok': runtime.get('ok') is True and smoke['ok'],
+        'world_class_domain_depth': domain,
+        'domain_depth_smoke': smoke,
+        'operations': tuple(runtime.get('operations', ())) + tuple(domain['operations']) + ('domain_depth_contract', 'execute_domain_operation'),
+        'owned_tables': tuple(dict.fromkeys(tuple(runtime.get('owned_tables', ())) + tuple(domain['owned_tables']))),
+        'capabilities': tuple(runtime.get('capabilities', ())),
+        'domain_advanced_capabilities': tuple(domain['advanced_capabilities']),
+        'side_effects': (),
+    }

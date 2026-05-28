@@ -47,3 +47,42 @@ def smoke_test():
     command = getattr(service, COMMAND_OPERATIONS[0])({'tenant': 'tenant-smoke'})
     query = getattr(service, QUERY_OPERATIONS[0])({'tenant': 'tenant-smoke'})
     return {'ok': command['ok'] and query['ok'] and service_operation_contracts()['ok'], 'command': command, 'query': query, 'side_effects': ()}
+
+# World-class domain operations exposed through the package service facade.
+from .domain_depth import DOMAIN_OPERATIONS as DOMAIN_DEPTH_COMMAND_OPERATIONS
+from .domain_depth import DOMAIN_OWNED_TABLES as DOMAIN_DEPTH_OWNED_TABLES
+from .domain_depth import execute_domain_operation as execute_domain_depth_operation
+
+COMMAND_OPERATIONS = tuple(dict.fromkeys(tuple(COMMAND_OPERATIONS) + tuple(DOMAIN_DEPTH_COMMAND_OPERATIONS)))
+OWNED_TABLES = tuple(dict.fromkeys(tuple(OWNED_TABLES) + tuple(DOMAIN_DEPTH_OWNED_TABLES)))
+
+_BaseTravelManagementService = TravelManagementService
+
+class TravelManagementService(_BaseTravelManagementService):
+    def __getattr__(self, name):
+        if name in DOMAIN_DEPTH_COMMAND_OPERATIONS:
+            return lambda payload=None, _name=name: self._domain_command(_name, payload or {})
+        return super().__getattr__(name)
+
+    def _domain_command(self, name, payload):
+        plan = execute_domain_depth_operation(name, payload)
+        return {
+            'ok': plan['ok'],
+            'operation': name,
+            'operation_kind': 'command',
+            'read_only': False,
+            'payload': dict(payload),
+            'operation_contract': {
+                'operation': name,
+                'operation_kind': 'command',
+                'owned_tables': plan.get('owned_tables', ()),
+                'read_tables': (),
+                'emitted_event': plan.get('emitted_event'),
+                'transaction_boundary': 'owned_datastore_plus_outbox',
+            },
+            'outbox_table': EVENT_CONTRACT['outbox_table'],
+            'emits': (plan.get('emitted_event'),) if plan.get('emitted_event') else (),
+            'transaction_boundary': 'owned_datastore_plus_outbox',
+            'domain_depth': plan,
+            'side_effects': (),
+        }

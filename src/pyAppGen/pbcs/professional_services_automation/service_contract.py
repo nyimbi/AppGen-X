@@ -16,3 +16,21 @@ def validate_service_contract():
 
 def smoke_test():
     return validate_service_contract()
+
+from .domain_depth import DOMAIN_OPERATIONS, domain_depth_contract
+
+_BASE_BUILD_SERVICE_CONTRACT = build_service_contract
+
+def build_service_contract():
+    base = dict(_BASE_BUILD_SERVICE_CONTRACT())
+    domain = domain_depth_contract()
+    return {
+        **base,
+        'ok': base.get('ok') is True and domain['ok'],
+        'command_methods': tuple(dict.fromkeys(tuple(base.get('command_methods', ())) + tuple(DOMAIN_OPERATIONS))),
+        'world_class_domain_depth': domain,
+    }
+
+
+def professional_services_automation_build_service_contract():
+    return build_service_contract()

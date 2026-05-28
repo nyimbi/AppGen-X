@@ -199,3 +199,41 @@ def contract_lifecycle_runtime_smoke():
 def contract_lifecycle_runtime_capabilities():
     smoke = contract_lifecycle_runtime_smoke()
     return {'format': 'appgen.contract-lifecycle-runtime-capabilities.v1', 'ok': smoke['ok'], 'pbc': PBC_KEY, 'implementation_directory': 'src/pyAppGen/pbcs/contract_lifecycle', 'owned_tables': CONTRACT_LIFECYCLE_OWNED_TABLES, 'allowed_database_backends': CONTRACT_LIFECYCLE_ALLOWED_DATABASE_BACKENDS, 'capabilities': CONTRACT_LIFECYCLE_RUNTIME_CAPABILITY_KEYS, 'standard_features': CONTRACT_LIFECYCLE_STANDARD_FEATURE_KEYS, 'operations': ('configure_runtime', 'set_parameter', 'register_rule', 'register_schema_extension', 'receive_event', 'build_workbench_view', 'build_schema_contract', 'build_service_contract', 'build_release_evidence', 'permissions_contract', 'verify_owned_table_boundary', 'command_contract_record', 'query_workbench', 'run_advanced_assessment', 'parse_document_instruction'), 'smoke': smoke, 'side_effects': ()}
+
+# World-class domain-depth extension. Generated from package-local domain blueprint.
+from .domain_depth import domain_depth_contract as contract_lifecycle_domain_depth_contract
+from .domain_depth import domain_depth_smoke_test as contract_lifecycle_domain_depth_smoke_test
+from .domain_depth import execute_domain_operation as contract_lifecycle_execute_domain_operation
+
+_CONTRACT_LIFECYCLE_BASE_BUILD_RELEASE_EVIDENCE = contract_lifecycle_build_release_evidence
+_CONTRACT_LIFECYCLE_BASE_RUNTIME_CAPABILITIES = contract_lifecycle_runtime_capabilities
+
+
+def contract_lifecycle_build_release_evidence():
+    evidence = dict(_CONTRACT_LIFECYCLE_BASE_BUILD_RELEASE_EVIDENCE())
+    domain = contract_lifecycle_domain_depth_contract()
+    checks = tuple(evidence.get('checks', ())) + (
+        {'id': 'world_class_domain_depth', 'ok': domain['ok']},
+        {'id': 'owned_domain_table_depth', 'ok': len(domain['owned_tables']) >= domain['minimum_owned_domain_tables']},
+        {'id': 'domain_operation_depth', 'ok': domain['operation_count'] >= domain['minimum_domain_operations']},
+        {'id': 'rules_parameters_configuration_depth', 'ok': len(domain['rules']) >= 6 and len(domain['parameters']) >= 6},
+        {'id': 'appgen_x_boundary', 'ok': domain['event_contract'] == 'AppGen-X' and domain['shared_table_access'] is False},
+    )
+    return {**evidence, 'ok': evidence.get('ok') is True and all(check['ok'] for check in checks), 'checks': checks, 'world_class_domain_depth': domain, 'blocking_gaps': tuple(check for check in checks if not check['ok'])}
+
+
+def contract_lifecycle_runtime_capabilities():
+    runtime = dict(_CONTRACT_LIFECYCLE_BASE_RUNTIME_CAPABILITIES())
+    domain = contract_lifecycle_domain_depth_contract()
+    smoke = contract_lifecycle_domain_depth_smoke_test()
+    return {
+        **runtime,
+        'ok': runtime.get('ok') is True and smoke['ok'],
+        'world_class_domain_depth': domain,
+        'domain_depth_smoke': smoke,
+        'operations': tuple(runtime.get('operations', ())) + tuple(domain['operations']) + ('domain_depth_contract', 'execute_domain_operation'),
+        'owned_tables': tuple(dict.fromkeys(tuple(runtime.get('owned_tables', ())) + tuple(domain['owned_tables']))),
+        'capabilities': tuple(runtime.get('capabilities', ())),
+        'domain_advanced_capabilities': tuple(domain['advanced_capabilities']),
+        'side_effects': (),
+    }

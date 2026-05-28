@@ -199,3 +199,41 @@ def travel_management_runtime_smoke():
 def travel_management_runtime_capabilities():
     smoke = travel_management_runtime_smoke()
     return {'format': 'appgen.travel-management-runtime-capabilities.v1', 'ok': smoke['ok'], 'pbc': PBC_KEY, 'implementation_directory': 'src/pyAppGen/pbcs/travel_management', 'owned_tables': TRAVEL_MANAGEMENT_OWNED_TABLES, 'allowed_database_backends': TRAVEL_MANAGEMENT_ALLOWED_DATABASE_BACKENDS, 'capabilities': TRAVEL_MANAGEMENT_RUNTIME_CAPABILITY_KEYS, 'standard_features': TRAVEL_MANAGEMENT_STANDARD_FEATURE_KEYS, 'operations': ('configure_runtime', 'set_parameter', 'register_rule', 'register_schema_extension', 'receive_event', 'build_workbench_view', 'build_schema_contract', 'build_service_contract', 'build_release_evidence', 'permissions_contract', 'verify_owned_table_boundary', 'command_travel_request', 'query_workbench', 'run_advanced_assessment', 'parse_document_instruction'), 'smoke': smoke, 'side_effects': ()}
+
+# World-class domain-depth extension. Generated from package-local domain blueprint.
+from .domain_depth import domain_depth_contract as travel_management_domain_depth_contract
+from .domain_depth import domain_depth_smoke_test as travel_management_domain_depth_smoke_test
+from .domain_depth import execute_domain_operation as travel_management_execute_domain_operation
+
+_TRAVEL_MANAGEMENT_BASE_BUILD_RELEASE_EVIDENCE = travel_management_build_release_evidence
+_TRAVEL_MANAGEMENT_BASE_RUNTIME_CAPABILITIES = travel_management_runtime_capabilities
+
+
+def travel_management_build_release_evidence():
+    evidence = dict(_TRAVEL_MANAGEMENT_BASE_BUILD_RELEASE_EVIDENCE())
+    domain = travel_management_domain_depth_contract()
+    checks = tuple(evidence.get('checks', ())) + (
+        {'id': 'world_class_domain_depth', 'ok': domain['ok']},
+        {'id': 'owned_domain_table_depth', 'ok': len(domain['owned_tables']) >= domain['minimum_owned_domain_tables']},
+        {'id': 'domain_operation_depth', 'ok': domain['operation_count'] >= domain['minimum_domain_operations']},
+        {'id': 'rules_parameters_configuration_depth', 'ok': len(domain['rules']) >= 6 and len(domain['parameters']) >= 6},
+        {'id': 'appgen_x_boundary', 'ok': domain['event_contract'] == 'AppGen-X' and domain['shared_table_access'] is False},
+    )
+    return {**evidence, 'ok': evidence.get('ok') is True and all(check['ok'] for check in checks), 'checks': checks, 'world_class_domain_depth': domain, 'blocking_gaps': tuple(check for check in checks if not check['ok'])}
+
+
+def travel_management_runtime_capabilities():
+    runtime = dict(_TRAVEL_MANAGEMENT_BASE_RUNTIME_CAPABILITIES())
+    domain = travel_management_domain_depth_contract()
+    smoke = travel_management_domain_depth_smoke_test()
+    return {
+        **runtime,
+        'ok': runtime.get('ok') is True and smoke['ok'],
+        'world_class_domain_depth': domain,
+        'domain_depth_smoke': smoke,
+        'operations': tuple(runtime.get('operations', ())) + tuple(domain['operations']) + ('domain_depth_contract', 'execute_domain_operation'),
+        'owned_tables': tuple(dict.fromkeys(tuple(runtime.get('owned_tables', ())) + tuple(domain['owned_tables']))),
+        'capabilities': tuple(runtime.get('capabilities', ())),
+        'domain_advanced_capabilities': tuple(domain['advanced_capabilities']),
+        'side_effects': (),
+    }
