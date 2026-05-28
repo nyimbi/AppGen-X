@@ -3256,6 +3256,16 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   drift, and doctor report contracts. Verification passed: Python compile for
   touched tooling entrypoints and full `appgen tooling-audit --json` with
   `16/16` checks and no blocking gaps. Commit: `d7f3db47`.
+- Current package/verify CLI audit pass closes the gap between release-verifier
+  helper evidence and the documented `appgen verify` plus `appgen package
+  --out` command contracts. `appgen.tooling-audit.v1` now embeds
+  `appgen.package-verify-cli-audit.v1`, which runs mobile/desktop verification
+  through the CLI and proves `appgen package --out` writes
+  `appgen-release-evidence.json` plus target `appgen.package-manifest.v1`
+  files for mobile and desktop handoff workflows. Verification passed: Python
+  compile for touched tooling entrypoints, direct package/verify CLI audit
+  probe, and full in-process `appgen.tooling-audit.v1` with no blocking gaps.
+  Commit: pending.
 - Current parallel PBC implementation pass delivered executable code for six
   PBCs rather than plan-only artifacts: `actuarial_pricing_reserving`,
   `advertising_campaign_operations`, `agri_supply_chain_traceability`,

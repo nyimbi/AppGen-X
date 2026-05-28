@@ -2368,6 +2368,13 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
         "semantic_drift",
         "doctor",
     } <= {case["case"] for case in test_strategy_check["detail"]["cli"]["cases"]}
+    package_check = next(check for check in report["checks"] if check["id"] == "package_and_release_verifiers")
+    assert package_check["detail"]["cli"]["format"] == "appgen.package-verify-cli-audit.v1"
+    assert package_check["detail"]["cli"]["ok"] is True
+    assert {
+        "verify_all_targets",
+        "package_writes_target_manifests",
+    } <= {case["case"] for case in package_check["detail"]["cli"]["cases"]}
     assert all(check["section"].startswith("docs/tooling.md#") for check in report["checks"])
     assert cli_json.returncode == 0, cli_json.stderr
     assert json.loads(cli_json.stdout)["format"] == "appgen.tooling-audit.v1"

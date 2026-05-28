@@ -2162,6 +2162,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             output_dir=Path(tmp) / "warning-allowed",
             allow_warnings=True,
         )
+        package_verify_cli = _tooling_audit_package_verify_cli(Path(tmp), source)
         package_invalid_target = _tooling_audit_package_invalid_target(Path(tmp), source)
 
     diagnostics = diagnostic_catalog_dsl()
@@ -2351,6 +2352,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             "package_and_release_verifiers",
             release["ok"]
             and package["ok"]
+            and package_verify_cli["ok"]
             and package_invalid_target["ok"]
             and "appgen-release-evidence.json" in package_artifact_names
             and {
@@ -2363,7 +2365,12 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             <= set(package_artifact_names),
             "Release verifier and package command materialize target evidence for web, mobile, desktop, PBC, and deployment targets.",
             "docs/tooling.md#package-and-verifier-tooling",
-            {"release": release.get("format"), "artifacts": package_artifact_names, "invalid_target": package_invalid_target},
+            {
+                "release": release.get("format"),
+                "artifacts": package_artifact_names,
+                "cli": package_verify_cli,
+                "invalid_target": package_invalid_target,
+            },
         ),
         _tooling_audit_check(
             "pbc_manifest_catalog_commands",
@@ -3218,6 +3225,127 @@ table Invoice {
         "allowed_backends": SUPPORTED_DATABASE_BACKENDS,
         "cases": tuple(cases),
     }
+
+
+def _tooling_audit_package_verify_cli(tmp: Path, source: str) -> dict:
+    source_path = tmp / "package-verify.appgen"
+    package_dir = tmp / "package-cli"
+    source_path.write_text(_tooling_audit_package_verify_sample(), encoding="utf-8")
+
+    def run_json(argv: tuple[str, ...]) -> tuple[int, dict]:
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            exit_code = dsl_tooling_cli(argv)
+        try:
+            payload = json.loads(output.getvalue())
+        except json.JSONDecodeError:
+            payload = {}
+        return exit_code, payload
+
+    verify_exit, verify_payload = run_json(
+        ("verify", str(source_path), "--target", "mobile", "--target", "desktop", "--json")
+    )
+    package_exit, package_payload = run_json(
+        (
+            "package",
+            str(source_path),
+            "--target",
+            "mobile",
+            "--target",
+            "desktop",
+            "--out",
+            str(package_dir),
+            "--json",
+        )
+    )
+    evidence_path = package_dir / "appgen-release-evidence.json"
+    mobile_manifest_path = package_dir / "appgen-package-mobile.json"
+    desktop_manifest_path = package_dir / "appgen-package-desktop.json"
+    try:
+        evidence_payload = json.loads(evidence_path.read_text(encoding="utf-8"))
+    except (FileNotFoundError, json.JSONDecodeError):
+        evidence_payload = {}
+    try:
+        mobile_manifest = json.loads(mobile_manifest_path.read_text(encoding="utf-8"))
+    except (FileNotFoundError, json.JSONDecodeError):
+        mobile_manifest = {}
+    try:
+        desktop_manifest = json.loads(desktop_manifest_path.read_text(encoding="utf-8"))
+    except (FileNotFoundError, json.JSONDecodeError):
+        desktop_manifest = {}
+    cases = (
+        {
+            "case": "verify_all_targets",
+            "ok": verify_exit == 0
+            and verify_payload.get("format") == "appgen.release-verifier-report.v1"
+            and tuple(verify_payload.get("targets", ())) == ("mobile", "desktop")
+            and all(check.get("ok") for check in verify_payload.get("checks", ())),
+            "exit_code": verify_exit,
+            "payload_format": verify_payload.get("format"),
+            "targets": tuple(verify_payload.get("targets", ())),
+        },
+        {
+            "case": "package_writes_target_manifests",
+            "ok": package_exit == 0
+            and package_payload.get("format") == "appgen.release-verifier-report.v1"
+            and tuple(package_payload.get("targets", ())) == ("mobile", "desktop")
+            and evidence_payload.get("format") == "appgen.release-evidence-file.v1"
+            and mobile_manifest.get("format") == "appgen.package-manifest.v1"
+            and desktop_manifest.get("format") == "appgen.package-manifest.v1"
+            and mobile_manifest.get("target") == "mobile"
+            and desktop_manifest.get("target") == "desktop",
+            "exit_code": package_exit,
+            "payload_format": package_payload.get("format"),
+            "targets": tuple(package_payload.get("targets", ())),
+            "artifacts": tuple(Path(item.get("path", "")).name for item in package_payload.get("written_artifacts", ())),
+            "mobile_manifest": mobile_manifest.get("format"),
+            "desktop_manifest": desktop_manifest.get("format"),
+        },
+    )
+    return {
+        "format": "appgen.package-verify-cli-audit.v1",
+        "ok": all(case["ok"] for case in cases),
+        "cases": cases,
+    }
+
+
+def _tooling_audit_package_verify_sample() -> str:
+    return """
+app PackageCliAudit { targets: mobile, desktop }
+
+table Invoice {
+  id: int pk
+  total: decimal
+}
+
+view InvoiceForm for Invoice {
+  Main: id, total
+}
+
+operation SubmitInvoice {
+  draft -> done
+}
+
+menu MainMenu {
+  on Open -> SubmitInvoice
+}
+
+package ReleaseMobile {
+  target: mobile
+  signing: yes
+  offline: yes
+  permission: camera, explained
+  smoke: launch
+}
+
+package ReleaseDesktop {
+  target: desktop
+  format: installer
+  splash: declared
+  menu_ref: MainMenu
+  smoke: launch
+}
+"""
 
 
 def _tooling_audit_package_invalid_target(tmp: Path, source: str) -> dict:
