@@ -2,314 +2,313 @@
 
 ## Purpose
 
-This backlog identifies 50 high-impact, high-value improvements for `dom`. Each item is specific to the domain surface currently declared by the PBC and is intended to move the package beyond world-class breadth toward complete specialist-grade coverage.
+This backlog identifies 50 high-impact, high-value improvements for `dom`. The items are specific to distributed order management: order capture, order lines, channel context, holds, verification, customer/tax/payment projections, fraud screening, pricing handoff, allocation orchestration, fulfillment planning, node selection, split shipments, backorders, substitutions, cancellations, shipment projections, order exceptions, promise forecasting, carbon-aware fulfillment, policy simulation, event reliability, UI workbenches, and agent-assisted order orchestration.
 
 ## Current Domain Evidence Used
 
-- Domain purpose: Order verification, fraud screening, allocation, and fulfillment orchestration.
-- Representative owned tables: `dom_sales_order`, `dom_order_line`, `dom_order_status`, `dom_order_promise`, `dom_customer_projection`, `dom_tax_projection`, `dom_fraud_screen`, `dom_order_verification`, `dom_order_price_component`, `dom_inventory_allocation_projection`, `dom_payment_authorization_projection`, `dom_fulfillment_plan`, ...
-- Representative operations/APIs: `command_dom_orders`, `command_dom_orders_id_verify`, `command_dom_orders_id_price`, `command_dom_orders_id_allocation`, `command_dom_fulfillment_plans`, `command_dom_shipments`, `query_dom_workbench`.
-- Representative events: `OrderCaptured`, `TaxProjectionApplied`, `FraudScreened`, `OrderVerified`, `OrderPriced`, `InventoryAllocationProjected`, `FulfillmentPlanCreated`, `OrderShipped`.
-- Representative advanced capabilities: `event_sourced_order_lifecycle`, `graph_relational_order_topology`, `multi_tenant_order_isolation`, `schema_evolution_resilient_order_schema`, `probabilistic_fraud_allocation_confidence`, `real_time_order_orchestration_analytics`, `counterfactual_sourcing_fulfillment_simulation`, `temporal_promise_demand_forecasting`, `autonomous_order_exception_resolution`, `semantic_order_event_parsing`, ...
+- Domain purpose: order capture, verification, pricing handoff, tax and customer projection use, fraud screening, sourcing, allocation orchestration, fulfillment planning, shipment confirmation projection, exception handling, and order lifecycle visibility.
+- Owned boundary: sales orders, order lines, statuses, notes, holds, promises, channel context, payment projections, customer projections, customer identity projections, tax projections, fraud screens and signals, order verification, price components, discount projections, inventory allocation projections, inventory node projections, payment authorization projections, fulfillment plans and lines, node candidates, reservation projections, split shipments, backorders, substitutions, cancellation requests, shipment projections, shipment-status projections, order exceptions, route selections, risk scores, promise demand forecasts, fulfillment policy simulations, route replay, verification proofs, policy screenings, audit traces, federation projections, carbon fulfillment, fulfillment optimization, node allocation, anomaly signals, fulfillment exposure models, parsed events, rules, parameters, configuration, inbox/outbox, and dead-letter evidence.
+- Existing command/query surface: order capture, tax projection, fraud screening, verification, pricing, allocation, fulfillment plan creation, shipment projection, AppGen-X inbox handling, workbench, rules, parameters, schema extensions, runtime configuration, boundary checks, and release evidence.
+- Existing events and dependencies: emits `OrderCaptured`, `TaxProjectionApplied`, `FraudScreened`, `OrderVerified`, `OrderPriced`, `InventoryAllocationProjected`, `FulfillmentPlanCreated`, and `OrderShipped`; consumes inventory, tax, customer, payment, and shipment events through declared APIs/projections only.
 
 ## 50 Better-Than-World-Class Improvements
 
-### 1. Deep specialist lifecycle semantics for `dom_sales_order`
+### 1. Order capture readiness gate
 
-**Justification:** This owned table is part of the Distributed Order Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Order verification, fraud screening, allocation, and fulfillment orchestration.
+**Justification:** Incomplete captured orders create downstream verification failures, allocation churn, fraud ambiguity, tax errors, and fulfillment exceptions.
 
-**Improvement:** Extend `dom_sales_order` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `sales_order_capture`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add order readiness checks for customer projection freshness, channel, currency, destination, line completeness, requested service level, payment projection, tax readiness, fraud prerequisites, source references, and tenant/entity context. Orders that fail readiness should remain draft or held with clear remediation.
 
-### 2. Deep specialist lifecycle semantics for `dom_order_line`
+### 2. Channel context normalization
 
-**Justification:** This owned table is part of the Distributed Order Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Order verification, fraud screening, allocation, and fulfillment orchestration.
+**Justification:** Marketplace, ecommerce, call center, EDI-style, subscription, store, and service-channel orders carry different promises, constraints, and references.
 
-**Improvement:** Extend `dom_order_line` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `order_line_validation`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Normalize channel context into governed fields for channel type, source system, order intent, customer promise, cutoff, marketplace rules, cancellation rights, return policy, service level, and source reference lineage. Verification and fulfillment planning should cite channel context.
 
-### 3. Deep specialist lifecycle semantics for `dom_order_status`
+### 3. Order line integrity engine
 
-**Justification:** This owned table is part of the Distributed Order Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Order verification, fraud screening, allocation, and fulfillment orchestration.
+**Justification:** Line-level errors in item, quantity, UOM, service level, ship-to, bundle, customization, or eligibility drive costly order exceptions.
 
-**Improvement:** Extend `dom_order_status` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `order_notes`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Validate each order line for item projection eligibility, quantity/UOM, destination restrictions, promised service, bundle/component behavior, substitution allowance, tax readiness, fulfillment constraints, and cancellation/return policy. Store rejected-line reasons explicitly.
 
-### 4. Deep specialist lifecycle semantics for `dom_order_promise`
+### 4. Order status state machine
 
-**Justification:** This owned table is part of the Distributed Order Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Order verification, fraud screening, allocation, and fulfillment orchestration.
+**Justification:** DOM needs deterministic lifecycle transitions across capture, hold, verification, priced, allocated, planned, shipped, backordered, cancelled, and exception states.
 
-**Improvement:** Extend `dom_order_promise` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `order_holds`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Implement a state machine with allowed transitions, command/event source, timestamp, actor, reason, idempotency key, rollback/compensation constraints, and UI-visible status history. Invalid transitions should fail with policy explanations.
 
-### 5. Deep specialist lifecycle semantics for `dom_customer_projection`
+### 5. Hold and release governance
 
-**Justification:** This owned table is part of the Distributed Order Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Order verification, fraud screening, allocation, and fulfillment orchestration.
+**Justification:** Orders can be held for fraud, payment, customer status, tax readiness, inventory confidence, address issues, restricted goods, or manual review.
 
-**Improvement:** Extend `dom_customer_projection` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `order_promising`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add typed holds with owner, severity, source, release criteria, SLA, expiry, override permission, downstream blocks, and audit evidence. Fulfillment planning should not proceed through blocking holds.
 
-### 6. Deep specialist lifecycle semantics for `dom_tax_projection`
+### 6. Customer projection confidence
 
-**Justification:** This owned table is part of the Distributed Order Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Order verification, fraud screening, allocation, and fulfillment orchestration.
+**Justification:** DOM relies on customer facts without owning the customer master, so stale or incomplete projections are operational risk.
 
-**Improvement:** Extend `dom_tax_projection` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `order_channel_context`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Track projection freshness, source event id, customer status, identity confidence, address confidence, restrictions, credit/service eligibility, and privacy flags. Verification should warn or hold when customer projection confidence is below policy.
 
-### 7. Deep specialist lifecycle semantics for `dom_fraud_screen`
+### 7. Customer identity reconciliation
 
-**Justification:** This owned table is part of the Distributed Order Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Order verification, fraud screening, allocation, and fulfillment orchestration.
+**Justification:** Duplicate, ambiguous, or low-confidence customer identities affect fraud, tax, payment, loyalty, and fulfillment decisions.
 
-**Improvement:** Extend `dom_fraud_screen` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `payment_projection`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add identity projection reconciliation with match confidence, competing identities, verified attributes, consent/privacy indicators, and decision impact. The agent should ask for human confirmation before merging or relying on ambiguous identity evidence.
 
-### 8. Deep specialist lifecycle semantics for `dom_order_verification`
+### 8. Tax projection gating
 
-**Justification:** This owned table is part of the Distributed Order Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Order verification, fraud screening, allocation, and fulfillment orchestration.
+**Justification:** Orders should not be verified or priced as complete when tax calculation is missing, stale, or incompatible with destination and line data.
 
-**Improvement:** Extend `dom_order_verification` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `customer_projection`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add tax-ready gates for jurisdiction, address, taxable lines, exemption projection, tax amount, calculation timestamp, source event, and recalculation triggers. Emit tax projection evidence only through DOM-owned records.
 
-### 9. Deep specialist lifecycle semantics for `dom_order_price_component`
+### 9. Payment authorization projection handling
 
-**Justification:** This owned table is part of the Distributed Order Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Order verification, fraud screening, allocation, and fulfillment orchestration.
+**Justification:** Payment authorization changes fulfillment eligibility, fraud posture, cancellation behavior, and release timing.
 
-**Improvement:** Extend `dom_order_price_component` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `customer_identity_projection`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Track authorization amount, currency, expiry, capture window, partial authorization, payment hold, source event id, stale status, and risk flags. Fulfillment plans should respect authorization validity and warn before expiry.
 
-### 10. Deep specialist lifecycle semantics for `dom_inventory_allocation_projection`
+### 10. Fraud signal fusion
 
-**Justification:** This owned table is part of the Distributed Order Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Order verification, fraud screening, allocation, and fulfillment orchestration.
+**Justification:** Fraud decisions require multiple signals: customer identity, payment, address mismatch, velocity, device/channel hints, high-risk goods, and fulfillment route.
 
-**Improvement:** Extend `dom_inventory_allocation_projection` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `tax_projection`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Fuse fraud signals into explainable screens with score, reason codes, confidence, source projection freshness, review queue, decision evidence, and downstream hold/release actions. Avoid opaque auto-rejection for low-confidence cases.
 
-### 11. Make `command_dom_orders` a complete command lifecycle
+### 11. Fraud review workflow
 
-**Justification:** High-value users need `command_dom_orders` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Manual fraud review must be fast, fair, auditable, and connected to order release or cancellation.
 
-**Improvement:** Implement `command_dom_orders` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `OrderCaptured`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add review states, analyst notes, requested evidence, customer contact outcome, escalation, decision reason, policy version, and release/cancel event effects. UI should show why the order is blocked and what action resolves it.
 
-### 12. Make `command_dom_orders_id_verify` a complete command lifecycle
+### 12. Order verification proof
 
-**Justification:** High-value users need `command_dom_orders_id_verify` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Verification is the key control that an order is valid enough to continue orchestration.
 
-**Improvement:** Implement `command_dom_orders_id_verify` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `TaxProjectionApplied`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Generate a verification proof containing customer, tax, payment, line, fraud, channel, policy, and status checks with pass/fail evidence, projection versions, and hash. Emit `OrderVerified` only when all required gates pass or approved exceptions are present.
 
-### 13. Make `command_dom_orders_id_price` a complete command lifecycle
+### 13. Price component trace
 
-**Justification:** High-value users need `command_dom_orders_id_price` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** DOM must show price, discount, surcharge, tax handoff, and channel promotions without owning every upstream pricing source.
 
-**Improvement:** Implement `command_dom_orders_id_price` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `FraudScreened`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Store price components with source projection, line/order scope, currency, effective date, discount eligibility, override reason, rounding, and event lineage. `OrderPriced` should include a traceable component summary.
 
-### 14. Make `command_dom_orders_id_allocation` a complete command lifecycle
+### 14. Discount and promotion projection governance
 
-**Justification:** High-value users need `command_dom_orders_id_allocation` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Promotions can conflict with channel rules, customer eligibility, margin thresholds, and fulfillment constraints.
 
-**Improvement:** Implement `command_dom_orders_id_allocation` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `OrderVerified`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Track discount projection source, eligibility, exclusions, stacking rules, margin impact, expiry, and stale status. Hold pricing when projection evidence contradicts order line or channel context.
 
-### 15. Make `command_dom_fulfillment_plans` a complete command lifecycle
+### 15. Allocation confidence model
 
-**Justification:** High-value users need `command_dom_fulfillment_plans` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Allocation projections from inventory may be uncertain because of reservations, holds, in-transit stock, node capacity, or stale events.
 
-**Improvement:** Implement `command_dom_fulfillment_plans` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `OrderPriced`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Store allocation confidence by line, node, lot/serial where applicable, reservation, freshness, and risk. Fulfillment planning should distinguish hard allocation, soft promise, and tentative availability.
 
-### 16. Make `command_dom_shipments` a complete command lifecycle
+### 16. Inventory node candidate scoring
 
-**Justification:** High-value users need `command_dom_shipments` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Fulfillment node choice drives cost, speed, carbon, customer promise, split shipments, and stockout risk.
 
-**Improvement:** Implement `command_dom_shipments` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `InventoryAllocationProjected`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Score node candidates by allocation confidence, distance, service level, capacity, cutoff, carrier availability projection, margin, carbon, risk, inventory freshness, and channel policy. Explain rejected nodes.
 
-### 17. Turn `query_dom_workbench` into an expert read-model experience
+### 17. Fulfillment policy compiler
 
-**Justification:** Domain experts rely on `query_dom_workbench` for operational decisions; a world-class read path must be explainable, filterable, temporally accurate, and safe under stale projections.
+**Justification:** Fulfillment decisions combine many policies: sourcing priority, split eligibility, substitutions, backorders, cancellation, service level, margin, and customer promise.
 
-**Improvement:** Build `query_dom_workbench` as a dedicated query contract with projection freshness, filter validation, pagination, saved views, temporal/as-of reads, row-level permissions, traceable source records, and UI drilldowns. Add agent explanations for how the answer was produced, what events like `FulfillmentPlanCreated` last changed the projection, and where uncertainty or missing data affects confidence.
+**Improvement:** Compile fulfillment rules into deterministic policy versions with eligibility checks, ranking formulas, override routes, and simulation support. Fulfillment plans should cite the policy hash.
 
-### 18. Make `command_dom_orders` a complete command lifecycle
+### 18. Split shipment governance
 
-**Justification:** High-value users need `command_dom_orders` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Split shipments can save promises but increase freight cost, carbon, customer friction, and exception risk.
 
-**Improvement:** Implement `command_dom_orders` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `OrderShipped`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add split shipment rules for maximum splits, line compatibility, customer/channel permission, cost threshold, service promise, carbon impact, packaging constraints, and approval requirements. UI should show split tradeoffs before confirmation.
 
-### 19. Make `command_dom_orders_id_verify` a complete command lifecycle
+### 19. Backorder lifecycle
 
-**Justification:** High-value users need `command_dom_orders_id_verify` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Backorders require active management, customer visibility, allocation refresh, cancellation rules, and promise updates.
 
-**Improvement:** Implement `command_dom_orders_id_verify` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `OrderCaptured`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Model backorder states, reason, expected supply projection, refresh cadence, customer notification projection, cancellation eligibility, partial release, substitution offers, and aging escalation. Backorders should not be passive notes.
 
-### 20. Make `command_dom_orders_id_price` a complete command lifecycle
+### 20. Substitution eligibility engine
 
-**Justification:** High-value users need `command_dom_orders_id_price` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Substitutions can satisfy demand but may violate customer preference, product compatibility, compliance, margin, or channel rules.
 
-**Improvement:** Implement `command_dom_orders_id_price` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `TaxProjectionApplied`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add substitution eligibility with equivalent items, customer/channel consent, price impact, tax impact, fulfillment feasibility, risk, and approval path. The order workbench should show why each substitute is accepted or rejected.
 
-### 21. Operationalize `event_sourced_order_lifecycle` as a governed decision system
+### 21. Cancellation request workflow
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Distributed Order Management and measurably improves conversion quality without hiding assumptions.
+**Justification:** Cancellation depends on order status, payment authorization, allocation, fulfillment progress, shipment state, customer rights, and channel policy.
 
-**Improvement:** Promote `event_sourced_order_lifecycle` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `conversion_quality`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add cancellation request states, eligibility checks, line/partial cancellation, reversal events, refund/payment projection requirements, fulfillment stop signal, reason codes, and customer-impact evidence.
 
-### 22. Operationalize `graph_relational_order_topology` as a governed decision system
+### 22. Promise date governance
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Distributed Order Management and measurably improves fulfillment accuracy without hiding assumptions.
+**Justification:** Promise dates are customer-facing commitments built from inventory, node, carrier, calendar, and policy assumptions.
 
-**Improvement:** Promote `graph_relational_order_topology` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `fulfillment_accuracy`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Store promise date derivation with allocation, node, cutoff, service level, route projection, calendar, uncertainty, and customer/channel terms. Recalculate and explain promise changes when projections update.
 
-### 23. Operationalize `multi_tenant_order_isolation` as a governed decision system
+### 23. Demand and promise forecasting
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Distributed Order Management and measurably improves customer health without hiding assumptions.
+**Justification:** DOM should anticipate promise pressure, not only react after allocation fails.
 
-**Improvement:** Promote `multi_tenant_order_isolation` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `customer_health`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Forecast demand and promise risk by channel, item, node, region, service level, promotion, and seasonality. Use forecasts to warn about future backorders, split pressure, and fulfillment exposure.
 
-### 24. Operationalize `schema_evolution_resilient_order_schema` as a governed decision system
+### 24. Fulfillment plan lifecycle
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Distributed Order Management and measurably improves margin impact without hiding assumptions.
+**Justification:** Fulfillment plans evolve as allocation, payment, customer, shipment, and inventory projections change.
 
-**Improvement:** Promote `schema_evolution_resilient_order_schema` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `margin_impact`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Model plan states from proposed to committed, partially released, replanned, shipped, failed, cancelled, and closed. Store plan line dependencies, node candidate evidence, reservation projection, route selection, and replan reason.
 
-### 25. Operationalize `probabilistic_fraud_allocation_confidence` as a governed decision system
+### 25. Route selection replay
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Distributed Order Management and measurably improves order captured throughput without hiding assumptions.
+**Justification:** DOM decisions must be reconstructable when routing, node selection, or shipment projection changes.
 
-**Improvement:** Promote `probabilistic_fraud_allocation_confidence` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `order_captured_throughput`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add route replay that rebuilds fulfillment decisions from the same projections and policy versions, showing deterministic versus changed outcomes. Use replay for audits, model drift, and exception diagnosis.
 
-### 26. Operationalize `real_time_order_orchestration_analytics` as a governed decision system
+### 26. Shipment projection reconciliation
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Distributed Order Management and measurably improves tax projection applied throughput without hiding assumptions.
+**Justification:** DOM does not own transportation state but must understand shipment progress and customer impact.
 
-**Improvement:** Promote `real_time_order_orchestration_analytics` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `tax_projection_applied_throughput`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Reconcile `ShipmentDelivered` and shipment status projections to order lines, split shipments, promises, exceptions, and close criteria. Flag delivered-with-exception, partial delivery, stale status, and missing proof.
 
-### 27. Operationalize `counterfactual_sourcing_fulfillment_simulation` as a governed decision system
+### 27. Order exception taxonomy
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Distributed Order Management and measurably improves conversion quality without hiding assumptions.
+**Justification:** Generic exceptions hide root causes and make automation unsafe.
 
-**Improvement:** Promote `counterfactual_sourcing_fulfillment_simulation` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `conversion_quality`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Define order exceptions for missing projection, failed verification, fraud review, payment expiry, tax mismatch, allocation gap, node infeasible, split rejected, backorder aging, substitution conflict, cancellation conflict, shipment delay, and delivery discrepancy. Each should define owner, SLA, severity, recovery action, and closure evidence.
 
-### 28. Operationalize `temporal_promise_demand_forecasting` as a governed decision system
+### 28. Exception resolution recommender
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Distributed Order Management and measurably improves fulfillment accuracy without hiding assumptions.
+**Justification:** Order orchestration teams need recommended next actions that are safe and explainable.
 
-**Improvement:** Promote `temporal_promise_demand_forecasting` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `fulfillment_accuracy`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Generate recommendations such as refresh projection, release hold, reprice, request payment reauthorization, reallocate, split, substitute, backorder, cancel, or escalate. Each recommendation should show confidence, risk, event effects, and required permission.
 
-### 29. Operationalize `autonomous_order_exception_resolution` as a governed decision system
+### 29. Order anomaly detection
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Distributed Order Management and measurably improves customer health without hiding assumptions.
+**Justification:** Unusual order behavior can indicate fraud, integration defects, pricing errors, abuse, or operational failure.
 
-**Improvement:** Promote `autonomous_order_exception_resolution` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `customer_health`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Detect anomalies in order velocity, line mix, price components, repeated cancellations, projection churn, allocation failures, status loops, manual overrides, and channel patterns. Route anomalies to review with non-accusatory explanations.
 
-### 30. Operationalize `semantic_order_event_parsing` as a governed decision system
+### 30. Stochastic fulfillment exposure
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Distributed Order Management and measurably improves margin impact without hiding assumptions.
+**Justification:** Order risk is probabilistic across fraud, payment, allocation, fulfillment, shipment, cancellation, and delivery.
 
-**Improvement:** Promote `semantic_order_event_parsing` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `margin_impact`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Model fulfillment exposure distributions by order, line, channel, node, region, service level, and customer segment. Surface likely cost, promise, cancellation, and exception exposure with mitigation options.
 
-### 31. Create simulation-grade governance for `DOM_DATABASE_URL` and `DOM_DATABASE_URL`
+### 31. Carbon-aware fulfillment planning
 
-**Justification:** Complete Distributed Order Management coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Order fulfillment choices affect distance, packaging, split shipments, carrier mode, inventory positioning, and returns risk.
 
-**Improvement:** Add a policy cockpit where `DOM_DATABASE_URL` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `DOM_DATABASE_URL` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add carbon metrics to node selection, split decisions, backorder/substitution options, and route selection. Show service-cost-carbon tradeoffs rather than silently optimizing emissions.
 
-### 32. Create simulation-grade governance for `DOM_EVENT_TOPIC` and `DOM_EVENT_TOPIC`
+### 32. Fulfillment optimization with constraints
 
-**Justification:** Complete Distributed Order Management coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** DOM must optimize across customer promise, availability, margin, cost, carbon, risk, channel policy, and operational capacity.
 
-**Improvement:** Add a policy cockpit where `DOM_EVENT_TOPIC` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `DOM_EVENT_TOPIC` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Implement optimization with hard constraints, soft preferences, sensitivity analysis, fallback plans, and explanation. Users should see why a plan is best and which constraint is binding.
 
-### 33. Create simulation-grade governance for `DOM_RETRY_LIMIT` and `DOM_RETRY_LIMIT`
+### 33. Mechanism-design allocation across channels
 
-**Justification:** Complete Distributed Order Management coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Scarce inventory allocation can unfairly favor one channel, customer type, or region if the mechanism is hidden.
 
-**Improvement:** Add a policy cockpit where `DOM_RETRY_LIMIT` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `DOM_RETRY_LIMIT` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add allocation mechanisms for fairness, service priority, margin, customer tier, contractual commitments, emergency demand, and channel protection. Simulate allocation outcomes and explain tradeoffs.
 
-### 34. Create simulation-grade governance for `DOM_DATABASE_URL` and `DOM_DATABASE_URL`
+### 34. Order federation without shared tables
 
-**Justification:** Complete Distributed Order Management coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** DOM composes with commerce, customer, tax, payment, inventory, WMS, transportation, finance, and audit packages but must not read their tables.
 
-**Improvement:** Add a policy cockpit where `DOM_DATABASE_URL` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `DOM_DATABASE_URL` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add federation projections with freshness and boundary evidence for all external facts. Static and runtime checks should reject direct foreign-table access and prove projection-only dependencies.
 
-### 35. Create simulation-grade governance for `DOM_EVENT_TOPIC` and `DOM_EVENT_TOPIC`
+### 35. AppGen-X event reliability cockpit
 
-**Justification:** Complete Distributed Order Management coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** DOM decisions depend on consumed inventory, tax, customer, payment, and shipment events and emitted order lifecycle events.
 
-**Improvement:** Add a policy cockpit where `DOM_EVENT_TOPIC` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `DOM_EVENT_TOPIC` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add inbox/outbox/dead-letter panels with idempotency keys, duplicates, retry schedule, handler version, payload lineage, projection freshness, replay eligibility, and downstream event effects. Warn users when stale projections affect decisions.
 
-### 36. Upgrade `DomWorkbench` into a full specialist command center
+### 36. Order audit trace and hash chain
 
-**Justification:** The PBC UI must expose the complete Distributed Order Management surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Orders require reconstruction across customer-facing, financial, fraud, fulfillment, and shipment decisions.
 
-**Improvement:** Expand `DomWorkbench` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Hash-chain capture, projection updates, fraud screens, verification, pricing, allocation, plans, holds, exceptions, cancellations, shipment projection, agent previews, and emitted events. UI timelines should support temporal audit.
 
-### 37. Upgrade `DomDetail` into a full specialist command center
+### 37. Zero-knowledge order verification proof
 
-**Justification:** The PBC UI must expose the complete Distributed Order Management surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Internal or external parties may need proof that an order passed controls without seeing customer, payment, or fraud details.
 
-**Improvement:** Expand `DomDetail` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Generate cryptographic verification proofs for required order controls and projection freshness. Provide verification APIs that prove pass/fail status and timestamp while redacting protected payload fields.
 
-### 38. Upgrade `DomWorkbench` into a full specialist command center
+### 38. Dynamic order policy screening
 
-**Justification:** The PBC UI must expose the complete Distributed Order Management surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Order acceptance and fulfillment depend on policies for channel, customer, goods, destination, payment, fraud, tax, and fulfillment risk.
 
-**Improvement:** Expand `DomWorkbench` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Screen capture, verify, price, allocate, plan, cancel, ship projection, and exception closure actions. Store policy version, attributes evaluated, decision, explanation, and override path.
 
-### 39. Upgrade `DomDetail` into a full specialist command center
+### 39. Rule and parameter simulation
 
-**Justification:** The PBC UI must expose the complete Distributed Order Management surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Fraud thresholds, split limits, allocation confidence, partial fulfillment, promise horizon, and exception SLAs materially alter order behavior.
 
-**Improvement:** Expand `DomDetail` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Simulate rule and parameter changes against historical and active orders, showing conversion, holds, fraud reviews, allocation gaps, split shipments, backorders, cancellations, carbon, exceptions, and dead-letter volume.
 
-### 40. Upgrade `DomWorkbench` into a full specialist command center
+### 40. Order MLOps governance
 
-**Justification:** The PBC UI must expose the complete Distributed Order Management surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Fraud, cancellation, allocation confidence, promise risk, and anomaly models influence customer outcomes and operational fairness.
 
-**Improvement:** Expand `DomWorkbench` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add model registry, feature lineage, training windows, approval status, explainability, drift monitoring, fairness checks, rollback, and release evidence for every model used in order decisions.
 
-### 41. Prove cross-PBC federation for `POST /dom/orders` and `InventoryAllocated`
+### 41. Multi-channel and tenant isolation
 
-**Justification:** Distributed Order Management must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** DOM handles sensitive customer, payment projection, fraud, price, and fulfillment data across tenants, entities, brands, and channels.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /dom/orders` and consumed event `InventoryAllocated` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Enforce isolation in orders, projections, plans, exceptions, events, UI filters, saved views, and agent previews. Release evidence should prove no cross-tenant projection leakage.
 
-### 42. Prove cross-PBC federation for `POST /dom/orders/{id}/verify` and `TaxCalculated`
+### 42. Order workbench coverage
 
-**Justification:** Distributed Order Management must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Operations teams need full UI access to the order orchestration surface, not hidden backend commands.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /dom/orders/{id}/verify` and consumed event `TaxCalculated` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Expand UI into capture queue, validation board, projection freshness, fraud review, verification proof, pricing trace, allocation board, fulfillment planner, split/backorder/substitution console, cancellation queue, shipment projection, exceptions, simulations, controls, rules, parameters, configuration, event reliability, and agent panels.
 
-### 43. Prove cross-PBC federation for `POST /dom/orders/{id}/price` and `CustomerUpdated`
+### 43. Agent-safe order document intake
 
-**Justification:** Distributed Order Management must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** The DOM chatbot should parse customer instructions, order imports, marketplace messages, cancellation notes, and exception documents without unsafe writes.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /dom/orders/{id}/price` and consumed event `CustomerUpdated` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Add intake skills that extract candidate order facts, map them to DOM-owned tables, validate permissions/rules/projections, reject foreign-table mutations, and produce side-effect-free previews with confidence, risks, confirmations, and expected AppGen-X events.
 
-### 44. Prove cross-PBC federation for `POST /dom/orders/{id}/allocation` and `PaymentAuthorized`
+### 44. Agent-safe orchestration planning
 
-**Justification:** Distributed Order Management must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** AI can help resolve order problems only if it respects state, projection freshness, and human confirmation gates.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /dom/orders/{id}/allocation` and consumed event `PaymentAuthorized` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Require agent plans for verify, price, allocate, fulfill, split, substitute, backorder, cancel, and exception closure to list command, permission, owned tables, idempotency key, emitted event, affected lines, rollback limits, customer impact, and human approval.
 
-### 45. Temporal reconstruction and bitemporal audit for Distributed Order Management
+### 45. Customer communication readiness
 
-**Justification:** Regulated and operationally complex domains need to answer what was known, valid, processed, and visible at any point in time.
+**Justification:** DOM decisions often require customer-facing communication, but the PBC must separate orchestration from external messaging ownership.
 
-**Improvement:** Add transaction-time, valid-time, and processing-time fields to core records, temporal query APIs, projection rebuild tooling, and UI time travel so specialists can reconstruct decisions, reports, and automation outcomes.
+**Improvement:** Generate communication-ready evidence for promise changes, backorders, substitutions, cancellations, fraud review, and delivery exceptions with approved facts, confidence, and channel constraints. Emit or expose this as a projection, not direct foreign messaging table writes.
 
-### 46. Bulk operations and migration-grade controls for Distributed Order Management
+### 46. Chaos-engineered orchestration tolerance
 
-**Justification:** World-class deployments must handle imports, mass corrections, high-volume operating days, and cutovers without bypassing governance.
+**Justification:** Order orchestration must survive missing projections, duplicate events, stale payments, failed tax calculations, delayed inventory allocation, and shipment event replay.
 
-**Improvement:** Add staged bulk upload, duplicate detection, chunked validation, approval sampling, partial failure handling, retry dashboards, reconciliation summaries, and agent-generated remediation plans for large batches.
+**Improvement:** Add resilience drills for projection outage, duplicate event, dead-letter replay, payment expiry, tax delay, allocation reversal, fulfillment replan, and shipment correction. Store drill evidence in release gates.
 
-### 47. Specialist edge-case playbooks for Distributed Order Management
+### 47. Continuous order control testing
 
-**Justification:** Rare cases often carry the highest financial, legal, safety, service, or compliance risk.
+**Justification:** Controls should run continuously across capture, verification, pricing, allocation, fulfillment, cancellation, shipment projection, and event handling.
 
-**Improvement:** Create a playbook catalog with detection rules, required evidence, escalation paths, fallback actions, owner roles, and release-audited tests for high-severity edge cases and exception queues.
+**Improvement:** Add assertions for unverified fulfillment, stale tax projection, expired payment authorization, fraud hold bypass, invalid status transition, over-split order, unapproved substitution, unauthorized cancellation, dead-letter aging, and agent-preview bypass.
 
-### 48. Pre-mutation simulation and blast-radius analysis for Distributed Order Management
+### 48. Order close and lifecycle completeness
 
-**Justification:** Users should understand consequences before committing irreversible, customer-visible, operationally disruptive, or financially material changes.
+**Justification:** Orders should close only when all lines, payments, shipments, exceptions, cancellations, and projections reconcile to a final state.
 
-**Improvement:** Add what-if simulation for every material command, showing impacted records, emitted events, dependent projections, rule outcomes, approvals, downstream PBC dependencies, and rollback limits.
+**Improvement:** Add close criteria for shipped/delivered lines, cancelled lines, backorder resolution, payment projection status, shipment projection, open exceptions, emitted events, and audit trace completeness. Workbench should surface orders stuck before close.
 
-### 49. Continuous control testing and operational assurance for Distributed Order Management
+### 49. DOM readiness score
 
-**Justification:** Better-than-world-class PBCs prove controls continuously, not only at release or during periodic audits.
+**Justification:** Users need an evidence-backed view of whether DOM is ready for production order orchestration.
 
-**Improvement:** Add executable control assertions, sampled evidence checks, anomaly thresholds, control-owner dashboards, breach/recovery events, and release gates that fail when domain controls lose evidence.
+**Improvement:** Compute readiness from channel setup, status policies, projection freshness, fraud controls, verification proof, price trace, allocation confidence, fulfillment rules, exception workflows, UI coverage, event reliability, boundary proof, control assertions, model governance, and agent safety.
 
-### 50. Human-in-the-loop domain agent execution for Distributed Order Management
+### 50. End-to-end order orchestration proof
 
-**Justification:** The PBC chatbot must help specialists perform real work while preventing unsafe autonomous mutation.
+**Justification:** A complete DOM PBC must prove it can coordinate the full order lifecycle while respecting package boundaries.
 
-**Improvement:** Add domain-specific skills, document parsing, task planning, CRUD previews, confidence/risk scoring, confirmation gates, redaction, policy explanations, and post-action evidence packets for every supported command and query.
+**Improvement:** Add an executable proof scenario covering order capture, customer/tax/payment projections, fraud screen, verification proof, pricing, inventory allocation projection, fulfillment plan, split/backorder decision where applicable, shipment projection, emitted `OrderShipped`, audit trace, UI evidence, controls, and agent explanation.
