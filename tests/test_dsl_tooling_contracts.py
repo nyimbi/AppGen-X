@@ -1591,6 +1591,22 @@ def test_appgen_package_subcommand_materializes_release_evidence(tmp_path: Path)
         text=True,
         capture_output=True,
     )
+    invalid_target = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pyAppGen",
+            "package",
+            str(source_path),
+            "--target",
+            "banana",
+            "--json",
+        ],
+        check=False,
+        cwd=Path(__file__).resolve().parents[1],
+        text=True,
+        capture_output=True,
+    )
 
     assert result.returncode == 0, result.stderr
     payload = json.loads(result.stdout)
@@ -1602,6 +1618,9 @@ def test_appgen_package_subcommand_materializes_release_evidence(tmp_path: Path)
     assert mobile_manifest_path.exists()
     assert json.loads(evidence_path.read_text(encoding="utf-8"))["reports"]["mobile"]["format"] == "appgen.mobile-verifier.v1"
     assert json.loads(mobile_manifest_path.read_text(encoding="utf-8"))["smoke_entrypoint"] == "mobile.launch"
+    assert invalid_target.returncode == 2
+    assert "invalid choice" in invalid_target.stderr
+    assert "Traceback" not in invalid_target.stderr
 
 
 def test_release_verifier_reports_blocking_gaps_for_missing_mobile_package_metadata() -> None:

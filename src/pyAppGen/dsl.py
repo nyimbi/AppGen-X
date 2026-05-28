@@ -68,6 +68,7 @@ REQUIRED_GRAPH_KINDS = (
 )
 GRAPH_TEXT_FORMATS = ("json", "mermaid", "dot")
 SUPPORTED_DATABASE_BACKENDS = ("postgresql", "mysql", "mariadb")
+RELEASE_TARGET_CHOICES = ("web", "mobile", "desktop", "pbc", "deployment", "all")
 REQUIRED_MIGRATION_DETECTIONS = (
     "added_table",
     "dropped_table",
@@ -1252,12 +1253,12 @@ def _dsl_tooling_cli_impl(argv: Iterable[str] | None = None) -> int:
 
     verify_parser = subparsers.add_parser("verify")
     verify_parser.add_argument("path")
-    verify_parser.add_argument("--target", action="append", default=[])
+    verify_parser.add_argument("--target", action="append", default=[], choices=RELEASE_TARGET_CHOICES)
     verify_parser.add_argument("--json", action="store_true")
 
     package_parser = subparsers.add_parser("package")
     package_parser.add_argument("path")
-    package_parser.add_argument("--target", action="append", default=[])
+    package_parser.add_argument("--target", action="append", default=[], choices=RELEASE_TARGET_CHOICES)
     package_parser.add_argument("--out")
     package_parser.add_argument("--json", action="store_true")
 
@@ -2032,6 +2033,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             output_dir=Path(tmp) / "warning-allowed",
             allow_warnings=True,
         )
+        package_invalid_target = _tooling_audit_package_invalid_target(Path(tmp), source)
 
     diagnostics = diagnostic_catalog_dsl()
     diagnostic_fixtures = diagnostic_fixture_audit_dsl()
@@ -2192,6 +2194,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             "package_and_release_verifiers",
             release["ok"]
             and package["ok"]
+            and package_invalid_target["ok"]
             and "appgen-release-evidence.json" in package_artifact_names
             and {
                 "appgen-package-web.json",
@@ -2203,7 +2206,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             <= set(package_artifact_names),
             "Release verifier and package command materialize target evidence for web, mobile, desktop, PBC, and deployment targets.",
             "docs/tooling.md#package-and-verifier-tooling",
-            {"release": release.get("format"), "artifacts": package_artifact_names},
+            {"release": release.get("format"), "artifacts": package_artifact_names, "invalid_target": package_invalid_target},
         ),
         _tooling_audit_check(
             "pbc_manifest_catalog_commands",
@@ -2727,6 +2730,27 @@ def _tooling_audit_designer_sync_cli(tmp: Path, source: str) -> dict:
         "valid_round_trip": valid_payload.get("visual_edit", {}).get("round_trip_ok"),
         "invalid_exit": invalid_exit,
         "invalid_stderr": invalid_stderr.strip(),
+    }
+
+
+def _tooling_audit_package_invalid_target(tmp: Path, source: str) -> dict:
+    source_path = tmp / "package-invalid-target.appgen"
+    source_path.write_text(source, encoding="utf-8")
+    output = io.StringIO()
+    error = io.StringIO()
+    exit_code = 0
+    with contextlib.redirect_stdout(output), contextlib.redirect_stderr(error):
+        try:
+            exit_code = dsl_tooling_cli(("package", str(source_path), "--target", "banana", "--json"))
+        except SystemExit as exc:
+            exit_code = int(exc.code or 0)
+    stderr = error.getvalue()
+    return {
+        "format": "appgen.package-invalid-target-audit.v1",
+        "ok": exit_code == 2 and "invalid choice" in stderr and "Traceback" not in stderr,
+        "exit_code": exit_code,
+        "stderr": stderr.strip(),
+        "stdout": output.getvalue().strip(),
     }
 
 

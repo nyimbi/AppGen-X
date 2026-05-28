@@ -649,6 +649,9 @@ appgen package app.appgen --target mobile --out dist
 
 Runs package validation, signing posture checks, release evidence generation,
 and target-specific smoke checks.
+`--target` accepts only `web`, `mobile`, `desktop`, `pbc`, `deployment`, or
+`all`; invalid package targets are CLI configuration errors and return exit
+code `2`.
 
 When `--out` is provided, the command writes `appgen-release-evidence.json`
 plus one `appgen-package-<target>.json` manifest per selected target. These
