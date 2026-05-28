@@ -1037,7 +1037,7 @@ def dsl_tooling_cli(argv: Iterable[str] | None = None) -> int:
             return 1
         return 0 if not any(item["severity"] == "error" for item in report["diagnostics"]) else 1
     if args.command == "validate":
-        report = validate_report_dsl(source, source_name=str(path))
+        report = validate_report_dsl(source, source_name=str(path), targets=_parse_cli_targets(args.targets))
         _emit_tooling_payload(report, as_json=args.json)
         return 0 if report["ok"] else 1
     if args.command == "generate":
@@ -1275,22 +1275,48 @@ def format_report_dsl(
     return payload
 
 
-def validate_report_dsl(text: str, *, source_name: str | None = None) -> dict:
+def validate_report_dsl(
+    text: str,
+    *,
+    source_name: str | None = None,
+    targets: Iterable[str] | None = None,
+) -> dict:
     """Return a generator-readiness validation contract without writing files."""
     lint = lint_report_dsl(text, source_name=source_name)
     semantic = semantic_model_dsl(text, source_name=source_name)
+    requested_targets, unknown_targets = _normalize_requested_validation_targets(targets)
+    app_targets = tuple(semantic.get("app", {}).get("targets", ()))
+    missing_targets = tuple(target for target in requested_targets if target not in app_targets)
+    target_diagnostics = _validation_target_diagnostics(
+        text,
+        requested_targets=requested_targets,
+        unknown_targets=unknown_targets,
+        missing_targets=missing_targets,
+        app_targets=app_targets,
+    )
     checks = (
         {"check": "lint", "ok": lint["ok"]},
         {"check": "semantic_model", "ok": semantic["ok"]},
         {"check": "has_tables", "ok": bool(semantic.get("tables"))},
         {"check": "view_bindings", "ok": not any(item["code"] in {"AGX0303", "AGX0402"} for item in lint["diagnostics"])},
         {"check": "handler_targets", "ok": not any(item["code"] == "AGX0403" for item in lint["diagnostics"])},
+        {
+            "check": "target_compatibility",
+            "ok": not unknown_targets and not missing_targets,
+            "requested_targets": requested_targets,
+            "app_targets": app_targets,
+            "unknown_targets": unknown_targets,
+            "missing_targets": missing_targets,
+        },
     )
     return {
         "format": "appgen.validate-report.v1",
         "source": source_name,
         "ok": all(check["ok"] for check in checks),
+        "requested_targets": requested_targets,
+        "app_targets": app_targets,
         "checks": checks,
+        "diagnostics": tuple(lint["diagnostics"]) + target_diagnostics,
         "lint": lint,
         "semantic_model": semantic,
     }
@@ -1308,7 +1334,7 @@ def generate_report_dsl(
     source = text or ""
     output_path = Path(output_dir)
     requested_targets = tuple(targets or ())
-    validation = validate_report_dsl(source, source_name=source_name)
+    validation = validate_report_dsl(source, source_name=source_name, targets=requested_targets)
     lint = validation["lint"]
     errors = tuple(item for item in lint["diagnostics"] if item["severity"] == "error")
     warnings = tuple(item for item in lint["diagnostics"] if item["severity"] == "warning")
@@ -1367,6 +1393,45 @@ def generate_report_dsl(
         "diagnostics": tuple(lint["diagnostics"]),
         "blocking_gaps": () if manifest_path.exists() else ("manifest_missing",),
     }
+
+
+def _normalize_requested_validation_targets(targets: Iterable[str] | None) -> tuple[tuple[str, ...], tuple[str, ...]]:
+    raw_targets = tuple(str(target).strip() for target in (targets or ()) if str(target).strip())
+    if not raw_targets:
+        return (), ()
+    normalized, unknown = normalize_platform_targets(raw_targets, default=())
+    return tuple(dict.fromkeys(normalized)), tuple(dict.fromkeys(unknown))
+
+
+def _validation_target_diagnostics(
+    source: str,
+    *,
+    requested_targets: tuple[str, ...],
+    unknown_targets: tuple[str, ...],
+    missing_targets: tuple[str, ...],
+    app_targets: tuple[str, ...],
+) -> tuple[dict, ...]:
+    diagnostics = []
+    if unknown_targets:
+        diagnostics.append(
+            _spec_diagnostic(
+                source,
+                "AGX0802",
+                "error",
+                f"Unknown validation targets: {', '.join(unknown_targets)}.",
+            )
+        )
+    if missing_targets:
+        diagnostics.append(
+            _spec_diagnostic(
+                source,
+                "AGX0802",
+                "error",
+                "Requested validation targets are not declared by the app: "
+                f"{', '.join(missing_targets)}. Declared targets: {', '.join(app_targets) or 'none'}.",
+            )
+        )
+    return tuple(diagnostics)
 
 
 def doctor_report_dsl() -> dict:
@@ -2125,6 +2190,12 @@ def _parse_lsp_position(value: str | None) -> dict | None:
     if not match:
         return None
     return {"line": int(match.group("line")), "character": int(match.group("char"))}
+
+
+def _parse_cli_targets(value: str | None) -> tuple[str, ...]:
+    if not value:
+        return ()
+    return tuple(item.strip() for item in re.split(r"[,\s]+", value) if item.strip())
 
 
 def _lsp_diagnostic(diagnostic: dict) -> dict:

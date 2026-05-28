@@ -527,6 +527,11 @@ appgen validate app.appgen --targets web,mobile,desktop --json
 ```
 
 Runs lint plus generator-readiness checks without writing generated code.
+Requested `--targets` are normalized with the same platform target policy as
+the app declaration. Validation fails with `AGX0802` when a requested target is
+unknown or is not declared by `app ... { targets: ... }`, and the
+`appgen.validate-report.v1` payload includes `requested_targets`, `app_targets`,
+and a `target_compatibility` check.
 
 ### `appgen generate`
 

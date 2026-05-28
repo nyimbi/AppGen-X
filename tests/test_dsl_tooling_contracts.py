@@ -204,15 +204,59 @@ def test_appgen_lint_subcommand_accepts_directory_input(tmp_path: Path) -> None:
 
 def test_format_validate_and_graph_reports_follow_tooling_contracts() -> None:
     formatted = format_report_dsl(TOOLING_SAMPLE, source_name="finance.appgen")
-    validation = validate_report_dsl(formatted["text"], source_name="finance.appgen")
+    validation = validate_report_dsl(formatted["text"], source_name="finance.appgen", targets=("web", "mobile"))
     graph = graph_report_dsl(formatted["text"], source_name="finance.appgen", kind="er")
 
     assert formatted["format"] == "appgen.format-result.v1"
     assert formatted["idempotent"] is True
     assert validation["format"] == "appgen.validate-report.v1"
     assert validation["ok"] is True
+    assert validation["requested_targets"] == ("web", "mobile")
+    assert any(check["check"] == "target_compatibility" and check["ok"] for check in validation["checks"])
     assert graph["format"] == "appgen.graph-report.v1"
     assert graph["graph"]["edges"][0]["from"] == "Invoice"
+
+
+def test_validate_report_rejects_unknown_or_undeclared_targets() -> None:
+    source = "app WebOnly { targets: web }\n\ntable Thing { id: int pk }\n"
+
+    missing = validate_report_dsl(source, source_name="web.appgen", targets=("mobile",))
+    unknown = validate_report_dsl(source, source_name="web.appgen", targets=("satellite",))
+
+    assert missing["ok"] is False
+    assert missing["checks"][-1]["missing_targets"] == ("mobile",)
+    assert any(item["code"] == "AGX0802" for item in missing["diagnostics"])
+    assert unknown["ok"] is False
+    assert unknown["checks"][-1]["unknown_targets"] == ("satellite",)
+    assert any("Unknown validation targets" in item["message"] for item in unknown["diagnostics"])
+
+
+def test_appgen_validate_subcommand_enforces_requested_targets(tmp_path: Path) -> None:
+    source_path = tmp_path / "web.appgen"
+    source_path.write_text("app WebOnly { targets: web }\n\ntable Thing { id: int pk }\n", encoding="utf-8")
+
+    ok_result = subprocess.run(
+        [sys.executable, "-m", "pyAppGen", "validate", str(source_path), "--targets", "web", "--json"],
+        check=False,
+        cwd=Path(__file__).resolve().parents[1],
+        text=True,
+        capture_output=True,
+    )
+    bad_result = subprocess.run(
+        [sys.executable, "-m", "pyAppGen", "validate", str(source_path), "--targets", "web,mobile", "--json"],
+        check=False,
+        cwd=Path(__file__).resolve().parents[1],
+        text=True,
+        capture_output=True,
+    )
+
+    assert ok_result.returncode == 0, ok_result.stderr
+    assert bad_result.returncode == 1, bad_result.stderr
+    ok_payload = json.loads(ok_result.stdout)
+    bad_payload = json.loads(bad_result.stdout)
+    assert ok_payload["requested_targets"] == ["web"]
+    assert bad_payload["requested_targets"] == ["web", "mobile"]
+    assert bad_payload["checks"][-1]["missing_targets"] == ["mobile"]
 
 
 def test_formatter_preserves_comments_and_orders_field_modifiers() -> None:
