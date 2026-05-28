@@ -1,315 +1,314 @@
-# Headless Cart and Checkout Processing PBC Improvement Backlog
+# Checkout Processing PBC Improvement Backlog
 
 ## Purpose
 
-This backlog identifies 50 high-impact, high-value improvements for `checkout_processing`. Each item is specific to the domain surface currently declared by the PBC and is intended to move the package beyond world-class breadth toward complete specialist-grade coverage.
+This backlog identifies 50 high-impact, high-value improvements for `checkout_processing`. The items are specific to headless cart and checkout orchestration: carts, cart lines, checkout sessions, promotion redemptions, pricing handoffs, tax handoffs, inventory reservation handoffs, payment intent handoffs, risk screens, address validation, shipping options, completion readiness, abandonment, exceptions, rules, parameters, configuration, AppGen-X event reliability, UI workbenches, and agent-assisted checkout operations.
 
 ## Current Domain Evidence Used
 
-- Domain purpose: Cart state, pricing, promotions, coupons, and checkout persistence.
-- Representative owned tables: `checkout_processing_cart`, `checkout_processing_cart_line`, `checkout_processing_checkout_session`, `checkout_processing_promotion_redemption`, `checkout_processing_checkout_pricing_handoff`, `checkout_processing_checkout_tax_handoff`, `checkout_processing_checkout_inventory_reservation_handoff`, `checkout_processing_checkout_payment_intent_handoff`, `checkout_processing_checkout_risk_screen`, `checkout_processing_checkout_address_validation`, `checkout_processing_checkout_rule`, `checkout_processing_checkout_parameter`, ...
-- Representative operations/APIs: `command_carts`, `command_cart_lines`, `command_checkout`, `command_coupons`, `command_inventory_confirmations`, `command_payment_authorizations`, `command_payment_captures`, `consume_checkout_events`, `query_checkout_processing_workbench`.
-- Representative events: `OrderPriced`, `CheckoutCompleted`.
-- Representative advanced capabilities: `event_sourced_checkout_lifecycle`, `graph_relational_cart_topology`, `multi_tenant_checkout_isolation`, `schema_evolution_resilient_checkout_schema`, `probabilistic_conversion_scoring`, `probabilistic_checkout_risk_scoring`, `real_time_checkout_analytics`, `counterfactual_promotion_fulfillment_simulation`, `temporal_abandonment_forecasting`, `autonomous_checkout_exception_resolution`, ...
+- Domain purpose: `checkout_processing` owns cart state, session lifecycle, promotion redemption, pricing/tax/inventory/payment/risk handoffs, address validation, completion events, checkout rules, parameters, configuration, inbox/outbox, and workbench evidence.
+- Owned boundary: cart, cart line, checkout session, promotion redemption, checkout pricing handoff, checkout tax handoff, checkout inventory reservation handoff, checkout payment intent handoff, checkout risk screen, checkout address validation, checkout rules, checkout parameters, checkout configuration, outbox, inbox, and dead-letter evidence.
+- Existing command/query surface: runtime configuration, parameters, rules, schema extensions, event receiving, cart creation, cart line addition, coupon application, address validation, checkout session opening, pricing/tax/inventory/payment/risk handoffs, inventory confirmation, payment authorization/capture, checkout completion, workbench, API/schema/service/release evidence, permissions, UI binding, and boundary verification.
+- Existing events and dependencies: emits `OrderPriced` and `CheckoutCompleted`; consumes `ProductPublished`, `PriceOptimized`, and `TaxCalculated`; depends on inventory reservation and payment orchestration through declared APIs and projections only.
 
 ## 50 Better-Than-World-Class Improvements
 
-### 1. Deep specialist lifecycle semantics for `checkout_processing_cart`
+### 1. Cart readiness and TTL governance
 
-**Justification:** This owned table is part of the Headless Cart and Checkout Processing operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Cart state, pricing, promotions, coupons, and checkout persistence.
+**Justification:** Cart state drives checkout revenue, pricing, inventory, promotion use, and abandonment analysis.
 
-**Improvement:** Extend `checkout_processing_cart` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `cart`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add cart readiness checks for tenant, channel, currency, locale, customer projection, TTL, active status, event lineage, and stale projection warnings before cart lines or checkout sessions can proceed.
 
-### 2. Deep specialist lifecycle semantics for `checkout_processing_cart_line`
+### 2. Cart lifecycle state machine
 
-**Justification:** This owned table is part of the Headless Cart and Checkout Processing operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Cart state, pricing, promotions, coupons, and checkout persistence.
+**Justification:** Carts need controlled states such as opened, active, stale, locked for checkout, converted, abandoned, merged, expired, and voided.
 
-**Improvement:** Extend `checkout_processing_cart_line` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `cart_line`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Implement cart state transitions with actor, timestamp, reason, idempotency key, TTL policy, emitted event expectations, merge lineage, and invalid-transition explanations.
 
-### 3. Deep specialist lifecycle semantics for `checkout_processing_checkout_session`
+### 3. Cart line snapshot integrity
 
-**Justification:** This owned table is part of the Headless Cart and Checkout Processing operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Cart state, pricing, promotions, coupons, and checkout persistence.
+**Justification:** Cart lines must preserve product, price, quantity, availability, taxability, and channel evidence as it was known during checkout.
 
-**Improvement:** Extend `checkout_processing_checkout_session` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `checkout_session`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Snapshot product id, variant, title, unit, quantity, price projection, tax class, inventory eligibility, fulfillment constraints, personalization metadata, and source event version per cart line.
 
-### 4. Deep specialist lifecycle semantics for `checkout_processing_promotion_redemption`
+### 4. Product projection freshness checks
 
-**Justification:** This owned table is part of the Headless Cart and Checkout Processing operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Cart state, pricing, promotions, coupons, and checkout persistence.
+**Justification:** Checkout should not proceed with unpublished, stale, restricted, or mismatched product data.
 
-**Improvement:** Extend `checkout_processing_promotion_redemption` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `promotion_redemption`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Validate `ProductPublished` projections for product status, purchasability, channel, region, variant, priceability, fulfillment eligibility, and source timestamp before line add and completion.
 
-### 5. Deep specialist lifecycle semantics for `checkout_processing_checkout_pricing_handoff`
+### 5. Price projection binding
 
-**Justification:** This owned table is part of the Headless Cart and Checkout Processing operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Cart state, pricing, promotions, coupons, and checkout persistence.
+**Justification:** Customers and merchants need proof of which optimized price was used and whether it remained valid.
 
-**Improvement:** Extend `checkout_processing_checkout_pricing_handoff` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `pricing_handoff`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Bind price projections to cart lines with price id, validity window, currency, channel, customer segment, quantity break, promotion compatibility, stale flag, and recalculation reason.
 
-### 6. Deep specialist lifecycle semantics for `checkout_processing_checkout_tax_handoff`
+### 6. Cart recalculation trace
 
-**Justification:** This owned table is part of the Headless Cart and Checkout Processing operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Cart state, pricing, promotions, coupons, and checkout persistence.
+**Justification:** Checkout disputes require reconstructing totals after item, price, promotion, tax, shipping, and inventory changes.
 
-**Improvement:** Extend `checkout_processing_checkout_tax_handoff` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `tax_handoff`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add recalculation traces with subtotal, discounts, shipping, tax, fees, risk holds, inventory state, payment status, rounding, currency, and changed inputs.
 
-### 7. Deep specialist lifecycle semantics for `checkout_processing_checkout_inventory_reservation_handoff`
+### 7. Promotion redemption governance
 
-**Justification:** This owned table is part of the Headless Cart and Checkout Processing operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Cart state, pricing, promotions, coupons, and checkout persistence.
+**Justification:** Promotions create revenue leakage when caps, stacking, customer eligibility, channel limits, and campaign budgets are uncontrolled.
 
-**Improvement:** Extend `checkout_processing_checkout_inventory_reservation_handoff` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `inventory_reservation_handoff`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add redemption policy checks for code validity, campaign status, customer eligibility, channel, geography, item scope, stackability, max discount, usage cap, budget cap, and audit proof.
 
-### 8. Deep specialist lifecycle semantics for `checkout_processing_checkout_payment_intent_handoff`
+### 8. Coupon abuse detection
 
-**Justification:** This owned table is part of the Headless Cart and Checkout Processing operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Cart state, pricing, promotions, coupons, and checkout persistence.
+**Justification:** Coupon abuse can include enumeration, repeated failed attempts, account cycling, and suspicious redemption patterns.
 
-**Improvement:** Extend `checkout_processing_checkout_payment_intent_handoff` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `payment_intent_handoff`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Detect coupon anomalies by attempt velocity, device, customer, IP, code entropy, repeated failure, cart value, redemption cluster, and promotion budget exposure.
 
-### 9. Deep specialist lifecycle semantics for `checkout_processing_checkout_risk_screen`
+### 9. Checkout session lifecycle
 
-**Justification:** This owned table is part of the Headless Cart and Checkout Processing operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Cart state, pricing, promotions, coupons, and checkout persistence.
+**Justification:** Sessions coordinate pricing, tax, inventory, risk, payment, and completion readiness.
 
-**Improvement:** Extend `checkout_processing_checkout_risk_screen` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `fraud_risk_hook`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Implement session states for initiated, collecting, priced, taxed, inventory_reserved, risk_screened, payment_ready, ready, blocked, completed, abandoned, expired, and cancelled with evidence gates.
 
-### 10. Deep specialist lifecycle semantics for `checkout_processing_checkout_address_validation`
+### 10. Session lock and concurrency control
 
-**Justification:** This owned table is part of the Headless Cart and Checkout Processing operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Cart state, pricing, promotions, coupons, and checkout persistence.
+**Justification:** Concurrent checkout tabs or retries can duplicate reservations, payments, or completion events.
 
-**Improvement:** Extend `checkout_processing_checkout_address_validation` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `address_validation`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add session locks, semantic idempotency keys, replay-safe command handling, duplicate completion prevention, lock expiry, conflict messages, and audit traces.
 
-### 11. Make `command_carts` a complete command lifecycle
+### 11. Pricing handoff contract
 
-**Justification:** High-value users need `command_carts` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Checkout owns the handoff evidence even when price calculation comes from another capability.
 
-**Improvement:** Implement `command_carts` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `OrderPriced`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Record pricing handoff with itemized totals, discounts, fees, currency, rounding, price version, quote expiry, dependency freshness, idempotency key, and acceptance state.
 
-### 12. Make `command_cart_lines` a complete command lifecycle
+### 12. Tax handoff contract
 
-**Justification:** High-value users need `command_cart_lines` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Tax must be tied to address, items, jurisdiction, exemptions, quote expiry, and final total validation.
 
-**Improvement:** Implement `command_cart_lines` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `CheckoutCompleted`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Record tax handoff with taxable basis, jurisdiction, tax lines, exemption evidence, inclusive/exclusive mode, quote expiry, source event, recalculation trigger, and acceptance state.
 
-### 13. Make `command_checkout` a complete command lifecycle
+### 13. Inventory reservation handoff
 
-**Justification:** High-value users need `command_checkout` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Completion should not occur until inventory is reserved and confirmed with freshness evidence.
 
-**Improvement:** Implement `command_checkout` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `OrderPriced`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Model reservation handoff states for requested, reserved, partially_reserved, confirmed, failed, expired, released, and substituted with quantity, node, TTL, confidence, and API lineage.
 
-### 14. Make `command_coupons` a complete command lifecycle
+### 14. Inventory confirmation hard gate
 
-**Justification:** High-value users need `command_coupons` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Completing checkout without confirmed inventory creates downstream cancellation and customer harm.
 
-**Improvement:** Implement `command_coupons` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `CheckoutCompleted`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Enforce completion blocking unless each physical line has confirmed inventory or an approved backorder/substitution policy with explicit customer-facing promise evidence.
 
-### 15. Make `command_inventory_confirmations` a complete command lifecycle
+### 15. Payment intent handoff
 
-**Justification:** High-value users need `command_inventory_confirmations` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Checkout must coordinate payment creation, authorization, capture, failure, retry, cancellation, and idempotency without owning the payment engine.
 
-**Improvement:** Implement `command_inventory_confirmations` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `OrderPriced`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Store intent state, method, amount, currency, authorization id, capture id, retry count, error class, fraud/risk link, expiry, and payment orchestration API lineage.
 
-### 16. Make `command_payment_authorizations` a complete command lifecycle
+### 16. Authorization and capture sequencing
 
-**Justification:** High-value users need `command_payment_authorizations` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Capturing before inventory or risk readiness creates reversals and reconciliation problems.
 
-**Improvement:** Implement `command_payment_authorizations` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `CheckoutCompleted`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Enforce sequencing rules for create intent, authorize, inventory confirmation, risk clear/review, capture, completion, release, and failed-payment recovery with rollback limits.
 
-### 17. Make `command_payment_captures` a complete command lifecycle
+### 17. Address validation governance
 
-**Justification:** High-value users need `command_payment_captures` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Address quality affects tax, shipping options, fraud risk, inventory routing, and delivery success.
 
-**Improvement:** Implement `command_payment_captures` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `OrderPriced`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Record validation status, normalized address, confidence, deliverability, jurisdiction, geocode precision, restricted destination flags, customer override, and source provider evidence.
 
-### 18. Make `consume_checkout_events` a complete command lifecycle
+### 18. Shipping option matrix
 
-**Justification:** High-value users need `consume_checkout_events` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Customers need accurate options shaped by address, item restrictions, inventory, carrier service, cost, carbon, and promise.
 
-**Improvement:** Implement `consume_checkout_events` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `CheckoutCompleted`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Build shipping option matrix with service level, node eligibility, carrier service, cost, promise, carbon estimate, restrictions, cutoff, inventory dependency, and selected-option proof.
 
-### 19. Turn `query_checkout_processing_workbench` into an expert read-model experience
+### 19. Risk screen lifecycle
 
-**Justification:** Domain experts rely on `query_checkout_processing_workbench` for operational decisions; a world-class read path must be explainable, filterable, temporally accurate, and safe under stale projections.
+**Justification:** Checkout risk decisions must be explainable and tied to payment, device, behavior, address, promotion, and cart value.
 
-**Improvement:** Build `query_checkout_processing_workbench` as a dedicated query contract with projection freshness, filter validation, pagination, saved views, temporal/as-of reads, row-level permissions, traceable source records, and UI drilldowns. Add agent explanations for how the answer was produced, what events like `OrderPriced` last changed the projection, and where uncertainty or missing data affects confidence.
+**Improvement:** Add risk states clear, review, block, step_up, allow_with_limits, and expired with score factors, model version, rule hits, reviewer, expiry, and completion gate.
 
-### 20. Make `command_carts` a complete command lifecycle
+### 20. Step-up verification orchestration
 
-**Justification:** High-value users need `command_carts` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Some risky sessions should be challenged rather than simply blocked or allowed.
 
-**Improvement:** Implement `command_carts` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `CheckoutCompleted`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add step-up requirements, challenge type, expiry, completion evidence, customer friction score, payment linkage, and allowed next checkout states.
 
-### 21. Operationalize `event_sourced_checkout_lifecycle` as a governed decision system
+### 21. Checkout completion proof
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Headless Cart and Checkout Processing and measurably improves authorization rate without hiding assumptions.
+**Justification:** Completion must prove pricing, tax, inventory, risk, payment, and address readiness before emitting `CheckoutCompleted`.
 
-**Improvement:** Promote `event_sourced_checkout_lifecycle` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `authorization_rate`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Generate completion proof with handoff statuses, totals verification, event ids, idempotency key, order handoff payload, customer promise, audit hash, and emitted outbox evidence.
 
-### 22. Operationalize `graph_relational_cart_topology` as a governed decision system
+### 22. Order handoff payload governance
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Headless Cart and Checkout Processing and measurably improves route margin without hiding assumptions.
+**Justification:** Downstream order creation depends on a precise, stable checkout completion payload.
 
-**Improvement:** Promote `graph_relational_cart_topology` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `route_margin`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Version the order handoff payload with cart lines, totals, discounts, taxes, payment, inventory, shipping, customer, risk, source projections, and compatibility validation.
 
-### 23. Operationalize `multi_tenant_checkout_isolation` as a governed decision system
+### 23. Abandonment forecasting
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Headless Cart and Checkout Processing and measurably improves return cycle time without hiding assumptions.
+**Justification:** Checkout needs to predict abandonment risk in time to reduce friction or prompt recovery actions.
 
-**Improvement:** Promote `multi_tenant_checkout_isolation` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `return_cycle_time`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Forecast abandonment by session duration, failed handoffs, price changes, shipping cost, payment failures, address friction, promotion failure, risk challenge, and customer behavior.
 
-### 24. Operationalize `schema_evolution_resilient_checkout_schema` as a governed decision system
+### 24. Conversion scoring
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Headless Cart and Checkout Processing and measurably improves landed cost accuracy without hiding assumptions.
+**Justification:** Merchants need visibility into which checkout choices help or harm conversion.
 
-**Improvement:** Promote `schema_evolution_resilient_checkout_schema` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `landed_cost_accuracy`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Score conversion probability by cart composition, price confidence, promotion, shipping options, payment methods, risk friction, device context, customer segment, and session history.
 
-### 25. Operationalize `probabilistic_conversion_scoring` as a governed decision system
+### 25. Counterfactual promotion simulation
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Headless Cart and Checkout Processing and measurably improves order priced throughput without hiding assumptions.
+**Justification:** Promotion and discount decisions should be evaluated against conversion, margin, risk, and budget effects.
 
-**Improvement:** Promote `probabilistic_conversion_scoring` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `order_priced_throughput`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Simulate alternate coupons, caps, stackability, thresholds, shipping discounts, bundles, and customer eligibility with effects on total, margin, conversion, abuse risk, and budget.
 
-### 26. Operationalize `probabilistic_checkout_risk_scoring` as a governed decision system
+### 26. Fulfillment option simulation
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Headless Cart and Checkout Processing and measurably improves checkout completed throughput without hiding assumptions.
+**Justification:** Checkout can reduce cancellation and improve conversion by comparing reservation, shipping, pickup, split, and backorder options.
 
-**Improvement:** Promote `probabilistic_checkout_risk_scoring` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `checkout_completed_throughput`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Simulate fulfillment alternatives with inventory confidence, customer promise, shipping cost, carbon, split complexity, payment timing, and risk impact.
 
-### 27. Operationalize `real_time_checkout_analytics` as a governed decision system
+### 27. Dynamic checkout policy screening
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Headless Cart and Checkout Processing and measurably improves authorization rate without hiding assumptions.
+**Justification:** Checkout must block restricted destinations, prohibited items, unsupported payment methods, excessive risk, and invalid promotion combinations.
 
-**Improvement:** Promote `real_time_checkout_analytics` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `authorization_rate`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Compile policies for shipping, payment, risk, promotion, restricted products, destination, tax readiness, inventory readiness, and completion gates with explainable outcomes.
 
-### 28. Operationalize `counterfactual_promotion_fulfillment_simulation` as a governed decision system
+### 28. Exception resolution workflow
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Headless Cart and Checkout Processing and measurably improves route margin without hiding assumptions.
+**Justification:** Checkout frequently fails because tax, inventory, pricing, payment, risk, or address dependencies are unavailable or contradictory.
 
-**Improvement:** Promote `counterfactual_promotion_fulfillment_simulation` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `route_margin`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add exception cases with category, affected session, severity, dependency, retry option, customer impact, recommended remediation, owner, SLA, and closure evidence.
 
-### 29. Operationalize `temporal_abandonment_forecasting` as a governed decision system
+### 29. Self-healing checkout rail selection
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Headless Cart and Checkout Processing and measurably improves return cycle time without hiding assumptions.
+**Justification:** Checkout should safely recover when a handoff rail fails without exposing event-engine choices.
 
-**Improvement:** Promote `temporal_abandonment_forecasting` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `return_cycle_time`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add route health, alternate API route, retry strategy, confidence downgrade, customer-safe fallback, and recovery evidence for pricing, tax, inventory, payment, and risk handoffs.
 
-### 30. Operationalize `autonomous_checkout_exception_resolution` as a governed decision system
+### 30. AppGen-X inbox reliability
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Headless Cart and Checkout Processing and measurably improves landed cost accuracy without hiding assumptions.
+**Justification:** Product, price, and tax events are foundational checkout inputs and must be handled idempotently.
 
-**Improvement:** Promote `autonomous_checkout_exception_resolution` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `landed_cost_accuracy`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add inbox schema validation, idempotency, semantic duplicate detection, retry evidence, unsupported-event rejection, dead-letter promotion, projection rebuild, and workbench replay/quarantine controls.
 
-### 31. Create simulation-grade governance for `CHECKOUT_PROCESSING_DATABASE_URL` and `CHECKOUT_PROCESSING_DATABASE_URL`
+### 31. AppGen-X outbox delivery assurance
 
-**Justification:** Complete Headless Cart and Checkout Processing coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Pricing and completion events must reliably reach order, payment, inventory, analytics, and audit consumers.
 
-**Improvement:** Add a policy cockpit where `CHECKOUT_PROCESSING_DATABASE_URL` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `CHECKOUT_PROCESSING_DATABASE_URL` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add outbox state, ordering group, payload hash, delivery attempts, next retry, delivery proof, dead-letter linkage, and replay controls for `OrderPriced` and `CheckoutCompleted`.
 
-### 32. Create simulation-grade governance for `CHECKOUT_PROCESSING_EVENT_TOPIC` and `CHECKOUT_PROCESSING_EVENT_TOPIC`
+### 32. Cross-PBC boundary proof
 
-**Justification:** Complete Headless Cart and Checkout Processing coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Checkout must not directly read product, price, tax, inventory, payment, customer, order, fraud, or fulfillment tables.
 
-**Improvement:** Add a policy cockpit where `CHECKOUT_PROCESSING_EVENT_TOPIC` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `CHECKOUT_PROCESSING_EVENT_TOPIC` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add release evidence scanning schema descriptors, services, routes, DSL, workbench bindings, and agent plans for foreign table access, proving dependencies are only APIs, events, or package-local projections.
 
-### 33. Create simulation-grade governance for `CHECKOUT_PROCESSING_RETRY_LIMIT` and `CHECKOUT_PROCESSING_RETRY_LIMIT`
+### 33. Multi-tenant isolation proof
 
-**Justification:** Complete Headless Cart and Checkout Processing coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Checkout data contains sensitive customer, payment, cart, and promotional information.
 
-**Improvement:** Add a policy cockpit where `CHECKOUT_PROCESSING_RETRY_LIMIT` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `CHECKOUT_PROCESSING_RETRY_LIMIT` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add tenant isolation evidence for carts, lines, sessions, handoffs, risk screens, rules, parameters, configuration, inbox/outbox, workbench queries, and agent plans.
 
-### 34. Create simulation-grade governance for `CHECKOUT_PROCESSING_DEFAULT_CURRENCY` and `CHECKOUT_PROCESSING_DEFAULT_CURRENCY`
+### 34. Runtime parameter impact controls
 
-**Justification:** Complete Headless Cart and Checkout Processing coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** TTLs, risk thresholds, retry limits, promotion caps, carbon weights, and route thresholds directly affect conversion and losses.
 
-**Improvement:** Add a policy cockpit where `CHECKOUT_PROCESSING_DEFAULT_CURRENCY` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `CHECKOUT_PROCESSING_DEFAULT_CURRENCY` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add parameter bounds, impact simulation, approval workflow, effective dating, tenant/channel overrides, rollback, and release evidence before changes activate.
 
-### 35. Create simulation-grade governance for `CHECKOUT_PROCESSING_DATABASE_URL` and `CHECKOUT_PROCESSING_DATABASE_URL`
+### 35. Schema extension governance
 
-**Justification:** Complete Headless Cart and Checkout Processing coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Checkout needs custom attributes while preserving owned-table boundaries and privacy controls.
 
-**Improvement:** Add a policy cockpit where `CHECKOUT_PROCESSING_DATABASE_URL` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `CHECKOUT_PROCESSING_DATABASE_URL` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Allow extensions only on owned checkout tables with field validation, privacy classification, migration preview, UI binding preview, API exposure review, and release-audit evidence.
 
-### 36. Upgrade `CheckoutProcessingWorkbench` into a full specialist command center
+### 36. Cryptographic checkout proof
 
-**Justification:** The PBC UI must expose the complete Headless Cart and Checkout Processing surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Disputes and compliance reviews may require proof of totals, authorization, inventory confirmation, and completion without exposing unnecessary sensitive data.
 
-**Improvement:** Expand `CheckoutProcessingWorkbench` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Generate selective-disclosure proof packets with totals hash, handoff hashes, policy hash, event ids, crypto epoch, verifier, expiry, and revocation evidence.
 
-### 37. Upgrade `CheckoutProcessingDetail` into a full specialist command center
+### 37. Immutable checkout audit trail
 
-**Justification:** The PBC UI must expose the complete Headless Cart and Checkout Processing surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Checkout disputes require exact reconstruction of cart, price, tax, inventory, payment, risk, and completion state.
 
-**Improvement:** Expand `CheckoutProcessingDetail` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Hash-chain cart changes, line changes, promotions, handoffs, risk screens, policy decisions, sessions, completions, and event deliveries with temporal as-of query support.
 
-### 38. Upgrade `CheckoutExceptionBoard` into a full specialist command center
+### 38. Checkout anomaly detection
 
-**Justification:** The PBC UI must expose the complete Headless Cart and Checkout Processing surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Abnormal checkout behavior can indicate abuse, integration failure, payment issues, pricing defects, or inventory promise defects.
 
-**Improvement:** Expand `CheckoutExceptionBoard` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Detect anomalies in coupon attempts, cart mutations, price jumps, tax failures, reservation failures, payment retries, capture failures, risk overrides, completion duplicates, and dead letters.
 
-### 39. Upgrade `CheckoutConfigurationBoard` into a full specialist command center
+### 39. Stochastic checkout exposure model
 
-**Justification:** The PBC UI must expose the complete Headless Cart and Checkout Processing surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Checkout value-at-risk spans lost conversion, fraud loss, payment failure, oversell, tax error, promotion leakage, and service failures.
 
-**Improvement:** Expand `CheckoutConfigurationBoard` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Model exposure distributions by cart value, channel, customer segment, payment method, promotion, inventory confidence, risk score, and dependency health with mitigation suggestions.
 
-### 40. Upgrade `CheckoutProcessingWorkbench` into a full specialist command center
+### 40. Governed model evidence
 
-**Justification:** The PBC UI must expose the complete Headless Cart and Checkout Processing surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Conversion, abandonment, fraud, risk, and exception recommendations influence customers and revenue.
 
-**Improvement:** Expand `CheckoutProcessingWorkbench` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Track model purpose, training window, feature lineage, validation metrics, drift, false-positive/false-negative impact, approval, rollback, and explainability evidence.
 
-### 41. Prove cross-PBC federation for `POST /carts` and `ProductPublished`
+### 41. Carbon-aware checkout options
 
-**Justification:** Headless Cart and Checkout Processing must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Checkout can present lower-carbon fulfillment options while preserving customer promise and conversion.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /carts` and consumed event `ProductPublished` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Add carbon estimates, service guardrails, customer preference, selected option evidence, tradeoff explanations, and policy controls for carbon-aware shipping or pickup options.
 
-### 42. Prove cross-PBC federation for `POST /cart-lines` and `PriceOptimized`
+### 42. Checkout workbench coverage
 
-**Justification:** Headless Cart and Checkout Processing must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Operators need a full checkout command center, not scattered cart tables.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /cart-lines` and consumed event `PriceOptimized` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Expand workbench surfaces for carts, lines, sessions, promotions, pricing, tax, inventory, payment, risk, address, shipping, exceptions, federation, inbox/outbox, rules, parameters, configuration, and release evidence.
 
-### 43. Prove cross-PBC federation for `POST /checkout` and `TaxCalculated`
+### 43. Session troubleshooting cockpit
 
-**Justification:** Headless Cart and Checkout Processing must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Support and operations need quick answers when checkout fails or customers abandon.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /checkout` and consumed event `TaxCalculated` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Add a cockpit showing session timeline, failed handoffs, stale projections, blocked policy, risk decision, payment state, inventory state, customer-visible issue, and safe recovery actions.
 
-### 44. Prove cross-PBC federation for `POST /coupons` and `ProductPublished`
+### 44. Payment failure recovery playbooks
 
-**Justification:** Headless Cart and Checkout Processing must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Payment failures are common and materially affect conversion.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /coupons` and consumed event `ProductPublished` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Add failure classification, retry eligibility, alternate method prompt, authorization reversal, inventory hold extension/release, risk rescreening, customer messaging, and evidence logging.
 
-### 45. Temporal reconstruction and bitemporal audit for Headless Cart and Checkout Processing
+### 45. Inventory failure recovery playbooks
 
-**Justification:** Regulated and operationally complex domains need to answer what was known, valid, processed, and visible at any point in time.
+**Justification:** Reservation failures and expiry create customer frustration and downstream order cancellations.
 
-**Improvement:** Add transaction-time, valid-time, and processing-time fields to core records, temporal query APIs, projection rebuild tooling, and UI time travel so specialists can reconstruct decisions, reports, and automation outcomes.
+**Improvement:** Add partial reservation handling, substitution, alternate node request, backorder policy, inventory hold extension, customer choice capture, and safe session state transitions.
 
-### 46. Bulk operations and migration-grade controls for Headless Cart and Checkout Processing
+### 46. Continuous checkout control testing
 
-**Justification:** World-class deployments must handle imports, mass corrections, high-volume operating days, and cutovers without bypassing governance.
+**Justification:** Checkout controls should be proven continuously across sessions, handoffs, events, and agent plans.
 
-**Improvement:** Add staged bulk upload, duplicate detection, chunked validation, approval sampling, partial failure handling, retry dashboards, reconciliation summaries, and agent-generated remediation plans for large batches.
+**Improvement:** Add assertions for completion without captured payment, completion without inventory confirmation, stale price, stale tax, invalid promotion stack, blocked risk session, foreign-table access, dead-letter aging, and agent-preview bypass.
 
-### 47. Specialist edge-case playbooks for Headless Cart and Checkout Processing
+### 47. Checkout resilience drills
 
-**Justification:** Rare cases often carry the highest financial, legal, safety, service, or compliance risk.
+**Justification:** Checkout must degrade safely when dependencies, event delivery, payment, inventory, or tax services fail.
 
-**Improvement:** Create a playbook catalog with detection rules, required evidence, escalation paths, fallback actions, owner roles, and release-audited tests for high-severity edge cases and exception queues.
+**Improvement:** Add drills for duplicate completion, tax outage, inventory timeout, payment authorization delay, capture failure, price projection lag, outbox dead letter, and workbench degraded mode.
 
-### 48. Pre-mutation simulation and blast-radius analysis for Headless Cart and Checkout Processing
+### 48. Agent-safe checkout guidance
 
-**Justification:** Users should understand consequences before committing irreversible, customer-visible, operationally disruptive, or financially material changes.
+**Justification:** The checkout chatbot must help users without performing unsafe mutations or exposing sensitive data.
 
-**Improvement:** Add what-if simulation for every material command, showing impacted records, emitted events, dependent projections, rule outcomes, approvals, downstream PBC dependencies, and rollback limits.
+**Improvement:** Require agent plans for carts, coupons, sessions, handoffs, risk, payment, inventory, and completion to name permission, owned tables, idempotency key, expected event, sensitive fields, risks, and human confirmation.
 
-### 49. Continuous control testing and operational assurance for Headless Cart and Checkout Processing
+### 49. Checkout readiness score
 
-**Justification:** Better-than-world-class PBCs prove controls continuously, not only at release or during periodic audits.
+**Justification:** Users need an evidence-backed view of whether `checkout_processing` is ready for live commerce transactions.
 
-**Improvement:** Add executable control assertions, sampled evidence checks, anomaly thresholds, control-owner dashboards, breach/recovery events, and release gates that fail when domain controls lose evidence.
+**Improvement:** Compute readiness from cart/session lifecycle, projection freshness, promotion rules, pricing/tax/inventory/payment/risk handoffs, completion proof, event reliability, UI coverage, model governance, controls, boundary proof, and agent safety.
 
-### 50. Human-in-the-loop domain agent execution for Headless Cart and Checkout Processing
+### 50. End-to-end checkout completion proof
 
-**Justification:** The PBC chatbot must help specialists perform real work while preventing unsafe autonomous mutation.
+**Justification:** A complete Checkout Processing PBC must prove it can complete the full flow from cart opening to completion event.
 
-**Improvement:** Add domain-specific skills, document parsing, task planning, CRUD previews, confidence/risk scoring, confirmation gates, redaction, policy explanations, and post-action evidence packets for every supported command and query.
+**Improvement:** Add an executable proof scenario covering product and price projections, cart, line, coupon, address validation, session, pricing handoff, tax handoff, inventory reservation and confirmation, risk screen, payment intent authorization and capture, completion, emitted events, UI evidence, boundary proof, controls, and agent explanation.
