@@ -1,315 +1,314 @@
-# Returns RMA and Reverse Logistics PBC Improvement Backlog
+# Returns Reverse Logistics PBC Improvement Backlog
 
 ## Purpose
 
-This backlog identifies 50 high-impact, high-value improvements for `returns_reverse_logistics`. Each item is specific to the domain surface currently declared by the PBC and is intended to move the package beyond world-class breadth toward complete specialist-grade coverage.
+This backlog identifies 50 high-impact, high-value improvements for `returns_reverse_logistics`. The items are specific to RMA and reverse-flow execution: return authorization, return lines, eligibility decisions, policy snapshots, reverse route graphs, labels, carrier handoffs, receiving, inspection grades and findings, disposition decisions, refund or exchange resolution, restocking, repair/refurbishment, carrier claims, customer status, fraud signals, credit adjustments, refund and ledger handoffs, inventory recovery, exceptions, rules, parameters, configuration, AppGen-X event reliability, UI workbenches, and agent-assisted return operations.
 
 ## Current Domain Evidence Used
 
-- Domain purpose: Return authorization, reverse routing, receiving, inspection, disposition, credit, refund, exchange, repair, restock, carrier claim, exception, and customer-status orchestration.
-- Representative owned tables: `returns_reverse_logistics_return_authorization`, `returns_reverse_logistics_return_line`, `returns_reverse_logistics_return_eligibility_decision`, `returns_reverse_logistics_return_policy_snapshot`, `returns_reverse_logistics_reverse_route_graph`, `returns_reverse_logistics_return_label`, `returns_reverse_logistics_carrier_handoff`, `returns_reverse_logistics_return_receipt`, `returns_reverse_logistics_inspection_grade`, `returns_reverse_logistics_inspection_finding`, `returns_reverse_logistics_disposition_decision`, `returns_reverse_logistics_refund_exchange_resolution`, ...
-- Representative operations/APIs: `command_returns`, `command_labels`, `command_receipts`, `command_inspection_grades`, `command_dispositions`, `command_credit_adjustments`, `command_refund_exchange`, `command_carrier_claims`, `query_returns_reverse_logistics_workbench`.
-- Representative events: `ReturnAuthorized`, `CreditAdjustmentIssued`.
-- Representative advanced capabilities: `event_sourced_returns_lifecycle`, `graph_relational_reverse_logistics_topology`, `probabilistic_return_eligibility_scoring`, `counterfactual_disposition_simulation`, `temporal_return_rate_recovery_forecasting`, `autonomous_return_exception_resolution`, `semantic_return_instruction_parsing`, `predictive_return_risk`, `self_healing_label_carrier_route_selection`, `cryptographic_return_proof`, ...
+- Domain purpose: `returns_reverse_logistics` owns return authorization, eligibility, labels, receiving, inspection, disposition, refund or exchange settlement, restocking and repair recovery, carrier claims, fraud/risk evidence, customer-facing status, and exception workflows.
+- Owned boundary: return authorizations, return lines, eligibility decisions, policy snapshots, reverse route graphs, return labels, carrier handoffs, receipts, inspection grades/findings, disposition decisions, refund/exchange resolutions, restocking orders, repair/refurbishment orders, carrier claims, customer status, exception cases/tasks, fraud signals, credit adjustments, refund ledger handoffs, recovery projections, rules, parameters, configuration, schema extensions, return proofs, policy screening, control assertions, governed models, seed data, inbox/outbox, and dead-letter evidence.
+- Existing command/query surface: runtime configuration, parameters, rules, schema extensions, return authorization, label creation, receipt recording, inspection grade capture, disposition resolution, exchange resolution, restocking, repair/refurbishment, carrier claims, credit adjustment, customer status, exception cases, event receiving, workbench, schema/service/release evidence, permissions, UI binding, and boundary verification.
+- Existing events and dependencies: emits `ReturnAuthorized` and `CreditAdjustmentIssued`; consumes `OrderShipped` and `PaymentCaptured`; integrates with order, payment, inventory, repair vendor, carrier, customer notification, and ledger only through declared APIs/events/projections.
 
 ## 50 Better-Than-World-Class Improvements
 
-### 1. Deep specialist lifecycle semantics for `returns_reverse_logistics_return_authorization`
+### 1. Return authorization readiness gate
 
-**Justification:** This owned table is part of the Returns RMA and Reverse Logistics operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Return authorization, reverse routing, receiving, inspection, disposition, credit, refund, exchange, repair, restock, carrier claim, exception, and customer-status orchestration.
+**Justification:** RMAs should not be authorized unless order, shipment, payment, customer, item, window, and policy evidence are complete.
 
-**Improvement:** Extend `returns_reverse_logistics_return_authorization` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `return_authorizations_rma`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add readiness checks for shipped order projection, payment capture projection, return window, item eligibility, customer identity, tenant, region, reason code, quantity, policy snapshot, fraud risk, and required approval before `ReturnAuthorized`.
 
-### 2. Deep specialist lifecycle semantics for `returns_reverse_logistics_return_line`
+### 2. Return authorization lifecycle state machine
 
-**Justification:** This owned table is part of the Returns RMA and Reverse Logistics operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Return authorization, reverse routing, receiving, inspection, disposition, credit, refund, exchange, repair, restock, carrier claim, exception, and customer-status orchestration.
+**Justification:** Returns move through requested, eligible, authorized, label_created, in_transit, received, inspected, dispositioned, credited, exchanged, closed, rejected, expired, and cancelled states.
 
-**Improvement:** Extend `returns_reverse_logistics_return_line` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `return_authorization_workflows`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Implement state transitions with actor, reason, timestamp, idempotency key, required evidence, customer-visible status effect, emitted event expectations, and invalid-transition explanations.
 
-### 3. Deep specialist lifecycle semantics for `returns_reverse_logistics_return_eligibility_decision`
+### 3. Return line eligibility depth
 
-**Justification:** This owned table is part of the Returns RMA and Reverse Logistics operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Return authorization, reverse routing, receiving, inspection, disposition, credit, refund, exchange, repair, restock, carrier claim, exception, and customer-status orchestration.
+**Justification:** Eligibility differs by item, quantity, serial/lot, condition, return reason, shipment date, customer promise, and policy exception.
 
-**Improvement:** Extend `returns_reverse_logistics_return_eligibility_decision` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `return_eligibility`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Model line-level eligibility with returnable quantity, item category, serial/lot requirement, condition expectation, warranty flag, hazmat/cold-chain flag, opened/used status, return reason, and override path.
 
-### 4. Deep specialist lifecycle semantics for `returns_reverse_logistics_return_policy_snapshot`
+### 4. Policy snapshot versioning
 
-**Justification:** This owned table is part of the Returns RMA and Reverse Logistics operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Return authorization, reverse routing, receiving, inspection, disposition, credit, refund, exchange, repair, restock, carrier claim, exception, and customer-status orchestration.
+**Justification:** Return decisions must be explainable against the exact policy active at purchase, shipment, request, and authorization time.
 
-**Improvement:** Extend `returns_reverse_logistics_return_policy_snapshot` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `eligibility_decisions`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Snapshot policy version, effective dates, channel, region, customer segment, item family, return window, fees, exceptions, restocking rules, fraud rules, and approval thresholds.
 
-### 5. Deep specialist lifecycle semantics for `returns_reverse_logistics_reverse_route_graph`
+### 5. Probabilistic eligibility scoring
 
-**Justification:** This owned table is part of the Returns RMA and Reverse Logistics operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Return authorization, reverse routing, receiving, inspection, disposition, credit, refund, exchange, repair, restock, carrier claim, exception, and customer-status orchestration.
+**Justification:** Some returns are ambiguous and require risk-weighted decisions rather than binary rules.
 
-**Improvement:** Extend `returns_reverse_logistics_reverse_route_graph` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `return_labels`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Score eligibility by policy match, customer history, fraud signals, item condition, shipment age, payment status, return reason, carrier risk, and recovery value with confidence and review thresholds.
 
-### 6. Deep specialist lifecycle semantics for `returns_reverse_logistics_return_label`
+### 6. Reverse route graph
 
-**Justification:** This owned table is part of the Returns RMA and Reverse Logistics operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Return authorization, reverse routing, receiving, inspection, disposition, credit, refund, exchange, repair, restock, carrier claim, exception, and customer-status orchestration.
+**Justification:** Reverse logistics must choose among store, warehouse, repair, refurbishment, vendor, recycling, or scrap destinations.
 
-**Improvement:** Extend `returns_reverse_logistics_return_label` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `carrier_handoff`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Build a graph of reverse nodes, carriers, lanes, service levels, costs, capacity, item constraints, carbon impact, and disposition compatibility for label and route selection.
 
-### 7. Deep specialist lifecycle semantics for `returns_reverse_logistics_carrier_handoff`
+### 7. Return label lifecycle
 
-**Justification:** This owned table is part of the Returns RMA and Reverse Logistics operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Return authorization, reverse routing, receiving, inspection, disposition, credit, refund, exchange, repair, restock, carrier claim, exception, and customer-status orchestration.
+**Justification:** Labels can be created, voided, expired, reissued, carrier-accepted, scanned, or failed.
 
-**Improvement:** Extend `returns_reverse_logistics_carrier_handoff` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `return_receiving`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Track label state, carrier, service, tracking number, expiry, cost, destination, route graph reference, customer delivery channel, reissue reason, and fraud/abuse controls.
 
-### 8. Deep specialist lifecycle semantics for `returns_reverse_logistics_return_receipt`
+### 8. Carrier handoff tracking
 
-**Justification:** This owned table is part of the Returns RMA and Reverse Logistics operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Return authorization, reverse routing, receiving, inspection, disposition, credit, refund, exchange, repair, restock, carrier claim, exception, and customer-status orchestration.
+**Justification:** Return progress and customer confidence depend on carrier scan, pickup, drop-off, transit, delay, loss, and delivery evidence.
 
-**Improvement:** Extend `returns_reverse_logistics_return_receipt` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `receipt_and_inspection`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add handoff states, scan history, pickup/dropoff proof, SLA, delay reason, lost package trigger, carrier claim eligibility, customer-visible status, and exception creation.
 
-### 9. Deep specialist lifecycle semantics for `returns_reverse_logistics_inspection_grade`
+### 9. Carbon-aware reverse routing
 
-**Justification:** This owned table is part of the Returns RMA and Reverse Logistics operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Return authorization, reverse routing, receiving, inspection, disposition, credit, refund, exchange, repair, restock, carrier claim, exception, and customer-status orchestration.
+**Justification:** Returns can create high emissions through unnecessary shipping, split returns, or distant inspection centers.
 
-**Improvement:** Extend `returns_reverse_logistics_inspection_grade` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `disposition_routing`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add carbon scoring for route options with customer convenience, recovery value, SLA, item condition risk, consolidation, carrier mode, and override evidence.
 
-### 10. Deep specialist lifecycle semantics for `returns_reverse_logistics_inspection_finding`
+### 10. Return receipt controls
 
-**Justification:** This owned table is part of the Returns RMA and Reverse Logistics operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Return authorization, reverse routing, receiving, inspection, disposition, credit, refund, exchange, repair, restock, carrier claim, exception, and customer-status orchestration.
+**Justification:** Receiving errors create refund leakage, inventory distortion, and customer disputes.
 
-**Improvement:** Extend `returns_reverse_logistics_inspection_finding` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `refund_exchange_resolution`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Validate received package, RMA, line quantity, item identity, serial/lot, package condition, timestamp, receiving node, variance, missing item, extra item, and evidence attachments.
 
-### 11. Make `command_returns` a complete command lifecycle
+### 11. Inspection grading model
 
-**Justification:** High-value users need `command_returns` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Disposition and refund decisions depend on consistent inspection grades.
 
-**Improvement:** Implement `command_returns` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `ReturnAuthorized`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Define grade taxonomy with condition, completeness, damage, packaging, functionality, serial match, hygiene, fraud indicators, resale eligibility, repairability, and evidence requirements.
 
-### 12. Make `command_labels` a complete command lifecycle
+### 12. Inspection finding capture
 
-**Justification:** High-value users need `command_labels` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Findings need structured defects and evidence rather than free-text notes.
 
-**Improvement:** Implement `command_labels` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `CreditAdjustmentIssued`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Capture defect type, location, severity, cause, photo/video/document evidence, inspector, confidence, serial/lot linkage, policy impact, and recommended disposition.
 
-### 13. Make `command_receipts` a complete command lifecycle
+### 13. Disposition decision engine
 
-**Justification:** High-value users need `command_receipts` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Dispositions determine recovery value, customer credit, inventory impact, repair flow, vendor claims, and scrap.
 
-**Improvement:** Implement `command_receipts` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `ReturnAuthorized`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Implement disposition options for restock, refurbish, repair, vendor return, recycle, scrap, quarantine, exchange, or reject with recovery estimate, cost, policy, approval, and branch execution.
 
-### 14. Make `command_inspection_grades` a complete command lifecycle
+### 14. Counterfactual disposition simulation
 
-**Justification:** High-value users need `command_inspection_grades` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Operators need to compare restock, repair, refurbish, scrap, exchange, and claim choices before committing.
 
-**Improvement:** Implement `command_inspection_grades` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `CreditAdjustmentIssued`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Simulate expected recovery value, turnaround time, inventory impact, carrier cost, repair cost, refund amount, customer experience, fraud exposure, and carbon impact for each disposition.
 
-### 15. Make `command_dispositions` a complete command lifecycle
+### 15. Refund and exchange resolution lifecycle
 
-**Justification:** High-value users need `command_dispositions` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Customers need clear outcomes while finance and inventory need controlled settlement evidence.
 
-**Improvement:** Implement `command_dispositions` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `ReturnAuthorized`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Model resolution states for pending, approved, queued, refunded, exchanged, denied, partial, adjusted, failed, and closed with amount, reason, payment linkage, inventory linkage, and customer notice.
 
-### 16. Make `command_credit_adjustments` a complete command lifecycle
+### 16. Credit adjustment governance
 
-**Justification:** High-value users need `command_credit_adjustments` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Credits directly affect revenue, customer balances, refund handoffs, and ledger postings.
 
-**Improvement:** Implement `command_credit_adjustments` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `CreditAdjustmentIssued`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add adjustment reason, eligible amount, deduction, restocking fee, shipping fee, partial credit, approval threshold, tax marker, ledger/refund handoff, and `CreditAdjustmentIssued` evidence.
 
-### 17. Make `command_refund_exchange` a complete command lifecycle
+### 17. Refund ledger handoff
 
-**Justification:** High-value users need `command_refund_exchange` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Returns must produce auditable refund and ledger handoffs without sharing payment or ledger tables.
 
-**Improvement:** Implement `command_refund_exchange` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `ReturnAuthorized`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Generate handoff records with return id, credit adjustment, refund amount, payment reference, ledger reference, tax marker, idempotency key, delivery state, and reconciliation status.
 
-### 18. Make `command_carrier_claims` a complete command lifecycle
+### 18. Exchange fulfillment coordination
 
-**Justification:** High-value users need `command_carrier_claims` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Exchanges require replacement item eligibility, availability, pricing difference, shipping, and customer promise evidence.
 
-**Improvement:** Implement `command_carrier_claims` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `CreditAdjustmentIssued`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add exchange resolution fields for replacement item, variant, price delta, inventory projection, shipping promise, approval, customer confirmation, and downstream handoff status.
 
-### 19. Turn `query_returns_reverse_logistics_workbench` into an expert read-model experience
+### 19. Restocking order workflow
 
-**Justification:** Domain experts rely on `query_returns_reverse_logistics_workbench` for operational decisions; a world-class read path must be explainable, filterable, temporally accurate, and safe under stale projections.
+**Justification:** Restocked goods require condition, location, lot/serial, inventory status, and resale readiness evidence.
 
-**Improvement:** Build `query_returns_reverse_logistics_workbench` as a dedicated query contract with projection freshness, filter validation, pagination, saved views, temporal/as-of reads, row-level permissions, traceable source records, and UI drilldowns. Add agent explanations for how the answer was produced, what events like `ReturnAuthorized` last changed the projection, and where uncertainty or missing data affects confidence.
+**Improvement:** Create restocking orders with target node, inventory status, grade, required cleanup, label relabeling, lot/serial, resale eligibility, expected recovery, and inventory projection handoff.
 
-### 20. Make `command_returns` a complete command lifecycle
+### 20. Repair and refurbishment workflow
 
-**Justification:** High-value users need `command_returns` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Repairable returns need vendor, parts, labor, cost, turnaround, quality checks, and recovery state.
 
-**Improvement:** Implement `command_returns` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `CreditAdjustmentIssued`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add repair/refurbishment orders with vendor/bench, diagnosis, required parts, estimated cost, SLA, status, grade after repair, resale/return-to-vendor path, and vendor projection linkage.
 
-### 21. Operationalize `event_sourced_returns_lifecycle` as a governed decision system
+### 21. Carrier claim management
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Returns RMA and Reverse Logistics and measurably improves authorization rate without hiding assumptions.
+**Justification:** Lost, damaged, delayed, or misdelivered returns can require carrier claims and recovery evidence.
 
-**Improvement:** Promote `event_sourced_returns_lifecycle` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `authorization_rate`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add claim states, carrier, tracking, reason, value, evidence packet, filing deadline, submitted amount, carrier response, recovery amount, appeal, and closure proof.
 
-### 22. Operationalize `graph_relational_reverse_logistics_topology` as a governed decision system
+### 22. Fraud and abuse signal model
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Returns RMA and Reverse Logistics and measurably improves eligibility score without hiding assumptions.
+**Justification:** Returns fraud includes wardrobing, empty box, serial swaps, excessive returns, collusion, and counterfeit items.
 
-**Improvement:** Promote `graph_relational_reverse_logistics_topology` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `eligibility_score`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Capture fraud signals by customer, item, reason, carrier, serial mismatch, inspection finding, return velocity, refund amount, policy override, and network pattern.
 
-### 23. Operationalize `probabilistic_return_eligibility_scoring` as a governed decision system
+### 23. Predictive return risk
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Returns RMA and Reverse Logistics and measurably improves route margin without hiding assumptions.
+**Justification:** High-risk returns should be routed to review, stricter inspection, or delayed credit before losses occur.
 
-**Improvement:** Promote `probabilistic_return_eligibility_scoring` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `route_margin`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Score return risk using customer history, item category, return reason, eligibility ambiguity, carrier behavior, payment status, inspection signals, and fraud network features.
 
-### 24. Operationalize `counterfactual_disposition_simulation` as a governed decision system
+### 24. Customer status timeline
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Returns RMA and Reverse Logistics and measurably improves return cycle time without hiding assumptions.
+**Justification:** Customers need transparent, accurate status through authorization, label, transit, receipt, inspection, disposition, and credit/exchange.
 
-**Improvement:** Promote `counterfactual_disposition_simulation` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `return_cycle_time`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Build customer-visible timeline states with message templates, ETA, blocking reasons, next action, status freshness, notification projection, and privacy-safe evidence.
 
-### 25. Operationalize `temporal_return_rate_recovery_forecasting` as a governed decision system
+### 25. Exception case workflow
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Returns RMA and Reverse Logistics and measurably improves inspection recovery rate without hiding assumptions.
+**Justification:** Returns often stall due to missing items, bad labels, lost packages, failed refunds, inspection disputes, or policy conflicts.
 
-**Improvement:** Promote `temporal_return_rate_recovery_forecasting` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `inspection_recovery_rate`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add exception cases with category, severity, affected return/line, root cause, owner, SLA, recommended actions, task list, customer impact, and closure evidence.
 
-### 26. Operationalize `autonomous_return_exception_resolution` as a governed decision system
+### 26. Exception task orchestration
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Returns RMA and Reverse Logistics and measurably improves credit accuracy without hiding assumptions.
+**Justification:** Complex return exceptions require coordinated tasks across inspection, carrier, finance, inventory, and customer support.
 
-**Improvement:** Promote `autonomous_return_exception_resolution` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `credit_accuracy`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add task states, assignee role, due date, dependency, escalation, evidence required, completion proof, and impact on customer status or credit release.
 
-### 27. Operationalize `semantic_return_instruction_parsing` as a governed decision system
+### 27. Autonomous exception recommendation
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Returns RMA and Reverse Logistics and measurably improves carrier claim recovery without hiding assumptions.
+**Justification:** Operators need fast, explainable suggestions for return exceptions without unsafe autonomous mutation.
 
-**Improvement:** Promote `semantic_return_instruction_parsing` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `carrier_claim_recovery`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Recommend actions for label failure, late receipt, inspection dispute, carrier claim, refund failure, fraud review, and inventory recovery with confidence, rationale, and approval requirements.
 
-### 28. Operationalize `predictive_return_risk` as a governed decision system
+### 28. Semantic return instruction parsing
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Returns RMA and Reverse Logistics and measurably improves landed cost accuracy without hiding assumptions.
+**Justification:** Return requests and support notes often arrive as natural language.
 
-**Improvement:** Promote `predictive_return_risk` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `landed_cost_accuracy`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Parse instructions into return reason, item, quantity, condition, exchange preference, carrier preference, evidence links, eligibility gaps, policy checks, and side-effect-free mutation previews.
 
-### 29. Operationalize `self_healing_label_carrier_route_selection` as a governed decision system
+### 29. Return proof generation
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Returns RMA and Reverse Logistics and measurably improves return authorized throughput without hiding assumptions.
+**Justification:** Disputes and audits require proof of authorization, receipt, inspection, disposition, credit, and customer status without overexposing sensitive data.
 
-**Improvement:** Promote `self_healing_label_carrier_route_selection` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `return_authorized_throughput`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Generate selective-disclosure proofs with return hash, policy hash, inspection hash, credit hash, event ids, verifier, expiry, revocation, and redaction policy.
 
-### 30. Operationalize `cryptographic_return_proof` as a governed decision system
+### 30. Immutable return audit trail
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Returns RMA and Reverse Logistics and measurably improves credit adjustment issued throughput without hiding assumptions.
+**Justification:** Returns create financial, inventory, customer, fraud, and carrier disputes that need complete temporal reconstruction.
 
-**Improvement:** Promote `cryptographic_return_proof` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `credit_adjustment_issued_throughput`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Hash-chain authorizations, labels, handoffs, receipts, inspections, dispositions, credits, claims, exceptions, customer status, and AppGen-X event deliveries.
 
-### 31. Create simulation-grade governance for `RETURNS_REVERSE_LOGISTICS_DATABASE_URL` and `RETURNS_REVERSE_LOGISTICS_DATABASE_URL`
+### 31. Dynamic return policy screening
 
-**Justification:** Complete Returns RMA and Reverse Logistics coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Return policy varies by item, region, customer tier, channel, reason, payment state, condition, and fraud risk.
 
-**Improvement:** Add a policy cockpit where `RETURNS_REVERSE_LOGISTICS_DATABASE_URL` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `RETURNS_REVERSE_LOGISTICS_DATABASE_URL` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Compile deterministic policies for eligibility, label creation, inspection, credit, exchange, restocking, repair, carrier claim, and fraud review with explainable outcomes.
 
-### 32. Create simulation-grade governance for `RETURNS_REVERSE_LOGISTICS_EVENT_TOPIC` and `RETURNS_REVERSE_LOGISTICS_EVENT_TOPIC`
+### 32. Runtime parameter impact controls
 
-**Justification:** Complete Returns RMA and Reverse Logistics coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Eligibility windows, fraud thresholds, recovery floors, route switches, and anomaly thresholds directly affect customer experience and losses.
 
-**Improvement:** Add a policy cockpit where `RETURNS_REVERSE_LOGISTICS_EVENT_TOPIC` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `RETURNS_REVERSE_LOGISTICS_EVENT_TOPIC` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add parameter bounds, impact simulation, approval workflow, effective dating, tenant/channel overrides, rollback, and release evidence before parameter changes activate.
 
-### 33. Create simulation-grade governance for `RETURNS_REVERSE_LOGISTICS_RETRY_LIMIT` and `RETURNS_REVERSE_LOGISTICS_RETRY_LIMIT`
+### 33. Schema extension governance
 
-**Justification:** Complete Returns RMA and Reverse Logistics coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Return flows need custom item, carrier, condition, and regional fields while preserving owned boundaries.
 
-**Improvement:** Add a policy cockpit where `RETURNS_REVERSE_LOGISTICS_RETRY_LIMIT` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `RETURNS_REVERSE_LOGISTICS_RETRY_LIMIT` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Allow extensions only on owned returns tables with field validation, sensitivity classification, migration preview, UI binding preview, API exposure review, and release-audit evidence.
 
-### 34. Create simulation-grade governance for `RETURNS_REVERSE_LOGISTICS_DEFAULT_CURRENCY` and `RETURNS_REVERSE_LOGISTICS_DEFAULT_CURRENCY`
+### 34. AppGen-X inbox reliability
 
-**Justification:** Complete Returns RMA and Reverse Logistics coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Shipped order and captured payment events determine return eligibility and refund handling.
 
-**Improvement:** Add a policy cockpit where `RETURNS_REVERSE_LOGISTICS_DEFAULT_CURRENCY` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `RETURNS_REVERSE_LOGISTICS_DEFAULT_CURRENCY` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add inbox validation, idempotency, duplicate suppression, retry evidence, unsupported-event rejection, dead-letter promotion, projection rebuild, and workbench replay/quarantine controls.
 
-### 35. Create simulation-grade governance for `RETURNS_REVERSE_LOGISTICS_SUPPORTED_CARRIERS` and `RETURNS_REVERSE_LOGISTICS_SUPPORTED_CARRIERS`
+### 35. AppGen-X outbox delivery assurance
 
-**Justification:** Complete Returns RMA and Reverse Logistics coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Return authorization and credit adjustment events must reliably reach customer, inventory, payment, ledger, and analytics capabilities.
 
-**Improvement:** Add a policy cockpit where `RETURNS_REVERSE_LOGISTICS_SUPPORTED_CARRIERS` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `RETURNS_REVERSE_LOGISTICS_SUPPORTED_CARRIERS` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add outbox state, ordering group, payload hash, retry attempts, next retry, delivery proof, dead-letter linkage, and replay controls for return events.
 
-### 36. Upgrade `ReturnsReverseLogisticsWorkbench` into a full specialist command center
+### 36. Cross-PBC boundary proof
 
-**Justification:** The PBC UI must expose the complete Returns RMA and Reverse Logistics surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Returns must not directly read or write order, payment, inventory, ledger, customer, carrier, or repair vendor tables.
 
-**Improvement:** Expand `ReturnsReverseLogisticsWorkbench` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add release evidence scanning schema descriptors, services, routes, DSL, workbench bindings, and agent plans for foreign table access, proving dependencies are APIs, events, or projections only.
 
-### 37. Upgrade `ReturnAuthorizationConsole` into a full specialist command center
+### 37. Recovery value forecasting
 
-**Justification:** The PBC UI must expose the complete Returns RMA and Reverse Logistics surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Reverse logistics value depends on condition, disposition, restock time, repair cost, fraud risk, and demand.
 
-**Improvement:** Expand `ReturnAuthorizationConsole` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Forecast recovery value, time to credit, resale probability, repair viability, claim recovery, scrap loss, and customer impact by item, reason, node, and channel.
 
-### 38. Upgrade `ReturnEligibilityPanel` into a full specialist command center
+### 38. Return anomaly detection
 
-**Justification:** The PBC UI must expose the complete Returns RMA and Reverse Logistics surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Abnormal return patterns can reveal fraud, product defects, carrier issues, policy abuse, or integration failures.
 
-**Improvement:** Expand `ReturnEligibilityPanel` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Detect anomalies in return rates, reasons, serial mismatches, label reissues, carrier delays, inspection grades, credit adjustments, refund failures, and dead-letter spikes.
 
-### 39. Upgrade `ReturnLabelConsole` into a full specialist command center
+### 39. Stochastic returns exposure model
 
-**Justification:** The PBC UI must expose the complete Returns RMA and Reverse Logistics surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Returns exposure spans refund leakage, recovery loss, fraud, carrier claims, repair cost, inventory distortion, and customer churn.
 
-**Improvement:** Expand `ReturnLabelConsole` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Model exposure distributions by item, customer, channel, carrier, condition, disposition, region, and policy with mitigation recommendations.
 
-### 40. Upgrade `CarrierHandoffBoard` into a full specialist command center
+### 40. Governed returns model evidence
 
-**Justification:** The PBC UI must expose the complete Returns RMA and Reverse Logistics surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Eligibility, fraud, recovery, routing, and disposition models influence customers and financial outcomes.
 
-**Improvement:** Expand `CarrierHandoffBoard` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Track model purpose, training window, feature lineage, validation metrics, drift, false denial/false approval impact, approval status, rollback, and explainability evidence.
 
-### 41. Prove cross-PBC federation for `PUT /returns-reverse-logistics/configuration` and `OrderShipped`
+### 41. Reverse logistics workbench coverage
 
-**Justification:** Returns RMA and Reverse Logistics must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Operators need a complete reverse-flow command center, not raw return tables.
 
-**Improvement:** Add compatibility tests and workbench evidence for `PUT /returns-reverse-logistics/configuration` and consumed event `OrderShipped` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Expand workbench surfaces for RMAs, lines, eligibility, policies, labels, carrier handoffs, receipts, inspections, dispositions, credits, refunds/exchanges, restocking, repairs, claims, fraud, customer status, exceptions, events, rules, parameters, configuration, and release evidence.
 
-### 42. Prove cross-PBC federation for `POST /returns-reverse-logistics/parameters` and `PaymentCaptured`
+### 42. Inspection and disposition console
 
-**Justification:** Returns RMA and Reverse Logistics must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Inspectors need a fast, controlled UI for grading, findings, disposition, and evidence capture.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /returns-reverse-logistics/parameters` and consumed event `PaymentCaptured` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Add queue, item identity, expected condition, photo/video capture, defect taxonomy, grade, disposition recommendation, policy explanation, recovery estimate, and submit/review controls.
 
-### 43. Prove cross-PBC federation for `POST /returns-reverse-logistics/rules` and `OrderShipped`
+### 43. Customer support cockpit
 
-**Justification:** Returns RMA and Reverse Logistics must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Support agents need accurate return status, customer-facing next steps, and safe recovery actions.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /returns-reverse-logistics/rules` and consumed event `OrderShipped` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Add status timeline, label details, carrier scans, receipt state, inspection outcome, credit/exchange state, exceptions, allowed customer messages, and escalation actions.
 
-### 44. Prove cross-PBC federation for `POST /returns` and `PaymentCaptured`
+### 44. Carrier claims panel
 
-**Justification:** Returns RMA and Reverse Logistics must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Claims require deadline visibility, evidence completeness, and recovery tracking.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /returns` and consumed event `PaymentCaptured` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Add claim queues by carrier, deadline, value, evidence gap, response status, appeal state, recovery amount, and linked exception or customer status.
 
-### 45. Temporal reconstruction and bitemporal audit for Returns RMA and Reverse Logistics
+### 45. Continuous returns control testing
 
-**Justification:** Regulated and operationally complex domains need to answer what was known, valid, processed, and visible at any point in time.
+**Justification:** Return controls should be proven continuously across eligibility, labels, receipts, inspection, credits, claims, events, and agent plans.
 
-**Improvement:** Add transaction-time, valid-time, and processing-time fields to core records, temporal query APIs, projection rebuild tooling, and UI time travel so specialists can reconstruct decisions, reports, and automation outcomes.
+**Improvement:** Add assertions for credit without receipt, refund without payment, label after expiry, disposition without inspection, restock without grade, foreign-table access, dead-letter aging, and agent-preview bypass.
 
-### 46. Bulk operations and migration-grade controls for Returns RMA and Reverse Logistics
+### 46. Returns resilience drills
 
-**Justification:** World-class deployments must handle imports, mass corrections, high-volume operating days, and cutovers without bypassing governance.
+**Justification:** Reverse operations must degrade safely through duplicate events, carrier outages, missing receipts, and refund failures.
 
-**Improvement:** Add staged bulk upload, duplicate detection, chunked validation, approval sampling, partial failure handling, retry dashboards, reconciliation summaries, and agent-generated remediation plans for large batches.
+**Improvement:** Add drills for duplicate shipment event, payment event delay, label provider outage, carrier scan gap, inspection backlog, credit outbox failure, claim dead letter, and workbench degraded mode.
 
-### 47. Specialist edge-case playbooks for Returns RMA and Reverse Logistics
+### 47. Crypto-agile return authorization
 
-**Justification:** Rare cases often carry the highest financial, legal, safety, service, or compliance risk.
+**Justification:** Return proofs and audit traces need durable cryptographic evidence with future rotation support.
 
-**Improvement:** Create a playbook catalog with detection rules, required evidence, escalation paths, fallback actions, owner roles, and release-audited tests for high-severity edge cases and exception queues.
+**Improvement:** Add crypto epoch, signing profile, key rotation evidence, proof compatibility, revocation, and migration readiness across return proofs and audit traces.
 
-### 48. Pre-mutation simulation and blast-radius analysis for Returns RMA and Reverse Logistics
+### 48. Agent-safe return plans
 
-**Justification:** Users should understand consequences before committing irreversible, customer-visible, operationally disruptive, or financially material changes.
+**Justification:** The return chatbot must not silently authorize returns, issue credits, or override fraud and inspection controls.
 
-**Improvement:** Add what-if simulation for every material command, showing impacted records, emitted events, dependent projections, rule outcomes, approvals, downstream PBC dependencies, and rollback limits.
+**Improvement:** Require side-effect-free plans naming command, permission, owned tables, idempotency key, expected event, financial impact, fraud risk, rollback limits, and human confirmation.
 
-### 49. Continuous control testing and operational assurance for Returns RMA and Reverse Logistics
+### 49. Returns readiness score
 
-**Justification:** Better-than-world-class PBCs prove controls continuously, not only at release or during periodic audits.
+**Justification:** Users need an evidence-backed view of whether `returns_reverse_logistics` is ready for live RMA operations.
 
-**Improvement:** Add executable control assertions, sampled evidence checks, anomaly thresholds, control-owner dashboards, breach/recovery events, and release gates that fail when domain controls lose evidence.
+**Improvement:** Compute readiness from authorization, eligibility, labels, carrier handoffs, receipt, inspection, disposition, credit, exchange, restock/repair, claims, fraud, events, UI coverage, model governance, controls, boundary proof, and agent safety.
 
-### 50. Human-in-the-loop domain agent execution for Returns RMA and Reverse Logistics
+### 50. End-to-end reverse logistics proof
 
-**Justification:** The PBC chatbot must help specialists perform real work while preventing unsafe autonomous mutation.
+**Justification:** A complete Returns Reverse Logistics PBC must prove it can execute the full lifecycle from shipped order to credit or recovery outcome.
 
-**Improvement:** Add domain-specific skills, document parsing, task planning, CRUD previews, confidence/risk scoring, confirmation gates, redaction, policy explanations, and post-action evidence packets for every supported command and query.
+**Improvement:** Add an executable proof scenario covering shipped order and payment intake, eligibility, RMA, label, carrier handoff, receipt, inspection, disposition, restock/repair/claim branch, credit or exchange resolution, customer status, emitted events, UI evidence, boundary proof, controls, and agent explanation.
