@@ -1296,6 +1296,7 @@ def _dsl_tooling_cli_impl(argv: Iterable[str] | None = None) -> int:
     tooling_audit_parser.add_argument("--json", action="store_true")
 
     args = parser.parse_args(tuple(argv or ()))
+    _validate_tooling_cli_paths(parser, args)
     path = Path(args.path) if hasattr(args, "path") else None
     source = "" if path is None or path.is_dir() else path.read_text(encoding="utf-8")
 
@@ -1466,6 +1467,20 @@ def _dsl_tooling_cli_impl(argv: Iterable[str] | None = None) -> int:
         _emit_tooling_payload(report, as_json=args.json)
         return 0 if report["ok"] else 1
     return 2
+
+
+def _validate_tooling_cli_paths(parser: argparse.ArgumentParser, args: argparse.Namespace) -> None:
+    for attr in ("path", "previous", "current"):
+        if not hasattr(args, attr):
+            continue
+        value = getattr(args, attr)
+        if not value:
+            continue
+        candidate = Path(value)
+        if not candidate.exists():
+            parser.error(f"{args.command}: path does not exist: {value}")
+        if attr == "path" and args.command != "lint" and candidate.is_dir():
+            parser.error(f"{args.command}: expected a file path, got directory: {value}")
 
 
 def _emit_tooling_payload(payload: dict, *, as_json: bool) -> None:
@@ -1976,6 +1991,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
     with tempfile.TemporaryDirectory(prefix="appgen-tooling-audit-") as tmp:
         format_write = _tooling_audit_format_write(Path(tmp))
         internal_error_exit = _tooling_audit_internal_error_exit(Path(tmp))
+        missing_input_exit = _tooling_audit_missing_input_exit(Path(tmp))
         generation = generate_report_dsl(
             source,
             source_name="tooling-audit.appgen",
@@ -2055,6 +2071,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             validation["ok"]
             and format_write["ok"]
             and internal_error_exit["ok"]
+            and missing_input_exit["ok"]
             and cli_help_surface["ok"]
             and generation["ok"]
             and generation["generated"]
@@ -2067,6 +2084,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                 "validate": validation.get("format"),
                 "format_write": format_write,
                 "internal_error_exit": internal_error_exit,
+                "missing_input_exit": missing_input_exit,
                 "cli_help_surface": cli_help_surface,
                 "generate": generation.get("format"),
                 "warning_block": warning_generation_blocked.get("blocking_gaps"),
@@ -2552,6 +2570,26 @@ def _tooling_audit_internal_error_exit(tmp: Path) -> dict:
         "payload_format": payload.get("format"),
         "code": payload.get("code"),
         "error_type": payload.get("error_type"),
+    }
+
+
+def _tooling_audit_missing_input_exit(tmp: Path) -> dict:
+    missing_path = tmp / "missing.appgen"
+    output = io.StringIO()
+    error = io.StringIO()
+    exit_code = 0
+    with contextlib.redirect_stdout(output), contextlib.redirect_stderr(error):
+        try:
+            exit_code = dsl_tooling_cli(("graph", str(missing_path), "--format", "json"))
+        except SystemExit as exc:
+            exit_code = int(exc.code or 0)
+    stderr = error.getvalue()
+    return {
+        "format": "appgen.missing-input-exit-audit.v1",
+        "ok": exit_code == 2 and "path does not exist" in stderr and "Traceback" not in stderr,
+        "exit_code": exit_code,
+        "stderr": stderr.strip(),
+        "stdout": output.getvalue().strip(),
     }
 
 

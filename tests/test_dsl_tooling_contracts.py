@@ -2177,6 +2177,13 @@ def test_cli_contracts_cover_text_summaries_exit_codes_and_bad_arguments(tmp_pat
         text=True,
         capture_output=True,
     )
+    missing_input_path = subprocess.run(
+        [sys.executable, "-m", "pyAppGen", "graph", str(tmp_path / "missing.appgen"), "--format", "json"],
+        check=False,
+        cwd=root,
+        text=True,
+        capture_output=True,
+    )
     missing_required_arg = subprocess.run(
         [sys.executable, "-m", "pyAppGen", "generate", str(source_path)],
         check=False,
@@ -2204,6 +2211,9 @@ def test_cli_contracts_cover_text_summaries_exit_codes_and_bad_arguments(tmp_pat
     assert "artifact appgen.json" in generate_text.stdout
     assert invalid_graph_format.returncode == 2
     assert "invalid choice" in invalid_graph_format.stderr
+    assert missing_input_path.returncode == 2
+    assert "path does not exist" in missing_input_path.stderr
+    assert "Traceback" not in missing_input_path.stderr
     assert missing_required_arg.returncode == 2
     assert "--out" in missing_required_arg.stderr
 
