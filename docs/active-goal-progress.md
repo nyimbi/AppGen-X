@@ -3030,3 +3030,12 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   validation, `tests/test_dsl_tooling_contracts.py -q`, focused DSL
   platform/CLI regression tests, staged diff whitespace check, and
   restricted-name scan. Commit: `96621bc0`.
+- Current VS Code preview pass makes the documented graph preview, generated
+  artifact preview, and PBC catalog browser surfaces executable. The extension
+  now contributes dedicated commands that call `graph-suite`, `generate`, and
+  `pbc list` JSON contracts, then render graph summaries, artifact reports, and
+  catalog entries in VS Code webview panels. Verification passed: JavaScript
+  syntax check, JSON manifest/config/grammar validation,
+  `tests/test_dsl_tooling_contracts.py -q`, focused DSL platform/CLI regression
+  tests, staged diff whitespace check, and restricted-name scan. Commit:
+  `13ed368a`.
