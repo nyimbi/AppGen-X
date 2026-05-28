@@ -3147,17 +3147,36 @@ def _designer_visual_edit_result(source: str, visual_edit: dict | None, *, sourc
     patched_source = _append_dsl_patch(source, patch) if patch else source
     lint = lint_report_dsl(patched_source, source_name=source_name)
     semantic = semantic_model_dsl(patched_source, source_name=source_name)
+    projections_after = {
+        "form_designer": _designer_form_projection(semantic),
+        "database_designer": _designer_database_projection(semantic),
+        "workflow_designer": _designer_workflow_projection(semantic),
+        "pbc_composition_designer": _designer_pbc_projection(semantic),
+        "package_deployment_designer": _designer_package_deployment_projection(semantic),
+    }
     accepted = bool(patch) and lint["ok"]
     return {
         "format": "appgen.designer-visual-edit-result.v1",
         "operation": (visual_edit or {}).get("kind"),
         "accepted": accepted,
         "dsl_patch": patch,
+        "dsl_diff": tuple(
+            difflib.unified_diff(
+                source.splitlines(),
+                patched_source.splitlines(),
+                fromfile="before.appgen",
+                tofile="after.appgen",
+                lineterm="",
+            )
+        ),
         "patched_source": patched_source,
         "lint": lint,
         "diagnostics": tuple(lint["diagnostics"]),
         "round_trip_ok": accepted and semantic["ok"],
         "semantic_model_format": semantic.get("format"),
+        "semantic_after": semantic,
+        "projections_after": projections_after,
+        "changed_surfaces": _designer_changed_surfaces(visual_edit or {}),
     }
 
 
@@ -3177,7 +3196,8 @@ def _designer_edit_to_patch(source: str, edit: dict) -> str:
         table = _pascal_case(str(edit.get("table", "")))
         field = _snake_case(str(edit.get("field") or edit.get("name") or "field"))
         type_name = str(edit.get("type") or edit.get("type_name") or "string")
-        return f"// edit table {table}: add {field}: {type_name}"
+        required = " required" if edit.get("required") else ""
+        return f"// edit table {table}: add {field}: {type_name}{required}"
     if kind == "add_component":
         return _designer_component_patch(edit)
     if kind == "add_flow_transition":
@@ -3190,7 +3210,7 @@ def _designer_edit_to_patch(source: str, edit: dict) -> str:
     if kind == "add_pbc_include":
         pbc = str(edit.get("pbc", "")).strip()
         composition = _pascal_case(str(edit.get("composition") or "AppComposition"))
-        return f"composition {composition} {{\n  include pbc {pbc} version {edit.get('version', '1.0.0')}\n}}"
+        return f"// edit composition {composition}: include pbc {pbc} version {edit.get('version', '1.0.0')}"
     if kind == "add_package":
         name = _pascal_case(str(edit.get("name") or f"{edit.get('target', 'web')}Package"))
         target = str(edit.get("target", "web")).lower()
@@ -3212,6 +3232,21 @@ def _designer_component_patch(edit: dict) -> str:
     w = int(edit.get("w", 4))
     h = int(edit.get("h", 1))
     return f"// edit view {view}: add component {binding} {component} {x} {y} {w} {h}"
+
+
+def _designer_changed_surfaces(edit: dict) -> tuple[str, ...]:
+    kind = edit.get("kind")
+    if kind in {"add_table", "add_field"}:
+        return ("database_designer", "form_designer", "graph_explain_panel")
+    if kind == "add_component":
+        return ("form_designer", "graph_explain_panel")
+    if kind == "add_flow_transition":
+        return ("workflow_designer", "graph_explain_panel")
+    if kind == "add_pbc_include":
+        return ("pbc_composition_designer", "graph_explain_panel")
+    if kind in {"add_package", "add_deployment_unit"}:
+        return ("package_deployment_designer", "graph_explain_panel")
+    return ()
 
 
 def _append_to_existing_block(source: str, kind: str, name: str, line: str) -> str:
@@ -4237,26 +4272,32 @@ def _append_dsl_patch(source: str, patch: str) -> str:
         return _apply_view_component_patch(source, patch)
     if patch.startswith("// edit flow "):
         return _apply_flow_transition_patch(source, patch)
+    if patch.startswith("// edit composition "):
+        return _apply_pbc_include_patch(source, patch)
     stripped = source.rstrip()
     return f"{stripped}\n\n{patch}\n" if stripped else f"{patch}\n"
 
 
 def _apply_table_field_patch(source: str, patch: str) -> str:
-    match = re.match(r"// edit table (?P<table>[A-Za-z_][A-Za-z0-9_]*): add (?P<field>[a-z][a-z0-9_]*): (?P<type>[A-Za-z_][A-Za-z0-9_]*)", patch)
+    match = re.match(
+        r"// edit table (?P<table>[A-Za-z_][A-Za-z0-9_]*): add (?P<field>[a-z][a-z0-9_]*): (?P<type>[A-Za-z_][A-Za-z0-9_]*)(?P<required> required)?",
+        patch,
+    )
     if not match:
         return source
     table = match.group("table")
     field = match.group("field")
     field_type = match.group("type")
+    required = match.group("required") or ""
     pattern = re.compile(rf"(table\s+{re.escape(table)}\s*\{{)(?P<body>.*?)(\n\}})", re.S)
     table_match = pattern.search(source)
     if table_match is None:
         return _append_dsl_patch(
             source,
-            f"table {table} {{\n  id: int pk\n  {field}: {field_type}\n}}",
+            f"table {table} {{\n  id: int pk\n  {field}: {field_type}{required}\n}}",
         )
     body = table_match.group("body").rstrip()
-    replacement = f"{table_match.group(1)}{body}\n  {field}: {field_type}{table_match.group(3)}"
+    replacement = f"{table_match.group(1)}{body}\n  {field}: {field_type}{required}{table_match.group(3)}"
     return source[: table_match.start()] + replacement + source[table_match.end() :]
 
 
@@ -4281,6 +4322,21 @@ def _apply_flow_transition_patch(source: str, patch: str) -> str:
         return source
     line = f"  {match.group('source')} -> {match.group('target')}"
     return _append_to_existing_block(source, "flow", match.group("flow"), line) or source
+
+
+def _apply_pbc_include_patch(source: str, patch: str) -> str:
+    match = re.match(
+        r"// edit composition (?P<composition>[A-Za-z_][A-Za-z0-9_]*): include pbc (?P<pbc>[A-Za-z_][A-Za-z0-9_]*) version (?P<version>[A-Za-z0-9_.-]+)",
+        patch,
+    )
+    if not match:
+        return source
+    composition = match.group("composition")
+    line = f"  include pbc {match.group('pbc')} version {match.group('version')}"
+    inserted = _append_to_existing_block(source, "composition", composition, line)
+    if inserted:
+        return inserted
+    return _append_dsl_patch(source, f"composition {composition} {{\n{line}\n}}")
 
 
 def _default_composition_name(semantic: dict) -> str:

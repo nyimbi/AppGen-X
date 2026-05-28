@@ -1274,6 +1274,52 @@ def test_designer_sync_accepts_round_trippable_visual_edit_and_rejects_invalid_b
     assert any(item["code"] == "AGX0402" for item in invalid["visual_edit"]["diagnostics"])
 
 
+def test_designer_sync_visual_edits_apply_real_dsl_mutations_and_diff_previews() -> None:
+    field = designer_sync_report_dsl(
+        TOOLING_SAMPLE,
+        source_name="finance.appgen",
+        visual_edit={
+            "kind": "add_field",
+            "table": "Invoice",
+            "field": "due_date",
+            "type": "date",
+            "required": True,
+        },
+    )
+    transition = designer_sync_report_dsl(
+        TOOLING_SAMPLE,
+        source_name="finance.appgen",
+        visual_edit={
+            "kind": "add_flow_transition",
+            "flow": "SubmitInvoice",
+            "from": "posted",
+            "to": "archived",
+        },
+    )
+    pbc = designer_sync_report_dsl(
+        TOOLING_SAMPLE,
+        source_name="finance.appgen",
+        visual_edit={
+            "kind": "add_pbc_include",
+            "composition": "FinanceSuite",
+            "pbc": "ap_automation",
+            "version": "1.0.0",
+        },
+    )
+
+    assert field["visual_edit"]["accepted"] is True
+    assert "  due_date: date required" in field["visual_edit"]["patched_source"]
+    assert "due_date" in field["visual_edit"]["semantic_after"]["tables"]["Invoice"]["fields"]
+    assert "database_designer" in field["visual_edit"]["changed_surfaces"]
+    assert any(line.startswith("+  due_date: date required") for line in field["visual_edit"]["dsl_diff"])
+    assert transition["visual_edit"]["accepted"] is True
+    assert "  posted -> archived" in transition["visual_edit"]["patched_source"]
+    assert "workflow_designer" in transition["visual_edit"]["changed_surfaces"]
+    assert pbc["visual_edit"]["accepted"] is True
+    assert "  include pbc ap_automation version 1.0.0" in pbc["visual_edit"]["patched_source"]
+    assert "pbc_composition_designer" in pbc["visual_edit"]["changed_surfaces"]
+
+
 def test_appgen_designer_sync_subcommand_emits_json_contract(tmp_path: Path) -> None:
     path = tmp_path / "finance.appgen"
     path.write_text(TOOLING_SAMPLE, encoding="utf-8")

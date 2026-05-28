@@ -760,7 +760,11 @@ Required Studio surfaces:
 - natural-language change planner with DSL diff preview.
 
 Visual designers must never create state that cannot round-trip through the
-DSL semantic model.
+DSL semantic model. The executable `appgen designer-sync` contract returns DSL
+diff previews, patched source, the after-edit semantic model, changed designer
+surfaces, and refreshed projections for accepted visual edits. Form, database,
+workflow, PBC composition, and package/deployment edit paths must validate the
+patched DSL before the Studio accepts the visual operation.
 
 ## Graph Tooling
 
