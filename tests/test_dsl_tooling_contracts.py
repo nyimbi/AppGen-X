@@ -283,6 +283,48 @@ def test_migration_plan_detects_add_drop_type_and_backfill_changes() -> None:
     assert any(item["code"] == "AGX1101" for item in plan["diagnostics"])
 
 
+def test_migration_plan_detects_index_check_and_pbc_ownership_transfer_changes() -> None:
+    previous = """
+    app FinanceOps { targets: web }
+    table Invoice {
+      id: int pk
+      total: decimal
+      index(total)
+      constraint(total_positive, total)
+    }
+    pbc Billing { owns: Invoice }
+    """
+    current = """
+    app FinanceOps { targets: web }
+    table Invoice {
+      id: int pk
+      total: decimal
+      unique(total)
+      index(id)
+      constraint(non_negative_total, total)
+    }
+    pbc Finance { owns: Invoice }
+    """
+
+    plan = migration_plan_dsl(previous, current, backend="postgresql")
+    changes = {change["kind"]: change for change in plan["changes"]}
+
+    assert plan["format"] == "appgen.migration-plan.v1"
+    assert plan["ok"] is True
+    assert plan["destructive"] is True
+    assert {
+        "add_index",
+        "drop_index",
+        "add_check",
+        "drop_check",
+        "add_unique_constraint",
+        "pbc_ownership_transfer",
+    } <= set(changes)
+    assert changes["pbc_ownership_transfer"]["from"] == "Billing"
+    assert changes["pbc_ownership_transfer"]["to"] == "Finance"
+    assert changes["pbc_ownership_transfer"]["requires_approval"] is True
+
+
 def test_nl_plan_returns_linted_dsl_patch_and_migration_preview() -> None:
     plan = nl_plan_dsl(
         TOOLING_SAMPLE,

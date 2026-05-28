@@ -3317,17 +3317,48 @@ def _field_rename_candidates(
 
 
 def _directive_migration_changes(table_name: str, previous_table: dict, current_table: dict) -> tuple[dict, ...]:
-    before = {_directive_signature(item) for item in previous_table.get("directives", ())}
-    after = {_directive_signature(item) for item in current_table.get("directives", ())}
-    changes = [
-        _migration_change("add_table_directive", table=table_name, directive=directive, destructive=False)
-        for directive in sorted(after - before)
-    ]
-    changes.extend(
-        _migration_change("drop_table_directive", table=table_name, directive=directive, destructive=True)
-        for directive in sorted(before - after)
-    )
+    before = {_directive_signature(item): item for item in previous_table.get("directives", ())}
+    after = {_directive_signature(item): item for item in current_table.get("directives", ())}
+    changes: list[dict] = []
+    for signature in sorted(set(after) - set(before)):
+        changes.append(_directive_change("add", table_name, after[signature]))
+    for signature in sorted(set(before) - set(after)):
+        changes.append(_directive_change("drop", table_name, before[signature]))
     return tuple(changes)
+
+
+def _directive_change(action: str, table_name: str, directive: dict) -> dict:
+    family = _directive_migration_family(directive)
+    destructive = action == "drop"
+    kind = f"{action}_{family}" if family else f"{action}_table_directive"
+    detail = {
+        "table": table_name,
+        "directive": _directive_signature(directive),
+        "directive_detail": directive,
+        "destructive": destructive,
+    }
+    if family == "index":
+        detail["index"] = directive.get("name") or "_".join(directive.get("values", ()))
+        detail["fields"] = tuple(directive.get("values", ()))
+    if family == "check":
+        detail["check"] = directive.get("name") or "_".join(directive.get("values", ()))
+        detail["expression"] = tuple(directive.get("values", ()))
+    if destructive:
+        detail["safe_alternative"] = (
+            "Retain the table directive until dependent queries, reports, and generated validations are migrated."
+        )
+    return _migration_change(kind, **detail)
+
+
+def _directive_migration_family(directive: dict) -> str | None:
+    verb = str(directive.get("verb") or "").lower()
+    if verb in {"index", "key"}:
+        return "index"
+    if verb == "unique":
+        return "unique_constraint"
+    if verb in {"constraint", "check"}:
+        return "check"
+    return None
 
 
 def _directive_signature(directive: dict) -> str:
@@ -3407,7 +3438,40 @@ def _pbc_migration_changes(previous: dict, current: dict) -> tuple[dict, ...]:
         )
         for pbc in sorted(previous_pbcs - current_pbcs)
     )
+    changes.extend(_pbc_ownership_transfer_changes(previous, current))
     return tuple(changes)
+
+
+def _pbc_ownership_transfer_changes(previous: dict, current: dict) -> tuple[dict, ...]:
+    before = _pbc_table_ownership(previous)
+    after = _pbc_table_ownership(current)
+    changes: list[dict] = []
+    for table in sorted(set(before) & set(after)):
+        if before[table] == after[table]:
+            continue
+        changes.append(
+            _migration_change(
+                "pbc_ownership_transfer",
+                table=table,
+                **{"from": before[table], "to": after[table]},
+                destructive=True,
+                safe_alternative="Publish a projection contract and backfill the receiving PBC before changing table ownership.",
+            )
+        )
+    return tuple(changes)
+
+
+def _pbc_table_ownership(semantic: dict) -> dict[str, str]:
+    owners: dict[str, str] = {}
+    for pbc, detail in semantic.get("pbcs", {}).items():
+        options = detail.get("options", {}) or {}
+        for key in ("owns", "tables", "owned_tables"):
+            for table in options.get(key, ()):
+                owners[str(table)] = pbc
+        catalog = detail.get("catalog") or {}
+        for table in catalog.get("tables", ()):
+            owners.setdefault(str(table), pbc)
+    return owners
 
 
 def _classify_nl_operation(prompt: str, semantic: dict) -> dict:

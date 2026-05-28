@@ -768,6 +768,11 @@ Required detections:
 - PBC ownership transfer;
 - data backfill requirement.
 
+Executable migration tests now prove first-class change records for table-level
+index directives, uniqueness constraints, constraint/check directives, and PBC
+table ownership transfer. Unknown table directives are still reported as
+generic directive changes so generators can remain conservative.
+
 Destructive changes must require explicit approval and should include suggested
 safe alternatives when possible.
 
