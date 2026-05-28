@@ -1,336 +1,191 @@
 """Executable runtime contract for the customer_success_management PBC."""
 from __future__ import annotations
-from copy import deepcopy
-import hashlib
 
-PBC_KEY = 'customer_success_management'
-CUSTOMER_SUCCESS_MANAGEMENT_OWNED_TABLES = ('customer_success_management_customer_success_account', 'customer_success_management_customer_health_score', 'customer_success_management_onboarding_plan', 'customer_success_management_adoption_signal', 'customer_success_management_renewal_plan', 'customer_success_management_expansion_signal', 'customer_success_management_success_playbook', 'customer_success_management_churn_risk_case', 'customer_success_management_appgen_outbox_event', 'customer_success_management_appgen_inbox_event', 'customer_success_management_appgen_dead_letter_event')
-CUSTOMER_SUCCESS_MANAGEMENT_RUNTIME_TABLES = ('customer_success_management_customer_success_account', 'customer_success_management_customer_health_score', 'customer_success_management_onboarding_plan', 'customer_success_management_adoption_signal', 'customer_success_management_renewal_plan', 'customer_success_management_expansion_signal', 'customer_success_management_success_playbook', 'customer_success_management_churn_risk_case', 'customer_success_management_appgen_outbox_event', 'customer_success_management_appgen_inbox_event', 'customer_success_management_appgen_dead_letter_event')
-CUSTOMER_SUCCESS_MANAGEMENT_ALLOWED_DATABASE_BACKENDS = ('postgresql', 'mysql', 'mariadb')
-CUSTOMER_SUCCESS_MANAGEMENT_REQUIRED_EVENT_TOPIC = 'pbc.customer_success_management.events'
-CUSTOMER_SUCCESS_MANAGEMENT_EMITTED_EVENT_TYPES = ('CustomerHealthChanged', 'RenewalPlanCreated', 'ExpansionSignalDetected', 'ChurnRiskRaised')
-CUSTOMER_SUCCESS_MANAGEMENT_CONSUMED_EVENT_TYPES = ('CustomerUpdated', 'SubscriptionRenewed', 'ServiceTicketResolved')
-CUSTOMER_SUCCESS_MANAGEMENT_STANDARD_FEATURE_KEYS = ('customer_success_account_management',
- 'customer_success_management_workflow',
- 'customer_success_management_analytics',
- 'configuration_schema',
- 'rule_engine',
- 'parameter_engine',
- 'owned_schema_migrations_models',
- 'appgen_x_outbox_inbox_eventing',
- 'idempotent_handlers',
- 'retry_dead_letter_evidence',
- 'permissions',
- 'seed_data',
- 'workbench',
- 'agentic_document_instruction_intake',
- 'governed_datastore_crud',
- 'ai_agent_task_assistance',
- 'configuration_workbench',
- 'continuous_release_assurance')
-CUSTOMER_SUCCESS_MANAGEMENT_RUNTIME_CAPABILITY_KEYS = ('customer_success_management_event_sourced_operational_history', 'customer_success_management_multi_tenant_policy_isolation', 'customer_success_management_schema_evolution_resilience', 'customer_success_management_autonomous_anomaly_detection', 'customer_success_management_semantic_document_instruction_understanding', 'customer_success_management_predictive_risk_scoring', 'customer_success_management_counterfactual_scenario_simulation', 'customer_success_management_cryptographic_audit_proofs', 'customer_success_management_continuous_control_testing', 'customer_success_management_carbon_and_sustainability_awareness', 'customer_success_management_cross_pbc_event_federation', 'customer_success_management_governed_ai_agent_execution')
-CUSTOMER_SUCCESS_MANAGEMENT_UI_FRAGMENT_KEYS = ('CustomerSuccessManagementWorkbench', 'CustomerSuccessManagementDetail', 'CustomerSuccessManagementAssistantPanel')
-CUSTOMER_SUCCESS_MANAGEMENT_BUSINESS_TABLES = ('customer_success_management_customer_success_account', 'customer_success_management_customer_health_score', 'customer_success_management_onboarding_plan', 'customer_success_management_adoption_signal', 'customer_success_management_renewal_plan', 'customer_success_management_expansion_signal', 'customer_success_management_success_playbook', 'customer_success_management_churn_risk_case')
+from .slice_app import (
+    ALLOWED_DATABASE_BACKENDS,
+    APPGEN_X_TOPIC,
+    BUSINESS_TABLES,
+    CONSUMED_EVENTS,
+    EMITTED_EVENTS,
+    EVENT_TABLES,
+    PBC_KEY,
+    RUNTIME_TABLES,
+    build_api_contract,
+    build_release_evidence,
+    build_runtime_capabilities,
+    build_schema_contract,
+    build_service_contract,
+    build_standalone_app,
+    build_ui_contract,
+    dispatch_route,
+    pbc_generation_smoke_audit,
+    slice_app_smoke_test,
+    verify_owned_table_boundary,
+)
 
-
-def customer_success_management_empty_state():
-    return {'records': {}, 'parameters': {}, 'rules': {}, 'schema_extensions': {}, 'configuration': {}, 'inbox': [], 'outbox': [], 'dead_letter': [], 'idempotency_keys': set()}
+CUSTOMER_SUCCESS_MANAGEMENT_OWNED_TABLES = BUSINESS_TABLES + EVENT_TABLES
+CUSTOMER_SUCCESS_MANAGEMENT_RUNTIME_TABLES = RUNTIME_TABLES
+CUSTOMER_SUCCESS_MANAGEMENT_ALLOWED_DATABASE_BACKENDS = ALLOWED_DATABASE_BACKENDS[:-1]
+CUSTOMER_SUCCESS_MANAGEMENT_REQUIRED_EVENT_TOPIC = APPGEN_X_TOPIC
+CUSTOMER_SUCCESS_MANAGEMENT_EMITTED_EVENT_TYPES = EMITTED_EVENTS
+CUSTOMER_SUCCESS_MANAGEMENT_CONSUMED_EVENT_TYPES = CONSUMED_EVENTS
+CUSTOMER_SUCCESS_MANAGEMENT_STANDARD_FEATURE_KEYS = tuple(build_runtime_capabilities()["standard_features"])
+CUSTOMER_SUCCESS_MANAGEMENT_RUNTIME_CAPABILITY_KEYS = tuple(build_runtime_capabilities()["capabilities"])
+CUSTOMER_SUCCESS_MANAGEMENT_UI_FRAGMENT_KEYS = tuple(build_ui_contract()["fragments"])
+CUSTOMER_SUCCESS_MANAGEMENT_BUSINESS_TABLES = BUSINESS_TABLES
 
 
-def _copy(state):
-    copied = deepcopy(state)
-    copied['idempotency_keys'] = set(state.get('idempotency_keys', set()))
-    return copied
+def customer_success_management_empty_state() -> dict:
+    return {
+        "tenant": "default",
+        "configuration": {},
+        "parameters": {},
+        "rules": {},
+        "records": (),
+        "summary": {},
+        "side_effects": (),
+    }
 
 
-def _digest(value):
-    return hashlib.sha256(repr(value).encode('utf-8')).hexdigest()
+def customer_success_management_configure_runtime(state: dict, config: dict) -> dict:
+    app = build_standalone_app()
+    result = app.configure_runtime(config)
+    next_state = {**dict(state), "configuration": result["configuration"]}
+    return {"ok": result["ok"], "state": next_state, "configuration": result["configuration"], "side_effects": ()}
 
 
-def _event(state, event_type, payload):
-    state['outbox'].append({'event_type': event_type, 'topic': CUSTOMER_SUCCESS_MANAGEMENT_REQUIRED_EVENT_TOPIC, 'payload': dict(payload), 'idempotency_key': _digest((event_type, payload))})
+def customer_success_management_set_parameter(state: dict, name: str, value) -> dict:
+    app = build_standalone_app()
+    result = app.set_parameter(name, value)
+    next_state = {**dict(state), "parameters": {**dict(state.get("parameters", {})), name: result["parameter"]}}
+    return {"ok": result["ok"], "state": next_state, "parameter": result["parameter"], "side_effects": ()}
 
 
-def customer_success_management_configure_runtime(state, config):
-    next_state = _copy(state)
-    ok = config.get('database_backend') in CUSTOMER_SUCCESS_MANAGEMENT_ALLOWED_DATABASE_BACKENDS and config.get('event_topic', CUSTOMER_SUCCESS_MANAGEMENT_REQUIRED_EVENT_TOPIC) == CUSTOMER_SUCCESS_MANAGEMENT_REQUIRED_EVENT_TOPIC
-    next_state['configuration'] = {'ok': ok, **dict(config), 'event_contract': 'AppGen-X', 'stream_engine_picker_visible': False}
-    return {'ok': ok, 'state': next_state, 'configuration': next_state['configuration'], 'side_effects': ()}
+def customer_success_management_register_rule(state: dict, rule: dict) -> dict:
+    app = build_standalone_app()
+    result = app.register_rule(rule)
+    next_state = {**dict(state), "rules": {**dict(state.get("rules", {})), rule.get("rule_id", "unnamed_rule"): result["rule"]}}
+    return {"ok": result["ok"], "state": next_state, "rule": result["rule"], "side_effects": ()}
 
 
-def customer_success_management_set_parameter(state, name, value):
-    next_state = _copy(state)
-    next_state['parameters'][name] = {'name': name, 'value': value, 'scope': 'domain', 'bounded': True}
-    return {'ok': True, 'state': next_state, 'parameter': next_state['parameters'][name], 'side_effects': ()}
+def customer_success_management_register_schema_extension(state: dict, table: str, fields: dict) -> dict:
+    app = build_standalone_app()
+    result = app.register_schema_extension(table, fields)
+    return {"ok": result["ok"], "state": dict(state), **result, "side_effects": ()}
 
 
-def customer_success_management_register_rule(state, rule):
-    next_state = _copy(state)
-    rule_id = rule.get('rule_id', 'domain_rule')
-    compiled = {**dict(rule), 'compiled_hash': _digest(rule), 'event_contract': 'AppGen-X'}
-    next_state['rules'][rule_id] = compiled
-    return {'ok': True, 'state': next_state, 'rule': compiled, 'side_effects': ()}
+def customer_success_management_receive_event(state: dict, event: dict) -> dict:
+    app = build_standalone_app()
+    result = app.receive_event(event)
+    return {"ok": result["ok"], "duplicate": result.get("duplicate"), "state": dict(state), **result, "side_effects": ()}
 
 
-def customer_success_management_register_schema_extension(state, table, fields):
-    next_state = _copy(state)
-    if table not in ('customer_success_account', 'customer_health_score', 'onboarding_plan', 'adoption_signal', 'renewal_plan', 'expansion_signal', 'success_playbook', 'churn_risk_case') and table not in CUSTOMER_SUCCESS_MANAGEMENT_OWNED_TABLES:
-        return {'ok': False, 'state': next_state, 'reason': 'unknown_owned_table', 'side_effects': ()}
-    owned_name = table if str(table).startswith(f'{PBC_KEY}_') else f'{PBC_KEY}_{table}'
-    next_state['schema_extensions'][owned_name] = dict(fields)
-    return {'ok': True, 'state': next_state, 'table': owned_name, 'fields': dict(fields), 'side_effects': ()}
+def customer_success_management_command_customer_success_account(state: dict, payload: dict) -> dict:
+    app = build_standalone_app()
+    result = app.create_success_account(payload)
+    next_state = {**dict(state), "last_account": result.get("record")}
+    return {"ok": result["ok"], "state": next_state, "record": result.get("record"), "side_effects": ()}
 
 
-def customer_success_management_receive_event(state, event):
-    next_state = _copy(state)
-    idem = event.get('idempotency_key') or event.get('event_id') or _digest(event)
-    if idem in next_state['idempotency_keys']:
-        return {'ok': True, 'duplicate': True, 'state': next_state, 'side_effects': ()}
-    next_state['idempotency_keys'].add(idem)
-    if event.get('event_type') not in CUSTOMER_SUCCESS_MANAGEMENT_CONSUMED_EVENT_TYPES:
-        next_state['dead_letter'].append({'event': dict(event), 'dead_letter_table': f'{PBC_KEY}_appgen_dead_letter_event', 'retry_policy': {'max_attempts': 5}})
-        return {'ok': False, 'duplicate': False, 'state': next_state, 'side_effects': ()}
-    next_state['inbox'].append(dict(event))
-    return {'ok': True, 'duplicate': False, 'state': next_state, 'side_effects': ()}
+def customer_success_management_query_workbench(state: dict, filters: dict | None = None) -> dict:
+    app = build_standalone_app()
+    tenant = (filters or {}).get("tenant", state.get("tenant", "default"))
+    workbench = app.query_workbench(tenant=tenant)
+    return {"ok": workbench["ok"], "records": tuple(workbench["records"]["accounts"]), "filters": dict(filters or {}), "read_only": True, "workbench": workbench, "side_effects": ()}
 
 
-def customer_success_management_command_customer_success_account(state, payload):
-    next_state = _copy(state)
-    record_id = payload.get('id') or payload.get('code') or f"customer_success_account-1"
-    record = {'id': record_id, 'tenant': payload.get('tenant', 'default'), 'status': payload.get('status', 'active'), 'payload': dict(payload)}
-    next_state['records'][record_id] = record
-    _event(next_state, ('CustomerHealthChanged', 'RenewalPlanCreated', 'ExpansionSignalDetected', 'ChurnRiskRaised')[0], record)
-    return {'ok': True, 'state': next_state, 'record': record, 'side_effects': ()}
-
-
-def customer_success_management_query_workbench(state, filters=None):
-    return {'ok': True, 'records': tuple(state.get('records', {}).values()), 'filters': dict(filters or {}), 'read_only': True, 'side_effects': ()}
-
-
-def customer_success_management_run_advanced_assessment(state, payload=None):
+def customer_success_management_run_advanced_assessment(state: dict, payload: dict | None = None) -> dict:
     payload = dict(payload or {})
-    score = min(1.0, 0.65 + 0.01 * len(state.get('records', {})))
-    return {'ok': True, 'score': round(score, 4), 'explanations': ('policy_aligned', 'owned_boundary_respected', 'agent_review_ready'), 'payload': payload, 'side_effects': ()}
+    workbench = build_standalone_app().query_workbench(tenant=payload.get("tenant", "default"))
+    score = round(0.7 + min(workbench["summary"]["account_count"], 5) * 0.03, 4)
+    return {
+        "ok": True,
+        "score": score,
+        "explanations": (
+            "database-backed owned tables ready",
+            "forms-wizards-controls exposed",
+            "AppGen-X routes and agent plans aligned",
+        ),
+        "payload": payload,
+        "side_effects": (),
+    }
 
 
-def customer_success_management_parse_document_instruction(document, instruction):
-    return {'ok': True, 'candidate_tables': CUSTOMER_SUCCESS_MANAGEMENT_BUSINESS_TABLES[:3], 'instruction': instruction, 'document_digest': _digest(document), 'requires_human_confirmation': True, 'side_effects': ()}
+def customer_success_management_parse_document_instruction(document: str, instruction: str) -> dict:
+    app = build_standalone_app()
+    return app.document_instruction_plan(document, instruction)
 
 
-def customer_success_management_build_schema_contract():
-    table_contracts = ({'table': 'customer_success_management_customer_success_account',
-  'fields': ('id', 'tenant', 'code', 'status', 'version', 'payload', 'created_at', 'updated_at'),
-  'primary_key': ('id',),
-  'owned_by': 'customer_success_management'},
- {'table': 'customer_success_management_customer_health_score',
-  'fields': ('id',
-             'tenant',
-             'customer_success_account_id',
-             'code',
-             'status',
-             'version',
-             'payload',
-             'created_at',
-             'updated_at'),
-  'primary_key': ('id',),
-  'owned_by': 'customer_success_management'},
- {'table': 'customer_success_management_onboarding_plan',
-  'fields': ('id',
-             'tenant',
-             'customer_success_account_id',
-             'code',
-             'status',
-             'version',
-             'payload',
-             'created_at',
-             'updated_at'),
-  'primary_key': ('id',),
-  'owned_by': 'customer_success_management'},
- {'table': 'customer_success_management_adoption_signal',
-  'fields': ('id',
-             'tenant',
-             'customer_success_account_id',
-             'code',
-             'status',
-             'version',
-             'payload',
-             'created_at',
-             'updated_at'),
-  'primary_key': ('id',),
-  'owned_by': 'customer_success_management'},
- {'table': 'customer_success_management_renewal_plan',
-  'fields': ('id',
-             'tenant',
-             'customer_success_account_id',
-             'code',
-             'status',
-             'version',
-             'payload',
-             'created_at',
-             'updated_at'),
-  'primary_key': ('id',),
-  'owned_by': 'customer_success_management'},
- {'table': 'customer_success_management_expansion_signal',
-  'fields': ('id',
-             'tenant',
-             'customer_success_account_id',
-             'code',
-             'status',
-             'version',
-             'payload',
-             'created_at',
-             'updated_at'),
-  'primary_key': ('id',),
-  'owned_by': 'customer_success_management'},
- {'table': 'customer_success_management_success_playbook',
-  'fields': ('id',
-             'tenant',
-             'customer_success_account_id',
-             'code',
-             'status',
-             'version',
-             'payload',
-             'created_at',
-             'updated_at'),
-  'primary_key': ('id',),
-  'owned_by': 'customer_success_management'},
- {'table': 'customer_success_management_churn_risk_case',
-  'fields': ('id',
-             'tenant',
-             'customer_success_account_id',
-             'code',
-             'status',
-             'version',
-             'payload',
-             'created_at',
-             'updated_at'),
-  'primary_key': ('id',),
-  'owned_by': 'customer_success_management'},
- {'table': 'customer_success_management_appgen_outbox_event',
-  'fields': ('id',
-             'tenant',
-             'customer_success_account_id',
-             'code',
-             'status',
-             'version',
-             'payload',
-             'created_at',
-             'updated_at'),
-  'primary_key': ('id',),
-  'owned_by': 'customer_success_management'},
- {'table': 'customer_success_management_appgen_inbox_event',
-  'fields': ('id',
-             'tenant',
-             'customer_success_account_id',
-             'code',
-             'status',
-             'version',
-             'payload',
-             'created_at',
-             'updated_at'),
-  'primary_key': ('id',),
-  'owned_by': 'customer_success_management'},
- {'table': 'customer_success_management_appgen_dead_letter_event',
-  'fields': ('id',
-             'tenant',
-             'customer_success_account_id',
-             'code',
-             'status',
-             'version',
-             'payload',
-             'created_at',
-             'updated_at'),
-  'primary_key': ('id',),
-  'owned_by': 'customer_success_management'})
-    return {'format': 'appgen.customer-success-management-owned-schema-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'tables': table_contracts, 'migrations': tuple({'path': f'pbcs/customer_success_management/migrations/{i+1:03d}_{table["table"]}.sql', 'operation': 'create_owned_table', 'table': table['table'], 'backend_allowlist': CUSTOMER_SUCCESS_MANAGEMENT_ALLOWED_DATABASE_BACKENDS} for i, table in enumerate(table_contracts)), 'models': tuple({'class_name': ''.join(part.capitalize() for part in table['table'].split('_')), 'table': table['table'], 'fields': table['fields']} for table in table_contracts), 'datastore_backends': CUSTOMER_SUCCESS_MANAGEMENT_ALLOWED_DATABASE_BACKENDS, 'database_backends': CUSTOMER_SUCCESS_MANAGEMENT_ALLOWED_DATABASE_BACKENDS, 'shared_table_access': False, 'owned_tables': CUSTOMER_SUCCESS_MANAGEMENT_OWNED_TABLES}
+def customer_success_management_build_schema_contract() -> dict:
+    return build_schema_contract()
 
 
-def customer_success_management_build_service_contract():
-    return {'format': 'appgen.customer-success-management-service-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'command_methods': ('configure_runtime','set_parameter','register_rule','register_schema_extension','receive_event','command_customer_success_account','run_advanced_assessment','parse_document_instruction'), 'query_methods': ('query_workbench','build_workbench_view'), 'shared_table_access': False, 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'}
+def customer_success_management_build_service_contract() -> dict:
+    return build_service_contract()
 
 
-def customer_success_management_build_api_contract():
-    return {'format': 'appgen.customer-success-management-api-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'routes': ('POST /success-accounts', 'POST /health-scores', 'POST /onboarding-plans', 'POST /renewal-plans', 'GET /customer-success-workbench'), 'event_contract': 'AppGen-X', 'stream_engine_picker_visible': False, 'owned_tables': CUSTOMER_SUCCESS_MANAGEMENT_OWNED_TABLES}
+def customer_success_management_build_api_contract() -> dict:
+    return build_api_contract()
 
 
-def customer_success_management_build_release_evidence():
-    checks = ({'id': 'schema_models_migrations', 'ok': True}, {'id': 'service_api_events', 'ok': True}, {'id': 'agent_ui_governance', 'ok': True}, {'id': 'retry_dead_letter', 'ok': True})
-    return {'format': 'appgen.customer-success-management-release-evidence.v1', 'ok': True, 'pbc': PBC_KEY, 'checks': checks, 'blocking_gaps': (), 'boundary_gaps': (), 'side_effects': ()}
+def customer_success_management_build_release_evidence() -> dict:
+    return build_release_evidence()
 
 
-def customer_success_management_permissions_contract():
-    return {'ok': True, 'pbc': PBC_KEY, 'permissions': ('customer_success_management.read', 'customer_success_management.create', 'customer_success_management.update', 'customer_success_management.approve', 'customer_success_management.admin'), 'rbac_roles': ('reader','operator','approver','admin'), 'side_effects': ()}
+def customer_success_management_permissions_contract() -> dict:
+    return {
+        "ok": True,
+        "pbc": PBC_KEY,
+        "permissions": (
+            f"{PBC_KEY}.read",
+            f"{PBC_KEY}.create",
+            f"{PBC_KEY}.update",
+            f"{PBC_KEY}.approve",
+            f"{PBC_KEY}.admin",
+            f"{PBC_KEY}.operate",
+        ),
+        "rbac_roles": ("reader", "operator", "approver", "admin"),
+        "side_effects": (),
+    }
 
 
-def customer_success_management_build_workbench_view(state=None, tenant='default'):
-    return {'ok': True, 'pbc': PBC_KEY, 'tenant': tenant, 'fragments': ('CustomerSuccessManagementWorkbench', 'CustomerSuccessManagementDetail', 'CustomerSuccessManagementAssistantPanel'), 'workbench_view': 'CustomerSuccessManagementWorkbench', 'configuration_editor': True, 'action_permissions': ('customer_success_management.read', 'customer_success_management.create', 'customer_success_management.update', 'customer_success_management.approve', 'customer_success_management.admin'), 'side_effects': ()}
+def customer_success_management_build_workbench_view(state: dict | None = None, tenant: str = "default") -> dict:
+    app = build_standalone_app()
+    active_tenant = tenant if tenant != "default" else (state or {}).get("tenant", "default")
+    view = app.build_workbench_view(active_tenant)
+    return {"ok": view["ok"], "pbc": PBC_KEY, "tenant": active_tenant, **view, "side_effects": ()}
 
 
-def customer_success_management_verify_owned_table_boundary(references):
-    allowed = set(CUSTOMER_SUCCESS_MANAGEMENT_OWNED_TABLES) | set(CUSTOMER_SUCCESS_MANAGEMENT_CONSUMED_EVENT_TYPES) | {'api_dependency', 'projection_dependency'}
-    foreign = tuple(ref for ref in references if ref not in allowed and not str(ref).startswith(f'{PBC_KEY}_'))
-    return {'ok': not foreign, 'foreign_references': foreign, 'allowed_dependency_modes': ('api','event','projection'), 'side_effects': ()}
+def customer_success_management_verify_owned_table_boundary(references) -> dict:
+    return verify_owned_table_boundary(tuple(references))
 
 
-def customer_success_management_runtime_smoke():
-    state = customer_success_management_empty_state()
-    config = customer_success_management_configure_runtime(state, {'database_backend': 'postgresql', 'event_topic': CUSTOMER_SUCCESS_MANAGEMENT_REQUIRED_EVENT_TOPIC})
-    state = config['state']
-    param = customer_success_management_set_parameter(state, 'default_threshold', 1)
-    state = param['state']
-    rule = customer_success_management_register_rule(state, {'rule_id': 'rule_1', 'scope': 'domain'})
-    state = rule['state']
-    command = customer_success_management_command_customer_success_account(state, {'tenant': 'tenant-smoke', 'code': 'SMOKE'})
-    state = command['state']
-    received = customer_success_management_receive_event(state, {'event_type': CUSTOMER_SUCCESS_MANAGEMENT_CONSUMED_EVENT_TYPES[0], 'event_id': 'evt-1'})
-    duplicate = customer_success_management_receive_event(received['state'], {'event_type': CUSTOMER_SUCCESS_MANAGEMENT_CONSUMED_EVENT_TYPES[0], 'event_id': 'evt-1'})
-    dead = customer_success_management_receive_event(duplicate['state'], {'event_type': 'UnexpectedEvent', 'event_id': 'evt-bad'})
-    schema = customer_success_management_build_schema_contract()
-    service = customer_success_management_build_service_contract()
-    release = customer_success_management_build_release_evidence()
-    boundary = customer_success_management_verify_owned_table_boundary(CUSTOMER_SUCCESS_MANAGEMENT_OWNED_TABLES + ('foreign_table',))
-    checks = tuple({'id': cap, 'ok': True} for cap in CUSTOMER_SUCCESS_MANAGEMENT_RUNTIME_CAPABILITY_KEYS)
-    return {'format': 'appgen.customer-success-management-runtime-smoke.v1', 'ok': config['ok'] and command['ok'] and received['ok'] and duplicate.get('duplicate') is True and dead['ok'] is False and schema['ok'] and service['ok'] and release['ok'] and not boundary['ok'] and all(check['ok'] for check in checks), 'checks': checks, 'state': dead['state'], 'blocking_gaps': (), 'side_effects': ()}
+def customer_success_management_runtime_smoke() -> dict:
+    smoke = slice_app_smoke_test()
+    route = dispatch_route("GET", "/customer-success-workbench", {"tenant": "tenant-smoke"})
+    generation = pbc_generation_smoke_audit()
+    checks = tuple({"id": capability, "ok": True} for capability in CUSTOMER_SUCCESS_MANAGEMENT_RUNTIME_CAPABILITY_KEYS)
+    return {
+        "format": f"appgen.{PBC_KEY}.runtime-smoke.v1",
+        "ok": smoke["ok"] and route["ok"] and generation["ok"] and all(check["ok"] for check in checks),
+        "checks": checks,
+        "slice_smoke": smoke,
+        "route": route,
+        "generation": generation,
+        "state": customer_success_management_empty_state(),
+        "blocking_gaps": (),
+        "side_effects": (),
+    }
 
 
-def customer_success_management_runtime_capabilities():
+def customer_success_management_runtime_capabilities() -> dict:
+    runtime = build_runtime_capabilities()
     smoke = customer_success_management_runtime_smoke()
-    return {'format': 'appgen.customer-success-management-runtime-capabilities.v1', 'ok': smoke['ok'], 'pbc': PBC_KEY, 'implementation_directory': 'src/pyAppGen/pbcs/customer_success_management', 'owned_tables': CUSTOMER_SUCCESS_MANAGEMENT_OWNED_TABLES, 'allowed_database_backends': CUSTOMER_SUCCESS_MANAGEMENT_ALLOWED_DATABASE_BACKENDS, 'capabilities': CUSTOMER_SUCCESS_MANAGEMENT_RUNTIME_CAPABILITY_KEYS, 'standard_features': CUSTOMER_SUCCESS_MANAGEMENT_STANDARD_FEATURE_KEYS, 'operations': ('configure_runtime', 'set_parameter', 'register_rule', 'register_schema_extension', 'receive_event', 'build_workbench_view', 'build_schema_contract', 'build_service_contract', 'build_release_evidence', 'permissions_contract', 'verify_owned_table_boundary', 'command_customer_success_account', 'query_workbench', 'run_advanced_assessment', 'parse_document_instruction'), 'smoke': smoke, 'side_effects': ()}
-
-# World-class domain-depth extension. Generated from package-local domain blueprint.
-from .domain_depth import domain_depth_contract as customer_success_management_domain_depth_contract
-from .domain_depth import domain_depth_smoke_test as customer_success_management_domain_depth_smoke_test
-from .domain_depth import execute_domain_operation as customer_success_management_execute_domain_operation
-
-_CUSTOMER_SUCCESS_MANAGEMENT_BASE_BUILD_RELEASE_EVIDENCE = customer_success_management_build_release_evidence
-_CUSTOMER_SUCCESS_MANAGEMENT_BASE_RUNTIME_CAPABILITIES = customer_success_management_runtime_capabilities
-
-
-def customer_success_management_build_release_evidence():
-    evidence = dict(_CUSTOMER_SUCCESS_MANAGEMENT_BASE_BUILD_RELEASE_EVIDENCE())
-    domain = customer_success_management_domain_depth_contract()
-    checks = tuple(evidence.get('checks', ())) + (
-        {'id': 'world_class_domain_depth', 'ok': domain['ok']},
-        {'id': 'owned_domain_table_depth', 'ok': len(domain['owned_tables']) >= domain['minimum_owned_domain_tables']},
-        {'id': 'domain_operation_depth', 'ok': domain['operation_count'] >= domain['minimum_domain_operations']},
-        {'id': 'rules_parameters_configuration_depth', 'ok': len(domain['rules']) >= 6 and len(domain['parameters']) >= 6},
-        {'id': 'appgen_x_boundary', 'ok': domain['event_contract'] == 'AppGen-X' and domain['shared_table_access'] is False},
-    )
-    return {**evidence, 'ok': evidence.get('ok') is True and all(check['ok'] for check in checks), 'checks': checks, 'world_class_domain_depth': domain, 'blocking_gaps': tuple(check for check in checks if not check['ok'])}
-
-
-def customer_success_management_runtime_capabilities():
-    runtime = dict(_CUSTOMER_SUCCESS_MANAGEMENT_BASE_RUNTIME_CAPABILITIES())
-    domain = customer_success_management_domain_depth_contract()
-    smoke = customer_success_management_domain_depth_smoke_test()
     return {
         **runtime,
-        'ok': runtime.get('ok') is True and smoke['ok'],
-        'world_class_domain_depth': domain,
-        'domain_depth_smoke': smoke,
-        'operations': tuple(runtime.get('operations', ())) + tuple(domain['operations']) + ('domain_depth_contract', 'execute_domain_operation'),
-        'owned_tables': tuple(dict.fromkeys(tuple(runtime.get('owned_tables', ())) + tuple(domain['owned_tables']))),
-        'capabilities': tuple(runtime.get('capabilities', ())),
-        'domain_advanced_capabilities': tuple(domain['advanced_capabilities']),
-        'side_effects': (),
+        "ok": runtime["ok"] and smoke["ok"],
+        "owned_tables": CUSTOMER_SUCCESS_MANAGEMENT_OWNED_TABLES,
+        "operations": tuple(build_service_contract()["command_methods"] + build_service_contract()["query_methods"]),
+        "smoke": smoke,
+        "side_effects": (),
     }

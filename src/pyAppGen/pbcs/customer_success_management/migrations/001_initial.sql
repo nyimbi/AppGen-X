@@ -1,466 +1,541 @@
-CREATE SCHEMA IF NOT EXISTS customer_success_management;
+PRAGMA foreign_keys = ON;
 
-CREATE TABLE customer_success_management_customer_success_account (
-  id INTEGER PRIMARY KEY NOT NULL,
-  tenant VARCHAR(255) NOT NULL,
-  code VARCHAR(255) NOT NULL,
-  status VARCHAR(255) NOT NULL,
-  version INTEGER NOT NULL,
-  payload TEXT,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL
-);
-
-CREATE TABLE customer_success_management_customer_health_score (
-  id INTEGER PRIMARY KEY NOT NULL,
-  tenant VARCHAR(255) NOT NULL,
-  customer_success_account_id INTEGER NOT NULL,
-  code VARCHAR(255) NOT NULL,
-  status VARCHAR(255) NOT NULL,
-  version INTEGER NOT NULL,
-  payload TEXT,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (customer_success_account_id) REFERENCES customer_success_management_customer_success_account(id)
-);
-
-CREATE TABLE customer_success_management_onboarding_plan (
-  id INTEGER PRIMARY KEY NOT NULL,
-  tenant VARCHAR(255) NOT NULL,
-  customer_success_account_id INTEGER NOT NULL,
-  code VARCHAR(255) NOT NULL,
-  status VARCHAR(255) NOT NULL,
-  version INTEGER NOT NULL,
-  payload TEXT,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (customer_success_account_id) REFERENCES customer_success_management_customer_success_account(id)
-);
-
-CREATE TABLE customer_success_management_adoption_signal (
-  id INTEGER PRIMARY KEY NOT NULL,
-  tenant VARCHAR(255) NOT NULL,
-  customer_success_account_id INTEGER NOT NULL,
-  code VARCHAR(255) NOT NULL,
-  status VARCHAR(255) NOT NULL,
-  version INTEGER NOT NULL,
-  payload TEXT,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (customer_success_account_id) REFERENCES customer_success_management_customer_success_account(id)
-);
-
-CREATE TABLE customer_success_management_renewal_plan (
-  id INTEGER PRIMARY KEY NOT NULL,
-  tenant VARCHAR(255) NOT NULL,
-  customer_success_account_id INTEGER NOT NULL,
-  code VARCHAR(255) NOT NULL,
-  status VARCHAR(255) NOT NULL,
-  version INTEGER NOT NULL,
-  payload TEXT,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (customer_success_account_id) REFERENCES customer_success_management_customer_success_account(id)
-);
-
-CREATE TABLE customer_success_management_expansion_signal (
-  id INTEGER PRIMARY KEY NOT NULL,
-  tenant VARCHAR(255) NOT NULL,
-  customer_success_account_id INTEGER NOT NULL,
-  code VARCHAR(255) NOT NULL,
-  status VARCHAR(255) NOT NULL,
-  version INTEGER NOT NULL,
-  payload TEXT,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (customer_success_account_id) REFERENCES customer_success_management_customer_success_account(id)
-);
-
-CREATE TABLE customer_success_management_success_playbook (
-  id INTEGER PRIMARY KEY NOT NULL,
-  tenant VARCHAR(255) NOT NULL,
-  customer_success_account_id INTEGER NOT NULL,
-  code VARCHAR(255) NOT NULL,
-  status VARCHAR(255) NOT NULL,
-  version INTEGER NOT NULL,
-  payload TEXT,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (customer_success_account_id) REFERENCES customer_success_management_customer_success_account(id)
-);
-
-CREATE TABLE customer_success_management_churn_risk_case (
-  id INTEGER PRIMARY KEY NOT NULL,
-  tenant VARCHAR(255) NOT NULL,
-  customer_success_account_id INTEGER NOT NULL,
-  code VARCHAR(255) NOT NULL,
-  status VARCHAR(255) NOT NULL,
-  version INTEGER NOT NULL,
-  payload TEXT,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (customer_success_account_id) REFERENCES customer_success_management_customer_success_account(id)
-);
-
-CREATE TABLE customer_success_management_appgen_outbox_event (
-  id INTEGER PRIMARY KEY NOT NULL,
-  tenant VARCHAR(255) NOT NULL,
-  customer_success_account_id INTEGER NOT NULL,
-  code VARCHAR(255) NOT NULL,
-  status VARCHAR(255) NOT NULL,
-  version INTEGER NOT NULL,
-  payload TEXT,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL
-);
-
-CREATE TABLE customer_success_management_appgen_inbox_event (
-  id INTEGER PRIMARY KEY NOT NULL,
-  tenant VARCHAR(255) NOT NULL,
-  customer_success_account_id INTEGER NOT NULL,
-  code VARCHAR(255) NOT NULL,
-  status VARCHAR(255) NOT NULL,
-  version INTEGER NOT NULL,
-  payload TEXT,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL
-);
-
-CREATE TABLE customer_success_management_appgen_dead_letter_event (
-  id INTEGER PRIMARY KEY NOT NULL,
-  tenant VARCHAR(255) NOT NULL,
-  customer_success_account_id INTEGER NOT NULL,
-  code VARCHAR(255) NOT NULL,
-  status VARCHAR(255) NOT NULL,
-  version INTEGER NOT NULL,
-  payload TEXT,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL
-);
-
--- World-class domain depth supplemental tables
-CREATE SCHEMA IF NOT EXISTS customer_success_management;
-
-CREATE TABLE customer_success_management_customer_success_account (
+CREATE TABLE IF NOT EXISTS customer_success_management_customer_success_account (
   id TEXT PRIMARY KEY NOT NULL,
   tenant TEXT NOT NULL,
   code TEXT NOT NULL,
+  title TEXT,
+  owner TEXT,
   status TEXT NOT NULL,
-  version INTEGER NOT NULL,
+  version INTEGER NOT NULL DEFAULT 1,
+  success_account_id TEXT,
+  score REAL,
+  due_on TEXT,
+  event_type TEXT,
+  topic TEXT,
+  idempotency_key TEXT,
+  attempts INTEGER DEFAULT 0,
+  last_error TEXT,
   payload TEXT,
-  effective_at TIMESTAMP,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL
+  effective_at TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
 );
 
-CREATE TABLE customer_success_management_success_plan (
+CREATE TABLE IF NOT EXISTS customer_success_management_success_plan (
   id TEXT PRIMARY KEY NOT NULL,
   tenant TEXT NOT NULL,
   code TEXT NOT NULL,
-  success_id TEXT NOT NULL,
+  title TEXT,
+  owner TEXT,
   status TEXT NOT NULL,
-  version INTEGER NOT NULL,
+  version INTEGER NOT NULL DEFAULT 1,
+  success_account_id TEXT REFERENCES customer_success_management_customer_success_account(id),
+  score REAL,
+  due_on TEXT,
+  event_type TEXT,
+  topic TEXT,
+  idempotency_key TEXT,
+  attempts INTEGER DEFAULT 0,
+  last_error TEXT,
   payload TEXT,
-  effective_at TIMESTAMP,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (success_id) REFERENCES customer_success_management_customer_success_account(id)
+  effective_at TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
 );
 
-CREATE TABLE customer_success_management_onboarding_milestone (
+CREATE TABLE IF NOT EXISTS customer_success_management_onboarding_milestone (
   id TEXT PRIMARY KEY NOT NULL,
   tenant TEXT NOT NULL,
   code TEXT NOT NULL,
-  success_id TEXT NOT NULL,
+  title TEXT,
+  owner TEXT,
   status TEXT NOT NULL,
-  version INTEGER NOT NULL,
+  version INTEGER NOT NULL DEFAULT 1,
+  success_account_id TEXT REFERENCES customer_success_management_customer_success_account(id),
+  score REAL,
+  due_on TEXT,
+  event_type TEXT,
+  topic TEXT,
+  idempotency_key TEXT,
+  attempts INTEGER DEFAULT 0,
+  last_error TEXT,
   payload TEXT,
-  effective_at TIMESTAMP,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (success_id) REFERENCES customer_success_management_customer_success_account(id)
+  effective_at TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
 );
 
-CREATE TABLE customer_success_management_adoption_signal (
+CREATE TABLE IF NOT EXISTS customer_success_management_adoption_signal (
   id TEXT PRIMARY KEY NOT NULL,
   tenant TEXT NOT NULL,
   code TEXT NOT NULL,
-  success_id TEXT NOT NULL,
+  title TEXT,
+  owner TEXT,
   status TEXT NOT NULL,
-  version INTEGER NOT NULL,
+  version INTEGER NOT NULL DEFAULT 1,
+  success_account_id TEXT REFERENCES customer_success_management_customer_success_account(id),
+  score REAL,
+  due_on TEXT,
+  event_type TEXT,
+  topic TEXT,
+  idempotency_key TEXT,
+  attempts INTEGER DEFAULT 0,
+  last_error TEXT,
   payload TEXT,
-  effective_at TIMESTAMP,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (success_id) REFERENCES customer_success_management_customer_success_account(id)
+  effective_at TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
 );
 
-CREATE TABLE customer_success_management_health_score (
+CREATE TABLE IF NOT EXISTS customer_success_management_health_score (
   id TEXT PRIMARY KEY NOT NULL,
   tenant TEXT NOT NULL,
   code TEXT NOT NULL,
-  success_id TEXT NOT NULL,
+  title TEXT,
+  owner TEXT,
   status TEXT NOT NULL,
-  version INTEGER NOT NULL,
+  version INTEGER NOT NULL DEFAULT 1,
+  success_account_id TEXT REFERENCES customer_success_management_customer_success_account(id),
+  score REAL,
+  due_on TEXT,
+  event_type TEXT,
+  topic TEXT,
+  idempotency_key TEXT,
+  attempts INTEGER DEFAULT 0,
+  last_error TEXT,
   payload TEXT,
-  effective_at TIMESTAMP,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (success_id) REFERENCES customer_success_management_customer_success_account(id)
+  effective_at TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
 );
 
-CREATE TABLE customer_success_management_health_score_component (
+CREATE TABLE IF NOT EXISTS customer_success_management_health_score_component (
   id TEXT PRIMARY KEY NOT NULL,
   tenant TEXT NOT NULL,
   code TEXT NOT NULL,
-  success_id TEXT NOT NULL,
+  title TEXT,
+  owner TEXT,
   status TEXT NOT NULL,
-  version INTEGER NOT NULL,
+  version INTEGER NOT NULL DEFAULT 1,
+  success_account_id TEXT REFERENCES customer_success_management_customer_success_account(id),
+  score REAL,
+  due_on TEXT,
+  event_type TEXT,
+  topic TEXT,
+  idempotency_key TEXT,
+  attempts INTEGER DEFAULT 0,
+  last_error TEXT,
   payload TEXT,
-  effective_at TIMESTAMP,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (success_id) REFERENCES customer_success_management_customer_success_account(id)
+  effective_at TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
 );
 
-CREATE TABLE customer_success_management_success_playbook (
+CREATE TABLE IF NOT EXISTS customer_success_management_success_playbook (
   id TEXT PRIMARY KEY NOT NULL,
   tenant TEXT NOT NULL,
   code TEXT NOT NULL,
-  success_id TEXT NOT NULL,
+  title TEXT,
+  owner TEXT,
   status TEXT NOT NULL,
-  version INTEGER NOT NULL,
+  version INTEGER NOT NULL DEFAULT 1,
+  success_account_id TEXT REFERENCES customer_success_management_customer_success_account(id),
+  score REAL,
+  due_on TEXT,
+  event_type TEXT,
+  topic TEXT,
+  idempotency_key TEXT,
+  attempts INTEGER DEFAULT 0,
+  last_error TEXT,
   payload TEXT,
-  effective_at TIMESTAMP,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (success_id) REFERENCES customer_success_management_customer_success_account(id)
+  effective_at TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
 );
 
-CREATE TABLE customer_success_management_playbook_task (
+CREATE TABLE IF NOT EXISTS customer_success_management_playbook_task (
   id TEXT PRIMARY KEY NOT NULL,
   tenant TEXT NOT NULL,
   code TEXT NOT NULL,
-  success_id TEXT NOT NULL,
+  title TEXT,
+  owner TEXT,
   status TEXT NOT NULL,
-  version INTEGER NOT NULL,
+  version INTEGER NOT NULL DEFAULT 1,
+  success_account_id TEXT REFERENCES customer_success_management_customer_success_account(id),
+  score REAL,
+  due_on TEXT,
+  event_type TEXT,
+  topic TEXT,
+  idempotency_key TEXT,
+  attempts INTEGER DEFAULT 0,
+  last_error TEXT,
   payload TEXT,
-  effective_at TIMESTAMP,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (success_id) REFERENCES customer_success_management_customer_success_account(id)
+  effective_at TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
 );
 
-CREATE TABLE customer_success_management_customer_escalation (
+CREATE TABLE IF NOT EXISTS customer_success_management_customer_escalation (
   id TEXT PRIMARY KEY NOT NULL,
   tenant TEXT NOT NULL,
   code TEXT NOT NULL,
-  success_id TEXT NOT NULL,
+  title TEXT,
+  owner TEXT,
   status TEXT NOT NULL,
-  version INTEGER NOT NULL,
+  version INTEGER NOT NULL DEFAULT 1,
+  success_account_id TEXT REFERENCES customer_success_management_customer_success_account(id),
+  score REAL,
+  due_on TEXT,
+  event_type TEXT,
+  topic TEXT,
+  idempotency_key TEXT,
+  attempts INTEGER DEFAULT 0,
+  last_error TEXT,
   payload TEXT,
-  effective_at TIMESTAMP,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (success_id) REFERENCES customer_success_management_customer_success_account(id)
+  effective_at TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
 );
 
-CREATE TABLE customer_success_management_renewal_motion (
+CREATE TABLE IF NOT EXISTS customer_success_management_renewal_motion (
   id TEXT PRIMARY KEY NOT NULL,
   tenant TEXT NOT NULL,
   code TEXT NOT NULL,
-  success_id TEXT NOT NULL,
+  title TEXT,
+  owner TEXT,
   status TEXT NOT NULL,
-  version INTEGER NOT NULL,
+  version INTEGER NOT NULL DEFAULT 1,
+  success_account_id TEXT REFERENCES customer_success_management_customer_success_account(id),
+  score REAL,
+  due_on TEXT,
+  event_type TEXT,
+  topic TEXT,
+  idempotency_key TEXT,
+  attempts INTEGER DEFAULT 0,
+  last_error TEXT,
   payload TEXT,
-  effective_at TIMESTAMP,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (success_id) REFERENCES customer_success_management_customer_success_account(id)
+  effective_at TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
 );
 
-CREATE TABLE customer_success_management_expansion_opportunity (
+CREATE TABLE IF NOT EXISTS customer_success_management_expansion_opportunity (
   id TEXT PRIMARY KEY NOT NULL,
   tenant TEXT NOT NULL,
   code TEXT NOT NULL,
-  success_id TEXT NOT NULL,
+  title TEXT,
+  owner TEXT,
   status TEXT NOT NULL,
-  version INTEGER NOT NULL,
+  version INTEGER NOT NULL DEFAULT 1,
+  success_account_id TEXT REFERENCES customer_success_management_customer_success_account(id),
+  score REAL,
+  due_on TEXT,
+  event_type TEXT,
+  topic TEXT,
+  idempotency_key TEXT,
+  attempts INTEGER DEFAULT 0,
+  last_error TEXT,
   payload TEXT,
-  effective_at TIMESTAMP,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (success_id) REFERENCES customer_success_management_customer_success_account(id)
+  effective_at TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
 );
 
-CREATE TABLE customer_success_management_executive_business_review (
+CREATE TABLE IF NOT EXISTS customer_success_management_executive_business_review (
   id TEXT PRIMARY KEY NOT NULL,
   tenant TEXT NOT NULL,
   code TEXT NOT NULL,
-  success_id TEXT NOT NULL,
+  title TEXT,
+  owner TEXT,
   status TEXT NOT NULL,
-  version INTEGER NOT NULL,
+  version INTEGER NOT NULL DEFAULT 1,
+  success_account_id TEXT REFERENCES customer_success_management_customer_success_account(id),
+  score REAL,
+  due_on TEXT,
+  event_type TEXT,
+  topic TEXT,
+  idempotency_key TEXT,
+  attempts INTEGER DEFAULT 0,
+  last_error TEXT,
   payload TEXT,
-  effective_at TIMESTAMP,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (success_id) REFERENCES customer_success_management_customer_success_account(id)
+  effective_at TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
 );
 
-CREATE TABLE customer_success_management_customer_objective (
+CREATE TABLE IF NOT EXISTS customer_success_management_customer_objective (
   id TEXT PRIMARY KEY NOT NULL,
   tenant TEXT NOT NULL,
   code TEXT NOT NULL,
-  success_id TEXT NOT NULL,
+  title TEXT,
+  owner TEXT,
   status TEXT NOT NULL,
-  version INTEGER NOT NULL,
+  version INTEGER NOT NULL DEFAULT 1,
+  success_account_id TEXT REFERENCES customer_success_management_customer_success_account(id),
+  score REAL,
+  due_on TEXT,
+  event_type TEXT,
+  topic TEXT,
+  idempotency_key TEXT,
+  attempts INTEGER DEFAULT 0,
+  last_error TEXT,
   payload TEXT,
-  effective_at TIMESTAMP,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (success_id) REFERENCES customer_success_management_customer_success_account(id)
+  effective_at TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
 );
 
-CREATE TABLE customer_success_management_customer_value_realization (
+CREATE TABLE IF NOT EXISTS customer_success_management_customer_value_realization (
   id TEXT PRIMARY KEY NOT NULL,
   tenant TEXT NOT NULL,
   code TEXT NOT NULL,
-  success_id TEXT NOT NULL,
+  title TEXT,
+  owner TEXT,
   status TEXT NOT NULL,
-  version INTEGER NOT NULL,
+  version INTEGER NOT NULL DEFAULT 1,
+  success_account_id TEXT REFERENCES customer_success_management_customer_success_account(id),
+  score REAL,
+  due_on TEXT,
+  event_type TEXT,
+  topic TEXT,
+  idempotency_key TEXT,
+  attempts INTEGER DEFAULT 0,
+  last_error TEXT,
   payload TEXT,
-  effective_at TIMESTAMP,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (success_id) REFERENCES customer_success_management_customer_success_account(id)
+  effective_at TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
 );
 
-CREATE TABLE customer_success_management_churn_risk_signal (
+CREATE TABLE IF NOT EXISTS customer_success_management_churn_risk_signal (
   id TEXT PRIMARY KEY NOT NULL,
   tenant TEXT NOT NULL,
   code TEXT NOT NULL,
-  success_id TEXT NOT NULL,
+  title TEXT,
+  owner TEXT,
   status TEXT NOT NULL,
-  version INTEGER NOT NULL,
+  version INTEGER NOT NULL DEFAULT 1,
+  success_account_id TEXT REFERENCES customer_success_management_customer_success_account(id),
+  score REAL,
+  due_on TEXT,
+  event_type TEXT,
+  topic TEXT,
+  idempotency_key TEXT,
+  attempts INTEGER DEFAULT 0,
+  last_error TEXT,
   payload TEXT,
-  effective_at TIMESTAMP,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (success_id) REFERENCES customer_success_management_customer_success_account(id)
+  effective_at TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
 );
 
-CREATE TABLE customer_success_management_success_exception_case (
+CREATE TABLE IF NOT EXISTS customer_success_management_success_exception_case (
   id TEXT PRIMARY KEY NOT NULL,
   tenant TEXT NOT NULL,
   code TEXT NOT NULL,
-  success_id TEXT NOT NULL,
+  title TEXT,
+  owner TEXT,
   status TEXT NOT NULL,
-  version INTEGER NOT NULL,
+  version INTEGER NOT NULL DEFAULT 1,
+  success_account_id TEXT REFERENCES customer_success_management_customer_success_account(id),
+  score REAL,
+  due_on TEXT,
+  event_type TEXT,
+  topic TEXT,
+  idempotency_key TEXT,
+  attempts INTEGER DEFAULT 0,
+  last_error TEXT,
   payload TEXT,
-  effective_at TIMESTAMP,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (success_id) REFERENCES customer_success_management_customer_success_account(id)
+  effective_at TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
 );
 
-CREATE TABLE customer_success_management_success_policy_rule (
+CREATE TABLE IF NOT EXISTS customer_success_management_success_policy_rule (
   id TEXT PRIMARY KEY NOT NULL,
   tenant TEXT NOT NULL,
   code TEXT NOT NULL,
+  title TEXT,
+  owner TEXT,
   status TEXT NOT NULL,
-  version INTEGER NOT NULL,
+  version INTEGER NOT NULL DEFAULT 1,
+  success_account_id TEXT,
+  score REAL,
+  due_on TEXT,
+  event_type TEXT,
+  topic TEXT,
+  idempotency_key TEXT,
+  attempts INTEGER DEFAULT 0,
+  last_error TEXT,
   payload TEXT,
-  effective_at TIMESTAMP,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL
+  effective_at TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
 );
 
-CREATE TABLE customer_success_management_success_runtime_parameter (
+CREATE TABLE IF NOT EXISTS customer_success_management_success_runtime_parameter (
   id TEXT PRIMARY KEY NOT NULL,
   tenant TEXT NOT NULL,
   code TEXT NOT NULL,
+  title TEXT,
+  owner TEXT,
   status TEXT NOT NULL,
-  version INTEGER NOT NULL,
+  version INTEGER NOT NULL DEFAULT 1,
+  success_account_id TEXT,
+  score REAL,
+  due_on TEXT,
+  event_type TEXT,
+  topic TEXT,
+  idempotency_key TEXT,
+  attempts INTEGER DEFAULT 0,
+  last_error TEXT,
   payload TEXT,
-  effective_at TIMESTAMP,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL
+  effective_at TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
 );
 
-CREATE TABLE customer_success_management_success_schema_extension (
+CREATE TABLE IF NOT EXISTS customer_success_management_success_schema_extension (
   id TEXT PRIMARY KEY NOT NULL,
   tenant TEXT NOT NULL,
   code TEXT NOT NULL,
+  title TEXT,
+  owner TEXT,
   status TEXT NOT NULL,
-  version INTEGER NOT NULL,
+  version INTEGER NOT NULL DEFAULT 1,
+  success_account_id TEXT,
+  score REAL,
+  due_on TEXT,
+  event_type TEXT,
+  topic TEXT,
+  idempotency_key TEXT,
+  attempts INTEGER DEFAULT 0,
+  last_error TEXT,
   payload TEXT,
-  effective_at TIMESTAMP,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL
+  effective_at TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
 );
 
-CREATE TABLE customer_success_management_success_control_assertion (
+CREATE TABLE IF NOT EXISTS customer_success_management_success_control_assertion (
   id TEXT PRIMARY KEY NOT NULL,
   tenant TEXT NOT NULL,
   code TEXT NOT NULL,
+  title TEXT,
+  owner TEXT,
   status TEXT NOT NULL,
-  version INTEGER NOT NULL,
+  version INTEGER NOT NULL DEFAULT 1,
+  success_account_id TEXT,
+  score REAL,
+  due_on TEXT,
+  event_type TEXT,
+  topic TEXT,
+  idempotency_key TEXT,
+  attempts INTEGER DEFAULT 0,
+  last_error TEXT,
   payload TEXT,
-  effective_at TIMESTAMP,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL
+  effective_at TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
 );
 
-CREATE TABLE customer_success_management_success_governed_model (
+CREATE TABLE IF NOT EXISTS customer_success_management_success_governed_model (
   id TEXT PRIMARY KEY NOT NULL,
   tenant TEXT NOT NULL,
   code TEXT NOT NULL,
+  title TEXT,
+  owner TEXT,
   status TEXT NOT NULL,
-  version INTEGER NOT NULL,
+  version INTEGER NOT NULL DEFAULT 1,
+  success_account_id TEXT,
+  score REAL,
+  due_on TEXT,
+  event_type TEXT,
+  topic TEXT,
+  idempotency_key TEXT,
+  attempts INTEGER DEFAULT 0,
+  last_error TEXT,
   payload TEXT,
-  effective_at TIMESTAMP,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL
+  effective_at TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
 );
 
-CREATE TABLE customer_success_management_appgen_outbox_event (
+CREATE TABLE IF NOT EXISTS customer_success_management_appgen_outbox_event (
   id TEXT PRIMARY KEY NOT NULL,
   tenant TEXT NOT NULL,
   code TEXT NOT NULL,
-  success_id TEXT NOT NULL,
+  title TEXT,
+  owner TEXT,
   status TEXT NOT NULL,
-  version INTEGER NOT NULL,
+  version INTEGER NOT NULL DEFAULT 1,
+  success_account_id TEXT,
+  score REAL,
+  due_on TEXT,
+  event_type TEXT,
+  topic TEXT,
+  idempotency_key TEXT UNIQUE,
+  attempts INTEGER DEFAULT 0,
+  last_error TEXT,
   payload TEXT,
-  effective_at TIMESTAMP,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (success_id) REFERENCES customer_success_management_customer_success_account(id)
+  effective_at TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
 );
 
-CREATE TABLE customer_success_management_appgen_inbox_event (
+CREATE TABLE IF NOT EXISTS customer_success_management_appgen_inbox_event (
   id TEXT PRIMARY KEY NOT NULL,
   tenant TEXT NOT NULL,
   code TEXT NOT NULL,
-  success_id TEXT NOT NULL,
+  title TEXT,
+  owner TEXT,
   status TEXT NOT NULL,
-  version INTEGER NOT NULL,
+  version INTEGER NOT NULL DEFAULT 1,
+  success_account_id TEXT,
+  score REAL,
+  due_on TEXT,
+  event_type TEXT,
+  topic TEXT,
+  idempotency_key TEXT UNIQUE,
+  attempts INTEGER DEFAULT 0,
+  last_error TEXT,
   payload TEXT,
-  effective_at TIMESTAMP,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (success_id) REFERENCES customer_success_management_customer_success_account(id)
+  effective_at TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
 );
 
-CREATE TABLE customer_success_management_appgen_dead_letter_event (
+CREATE TABLE IF NOT EXISTS customer_success_management_appgen_dead_letter_event (
   id TEXT PRIMARY KEY NOT NULL,
   tenant TEXT NOT NULL,
   code TEXT NOT NULL,
-  success_id TEXT NOT NULL,
+  title TEXT,
+  owner TEXT,
   status TEXT NOT NULL,
-  version INTEGER NOT NULL,
+  version INTEGER NOT NULL DEFAULT 1,
+  success_account_id TEXT,
+  score REAL,
+  due_on TEXT,
+  event_type TEXT,
+  topic TEXT,
+  idempotency_key TEXT UNIQUE,
+  attempts INTEGER DEFAULT 0,
+  last_error TEXT,
   payload TEXT,
-  effective_at TIMESTAMP,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (success_id) REFERENCES customer_success_management_customer_success_account(id)
+  effective_at TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
 );
+
+CREATE INDEX IF NOT EXISTS customer_success_management_account_tenant_idx
+  ON customer_success_management_customer_success_account (tenant, status);
+
+CREATE INDEX IF NOT EXISTS customer_success_management_health_score_account_idx
+  ON customer_success_management_health_score (success_account_id, created_at);
+
+CREATE INDEX IF NOT EXISTS customer_success_management_playbook_task_account_idx
+  ON customer_success_management_playbook_task (success_account_id, status);
+
+CREATE INDEX IF NOT EXISTS customer_success_management_renewal_motion_account_idx
+  ON customer_success_management_renewal_motion (success_account_id, due_on);
