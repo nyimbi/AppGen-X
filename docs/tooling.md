@@ -653,7 +653,10 @@ publishes diagnostics after open/change notifications using the same
 `appgen.semantic-model.v1` and linter reports as the CLI. Workspace symbol,
 definition, reference, and completion requests scan each open DSL document
 individually instead of concatenating files, so editor features keep working
-when an application is split across multiple `.appgen` files.
+when an application is split across multiple `.appgen` files. Rename uses the
+active document for identifier validation and migration safety, then returns a
+workspace edit that updates the matching identifier across every open DSL
+document.
 
 ### Capabilities
 

@@ -968,6 +968,62 @@ view InvoiceForm for Invoice { Main: customer_id }
     )
 
 
+def test_lsp_json_rpc_server_renames_identifier_across_open_workspace_documents() -> None:
+    operation_uri = "memory://operation.appgen"
+    form_uri = "memory://form.appgen"
+    operation_source = """
+app OperationWorkspace { targets: web }
+table Invoice { id: int pk }
+operation SubmitInvoice {
+  draft -> done
+}
+"""
+    form_source = """
+app FormWorkspace { targets: web }
+table Invoice { id: int pk }
+view InvoiceForm for Invoice {
+  Main: id
+  on Save -> SubmitInvoice
+}
+"""
+    documents: dict[str, str] = {}
+    for uri, source in ((operation_uri, operation_source), (form_uri, form_source)):
+        lsp_server_handle_message(
+            {
+                "jsonrpc": "2.0",
+                "method": "textDocument/didOpen",
+                "params": {
+                    "textDocument": {
+                        "uri": uri,
+                        "languageId": "appgen",
+                        "version": 1,
+                        "text": source,
+                    }
+                },
+            },
+            documents,
+        )
+
+    rename_responses, _ = lsp_server_handle_message(
+        {
+            "jsonrpc": "2.0",
+            "id": 11,
+            "method": "textDocument/rename",
+            "params": {
+                "textDocument": {"uri": operation_uri},
+                "position": _position_of(operation_source, "SubmitInvoice"),
+                "newName": "PostInvoice",
+            },
+        },
+        documents,
+    )
+
+    changes = rename_responses[0]["result"]["changes"]
+    assert set(changes) == {operation_uri, form_uri}
+    assert "operation PostInvoice" in changes[operation_uri][0]["newText"]
+    assert "on Save -> PostInvoice" in changes[form_uri][0]["newText"]
+
+
 def test_release_verifier_report_covers_package_pbc_and_deployment_evidence() -> None:
     report = release_verifier_report_dsl(RELEASE_SAMPLE, source_name="release.appgen", targets=("all",))
 

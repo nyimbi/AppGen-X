@@ -2096,7 +2096,12 @@ def lsp_server_handle_message(message: dict, documents: dict[str, str] | None = 
         result = lsp_formatting_dsl(source, source_name=source_uri)
         responses.append(_lsp_rpc_result(request_id, result["edits"]))
     elif method == "textDocument/rename":
-        result = lsp_rename_dsl(source, source_name=source_uri, position=position, new_name=params.get("newName"))
+        result = lsp_rename_dsl_documents(
+            docs or {source_uri or "memory://appgen": source},
+            source_uri=source_uri,
+            position=position,
+            new_name=params.get("newName"),
+        )
         responses.append(
             _lsp_rpc_result(
                 request_id,
@@ -2534,6 +2539,46 @@ def lsp_rename_dsl(
         },
         "lint": lint,
         "migration_preview": migration,
+    }
+
+
+def lsp_rename_dsl_documents(
+    documents: dict[str, str],
+    *,
+    source_uri: str | None = None,
+    position: dict | None = None,
+    new_name: str | None = None,
+) -> dict:
+    source = _lsp_document_source(source_uri, documents)
+    local = lsp_rename_dsl(source, source_name=source_uri, position=position, new_name=new_name)
+    if not local["ok"]:
+        return {**local, "workspace": True}
+    token = local["token"]
+    changes = {}
+    for uri, document_source in documents.items():
+        if not re.search(rf"\b{re.escape(token)}\b", document_source):
+            continue
+        changes[uri] = (
+            {
+                "range": _lsp_full_document_range(document_source),
+                "newText": re.sub(rf"\b{re.escape(token)}\b", str(new_name), document_source),
+            },
+        )
+    if not changes:
+        changes = local["workspace_edit"]["changes"]
+    return {
+        **local,
+        "workspace": True,
+        "workspace_edit": {"changes": changes},
+        "workspace_documents_considered": tuple(documents),
+        "workspace_documents_changed": tuple(changes),
+    }
+
+
+def _lsp_full_document_range(source: str) -> dict:
+    return {
+        "start": {"line": 0, "character": 0},
+        "end": {"line": len((source or "").splitlines()), "character": 0},
     }
 
 
