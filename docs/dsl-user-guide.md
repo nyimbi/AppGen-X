@@ -236,10 +236,10 @@ Studio-facing Python modules, and exercises the generated workspace, DSL editor,
 database designer, generation queue, portfolio, release gate, and IDE
 superiority contracts.
 Run `appgen --form-designer-release-audit` to prove the package-level
-RAD-style form designer has draggable palette categories, snap-to-grid
+visual form designer has draggable palette categories, snap-to-grid
 drop proposals, property inspectors, placement suggestions, overlap guardrails,
 and generated form-designer artifact coverage before release. The audit also
-generates a temporary app from RAD-style component placement DSL, verifies
+generates a temporary app from visual component placement DSL, verifies
 generated form designer, template, model, view, and DSL-reference artifacts,
 compiles generated form-designer-facing modules, and exercises generated
 palette, catalog, canvas, drop, release-gate, and workbench contracts.
@@ -368,7 +368,7 @@ view BookForm for Book {
 }
 ```
 
-RAD-style component placement:
+Visual component placement:
 
 ```appgen
 view BookForm for Book {
@@ -383,6 +383,26 @@ snap-to-grid placement, overlap detection, and property sheets.
 Use section rows for readable forms and component placements when the exact
 canvas layout matters. Component coordinates are grid values, not pixels, so
 the same DSL can be adapted to web, mobile, and desktop renderers.
+
+Database-backed forms can also use validated lookup paths through references:
+
+```appgen
+table Customer { id: int pk; name: string required }
+table Invoice {
+  id: int pk
+  customer_id: int -> Customer.id
+  lookup customer_name (customer.name)
+}
+
+view InvoiceForm for Invoice {
+  Main: customer.name
+  @ customer.name Lookup 0 0 8 1
+}
+```
+
+The linter rejects form fields, component bindings, and table directives that
+do not resolve to an existing column, calculated column, or valid relationship
+lookup path.
 
 Use `/components/release-gate.json` or `component_release_gate()` before
 publishing a component library. The gate proves reusable component coverage,

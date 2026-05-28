@@ -1,6 +1,6 @@
 # Generated from lang/appgen.g4 by ANTLR 4.13.2
 from antlr4 import *
-if __name__ is not None and "." in __name__:
+if "." in __name__:
     from .appgenParser import appgenParser
 else:
     from appgenParser import appgenParser
@@ -143,6 +143,15 @@ class appgenListener(ParseTreeListener):
         pass
 
 
+    # Enter a parse tree produced by appgenParser#tableDirective.
+    def enterTableDirective(self, ctx:appgenParser.TableDirectiveContext):
+        pass
+
+    # Exit a parse tree produced by appgenParser#tableDirective.
+    def exitTableDirective(self, ctx:appgenParser.TableDirectiveContext):
+        pass
+
+
     # Enter a parse tree produced by appgenParser#relationCardinality.
     def enterRelationCardinality(self, ctx:appgenParser.RelationCardinalityContext):
         pass
@@ -206,12 +215,30 @@ class appgenListener(ParseTreeListener):
         pass
 
 
+    # Enter a parse tree produced by appgenParser#flowItem.
+    def enterFlowItem(self, ctx:appgenParser.FlowItemContext):
+        pass
+
+    # Exit a parse tree produced by appgenParser#flowItem.
+    def exitFlowItem(self, ctx:appgenParser.FlowItemContext):
+        pass
+
+
     # Enter a parse tree produced by appgenParser#flowStep.
     def enterFlowStep(self, ctx:appgenParser.FlowStepContext):
         pass
 
     # Exit a parse tree produced by appgenParser#flowStep.
     def exitFlowStep(self, ctx:appgenParser.FlowStepContext):
+        pass
+
+
+    # Enter a parse tree produced by appgenParser#flowDirective.
+    def enterFlowDirective(self, ctx:appgenParser.FlowDirectiveContext):
+        pass
+
+    # Exit a parse tree produced by appgenParser#flowDirective.
+    def exitFlowDirective(self, ctx:appgenParser.FlowDirectiveContext):
         pass
 
 
@@ -260,12 +287,30 @@ class appgenListener(ParseTreeListener):
         pass
 
 
+    # Enter a parse tree produced by appgenParser#agentItem.
+    def enterAgentItem(self, ctx:appgenParser.AgentItemContext):
+        pass
+
+    # Exit a parse tree produced by appgenParser#agentItem.
+    def exitAgentItem(self, ctx:appgenParser.AgentItemContext):
+        pass
+
+
     # Enter a parse tree produced by appgenParser#pbcDecl.
     def enterPbcDecl(self, ctx:appgenParser.PbcDeclContext):
         pass
 
     # Exit a parse tree produced by appgenParser#pbcDecl.
     def exitPbcDecl(self, ctx:appgenParser.PbcDeclContext):
+        pass
+
+
+    # Enter a parse tree produced by appgenParser#pbcItem.
+    def enterPbcItem(self, ctx:appgenParser.PbcItemContext):
+        pass
+
+    # Exit a parse tree produced by appgenParser#pbcItem.
+    def exitPbcItem(self, ctx:appgenParser.PbcItemContext):
         pass
 
 
@@ -347,6 +392,33 @@ class appgenListener(ParseTreeListener):
 
     # Exit a parse tree produced by appgenParser#deployCheck.
     def exitDeployCheck(self, ctx:appgenParser.DeployCheckContext):
+        pass
+
+
+    # Enter a parse tree produced by appgenParser#deployResource.
+    def enterDeployResource(self, ctx:appgenParser.DeployResourceContext):
+        pass
+
+    # Exit a parse tree produced by appgenParser#deployResource.
+    def exitDeployResource(self, ctx:appgenParser.DeployResourceContext):
+        pass
+
+
+    # Enter a parse tree produced by appgenParser#deployBinding.
+    def enterDeployBinding(self, ctx:appgenParser.DeployBindingContext):
+        pass
+
+    # Exit a parse tree produced by appgenParser#deployBinding.
+    def exitDeployBinding(self, ctx:appgenParser.DeployBindingContext):
+        pass
+
+
+    # Enter a parse tree produced by appgenParser#deployDirective.
+    def enterDeployDirective(self, ctx:appgenParser.DeployDirectiveContext):
+        pass
+
+    # Exit a parse tree produced by appgenParser#deployDirective.
+    def exitDeployDirective(self, ctx:appgenParser.DeployDirectiveContext):
         pass
 
 
@@ -494,6 +566,15 @@ class appgenListener(ParseTreeListener):
         pass
 
 
+    # Enter a parse tree produced by appgenParser#contractDirective.
+    def enterContractDirective(self, ctx:appgenParser.ContractDirectiveContext):
+        pass
+
+    # Exit a parse tree produced by appgenParser#contractDirective.
+    def exitContractDirective(self, ctx:appgenParser.ContractDirectiveContext):
+        pass
+
+
     # Enter a parse tree produced by appgenParser#agenticOption.
     def enterAgenticOption(self, ctx:appgenParser.AgenticOptionContext):
         pass
@@ -539,12 +620,66 @@ class appgenListener(ParseTreeListener):
         pass
 
 
+    # Enter a parse tree produced by appgenParser#ruleOr.
+    def enterRuleOr(self, ctx:appgenParser.RuleOrContext):
+        pass
+
+    # Exit a parse tree produced by appgenParser#ruleOr.
+    def exitRuleOr(self, ctx:appgenParser.RuleOrContext):
+        pass
+
+
+    # Enter a parse tree produced by appgenParser#ruleAnd.
+    def enterRuleAnd(self, ctx:appgenParser.RuleAndContext):
+        pass
+
+    # Exit a parse tree produced by appgenParser#ruleAnd.
+    def exitRuleAnd(self, ctx:appgenParser.RuleAndContext):
+        pass
+
+
+    # Enter a parse tree produced by appgenParser#ruleUnary.
+    def enterRuleUnary(self, ctx:appgenParser.RuleUnaryContext):
+        pass
+
+    # Exit a parse tree produced by appgenParser#ruleUnary.
+    def exitRuleUnary(self, ctx:appgenParser.RuleUnaryContext):
+        pass
+
+
+    # Enter a parse tree produced by appgenParser#rulePredicate.
+    def enterRulePredicate(self, ctx:appgenParser.RulePredicateContext):
+        pass
+
+    # Exit a parse tree produced by appgenParser#rulePredicate.
+    def exitRulePredicate(self, ctx:appgenParser.RulePredicateContext):
+        pass
+
+
+    # Enter a parse tree produced by appgenParser#ruleValueList.
+    def enterRuleValueList(self, ctx:appgenParser.RuleValueListContext):
+        pass
+
+    # Exit a parse tree produced by appgenParser#ruleValueList.
+    def exitRuleValueList(self, ctx:appgenParser.RuleValueListContext):
+        pass
+
+
     # Enter a parse tree produced by appgenParser#ruleTerm.
     def enterRuleTerm(self, ctx:appgenParser.RuleTermContext):
         pass
 
     # Exit a parse tree produced by appgenParser#ruleTerm.
     def exitRuleTerm(self, ctx:appgenParser.RuleTermContext):
+        pass
+
+
+    # Enter a parse tree produced by appgenParser#directiveValue.
+    def enterDirectiveValue(self, ctx:appgenParser.DirectiveValueContext):
+        pass
+
+    # Exit a parse tree produced by appgenParser#directiveValue.
+    def exitDirectiveValue(self, ctx:appgenParser.DirectiveValueContext):
         pass
 
 

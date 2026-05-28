@@ -35,6 +35,7 @@ from .schema import RuleSchema
 from .schema import RoleSchema
 from .schema import SUPPORTED_SCHEMA_SOURCES
 from .schema import TableSchema
+from .schema import TableDirectiveSchema
 from .schema import ViewSchema
 from .schema import ViewSectionSchema
 from .schema import normalize_platform_targets
@@ -129,7 +130,7 @@ def lint_dsl(text: str, *, source_name: str | None = None) -> dict:
         if not schema.app_name:
             warnings.append("Add an app declaration to name generated applications and targets.")
         if not schema.views:
-            suggestions.append("Add view blocks to design forms and RAD-style component layouts.")
+            suggestions.append("Add view blocks to design forms and visual component layouts.")
         if not schema.llm_providers and not schema.agents:
             suggestions.append("Add llm and agent blocks when the app needs agentic behavior.")
 
@@ -229,6 +230,15 @@ def dsl_outline(text: str, *, source_name: str | None = None) -> dict:
                     for column in table.columns
                     if column.references
                 ),
+                "directives": tuple(
+                    {
+                        "verb": directive.verb,
+                        "name": directive.name,
+                        "values": directive.values,
+                        "targets": directive.targets,
+                    }
+                    for directive in table.directives
+                ),
             }
             for table in schema.tables
         ),
@@ -261,6 +271,14 @@ def dsl_outline(text: str, *, source_name: str | None = None) -> dict:
             {
                 "name": flow.name,
                 "steps": tuple({"source": step.source, "target": step.target} for step in flow.steps),
+                "directives": tuple(
+                    {
+                        "verb": directive.verb,
+                        "values": directive.values,
+                        "target": directive.target,
+                    }
+                    for directive in flow.directives
+                ),
             }
             for flow in schema.flows
         ),
@@ -605,7 +623,7 @@ def dsl_authoring_score(text: str, *, source_name: str | None = None) -> dict:
             "check": "form_design",
             "ok": summary["views"] > 0,
             "weight": 10,
-            "next_action": "Add a view block or RAD-style component placement.",
+            "next_action": "Add a view block or visual component placement.",
         },
         {
             "check": "target_selection",
@@ -1021,7 +1039,7 @@ def _diagnostic_code(message: str) -> str:
         return "modifier_alias"
     if "canonical DSL words" in message:
         return "authoring_alias"
-    if "RAD-style component" in message:
+    if "visual component" in message:
         return "missing_view_blocks"
     if "agentic behavior" in message:
         return "missing_agentic_blocks"
@@ -1168,7 +1186,9 @@ def _declared_table_fields_for_suggestions(source: str) -> dict[str, tuple[str, 
 def schema_from_dsl(text: str, *, source_name: str | None = None) -> AppSchema:
     """Parse AppGen DSL source into the canonical app schema."""
     text = _normalize_app_option_sugar(
-        _normalize_reference_sugar(_normalize_modifier_aliases(_normalize_authoring_aliases(text)))
+        _normalize_table_line_boundaries(
+            _normalize_reference_sugar(_normalize_modifier_aliases(_normalize_authoring_aliases(text)))
+        )
     )
     tree = _parse(text)
     app_decl = tree.appDecl()
@@ -1222,7 +1242,7 @@ def schema_from_dsl(text: str, *, source_name: str | None = None) -> AppSchema:
         elif element.agentDecl():
             agents.append(_agent(element.agentDecl()))
         elif element.pbcDecl():
-            platform_blocks.append(_agentic_platform_block("pbc", element.pbcDecl()))
+            platform_blocks.append(_pbc_block(element.pbcDecl()))
         elif element.compositionDecl():
             platform_blocks.append(_composition_block(element.compositionDecl()))
         elif element.auditDecl():
@@ -1334,7 +1354,7 @@ def _dsl_snippets() -> tuple[dict, ...]:
             "detail": "Generated form/view block.",
         },
         {
-            "label": "RAD Component",
+            "label": "Visual Component",
             "insert": "@ name TextBox 0 0 6 1",
             "kind": "snippet",
             "detail": "Drop a component at x y width height.",
@@ -1596,6 +1616,9 @@ _FIELD_MODIFIER_ALIAS_RE = re.compile(
     r"(?P<prefix>(?:^|[{\n;])\s*[A-Za-z_][A-Za-z0-9_]*\s*:\s*[A-Za-z_][A-Za-z0-9_]*(?:\([0-9]+\))?(?:\[\])?(?:\s+(?:pk|required|unique|hidden|search|default\s+[^;{}\n]+|in\s+[^;{}\n]+|->\s*[A-Za-z_][A-Za-z0-9_]*\.[A-Za-z_][A-Za-z0-9_]*(?:\s*\[[^\]]+\])?))*\s+)(?P<alias>hide|searchable)\b",
     flags=re.IGNORECASE,
 )
+_TABLE_FIELD_BEFORE_DIRECTIVE_RE = re.compile(
+    r"(?m)^(\s*[A-Za-z_][A-Za-z0-9_]*\s*:\s*[^;\n{}]+)\n(?=\s*(?:unique|index|lookup|fk|foreign_key|check|constraint)\b)"
+)
 
 
 def dsl_keyword_budget() -> dict:
@@ -1660,12 +1683,17 @@ def dsl_antlr_integrity_report() -> dict:
     required_rules = (
         "schema",
         "tableDecl",
+        "tableDirective",
         "viewDecl",
         "componentPlacement",
         "flowDecl",
+        "flowItem",
+        "flowDirective",
         "llmDecl",
         "agentDecl",
+        "agentItem",
         "pbcDecl",
+        "pbcItem",
         "compositionDecl",
         "auditDecl",
         "deploymentDecl",
@@ -1674,6 +1702,9 @@ def dsl_antlr_integrity_report() -> dict:
         "deployScale",
         "deployHealth",
         "deployCheck",
+        "deployResource",
+        "deployBinding",
+        "deployDirective",
         "versionDecl",
         "operationDecl",
         "securityDecl",
@@ -1686,6 +1717,7 @@ def dsl_antlr_integrity_report() -> dict:
         "packageDecl",
         "testDecl",
         "contractItem",
+        "contractDirective",
         "handlerDecl",
     )
     missing_required_rules = tuple(rule for rule in required_rules if rule not in parser_rule_set)
@@ -1823,6 +1855,11 @@ def _normalize_reference_sugar(source: str) -> str:
     return "\n".join(normalized_lines)
 
 
+def _normalize_table_line_boundaries(source: str) -> str:
+    """Prevent table directives from being consumed as field modifiers."""
+    return _TABLE_FIELD_BEFORE_DIRECTIVE_RE.sub(r"\1;\n", source or "")
+
+
 def _normalize_app_option_sugar(source: str) -> str:
     """Allow dotted app option values without reserving more grammar keywords."""
 
@@ -1923,6 +1960,7 @@ def _validate_schema(schema: AppSchema) -> None:
                     errors.append(
                         f"Unknown derived-field reference: {table.name}.{column.name} uses {field_name}"
                     )
+        errors.extend(_table_directive_errors(table, table_map, field_map))
 
     for view in schema.views:
         if view.table not in table_map:
@@ -1930,10 +1968,12 @@ def _validate_schema(schema: AppSchema) -> None:
             continue
         allowed = field_map[view.table]
         for field_name in view.fields:
-            if field_name not in allowed:
+            if field_name not in allowed and not _valid_lookup_path(view.table, field_name, table_map, field_map):
                 errors.append(f"Unknown view field: {view.name}.{field_name}")
         for component in view.components:
-            if component.field and component.field not in allowed:
+            if component.field and component.field not in allowed and not _valid_lookup_path(
+                view.table, component.field, table_map, field_map
+            ):
                 errors.append(f"Unknown component field: {view.name}.{component.field}")
 
     for role in schema.roles:
@@ -1959,6 +1999,7 @@ def _validate_schema(schema: AppSchema) -> None:
     operation_names = {flow.name for flow in schema.flows}
     operation_names.update(block.name for block in schema.platform_blocks if block.kind == "operation")
     handler_targets = set(operation_names)
+    handler_targets.update(agent.name for agent in schema.agents)
     handler_targets.update(contract.name for contract in _enterprise_contracts(schema))
     deployable_targets = set(handler_targets)
     deployable_targets.update(block.name for block in schema.platform_blocks if block.kind == "pbc")
@@ -1983,6 +2024,9 @@ def _validate_schema(schema: AppSchema) -> None:
         for health in block.deployment_health:
             if health.target not in deployable_targets:
                 errors.append(f"Unknown deployment health target: {block.name}.{health.target}")
+        for statement in block.statements:
+            if statement.target and statement.target not in deployable_targets:
+                errors.append(f"Unknown deployment directive target: {block.name}.{statement.target}")
     for contract in _enterprise_contracts(schema):
         for handler in contract.handlers:
             if handler.target not in handler_targets:
@@ -2044,6 +2088,71 @@ def _field_names(table: TableSchema) -> set[str]:
     return names
 
 
+def _table_directive_errors(
+    table: TableSchema,
+    table_map: dict[str, TableSchema],
+    field_map: dict[str, set[str]],
+) -> list[str]:
+    errors: list[str] = []
+    field_directives = {"index", "unique", "key", "lookup", "fk", "foreign_key"}
+    for directive in table.directives:
+        verb = directive.verb.lower()
+        if verb not in field_directives:
+            continue
+        for value in directive.values:
+            if not _valid_lookup_path(table.name, value, table_map, field_map):
+                errors.append(f"Unknown table directive field: {table.name}.{directive.verb}.{value}")
+        for target in directive.targets:
+            if not _valid_external_target(target, table_map, field_map):
+                errors.append(f"Unknown table directive target: {table.name}.{directive.verb}.{target}")
+    return errors
+
+
+def _valid_external_target(
+    target: str,
+    table_map: dict[str, TableSchema],
+    field_map: dict[str, set[str]],
+) -> bool:
+    parts = target.split(".")
+    if len(parts) != 2:
+        return False
+    table_name, field_name = parts
+    return table_name in table_map and field_name in field_map[table_name]
+
+
+def _valid_lookup_path(
+    table_name: str,
+    path: str,
+    table_map: dict[str, TableSchema],
+    field_map: dict[str, set[str]],
+) -> bool:
+    if table_name not in table_map or not path:
+        return False
+    if re.search(r"[=<>+*/()]", path):
+        return _unknown_expression_fields(path, field_map[table_name]) == ()
+    parts = path.split(".")
+    current_table = table_name
+    for index, part in enumerate(parts):
+        if part not in field_map.get(current_table, set()):
+            return False
+        if index == len(parts) - 1:
+            return True
+        reference = _reference_for_lookup_part(table_map[current_table], part)
+        if reference is None:
+            return False
+        current_table = reference[0]
+    return True
+
+
+def _reference_for_lookup_part(table: TableSchema, part: str) -> tuple[str, str] | None:
+    for column in table.columns:
+        if column.name == part and column.references:
+            return column.references
+        if column.name == f"{part}_id" and column.references:
+            return column.references
+    return None
+
+
 def _unknown_expression_fields(expression: str, known_fields: set[str]) -> tuple[str, ...]:
     unknown: list[str] = []
     for token in re.findall(r"[A-Za-z_][A-Za-z0-9_]*", expression):
@@ -2056,17 +2165,20 @@ def _unknown_expression_fields(expression: str, known_fields: set[str]) -> tuple
 
 def _table(ctx, groups) -> tuple[TableSchema, list[RelationSchema]]:
     table_name = ctx.IDENT().getText()
-    columns, relations = _table_items(table_name, ctx.tableBody(), groups)
+    columns, relations, directives = _table_items(table_name, ctx.tableBody(), groups)
     columns = _dedupe_columns(table_name, columns)
 
     if not any(column.primary_key for column in columns):
         columns.insert(0, ColumnSchema("id", "int", nullable=False, primary_key=True))
-    return TableSchema(table_name, tuple(columns)), relations
+    return TableSchema(table_name, tuple(columns), tuple(directives)), relations
 
 
-def _table_items(table_name: str, body_ctx, groups, stack=()) -> tuple[list[ColumnSchema], list[RelationSchema]]:
+def _table_items(
+    table_name: str, body_ctx, groups, stack=()
+) -> tuple[list[ColumnSchema], list[RelationSchema], list[TableDirectiveSchema]]:
     columns: list[ColumnSchema] = []
     relations: list[RelationSchema] = []
+    directives: list[TableDirectiveSchema] = []
 
     for item in body_ctx.tableItem():
         if item.fieldDecl():
@@ -2082,14 +2194,17 @@ def _table_items(table_name: str, body_ctx, groups, stack=()) -> tuple[list[Colu
             if group_name in stack:
                 cycle = " -> ".join((*stack, group_name))
                 raise AppGenSyntaxError(f"Cyclic field group spread: {cycle}")
-            group_columns, group_relations = _table_items(
+            group_columns, group_relations, group_directives = _table_items(
                 table_name, groups[group_name], groups, (*stack, group_name)
             )
             columns.extend(group_columns)
             relations.extend(group_relations)
+            directives.extend(group_directives)
         elif item.relationDecl():
             relations.append(_relation(item.relationDecl()))
-    return columns, relations
+        elif item.tableDirective():
+            directives.append(_table_directive(item.tableDirective()))
+    return columns, relations, directives
 
 
 def _dedupe_columns(table_name: str, columns: list[ColumnSchema]) -> list[ColumnSchema]:
@@ -2193,6 +2308,28 @@ def _relation(ctx) -> RelationSchema:
     )
 
 
+def _table_directive(ctx) -> TableDirectiveSchema:
+    identifiers = [token.getText() for token in ctx.IDENT()]
+    verb = ctx.children[0].getText()
+    name_index = 1 if identifiers and identifiers[0] == verb else 0
+    name = identifiers[name_index] if len(identifiers) > name_index else None
+    values = []
+    targets = []
+    after_arrow = False
+    for child in ctx.children:
+        text = child.getText()
+        if text == "->":
+            after_arrow = True
+            continue
+        if child.__class__.__name__ == "DirectiveValueContext":
+            value = _directive_value(child)
+            if after_arrow:
+                targets.append(value)
+            else:
+                values.append(value)
+    return TableDirectiveSchema(verb=verb, name=name, values=tuple(values), targets=tuple(targets))
+
+
 def _relation_cardinality(ctx) -> str:
     if ctx is None:
         return "many-to-one"
@@ -2221,13 +2358,12 @@ def _view(ctx) -> ViewSchema:
         if item.componentPlacement():
             components.append(_component_placement(item.componentPlacement()))
             continue
-        identifiers = [token.getText() for token in item.IDENT()]
         if item.COLON():
-            section_fields = tuple(identifiers[1:])
-            sections.append(ViewSectionSchema(identifiers[0], section_fields))
+            section_fields = tuple(field.getText() for field in item.qualifiedName())
+            sections.append(ViewSectionSchema(item.IDENT().getText(), section_fields))
             fields.extend(section_fields)
         else:
-            fields.extend(identifiers)
+            fields.extend(field.getText() for field in item.qualifiedName())
     view_name = ctx.IDENT(0).getText()
     return ViewSchema(
         view_name,
@@ -2240,12 +2376,13 @@ def _view(ctx) -> ViewSchema:
 
 
 def _component_placement(ctx) -> FormComponentSchema:
-    identifiers = [token.getText() for token in ctx.IDENT()]
+    field_name = ctx.qualifiedName().getText()
+    component = ctx.IDENT().getText()
     numbers = [int(token.getText()) for token in ctx.INT()]
     return FormComponentSchema(
-        name=identifiers[0],
-        component=identifiers[1],
-        field=identifiers[0],
+        name=field_name,
+        component=component,
+        field=field_name,
         x=numbers[0],
         y=numbers[1],
         w=numbers[2],
@@ -2255,10 +2392,21 @@ def _component_placement(ctx) -> FormComponentSchema:
 
 def _flow(ctx) -> FlowSchema:
     steps = []
-    for step in ctx.flowStep():
-        source, target = [token.getText() for token in step.IDENT()]
-        steps.append(FlowStepSchema(source, target))
-    return FlowSchema(ctx.IDENT().getText(), tuple(steps))
+    directives = []
+    for item in ctx.flowItem():
+        if item.flowStep():
+            source, target = [token.getText() for token in item.flowStep().IDENT()]
+            steps.append(FlowStepSchema(source, target))
+        elif item.flowDirective():
+            directives.append(_flow_directive(item.flowDirective()))
+    return FlowSchema(ctx.IDENT().getText(), tuple(steps), tuple(directives))
+
+
+def _flow_directive(ctx) -> EnterpriseStatementSchema:
+    identifiers = [token.getText() for token in ctx.IDENT()]
+    values = tuple(_agentic_value(value) for value in ctx.agenticValue())
+    target = identifiers[-1] if ctx.ARROW() else None
+    return EnterpriseStatementSchema(verb=identifiers[0], values=values, target=target)
 
 
 def _role(ctx) -> RoleSchema:
@@ -2285,8 +2433,9 @@ def _rule(ctx) -> RuleSchema:
             )
             continue
         expression = item.ruleExpression()
-        terms = tuple(term.getText() for term in expression.ruleTerm())
-        field_name = _first_identifier(terms[0] if terms else item.getText())
+        expression_text = expression.getText()
+        terms = _collect_rule_terms(expression) or _rule_expression_terms(expression_text)
+        field_name = _first_identifier(terms[0] if terms else expression_text)
         action = item.IDENT().getText() if item.ARROW() else None
         values = tuple(value for value in terms[1:] if value != field_name)
         conditions.append(
@@ -2300,6 +2449,30 @@ def _rule(ctx) -> RuleSchema:
     return RuleSchema(identifiers[0].getText(), identifiers[1].getText(), tuple(conditions))
 
 
+def _rule_expression_terms(text: str) -> tuple[str, ...]:
+    ignored = {"and", "or", "not", "exists", "is", "null", "in", "true", "false"}
+    terms = []
+    for token in re.findall(r"[A-Za-z_][A-Za-z0-9_.]*|\"(?:\\.|[^\"])*\"|'(?:\\.|[^'])*'|[0-9]+(?:\.[0-9]+)?", text):
+        if token.lower() in ignored:
+            continue
+        terms.append(_literal_text(token) if token.startswith(("\"", "'")) else token)
+    return tuple(terms)
+
+
+def _collect_rule_terms(ctx) -> tuple[str, ...]:
+    terms: list[str] = []
+
+    def walk(node) -> None:
+        if node.__class__.__name__ == "RuleTermContext":
+            terms.append(node.getText())
+            return
+        for child in getattr(node, "children", ()) or ():
+            walk(child)
+
+    walk(ctx)
+    return tuple(terms)
+
+
 def _first_identifier(text: str) -> str:
     match = re.search(r"[A-Za-z_][A-Za-z0-9_]*", text)
     if not match:
@@ -2308,11 +2481,11 @@ def _first_identifier(text: str) -> str:
 
 
 def _rule_operator_text(ctx) -> str:
-    operators = ctx.ruleOperator()
-    if operators:
-        return operators[0].getText()
     text = ctx.getText()
-    for operator in ("and", "or", "not"):
+    for operator in ("==", "!=", ">=", "<=", ">", "<", "in"):
+        if operator in text:
+            return operator
+    for operator in ("and", "or", "not", "exists", "isnull", "isnotnull"):
         if operator in text:
             return "expr"
     return "expr"
@@ -2320,6 +2493,37 @@ def _rule_operator_text(ctx) -> str:
 
 def _agentic_platform_block(kind: str, ctx) -> PlatformBlockSchema:
     return PlatformBlockSchema(kind=kind, name=ctx.IDENT().getText(), options=_agentic_options(ctx))
+
+
+def _pbc_block(ctx) -> PlatformBlockSchema:
+    options: dict[str, tuple[str, ...]] = {}
+    statements: list[EnterpriseStatementSchema] = []
+    handlers: list[HandlerSchema] = []
+    permissions: list[PermissionSchema] = []
+    for item in ctx.pbcItem():
+        if item.handlerDecl():
+            handlers.append(_handler(item.handlerDecl()))
+        elif item.contractArrow():
+            statements.append(_contract_arrow(item.contractArrow()))
+        elif item.permission():
+            identifiers = [token.getText() for token in item.permission().IDENT()]
+            permissions.append(PermissionSchema(identifiers[0], tuple(identifiers[1:])))
+        elif item.agenticOption():
+            option = item.agenticOption()
+            values = tuple(_agentic_value(value) for value in option.agenticValue())
+            key = option.IDENT().getText()
+            if _looks_like_permission(key, values):
+                permissions.append(PermissionSchema(key, values))
+            else:
+                options[key] = values
+    return PlatformBlockSchema(
+        kind="pbc",
+        name=ctx.IDENT().getText(),
+        options=options,
+        statements=tuple(statements),
+        handlers=tuple(handlers),
+        permissions=tuple(permissions),
+    )
 
 
 def _enterprise_contracts(schema: AppSchema) -> tuple[EnterpriseContractSchema, ...]:
@@ -2358,6 +2562,8 @@ def _enterprise_contract(kind: str, ctx) -> EnterpriseContractSchema:
             handlers.append(_handler(item.handlerDecl()))
         elif item.contractArrow():
             statements.append(_contract_arrow(item.contractArrow()))
+        elif item.contractDirective():
+            statements.append(_contract_directive(item.contractDirective()))
         elif item.permission():
             identifiers = [token.getText() for token in item.permission().IDENT()]
             permissions.append(PermissionSchema(identifiers[0], tuple(identifiers[1:])))
@@ -2380,6 +2586,7 @@ def _deployment_block(ctx) -> PlatformBlockSchema:
     units: list[DeploymentUnitSchema] = []
     scales: list[DeploymentScaleSchema] = []
     health_checks: list[DeploymentHealthSchema] = []
+    statements: list[EnterpriseStatementSchema] = []
     for item in ctx.deploymentItem():
         if item.deployUnit():
             units.append(_deploy_unit(item.deployUnit()))
@@ -2389,6 +2596,12 @@ def _deployment_block(ctx) -> PlatformBlockSchema:
             health_checks.append(_deploy_health(item.deployHealth()))
         elif item.deployCheck():
             health_checks.append(_deploy_check(item.deployCheck()))
+        elif item.deployResource():
+            statements.append(_deploy_resource(item.deployResource()))
+        elif item.deployBinding():
+            statements.append(_deploy_binding(item.deployBinding()))
+        elif item.deployDirective():
+            statements.append(_deploy_directive(item.deployDirective()))
         elif item.agenticOption():
             option = item.agenticOption()
             values = tuple(_agentic_value(value) for value in option.agenticValue())
@@ -2397,6 +2610,7 @@ def _deployment_block(ctx) -> PlatformBlockSchema:
         kind="deploy",
         name=ctx.IDENT().getText(),
         options=options,
+        statements=tuple(statements),
         deployment_units=tuple(units),
         deployment_scales=tuple(scales),
         deployment_health=tuple(health_checks),
@@ -2404,36 +2618,56 @@ def _deployment_block(ctx) -> PlatformBlockSchema:
 
 
 def _deploy_unit(ctx) -> DeploymentUnitSchema:
-    keyword, target, separator, pattern = [token.getText() for token in ctx.IDENT()]
-    if keyword != "unit" or separator != "as":
-        raise AppGenSyntaxError("Deployment units use: unit Target as microservice")
+    target, pattern = [token.getText() for token in ctx.IDENT()]
     return DeploymentUnitSchema(target=target, pattern=pattern)
 
 
 def _deploy_scale(ctx) -> DeploymentScaleSchema:
-    keyword, target, min_word, max_word = [token.getText() for token in ctx.IDENT()]
-    if keyword != "scale" or min_word != "min" or max_word != "max":
-        raise AppGenSyntaxError("Deployment scale uses: scale Target min 1 max 3")
+    target = ctx.IDENT().getText()
     minimum, maximum = [int(token.getText()) for token in ctx.INT()]
     return DeploymentScaleSchema(target=target, minimum=minimum, maximum=maximum)
 
 
 def _deploy_health(ctx) -> DeploymentHealthSchema:
-    keyword, target = [token.getText() for token in ctx.IDENT()]
-    if keyword != "health":
-        raise AppGenSyntaxError("Deployment health checks use: health Target \"/healthz\"")
+    target = ctx.IDENT().getText()
     return DeploymentHealthSchema(target=target, path=_literal_text(ctx.STRING().getText()))
 
 
 def _deploy_check(ctx) -> DeploymentHealthSchema:
-    keyword, target, kind = [token.getText() for token in ctx.IDENT()]
-    if keyword != "check":
-        raise AppGenSyntaxError("Deployment checks use: check Target readiness \"/readyz\"")
+    target, kind = [token.getText() for token in ctx.IDENT()]
     return DeploymentHealthSchema(target=target, path=_literal_text(ctx.STRING().getText()), kind=kind)
 
 
+def _deploy_directive(ctx) -> EnterpriseStatementSchema:
+    identifiers = [token.getText() for token in ctx.IDENT()]
+    values = tuple(_agentic_value(value) for value in ctx.agenticValue())
+    return EnterpriseStatementSchema(verb=identifiers[0], values=values, target=identifiers[1])
+
+
+def _deploy_resource(ctx) -> EnterpriseStatementSchema:
+    target, resource_name = [token.getText() for token in ctx.IDENT()]
+    value = _agentic_value(ctx.agenticValue())
+    return EnterpriseStatementSchema(verb="resource", values=(resource_name, value), target=target)
+
+
+def _deploy_binding(ctx) -> EnterpriseStatementSchema:
+    identifiers = [token.getText() for token in ctx.IDENT()]
+    if ctx.ENV():
+        verb = "env"
+        target = identifiers[0]
+    else:
+        verb = identifiers[0]
+        target = identifiers[1]
+    value = _agentic_value(ctx.agenticValue())
+    return EnterpriseStatementSchema(verb=verb, values=(value,), target=target)
+
+
 def _handler(ctx) -> HandlerSchema:
-    trigger, event, target = [token.getText() for token in ctx.IDENT()]
+    identifiers = [token.getText() for token in ctx.IDENT()]
+    if ctx.ON():
+        trigger, event, target = "on", identifiers[0], identifiers[1]
+    else:
+        trigger, event, target = identifiers
     return HandlerSchema(trigger=trigger, event=event, target=target)
 
 
@@ -2441,6 +2675,12 @@ def _contract_arrow(ctx) -> EnterpriseStatementSchema:
     identifiers = [token.getText() for token in ctx.IDENT()]
     values = tuple(_agentic_value(value) for value in ctx.agenticValue())
     return EnterpriseStatementSchema(verb=identifiers[0], values=values, target=identifiers[-1])
+
+
+def _contract_directive(ctx) -> EnterpriseStatementSchema:
+    identifiers = [token.getText() for token in ctx.IDENT()]
+    values = tuple(_agentic_value(value) for value in ctx.agenticValue())
+    return EnterpriseStatementSchema(verb=identifiers[0], values=values)
 
 
 def _composition_block(ctx) -> PlatformBlockSchema:
@@ -2464,10 +2704,16 @@ def _composition_block(ctx) -> PlatformBlockSchema:
 def _operation_block(ctx) -> PlatformBlockSchema:
     steps: list[FlowStepSchema] = []
     options: dict[str, tuple[str, ...]] = {}
+    handlers: list[HandlerSchema] = []
+    statements: list[EnterpriseStatementSchema] = []
     for item in ctx.operationItem():
         if item.flowStep():
             source, target = [token.getText() for token in item.flowStep().IDENT()]
             steps.append(FlowStepSchema(source, target))
+        elif item.handlerDecl():
+            handlers.append(_handler(item.handlerDecl()))
+        elif item.contractArrow():
+            statements.append(_contract_arrow(item.contractArrow()))
         elif item.agenticOption():
             values = tuple(_agentic_value(value) for value in item.agenticOption().agenticValue())
             options[item.agenticOption().IDENT().getText()] = values
@@ -2476,6 +2722,8 @@ def _operation_block(ctx) -> PlatformBlockSchema:
         name=ctx.IDENT().getText(),
         options=options,
         steps=tuple(steps),
+        statements=tuple(statements),
+        handlers=tuple(handlers),
     )
 
 
@@ -2488,7 +2736,11 @@ def _security_block(ctx) -> PlatformBlockSchema:
             permissions.append(PermissionSchema(identifiers[0], tuple(identifiers[1:])))
         elif item.agenticOption():
             values = tuple(_agentic_value(value) for value in item.agenticOption().agenticValue())
-            options[item.agenticOption().IDENT().getText()] = values
+            key = item.agenticOption().IDENT().getText()
+            if _looks_like_permission(key, values):
+                permissions.append(PermissionSchema(key, values))
+            else:
+                options[key] = values
     return PlatformBlockSchema(
         kind="security",
         name=ctx.IDENT().getText(),
@@ -2510,7 +2762,25 @@ def _llm_provider(ctx) -> LLMProviderSchema:
 
 
 def _agent(ctx) -> AgentSchema:
-    options = _agentic_options(ctx)
+    options: dict[str, tuple[str, ...]] = {}
+    competencies: list[EnterpriseStatementSchema] = []
+    handlers: list[HandlerSchema] = []
+    permissions: list[PermissionSchema] = []
+    for item in ctx.agentItem():
+        if item.handlerDecl():
+            handlers.append(_handler(item.handlerDecl()))
+        elif item.contractArrow():
+            competencies.append(_contract_arrow(item.contractArrow()))
+        elif item.permission():
+            identifiers = [token.getText() for token in item.permission().IDENT()]
+            permissions.append(PermissionSchema(identifiers[0], tuple(identifiers[1:])))
+        elif item.agenticOption():
+            values = tuple(_agentic_value(value) for value in item.agenticOption().agenticValue())
+            key = item.agenticOption().IDENT().getText()
+            if _looks_like_permission(key, values):
+                permissions.append(PermissionSchema(key, values))
+            else:
+                options[key] = values
     max_steps = _first_or_none(options.get("max_steps")) or "8"
     return AgentSchema(
         name=ctx.IDENT().getText(),
@@ -2519,6 +2789,9 @@ def _agent(ctx) -> AgentSchema:
         tools=options.get("tools", ()),
         memory=_first_or_none(options.get("memory")) or "session",
         max_steps=int(max_steps),
+        competencies=tuple(competencies),
+        handlers=tuple(handlers),
+        permissions=tuple(permissions),
     )
 
 
@@ -2530,11 +2803,19 @@ def _agentic_options(ctx) -> dict[str, tuple[str, ...]]:
     return options
 
 
+def _looks_like_permission(key: str, values: tuple[str, ...]) -> bool:
+    return bool(key[:1].isupper() and values and all(re.fullmatch(r"[a-z_]+", value) for value in values))
+
+
 def _agentic_value(ctx) -> str:
     text = "".join(token.getText() for token in ctx.children)
     if text.startswith(("\"", "'")):
         return _literal_text(text)
     return text
+
+
+def _directive_value(ctx) -> str:
+    return _literal_text(ctx.getText()) if ctx.getText().startswith(("\"", "'")) else ctx.getText()
 
 
 def _first_or_none(values: tuple[str, ...] | None) -> str | None:
@@ -2589,5 +2870,5 @@ def _apply_external_relations(
                     source_group=column.source_group,
                 )
             )
-        updated_tables.append(TableSchema(table.name, tuple(columns)))
+        updated_tables.append(TableSchema(table.name, tuple(columns), table.directives))
     return updated_tables

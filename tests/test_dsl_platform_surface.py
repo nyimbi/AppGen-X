@@ -6,12 +6,27 @@ from pyAppGen.dsl import schema_from_dsl
 def test_dsl_accepts_pbc_composition_operations_security_surface() -> None:
     source = """
     app EnterpriseCore { targets: web, mobile, desktop }
-    table Journal { id: int pk; status: string required search }
+    table Customer { id: int pk; name: string required search }
+    table Journal {
+      id: int pk
+      status: string required search
+      customer_id: int -> Customer.id [many-to-one]
+      unique journal_customer_status (customer_id, status)
+      lookup customer_name (customer.name)
+      fk journal_customer_fk (customer_id) -> Customer.id
+    }
     view JournalForm for Journal {
-      Main: status
+      Main: status, customer.name
+      @ customer.name TextBox 0 1 6 1
       on Save -> PostJournal
     }
-    flow PostJournal { draft -> posted }
+    flow PostJournal {
+      participant FinanceOps
+      draft -> posted
+      human Review assigned FinanceOps -> reviewed
+      timer reviewed "P2D" -> escalated
+      compensate posted -> ReverseJournal
+    }
     rule PostingPolicy for Journal {
       status in draft, posted
       status == posted and id > 0 -> AuditReview
@@ -42,11 +57,16 @@ def test_dsl_accepts_pbc_composition_operations_security_surface() -> None:
       scale gl_core min 2 max 10
       health gl_core "/healthz"
       check gl_core readiness "/readyz"
+      resource gl_core cpu "500m"
+      env gl_core DATABASE_URL
+      secret gl_core OPENAI_API_KEY
     }
     version Release2026 { semver: "1.0.0"; compatibility: backward }
     operation CloseBooks {
       draft -> reviewed
       reviewed -> posted
+      human Review assigned FinanceOps -> reviewed
+      compensate posted -> ReverseJournal
       owner: finance_ops
     }
     api JournalsApi {
@@ -89,6 +109,9 @@ def test_dsl_accepts_pbc_composition_operations_security_surface() -> None:
       provider: LocalModel
       goal: "Guide finance work"
       tools: gl_core_skills, schema, forms
+      skill reconcile JournalPosted -> CloseBooks
+      Journal: read
+      on Alert -> CloseBooks
     }
     """
 
@@ -115,6 +138,19 @@ def test_dsl_accepts_pbc_composition_operations_security_surface() -> None:
     ]
     assert service_deploy.deployment_scales[0].maximum == 10
     assert service_deploy.deployment_health[1].kind == "readiness"
+    assert [statement.verb for statement in service_deploy.statements] == ["resource", "env", "secret"]
+    journal = schema.table("Journal")
+    assert [directive.verb for directive in journal.directives] == ["unique", "lookup", "fk"]
+    assert schema.views[0].fields == ("status", "customer.name")
+    assert schema.views[0].components[0].field == "customer.name"
+    assert [directive.verb for directive in schema.flows[0].directives] == [
+        "participant",
+        "human",
+        "timer",
+        "compensate",
+    ]
+    assert schema.agents[0].competencies[0].verb == "skill"
+    assert schema.agents[0].permissions[0].resource == "Journal"
     assert len(schema.api_contracts) == 1
     assert len(schema.event_contracts) == 1
     assert len(schema.job_contracts) == 1
@@ -160,3 +196,29 @@ def test_dsl_rejects_invalid_deployment_topology() -> None:
     assert any("Unknown deployment pattern: Production.spaceship" in error for error in report["errors"])
     assert any("Invalid deployment scale range: Production.gl_core" in error for error in report["errors"])
     assert any("Unknown deployment health target: Production.missing_pbc" in error for error in report["errors"])
+
+
+def test_dsl_rejects_invalid_table_directives_and_lookup_paths() -> None:
+    source = """
+    app BadLookups { targets: web }
+    table Customer { id: int pk; name: string }
+    table Invoice {
+      id: int pk
+      customer_id: int -> Customer.id
+      lookup bad_customer (customer.missing_name)
+      index bad_index (missing_field)
+      fk bad_fk (customer_id) -> Customer.missing_id
+    }
+    view InvoiceForm for Invoice {
+      Main: customer.missing_name
+      @ customer.missing_name TextBox 0 0 6 1
+    }
+    """
+
+    report = lint_dsl(source)
+    assert report["ok"] is False
+    assert any("Unknown table directive field: Invoice.lookup.customer.missing_name" in error for error in report["errors"])
+    assert any("Unknown table directive field: Invoice.index.missing_field" in error for error in report["errors"])
+    assert any("Unknown table directive target: Invoice.fk.Customer.missing_id" in error for error in report["errors"])
+    assert any("Unknown view field: InvoiceForm.customer.missing_name" in error for error in report["errors"])
+    assert any("Unknown component field: InvoiceForm.customer.missing_name" in error for error in report["errors"])

@@ -139,6 +139,16 @@ class ColumnSchema:
 
 
 @dataclass(frozen=True)
+class TableDirectiveSchema:
+    """A table-level index, lookup, check, key, or storage directive."""
+
+    verb: str
+    name: str | None = None
+    values: tuple[str, ...] = field(default_factory=tuple)
+    targets: tuple[str, ...] = field(default_factory=tuple)
+
+
+@dataclass(frozen=True)
 class RelationSchema:
     """A portable relationship between two tables."""
 
@@ -160,7 +170,7 @@ class ViewSectionSchema:
 
 @dataclass(frozen=True)
 class FormComponentSchema:
-    """A RAD-style component placed on a generated form canvas."""
+    """A visual component placed on a generated form canvas."""
 
     name: str
     component: str
@@ -197,6 +207,7 @@ class FlowSchema:
 
     name: str
     steps: tuple[FlowStepSchema, ...] = field(default_factory=tuple)
+    directives: tuple[EnterpriseStatementSchema, ...] = field(default_factory=tuple)
 
 
 @dataclass(frozen=True)
@@ -265,6 +276,9 @@ class AgentSchema:
     tools: tuple[str, ...] = field(default_factory=tuple)
     memory: str = "session"
     max_steps: int = 8
+    competencies: tuple[EnterpriseStatementSchema, ...] = field(default_factory=tuple)
+    handlers: tuple[HandlerSchema, ...] = field(default_factory=tuple)
+    permissions: tuple[PermissionSchema, ...] = field(default_factory=tuple)
 
 
 @dataclass(frozen=True)
@@ -275,6 +289,8 @@ class PlatformBlockSchema:
     name: str
     options: dict[str, tuple[str, ...]] = field(default_factory=dict)
     steps: tuple[FlowStepSchema, ...] = field(default_factory=tuple)
+    statements: tuple[EnterpriseStatementSchema, ...] = field(default_factory=tuple)
+    handlers: tuple[HandlerSchema, ...] = field(default_factory=tuple)
     permissions: tuple[PermissionSchema, ...] = field(default_factory=tuple)
     deployment_units: tuple[DeploymentUnitSchema, ...] = field(default_factory=tuple)
     deployment_scales: tuple[DeploymentScaleSchema, ...] = field(default_factory=tuple)
@@ -343,6 +359,7 @@ class TableSchema:
 
     name: str
     columns: tuple[ColumnSchema, ...] = field(default_factory=tuple)
+    directives: tuple[TableDirectiveSchema, ...] = field(default_factory=tuple)
 
 
 @dataclass(frozen=True)

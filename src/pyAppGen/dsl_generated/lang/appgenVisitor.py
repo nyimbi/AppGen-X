@@ -1,6 +1,6 @@
 # Generated from lang/appgen.g4 by ANTLR 4.13.2
 from antlr4 import *
-if __name__ is not None and "." in __name__:
+if "." in __name__:
     from .appgenParser import appgenParser
 else:
     from appgenParser import appgenParser
@@ -84,6 +84,11 @@ class appgenVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
+    # Visit a parse tree produced by appgenParser#tableDirective.
+    def visitTableDirective(self, ctx:appgenParser.TableDirectiveContext):
+        return self.visitChildren(ctx)
+
+
     # Visit a parse tree produced by appgenParser#relationCardinality.
     def visitRelationCardinality(self, ctx:appgenParser.RelationCardinalityContext):
         return self.visitChildren(ctx)
@@ -119,8 +124,18 @@ class appgenVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
+    # Visit a parse tree produced by appgenParser#flowItem.
+    def visitFlowItem(self, ctx:appgenParser.FlowItemContext):
+        return self.visitChildren(ctx)
+
+
     # Visit a parse tree produced by appgenParser#flowStep.
     def visitFlowStep(self, ctx:appgenParser.FlowStepContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by appgenParser#flowDirective.
+    def visitFlowDirective(self, ctx:appgenParser.FlowDirectiveContext):
         return self.visitChildren(ctx)
 
 
@@ -149,8 +164,18 @@ class appgenVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
+    # Visit a parse tree produced by appgenParser#agentItem.
+    def visitAgentItem(self, ctx:appgenParser.AgentItemContext):
+        return self.visitChildren(ctx)
+
+
     # Visit a parse tree produced by appgenParser#pbcDecl.
     def visitPbcDecl(self, ctx:appgenParser.PbcDeclContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by appgenParser#pbcItem.
+    def visitPbcItem(self, ctx:appgenParser.PbcItemContext):
         return self.visitChildren(ctx)
 
 
@@ -196,6 +221,21 @@ class appgenVisitor(ParseTreeVisitor):
 
     # Visit a parse tree produced by appgenParser#deployCheck.
     def visitDeployCheck(self, ctx:appgenParser.DeployCheckContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by appgenParser#deployResource.
+    def visitDeployResource(self, ctx:appgenParser.DeployResourceContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by appgenParser#deployBinding.
+    def visitDeployBinding(self, ctx:appgenParser.DeployBindingContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by appgenParser#deployDirective.
+    def visitDeployDirective(self, ctx:appgenParser.DeployDirectiveContext):
         return self.visitChildren(ctx)
 
 
@@ -279,6 +319,11 @@ class appgenVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
+    # Visit a parse tree produced by appgenParser#contractDirective.
+    def visitContractDirective(self, ctx:appgenParser.ContractDirectiveContext):
+        return self.visitChildren(ctx)
+
+
     # Visit a parse tree produced by appgenParser#agenticOption.
     def visitAgenticOption(self, ctx:appgenParser.AgenticOptionContext):
         return self.visitChildren(ctx)
@@ -304,8 +349,38 @@ class appgenVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
+    # Visit a parse tree produced by appgenParser#ruleOr.
+    def visitRuleOr(self, ctx:appgenParser.RuleOrContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by appgenParser#ruleAnd.
+    def visitRuleAnd(self, ctx:appgenParser.RuleAndContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by appgenParser#ruleUnary.
+    def visitRuleUnary(self, ctx:appgenParser.RuleUnaryContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by appgenParser#rulePredicate.
+    def visitRulePredicate(self, ctx:appgenParser.RulePredicateContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by appgenParser#ruleValueList.
+    def visitRuleValueList(self, ctx:appgenParser.RuleValueListContext):
+        return self.visitChildren(ctx)
+
+
     # Visit a parse tree produced by appgenParser#ruleTerm.
     def visitRuleTerm(self, ctx:appgenParser.RuleTermContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by appgenParser#directiveValue.
+    def visitDirectiveValue(self, ctx:appgenParser.DirectiveValueContext):
         return self.visitChildren(ctx)
 
 

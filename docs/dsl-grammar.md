@@ -131,9 +131,12 @@ live under `src/pyAppGen/dsl_generated/lang/`.
 ```antlr
 tableDecl : TABLE IDENT tableBody ;
 tableBody : LBRACE tableItem* RBRACE ;
-tableItem : fieldDecl | spreadDecl | relationDecl ;
+tableItem : fieldDecl | spreadDecl | relationDecl | tableDirective ;
 fieldDecl : IDENT COLON typeRef derivedExpr? modifier* SEMI? ;
 typeRef   : IDENT (LPAREN INT RPAREN)? (LBRACK RBRACK)? ;
+tableDirective
+  : (IDENT | UNIQUE) IDENT? LPAREN directiveValue (COMMA directiveValue)*
+    RPAREN (ARROW directiveValue (COMMA directiveValue)*)? SEMI? ;
 ```
 
 ```appgen
@@ -142,6 +145,8 @@ table Book {
   title: string required search
   tags: string[]
   score: decimal = rating * 2
+  index book_search (title)
+  lookup author_name (author.name)
 }
 ```
 
@@ -230,20 +235,21 @@ Use enum names as field types.
 enumDecl : ENUM IDENT LBRACE IDENT* RBRACE ;
 ```
 
-## Views And RAD-Style Components
+## Views And Visual Components
 
 ```antlr
 viewDecl           : VIEW IDENT FOR IDENT LBRACE viewItem* RBRACE ;
 viewItem           : componentPlacement
-                   | IDENT (COLON IDENT (COMMA IDENT)* | (COMMA IDENT)*) SEMI? ;
-componentPlacement : AT IDENT IDENT INT INT INT INT SEMI? ;
+                   | IDENT COLON qualifiedName (COMMA qualifiedName)* SEMI?
+                   | qualifiedName (COMMA qualifiedName)* SEMI? ;
+componentPlacement : AT qualifiedName IDENT INT INT INT INT SEMI? ;
 ```
 
 ```appgen
 view BookForm for Book {
-  Main: title, author_id;
+  Main: title, author.name;
   @ title TextBox 0 0 6 1;
-  @ author_id Lookup 0 1 6 1;
+  @ author.name Lookup 0 1 6 1;
 }
 ```
 
@@ -253,8 +259,8 @@ The component placement format is:
 @ field Component x y w h
 ```
 
-This is the RAD-style component placement form: a component is dropped on a
-named form field with grid coordinates and dimensions. The generated form
+This is the visual component placement form: a component is dropped on a
+named form field or validated lookup path with grid coordinates and dimensions. The generated form
 designer uses those coordinates for canvas placement, overlap checks, and
 property-inspector metadata.
 
@@ -268,8 +274,24 @@ flow Publish {
 ```
 
 ```antlr
-flowDecl : FLOW IDENT LBRACE flowStep* RBRACE ;
-flowStep : IDENT ARROW IDENT SEMI? ;
+flowDecl      : FLOW IDENT LBRACE flowItem* RBRACE ;
+flowItem      : flowStep | flowDirective ;
+flowStep      : IDENT ARROW IDENT SEMI? ;
+flowDirective : IDENT agenticValue* (ARROW IDENT)? SEMI? ;
+```
+
+Workflow directives describe participants, human tasks, timers,
+compensation, rollout gates, and agent-assisted skills without adding global
+keywords:
+
+```appgen
+flow CloseBooks {
+  participant FinanceOps
+  draft -> reviewed
+  human Review assigned FinanceOps -> approved
+  timer reviewed "P2D" -> escalated
+  compensate posted -> ReverseJournal
+}
 ```
 
 ## Roles
@@ -300,7 +322,14 @@ Supported operators are `==`, `!=`, `>=`, `<=`, `>`, `<`, and `in`.
 ruleDecl     : RULE IDENT FOR IDENT LBRACE ruleItem* RBRACE ;
 ruleItem     : IDENT REQUIRED STRING? SEMI?
              | ruleExpression (ARROW IDENT)? SEMI? ;
-ruleExpression : ruleTerm ((ruleOperator | IDENT) ruleTerm (COMMA ruleTerm)*)* ;
+ruleExpression : ruleOr ;
+ruleOr         : ruleAnd (OR ruleAnd)* ;
+ruleAnd        : ruleUnary (AND ruleUnary)* ;
+ruleUnary      : NOT ruleUnary
+               | EXISTS LPAREN qualifiedName RPAREN
+               | rulePredicate ;
+rulePredicate  : ruleTerm (ruleOperator ruleValueList | IS NOT? NULL)? ;
+ruleValueList  : ruleTerm (COMMA ruleTerm)* ;
 ruleTerm       : qualifiedName | literal | LPAREN ruleExpression RPAREN ;
 ruleOperator : EQEQ | NEQ | GTE | LTE | GT | LT | IN ;
 ```
@@ -363,9 +392,12 @@ menuDecl      : MENU IDENT LBRACE contractItem* RBRACE ;
 componentDecl : COMPONENT IDENT LBRACE contractItem* RBRACE ;
 packageDecl   : PACKAGE IDENT LBRACE contractItem* RBRACE ;
 testDecl      : TEST IDENT LBRACE contractItem* RBRACE ;
-contractItem  : handlerDecl | contractArrow | permission | agenticOption ;
-handlerDecl   : IDENT IDENT ARROW IDENT SEMI? ;
+contractItem  : handlerDecl | contractArrow | contractDirective
+              | agenticOption | permission ;
+handlerDecl   : ON IDENT ARROW IDENT SEMI?
+              | IDENT IDENT ARROW IDENT SEMI? ;
 contractArrow : IDENT agenticValue* ARROW IDENT SEMI? ;
+contractDirective : IDENT agenticValue+ SEMI? ;
 ```
 
 The linter validates handler and contract arrow targets against declared flows,
@@ -389,16 +421,24 @@ deploy Production {
   scale gl_core min 2 max 10
   health gl_core "/healthz"
   check gl_core readiness "/readyz"
+  resource gl_core cpu "500m"
+  env gl_core DATABASE_URL
+  secret gl_core OPENAI_API_KEY
 }
 ```
 
 ```antlr
 deploymentDecl : DEPLOY IDENT LBRACE deploymentItem* RBRACE ;
-deploymentItem : deployUnit | deployScale | deployHealth | deployCheck | agenticOption ;
-deployUnit     : IDENT IDENT IDENT IDENT SEMI? ;
-deployScale    : IDENT IDENT IDENT INT IDENT INT SEMI? ;
-deployHealth   : IDENT IDENT STRING SEMI? ;
-deployCheck    : IDENT IDENT IDENT STRING SEMI? ;
+deploymentItem : deployUnit | deployScale | deployHealth | deployCheck
+               | deployResource | deployBinding | deployDirective
+               | agenticOption ;
+deployUnit     : UNIT IDENT AS IDENT SEMI? ;
+deployScale    : SCALE IDENT MIN INT MAX INT SEMI? ;
+deployHealth   : HEALTH IDENT STRING SEMI? ;
+deployCheck    : CHECK IDENT IDENT STRING SEMI? ;
+deployResource : RESOURCE IDENT IDENT agenticValue SEMI? ;
+deployBinding  : (ENV | SECRET) IDENT agenticValue SEMI? ;
+deployDirective: IDENT IDENT agenticValue* SEMI? ;
 ```
 
 Semantic validation checks that deployment unit, scale, health, and check
@@ -426,6 +466,9 @@ agent Reviewer {
   provider: LocalModel
   goal: "Review submitted records"
   tools: schema, forms, reports
+  skill review SubmittedRecord -> ReviewQueue
+  Book: read
+  on Escalate -> NotifyOwner
 }
 ```
 
@@ -433,14 +476,17 @@ API keys should be environment variable names, not literal secrets.
 
 ```antlr
 llmDecl       : LLM IDENT LBRACE agenticOption* RBRACE ;
-agentDecl     : AGENT IDENT LBRACE agenticOption* RBRACE ;
+agentDecl     : AGENT IDENT LBRACE agentItem* RBRACE ;
+agentItem     : handlerDecl | contractArrow | agenticOption | permission ;
 agenticOption : IDENT COLON agenticValue (COMMA agenticValue)* SEMI? ;
-agenticValue  : literal ((DOT | MINUS) literal)* ;
+agenticValue  : valueAtom ((DOT | MINUS) valueAtom)* ;
 ```
 
 The grammar intentionally does not reserve provider-specific option names.
 Common options include `provider`, `mode`, `endpoint`, `model`, `api_key`,
-`goal`, `tools`, `memory`, and `max_steps`.
+`goal`, `tools`, `memory`, and `max_steps`. Agent arrow statements describe
+competencies and skills. Capitalized colon statements such as `Book: read`
+are exposed as agent permissions.
 
 ## Lexical Rules
 
@@ -487,10 +533,11 @@ Parsing is only the first gate. The package linter also validates:
 - relation source and target tables/fields;
 - field-level reference targets;
 - derived-field references;
-- view section fields and RAD-style component fields;
+- view section fields, lookup paths, and visual component fields;
 - role resources and rule table/field references;
 - agent provider names when LLM providers are declared;
 - relation cardinality values;
 - handler and contract targets;
 - package targets;
-- deployment topology targets, scale ranges, and supported deployment patterns.
+- deployment topology targets, resource/env/secret bindings, scale ranges, and
+  supported deployment patterns.

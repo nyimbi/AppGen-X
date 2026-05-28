@@ -60,6 +60,7 @@ tableItem
   : fieldDecl
   | spreadDecl
   | relationDecl
+  | tableDirective
   ;
 
 fieldDecl
@@ -97,6 +98,10 @@ relationDecl
   : REF? target ARROW target relationCardinality? SEMI?
   ;
 
+tableDirective
+  : (IDENT | UNIQUE) IDENT? LPAREN directiveValue (COMMA directiveValue)* RPAREN (ARROW directiveValue (COMMA directiveValue)*)? SEMI?
+  ;
+
 relationCardinality
   : LBRACK agenticValue RBRACK
   ;
@@ -116,19 +121,29 @@ viewDecl
 viewItem
   : handlerDecl
   | componentPlacement
-  | IDENT (COLON IDENT (COMMA IDENT)* | (COMMA IDENT)*) SEMI?
+  | IDENT COLON qualifiedName (COMMA qualifiedName)* SEMI?
+  | qualifiedName (COMMA qualifiedName)* SEMI?
   ;
 
 componentPlacement
-  : AT IDENT IDENT INT INT INT INT SEMI?
+  : AT qualifiedName IDENT INT INT INT INT SEMI?
   ;
 
 flowDecl
-  : FLOW IDENT LBRACE flowStep* RBRACE
+  : FLOW IDENT LBRACE flowItem* RBRACE
+  ;
+
+flowItem
+  : flowStep
+  | flowDirective
   ;
 
 flowStep
   : IDENT ARROW IDENT SEMI?
+  ;
+
+flowDirective
+  : IDENT agenticValue* (ARROW IDENT)? SEMI?
   ;
 
 roleDecl
@@ -148,11 +163,25 @@ llmDecl
   ;
 
 agentDecl
-  : AGENT IDENT LBRACE agenticOption* RBRACE
+  : AGENT IDENT LBRACE agentItem* RBRACE
+  ;
+
+agentItem
+  : handlerDecl
+  | contractArrow
+  | agenticOption
+  | permission
   ;
 
 pbcDecl
-  : PBC IDENT LBRACE agenticOption* RBRACE
+  : PBC IDENT LBRACE pbcItem* RBRACE
+  ;
+
+pbcItem
+  : handlerDecl
+  | contractArrow
+  | agenticOption
+  | permission
   ;
 
 compositionDecl
@@ -180,23 +209,38 @@ deploymentItem
   | deployScale
   | deployHealth
   | deployCheck
+  | deployResource
+  | deployBinding
+  | deployDirective
   | agenticOption
   ;
 
 deployUnit
-  : IDENT IDENT IDENT IDENT SEMI?
+  : UNIT IDENT AS IDENT SEMI?
   ;
 
 deployScale
-  : IDENT IDENT IDENT INT IDENT INT SEMI?
+  : SCALE IDENT MIN INT MAX INT SEMI?
   ;
 
 deployHealth
-  : IDENT IDENT STRING SEMI?
+  : HEALTH IDENT STRING SEMI?
   ;
 
 deployCheck
-  : IDENT IDENT IDENT STRING SEMI?
+  : CHECK IDENT IDENT STRING SEMI?
+  ;
+
+deployResource
+  : RESOURCE IDENT IDENT agenticValue SEMI?
+  ;
+
+deployBinding
+  : (ENV | IDENT) IDENT agenticValue SEMI?
+  ;
+
+deployDirective
+  : IDENT IDENT agenticValue* SEMI?
   ;
 
 versionDecl
@@ -209,6 +253,8 @@ operationDecl
 
 operationItem
   : flowStep
+  | handlerDecl
+  | contractArrow
   | agenticOption
   ;
 
@@ -256,16 +302,22 @@ testDecl
 contractItem
   : handlerDecl
   | contractArrow
+  | contractDirective
   | agenticOption
   | permission
   ;
 
 handlerDecl
-  : IDENT IDENT ARROW IDENT SEMI?
+  : ON IDENT ARROW IDENT SEMI?
+  | IDENT IDENT ARROW IDENT SEMI?
   ;
 
 contractArrow
   : IDENT agenticValue* ARROW IDENT SEMI?
+  ;
+
+contractDirective
+  : IDENT agenticValue+ SEMI?
   ;
 
 agenticOption
@@ -307,6 +359,22 @@ valueAtom
   | REQUIRE
   | EXPOSE
   | CONNECT
+  | ON
+  | AND
+  | OR
+  | NOT
+  | EXISTS
+  | IS
+  | NULL
+  | UNIT
+  | AS
+  | SCALE
+  | MIN
+  | MAX
+  | HEALTH
+  | CHECK
+  | RESOURCE
+  | ENV
   ;
 
 ruleItem
@@ -315,13 +383,40 @@ ruleItem
   ;
 
 ruleExpression
-  : ruleTerm ((ruleOperator | IDENT) ruleTerm (COMMA ruleTerm)*)*
+  : ruleOr
+  ;
+
+ruleOr
+  : ruleAnd (OR ruleAnd)*
+  ;
+
+ruleAnd
+  : ruleUnary (AND ruleUnary)*
+  ;
+
+ruleUnary
+  : NOT ruleUnary
+  | EXISTS LPAREN qualifiedName RPAREN
+  | rulePredicate
+  ;
+
+rulePredicate
+  : ruleTerm (ruleOperator ruleValueList | IS NOT? NULL)?
+  ;
+
+ruleValueList
+  : ruleTerm (COMMA ruleTerm)*
   ;
 
 ruleTerm
   : qualifiedName
   | literal
   | LPAREN ruleExpression RPAREN
+  ;
+
+directiveValue
+  : ruleExpression
+  | agenticValue
   ;
 
 ruleOperator
@@ -400,6 +495,22 @@ HIDE     : 'hidden';
 SEARCH   : 'search';
 DEFAULT  : 'default';
 IN       : 'in';
+ON       : 'on';
+AND      : 'and';
+OR       : 'or';
+NOT      : 'not';
+EXISTS   : 'exists';
+IS       : 'is';
+NULL     : 'null';
+UNIT     : 'unit';
+AS       : 'as';
+SCALE    : 'scale';
+MIN      : 'min';
+MAX      : 'max';
+HEALTH   : 'health';
+CHECK    : 'check';
+RESOURCE : 'resource';
+ENV      : 'env';
 
 ELLIPSIS : '...';
 AT     : '@';

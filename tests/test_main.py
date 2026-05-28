@@ -1692,10 +1692,10 @@ def test_package_studio_audit_covers_ide_database_and_generation(
     assert report["workspace"]["database_design"]["ok"] is True
 
 
-def test_package_form_designer_audit_covers_rad_style_drop_design(
+def test_package_form_designer_audit_covers_visual_drop_design(
     runner: CliRunner,
 ) -> None:
-    """The package proves RAD-style component drops before generation."""
+    """The package proves visual component drops before generation."""
     palette = component_palette()
     assert {"input", "calendar", "relationship", "media", "action"} <= set(
         palette_categories()
@@ -8000,7 +8000,7 @@ def test_dsl_linter_reports_semantic_feedback(runner: CliRunner, tmp_path) -> No
     assert draft_outline["parse_error"]
     completions = dsl_completion_items("tit", source=source)
     assert any(item["label"] == "title" and item["kind"] == "field" for item in completions)
-    assert any(item["label"] == "RAD Component" for item in dsl_completion_items("RAD"))
+    assert any(item["label"] == "Visual Component" for item in dsl_completion_items("Visual"))
     service = dsl_language_service(source, source_name="inline", prefix="Book")
     assert service["format"] == "appgen.dsl-language-service.v1"
     assert service["lint"]["ok"] is True
@@ -8077,7 +8077,7 @@ def test_dsl_documentation_suite_exists() -> None:
     assert "Complete Grammar" in grammar
     assert "Lexical Rules" in grammar
     assert "dsl_language_quality_contract" in grammar
-    assert "RAD-style component placement" in grammar
+    assert "Visual component placement" in grammar
     assert "Schema Design Checklist" in guide
     assert "Natural Language Evolution" in guide
     assert "9. Add API-Backed LLM Provider" in tutorial
@@ -21958,7 +21958,7 @@ def test_appgen_dsl_prefers_arrow_references_and_keeps_keyword_budget(tmp_path) 
     assert "| ARROW target relationCardinality?" in grammar
     assert "relationCardinality" in grammar
     assert "componentPlacement" in grammar
-    assert "AT IDENT IDENT INT INT INT INT" in grammar
+    assert "AT qualifiedName IDENT INT INT INT INT" in grammar
     assert "agenticOption" in grammar
     assert "IDENT COLON agenticValue" in grammar
     assert "agenticValue" in grammar
