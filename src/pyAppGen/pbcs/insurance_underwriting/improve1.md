@@ -1,418 +1,416 @@
-# Insurance Underwriting PBC Better-Than-World-Class Improvement Backlog
+# Insurance Underwriting PBC Manual Improvement Backlog
 
 ## Purpose
 
-This file identifies, justifies, and describes 50 high-impact improvements for `insurance_underwriting`. The backlog is specific to risk submissions, rating, quote generation, underwriting decisions, bind packages, exclusions, and referral workflows and is intended to move the PBC from release-auditable scaffolding toward complete, specialist-grade domain coverage.
+This strict backlog replaces scaffold-derived roadmap material for `insurance_underwriting` with a hand-curated underwriting roadmap. The PBC owns underwriting submissions, risk profiles, rating factors, quotes, underwriting decisions, bind packages, exclusions, governed rules, agent assistance, and release evidence without owning policy administration, claims, broker management, actuarial model ownership, or general ledger tables.
 
 ## Current Domain Evidence Used
 
 - Stable PBC key: `insurance_underwriting`.
-- Domain purpose: Risk submissions, rating, quote generation, underwriting decisions, bind packages, exclusions, and referral workflows.
+- Domain purpose: risk submissions, rating, quote generation, underwriting decisions, bind packages, exclusions, and referral workflows.
 - Owned domain tables: `underwriting_submission`, `risk_profile`, `rating_factor`, `quote`, `underwriting_decision`, `bind_package`, `exclusion`, `insurance_underwriting_policy_rule`, `insurance_underwriting_runtime_parameter`, `insurance_underwriting_schema_extension`, `insurance_underwriting_control_assertion`, `insurance_underwriting_governed_model`.
 - Public APIs: `POST /underwriting-submissions`, `POST /risk-profiles`, `POST /rating-factors`, `POST /quotes`, `POST /underwriting-decisions`, `GET /insurance-underwriting-workbench`.
 - Emitted AppGen-X events: `InsuranceUnderwritingCreated`, `InsuranceUnderwritingUpdated`, `InsuranceUnderwritingApproved`, `InsuranceUnderwritingExceptionOpened`.
 - Consumed AppGen-X events: `PolicyChanged`, `AuditEventSealed`, `OperationalKpiChanged`.
-- Current standard surfaces include: `underwriting_submission_management`, `insurance_underwriting_workflow`, `insurance_underwriting_analytics`, `configuration_schema`, `rule_engine`, `parameter_engine`, `owned_schema_migrations_models`, `appgen_x_outbox_inbox_eventing`, `idempotent_handlers`, `retry_dead_letter_evidence`.
-- Current advanced surfaces include: `insurance_underwriting_event_sourced_operational_history`, `insurance_underwriting_multi_tenant_policy_isolation`, `insurance_underwriting_schema_evolution_resilience`, `insurance_underwriting_autonomous_anomaly_detection`, `insurance_underwriting_semantic_document_instruction_understanding`, `insurance_underwriting_predictive_risk_scoring`, `insurance_underwriting_counterfactual_scenario_simulation`, `insurance_underwriting_cryptographic_audit_proofs`.
 
 ## 50 High-Impact Improvements
 
-### 1. Canonical lifecycle state model for Underwriting Submission
+### 1. Submission Lifecycle State Machine
 
-**Justification:** This closes shallow CRUD gaps by making every insurance underwriting transition explainable and testable instead of implicit in free-form status values.
+**Justification:** Underwriting submissions move through intake, triage, enrichment, review, referral, quote, decline, bind, lapse, and archive states.
 
-**Improvement:** Define a complete state machine for `underwriting_submission` with explicit draft, validated, blocked, approved, active, suspended, corrected, closed, archived, and reopened states. Tie the behavior to `insurance_underwriting_create_underwriting_submission_workflow` where applicable, and make it visible in `InsuranceUnderwritingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add explicit states with transition reasons, owner, required evidence, allowed next actions, and AppGen-X event emission for each material step.
 
-**Acceptance evidence:** State-transition tests, invalid-transition fixtures, workbench state badges, and emitted AppGen-X transition events for InsuranceUnderwritingCreated, InsuranceUnderwritingUpdated, InsuranceUnderwritingApproved. The evidence should be package-local in `src/pyAppGen/pbcs/insurance_underwriting` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must reject invalid transitions and show the submission's next allowed actions in `InsuranceUnderwritingWorkbench`.
 
-### 2. Domain intake and normalization for Risk Profile
+### 2. Submission Completeness Rules
 
-**Justification:** The PBC cannot reach complete domain coverage unless it handles the messy front door of risk submissions, rating, quote generation, underwriting decisions, bind packages, exclusions, and referral workflows, not only already-clean records.
+**Justification:** Underwriting quality depends on complete applicant, exposure, coverage, prior loss, financial, location, and broker information.
 
-**Improvement:** Build a typed intake pipeline for `risk_profile` that accepts structured API payloads, document-derived instructions, batch loads, and assistant-generated drafts while normalizing identifiers, dates, units, parties, and jurisdictional context. Tie the behavior to `insurance_underwriting_record_risk_profile_workflow` where applicable, and make it visible in `InsuranceUnderwritingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add completeness profiles by product, jurisdiction, segment, risk class, and submission source, with missing-evidence queues.
 
-**Acceptance evidence:** Golden intake fixtures, rejected-record queues, field-level normalization evidence, and assistant previews before governed datastore mutation. The evidence should be package-local in `src/pyAppGen/pbcs/insurance_underwriting` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must block quote generation when required submission facts or documents are absent.
 
-### 3. Specialist validation rules for Rating Factor
+### 3. Document Intake and Extraction
 
-**Justification:** World-class Insurance Underwriting requires rules that domain experts can reason about, version, test, and roll back without code edits.
+**Justification:** Applications, schedules, inspections, loss runs, financials, and supplemental forms arrive as documents.
 
-**Improvement:** Add a domain rule compiler for `rating_factor` that supports threshold rules, eligibility rules, dependency rules, temporal windows, conflicting-instruction detection, and override justification. Tie the behavior to `insurance_underwriting_create_underwriting_submission_workflow` where applicable, and make it visible in `InsuranceUnderwritingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add source document evidence, extracted fields, confidence, reviewer, accepted values, rejected values, and mutation preview.
 
-**Acceptance evidence:** Rule simulation tests, versioned rule manifests, rule impact reports, and UI rule editors linked to `INSURANCE_UNDERWRITING_DATABASE_URL, INSURANCE_UNDERWRITING_EVENT_TOPIC, INSURANCE_UNDERWRITING_RETRY_LIMIT`. The evidence should be package-local in `src/pyAppGen/pbcs/insurance_underwriting` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must require reviewer approval for low-confidence or high-impact extracted facts.
 
-### 4. Parameter governance and tuning for Quote
+### 4. Risk Profile Construction
 
-**Justification:** Parameters are where operations teams tune insurance underwriting; unbounded constants would make the PBC brittle and unsafe in real deployments.
+**Justification:** Underwriters need a consolidated view of exposures, hazards, controls, prior losses, financial condition, and operations.
 
-**Improvement:** Expose bounded runtime parameters for `quote` covering risk thresholds, SLA windows, confidence floors, escalation cutoffs, batch sizes, retry limits, and human-confirmation requirements. Tie the behavior to `insurance_underwriting_record_risk_profile_workflow` where applicable, and make it visible in `InsuranceUnderwritingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand `risk_profile` with exposure units, class of business, hazard factors, controls, loss history projection, financial signals, and risk notes.
 
-**Acceptance evidence:** Parameter schema validation, tenant overrides, approval history, rollback controls, and workbench diff views. The evidence should be package-local in `src/pyAppGen/pbcs/insurance_underwriting` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must construct risk profiles from owned data and declared projections without reading external policy or claims tables.
 
-### 5. Deep owned schema expansion for Underwriting Decision
+### 5. Risk Appetite Screening
 
-**Justification:** A single payload column cannot express the full surface of risk submissions, rating, quote generation, underwriting decisions, bind packages, exclusions, and referral workflows or prove cross-PBC boundaries are respected.
+**Justification:** Carriers need to reject, refer, or approve risks based on appetite rules before spending underwriting effort.
 
-**Improvement:** Extend the owned schema around `underwriting_decision` with normalized child tables for line-level evidence, party roles, approvals, attachments, comments, metrics, exception reasons, and control assertions. Tie the behavior to `insurance_underwriting_create_underwriting_submission_workflow` where applicable, and make it visible in `InsuranceUnderwritingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add appetite rules by product, geography, class, limit, hazard, prior loss, financial strength, and prohibited exposure.
 
-**Acceptance evidence:** Migrations, models, relationship tests, schema contract snapshots, and no shared-table access outside the `insurance_underwriting_` namespace. The evidence should be package-local in `src/pyAppGen/pbcs/insurance_underwriting` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must produce accept, refer, decline, and exception outcomes with cited appetite rule versions.
 
-### 6. Event-sourced operational history for Bind Package
+### 6. Referral Workflow
 
-**Justification:** Temporal reconstruction is essential for better-than-world-class auditability and dispute resolution in insurance underwriting.
+**Justification:** Complex risks require specialty, authority, legal, actuarial, or reinsurance referrals.
 
-**Improvement:** Capture every material mutation of `bind_package` as immutable AppGen-X events with actor, tenant, command, policy version, idempotency key, before/after summary, and projection checkpoint. Tie the behavior to `insurance_underwriting_record_risk_profile_workflow` where applicable, and make it visible in `InsuranceUnderwritingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add referral type, reason, authority level, assignee, SLA, response, condition, and unresolved blocker state.
 
-**Acceptance evidence:** Replay tests, projection checksums, event ordering evidence, and point-in-time workbench views. The evidence should be package-local in `src/pyAppGen/pbcs/insurance_underwriting` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must prevent decision finalization while mandatory referrals remain open.
 
-### 7. Projection and read-model strategy for Exclusion
+### 7. Underwriting Authority Matrix
 
-**Justification:** The workbench should not force users to infer domain truth from raw tables; each projection should answer a real operating question.
+**Justification:** Limits, premium, risk class, endorsements, and exceptions determine who can approve a decision.
 
-**Improvement:** Create purpose-built projections for `exclusion`: operational queue, executive KPI rollup, exception aging, compliance evidence, agent task context, and external dependency health. Tie the behavior to `insurance_underwriting_create_underwriting_submission_workflow` where applicable, and make it visible in `InsuranceUnderwritingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add authority thresholds, delegated authority, escalation, conflict checks, and emergency override evidence.
 
-**Acceptance evidence:** Projection contracts, freshness SLAs, backfill tests, and visible stale-projection warnings. The evidence should be package-local in `src/pyAppGen/pbcs/insurance_underwriting` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Permission tests must reject approvals by users without authority for the risk and quote profile.
 
-### 8. Exception taxonomy and remediation for Insurance Underwriting Policy Rule
+### 8. Rating Factor Evidence
 
-**Justification:** High-value PBCs win on exception throughput; generic “failed” states hide the details operators need.
+**Justification:** Quotes need traceable rating factors, not opaque premium numbers.
 
-**Improvement:** Model the full exception taxonomy for `insurance_underwriting_policy_rule`, including severity, root cause, blocking dependency, remediation owner, due date, retry eligibility, escalation path, and closure evidence. Tie the behavior to `insurance_underwriting_record_risk_profile_workflow` where applicable, and make it visible in `InsuranceUnderwritingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand `rating_factor` with factor type, source, selected value, transformation, model version projection, override, and rationale.
 
-**Acceptance evidence:** Exception queues, aging metrics, remediation playbooks, dead-letter linkage, and closure test fixtures for sanctions or fraud holds. The evidence should be package-local in `src/pyAppGen/pbcs/insurance_underwriting` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must reconstruct quote premium from factor evidence and flag unsupported overrides.
 
-### 9. Predictive risk scoring for Insurance Underwriting Runtime Parameter
+### 9. Actuarial Model Boundary
 
-**Justification:** The package should warn users before insurance underwriting work fails, breaches policy, or creates downstream cost.
+**Justification:** Underwriting consumes rating models but should not own actuarial model governance.
 
-**Improvement:** Add predictive risk scoring for `insurance_underwriting_runtime_parameter` using domain features from owned tables, consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, rule outcomes, aging, anomaly signals, and historical corrections. Tie the behavior to `insurance_underwriting_create_underwriting_submission_workflow` where applicable, and make it visible in `InsuranceUnderwritingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Store model projection, version, effective date, factor requirements, freshness, and result trace from declared actuarial APIs/events.
 
-**Acceptance evidence:** Feature manifests, score explanations, calibration reports, drift alerts, and tests for low/medium/high-risk scenarios. The evidence should be package-local in `src/pyAppGen/pbcs/insurance_underwriting` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Boundary tests must fail on actuarial table reads and pass on declared model projection usage.
 
-### 10. Counterfactual simulation for Insurance Underwriting Schema Extension
+### 10. Quote Lifecycle
 
-**Justification:** Advanced users need to ask “what would happen if” before committing changes to live risk submissions, rating, quote generation, underwriting decisions, bind packages, exclusions, and referral workflows operations.
+**Justification:** Quotes can be draft, rated, referred, approved, issued, revised, expired, declined, or bound.
 
-**Improvement:** Provide scenario simulation for `insurance_underwriting_schema_extension`: policy change, capacity constraint, deadline shift, price/rate change, eligibility change, disruption, and manual override outcomes. Tie the behavior to `insurance_underwriting_record_risk_profile_workflow` where applicable, and make it visible in `InsuranceUnderwritingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand `quote` with version, premium, terms, conditions, subjectivities, validity, revision reason, and bind eligibility.
 
-**Acceptance evidence:** Simulation APIs, non-mutating sandbox state, comparison reports, and workbench side-by-side scenario panels. The evidence should be package-local in `src/pyAppGen/pbcs/insurance_underwriting` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must preserve quote versions and block binding of expired or unapproved quotes.
 
-### 11. Autonomous anomaly triage for Insurance Underwriting Control Assertion
+### 11. Quote Comparison and Scenarioing
 
-**Justification:** A world-class PBC should reduce analyst burden without hiding the reasoning behind automated triage.
+**Justification:** Underwriters compare deductibles, limits, exclusions, rates, and conditions before issuing terms.
 
-**Improvement:** Implement anomaly detection for `insurance_underwriting_control_assertion` that identifies outliers, duplicate submissions, impossible sequences, stale dependencies, unusual amounts/counts/durations, and contradictory fields. Tie the behavior to `insurance_underwriting_create_underwriting_submission_workflow` where applicable, and make it visible in `InsuranceUnderwritingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add scenario records for alternate limits, deductibles, endorsements, exclusions, risk improvements, and pricing changes.
 
-**Acceptance evidence:** Explainable anomaly cards, reviewer feedback loops, false-positive tracking, and suppression governance. The evidence should be package-local in `src/pyAppGen/pbcs/insurance_underwriting` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must compare scenarios side by side and keep scenario outputs separate from issued quotes.
 
-### 12. Semantic document understanding for Insurance Underwriting Governed Model
+### 12. Subjectivity Management
 
-**Justification:** Document-heavy work in Insurance Underwriting cannot be complete if the assistant only answers questions and cannot prepare accurate governed changes.
+**Justification:** Bind may depend on inspections, signed forms, payment, engineering recommendations, or risk improvements.
 
-**Improvement:** Train the package assistant to parse domain documents and instructions for `insurance_underwriting_governed_model`, extract obligations, dates, parties, quantities, identifiers, and exceptions, then map them to safe draft mutations. Tie the behavior to `insurance_underwriting_record_risk_profile_workflow` where applicable, and make it visible in `InsuranceUnderwritingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add subjectivities with owner, due date, evidence requirement, waiver authority, status, and bind/issuance blocker behavior.
 
-**Acceptance evidence:** Document extraction tests, confidence thresholds, redaction handling, source span citations, and human confirmation workflows. The evidence should be package-local in `src/pyAppGen/pbcs/insurance_underwriting` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must block bind or policy event emission until required subjectivities are met or waived.
 
-### 13. Agent-safe CRUD execution for Underwriting Submission
+### 13. Exclusion Governance
 
-**Justification:** The PBC agent must be a first-class operator but never a hidden bypass around RBAC, rules, or owned datastore boundaries.
+**Justification:** Exclusions change coverage scope and must be precise, approved, and communicated.
 
-**Improvement:** Add a professional chatbot skill for `underwriting_submission` that can create, update, correct, close, and annotate records only through policy-checked commands, approval gates, and previewed diffs. Tie the behavior to `insurance_underwriting_create_underwriting_submission_workflow` where applicable, and make it visible in `InsuranceUnderwritingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand `exclusion` with coverage, clause, reason, risk trigger, approval, effective wording version, and customer-facing explanation.
 
-**Acceptance evidence:** Skill manifests, permission tests, preview/confirm flows, blocked-action evidence, and audit events for every assistant mutation. The evidence should be package-local in `src/pyAppGen/pbcs/insurance_underwriting` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must attach exclusions to quotes and bind packages with required approvals.
 
-### 14. Workbench persona coverage for Risk Profile
+### 14. Endorsement and Condition Handling
 
-**Justification:** A generic detail page underserves the domain; each role needs the exact controls and evidence they use daily.
+**Justification:** Underwriting decisions often use conditions and endorsements rather than simple accept/decline outputs.
 
-**Improvement:** Design dedicated workbench panels for `risk_profile`: operator queue, supervisor approvals, analyst exceptions, auditor evidence, configuration owner, and agent-assistance review. Tie the behavior to `insurance_underwriting_record_risk_profile_workflow` where applicable, and make it visible in `InsuranceUnderwritingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add condition type, required action, wording reference, risk rationale, review date, and status.
 
-**Acceptance evidence:** UI contract entries, route tests, empty/error/loading states, and permission-aware action availability. The evidence should be package-local in `src/pyAppGen/pbcs/insurance_underwriting` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must show condition effects in bind package and decision evidence.
 
-### 15. Cross-PBC dependency contracts for Rating Factor
+### 15. Bind Package Assembly
 
-**Justification:** Composable packages fail when hidden table coupling enters the domain model.
+**Justification:** Binding requires approved quote, terms, subjectivities, documents, payment projection, and authority.
 
-**Improvement:** Represent dependencies for `rating_factor` through declared APIs, consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, and projections rather than shared tables, with explicit freshness, ownership, and fallback behavior. Tie the behavior to `insurance_underwriting_create_underwriting_submission_workflow` where applicable, and make it visible in `InsuranceUnderwritingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand `bind_package` with required checklist, quote reference, coverage terms, conditions, documents, approval, and policy handoff event.
 
-**Acceptance evidence:** Dependency manifests, contract tests, stale dependency alerts, and no foreign-table references in generated artifacts. The evidence should be package-local in `src/pyAppGen/pbcs/insurance_underwriting` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must block bind package completion when any configured evidence is missing.
 
-### 16. API completeness and versioning for Quote
+### 16. Declination Evidence
 
-**Justification:** Complete domain coverage requires both command and query surfaces, not only happy-path create endpoints.
+**Justification:** Declines need compliant reasons, appetite references, and audit evidence.
 
-**Improvement:** Expand APIs beyond POST /underwriting-submissions, POST /risk-profiles, POST /rating-factors to cover search, validation-only commands, simulation, bulk intake, exception closure, evidence export, projection reads, and idempotent corrections. Tie the behavior to `insurance_underwriting_record_risk_profile_workflow` where applicable, and make it visible in `InsuranceUnderwritingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add decline reason, appetite/rule reference, underwriter note, communication template, appeal/reconsideration path, and retention.
 
-**Acceptance evidence:** OpenAPI-style route manifests, backward-compatible version tests, deprecation metadata, and idempotency assertions. The evidence should be package-local in `src/pyAppGen/pbcs/insurance_underwriting` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must reject declines without a valid reason and generate scoped notice events.
 
-### 17. Typed emitted-event expansion for Underwriting Decision
+### 17. Loss History Analysis
 
-**Justification:** Consumers should understand what happened in Insurance Underwriting without parsing opaque payloads.
+**Justification:** Prior losses affect pricing, terms, referral, and risk controls.
 
-**Improvement:** Replace generic lifecycle emissions with typed events for each meaningful `underwriting_decision` transition, exception, approval, correction, simulation result, and downstream handoff. Tie the behavior to `insurance_underwriting_create_underwriting_submission_workflow` where applicable, and make it visible in `InsuranceUnderwritingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add loss history projection with frequency, severity, trend, large-loss marker, open claim marker, and credibility.
 
-**Acceptance evidence:** Event schema tests, event examples, compatibility checks, and emitted-event coverage in release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/insurance_underwriting` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Boundary tests must prove loss history comes from declared claims projections.
 
-### 18. Consumed-event handlers for Bind Package
+### 18. Exposure Accumulation
 
-**Justification:** A PBC is composable only when incoming events affect its own domain state predictably and safely.
+**Justification:** Property, marine, aviation, energy, and specialty risks can create concentration by geography, peril, or counterparty.
 
-**Improvement:** Implement idempotent handlers for consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged that update projections, open dependency exceptions, recalculate risk, and preserve source event lineage. Tie the behavior to `insurance_underwriting_record_risk_profile_workflow` where applicable, and make it visible in `InsuranceUnderwritingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add accumulation checks by location, peril, limit, insured group, and portfolio bucket with threshold and override.
 
-**Acceptance evidence:** Duplicate-event tests, handler side-effect boundaries, dead-letter fixtures, and lineage links back to source events. The evidence should be package-local in `src/pyAppGen/pbcs/insurance_underwriting` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must refer or block risks that exceed accumulation thresholds.
 
-### 19. Retry and dead-letter operations for Exclusion
+### 19. Reinsurance Referral Boundary
 
-**Justification:** Dead letters are not just plumbing; they are domain work queues that can block risk submissions, rating, quote generation, underwriting decisions, bind packages, exclusions, and referral workflows.
+**Justification:** Large or unusual risks may need facultative or treaty capacity evidence.
 
-**Improvement:** Create operational tools for retrying, quarantining, explaining, and resolving dead-lettered `exclusion` events with max-attempt policy, poison-message detection, and replay safety. Tie the behavior to `insurance_underwriting_create_underwriting_submission_workflow` where applicable, and make it visible in `InsuranceUnderwritingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Store reinsurance capacity projection, attachment, limit, retention, facultative status, and freshness from declared dependencies.
 
-**Acceptance evidence:** Dead-letter workbench, retry eligibility tests, replay audit proof, and operator action logs. The evidence should be package-local in `src/pyAppGen/pbcs/insurance_underwriting` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must block quote issuance when required capacity evidence is stale or missing.
 
-### 20. RBAC and attribute policy for Insurance Underwriting Policy Rule
+### 20. Risk Engineering Recommendations
 
-**Justification:** High-impact domain operations need finer controls than generic RBAC grants.
+**Justification:** Inspections and risk engineering recommendations can change acceptance, terms, and pricing.
 
-**Improvement:** Extend permissions for `insurance_underwriting_policy_rule` from coarse read/create/update/admin to action-level and attribute-aware policies based on role, tenant, jurisdiction, monetary/materiality threshold, and exception severity. Tie the behavior to `insurance_underwriting_record_risk_profile_workflow` where applicable, and make it visible in `InsuranceUnderwritingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add recommendation records with hazard, required improvement, priority, due date, evidence, effect on terms, and closure.
 
-**Acceptance evidence:** Permission matrix docs, ABAC policy tests, denied-action UI states, and assistant skill permission checks. The evidence should be package-local in `src/pyAppGen/pbcs/insurance_underwriting` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must tie recommendations to subjectivities, conditions, or pricing adjustments.
 
-### 21. Continuous control testing for Insurance Underwriting Runtime Parameter
+### 21. Inspection Ordering and Results
 
-**Justification:** Controls should run during operations, not only during release audit or manual review.
+**Justification:** Underwriters may need site inspections, surveys, or third-party reports.
 
-**Improvement:** Embed control assertions for `insurance_underwriting_runtime_parameter` that continuously test segregation of duties, required approvals, stale exceptions, policy drift, duplicate records, and boundary violations. Tie the behavior to `insurance_underwriting_create_underwriting_submission_workflow` where applicable, and make it visible in `InsuranceUnderwritingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add inspection request, scope, provider projection, due date, result, findings, and risk-profile updates.
 
-**Acceptance evidence:** Control dashboards, failing-control events, test fixtures, and release evidence tied to `insurance_underwriting_control_assertion` records. The evidence should be package-local in `src/pyAppGen/pbcs/insurance_underwriting` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must route overdue inspections and require review before applying extracted findings.
 
-### 22. Cryptographic audit proofing for Insurance Underwriting Schema Extension
+### 22. Compliance and Sanction Boundary
 
-**Justification:** Better-than-world-class auditability requires proof of integrity, not merely logs stored in mutable tables.
+**Justification:** Underwriting must consider sanctions, prohibited business, licensing, and market conduct without owning compliance systems.
 
-**Improvement:** Hash-chain material `insurance_underwriting_schema_extension` decisions, documents, emitted events, and release-evidence snapshots to make tampering visible without exposing sensitive payloads. Tie the behavior to `insurance_underwriting_record_risk_profile_workflow` where applicable, and make it visible in `InsuranceUnderwritingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Store compliance screening projections with result, reason, freshness, hold/release decision, and override evidence.
 
-**Acceptance evidence:** Proof manifests, verification APIs, redacted proof exports, and audit-ledger handoff events. The evidence should be package-local in `src/pyAppGen/pbcs/insurance_underwriting` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Boundary tests must fail on direct compliance table reads and pass on declared projections.
 
-### 23. Privacy, consent, and secrecy controls for Insurance Underwriting Control Assertion
+### 23. Fraud and Misrepresentation Signals
 
-**Justification:** Complete domain coverage must account for protected data and restricted operational evidence.
+**Justification:** Inconsistent application facts, prior cancellations, abnormal losses, and document issues may indicate misrepresentation.
 
-**Improvement:** Add field-level privacy classifications for `insurance_underwriting_control_assertion`, consent checks, masking rules, retention schedules, legal holds, and assistant redaction policies. Tie the behavior to `insurance_underwriting_create_underwriting_submission_workflow` where applicable, and make it visible in `InsuranceUnderwritingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add fraud signal candidates, evidence, severity, investigation referral, hold state, and decision impact.
 
-**Acceptance evidence:** Retention tests, masked UI snapshots, consent-blocked mutation fixtures, and export controls. The evidence should be package-local in `src/pyAppGen/pbcs/insurance_underwriting` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must open referrals and prevent automated adverse decisions without human review.
 
-### 24. Multi-tenant operating model for Insurance Underwriting Governed Model
+### 24. Portfolio Appetite Feedback
 
-**Justification:** The PBC should scale across organizations while preserving independent policy and compliance boundaries.
+**Justification:** Underwriting appetite changes based on portfolio performance, capacity, catastrophe exposure, and strategy.
 
-**Improvement:** Support tenant-specific `insurance_underwriting_governed_model` rules, data residency, encryption context, configuration, seed data, and release evidence without allowing cross-tenant leakage. Tie the behavior to `insurance_underwriting_record_risk_profile_workflow` where applicable, and make it visible in `InsuranceUnderwritingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add appetite feedback projections from portfolio metrics, capital constraints, loss ratio, and growth targets.
 
-**Acceptance evidence:** Tenant isolation tests, tenant-scoped parameters, key-rotation evidence, and cross-tenant negative fixtures. The evidence should be package-local in `src/pyAppGen/pbcs/insurance_underwriting` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must show stale portfolio projections and block appetite-sensitive decisions when configured.
 
-### 25. Schema evolution and extension registry for Underwriting Submission
+### 25. Pricing Override Controls
 
-**Justification:** Domain teams will add fields; the PBC must evolve without breaking APIs, events, or workbench projections.
+**Justification:** Premium overrides can create leakage or unfair treatment.
 
-**Improvement:** Make schema extensions for `underwriting_submission` first-class with compatibility checks, migration previews, projection backfills, field ownership, and rollback metadata. Tie the behavior to `insurance_underwriting_create_underwriting_submission_workflow` where applicable, and make it visible in `InsuranceUnderwritingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add override type, amount, reason, authority, comparison to indication, approval, and audit flag.
 
-**Acceptance evidence:** Extension registry UI, compatibility tests, migration dry-runs, and backfill release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/insurance_underwriting` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must reject unauthorized or excessive overrides.
 
-### 26. Master data quality gates for Risk Profile
+### 26. Underwriting Decision Record
 
-**Justification:** Many insurance underwriting errors begin as bad reference data; the PBC should catch them before workflow execution.
+**Justification:** Decisions must be explainable across accept, decline, refer, quote, bind, condition, and exclusion outcomes.
 
-**Improvement:** Define reference-data contracts for `risk_profile`: canonical codes, parties, locations, classifications, calendars, units, currencies, products, assets, or service categories as relevant to the domain. Tie the behavior to `insurance_underwriting_record_risk_profile_workflow` where applicable, and make it visible in `InsuranceUnderwritingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand `underwriting_decision` with decision type, factors, rules, referrals, authority, effective quote, and narrative.
 
-**Acceptance evidence:** Reference validation fixtures, stale-code warnings, mapping tables, and dependency freshness indicators. The evidence should be package-local in `src/pyAppGen/pbcs/insurance_underwriting` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must generate a complete decision packet for every final outcome.
 
-### 27. Bulk operations and correction workflows for Rating Factor
+### 27. Decision Appeal or Reconsideration
 
-**Justification:** Enterprise-scale Insurance Underwriting users cannot operate one record at a time.
+**Justification:** Brokers and applicants may submit new evidence after a decline or adverse term.
 
-**Improvement:** Add bulk load, bulk validate, bulk approve, and bulk correction workflows for `rating_factor` with partial success, row-level errors, resumability, and rollback. Tie the behavior to `insurance_underwriting_create_underwriting_submission_workflow` where applicable, and make it visible in `InsuranceUnderwritingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add reconsideration request, new evidence, prior decision, reviewer, outcome, and versioned decision link.
 
-**Acceptance evidence:** CSV/API batch fixtures, resumable job state, row-level audit evidence, and assistant-generated correction suggestions. The evidence should be package-local in `src/pyAppGen/pbcs/insurance_underwriting` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must preserve original decision and new decision lineage.
 
-### 28. Lifecycle collaboration and tasking for Quote
+### 28. Underwriting Workbench
 
-**Justification:** Domain collaboration should live inside the PBC boundary and remain auditable with the record it affects.
+**Justification:** Underwriters need prioritized queues instead of raw submissions.
 
-**Improvement:** Attach tasks, comments, ownership, due dates, handoffs, and escalation threads to `quote` without leaking into external shared task tables. Tie the behavior to `insurance_underwriting_record_risk_profile_workflow` where applicable, and make it visible in `InsuranceUnderwritingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add views for incomplete submissions, referrals due, quotes expiring, subjectivities open, high-risk accounts, compliance holds, and bind-ready packages.
 
-**Acceptance evidence:** Task tables, comment audit history, notification events, escalation SLAs, and role-specific task queues. The evidence should be package-local in `src/pyAppGen/pbcs/insurance_underwriting` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** UI tests must prove each queue maps to owned records or declared projections with permission-aware actions.
 
-### 29. SLA and service-level governance for Underwriting Decision
+### 29. Agent-Assisted Risk Summary
 
-**Justification:** Users need to know when risk submissions, rating, quote generation, underwriting decisions, bind packages, exclusions, and referral workflows is late, blocked, or at risk before customer or regulator impact.
+**Justification:** The assistant can summarize complex submissions but must cite evidence and preserve underwriter accountability.
 
-**Improvement:** Define SLAs for `underwriting_decision` across intake, validation, approval, exception resolution, event handling, downstream projection refresh, and release-evidence generation. Tie the behavior to `insurance_underwriting_create_underwriting_submission_workflow` where applicable, and make it visible in `InsuranceUnderwritingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add skills for submission summary, risk-profile explanation, referral memo draft, quote comparison, subjectivity checklist, and decision narrative draft.
 
-**Acceptance evidence:** SLA breach events, timers, configurable calendars, workbench aging buckets, and tests for pause/resume behavior. The evidence should be package-local in `src/pyAppGen/pbcs/insurance_underwriting` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must require citations and human approval before decision or quote mutation.
 
-### 30. Operational analytics cockpit for Bind Package
+### 30. Governed Agent CRUD Commands
 
-**Justification:** World-class operations require leading indicators, not only record counts.
+**Justification:** Chat-driven underwriting changes need previews, authority checks, and audit trails.
 
-**Improvement:** Build analytics for `bind_package`: throughput, backlog, aging, approval latency, exception rate, risk distribution, automation acceptance, correction rate, and downstream dependency health. Tie the behavior to `insurance_underwriting_record_risk_profile_workflow` where applicable, and make it visible in `InsuranceUnderwritingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add command previews for create submission, update risk factor, request referral, issue quote, add exclusion, waive subjectivity, and approve bind package.
 
-**Acceptance evidence:** Metric definitions, projection tests, drill-through routes, export APIs, and anomaly overlays. The evidence should be package-local in `src/pyAppGen/pbcs/insurance_underwriting` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Intent tests must require submission identity, evidence, preview, confirmation, authority, and audit trail.
 
-### 31. Decision intelligence and recommendations for Exclusion
+### 31. Document Wording Control
 
-**Justification:** The PBC should help expert users decide faster while showing evidence and uncertainty.
+**Justification:** Quote, condition, exclusion, and bind wording must use approved versions.
 
-**Improvement:** Generate ranked recommendations for `exclusion` such as next best action, likely resolution, required evidence, policy adjustment, staffing/capacity response, or downstream handoff. Tie the behavior to `insurance_underwriting_create_underwriting_submission_workflow` where applicable, and make it visible in `InsuranceUnderwritingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add wording reference, version, jurisdiction, approval, effective window, and retired wording restrictions.
 
-**Acceptance evidence:** Recommendation explanations, confidence intervals, feedback capture, model governance records, and rejection reasons. The evidence should be package-local in `src/pyAppGen/pbcs/insurance_underwriting` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must block quote issuance with obsolete wording.
 
-### 32. Quality and completeness scoring for Insurance Underwriting Policy Rule
+### 32. Multi-Jurisdiction Rules
 
-**Justification:** Operators should see whether a record is truly ready, not just technically saved.
+**Justification:** Underwriting rules vary by state, country, admitted/non-admitted market, product, and license.
 
-**Improvement:** Score each `insurance_underwriting_policy_rule` record for completeness, consistency, policy readiness, dependency readiness, evidence sufficiency, and downstream composability. Tie the behavior to `insurance_underwriting_record_risk_profile_workflow` where applicable, and make it visible in `InsuranceUnderwritingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add jurisdictional rule dimensions for appetite, rating, documents, disclosures, taxes, and binding authority.
 
-**Acceptance evidence:** Scoring rules, missing-evidence lists, readiness badges, and blocking criteria in command handlers. The evidence should be package-local in `src/pyAppGen/pbcs/insurance_underwriting` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must evaluate identical risk facts differently by jurisdiction and policy version.
 
-### 33. End-to-end scenario library for Insurance Underwriting Runtime Parameter
+### 33. Producer and Channel Boundary
 
-**Justification:** Release evidence is stronger when every important insurance underwriting behavior has executable examples.
+**Justification:** Broker or agent status affects submissions, but producer management may be owned elsewhere.
 
-**Improvement:** Create seeded scenarios for `insurance_underwriting_runtime_parameter`: normal flow, urgent path, exception path, corrected path, duplicate path, late event path, and audit export path. Tie the behavior to `insurance_underwriting_create_underwriting_submission_workflow` where applicable, and make it visible in `InsuranceUnderwritingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Store channel and producer projections with appointment status, authority, commission profile, and freshness.
 
-**Acceptance evidence:** Scenario seed data, runtime smoke coverage, generated-app fixtures, and story-level workbench screenshots/contracts. The evidence should be package-local in `src/pyAppGen/pbcs/insurance_underwriting` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must block submissions from unauthorized or stale producer projections.
 
-### 34. Domain ontology and terminology model for Insurance Underwriting Schema Extension
+### 34. SLA and Workload Management
 
-**Justification:** Precise vocabulary prevents the PBC from misclassifying specialist documents or user instructions.
+**Justification:** Quote turnaround and referral SLAs affect broker experience and revenue.
 
-**Improvement:** Add an ontology for `insurance_underwriting_schema_extension` terms, synonyms, classifications, relationships, allowed values, and phrase mappings used by the assistant and UI. Tie the behavior to `insurance_underwriting_record_risk_profile_workflow` where applicable, and make it visible in `InsuranceUnderwritingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add SLA timers, priority, assignment rules, workload score, escalation, and late-case reason.
 
-**Acceptance evidence:** Ontology files, assistant parsing tests, UI glossary, and mapping evidence for domain-specific abbreviations. The evidence should be package-local in `src/pyAppGen/pbcs/insurance_underwriting` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must escalate overdue submissions and show workload-balanced assignment suggestions.
 
-### 35. Advanced search and investigation for Insurance Underwriting Control Assertion
+### 35. Underwriting Quality Review
 
-**Justification:** Investigators and operators need fast, explainable retrieval across the whole domain surface.
+**Justification:** Files need audits for evidence completeness, authority compliance, wording, pricing, and decision rationale.
 
-**Improvement:** Provide search across `insurance_underwriting_control_assertion` records, events, documents, exceptions, tasks, comments, and audit proofs with filters for tenant, status, risk, date, party, and dependency. Tie the behavior to `insurance_underwriting_create_underwriting_submission_workflow` where applicable, and make it visible in `InsuranceUnderwritingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add quality review samples, findings, severity, remediation, reviewer, and recurrence tracking.
 
-**Acceptance evidence:** Search index contracts, result provenance, permission-filtered queries, and stale-index warnings. The evidence should be package-local in `src/pyAppGen/pbcs/insurance_underwriting` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must open findings and block closure without remediation evidence.
 
-### 36. Reconciliation and closure controls for Insurance Underwriting Governed Model
+### 36. Continuous Control Assertions
 
-**Justification:** Closure is not complete until the PBC can prove no material domain work remains unresolved.
+**Justification:** Underwriting governance needs controls over authority, pricing overrides, subjectivities, referrals, compliance holds, and bind packages.
 
-**Improvement:** Add reconciliation workflows that compare `insurance_underwriting_governed_model` state against consumed events, external projections, expected totals/counts, approvals, and release evidence before closure. Tie the behavior to `insurance_underwriting_record_risk_profile_workflow` where applicable, and make it visible in `InsuranceUnderwritingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add control assertions with population, threshold, failing records, owner, remediation, recurrence, and closure evidence.
 
-**Acceptance evidence:** Reconciliation reports, variance thresholds, closure blockers, and AppGen-X closure events. The evidence should be package-local in `src/pyAppGen/pbcs/insurance_underwriting` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must open control failures and require remediation proof.
 
-### 37. Regulatory and policy reporting for Underwriting Submission
+### 37. Dead-Letter and Retry Operations
 
-**Justification:** World-class PBCs turn operational evidence into credible reporting without spreadsheet reconstruction.
+**Justification:** Document intake, rating responses, compliance projections, and bind events can fail.
 
-**Improvement:** Generate domain reporting packs for `underwriting_submission` covering statutory, contractual, operational, board, customer, or regulator evidence depending on monetary integrity, funds movement controls, counterparty risk, regulatory evidence, settlement finality, fraud prevention, and financial reconciliation. Tie the behavior to `insurance_underwriting_create_underwriting_submission_workflow` where applicable, and make it visible in `InsuranceUnderwritingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add retry reason, risk, idempotency key, replay checkpoint, remediation action, and dead-letter queue.
 
-**Acceptance evidence:** Report schemas, redaction rules, traceable metric sources, and approval/export audit events. The evidence should be package-local in `src/pyAppGen/pbcs/insurance_underwriting` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must replay failed events without duplicate quotes, decisions, or bind events.
 
-### 38. Carbon and resource awareness for Risk Profile
+### 38. Cryptographic Underwriting Evidence
 
-**Justification:** Sustainability evidence should be embedded in operations instead of treated as an after-the-fact report.
+**Justification:** Market conduct reviews and disputes need tamper-evident underwriting files.
 
-**Improvement:** Where relevant, attach carbon, energy, water, travel, capacity, compute, or resource-footprint metadata to `risk_profile` decisions and batch operations. Tie the behavior to `insurance_underwriting_record_risk_profile_workflow` where applicable, and make it visible in `InsuranceUnderwritingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add hash chains for submissions, documents, risk profiles, quotes, referrals, decisions, exclusions, and bind packages.
 
-**Acceptance evidence:** Footprint fields, scheduling parameters, exception rules, and dashboards that expose operational tradeoffs. The evidence should be package-local in `src/pyAppGen/pbcs/insurance_underwriting` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must verify proof chains and detect altered payloads or reordered events.
 
-### 39. Resilience and offline behavior for Rating Factor
+### 39. Model Governance for Underwriting Assistance
 
-**Justification:** Real operations keep moving during outages; the PBC must preserve correctness when dependencies are unavailable.
+**Justification:** Risk scoring, anomaly detection, and agent summarization affect underwriting outcomes.
 
-**Improvement:** Define resilience modes for `rating_factor`: degraded dependency mode, offline draft capture, delayed event replay, conflict detection, and safe recovery after partial failure. Tie the behavior to `insurance_underwriting_create_underwriting_submission_workflow` where applicable, and make it visible in `InsuranceUnderwritingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Register governed models with intended use, data vintage, validation evidence, threshold, limitation, drift, and feedback.
 
-**Acceptance evidence:** Offline fixtures, replay tests, conflict queues, recovery logs, and user-visible degraded-mode warnings. The evidence should be package-local in `src/pyAppGen/pbcs/insurance_underwriting` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must block model-backed recommendations when governance evidence is missing or expired.
 
-### 40. Human-in-the-loop automation for Quote
+### 40. Risk Appetite Change Simulation
 
-**Justification:** Automation should accelerate risk submissions, rating, quote generation, underwriting decisions, bind packages, exclusions, and referral workflows while preserving accountability for high-risk decisions.
+**Justification:** Appetite changes can shift submission flow, declines, premium, and referral workload.
 
-**Improvement:** Set explicit automation boundaries for `quote`: auto-approve, auto-reject, suggest-only, require-review, and block-until-evidence states with policy-based routing. Tie the behavior to `insurance_underwriting_record_risk_profile_workflow` where applicable, and make it visible in `InsuranceUnderwritingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add side-effect-free simulations over recent and pipeline submissions for appetite, authority, and pricing changes.
 
-**Acceptance evidence:** Automation policy tests, reviewer queues, override reasons, and assistant action audit trails. The evidence should be package-local in `src/pyAppGen/pbcs/insurance_underwriting` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must produce impact reports before high-impact rule activation.
 
-### 41. Package discovery and fit scoring for Underwriting Decision
+### 41. Quote-to-Bind Conversion Analytics
 
-**Justification:** Users selecting PBCs need transparent fit reasoning, especially when domains are adjacent but not overlapping.
+**Justification:** Leaders need insight into conversion, reasons lost, pricing friction, and referral drag.
 
-**Improvement:** Improve package metadata so composition can explain when `insurance_underwriting` fits a prompt, what entities it owns, what APIs/events it exposes, and what adjacent PBCs it depends on. Tie the behavior to `insurance_underwriting_create_underwriting_submission_workflow` where applicable, and make it visible in `InsuranceUnderwritingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add analytics by product, channel, segment, appetite outcome, quote age, premium band, and subjectivity burden.
 
-**Acceptance evidence:** Discovery manifests, prompt-selection tests, overlap rationale links, and composition DSL examples. The evidence should be package-local in `src/pyAppGen/pbcs/insurance_underwriting` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must generate tenant-scoped metrics with source drilldowns.
 
-### 42. Configuration deployment pipeline for Bind Package
+### 42. Decline and Referral Analytics
 
-**Justification:** Configuration changes can materially alter insurance underwriting; they need the same discipline as code releases.
+**Justification:** High declines or referrals may indicate appetite mismatch, missing data, or portfolio issues.
 
-**Improvement:** Add configuration promotion for `bind_package` across draft, test, approved, active, deprecated, and rollback states with impact analysis before activation. Tie the behavior to `insurance_underwriting_record_risk_profile_workflow` where applicable, and make it visible in `InsuranceUnderwritingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add analytics for decline reason, referral reason, decision cycle time, overturn rate, and exception usage.
 
-**Acceptance evidence:** Config diff views, approval workflows, simulation before activation, and rollback tests. The evidence should be package-local in `src/pyAppGen/pbcs/insurance_underwriting` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must trend reasons and open governance review when thresholds breach.
 
-### 43. Workbench command completeness for Exclusion
+### 43. Carbon and Climate Risk Evidence
 
-**Justification:** A PBC does not fully surface its capabilities if users must call hidden APIs for core work.
+**Justification:** Some underwriting decisions need climate, catastrophe, occupancy, and sustainability risk evidence.
 
-**Improvement:** Expose every high-value operation for `exclusion` in the UI: create, validate, approve, simulate, correct, assign, export, retry, close, and audit-proof verification. Tie the behavior to `insurance_underwriting_create_underwriting_submission_workflow` where applicable, and make it visible in `InsuranceUnderwritingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add climate risk projection, hazard exposure, mitigation evidence, carbon-sensitive factor, and underwriting impact.
 
-**Acceptance evidence:** UI action coverage tests, permission-aware disabled states, keyboard paths, and assistant handoff links. The evidence should be package-local in `src/pyAppGen/pbcs/insurance_underwriting` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must include climate evidence in applicable risk profiles without owning external climate datasets.
 
-### 44. Document packet and evidence vault for Insurance Underwriting Policy Rule
+### 44. Privacy and Minimum Necessary Views
 
-**Justification:** Documents often carry the legal or operational truth behind risk submissions, rating, quote generation, underwriting decisions, bind packages, exclusions, and referral workflows.
+**Justification:** Underwriting files include sensitive personal, financial, medical, and business information.
 
-**Improvement:** Create a governed evidence vault for `insurance_underwriting_policy_rule` documents, attachments, source spans, extracted fields, signatures, approvals, and retention labels. Tie the behavior to `insurance_underwriting_record_risk_profile_workflow` where applicable, and make it visible in `InsuranceUnderwritingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add redaction profiles for underwriter, referral reviewer, compliance, broker portal, auditor, and analytics user.
 
-**Acceptance evidence:** Evidence models, source-to-field lineage, signature validation, retention policies, and proof exports. The evidence should be package-local in `src/pyAppGen/pbcs/insurance_underwriting` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Permission tests must hide restricted fields and block unauthorized exports.
 
-### 45. Data correction and amendment history for Insurance Underwriting Runtime Parameter
+### 45. Seeded Underwriting Scenario Library
 
-**Justification:** World-class systems correct mistakes without rewriting history or confusing downstream consumers.
+**Justification:** Release audits need realistic underwriting stories.
 
-**Improvement:** Support formal amendments for `insurance_underwriting_runtime_parameter` that preserve original values, correction reason, approving actor, effective date, downstream event impacts, and replay behavior. Tie the behavior to `insurance_underwriting_create_underwriting_submission_workflow` where applicable, and make it visible in `InsuranceUnderwritingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add seeds for clean submission, incomplete application, referral, compliance hold, pricing override, quote revision, subjectivity waiver, decline, and bind.
 
-**Acceptance evidence:** Amendment tables, correction events, projection replay tests, and side-by-side before/after UI. The evidence should be package-local in `src/pyAppGen/pbcs/insurance_underwriting` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Scenario tests must load side-effect-free and create expected queues, events, and evidence packets.
 
-### 46. External participant collaboration for Insurance Underwriting Schema Extension
+### 46. Role-Based Permission Model
 
-**Justification:** Many insurance underwriting workflows require outside parties, but they must not gain direct access to internal tables.
+**Justification:** Assistants, underwriters, senior underwriters, referral specialists, compliance, managers, and auditors need different authority.
 
-**Improvement:** Add controlled collaboration portals or API views for external participants related to `insurance_underwriting_schema_extension`, limited to scoped evidence submission, status checks, comments, and dispute responses. Tie the behavior to `insurance_underwriting_record_risk_profile_workflow` where applicable, and make it visible in `InsuranceUnderwritingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add permissions for submission edit, risk-profile edit, quote issue, referral decision, decline, bind, waive condition, and approve override.
 
-**Acceptance evidence:** Participant role policies, scoped tokens, submission audit trails, and inbound evidence validation. The evidence should be package-local in `src/pyAppGen/pbcs/insurance_underwriting` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Permission tests must block unauthorized commands and show disabled UI actions.
 
-### 47. Advanced dependency freshness scoring for Insurance Underwriting Control Assertion
+### 47. Policy Administration Handoff
 
-**Justification:** A record may be valid locally but unsafe if dependency evidence is stale or incomplete.
+**Justification:** Bind decisions create policy work but policy administration owns policy records.
 
-**Improvement:** Score freshness and reliability of dependencies used by `insurance_underwriting_control_assertion`, including consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, referenced projections, configuration versions, and external submissions. Tie the behavior to `insurance_underwriting_create_underwriting_submission_workflow` where applicable, and make it visible in `InsuranceUnderwritingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Emit bind, quote accepted, decline, subjectivity satisfied, and coverage term events with idempotency keys and evidence references.
 
-**Acceptance evidence:** Freshness indicators, blocking rules, stale-event simulations, and workbench dependency health panels. The evidence should be package-local in `src/pyAppGen/pbcs/insurance_underwriting` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Boundary tests must fail on policy table writes and pass on declared AppGen-X event contracts.
 
-### 48. Model governance and explainability for Insurance Underwriting Governed Model
+### 48. Full Underwriting Release Simulation
 
-**Justification:** Governed AI is mandatory for professional-grade automation in Insurance Underwriting.
+**Justification:** A complete PBC must prove submission-to-bind behavior end to end.
 
-**Improvement:** For every predictive or agentic feature around `insurance_underwriting_governed_model`, record model version, prompt or ruleset version, training/evaluation evidence, confidence, explanation, and human feedback. Tie the behavior to `insurance_underwriting_record_risk_profile_workflow` where applicable, and make it visible in `InsuranceUnderwritingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add a simulation where a submission is received, documents extracted, risk profiled, appetite screened, referred, quoted, conditioned, approved, and bound.
 
-**Acceptance evidence:** Model cards, prompt/version manifests, feedback loops, drift tests, and audit proof for recommendations. The evidence should be package-local in `src/pyAppGen/pbcs/insurance_underwriting` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** The simulation must validate owned schema, APIs, services, AppGen-X events, handlers, workbench views, agent skills, permissions, and release evidence.
 
-### 49. High-scale partitioning and archival for Underwriting Submission
+### 49. Package Overlap Guardrails
 
-**Justification:** Better-than-world-class packages must remain operable after years of high-volume domain history.
+**Justification:** This PBC must not duplicate policy administration, claims, actuarial pricing, producer management, compliance systems, or GL ownership.
 
-**Improvement:** Plan scale behavior for `underwriting_submission`: tenant partitioning, archival policies, cold storage, retention-aware search, projection compaction, and large-batch replay. Tie the behavior to `insurance_underwriting_create_underwriting_submission_workflow` where applicable, and make it visible in `InsuranceUnderwritingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add overlap checks and dependency contracts for actuarial models, compliance screening, producer status, claims history, payment status, and policy handoff.
 
-**Acceptance evidence:** Partition tests, archive/retrieve fixtures, retention enforcement, and replay benchmarks. The evidence should be package-local in `src/pyAppGen/pbcs/insurance_underwriting` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must fail on undeclared external table references and pass on declared AppGen-X dependency usage.
 
-### 50. Release gate expansion for Risk Profile
+### 50. Composition DSL and Unified Agent Exposure
 
-**Justification:** The PBC should not claim domain coverage unless release evidence proves the claim end to end.
+**Justification:** Generated applications must expose underwriting capabilities through DSL, UI, APIs, and the composed application agent.
 
-**Improvement:** Expand release gates for `insurance_underwriting` so every schema, service, API, event, handler, UI, rule, parameter, agent skill, seed scenario, and improvement backlog item maps to executable evidence. Tie the behavior to `insurance_underwriting_record_risk_profile_workflow` where applicable, and make it visible in `InsuranceUnderwritingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Extend composition metadata for submissions, risk profiles, factors, quotes, decisions, bind packages, exclusions, controls, workbench fragments, and agent skills.
 
-**Acceptance evidence:** Release audit checks, manifest traceability, generated-app smoke tests, and missing-capability blockers. The evidence should be package-local in `src/pyAppGen/pbcs/insurance_underwriting` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** DSL tests must prove generated apps include underwriting models, routes, services, event contracts, UI artifacts, and assistant skills without stream-engine picker exposure.

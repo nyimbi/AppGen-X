@@ -1,418 +1,615 @@
-# Identity KYC AML Compliance PBC Better-Than-World-Class Improvement Backlog
+# Identity KYC AML Compliance Improvement Backlog
 
-## Purpose
-
-This file identifies, justifies, and describes 50 high-impact improvements for `identity_kyc_aml_compliance`. The backlog is specific to customer onboarding, identity proofing, beneficial ownership, screening, transaction monitoring, suspicious activity, and compliance cases and is intended to move the PBC from release-auditable scaffolding toward complete, specialist-grade domain coverage.
+This backlog is grounded in `manifest.py` and the current package boundary for `identity_kyc_aml_compliance`. Every item is specific to KYC, AML, sanctions, PEP, beneficial ownership, ongoing monitoring, suspicious activity handling, privacy, governed agent assistance, and release evidence.
 
 ## Current Domain Evidence Used
 
-- Stable PBC key: `identity_kyc_aml_compliance`.
-- Domain purpose: Customer onboarding, identity proofing, beneficial ownership, screening, transaction monitoring, suspicious activity, and compliance cases.
-- Owned domain tables: `kyc_profile`, `identity_document`, `beneficial_owner`, `screening_hit`, `monitoring_alert`, `suspicious_activity_case`, `compliance_review`, `identity_kyc_aml_compliance_policy_rule`, `identity_kyc_aml_compliance_runtime_parameter`, `identity_kyc_aml_compliance_schema_extension`, `identity_kyc_aml_compliance_control_assertion`, `identity_kyc_aml_compliance_governed_model`.
-- Public APIs: `POST /kyc-profiles`, `POST /identity-documents`, `POST /beneficial-owners`, `POST /screening-hits`, `POST /monitoring-alerts`, `GET /identity-kyc-aml-compliance-workbench`.
-- Emitted AppGen-X events: `IdentityKycAmlComplianceCreated`, `IdentityKycAmlComplianceUpdated`, `IdentityKycAmlComplianceApproved`, `IdentityKycAmlComplianceExceptionOpened`.
-- Consumed AppGen-X events: `PolicyChanged`, `AuditEventSealed`, `OperationalKpiChanged`.
-- Current standard surfaces include: `kyc_profile_management`, `identity_kyc_aml_compliance_workflow`, `identity_kyc_aml_compliance_analytics`, `configuration_schema`, `rule_engine`, `parameter_engine`, `owned_schema_migrations_models`, `appgen_x_outbox_inbox_eventing`, `idempotent_handlers`, `retry_dead_letter_evidence`.
-- Current advanced surfaces include: `identity_kyc_aml_compliance_event_sourced_operational_history`, `identity_kyc_aml_compliance_multi_tenant_policy_isolation`, `identity_kyc_aml_compliance_schema_evolution_resilience`, `identity_kyc_aml_compliance_autonomous_anomaly_detection`, `identity_kyc_aml_compliance_semantic_document_instruction_understanding`, `identity_kyc_aml_compliance_predictive_risk_scoring`, `identity_kyc_aml_compliance_counterfactual_scenario_simulation`, `identity_kyc_aml_compliance_cryptographic_audit_proofs`.
+- PBC key: `identity_kyc_aml_compliance`
+- Description: `Customer onboarding, identity proofing, beneficial ownership, screening, transaction monitoring, suspicious activity, and compliance cases`
+- Owned tables: `kyc_profile`, `identity_document`, `beneficial_owner`, `screening_hit`, `monitoring_alert`, `suspicious_activity_case`, `compliance_review`, `identity_kyc_aml_compliance_policy_rule`, `identity_kyc_aml_compliance_runtime_parameter`, `identity_kyc_aml_compliance_schema_extension`, `identity_kyc_aml_compliance_control_assertion`, `identity_kyc_aml_compliance_governed_model`
+- APIs: `POST /kyc-profiles`, `POST /identity-documents`, `POST /beneficial-owners`, `POST /screening-hits`, `POST /monitoring-alerts`, `GET /identity-kyc-aml-compliance-workbench`
+- Emits: `IdentityKycAmlComplianceCreated`, `IdentityKycAmlComplianceUpdated`, `IdentityKycAmlComplianceApproved`, `IdentityKycAmlComplianceExceptionOpened`
+- Consumes: `PolicyChanged`, `AuditEventSealed`, `OperationalKpiChanged`
+- UI fragments: `IdentityKycAmlComplianceWorkbench`, `IdentityKycAmlComplianceDetail`, `IdentityKycAmlComplianceAssistantPanel`
+- Docs: `SPECIFICATION.md`, `RELEASE_EVIDENCE.md`
+- Capability surfaces: `identity_kyc_aml_compliance_event_sourced_operational_history`, `identity_kyc_aml_compliance_multi_tenant_policy_isolation`, `identity_kyc_aml_compliance_schema_evolution_resilience`, `identity_kyc_aml_compliance_autonomous_anomaly_detection`, `identity_kyc_aml_compliance_semantic_document_instruction_understanding`, `identity_kyc_aml_compliance_predictive_risk_scoring`, `identity_kyc_aml_compliance_counterfactual_scenario_simulation`, `identity_kyc_aml_compliance_cryptographic_audit_proofs`, `identity_kyc_aml_compliance_continuous_control_testing`, `identity_kyc_aml_compliance_governed_ai_agent_execution`, `appgen_x_outbox_inbox_eventing`, `idempotent_handlers`, `retry_dead_letter_evidence`, `agentic_document_instruction_intake`, `ai_agent_task_assistance`, `continuous_release_assurance`
 
-## 50 High-Impact Improvements
+### 1. KYC profile lifecycle evidence
 
-### 1. Canonical lifecycle state model for Kyc Profile
+**Key:** `identity_kyc_aml_compliance_kyc_profile_lifecycle_evidence`
 
-**Justification:** This closes shallow CRUD gaps by making every identity kyc aml compliance transition explainable and testable instead of implicit in free-form status values.
+**Justification:** KYC programs need explicit lifecycle states for intake, verification, approval, remediation, restriction, exit, and re-review or analysts cannot explain why a customer was onboarded, paused, or declined.
 
-**Improvement:** Define a complete state machine for `kyc_profile` with explicit draft, validated, blocked, approved, active, suspended, corrected, closed, archived, and reopened states. Tie the behavior to `identity_kyc_aml_compliance_create_kyc_profile_workflow` where applicable, and make it visible in `IdentityKycAmlComplianceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add a governed lifecycle for `kyc_profile` covering draft, pending verification, pending screening, pending EDD, approved, restricted, exited, and archived states with allowed transitions, mandatory evidence, and jurisdiction-aware reason codes.
 
-**Acceptance evidence:** State-transition tests, invalid-transition fixtures, workbench state badges, and emitted AppGen-X transition events for IdentityKycAmlComplianceCreated, IdentityKycAmlComplianceUpdated, IdentityKycAmlComplianceApproved. The evidence should be package-local in `src/pyAppGen/pbcs/identity_kyc_aml_compliance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Lifecycle tests proving invalid transitions are blocked, visible status badges and reason history in `IdentityKycAmlComplianceWorkbench`, and release evidence linking each approval or exception path to emitted lifecycle events.
 
-### 2. Domain intake and normalization for Identity Document
+**Current Domain Evidence Used:** `kyc_profile`, `POST /kyc-profiles`, `IdentityKycAmlComplianceWorkbench`, `IdentityKycAmlComplianceCreated`, `IdentityKycAmlComplianceApproved`, `IdentityKycAmlComplianceExceptionOpened`
 
-**Justification:** The PBC cannot reach complete domain coverage unless it handles the messy front door of customer onboarding, identity proofing, beneficial ownership, screening, transaction monitoring, suspicious activity, and compliance cases, not only already-clean records.
+### 2. Onboarding classification gate
 
-**Improvement:** Build a typed intake pipeline for `identity_document` that accepts structured API payloads, document-derived instructions, batch loads, and assistant-generated drafts while normalizing identifiers, dates, units, parties, and jurisdictional context. Tie the behavior to `identity_kyc_aml_compliance_record_identity_document_workflow` where applicable, and make it visible in `IdentityKycAmlComplianceWorkbench` so operators do not need hidden scripts or raw table access.
+**Key:** `identity_kyc_aml_compliance_onboarding_classification_gate`
 
-**Acceptance evidence:** Golden intake fixtures, rejected-record queues, field-level normalization evidence, and assistant previews before governed datastore mutation. The evidence should be package-local in `src/pyAppGen/pbcs/identity_kyc_aml_compliance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Justification:** Individual, business, trust, correspondent, and high-risk customer types need different KYC and AML obligations; a flat onboarding path causes missing evidence and inconsistent approvals.
 
-### 3. Specialist validation rules for Beneficial Owner
+**Improvement:** Require `kyc_profile` creation to classify customer type, jurisdiction, product exposure, channel, and expected activity so the package can branch into the correct KYC, screening, beneficial ownership, and EDD obligations at intake time.
 
-**Justification:** World-class Identity KYC AML Compliance requires rules that domain experts can reason about, version, test, and roll back without code edits.
+**Acceptance evidence:** Intake fixtures for individual and entity onboarding variants, blocked profile creation when mandatory classification fields are absent, and workbench panels showing which obligation set was attached to the profile.
 
-**Improvement:** Add a domain rule compiler for `beneficial_owner` that supports threshold rules, eligibility rules, dependency rules, temporal windows, conflicting-instruction detection, and override justification. Tie the behavior to `identity_kyc_aml_compliance_create_kyc_profile_workflow` where applicable, and make it visible in `IdentityKycAmlComplianceWorkbench` so operators do not need hidden scripts or raw table access.
+**Current Domain Evidence Used:** `kyc_profile`, `POST /kyc-profiles`, `identity_kyc_aml_compliance_policy_rule`, `identity_kyc_aml_compliance_runtime_parameter`, `IdentityKycAmlComplianceWorkbench`
 
-**Acceptance evidence:** Rule simulation tests, versioned rule manifests, rule impact reports, and UI rule editors linked to `IDENTITY_KYC_AML_COMPLIANCE_DATABASE_URL, IDENTITY_KYC_AML_COMPLIANCE_EVENT_TOPIC, IDENTITY_KYC_AML_COMPLIANCE_RETRY_LIMIT`. The evidence should be package-local in `src/pyAppGen/pbcs/identity_kyc_aml_compliance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 3. Duplicate identity resolution
 
-### 4. Parameter governance and tuning for Screening Hit
+**Key:** `identity_kyc_aml_compliance_duplicate_identity_resolution`
 
-**Justification:** Parameters are where operations teams tune identity kyc aml compliance; unbounded constants would make the PBC brittle and unsafe in real deployments.
+**Justification:** AML controls fail when the same person or entity is onboarded multiple times under slightly different identifiers, names, or documents.
 
-**Improvement:** Expose bounded runtime parameters for `screening_hit` covering risk thresholds, SLA windows, confidence floors, escalation cutoffs, batch sizes, retry limits, and human-confirmation requirements. Tie the behavior to `identity_kyc_aml_compliance_record_identity_document_workflow` where applicable, and make it visible in `IdentityKycAmlComplianceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add duplicate detection and merge review for `kyc_profile` using normalized names, dates of birth, national identifiers, registration numbers, and linked `identity_document` evidence, with analyst-controlled merge and split actions.
 
-**Acceptance evidence:** Parameter schema validation, tenant overrides, approval history, rollback controls, and workbench diff views. The evidence should be package-local in `src/pyAppGen/pbcs/identity_kyc_aml_compliance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Duplicate-match fixtures with true positive and false positive outcomes, merge review screens in `IdentityKycAmlComplianceDetail`, and audit-ready lineage showing which profiles were merged or separated.
 
-### 5. Deep owned schema expansion for Monitoring Alert
+**Current Domain Evidence Used:** `kyc_profile`, `identity_document`, `IdentityKycAmlComplianceDetail`, `identity_kyc_aml_compliance_event_sourced_operational_history`, `IdentityKycAmlComplianceUpdated`
 
-**Justification:** A single payload column cannot express the full surface of customer onboarding, identity proofing, beneficial ownership, screening, transaction monitoring, suspicious activity, and compliance cases or prove cross-PBC boundaries are respected.
+### 4. Document capture completeness
 
-**Improvement:** Extend the owned schema around `monitoring_alert` with normalized child tables for line-level evidence, party roles, approvals, attachments, comments, metrics, exception reasons, and control assertions. Tie the behavior to `identity_kyc_aml_compliance_create_kyc_profile_workflow` where applicable, and make it visible in `IdentityKycAmlComplianceWorkbench` so operators do not need hidden scripts or raw table access.
+**Key:** `identity_kyc_aml_compliance_document_capture_completeness`
 
-**Acceptance evidence:** Migrations, models, relationship tests, schema contract snapshots, and no shared-table access outside the `identity_kyc_aml_compliance_` namespace. The evidence should be package-local in `src/pyAppGen/pbcs/identity_kyc_aml_compliance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Justification:** Identity proofing starts with complete document capture; missing issuer, issue date, expiry date, or document type should block downstream verification and screening decisions.
 
-### 6. Event-sourced operational history for Suspicious Activity Case
+**Improvement:** Extend `identity_document` intake so `POST /identity-documents` requires document class, jurisdiction, issuing authority, identifier, issue and expiry dates, capture method, and linkage to the owning `kyc_profile`.
 
-**Justification:** Temporal reconstruction is essential for better-than-world-class auditability and dispute resolution in identity kyc aml compliance.
+**Acceptance evidence:** API tests rejecting incomplete document submissions, operator-visible completeness indicators in `IdentityKycAmlComplianceWorkbench`, and release evidence proving approved profiles do not bypass mandatory document fields.
 
-**Improvement:** Capture every material mutation of `suspicious_activity_case` as immutable AppGen-X events with actor, tenant, command, policy version, idempotency key, before/after summary, and projection checkpoint. Tie the behavior to `identity_kyc_aml_compliance_record_identity_document_workflow` where applicable, and make it visible in `IdentityKycAmlComplianceWorkbench` so operators do not need hidden scripts or raw table access.
+**Current Domain Evidence Used:** `identity_document`, `kyc_profile`, `POST /identity-documents`, `IdentityKycAmlComplianceWorkbench`, `IdentityKycAmlComplianceExceptionOpened`
 
-**Acceptance evidence:** Replay tests, projection checksums, event ordering evidence, and point-in-time workbench views. The evidence should be package-local in `src/pyAppGen/pbcs/identity_kyc_aml_compliance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 5. Document authenticity and expiry controls
 
-### 7. Projection and read-model strategy for Compliance Review
+**Key:** `identity_kyc_aml_compliance_document_authenticity_and_expiry_controls`
 
-**Justification:** The workbench should not force users to infer domain truth from raw tables; each projection should answer a real operating question.
+**Justification:** A captured document is not enough; KYC decisions depend on whether the document is valid, unexpired, and consistent with the claimed identity.
 
-**Improvement:** Create purpose-built projections for `compliance_review`: operational queue, executive KPI rollup, exception aging, compliance evidence, agent task context, and external dependency health. Tie the behavior to `identity_kyc_aml_compliance_create_kyc_profile_workflow` where applicable, and make it visible in `IdentityKycAmlComplianceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add authenticity, tamper, and expiry evaluation states to `identity_document` so analysts can distinguish accepted documents, suspected forgeries, expired documents, and documents requiring replacement before approval.
 
-**Acceptance evidence:** Projection contracts, freshness SLAs, backfill tests, and visible stale-projection warnings. The evidence should be package-local in `src/pyAppGen/pbcs/identity_kyc_aml_compliance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Verification scenarios for valid, expired, mismatched, and suspicious documents, document-status history in `IdentityKycAmlComplianceDetail`, and exception events when authenticity or expiry rules fail.
 
-### 8. Exception taxonomy and remediation for Identity Kyc Aml Compliance Policy Rule
+**Current Domain Evidence Used:** `identity_document`, `kyc_profile`, `IdentityKycAmlComplianceDetail`, `IdentityKycAmlComplianceUpdated`, `IdentityKycAmlComplianceExceptionOpened`
 
-**Justification:** High-value PBCs win on exception throughput; generic “failed” states hide the details operators need.
+### 6. Selfie liveness and face-match evidence
 
-**Improvement:** Model the full exception taxonomy for `identity_kyc_aml_compliance_policy_rule`, including severity, root cause, blocking dependency, remediation owner, due date, retry eligibility, escalation path, and closure evidence. Tie the behavior to `identity_kyc_aml_compliance_record_identity_document_workflow` where applicable, and make it visible in `IdentityKycAmlComplianceWorkbench` so operators do not need hidden scripts or raw table access.
+**Key:** `identity_kyc_aml_compliance_selfie_liveness_and_face_match_evidence`
 
-**Acceptance evidence:** Exception queues, aging metrics, remediation playbooks, dead-letter linkage, and closure test fixtures for sanctions or fraud holds. The evidence should be package-local in `src/pyAppGen/pbcs/identity_kyc_aml_compliance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Justification:** Remote onboarding often depends on liveness and face-match checks; without explicit evidence the package cannot defend non-face-to-face identity verification.
 
-### 9. Predictive risk scoring for Identity Kyc Aml Compliance Runtime Parameter
+**Improvement:** Add biometric verification evidence linked to `identity_document` and `kyc_profile`, including liveness outcome, face-match confidence, capture timestamp, retry count, and fallback manual review path.
 
-**Justification:** The package should warn users before identity kyc aml compliance work fails, breaches policy, or creates downstream cost.
+**Acceptance evidence:** Remote-onboarding test packs showing successful and failed liveness journeys, analyst review screens with confidence and retry history, and release evidence that high-risk remote profiles cannot approve without biometric or equivalent substitute evidence.
 
-**Improvement:** Add predictive risk scoring for `identity_kyc_aml_compliance_runtime_parameter` using domain features from owned tables, consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, rule outcomes, aging, anomaly signals, and historical corrections. Tie the behavior to `identity_kyc_aml_compliance_create_kyc_profile_workflow` where applicable, and make it visible in `IdentityKycAmlComplianceWorkbench` so operators do not need hidden scripts or raw table access.
+**Current Domain Evidence Used:** `identity_document`, `kyc_profile`, `IdentityKycAmlComplianceDetail`, `identity_kyc_aml_compliance_control_assertion`, `RELEASE_EVIDENCE.md`
 
-**Acceptance evidence:** Feature manifests, score explanations, calibration reports, drift alerts, and tests for low/medium/high-risk scenarios. The evidence should be package-local in `src/pyAppGen/pbcs/identity_kyc_aml_compliance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 7. Sanctions screening match model
 
-### 10. Counterfactual simulation for Identity Kyc Aml Compliance Schema Extension
+**Key:** `identity_kyc_aml_compliance_sanctions_screening_match_model`
 
-**Justification:** Advanced users need to ask “what would happen if” before committing changes to live customer onboarding, identity proofing, beneficial ownership, screening, transaction monitoring, suspicious activity, and compliance cases operations.
+**Justification:** Sanctions screening needs structured match evidence, alias handling, jurisdiction context, and severity so operations can separate exact matches from weak fuzzy hits.
 
-**Improvement:** Provide scenario simulation for `identity_kyc_aml_compliance_schema_extension`: policy change, capacity constraint, deadline shift, price/rate change, eligibility change, disruption, and manual override outcomes. Tie the behavior to `identity_kyc_aml_compliance_record_identity_document_workflow` where applicable, and make it visible in `IdentityKycAmlComplianceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand `screening_hit` to store watchlist source, match basis, alias or transliteration pathway, country or program context, confidence, disposition requirement, and blocking severity for sanctions reviews.
 
-**Acceptance evidence:** Simulation APIs, non-mutating sandbox state, comparison reports, and workbench side-by-side scenario panels. The evidence should be package-local in `src/pyAppGen/pbcs/identity_kyc_aml_compliance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Screening fixtures covering exact, fuzzy, and false positive sanctions hits, workbench views that show why a hit matched, and exception opening when a blocking sanctions hit remains unresolved.
 
-### 11. Autonomous anomaly triage for Identity Kyc Aml Compliance Control Assertion
+**Current Domain Evidence Used:** `screening_hit`, `POST /screening-hits`, `IdentityKycAmlComplianceWorkbench`, `IdentityKycAmlComplianceExceptionOpened`, `identity_kyc_aml_compliance_workflow`
 
-**Justification:** A world-class PBC should reduce analyst burden without hiding the reasoning behind automated triage.
+### 8. PEP and RCA screening boundary
 
-**Improvement:** Implement anomaly detection for `identity_kyc_aml_compliance_control_assertion` that identifies outliers, duplicate submissions, impossible sequences, stale dependencies, unusual amounts/counts/durations, and contradictory fields. Tie the behavior to `identity_kyc_aml_compliance_create_kyc_profile_workflow` where applicable, and make it visible in `IdentityKycAmlComplianceWorkbench` so operators do not need hidden scripts or raw table access.
+**Key:** `identity_kyc_aml_compliance_pep_and_rca_screening_boundary`
 
-**Acceptance evidence:** Explainable anomaly cards, reviewer feedback loops, false-positive tracking, and suppression governance. The evidence should be package-local in `src/pyAppGen/pbcs/identity_kyc_aml_compliance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Justification:** PEP and related-close-associate screening should not be handled as ordinary sanctions logic because escalation, review depth, and approval standards differ.
 
-### 12. Semantic document understanding for Identity Kyc Aml Compliance Governed Model
+**Improvement:** Add explicit screening categories and review tracks so `screening_hit` can distinguish sanctions, PEP, RCA, adverse media, and internal deny-list outcomes with different thresholds, reviewers, and resolution paths.
 
-**Justification:** Document-heavy work in Identity KYC AML Compliance cannot be complete if the assistant only answers questions and cannot prepare accurate governed changes.
+**Acceptance evidence:** Rule-driven routing of PEP and RCA hits into separate analyst queues, distinct severity and approval requirements in the detail UI, and release evidence proving PEP hits do not close through the sanctions-only workflow.
 
-**Improvement:** Train the package assistant to parse domain documents and instructions for `identity_kyc_aml_compliance_governed_model`, extract obligations, dates, parties, quantities, identifiers, and exceptions, then map them to safe draft mutations. Tie the behavior to `identity_kyc_aml_compliance_record_identity_document_workflow` where applicable, and make it visible in `IdentityKycAmlComplianceWorkbench` so operators do not need hidden scripts or raw table access.
+**Current Domain Evidence Used:** `screening_hit`, `identity_kyc_aml_compliance_policy_rule`, `IdentityKycAmlComplianceWorkbench`, `IdentityKycAmlComplianceDetail`, `IdentityKycAmlComplianceApproved`
 
-**Acceptance evidence:** Document extraction tests, confidence thresholds, redaction handling, source span citations, and human confirmation workflows. The evidence should be package-local in `src/pyAppGen/pbcs/identity_kyc_aml_compliance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 9. Screening disposition and reason taxonomy
 
-### 13. Agent-safe CRUD execution for Kyc Profile
+**Key:** `identity_kyc_aml_compliance_screening_disposition_and_reason_taxonomy`
 
-**Justification:** The PBC agent must be a first-class operator but never a hidden bypass around RBAC, rules, or owned datastore boundaries.
+**Justification:** Analysts need consistent reason codes to explain false positives, escalations, dismissals, and true matches across sanctions and PEP programs.
 
-**Improvement:** Add a professional chatbot skill for `kyc_profile` that can create, update, correct, close, and annotate records only through policy-checked commands, approval gates, and previewed diffs. Tie the behavior to `identity_kyc_aml_compliance_create_kyc_profile_workflow` where applicable, and make it visible in `IdentityKycAmlComplianceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add a governed disposition taxonomy for `screening_hit` covering false positive, escalated, matched and restricted, matched and approved with EDD, duplicate, and pending external evidence, each with mandatory rationale and reviewer evidence.
 
-**Acceptance evidence:** Skill manifests, permission tests, preview/confirm flows, blocked-action evidence, and audit events for every assistant mutation. The evidence should be package-local in `src/pyAppGen/pbcs/identity_kyc_aml_compliance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Disposition tests enforcing mandatory reasons, analytics showing top disposition causes, and detail screens that preserve reviewer, time, and evidence for each screening resolution.
 
-### 14. Workbench persona coverage for Identity Document
+**Current Domain Evidence Used:** `screening_hit`, `compliance_review`, `IdentityKycAmlComplianceDetail`, `identity_kyc_aml_compliance_analytics`, `IdentityKycAmlComplianceUpdated`
 
-**Justification:** A generic detail page underserves the domain; each role needs the exact controls and evidence they use daily.
+### 10. Beneficial ownership graph
 
-**Improvement:** Design dedicated workbench panels for `identity_document`: operator queue, supervisor approvals, analyst exceptions, auditor evidence, configuration owner, and agent-assistance review. Tie the behavior to `identity_kyc_aml_compliance_record_identity_document_workflow` where applicable, and make it visible in `IdentityKycAmlComplianceWorkbench` so operators do not need hidden scripts or raw table access.
+**Key:** `identity_kyc_aml_compliance_beneficial_ownership_graph`
 
-**Acceptance evidence:** UI contract entries, route tests, empty/error/loading states, and permission-aware action availability. The evidence should be package-local in `src/pyAppGen/pbcs/identity_kyc_aml_compliance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Justification:** Entity onboarding requires a traceable ownership and control structure; flat owner rows cannot explain layered ownership, indirect interests, or controlling persons.
 
-### 15. Cross-PBC dependency contracts for Beneficial Owner
+**Improvement:** Model `beneficial_owner` as a graph with direct and indirect ownership percentages, control relationships, entity-to-entity links, and effective dates so entity KYC can reconstruct ultimate beneficial ownership.
 
-**Justification:** Composable packages fail when hidden table coupling enters the domain model.
+**Acceptance evidence:** Ownership graph fixtures for simple and layered structures, graph views in `IdentityKycAmlComplianceDetail`, and release evidence showing approval is blocked when the graph cannot reach a declared ultimate owner or controller.
 
-**Improvement:** Represent dependencies for `beneficial_owner` through declared APIs, consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, and projections rather than shared tables, with explicit freshness, ownership, and fallback behavior. Tie the behavior to `identity_kyc_aml_compliance_create_kyc_profile_workflow` where applicable, and make it visible in `IdentityKycAmlComplianceWorkbench` so operators do not need hidden scripts or raw table access.
+**Current Domain Evidence Used:** `beneficial_owner`, `kyc_profile`, `POST /beneficial-owners`, `IdentityKycAmlComplianceDetail`, `IdentityKycAmlComplianceApproved`
 
-**Acceptance evidence:** Dependency manifests, contract tests, stale dependency alerts, and no foreign-table references in generated artifacts. The evidence should be package-local in `src/pyAppGen/pbcs/identity_kyc_aml_compliance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 11. Beneficial owner threshold policy
 
-### 16. API completeness and versioning for Screening Hit
+**Key:** `identity_kyc_aml_compliance_beneficial_owner_threshold_policy`
 
-**Justification:** Complete domain coverage requires both command and query surfaces, not only happy-path create endpoints.
+**Justification:** Threshold rules vary by jurisdiction and product; hard-coded ownership percentages create under-screening or unnecessary review.
 
-**Improvement:** Expand APIs beyond POST /kyc-profiles, POST /identity-documents, POST /beneficial-owners to cover search, validation-only commands, simulation, bulk intake, exception closure, evidence export, projection reads, and idempotent corrections. Tie the behavior to `identity_kyc_aml_compliance_record_identity_document_workflow` where applicable, and make it visible in `IdentityKycAmlComplianceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Drive beneficial ownership obligations through `identity_kyc_aml_compliance_policy_rule` and `identity_kyc_aml_compliance_runtime_parameter` so the package can apply jurisdiction-specific thresholds for ownership, voting control, and other control indicators.
 
-**Acceptance evidence:** OpenAPI-style route manifests, backward-compatible version tests, deprecation metadata, and idempotency assertions. The evidence should be package-local in `src/pyAppGen/pbcs/identity_kyc_aml_compliance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Policy simulations showing threshold changes without code changes, blocked approvals when declared owners fall below configured evidence coverage, and a configuration workbench view showing the active threshold set.
 
-### 17. Typed emitted-event expansion for Monitoring Alert
+**Current Domain Evidence Used:** `beneficial_owner`, `identity_kyc_aml_compliance_policy_rule`, `identity_kyc_aml_compliance_runtime_parameter`, `configuration_workbench`, `identity_kyc_aml_compliance_counterfactual_scenario_simulation`
 
-**Justification:** Consumers should understand what happened in Identity KYC AML Compliance without parsing opaque payloads.
+### 12. Nominee and control-person handling
 
-**Improvement:** Replace generic lifecycle emissions with typed events for each meaningful `monitoring_alert` transition, exception, approval, correction, simulation result, and downstream handoff. Tie the behavior to `identity_kyc_aml_compliance_create_kyc_profile_workflow` where applicable, and make it visible in `IdentityKycAmlComplianceWorkbench` so operators do not need hidden scripts or raw table access.
+**Key:** `identity_kyc_aml_compliance_nominee_and_control_person_handling`
 
-**Acceptance evidence:** Event schema tests, event examples, compatibility checks, and emitted-event coverage in release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/identity_kyc_aml_compliance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Justification:** AML reviews need to capture nominees, signatories, and controlling persons even when they do not cross ownership thresholds.
 
-### 18. Consumed-event handlers for Suspicious Activity Case
+**Improvement:** Extend `beneficial_owner` and `compliance_review` so the package can separately track legal owners, nominee owners, authorized signers, board controllers, and other control persons with explicit role types and screening requirements.
 
-**Justification:** A PBC is composable only when incoming events affect its own domain state predictably and safely.
+**Acceptance evidence:** Entity-review examples where a low-ownership controller still triggers screening and approval steps, analyst-visible role-type badges in the detail view, and release evidence proving control-person screening is not skipped on entity cases.
 
-**Improvement:** Implement idempotent handlers for consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged that update projections, open dependency exceptions, recalculate risk, and preserve source event lineage. Tie the behavior to `identity_kyc_aml_compliance_record_identity_document_workflow` where applicable, and make it visible in `IdentityKycAmlComplianceWorkbench` so operators do not need hidden scripts or raw table access.
+**Current Domain Evidence Used:** `beneficial_owner`, `compliance_review`, `screening_hit`, `IdentityKycAmlComplianceDetail`, `IdentityKycAmlComplianceExceptionOpened`
 
-**Acceptance evidence:** Duplicate-event tests, handler side-effect boundaries, dead-letter fixtures, and lineage links back to source events. The evidence should be package-local in `src/pyAppGen/pbcs/identity_kyc_aml_compliance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 13. Source of funds and source of wealth evidence
 
-### 19. Retry and dead-letter operations for Compliance Review
+**Key:** `identity_kyc_aml_compliance_source_of_funds_and_source_of_wealth_evidence`
 
-**Justification:** Dead letters are not just plumbing; they are domain work queues that can block customer onboarding, identity proofing, beneficial ownership, screening, transaction monitoring, suspicious activity, and compliance cases.
+**Justification:** Higher-risk KYC and AML programs need structured source-of-funds and source-of-wealth evidence rather than free-text notes that cannot be tested or reviewed.
 
-**Improvement:** Create operational tools for retrying, quarantining, explaining, and resolving dead-lettered `compliance_review` events with max-attempt policy, poison-message detection, and replay safety. Tie the behavior to `identity_kyc_aml_compliance_create_kyc_profile_workflow` where applicable, and make it visible in `IdentityKycAmlComplianceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add evidence capture for source of funds, source of wealth, expected activity, declared occupation or business, and supporting documentation within `compliance_review` and linked `identity_document` records.
 
-**Acceptance evidence:** Dead-letter workbench, retry eligibility tests, replay audit proof, and operator action logs. The evidence should be package-local in `src/pyAppGen/pbcs/identity_kyc_aml_compliance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** EDD review packs showing source evidence and supporting documents, mandatory-review tests for higher-risk profiles, and workbench warnings when approval is attempted without the required source evidence.
 
-### 20. RBAC and attribute policy for Identity Kyc Aml Compliance Policy Rule
+**Current Domain Evidence Used:** `compliance_review`, `identity_document`, `kyc_profile`, `IdentityKycAmlComplianceWorkbench`, `IdentityKycAmlComplianceApproved`
 
-**Justification:** High-impact domain operations need finer controls than generic RBAC grants.
+### 14. Enhanced due diligence trigger matrix
 
-**Improvement:** Extend permissions for `identity_kyc_aml_compliance_policy_rule` from coarse read/create/update/admin to action-level and attribute-aware policies based on role, tenant, jurisdiction, monetary/materiality threshold, and exception severity. Tie the behavior to `identity_kyc_aml_compliance_record_identity_document_workflow` where applicable, and make it visible in `IdentityKycAmlComplianceWorkbench` so operators do not need hidden scripts or raw table access.
+**Key:** `identity_kyc_aml_compliance_enhanced_due_diligence_trigger_matrix`
 
-**Acceptance evidence:** Permission matrix docs, ABAC policy tests, denied-action UI states, and assistant skill permission checks. The evidence should be package-local in `src/pyAppGen/pbcs/identity_kyc_aml_compliance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Justification:** EDD should activate consistently for PEP exposure, high-risk geographies, complex ownership, adverse media, and unusual activity, not only when an analyst remembers to escalate.
 
-### 21. Continuous control testing for Identity Kyc Aml Compliance Runtime Parameter
+**Improvement:** Create a trigger matrix in `identity_kyc_aml_compliance_policy_rule` that promotes `kyc_profile` or `screening_hit` outcomes into mandatory EDD review paths with required evidence and approval levels.
 
-**Justification:** Controls should run during operations, not only during release audit or manual review.
+**Acceptance evidence:** Trigger tests for PEP, geography, ownership complexity, and adverse-media scenarios, automatic EDD badges in `IdentityKycAmlComplianceWorkbench`, and exception creation when required EDD steps remain incomplete.
 
-**Improvement:** Embed control assertions for `identity_kyc_aml_compliance_runtime_parameter` that continuously test segregation of duties, required approvals, stale exceptions, policy drift, duplicate records, and boundary violations. Tie the behavior to `identity_kyc_aml_compliance_create_kyc_profile_workflow` where applicable, and make it visible in `IdentityKycAmlComplianceWorkbench` so operators do not need hidden scripts or raw table access.
+**Current Domain Evidence Used:** `kyc_profile`, `screening_hit`, `identity_kyc_aml_compliance_policy_rule`, `IdentityKycAmlComplianceWorkbench`, `IdentityKycAmlComplianceExceptionOpened`
 
-**Acceptance evidence:** Control dashboards, failing-control events, test fixtures, and release evidence tied to `identity_kyc_aml_compliance_control_assertion` records. The evidence should be package-local in `src/pyAppGen/pbcs/identity_kyc_aml_compliance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 15. Enhanced due diligence review packet
 
-### 22. Cryptographic audit proofing for Identity Kyc Aml Compliance Schema Extension
+**Key:** `identity_kyc_aml_compliance_enhanced_due_diligence_review_packet`
 
-**Justification:** Better-than-world-class auditability requires proof of integrity, not merely logs stored in mutable tables.
+**Justification:** EDD requires a single review packet that brings together identity, ownership, screening, expected activity, and analyst findings for final decisions.
 
-**Improvement:** Hash-chain material `identity_kyc_aml_compliance_schema_extension` decisions, documents, emitted events, and release-evidence snapshots to make tampering visible without exposing sensitive payloads. Tie the behavior to `identity_kyc_aml_compliance_record_identity_document_workflow` where applicable, and make it visible in `IdentityKycAmlComplianceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Build an EDD packet view on `compliance_review` that assembles identity documents, beneficial owners, unresolved screening hits, expected activity, source evidence, and reviewer commentary into one decision surface.
 
-**Acceptance evidence:** Proof manifests, verification APIs, redacted proof exports, and audit-ledger handoff events. The evidence should be package-local in `src/pyAppGen/pbcs/identity_kyc_aml_compliance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Decision packets accessible from `IdentityKycAmlComplianceDetail`, side-by-side review evidence before approval, and release evidence confirming EDD-required profiles cannot approve without a completed packet.
 
-### 23. Privacy, consent, and secrecy controls for Identity Kyc Aml Compliance Control Assertion
+**Current Domain Evidence Used:** `compliance_review`, `identity_document`, `beneficial_owner`, `screening_hit`, `IdentityKycAmlComplianceDetail`, `RELEASE_EVIDENCE.md`
 
-**Justification:** Complete domain coverage must account for protected data and restricted operational evidence.
+### 16. Risk score factor model
 
-**Improvement:** Add field-level privacy classifications for `identity_kyc_aml_compliance_control_assertion`, consent checks, masking rules, retention schedules, legal holds, and assistant redaction policies. Tie the behavior to `identity_kyc_aml_compliance_create_kyc_profile_workflow` where applicable, and make it visible in `IdentityKycAmlComplianceWorkbench` so operators do not need hidden scripts or raw table access.
+**Key:** `identity_kyc_aml_compliance_risk_score_factor_model`
 
-**Acceptance evidence:** Retention tests, masked UI snapshots, consent-blocked mutation fixtures, and export controls. The evidence should be package-local in `src/pyAppGen/pbcs/identity_kyc_aml_compliance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Justification:** Risk scoring needs explicit factors for customer type, geography, product, ownership complexity, screening outcomes, and activity expectations or it becomes opaque and hard to challenge.
 
-### 24. Multi-tenant operating model for Identity Kyc Aml Compliance Governed Model
+**Improvement:** Expand `identity_kyc_aml_compliance_risk_score` into a factor model that records the contribution of geography, customer type, product risk, ownership risk, screening severity, and monitoring history at the `kyc_profile` level.
 
-**Justification:** The PBC should scale across organizations while preserving independent policy and compliance boundaries.
+**Acceptance evidence:** Factor-level score explanations in the workbench, calibration tests for low, medium, and high-risk profiles, and release evidence showing the active factor model version.
 
-**Improvement:** Support tenant-specific `identity_kyc_aml_compliance_governed_model` rules, data residency, encryption context, configuration, seed data, and release evidence without allowing cross-tenant leakage. Tie the behavior to `identity_kyc_aml_compliance_record_identity_document_workflow` where applicable, and make it visible in `IdentityKycAmlComplianceWorkbench` so operators do not need hidden scripts or raw table access.
+**Current Domain Evidence Used:** `kyc_profile`, `identity_kyc_aml_compliance_risk_score`, `identity_kyc_aml_compliance_predictive_risk_scoring`, `IdentityKycAmlComplianceWorkbench`, `RELEASE_EVIDENCE.md`
 
-**Acceptance evidence:** Tenant isolation tests, tenant-scoped parameters, key-rotation evidence, and cross-tenant negative fixtures. The evidence should be package-local in `src/pyAppGen/pbcs/identity_kyc_aml_compliance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 17. Risk score explainability and challenge flow
 
-### 25. Schema evolution and extension registry for Kyc Profile
+**Key:** `identity_kyc_aml_compliance_risk_score_explainability_and_challenge_flow`
 
-**Justification:** Domain teams will add fields; the PBC must evolve without breaking APIs, events, or workbench projections.
+**Justification:** Compliance teams need to challenge or override risk scores with explicit rationale, especially when a profile is escalated or declined.
 
-**Improvement:** Make schema extensions for `kyc_profile` first-class with compatibility checks, migration previews, projection backfills, field ownership, and rollback metadata. Tie the behavior to `identity_kyc_aml_compliance_create_kyc_profile_workflow` where applicable, and make it visible in `IdentityKycAmlComplianceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add explainability and challenge controls so `compliance_review` can show factor contributions, analyst challenge notes, supervisor decisions, and the final approved score with override lineage.
 
-**Acceptance evidence:** Extension registry UI, compatibility tests, migration dry-runs, and backfill release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/identity_kyc_aml_compliance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Override tests proving no score challenge can close without reviewer evidence, detail views that show original and challenged scores, and release evidence listing open challenged-risk cases.
 
-### 26. Master data quality gates for Identity Document
+**Current Domain Evidence Used:** `compliance_review`, `identity_kyc_aml_compliance_risk_score`, `IdentityKycAmlComplianceDetail`, `IdentityKycAmlComplianceApproved`, `IdentityKycAmlComplianceUpdated`
 
-**Justification:** Many identity kyc aml compliance errors begin as bad reference data; the PBC should catch them before workflow execution.
+### 18. Periodic rescreening policy
 
-**Improvement:** Define reference-data contracts for `identity_document`: canonical codes, parties, locations, classifications, calendars, units, currencies, products, assets, or service categories as relevant to the domain. Tie the behavior to `identity_kyc_aml_compliance_record_identity_document_workflow` where applicable, and make it visible in `IdentityKycAmlComplianceWorkbench` so operators do not need hidden scripts or raw table access.
+**Key:** `identity_kyc_aml_compliance_periodic_rescreening_policy`
 
-**Acceptance evidence:** Reference validation fixtures, stale-code warnings, mapping tables, and dependency freshness indicators. The evidence should be package-local in `src/pyAppGen/pbcs/identity_kyc_aml_compliance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Justification:** Ongoing monitoring is not only transaction-triggered; customers, owners, and controllers need periodic rescreening based on risk and jurisdiction.
 
-### 27. Bulk operations and correction workflows for Beneficial Owner
+**Improvement:** Add periodic rescreening schedules to `kyc_profile` and `beneficial_owner` records so the package can compute next-screening due dates by risk tier, customer type, and screening category.
 
-**Justification:** Enterprise-scale Identity KYC AML Compliance users cannot operate one record at a time.
+**Acceptance evidence:** Due-date calculations for low, medium, and high-risk profiles, workbench aging queues for overdue rescreens, and control failures when overdue profiles remain active without rescreening evidence.
 
-**Improvement:** Add bulk load, bulk validate, bulk approve, and bulk correction workflows for `beneficial_owner` with partial success, row-level errors, resumability, and rollback. Tie the behavior to `identity_kyc_aml_compliance_create_kyc_profile_workflow` where applicable, and make it visible in `IdentityKycAmlComplianceWorkbench` so operators do not need hidden scripts or raw table access.
+**Current Domain Evidence Used:** `kyc_profile`, `beneficial_owner`, `screening_hit`, `identity_kyc_aml_compliance_runtime_parameter`, `IdentityKycAmlComplianceWorkbench`, `identity_kyc_aml_compliance_continuous_control_testing`
 
-**Acceptance evidence:** CSV/API batch fixtures, resumable job state, row-level audit evidence, and assistant-generated correction suggestions. The evidence should be package-local in `src/pyAppGen/pbcs/identity_kyc_aml_compliance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 19. Event-driven rescreening handlers
 
-### 28. Lifecycle collaboration and tasking for Screening Hit
+**Key:** `identity_kyc_aml_compliance_event_driven_rescreening_handlers`
 
-**Justification:** Domain collaboration should live inside the PBC boundary and remain auditable with the record it affects.
+**Justification:** Policy changes, audit findings, and operational risk shifts should trigger targeted rescreening without relying on manual spreadsheets.
 
-**Improvement:** Attach tasks, comments, ownership, due dates, handoffs, and escalation threads to `screening_hit` without leaking into external shared task tables. Tie the behavior to `identity_kyc_aml_compliance_record_identity_document_workflow` where applicable, and make it visible in `IdentityKycAmlComplianceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Implement inbox handlers that react to `PolicyChanged`, `AuditEventSealed`, and `OperationalKpiChanged` by recalculating screening obligations, opening monitoring alerts, or scheduling immediate rescreening where required.
 
-**Acceptance evidence:** Task tables, comment audit history, notification events, escalation SLAs, and role-specific task queues. The evidence should be package-local in `src/pyAppGen/pbcs/identity_kyc_aml_compliance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Idempotent handler tests for repeated inbound events, event lineage from inbox to alert or review action, and release evidence mapping active rescreening triggers to the consumed events that caused them.
 
-### 29. SLA and service-level governance for Monitoring Alert
+**Current Domain Evidence Used:** `PolicyChanged`, `AuditEventSealed`, `OperationalKpiChanged`, `appgen_x_outbox_inbox_eventing`, `idempotent_handlers`, `monitoring_alert`
 
-**Justification:** Users need to know when customer onboarding, identity proofing, beneficial ownership, screening, transaction monitoring, suspicious activity, and compliance cases is late, blocked, or at risk before customer or regulator impact.
+### 20. Monitoring alert intake and triage
 
-**Improvement:** Define SLAs for `monitoring_alert` across intake, validation, approval, exception resolution, event handling, downstream projection refresh, and release-evidence generation. Tie the behavior to `identity_kyc_aml_compliance_create_kyc_profile_workflow` where applicable, and make it visible in `IdentityKycAmlComplianceWorkbench` so operators do not need hidden scripts or raw table access.
+**Key:** `identity_kyc_aml_compliance_monitoring_alert_intake_and_triage`
 
-**Acceptance evidence:** SLA breach events, timers, configurable calendars, workbench aging buckets, and tests for pause/resume behavior. The evidence should be package-local in `src/pyAppGen/pbcs/identity_kyc_aml_compliance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Justification:** Ongoing AML monitoring generates alerts that need structured triage rather than free-text queues or email handoffs.
 
-### 30. Operational analytics cockpit for Suspicious Activity Case
+**Improvement:** Expand `monitoring_alert` with source type, typology, severity, related profile, related owner, review SLA, analyst assignment, and preliminary disposition so alert operations can prioritize work consistently.
 
-**Justification:** World-class operations require leading indicators, not only record counts.
+**Acceptance evidence:** Alert triage queues in `IdentityKycAmlComplianceWorkbench`, SLA and severity tests for generated alerts, and exception evidence when high-severity alerts remain unassigned past their due window.
 
-**Improvement:** Build analytics for `suspicious_activity_case`: throughput, backlog, aging, approval latency, exception rate, risk distribution, automation acceptance, correction rate, and downstream dependency health. Tie the behavior to `identity_kyc_aml_compliance_record_identity_document_workflow` where applicable, and make it visible in `IdentityKycAmlComplianceWorkbench` so operators do not need hidden scripts or raw table access.
+**Current Domain Evidence Used:** `monitoring_alert`, `POST /monitoring-alerts`, `GET /identity-kyc-aml-compliance-workbench`, `IdentityKycAmlComplianceWorkbench`, `IdentityKycAmlComplianceExceptionOpened`
 
-**Acceptance evidence:** Metric definitions, projection tests, drill-through routes, export APIs, and anomaly overlays. The evidence should be package-local in `src/pyAppGen/pbcs/identity_kyc_aml_compliance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 21. Alert-to-case promotion boundary
 
-### 31. Decision intelligence and recommendations for Compliance Review
+**Key:** `identity_kyc_aml_compliance_alert_to_case_promotion_boundary`
 
-**Justification:** The PBC should help expert users decide faster while showing evidence and uncertainty.
+**Justification:** Not every monitoring alert becomes a suspicious activity case; the package needs explicit promotion rules and evidence to explain when that threshold was crossed.
 
-**Improvement:** Generate ranked recommendations for `compliance_review` such as next best action, likely resolution, required evidence, policy adjustment, staffing/capacity response, or downstream handoff. Tie the behavior to `identity_kyc_aml_compliance_create_kyc_profile_workflow` where applicable, and make it visible in `IdentityKycAmlComplianceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add promotion controls between `monitoring_alert` and `suspicious_activity_case` so analysts must record typology, materiality, related evidence, and reviewer confirmation when opening a case from an alert.
 
-**Acceptance evidence:** Recommendation explanations, confidence intervals, feedback capture, model governance records, and rejection reasons. The evidence should be package-local in `src/pyAppGen/pbcs/identity_kyc_aml_compliance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Promotion tests that distinguish closed alerts from case-worthy alerts, detail views showing the alert-to-case lineage, and release evidence confirming that every open suspicious activity case traces back to a trigger path.
 
-### 32. Quality and completeness scoring for Identity Kyc Aml Compliance Policy Rule
+**Current Domain Evidence Used:** `monitoring_alert`, `suspicious_activity_case`, `IdentityKycAmlComplianceDetail`, `IdentityKycAmlComplianceExceptionOpened`, `identity_kyc_aml_compliance_event_sourced_operational_history`
 
-**Justification:** Operators should see whether a record is truly ready, not just technically saved.
+### 22. Suspicious activity case lifecycle
 
-**Improvement:** Score each `identity_kyc_aml_compliance_policy_rule` record for completeness, consistency, policy readiness, dependency readiness, evidence sufficiency, and downstream composability. Tie the behavior to `identity_kyc_aml_compliance_record_identity_document_workflow` where applicable, and make it visible in `IdentityKycAmlComplianceWorkbench` so operators do not need hidden scripts or raw table access.
+**Key:** `identity_kyc_aml_compliance_suspicious_activity_case_lifecycle`
 
-**Acceptance evidence:** Scoring rules, missing-evidence lists, readiness badges, and blocking criteria in command handlers. The evidence should be package-local in `src/pyAppGen/pbcs/identity_kyc_aml_compliance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Justification:** AML casework needs explicit states for investigation, escalation, filing preparation, hold, closure, and post-filing review so teams can prove why action was or was not taken.
 
-### 33. End-to-end scenario library for Identity Kyc Aml Compliance Runtime Parameter
+**Improvement:** Add a lifecycle for `suspicious_activity_case` covering opened, under investigation, pending filing decision, filed, no-file with rationale, law-enforcement hold, and closed states with required evidence at each stage.
 
-**Justification:** Release evidence is stronger when every important identity kyc aml compliance behavior has executable examples.
+**Acceptance evidence:** Case-state transition tests, visible timeline views in `IdentityKycAmlComplianceDetail`, and release evidence showing open-case counts by state and aging.
 
-**Improvement:** Create seeded scenarios for `identity_kyc_aml_compliance_runtime_parameter`: normal flow, urgent path, exception path, corrected path, duplicate path, late event path, and audit export path. Tie the behavior to `identity_kyc_aml_compliance_create_kyc_profile_workflow` where applicable, and make it visible in `IdentityKycAmlComplianceWorkbench` so operators do not need hidden scripts or raw table access.
+**Current Domain Evidence Used:** `suspicious_activity_case`, `compliance_review`, `IdentityKycAmlComplianceDetail`, `IdentityKycAmlComplianceUpdated`, `RELEASE_EVIDENCE.md`
 
-**Acceptance evidence:** Scenario seed data, runtime smoke coverage, generated-app fixtures, and story-level workbench screenshots/contracts. The evidence should be package-local in `src/pyAppGen/pbcs/identity_kyc_aml_compliance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 23. SAR and STR narrative plus filing boundary
 
-### 34. Domain ontology and terminology model for Identity Kyc Aml Compliance Schema Extension
+**Key:** `identity_kyc_aml_compliance_sar_and_str_narrative_plus_filing_boundary`
 
-**Justification:** Precise vocabulary prevents the PBC from misclassifying specialist documents or user instructions.
+**Justification:** Suspicious activity narratives are sensitive and should be prepared, reviewed, and disclosed through a tightly controlled filing boundary distinct from general analyst notes.
 
-**Improvement:** Add an ontology for `identity_kyc_aml_compliance_schema_extension` terms, synonyms, classifications, relationships, allowed values, and phrase mappings used by the assistant and UI. Tie the behavior to `identity_kyc_aml_compliance_record_identity_document_workflow` where applicable, and make it visible in `IdentityKycAmlComplianceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add a restricted filing workspace on `suspicious_activity_case` for narrative drafting, supporting evidence selection, filing status, supervisory approval, and post-filing access controls without exposing the narrative to ordinary workbench roles.
 
-**Acceptance evidence:** Ontology files, assistant parsing tests, UI glossary, and mapping evidence for domain-specific abbreviations. The evidence should be package-local in `src/pyAppGen/pbcs/identity_kyc_aml_compliance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Restricted-access UI states for case narratives, filing decision tests that enforce supervisory approval, and release evidence proving filing artifacts are excluded from broad analyst exports unless explicitly authorized.
 
-### 35. Advanced search and investigation for Identity Kyc Aml Compliance Control Assertion
+**Current Domain Evidence Used:** `suspicious_activity_case`, `compliance_review`, `IdentityKycAmlComplianceDetail`, `permissions`, `RELEASE_EVIDENCE.md`
 
-**Justification:** Investigators and operators need fast, explainable retrieval across the whole domain surface.
+### 24. Maker-checker and approval chain
 
-**Improvement:** Provide search across `identity_kyc_aml_compliance_control_assertion` records, events, documents, exceptions, tasks, comments, and audit proofs with filters for tenant, status, risk, date, party, and dependency. Tie the behavior to `identity_kyc_aml_compliance_create_kyc_profile_workflow` where applicable, and make it visible in `IdentityKycAmlComplianceWorkbench` so operators do not need hidden scripts or raw table access.
+**Key:** `identity_kyc_aml_compliance_maker_checker_and_approval_chain`
 
-**Acceptance evidence:** Search index contracts, result provenance, permission-filtered queries, and stale-index warnings. The evidence should be package-local in `src/pyAppGen/pbcs/identity_kyc_aml_compliance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Justification:** KYC approvals, EDD signoff, sanctions resolution, and suspicious activity filing decisions need dual control to reduce error and misconduct risk.
 
-### 36. Reconciliation and closure controls for Identity Kyc Aml Compliance Governed Model
+**Improvement:** Expand `compliance_review` so the package records preparer, reviewer, approver, approval level, delegated authority, and segregation-of-duties checks for high-impact decisions.
 
-**Justification:** Closure is not complete until the PBC can prove no material domain work remains unresolved.
+**Acceptance evidence:** Approval-chain tests preventing self-approval on high-risk decisions, review history in `IdentityKycAmlComplianceDetail`, and control assertions that fail when approvals violate policy.
 
-**Improvement:** Add reconciliation workflows that compare `identity_kyc_aml_compliance_governed_model` state against consumed events, external projections, expected totals/counts, approvals, and release evidence before closure. Tie the behavior to `identity_kyc_aml_compliance_record_identity_document_workflow` where applicable, and make it visible in `IdentityKycAmlComplianceWorkbench` so operators do not need hidden scripts or raw table access.
+**Current Domain Evidence Used:** `compliance_review`, `permissions`, `identity_kyc_aml_compliance_control_assertion`, `IdentityKycAmlComplianceDetail`, `IdentityKycAmlComplianceApproved`
 
-**Acceptance evidence:** Reconciliation reports, variance thresholds, closure blockers, and AppGen-X closure events. The evidence should be package-local in `src/pyAppGen/pbcs/identity_kyc_aml_compliance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 25. Privacy, consent, and lawful basis tracking
 
-### 37. Regulatory and policy reporting for Kyc Profile
+**Key:** `identity_kyc_aml_compliance_privacy_consent_and_lawful_basis_tracking`
 
-**Justification:** World-class PBCs turn operational evidence into credible reporting without spreadsheet reconstruction.
+**Justification:** KYC and AML processing is legally justified but still needs explicit data-use basis, consent capture where relevant, and purpose boundaries for personal data handling.
 
-**Improvement:** Generate domain reporting packs for `kyc_profile` covering statutory, contractual, operational, board, customer, or regulator evidence depending on monetary integrity, funds movement controls, counterparty risk, regulatory evidence, settlement finality, fraud prevention, and financial reconciliation. Tie the behavior to `identity_kyc_aml_compliance_create_kyc_profile_workflow` where applicable, and make it visible in `IdentityKycAmlComplianceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add purpose, lawful basis, consent status where applicable, and disclosure restrictions to `kyc_profile` and `identity_document` handling so operators can distinguish mandatory compliance processing from optional outreach or enrichment.
 
-**Acceptance evidence:** Report schemas, redaction rules, traceable metric sources, and approval/export audit events. The evidence should be package-local in `src/pyAppGen/pbcs/identity_kyc_aml_compliance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Data-use tests for mandatory compliance versus optional processing, masked views for consent-restricted fields, and release evidence showing lawful-basis coverage for all stored customer identity fields.
 
-### 38. Carbon and resource awareness for Identity Document
+**Current Domain Evidence Used:** `kyc_profile`, `identity_document`, `permissions`, `IdentityKycAmlComplianceWorkbench`, `RELEASE_EVIDENCE.md`
 
-**Justification:** Sustainability evidence should be embedded in operations instead of treated as an after-the-fact report.
+### 26. Retention and purge controls
 
-**Improvement:** Where relevant, attach carbon, energy, water, travel, capacity, compute, or resource-footprint metadata to `identity_document` decisions and batch operations. Tie the behavior to `identity_kyc_aml_compliance_record_identity_document_workflow` where applicable, and make it visible in `IdentityKycAmlComplianceWorkbench` so operators do not need hidden scripts or raw table access.
+**Key:** `identity_kyc_aml_compliance_retention_and_purge_controls`
 
-**Acceptance evidence:** Footprint fields, scheduling parameters, exception rules, and dashboards that expose operational tradeoffs. The evidence should be package-local in `src/pyAppGen/pbcs/identity_kyc_aml_compliance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Justification:** KYC and AML records often have long retention windows, but expired records still need governed purge or archive actions with hold support.
 
-### 39. Resilience and offline behavior for Beneficial Owner
+**Improvement:** Add retention schedules and purge-readiness controls across `kyc_profile`, `identity_document`, `screening_hit`, `monitoring_alert`, and `suspicious_activity_case`, including legal-hold and investigation-hold blockers.
 
-**Justification:** Real operations keep moving during outages; the PBC must preserve correctness when dependencies are unavailable.
+**Acceptance evidence:** Retention-rule tests across active, closed, and held records, purge-readiness dashboards in the workbench, and release evidence showing records under hold are excluded from purge jobs.
 
-**Improvement:** Define resilience modes for `beneficial_owner`: degraded dependency mode, offline draft capture, delayed event replay, conflict detection, and safe recovery after partial failure. Tie the behavior to `identity_kyc_aml_compliance_create_kyc_profile_workflow` where applicable, and make it visible in `IdentityKycAmlComplianceWorkbench` so operators do not need hidden scripts or raw table access.
+**Current Domain Evidence Used:** `kyc_profile`, `identity_document`, `screening_hit`, `monitoring_alert`, `suspicious_activity_case`, `identity_kyc_aml_compliance_control_assertion`
 
-**Acceptance evidence:** Offline fixtures, replay tests, conflict queues, recovery logs, and user-visible degraded-mode warnings. The evidence should be package-local in `src/pyAppGen/pbcs/identity_kyc_aml_compliance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 27. Redaction and need-to-know exports
 
-### 40. Human-in-the-loop automation for Screening Hit
+**Key:** `identity_kyc_aml_compliance_redaction_and_need_to_know_exports`
 
-**Justification:** Automation should accelerate customer onboarding, identity proofing, beneficial ownership, screening, transaction monitoring, suspicious activity, and compliance cases while preserving accountability for high-risk decisions.
+**Justification:** Compliance teams need to share screening, monitoring, and case evidence while minimizing exposure of identity data, narrative text, and restricted filing information.
 
-**Improvement:** Set explicit automation boundaries for `screening_hit`: auto-approve, auto-reject, suggest-only, require-review, and block-until-evidence states with policy-based routing. Tie the behavior to `identity_kyc_aml_compliance_record_identity_document_workflow` where applicable, and make it visible in `IdentityKycAmlComplianceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add export profiles with role-based redaction for `identity_document`, `screening_hit`, `monitoring_alert`, and `suspicious_activity_case`, preserving traceability while masking fields outside the recipient's need-to-know scope.
 
-**Acceptance evidence:** Automation policy tests, reviewer queues, override reasons, and assistant action audit trails. The evidence should be package-local in `src/pyAppGen/pbcs/identity_kyc_aml_compliance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Export previews showing masked and unmasked variants, permission tests for restricted case data, and release evidence proving exported packets preserve references without leaking redacted values.
 
-### 41. Package discovery and fit scoring for Monitoring Alert
+**Current Domain Evidence Used:** `identity_document`, `screening_hit`, `monitoring_alert`, `suspicious_activity_case`, `permissions`, `RELEASE_EVIDENCE.md`
 
-**Justification:** Users selecting PBCs need transparent fit reasoning, especially when domains are adjacent but not overlapping.
+### 28. Jurisdiction and country-risk matrix
 
-**Improvement:** Improve package metadata so composition can explain when `identity_kyc_aml_compliance` fits a prompt, what entities it owns, what APIs/events it exposes, and what adjacent PBCs it depends on. Tie the behavior to `identity_kyc_aml_compliance_create_kyc_profile_workflow` where applicable, and make it visible in `IdentityKycAmlComplianceWorkbench` so operators do not need hidden scripts or raw table access.
+**Key:** `identity_kyc_aml_compliance_jurisdiction_and_country_risk_matrix`
 
-**Acceptance evidence:** Discovery manifests, prompt-selection tests, overlap rationale links, and composition DSL examples. The evidence should be package-local in `src/pyAppGen/pbcs/identity_kyc_aml_compliance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Justification:** Geography drives onboarding requirements, EDD thresholds, sanctions interpretation, and ongoing monitoring intensity.
 
-### 42. Configuration deployment pipeline for Suspicious Activity Case
+**Improvement:** Add a jurisdiction and country-risk matrix in `identity_kyc_aml_compliance_policy_rule` so `kyc_profile` and `beneficial_owner` reviews can apply geography-specific KYC requirements, screening strictness, and monitoring cadences.
 
-**Justification:** Configuration changes can materially alter identity kyc aml compliance; they need the same discipline as code releases.
+**Acceptance evidence:** Policy simulations for low and high-risk geographies, profile detail views showing which geography rules applied, and control failures when a profile lacks the jurisdiction data needed for the active matrix.
 
-**Improvement:** Add configuration promotion for `suspicious_activity_case` across draft, test, approved, active, deprecated, and rollback states with impact analysis before activation. Tie the behavior to `identity_kyc_aml_compliance_record_identity_document_workflow` where applicable, and make it visible in `IdentityKycAmlComplianceWorkbench` so operators do not need hidden scripts or raw table access.
+**Current Domain Evidence Used:** `kyc_profile`, `beneficial_owner`, `identity_kyc_aml_compliance_policy_rule`, `identity_kyc_aml_compliance_runtime_parameter`, `identity_kyc_aml_compliance_counterfactual_scenario_simulation`
 
-**Acceptance evidence:** Config diff views, approval workflows, simulation before activation, and rollback tests. The evidence should be package-local in `src/pyAppGen/pbcs/identity_kyc_aml_compliance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 29. Onboarding API idempotency
 
-### 43. Workbench command completeness for Compliance Review
+**Key:** `identity_kyc_aml_compliance_onboarding_api_idempotency`
 
-**Justification:** A PBC does not fully surface its capabilities if users must call hidden APIs for core work.
+**Justification:** Upstream onboarding systems retry requests; duplicate profile or document creation is unacceptable in a KYC boundary.
 
-**Improvement:** Expose every high-value operation for `compliance_review` in the UI: create, validate, approve, simulate, correct, assign, export, retry, close, and audit-proof verification. Tie the behavior to `identity_kyc_aml_compliance_create_kyc_profile_workflow` where applicable, and make it visible in `IdentityKycAmlComplianceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Enforce idempotent request handling across `POST /kyc-profiles`, `POST /identity-documents`, and `POST /beneficial-owners`, including request fingerprints, duplicate suppression, and conflict responses when a key is reused with different content.
 
-**Acceptance evidence:** UI action coverage tests, permission-aware disabled states, keyboard paths, and assistant handoff links. The evidence should be package-local in `src/pyAppGen/pbcs/identity_kyc_aml_compliance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** API tests proving safe retries and conflict detection, audit traces for deduplicated requests, and release evidence summarizing idempotency coverage for the write surface.
 
-### 44. Document packet and evidence vault for Identity Kyc Aml Compliance Policy Rule
+**Current Domain Evidence Used:** `POST /kyc-profiles`, `POST /identity-documents`, `POST /beneficial-owners`, `idempotent_handlers`, `continuous_release_assurance`, `RELEASE_EVIDENCE.md`
 
-**Justification:** Documents often carry the legal or operational truth behind customer onboarding, identity proofing, beneficial ownership, screening, transaction monitoring, suspicious activity, and compliance cases.
+### 30. Document submission file-safety gate
 
-**Improvement:** Create a governed evidence vault for `identity_kyc_aml_compliance_policy_rule` documents, attachments, source spans, extracted fields, signatures, approvals, and retention labels. Tie the behavior to `identity_kyc_aml_compliance_record_identity_document_workflow` where applicable, and make it visible in `IdentityKycAmlComplianceWorkbench` so operators do not need hidden scripts or raw table access.
+**Key:** `identity_kyc_aml_compliance_document_submission_file_safety_gate`
 
-**Acceptance evidence:** Evidence models, source-to-field lineage, signature validation, retention policies, and proof exports. The evidence should be package-local in `src/pyAppGen/pbcs/identity_kyc_aml_compliance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Justification:** Identity-document uploads are a common path for malformed, duplicated, or unsafe files that can pollute evidence or create operational risk.
 
-### 45. Data correction and amendment history for Identity Kyc Aml Compliance Runtime Parameter
+**Improvement:** Add file-safety checks around `POST /identity-documents` for allowed types, duplicate uploads, hash tracking, page completeness, and quarantine states before a document can participate in KYC decisions.
 
-**Justification:** World-class systems correct mistakes without rewriting history or confusing downstream consumers.
+**Acceptance evidence:** Upload fixtures for valid, duplicate, incomplete, and quarantined files, detail views showing file-safety status, and release evidence proving quarantined files cannot satisfy approval requirements.
 
-**Improvement:** Support formal amendments for `identity_kyc_aml_compliance_runtime_parameter` that preserve original values, correction reason, approving actor, effective date, downstream event impacts, and replay behavior. Tie the behavior to `identity_kyc_aml_compliance_create_kyc_profile_workflow` where applicable, and make it visible in `IdentityKycAmlComplianceWorkbench` so operators do not need hidden scripts or raw table access.
+**Current Domain Evidence Used:** `POST /identity-documents`, `identity_document`, `IdentityKycAmlComplianceDetail`, `IdentityKycAmlComplianceExceptionOpened`, `RELEASE_EVIDENCE.md`
 
-**Acceptance evidence:** Amendment tables, correction events, projection replay tests, and side-by-side before/after UI. The evidence should be package-local in `src/pyAppGen/pbcs/identity_kyc_aml_compliance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 31. Beneficial owner bulk update lineage
 
-### 46. External participant collaboration for Identity Kyc Aml Compliance Schema Extension
+**Key:** `identity_kyc_aml_compliance_beneficial_owner_bulk_update_lineage`
 
-**Justification:** Many identity kyc aml compliance workflows require outside parties, but they must not gain direct access to internal tables.
+**Justification:** Entity structures change in batches during annual reviews, reorganizations, and remediation; bulk updates need row-level lineage and partial-failure handling.
 
-**Improvement:** Add controlled collaboration portals or API views for external participants related to `identity_kyc_aml_compliance_schema_extension`, limited to scoped evidence submission, status checks, comments, and dispute responses. Tie the behavior to `identity_kyc_aml_compliance_record_identity_document_workflow` where applicable, and make it visible in `IdentityKycAmlComplianceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add governed bulk operations for `beneficial_owner` that preserve who changed each owner record, what percentage or control fact changed, and which downstream screening or review tasks were reopened.
 
-**Acceptance evidence:** Participant role policies, scoped tokens, submission audit trails, and inbound evidence validation. The evidence should be package-local in `src/pyAppGen/pbcs/identity_kyc_aml_compliance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Bulk update fixtures with mixed success and failure rows, lineage views for before and after ownership structures, and release evidence showing reopened screening obligations after a bulk change.
 
-### 47. Advanced dependency freshness scoring for Identity Kyc Aml Compliance Control Assertion
+**Current Domain Evidence Used:** `beneficial_owner`, `POST /beneficial-owners`, `IdentityKycAmlComplianceDetail`, `IdentityKycAmlComplianceUpdated`, `identity_kyc_aml_compliance_event_sourced_operational_history`
 
-**Justification:** A record may be valid locally but unsafe if dependency evidence is stale or incomplete.
+### 32. Screening-hit event contracts
 
-**Improvement:** Score freshness and reliability of dependencies used by `identity_kyc_aml_compliance_control_assertion`, including consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, referenced projections, configuration versions, and external submissions. Tie the behavior to `identity_kyc_aml_compliance_create_kyc_profile_workflow` where applicable, and make it visible in `IdentityKycAmlComplianceWorkbench` so operators do not need hidden scripts or raw table access.
+**Key:** `identity_kyc_aml_compliance_screening_hit_event_contracts`
 
-**Acceptance evidence:** Freshness indicators, blocking rules, stale-event simulations, and workbench dependency health panels. The evidence should be package-local in `src/pyAppGen/pbcs/identity_kyc_aml_compliance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Justification:** Downstream consumers need precise signals when a screening result is created, updated, resolved, or escalated; generic package-level events are too coarse for operational routing.
 
-### 48. Model governance and explainability for Identity Kyc Aml Compliance Governed Model
+**Improvement:** Extend emitted-event coverage so `screening_hit` changes produce typed, versioned payloads tied back to the package-level event stream without leaking fields that belong only inside the KYC boundary.
 
-**Justification:** Governed AI is mandatory for professional-grade automation in Identity KYC AML Compliance.
+**Acceptance evidence:** Event-schema compatibility tests, release evidence with example emitted payloads and version notes, and proof that screening lifecycle changes can be reconstructed without direct table reads.
 
-**Improvement:** For every predictive or agentic feature around `identity_kyc_aml_compliance_governed_model`, record model version, prompt or ruleset version, training/evaluation evidence, confidence, explanation, and human feedback. Tie the behavior to `identity_kyc_aml_compliance_record_identity_document_workflow` where applicable, and make it visible in `IdentityKycAmlComplianceWorkbench` so operators do not need hidden scripts or raw table access.
+**Current Domain Evidence Used:** `screening_hit`, `IdentityKycAmlComplianceCreated`, `IdentityKycAmlComplianceUpdated`, `IdentityKycAmlComplianceExceptionOpened`, `RELEASE_EVIDENCE.md`
 
-**Acceptance evidence:** Model cards, prompt/version manifests, feedback loops, drift tests, and audit proof for recommendations. The evidence should be package-local in `src/pyAppGen/pbcs/identity_kyc_aml_compliance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 33. Ongoing monitoring events and projections
 
-### 49. High-scale partitioning and archival for Kyc Profile
+**Key:** `identity_kyc_aml_compliance_ongoing_monitoring_events_and_projections`
 
-**Justification:** Better-than-world-class packages must remain operable after years of high-volume domain history.
+**Justification:** Monitoring programs need fresh projections for queue operations, trend review, and executive oversight rather than direct reads against raw alerts and cases.
 
-**Improvement:** Plan scale behavior for `kyc_profile`: tenant partitioning, archival policies, cold storage, retention-aware search, projection compaction, and large-batch replay. Tie the behavior to `identity_kyc_aml_compliance_create_kyc_profile_workflow` where applicable, and make it visible in `IdentityKycAmlComplianceWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Build dedicated projections for `monitoring_alert` and `suspicious_activity_case` covering queue state, severity, aging, typology, filing stage, and backlog risk while preserving event-sourced lineage.
 
-**Acceptance evidence:** Partition tests, archive/retrieve fixtures, retention enforcement, and replay benchmarks. The evidence should be package-local in `src/pyAppGen/pbcs/identity_kyc_aml_compliance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Projection freshness indicators in `IdentityKycAmlComplianceWorkbench`, replay tests validating projection rebuilds, and release evidence showing the current projection lag and coverage.
 
-### 50. Release gate expansion for Identity Document
+**Current Domain Evidence Used:** `monitoring_alert`, `suspicious_activity_case`, `IdentityKycAmlComplianceWorkbench`, `identity_kyc_aml_compliance_event_sourced_operational_history`, `OperationalKpiChanged`
 
-**Justification:** The PBC should not claim domain coverage unless release evidence proves the claim end to end.
+### 34. Inbound policy, audit, and KPI boundary
 
-**Improvement:** Expand release gates for `identity_kyc_aml_compliance` so every schema, service, API, event, handler, UI, rule, parameter, agent skill, seed scenario, and improvement backlog item maps to executable evidence. Tie the behavior to `identity_kyc_aml_compliance_record_identity_document_workflow` where applicable, and make it visible in `IdentityKycAmlComplianceWorkbench` so operators do not need hidden scripts or raw table access.
+**Key:** `identity_kyc_aml_compliance_inbound_policy_audit_and_kpi_boundary`
 
-**Acceptance evidence:** Release audit checks, manifest traceability, generated-app smoke tests, and missing-capability blockers. The evidence should be package-local in `src/pyAppGen/pbcs/identity_kyc_aml_compliance` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Justification:** This package should consume policy, audit, and KPI signals through declared event boundaries only, not hidden foreign-table dependencies.
+
+**Improvement:** Harden inbound handlers so policy changes, sealed audit events, and KPI changes enter through `appgen_x_outbox_inbox_eventing`, update local projections, and create local review tasks or alerts without crossing the owned boundary.
+
+**Acceptance evidence:** Boundary tests failing on direct foreign-table access, inbox reprocessing tests for repeated events, and release evidence documenting each consumed event contract and handler side effect.
+
+**Current Domain Evidence Used:** `PolicyChanged`, `AuditEventSealed`, `OperationalKpiChanged`, `appgen_x_outbox_inbox_eventing`, `idempotent_handlers`, `retry_dead_letter_evidence`
+
+### 35. Dead-letter recovery console
+
+**Key:** `identity_kyc_aml_compliance_dead_letter_recovery_console`
+
+**Justification:** Failed inbound handlers can silently stop rescreening, alert creation, or control updates unless operations have a recovery surface tied to the KYC domain.
+
+**Improvement:** Add a recovery console for dead-lettered KYC or AML events with root-cause tagging, replay safety, related profile or case context, and post-replay verification of local projections.
+
+**Acceptance evidence:** Replay tests for failed policy and KPI events, workbench visibility into pending dead letters, and release evidence listing unresolved dead-letter items before package approval.
+
+**Current Domain Evidence Used:** `retry_dead_letter_evidence`, `IdentityKycAmlComplianceWorkbench`, `IdentityKycAmlComplianceAssistantPanel`, `PolicyChanged`, `OperationalKpiChanged`
+
+### 36. Rule simulation and impact preview
+
+**Key:** `identity_kyc_aml_compliance_rule_simulation_and_impact_preview`
+
+**Justification:** Screening thresholds, EDD triggers, and risk-score factors change often; operations need to see how many profiles, alerts, and cases a rule change would affect before activation.
+
+**Improvement:** Use `identity_kyc_aml_compliance_counterfactual_scenario_simulation` to preview policy-rule changes against existing `kyc_profile`, `screening_hit`, and `monitoring_alert` records, including projected backlog and approval effects.
+
+**Acceptance evidence:** Policy simulations with before and after counts, configuration workbench diff views, and release evidence requiring approved previews for high-impact rule changes.
+
+**Current Domain Evidence Used:** `identity_kyc_aml_compliance_policy_rule`, `identity_kyc_aml_compliance_counterfactual_scenario_simulation`, `kyc_profile`, `screening_hit`, `monitoring_alert`, `configuration_workbench`
+
+### 37. Runtime parameter guardrails
+
+**Key:** `identity_kyc_aml_compliance_runtime_parameter_guardrails`
+
+**Justification:** Alert thresholds, risk-score bands, and screening match tolerances are operationally sensitive; unsafe parameter edits can flood queues or suppress real risk.
+
+**Improvement:** Add bounded parameter ranges, approval requirements, simulation-before-activation, and rollback metadata for `identity_kyc_aml_compliance_runtime_parameter` so operators can tune the system without creating unbounded effects.
+
+**Acceptance evidence:** Parameter validation tests for unsafe edits, approval-chain evidence for high-impact changes, and workbench views showing the active and prior parameter set with rollback options.
+
+**Current Domain Evidence Used:** `identity_kyc_aml_compliance_runtime_parameter`, `configuration_workbench`, `identity_kyc_aml_compliance_counterfactual_scenario_simulation`, `IdentityKycAmlComplianceApproved`, `IdentityKycAmlComplianceWorkbench`
+
+### 38. Continuous control assertions
+
+**Key:** `identity_kyc_aml_compliance_continuous_control_assertions`
+
+**Justification:** KYC and AML controls should continuously test for overdue rescreens, unresolved sanctions hits, missing EDD evidence, stale monitoring queues, and broken approval chains.
+
+**Improvement:** Expand `identity_kyc_aml_compliance_control_assertion` into a reusable control library that evaluates onboarding completeness, screening closure, monitoring aging, case segregation of duties, and release readiness.
+
+**Acceptance evidence:** Scheduled control runs with failing and passing examples, workbench surfacing of active control failures, and release evidence blocking shipment when critical compliance controls are red.
+
+**Current Domain Evidence Used:** `identity_kyc_aml_compliance_control_assertion`, `identity_kyc_aml_compliance_continuous_control_testing`, `IdentityKycAmlComplianceWorkbench`, `continuous_release_assurance`, `RELEASE_EVIDENCE.md`
+
+### 39. Cryptographic audit proofs
+
+**Key:** `identity_kyc_aml_compliance_cryptographic_audit_proofs`
+
+**Justification:** Sensitive KYC and AML actions need tamper-evident proof for documents, screening decisions, monitoring alerts, and suspicious activity case handling.
+
+**Improvement:** Apply `identity_kyc_aml_compliance_cryptographic_audit_proofs` to high-impact mutations so the package can verify the integrity of identity, screening, and case evidence without exposing the full underlying payload.
+
+**Acceptance evidence:** Proof verification flows for sample approvals and case updates, release evidence showing proof generation for regulated actions, and control failures when proof coverage is missing from required action types.
+
+**Current Domain Evidence Used:** `identity_kyc_aml_compliance_cryptographic_audit_proofs`, `identity_document`, `screening_hit`, `monitoring_alert`, `suspicious_activity_case`, `RELEASE_EVIDENCE.md`
+
+### 40. Release evidence pack
+
+**Key:** `identity_kyc_aml_compliance_release_evidence_pack`
+
+**Justification:** A compliance package needs a release pack that proves policy versions, event contracts, control status, dead-letter health, and UI coverage at release time.
+
+**Improvement:** Extend `RELEASE_EVIDENCE.md` so every release records active policy and parameter versions, event schema compatibility, control status, unresolved alerts or cases, and screenshots or route checks for the analyst surfaces.
+
+**Acceptance evidence:** A complete release packet with policy, control, queue, and event evidence, automated failure when mandatory release sections are missing, and signoff linkage to `continuous_release_assurance`.
+
+**Current Domain Evidence Used:** `RELEASE_EVIDENCE.md`, `continuous_release_assurance`, `identity_kyc_aml_compliance_policy_rule`, `identity_kyc_aml_compliance_runtime_parameter`, `identity_kyc_aml_compliance_control_assertion`
+
+### 41. Analyst queue workbench
+
+**Key:** `identity_kyc_aml_compliance_analyst_queue_workbench`
+
+**Justification:** KYC and AML analysts need prioritized queues for onboarding reviews, screening hits, overdue rescreens, and monitoring alerts instead of a generic single list.
+
+**Improvement:** Expand `IdentityKycAmlComplianceWorkbench` into role-specific queue views for new profiles, unresolved screening hits, EDD-required reviews, overdue periodic reviews, and high-severity alerts.
+
+**Acceptance evidence:** Role-specific queue screenshots or route tests, sorting and filtering evidence by severity and SLA, and release evidence proving each queue surface is shipped and permission-aware.
+
+**Current Domain Evidence Used:** `IdentityKycAmlComplianceWorkbench`, `kyc_profile`, `screening_hit`, `monitoring_alert`, `identity_kyc_aml_compliance_workbench_metric`, `RELEASE_EVIDENCE.md`
+
+### 42. Profile detail decision workspace
+
+**Key:** `identity_kyc_aml_compliance_profile_detail_decision_workspace`
+
+**Justification:** Profile decisions require one place to review identity documents, ownership, screening, risk score, controls, and review notes before approval.
+
+**Improvement:** Turn `IdentityKycAmlComplianceDetail` into a decision workspace that assembles `kyc_profile`, `identity_document`, `beneficial_owner`, `screening_hit`, and `compliance_review` evidence with approval and escalation actions.
+
+**Acceptance evidence:** Detail route tests showing all core evidence on one page, approval-button gating when required panels are incomplete, and release evidence proving the detail workspace reflects the current decision checklist.
+
+**Current Domain Evidence Used:** `IdentityKycAmlComplianceDetail`, `kyc_profile`, `identity_document`, `beneficial_owner`, `screening_hit`, `compliance_review`
+
+### 43. Monitoring operations workbench
+
+**Key:** `identity_kyc_aml_compliance_monitoring_operations_workbench`
+
+**Justification:** Ongoing AML monitoring teams need a separate operational view centered on alerts, typologies, SLA breaches, and escalation health.
+
+**Improvement:** Add a monitoring-operations surface within `IdentityKycAmlComplianceWorkbench` focused on `monitoring_alert` severity, typology, aging, analyst load, and alert-to-case conversion rates.
+
+**Acceptance evidence:** Monitoring dashboards with aging buckets and conversion funnels, queue tests for high-severity filtering, and release evidence covering the shipped monitoring operations surface.
+
+**Current Domain Evidence Used:** `IdentityKycAmlComplianceWorkbench`, `monitoring_alert`, `identity_kyc_aml_compliance_workbench_metric`, `OperationalKpiChanged`, `RELEASE_EVIDENCE.md`
+
+### 44. Suspicious activity case workbench
+
+**Key:** `identity_kyc_aml_compliance_suspicious_activity_case_workbench`
+
+**Justification:** Suspicious activity cases are a specialized workflow that needs case-state, filing-decision, and evidence-centric tooling beyond generic profile detail pages.
+
+**Improvement:** Add a case-management surface for `suspicious_activity_case` with investigation timeline, linked alerts, filing decision status, restricted narrative access, and case aging metrics.
+
+**Acceptance evidence:** Case-route coverage in the UI, state and aging filters for open investigations, and release evidence proving the case workbench respects restricted-access boundaries.
+
+**Current Domain Evidence Used:** `suspicious_activity_case`, `IdentityKycAmlComplianceWorkbench`, `IdentityKycAmlComplianceDetail`, `permissions`, `RELEASE_EVIDENCE.md`
+
+### 45. Document intake agent skill
+
+**Key:** `identity_kyc_aml_compliance_document_intake_agent_skill`
+
+**Justification:** Analysts spend time transcribing documents and checking completeness; the assistant should help prepare evidence without writing directly to governed data stores.
+
+**Improvement:** Add a governed document-intake skill in `IdentityKycAmlComplianceAssistantPanel` that uses `agentic_document_instruction_intake` and `identity_kyc_aml_compliance_semantic_document_instruction_understanding` to draft document metadata and missing-field prompts.
+
+**Acceptance evidence:** Assistant previews that show extracted fields before submission, permission tests proving no automatic mutation occurs without operator confirmation, and release evidence listing the document-intake skill and its guardrails.
+
+**Current Domain Evidence Used:** `IdentityKycAmlComplianceAssistantPanel`, `agentic_document_instruction_intake`, `identity_kyc_aml_compliance_semantic_document_instruction_understanding`, `ai_agent_task_assistance`, `identity_document`
+
+### 46. Screening triage agent skill
+
+**Key:** `identity_kyc_aml_compliance_screening_triage_agent_skill`
+
+**Justification:** Screening triage is repetitive but high-risk; the assistant should summarize matches, aliases, and prior decisions without being able to clear a hit by itself.
+
+**Improvement:** Add a triage skill that prepares `screening_hit` summaries, compares current and prior match evidence, and drafts analyst notes while requiring human confirmation for any disposition change.
+
+**Acceptance evidence:** Assistant-generated screening summaries linked from the workbench, tests proving the assistant cannot resolve a hit without an authorized reviewer, and release evidence documenting the skill's allowed and blocked actions.
+
+**Current Domain Evidence Used:** `IdentityKycAmlComplianceAssistantPanel`, `screening_hit`, `ai_agent_task_assistance`, `permissions`, `IdentityKycAmlComplianceExceptionOpened`
+
+### 47. Case-summary agent skill
+
+**Key:** `identity_kyc_aml_compliance_case_summary_agent_skill`
+
+**Justification:** Suspicious activity investigations need concise case summaries, but narrative preparation must stay within governed boundaries and restricted-access rules.
+
+**Improvement:** Add a case-summary skill that compiles alert lineage, profile context, ownership complexity, screening history, and review notes into a draft case brief for `suspicious_activity_case` without auto-filing or disclosing restricted narrative text.
+
+**Acceptance evidence:** Draft case briefs visible in `IdentityKycAmlComplianceAssistantPanel`, blocked-action tests for filing or closure attempts, and release evidence proving case-summary outputs remain review artifacts until approved.
+
+**Current Domain Evidence Used:** `IdentityKycAmlComplianceAssistantPanel`, `suspicious_activity_case`, `monitoring_alert`, `screening_hit`, `ai_agent_task_assistance`, `identity_kyc_aml_compliance_governed_ai_agent_execution`
+
+### 48. Governed model drift and feedback loop
+
+**Key:** `identity_kyc_aml_compliance_governed_model_drift_and_feedback_loop`
+
+**Justification:** Screening and risk models can drift, raising false positives or missing emerging risk patterns unless analyst feedback is captured and evaluated.
+
+**Improvement:** Use `identity_kyc_aml_compliance_governed_model` to track model version, drift indicators, analyst feedback, false positive rates, and retraining or rollback decisions for predictive risk and anomaly features.
+
+**Acceptance evidence:** Model-governance views showing version and drift status, feedback-linked tests for rollback triggers, and release evidence recording the active governed-model versions used in production.
+
+**Current Domain Evidence Used:** `identity_kyc_aml_compliance_governed_model`, `identity_kyc_aml_compliance_predictive_risk_scoring`, `identity_kyc_aml_compliance_autonomous_anomaly_detection`, `compliance_review`, `RELEASE_EVIDENCE.md`
+
+### 49. Multi-tenant policy isolation and residency
+
+**Key:** `identity_kyc_aml_compliance_multi_tenant_policy_isolation_and_residency`
+
+**Justification:** Compliance platforms serving multiple tenants need strict isolation for policy rules, runtime parameters, customer data, and jurisdiction-specific evidence.
+
+**Improvement:** Apply `identity_kyc_aml_compliance_multi_tenant_policy_isolation` so tenant policy sets, screening rules, runtime parameters, and profile data remain isolated, residency-aware, and separately auditable.
+
+**Acceptance evidence:** Cross-tenant negative tests for queue access and policy leakage, tenant-scoped configuration views, and release evidence showing isolation checks passed for data, policy, and assistant actions.
+
+**Current Domain Evidence Used:** `identity_kyc_aml_compliance_multi_tenant_policy_isolation`, `identity_kyc_aml_compliance_policy_rule`, `identity_kyc_aml_compliance_runtime_parameter`, `kyc_profile`, `permissions`, `RELEASE_EVIDENCE.md`
+
+### 50. End-to-end KYC and AML control test
+
+**Key:** `identity_kyc_aml_compliance_end_to_end_kyc_and_aml_control_test`
+
+**Justification:** The package should prove that a realistic onboarding flow can move from profile creation through document verification, ownership capture, screening, risk scoring, monitoring, and case promotion with evidence at each step.
+
+**Improvement:** Add a release-gated control test that runs a representative individual and entity scenario through `POST /kyc-profiles`, `POST /identity-documents`, `POST /beneficial-owners`, `POST /screening-hits`, `POST /monitoring-alerts`, the workbench surfaces, and the final approval or exception path.
+
+**Acceptance evidence:** Reproducible end-to-end control packs with emitted event traces, screenshots or route checks for `IdentityKycAmlComplianceWorkbench` and `IdentityKycAmlComplianceDetail`, and a final signoff entry in `RELEASE_EVIDENCE.md`.
+
+**Current Domain Evidence Used:** `POST /kyc-profiles`, `POST /identity-documents`, `POST /beneficial-owners`, `POST /screening-hits`, `POST /monitoring-alerts`, `IdentityKycAmlComplianceWorkbench`, `IdentityKycAmlComplianceDetail`, `RELEASE_EVIDENCE.md`

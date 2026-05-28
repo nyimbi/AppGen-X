@@ -1,418 +1,620 @@
-# Hospitality Property Operations PBC Better-Than-World-Class Improvement Backlog
+# Hospitality Property Operations PBC Manual Improvement Backlog
 
 ## Purpose
 
-This file identifies, justifies, and describes 50 high-impact improvements for `hospitality_property_operations`. The backlog is specific to rooms, reservations, housekeeping, guest service, occupancy, revenue controls, and property operations and is intended to move the PBC from release-auditable scaffolding toward complete, specialist-grade domain coverage.
+This strict backlog replaces generic roadmap material for `hospitality_property_operations` with a hand-curated hotel operations roadmap. The scope is the owned operating core for rooms, reservations, guest stays, housekeeping, guest requests, occupancy snapshots, rate controls, governed rules, agent assistance, and release evidence, without turning this context into the source of truth for guest master data, staffing systems, supplier master data, or external payment ledgers.
 
 ## Current Domain Evidence Used
 
 - Stable PBC key: `hospitality_property_operations`.
-- Domain purpose: Rooms, reservations, housekeeping, guest service, occupancy, revenue controls, and property operations.
+- Domain purpose: rooms, reservations, housekeeping, guest service, occupancy, revenue controls, and property operations.
 - Owned domain tables: `room_inventory`, `reservation`, `guest_stay`, `housekeeping_task`, `guest_request`, `occupancy_snapshot`, `rate_plan`, `hospitality_property_operations_policy_rule`, `hospitality_property_operations_runtime_parameter`, `hospitality_property_operations_schema_extension`, `hospitality_property_operations_control_assertion`, `hospitality_property_operations_governed_model`.
 - Public APIs: `POST /room-inventorys`, `POST /reservations`, `POST /guest-stays`, `POST /housekeeping-tasks`, `POST /guest-requests`, `GET /hospitality-property-operations-workbench`.
-- Emitted AppGen-X events: `HospitalityPropertyOperationsCreated`, `HospitalityPropertyOperationsUpdated`, `HospitalityPropertyOperationsApproved`, `HospitalityPropertyOperationsExceptionOpened`.
-- Consumed AppGen-X events: `PolicyChanged`, `CustomerUpdated`, `SupplierQualified`.
-- Current standard surfaces include: `room_inventory_management`, `hospitality_property_operations_workflow`, `hospitality_property_operations_analytics`, `configuration_schema`, `rule_engine`, `parameter_engine`, `owned_schema_migrations_models`, `appgen_x_outbox_inbox_eventing`, `idempotent_handlers`, `retry_dead_letter_evidence`.
-- Current advanced surfaces include: `hospitality_property_operations_event_sourced_operational_history`, `hospitality_property_operations_multi_tenant_policy_isolation`, `hospitality_property_operations_schema_evolution_resilience`, `hospitality_property_operations_autonomous_anomaly_detection`, `hospitality_property_operations_semantic_document_instruction_understanding`, `hospitality_property_operations_predictive_risk_scoring`, `hospitality_property_operations_counterfactual_scenario_simulation`, `hospitality_property_operations_cryptographic_audit_proofs`.
+- Workbench and assistant surfaces: `HospitalityPropertyOperationsWorkbench`, `HospitalityPropertyOperationsDetail`, `HospitalityPropertyOperationsAssistantPanel`.
+- Workflow and governance capabilities: `room_inventory_management`, `hospitality_property_operations_workflow`, `hospitality_property_operations_analytics`, `rule_engine`, `parameter_engine`, `configuration_workbench`, `ai_agent_task_assistance`, `agentic_document_instruction_intake`, `continuous_release_assurance`.
+- Advanced capabilities already declared: `hospitality_property_operations_event_sourced_operational_history`, `hospitality_property_operations_multi_tenant_policy_isolation`, `hospitality_property_operations_schema_evolution_resilience`, `hospitality_property_operations_autonomous_anomaly_detection`, `hospitality_property_operations_predictive_risk_scoring`, `hospitality_property_operations_counterfactual_scenario_simulation`, `hospitality_property_operations_cryptographic_audit_proofs`, `hospitality_property_operations_continuous_control_testing`, `hospitality_property_operations_cross_pbc_event_federation`, `hospitality_property_operations_governed_ai_agent_execution`.
+- Emitted events: `HospitalityPropertyOperationsCreated`, `HospitalityPropertyOperationsUpdated`, `HospitalityPropertyOperationsApproved`, `HospitalityPropertyOperationsExceptionOpened`.
+- Consumed events: `PolicyChanged`, `CustomerUpdated`, `SupplierQualified`.
+- Release documentation surfaces: `SPECIFICATION.md`, `RELEASE_EVIDENCE.md`.
 
 ## 50 High-Impact Improvements
 
-### 1. Canonical lifecycle state model for Room Inventory
+### 1. Sellable room state model
 
-**Justification:** This closes shallow CRUD gaps by making every hospitality property operations transition explainable and testable instead of implicit in free-form status values.
+**Exact key:** `room_inventory`
 
-**Improvement:** Define a complete state machine for `room_inventory` with explicit draft, validated, blocked, approved, active, suspended, corrected, closed, archived, and reopened states. Tie the behavior to `hospitality_property_operations_create_room_inventory_workflow` where applicable, and make it visible in `HospitalityPropertyOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Current Domain Evidence Used:** `room_inventory`, `room_inventory_management`, `POST /room-inventorys`, `HospitalityPropertyOperationsWorkbench`.
 
-**Acceptance evidence:** State-transition tests, invalid-transition fixtures, workbench state badges, and emitted AppGen-X transition events for HospitalityPropertyOperationsCreated, HospitalityPropertyOperationsUpdated, HospitalityPropertyOperationsApproved. The evidence should be package-local in `src/pyAppGen/pbcs/hospitality_property_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Justification:** Front desk, housekeeping, and maintenance need one authoritative definition of vacant, occupied, inspected, dirty, blocked, out-of-order, and sellable rooms.
 
-### 2. Domain intake and normalization for Reservation
+**Improvement:** Expand room lifecycle handling so each room tracks operational status, housekeeping status, inspection status, maintenance hold status, and sellable state with explicit transition rules and timestamps.
 
-**Justification:** The PBC cannot reach complete domain coverage unless it handles the messy front door of rooms, reservations, housekeeping, guest service, occupancy, revenue controls, and property operations, not only already-clean records.
+**Acceptance evidence:** Transition tests reject impossible room-state combinations, room timeline views show each material change, and workbench counts reconcile to the same sellable-room total by property and shift.
 
-**Improvement:** Build a typed intake pipeline for `reservation` that accepts structured API payloads, document-derived instructions, batch loads, and assistant-generated drafts while normalizing identifiers, dates, units, parties, and jurisdictional context. Tie the behavior to `hospitality_property_operations_record_reservation_workflow` where applicable, and make it visible in `HospitalityPropertyOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+### 2. Room attributes, accessibility, and amenity readiness
 
-**Acceptance evidence:** Golden intake fixtures, rejected-record queues, field-level normalization evidence, and assistant previews before governed datastore mutation. The evidence should be package-local in `src/pyAppGen/pbcs/hospitality_property_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Exact key:** `room_inventory_management`
 
-### 3. Specialist validation rules for Guest Stay
+**Current Domain Evidence Used:** `room_inventory`, `room_inventory_management`, `HospitalityPropertyOperationsDetail`.
 
-**Justification:** World-class Hospitality Property Operations requires rules that domain experts can reason about, version, test, and roll back without code edits.
+**Justification:** Room assignment quality depends on bed type, accessibility features, connecting-room relationships, view class, and amenity readiness, not just a room number.
 
-**Improvement:** Add a domain rule compiler for `guest_stay` that supports threshold rules, eligibility rules, dependency rules, temporal windows, conflicting-instruction detection, and override justification. Tie the behavior to `hospitality_property_operations_create_room_inventory_workflow` where applicable, and make it visible in `HospitalityPropertyOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Extend room inventory to capture room class, bed configuration, accessibility flags, adjoining-room links, amenity kit readiness, minibar status, crib/rollaway compatibility, and inspection prerequisites for resale.
 
-**Acceptance evidence:** Rule simulation tests, versioned rule manifests, rule impact reports, and UI rule editors linked to `HOSPITALITY_PROPERTY_OPERATIONS_DATABASE_URL, HOSPITALITY_PROPERTY_OPERATIONS_EVENT_TOPIC, HOSPITALITY_PROPERTY_OPERATIONS_RETRY_LIMIT`. The evidence should be package-local in `src/pyAppGen/pbcs/hospitality_property_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Assignment tests match reservations only to compatible rooms, accessible-room protections cannot be bypassed without documented override, and detail views show the attribute set the assignment engine used.
 
-### 4. Parameter governance and tuning for Housekeeping Task
+### 3. Reservation lifecycle and guarantee controls
 
-**Justification:** Parameters are where operations teams tune hospitality property operations; unbounded constants would make the PBC brittle and unsafe in real deployments.
+**Exact key:** `reservation`
 
-**Improvement:** Expose bounded runtime parameters for `housekeeping_task` covering risk thresholds, SLA windows, confidence floors, escalation cutoffs, batch sizes, retry limits, and human-confirmation requirements. Tie the behavior to `hospitality_property_operations_record_reservation_workflow` where applicable, and make it visible in `HospitalityPropertyOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Current Domain Evidence Used:** `reservation`, `POST /reservations`, `hospitality_property_operations_workflow`.
 
-**Acceptance evidence:** Parameter schema validation, tenant overrides, approval history, rollback controls, and workbench diff views. The evidence should be package-local in `src/pyAppGen/pbcs/hospitality_property_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Justification:** Reservations move through inquiry, quoted, booked, guaranteed, modified, canceled, no-show, waitlisted, and reinstated states that drive downstream room and labor commitments.
 
-### 5. Deep owned schema expansion for Guest Request
+**Improvement:** Model reservation state with guarantee status, deposit or card-hold evidence, cancellation window, source channel, arrival window, special requests, and reinstatement rules.
 
-**Justification:** A single payload column cannot express the full surface of rooms, reservations, housekeeping, guest service, occupancy, revenue controls, and property operations or prove cross-PBC boundaries are respected.
+**Acceptance evidence:** Workflow tests enforce cutoff and cancellation rules, no-show transitions preserve the original arrival promise, and reservation state changes appear in operational queues without manual refresh.
 
-**Improvement:** Extend the owned schema around `guest_request` with normalized child tables for line-level evidence, party roles, approvals, attachments, comments, metrics, exception reasons, and control assertions. Tie the behavior to `hospitality_property_operations_create_room_inventory_workflow` where applicable, and make it visible in `HospitalityPropertyOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+### 4. Arrival pickup and overbooking projections
 
-**Acceptance evidence:** Migrations, models, relationship tests, schema contract snapshots, and no shared-table access outside the `hospitality_property_operations_` namespace. The evidence should be package-local in `src/pyAppGen/pbcs/hospitality_property_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Exact key:** `POST /reservations`
 
-### 6. Event-sourced operational history for Occupancy Snapshot
+**Current Domain Evidence Used:** `reservation`, `POST /reservations`, `occupancy_snapshot`, `hospitality_property_operations_analytics`.
 
-**Justification:** Temporal reconstruction is essential for better-than-world-class auditability and dispute resolution in hospitality property operations.
+**Justification:** Hotel revenue control depends on projecting arrivals, wash, no-shows, early departures, and out-of-order rooms before the front desk reaches a sellout crisis.
 
-**Improvement:** Capture every material mutation of `occupancy_snapshot` as immutable AppGen-X events with actor, tenant, command, policy version, idempotency key, before/after summary, and projection checkpoint. Tie the behavior to `hospitality_property_operations_record_reservation_workflow` where applicable, and make it visible in `HospitalityPropertyOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add reservation pickup curves, no-show expectations, arrival-hour projections, oversell thresholds, and walk-risk forecasts that combine reservation status with occupancy and room-availability constraints.
 
-**Acceptance evidence:** Replay tests, projection checksums, event ordering evidence, and point-in-time workbench views. The evidence should be package-local in `src/pyAppGen/pbcs/hospitality_property_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Projection tests produce stable forecasts for sellout and shoulder-night scenarios, daily pacing views explain the forecast inputs, and alert thresholds trigger before oversell risk becomes unavoidable.
 
-### 7. Projection and read-model strategy for Rate Plan
+### 5. Guest stay lifecycle for check-in, moves, and departures
 
-**Justification:** The workbench should not force users to infer domain truth from raw tables; each projection should answer a real operating question.
+**Exact key:** `guest_stay`
 
-**Improvement:** Create purpose-built projections for `rate_plan`: operational queue, executive KPI rollup, exception aging, compliance evidence, agent task context, and external dependency health. Tie the behavior to `hospitality_property_operations_create_room_inventory_workflow` where applicable, and make it visible in `HospitalityPropertyOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Current Domain Evidence Used:** `guest_stay`, `POST /guest-stays`, `HospitalityPropertyOperationsDetail`.
 
-**Acceptance evidence:** Projection contracts, freshness SLAs, backfill tests, and visible stale-projection warnings. The evidence should be package-local in `src/pyAppGen/pbcs/hospitality_property_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Justification:** Once a guest checks in, the operating problem changes from reservation promise management to in-house service, room moves, stay extensions, and departure readiness.
 
-### 8. Exception taxonomy and remediation for Hospitality Property Operations Policy Rule
+**Improvement:** Expand guest stay handling with checked-in, in-house, room-moved, extended, late-checkout, early-departure, checked-out, and post-departure review states plus linked stay notes and service flags.
 
-**Justification:** High-value PBCs win on exception throughput; generic “failed” states hide the details operators need.
+**Acceptance evidence:** Tests preserve room history through moves and extensions, departure logic releases room availability only when stay closure is complete, and stay detail shows the full in-house operational timeline.
 
-**Improvement:** Model the full exception taxonomy for `hospitality_property_operations_policy_rule`, including severity, root cause, blocking dependency, remediation owner, due date, retry eligibility, escalation path, and closure evidence. Tie the behavior to `hospitality_property_operations_record_reservation_workflow` where applicable, and make it visible in `HospitalityPropertyOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+### 6. Out-of-order and out-of-service maintenance holds
 
-**Acceptance evidence:** Exception queues, aging metrics, remediation playbooks, dead-letter linkage, and closure test fixtures for schedule slippage. The evidence should be package-local in `src/pyAppGen/pbcs/hospitality_property_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Exact key:** `room_inventory`
 
-### 9. Predictive risk scoring for Hospitality Property Operations Runtime Parameter
+**Current Domain Evidence Used:** `room_inventory`, `housekeeping_task`, `occupancy_snapshot`, `HospitalityPropertyOperationsWorkbench`.
 
-**Justification:** The package should warn users before hospitality property operations work fails, breaches policy, or creates downstream cost.
+**Justification:** Property operations need a disciplined way to remove rooms from sale for maintenance, deep clean, pest control, or safety issues without losing forecast visibility.
 
-**Improvement:** Add predictive risk scoring for `hospitality_property_operations_runtime_parameter` using domain features from owned tables, consumed events PolicyChanged, CustomerUpdated, SupplierQualified, rule outcomes, aging, anomaly signals, and historical corrections. Tie the behavior to `hospitality_property_operations_create_room_inventory_workflow` where applicable, and make it visible in `HospitalityPropertyOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add maintenance hold types, severity, expected return time, engineering owner, guest-impact flags, and recovery steps so blocked rooms remain operationally visible but not sellable.
 
-**Acceptance evidence:** Feature manifests, score explanations, calibration reports, drift alerts, and tests for low/medium/high-risk scenarios. The evidence should be package-local in `src/pyAppGen/pbcs/hospitality_property_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Room-hold tests reduce sellable inventory in occupancy views, reopening a room requires completed recovery evidence, and dashboards separate guest-occupied issues from vacant room blocks.
 
-### 10. Counterfactual simulation for Hospitality Property Operations Schema Extension
+### 7. Housekeeping task board by zone, shift, and priority
 
-**Justification:** Advanced users need to ask “what would happen if” before committing changes to live rooms, reservations, housekeeping, guest service, occupancy, revenue controls, and property operations operations.
+**Exact key:** `housekeeping_task`
 
-**Improvement:** Provide scenario simulation for `hospitality_property_operations_schema_extension`: policy change, capacity constraint, deadline shift, price/rate change, eligibility change, disruption, and manual override outcomes. Tie the behavior to `hospitality_property_operations_record_reservation_workflow` where applicable, and make it visible in `HospitalityPropertyOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Current Domain Evidence Used:** `housekeeping_task`, `POST /housekeeping-tasks`, `HospitalityPropertyOperationsWorkbench`.
 
-**Acceptance evidence:** Simulation APIs, non-mutating sandbox state, comparison reports, and workbench side-by-side scenario panels. The evidence should be package-local in `src/pyAppGen/pbcs/hospitality_property_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Justification:** Housekeeping teams work from boards organized by zone, room status, arrival priority, stayover commitment, and checkout turnaround pressure.
 
-### 11. Autonomous anomaly triage for Hospitality Property Operations Control Assertion
+**Improvement:** Expand housekeeping tasks with room zone, attendant assignment, due window, task type, arrival dependency, expedite flag, and completion blockers so supervisors can sequence work by real hotel pressure.
 
-**Justification:** A world-class PBC should reduce analyst burden without hiding the reasoning behind automated triage.
+**Acceptance evidence:** Task board tests sort rooms correctly for arrival-critical cleaning, overdue tasks surface by shift and zone, and supervisor reassignments preserve previous ownership and timestamps.
 
-**Improvement:** Implement anomaly detection for `hospitality_property_operations_control_assertion` that identifies outliers, duplicate submissions, impossible sequences, stale dependencies, unusual amounts/counts/durations, and contradictory fields. Tie the behavior to `hospitality_property_operations_create_room_inventory_workflow` where applicable, and make it visible in `HospitalityPropertyOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+### 8. Room inspection and cleaning quality loops
 
-**Acceptance evidence:** Explainable anomaly cards, reviewer feedback loops, false-positive tracking, and suppression governance. The evidence should be package-local in `src/pyAppGen/pbcs/hospitality_property_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Exact key:** `housekeeping_task`
 
-### 12. Semantic document understanding for Hospitality Property Operations Governed Model
+**Current Domain Evidence Used:** `housekeeping_task`, `hospitality_property_operations_control_assertion`, `HospitalityPropertyOperationsDetail`.
 
-**Justification:** Document-heavy work in Hospitality Property Operations cannot be complete if the assistant only answers questions and cannot prepare accurate governed changes.
+**Justification:** Marking a room clean is not enough when high-turnover floors, VIP arrivals, and repeat defects require inspection evidence and rework tracking.
 
-**Improvement:** Train the package assistant to parse domain documents and instructions for `hospitality_property_operations_governed_model`, extract obligations, dates, parties, quantities, identifiers, and exceptions, then map them to safe draft mutations. Tie the behavior to `hospitality_property_operations_record_reservation_workflow` where applicable, and make it visible in `HospitalityPropertyOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add inspection-required flags, inspector identity, defect categories, rework counts, photo or note evidence, and pass-fail scoring tied to room release decisions.
 
-**Acceptance evidence:** Document extraction tests, confidence thresholds, redaction handling, source span citations, and human confirmation workflows. The evidence should be package-local in `src/pyAppGen/pbcs/hospitality_property_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Inspection tests prevent resale when required checks fail, repeated defect trends appear in quality views, and room release events reference the inspection that cleared the room.
 
-### 13. Agent-safe CRUD execution for Room Inventory
+### 9. Guest request intake, SLA, and service recovery
 
-**Justification:** The PBC agent must be a first-class operator but never a hidden bypass around RBAC, rules, or owned datastore boundaries.
+**Exact key:** `guest_request`
 
-**Improvement:** Add a professional chatbot skill for `room_inventory` that can create, update, correct, close, and annotate records only through policy-checked commands, approval gates, and previewed diffs. Tie the behavior to `hospitality_property_operations_create_room_inventory_workflow` where applicable, and make it visible in `HospitalityPropertyOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Current Domain Evidence Used:** `guest_request`, `POST /guest-requests`, `HospitalityPropertyOperationsWorkbench`.
 
-**Acceptance evidence:** Skill manifests, permission tests, preview/confirm flows, blocked-action evidence, and audit events for every assistant mutation. The evidence should be package-local in `src/pyAppGen/pbcs/hospitality_property_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Justification:** Guest requests range from towels and amenities to room moves and urgent complaints, and the hotel needs one service queue with clear SLA ownership.
 
-### 14. Workbench persona coverage for Reservation
+**Improvement:** Expand guest requests with category, urgency, promised-by time, fulfillment team, guest impact, service recovery flag, and closeout evidence for completion or failure.
 
-**Justification:** A generic detail page underserves the domain; each role needs the exact controls and evidence they use daily.
+**Acceptance evidence:** SLA tests route urgent requests ahead of routine amenities, breach timers pause and resume correctly on guest-dependent waits, and closeout records show whether the guest confirmed resolution.
 
-**Improvement:** Design dedicated workbench panels for `reservation`: operator queue, supervisor approvals, analyst exceptions, auditor evidence, configuration owner, and agent-assistance review. Tie the behavior to `hospitality_property_operations_record_reservation_workflow` where applicable, and make it visible in `HospitalityPropertyOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+### 10. Occupancy snapshot grain for same-day turns
 
-**Acceptance evidence:** UI contract entries, route tests, empty/error/loading states, and permission-aware action availability. The evidence should be package-local in `src/pyAppGen/pbcs/hospitality_property_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Exact key:** `occupancy_snapshot`
 
-### 15. Cross-PBC dependency contracts for Guest Stay
+**Current Domain Evidence Used:** `occupancy_snapshot`, `guest_stay`, `reservation`, `hospitality_property_operations_analytics`.
 
-**Justification:** Composable packages fail when hidden table coupling enters the domain model.
+**Justification:** Hotels need occupancy visibility at a finer grain than nightly totals because same-day checkouts, arrivals, stayovers, and room blocks collide throughout the day.
 
-**Improvement:** Represent dependencies for `guest_stay` through declared APIs, consumed events PolicyChanged, CustomerUpdated, SupplierQualified, and projections rather than shared tables, with explicit freshness, ownership, and fallback behavior. Tie the behavior to `hospitality_property_operations_create_room_inventory_workflow` where applicable, and make it visible in `HospitalityPropertyOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add snapshot dimensions for stay date, time bucket, room status mix, arrivals pending, departures pending, stayovers, out-of-service count, and same-day-turn pressure.
 
-**Acceptance evidence:** Dependency manifests, contract tests, stale dependency alerts, and no foreign-table references in generated artifacts. The evidence should be package-local in `src/pyAppGen/pbcs/hospitality_property_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Snapshot tests reconcile against reservations, stays, and blocked rooms, intraday occupancy views update consistently, and same-day-turn metrics explain why rooms are unavailable even before night audit.
 
-### 16. API completeness and versioning for Housekeeping Task
+### 11. Rate plan fences linked to operational readiness
 
-**Justification:** Complete domain coverage requires both command and query surfaces, not only happy-path create endpoints.
+**Exact key:** `rate_plan`
 
-**Improvement:** Expand APIs beyond POST /room-inventorys, POST /reservations, POST /guest-stays to cover search, validation-only commands, simulation, bulk intake, exception closure, evidence export, projection reads, and idempotent corrections. Tie the behavior to `hospitality_property_operations_record_reservation_workflow` where applicable, and make it visible in `HospitalityPropertyOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Current Domain Evidence Used:** `rate_plan`, `occupancy_snapshot`, `room_inventory`, `hospitality_property_operations_analytics`.
 
-**Acceptance evidence:** OpenAPI-style route manifests, backward-compatible version tests, deprecation metadata, and idempotency assertions. The evidence should be package-local in `src/pyAppGen/pbcs/hospitality_property_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Justification:** Rate plans should react to room availability quality, not just raw occupancy percentage, because dirty rooms and blocked rooms cannot support aggressive yield decisions.
 
-### 17. Typed emitted-event expansion for Guest Request
+**Improvement:** Extend rate plans with room-class applicability, length-of-stay fences, closed-to-arrival rules, shoulder-night controls, amenity package promises, and housekeeping-aware sell thresholds.
 
-**Justification:** Consumers should understand what happened in Hospitality Property Operations without parsing opaque payloads.
+**Acceptance evidence:** Pricing-control tests show rate closure when operationally ready inventory falls below threshold, plan logic preserves contractual restrictions, and analytics explain which fence drove the decision.
 
-**Improvement:** Replace generic lifecycle emissions with typed events for each meaningful `guest_request` transition, exception, approval, correction, simulation result, and downstream handoff. Tie the behavior to `hospitality_property_operations_create_room_inventory_workflow` where applicable, and make it visible in `HospitalityPropertyOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+### 12. Group blocks and allotment pickup workflow
 
-**Acceptance evidence:** Event schema tests, event examples, compatibility checks, and emitted-event coverage in release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/hospitality_property_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Exact key:** `hospitality_property_operations_workflow`
 
-### 18. Consumed-event handlers for Occupancy Snapshot
+**Current Domain Evidence Used:** `reservation`, `rate_plan`, `hospitality_property_operations_workflow`, `HospitalityPropertyOperationsWorkbench`.
 
-**Justification:** A PBC is composable only when incoming events affect its own domain state predictably and safely.
+**Justification:** Group blocks create distinct hotel operations pressure because pickup pace, cut dates, rooming lists, and release rules can change the availability picture overnight.
 
-**Improvement:** Implement idempotent handlers for consumed events PolicyChanged, CustomerUpdated, SupplierQualified that update projections, open dependency exceptions, recalculate risk, and preserve source event lineage. Tie the behavior to `hospitality_property_operations_record_reservation_workflow` where applicable, and make it visible in `HospitalityPropertyOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add workflow support for group blocks, allotments, rooming-list intake, pickup monitoring, attrition warnings, and block release decisions tied back to reservation and occupancy projections.
 
-**Acceptance evidence:** Duplicate-event tests, handler side-effect boundaries, dead-letter fixtures, and lineage links back to source events. The evidence should be package-local in `src/pyAppGen/pbcs/hospitality_property_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Group scenarios show block pickup against sellable inventory, cut-date actions reopen unused inventory automatically when approved, and workbench queues separate group risk from transient risk.
 
-### 19. Retry and dead-letter operations for Rate Plan
+### 13. Reservation pace, wash, and occupancy forecasting cockpit
 
-**Justification:** Dead letters are not just plumbing; they are domain work queues that can block rooms, reservations, housekeeping, guest service, occupancy, revenue controls, and property operations.
+**Exact key:** `hospitality_property_operations_analytics`
 
-**Improvement:** Create operational tools for retrying, quarantining, explaining, and resolving dead-lettered `rate_plan` events with max-attempt policy, poison-message detection, and replay safety. Tie the behavior to `hospitality_property_operations_create_room_inventory_workflow` where applicable, and make it visible in `HospitalityPropertyOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Current Domain Evidence Used:** `hospitality_property_operations_analytics`, `reservation`, `occupancy_snapshot`, `rate_plan`.
 
-**Acceptance evidence:** Dead-letter workbench, retry eligibility tests, replay audit proof, and operator action logs. The evidence should be package-local in `src/pyAppGen/pbcs/hospitality_property_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Justification:** Revenue and operations teams need a shared forecasting view that connects booking pace with the actual state of rooms and service capacity.
 
-### 20. RBAC and attribute policy for Hospitality Property Operations Policy Rule
+**Improvement:** Build analytics for pace, wash, pickup, length-of-stay mix, same-day arrivals, turn pressure, room-class sellout risk, and rate-plan exposure by property and date.
 
-**Justification:** High-impact domain operations need finer controls than generic RBAC grants.
+**Acceptance evidence:** Forecast views drill from a property summary into the room-class drivers, backtests compare projected and realized occupancy, and anomaly markers highlight abrupt pace changes.
 
-**Improvement:** Extend permissions for `hospitality_property_operations_policy_rule` from coarse read/create/update/admin to action-level and attribute-aware policies based on role, tenant, jurisdiction, monetary/materiality threshold, and exception severity. Tie the behavior to `hospitality_property_operations_record_reservation_workflow` where applicable, and make it visible in `HospitalityPropertyOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+### 14. Front desk shift handover workflow
 
-**Acceptance evidence:** Permission matrix docs, ABAC policy tests, denied-action UI states, and assistant skill permission checks. The evidence should be package-local in `src/pyAppGen/pbcs/hospitality_property_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Exact key:** `hospitality_property_operations_workflow`
 
-### 21. Continuous control testing for Hospitality Property Operations Runtime Parameter
+**Current Domain Evidence Used:** `guest_stay`, `guest_request`, `housekeeping_task`, `HospitalityPropertyOperationsWorkbench`.
 
-**Justification:** Controls should run during operations, not only during release audit or manual review.
+**Justification:** Shift change is a recurring operational failure point when arrivals, unresolved requests, blocked rooms, and VIP notes live in scattered queues.
 
-**Improvement:** Embed control assertions for `hospitality_property_operations_runtime_parameter` that continuously test segregation of duties, required approvals, stale exceptions, policy drift, duplicate records, and boundary violations. Tie the behavior to `hospitality_property_operations_create_room_inventory_workflow` where applicable, and make it visible in `HospitalityPropertyOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add a front desk handover workflow that bundles unresolved arrivals, room moves, payment-hold follow-ups, maintenance blocks, and guest recovery actions into one sign-off packet.
 
-**Acceptance evidence:** Control dashboards, failing-control events, test fixtures, and release evidence tied to `hospitality_property_operations_control_assertion` records. The evidence should be package-local in `src/pyAppGen/pbcs/hospitality_property_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Handover tests show no open item is dropped between shifts, sign-off requires acknowledging critical exceptions, and the incoming shift can filter directly from the packet into live workboards.
 
-### 22. Cryptographic audit proofing for Hospitality Property Operations Schema Extension
+### 15. Policy rules for room blocking, VIP handling, and stay exceptions
 
-**Justification:** Better-than-world-class auditability requires proof of integrity, not merely logs stored in mutable tables.
+**Exact key:** `hospitality_property_operations_policy_rule`
 
-**Improvement:** Hash-chain material `hospitality_property_operations_schema_extension` decisions, documents, emitted events, and release-evidence snapshots to make tampering visible without exposing sensitive payloads. Tie the behavior to `hospitality_property_operations_record_reservation_workflow` where applicable, and make it visible in `HospitalityPropertyOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Current Domain Evidence Used:** `hospitality_property_operations_policy_rule`, `rule_engine`, `reservation`, `guest_stay`.
 
-**Acceptance evidence:** Proof manifests, verification APIs, redacted proof exports, and audit-ledger handoff events. The evidence should be package-local in `src/pyAppGen/pbcs/hospitality_property_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Justification:** Hotels need explicit policies for complimentary upgrades, late checkout approval, VIP room holds, inaccessible-room protection, and emergency room moves.
 
-### 23. Privacy, consent, and secrecy controls for Hospitality Property Operations Control Assertion
+**Improvement:** Expand policy rules so operators can manage room-blocking criteria, service-recovery thresholds, stay exception approvals, and room-move requirements without code changes.
 
-**Justification:** Complete domain coverage must account for protected data and restricted operational evidence.
+**Acceptance evidence:** Rule tests show policy evaluation by property and role, override paths require justification when configured, and applied rules are visible from reservation and stay timelines.
 
-**Improvement:** Add field-level privacy classifications for `hospitality_property_operations_control_assertion`, consent checks, masking rules, retention schedules, legal holds, and assistant redaction policies. Tie the behavior to `hospitality_property_operations_create_room_inventory_workflow` where applicable, and make it visible in `HospitalityPropertyOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+### 16. Runtime parameters for turn-time and service windows
 
-**Acceptance evidence:** Retention tests, masked UI snapshots, consent-blocked mutation fixtures, and export controls. The evidence should be package-local in `src/pyAppGen/pbcs/hospitality_property_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Exact key:** `hospitality_property_operations_runtime_parameter`
 
-### 24. Multi-tenant operating model for Hospitality Property Operations Governed Model
+**Current Domain Evidence Used:** `hospitality_property_operations_runtime_parameter`, `parameter_engine`, `housekeeping_task`, `guest_request`.
 
-**Justification:** The PBC should scale across organizations while preserving independent policy and compliance boundaries.
+**Justification:** Cleanup buffers, inspection thresholds, amenity replenishment times, and service windows vary by property type and season.
 
-**Improvement:** Support tenant-specific `hospitality_property_operations_governed_model` rules, data residency, encryption context, configuration, seed data, and release evidence without allowing cross-tenant leakage. Tie the behavior to `hospitality_property_operations_record_reservation_workflow` where applicable, and make it visible in `HospitalityPropertyOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add governed parameters for checkout-to-clean target, inspection delay, arrival rush thresholds, housekeeping batch size, guest request SLAs, and late-night escalation windows.
 
-**Acceptance evidence:** Tenant isolation tests, tenant-scoped parameters, key-rotation evidence, and cross-tenant negative fixtures. The evidence should be package-local in `src/pyAppGen/pbcs/hospitality_property_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Parameter validation rejects out-of-bounds values, simulation previews show operational impact before activation, and audits preserve who changed service windows and why.
 
-### 25. Schema evolution and extension registry for Room Inventory
+### 17. Front desk operations workbench lanes
 
-**Justification:** Domain teams will add fields; the PBC must evolve without breaking APIs, events, or workbench projections.
+**Exact key:** `HospitalityPropertyOperationsWorkbench`
 
-**Improvement:** Make schema extensions for `room_inventory` first-class with compatibility checks, migration previews, projection backfills, field ownership, and rollback metadata. Tie the behavior to `hospitality_property_operations_create_room_inventory_workflow` where applicable, and make it visible in `HospitalityPropertyOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Current Domain Evidence Used:** `HospitalityPropertyOperationsWorkbench`, `reservation`, `guest_stay`, `occupancy_snapshot`.
 
-**Acceptance evidence:** Extension registry UI, compatibility tests, migration dry-runs, and backfill release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/hospitality_property_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Justification:** Front desk teams need one operational surface for arrivals, departures, room-ready gaps, room moves, VIPs, and service recovery, not generic record lists.
 
-### 26. Master data quality gates for Reservation
+**Improvement:** Split the workbench into arrival, in-house, departure, room-ready, exception, and service-recovery lanes with property, room-class, and shift filters.
 
-**Justification:** Many hospitality property operations errors begin as bad reference data; the PBC should catch them before workflow execution.
+**Acceptance evidence:** Route and UI tests show each lane with dedicated counts, filters persist across refreshes, and operators can open a room or stay action directly from the queue they use.
 
-**Improvement:** Define reference-data contracts for `reservation`: canonical codes, parties, locations, classifications, calendars, units, currencies, products, assets, or service categories as relevant to the domain. Tie the behavior to `hospitality_property_operations_record_reservation_workflow` where applicable, and make it visible in `HospitalityPropertyOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+### 18. Room detail workbench with operational evidence
 
-**Acceptance evidence:** Reference validation fixtures, stale-code warnings, mapping tables, and dependency freshness indicators. The evidence should be package-local in `src/pyAppGen/pbcs/hospitality_property_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Exact key:** `HospitalityPropertyOperationsDetail`
 
-### 27. Bulk operations and correction workflows for Guest Stay
+**Current Domain Evidence Used:** `HospitalityPropertyOperationsDetail`, `room_inventory`, `housekeeping_task`, `guest_request`.
 
-**Justification:** Enterprise-scale Hospitality Property Operations users cannot operate one record at a time.
+**Justification:** Supervisors need a room-centric view of status, cleaning history, inspection results, maintenance blocks, and active guest-facing issues during recovery decisions.
 
-**Improvement:** Add bulk load, bulk validate, bulk approve, and bulk correction workflows for `guest_stay` with partial success, row-level errors, resumability, and rollback. Tie the behavior to `hospitality_property_operations_create_room_inventory_workflow` where applicable, and make it visible in `HospitalityPropertyOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Turn detail pages into room workbenches that combine room status, current stay link, last cleaned time, open tasks, defect history, and readiness evidence in one place.
 
-**Acceptance evidence:** CSV/API batch fixtures, resumable job state, row-level audit evidence, and assistant-generated correction suggestions. The evidence should be package-local in `src/pyAppGen/pbcs/hospitality_property_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Detail tests show consistent room history after moves and blocks, related tasks load without cross-table leakage, and decision evidence is visible before a room is returned to sale.
 
-### 28. Lifecycle collaboration and tasking for Housekeeping Task
+### 19. Assistant panel for hotel operations roles
 
-**Justification:** Domain collaboration should live inside the PBC boundary and remain auditable with the record it affects.
+**Exact key:** `HospitalityPropertyOperationsAssistantPanel`
 
-**Improvement:** Attach tasks, comments, ownership, due dates, handoffs, and escalation threads to `housekeeping_task` without leaking into external shared task tables. Tie the behavior to `hospitality_property_operations_record_reservation_workflow` where applicable, and make it visible in `HospitalityPropertyOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Current Domain Evidence Used:** `HospitalityPropertyOperationsAssistantPanel`, `ai_agent_task_assistance`, `HospitalityPropertyOperationsWorkbench`.
 
-**Acceptance evidence:** Task tables, comment audit history, notification events, escalation SLAs, and role-specific task queues. The evidence should be package-local in `src/pyAppGen/pbcs/hospitality_property_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Justification:** Front desk agents, housekeeping supervisors, and managers need guided actions and summaries tuned to hotel work rather than generic chatbot responses.
 
-### 29. SLA and service-level governance for Guest Request
+**Improvement:** Add assistant panels for arrival prep, room-ready triage, guest request summaries, inspection follow-up, oversell risk explanation, and handover recap generation.
 
-**Justification:** Users need to know when rooms, reservations, housekeeping, guest service, occupancy, revenue controls, and property operations is late, blocked, or at risk before customer or regulator impact.
+**Acceptance evidence:** Assistant flows show role-specific prompts, blocked actions explain missing permissions or evidence, and generated summaries link back to the source records they rely on.
 
-**Improvement:** Define SLAs for `guest_request` across intake, validation, approval, exception resolution, event handling, downstream projection refresh, and release-evidence generation. Tie the behavior to `hospitality_property_operations_create_room_inventory_workflow` where applicable, and make it visible in `HospitalityPropertyOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+### 20. Actionable agent skills for task boards
 
-**Acceptance evidence:** SLA breach events, timers, configurable calendars, workbench aging buckets, and tests for pause/resume behavior. The evidence should be package-local in `src/pyAppGen/pbcs/hospitality_property_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Exact key:** `ai_agent_task_assistance`
 
-### 30. Operational analytics cockpit for Occupancy Snapshot
+**Current Domain Evidence Used:** `ai_agent_task_assistance`, `guest_request`, `housekeeping_task`, `permissions`.
 
-**Justification:** World-class operations require leading indicators, not only record counts.
+**Justification:** The assistant should help dispatch and explain work, but it cannot become a hidden bypass around approvals, service promises, or room-status controls.
 
-**Improvement:** Build analytics for `occupancy_snapshot`: throughput, backlog, aging, approval latency, exception rate, risk distribution, automation acceptance, correction rate, and downstream dependency health. Tie the behavior to `hospitality_property_operations_record_reservation_workflow` where applicable, and make it visible in `HospitalityPropertyOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add agent skills for assigning attendants, reprioritizing service queues, drafting room-move plans, summarizing arrival risk, and preparing exception notes through governed commands only.
 
-**Acceptance evidence:** Metric definitions, projection tests, drill-through routes, export APIs, and anomaly overlays. The evidence should be package-local in `src/pyAppGen/pbcs/hospitality_property_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Skill tests require preview and confirm steps for material actions, denied actions surface the policy reason, and every accepted assistant action writes audit-ready evidence.
 
-### 31. Decision intelligence and recommendations for Rate Plan
+### 21. Document intake for rooming lists and guest instructions
 
-**Justification:** The PBC should help expert users decide faster while showing evidence and uncertainty.
+**Exact key:** `agentic_document_instruction_intake`
 
-**Improvement:** Generate ranked recommendations for `rate_plan` such as next best action, likely resolution, required evidence, policy adjustment, staffing/capacity response, or downstream handoff. Tie the behavior to `hospitality_property_operations_create_room_inventory_workflow` where applicable, and make it visible in `HospitalityPropertyOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Current Domain Evidence Used:** `agentic_document_instruction_intake`, `reservation`, `guest_request`, `POST /reservations`.
 
-**Acceptance evidence:** Recommendation explanations, confidence intervals, feedback capture, model governance records, and rejection reasons. The evidence should be package-local in `src/pyAppGen/pbcs/hospitality_property_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Justification:** Group business and concierge-style service often arrive as rooming lists, event sheets, arrival memos, and special instruction documents that need structured handling.
 
-### 32. Quality and completeness scoring for Hospitality Property Operations Policy Rule
+**Improvement:** Add document intake that extracts rooming-list details, arrival notes, amenity requests, accessible-room needs, and service timing promises into draft reservations and task queues.
 
-**Justification:** Operators should see whether a record is truly ready, not just technically saved.
+**Acceptance evidence:** Intake tests show extracted fields with confidence and source spans, risky changes stay in draft until confirmed, and rejected document rows are routed to review queues.
 
-**Improvement:** Score each `hospitality_property_operations_policy_rule` record for completeness, consistency, policy readiness, dependency readiness, evidence sufficiency, and downstream composability. Tie the behavior to `hospitality_property_operations_record_reservation_workflow` where applicable, and make it visible in `HospitalityPropertyOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+### 22. Event history for rooms, stays, and service work
 
-**Acceptance evidence:** Scoring rules, missing-evidence lists, readiness badges, and blocking criteria in command handlers. The evidence should be package-local in `src/pyAppGen/pbcs/hospitality_property_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Exact key:** `hospitality_property_operations_event_sourced_operational_history`
 
-### 33. End-to-end scenario library for Hospitality Property Operations Runtime Parameter
+**Current Domain Evidence Used:** `hospitality_property_operations_event_sourced_operational_history`, `room_inventory`, `guest_stay`, `guest_request`.
 
-**Justification:** Release evidence is stronger when every important hospitality property operations behavior has executable examples.
+**Justification:** Disputes about whether a room was ready, a guest requested help, or a late checkout was approved depend on precise event order and replayable history.
 
-**Improvement:** Create seeded scenarios for `hospitality_property_operations_runtime_parameter`: normal flow, urgent path, exception path, corrected path, duplicate path, late event path, and audit export path. Tie the behavior to `hospitality_property_operations_create_room_inventory_workflow` where applicable, and make it visible in `HospitalityPropertyOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Store immutable operational history for room status changes, reservation edits, stay lifecycle events, housekeeping completions, inspection failures, and guest-request escalations.
 
-**Acceptance evidence:** Scenario seed data, runtime smoke coverage, generated-app fixtures, and story-level workbench screenshots/contracts. The evidence should be package-local in `src/pyAppGen/pbcs/hospitality_property_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Replay tests rebuild room and stay timelines exactly, point-in-time views match stored projections, and the audit trail shows actor, source command, and property scope for each event.
 
-### 34. Domain ontology and terminology model for Hospitality Property Operations Schema Extension
+### 23. Idempotent intake and correction handling
 
-**Justification:** Precise vocabulary prevents the PBC from misclassifying specialist documents or user instructions.
+**Exact key:** `idempotent_handlers`
 
-**Improvement:** Add an ontology for `hospitality_property_operations_schema_extension` terms, synonyms, classifications, relationships, allowed values, and phrase mappings used by the assistant and UI. Tie the behavior to `hospitality_property_operations_record_reservation_workflow` where applicable, and make it visible in `HospitalityPropertyOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Current Domain Evidence Used:** `idempotent_handlers`, `POST /reservations`, `POST /guest-stays`, `POST /guest-requests`.
 
-**Acceptance evidence:** Ontology files, assistant parsing tests, UI glossary, and mapping evidence for domain-specific abbreviations. The evidence should be package-local in `src/pyAppGen/pbcs/hospitality_property_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Justification:** Channel retries, duplicate front desk clicks, and repeated guest-service submissions should not create double arrivals, duplicate stays, or duplicate room-service work.
 
-### 35. Advanced search and investigation for Hospitality Property Operations Control Assertion
+**Improvement:** Add idempotency keys and correction semantics for reservation intake, check-in commands, room moves, housekeeping updates, and guest-request creation.
 
-**Justification:** Investigators and operators need fast, explainable retrieval across the whole domain surface.
+**Acceptance evidence:** Duplicate-command tests preserve one business outcome, corrections show before-and-after lineage, and retry-safe behavior holds across process restarts and queue replays.
 
-**Improvement:** Provide search across `hospitality_property_operations_control_assertion` records, events, documents, exceptions, tasks, comments, and audit proofs with filters for tenant, status, risk, date, party, and dependency. Tie the behavior to `hospitality_property_operations_create_room_inventory_workflow` where applicable, and make it visible in `HospitalityPropertyOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+### 24. Boundary-safe event projections
 
-**Acceptance evidence:** Search index contracts, result provenance, permission-filtered queries, and stale-index warnings. The evidence should be package-local in `src/pyAppGen/pbcs/hospitality_property_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Exact key:** `appgen_x_outbox_inbox_eventing`
 
-### 36. Reconciliation and closure controls for Hospitality Property Operations Governed Model
+**Current Domain Evidence Used:** `appgen_x_outbox_inbox_eventing`, `occupancy_snapshot`, `HospitalityPropertyOperationsWorkbench`, `hospitality_property_operations_cross_pbc_event_federation`.
 
-**Justification:** Closure is not complete until the PBC can prove no material domain work remains unresolved.
+**Justification:** Hotel operations need near-real-time projections, but those views must stay on declared events and APIs rather than direct reads into other domains.
 
-**Improvement:** Add reconciliation workflows that compare `hospitality_property_operations_governed_model` state against consumed events, external projections, expected totals/counts, approvals, and release evidence before closure. Tie the behavior to `hospitality_property_operations_record_reservation_workflow` where applicable, and make it visible in `HospitalityPropertyOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Build projection pipelines for arrivals, departures, room-ready status, and guest-service health using declared event contracts and inbox-outbox patterns only.
 
-**Acceptance evidence:** Reconciliation reports, variance thresholds, closure blockers, and AppGen-X closure events. The evidence should be package-local in `src/pyAppGen/pbcs/hospitality_property_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Contract tests fail on undeclared external table access, projections stay fresh under replay, and workbench health panels show lag and recovery state for each read model.
 
-### 37. Regulatory and policy reporting for Room Inventory
+### 25. Retry and dead-letter workbench for operational queues
 
-**Justification:** World-class PBCs turn operational evidence into credible reporting without spreadsheet reconstruction.
+**Exact key:** `retry_dead_letter_evidence`
 
-**Improvement:** Generate domain reporting packs for `room_inventory` covering statutory, contractual, operational, board, customer, or regulator evidence depending on contractual obligations, site progress evidence, physical asset state, commercial controls, safety constraints, change events, and long-horizon lifecycle accountability. Tie the behavior to `hospitality_property_operations_create_room_inventory_workflow` where applicable, and make it visible in `HospitalityPropertyOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Current Domain Evidence Used:** `retry_dead_letter_evidence`, `guest_request`, `housekeeping_task`, `HospitalityPropertyOperationsWorkbench`.
 
-**Acceptance evidence:** Report schemas, redaction rules, traceable metric sources, and approval/export audit events. The evidence should be package-local in `src/pyAppGen/pbcs/hospitality_property_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Justification:** When queue handlers fail, hotels still need to see which requests, room updates, and occupancy projections are stuck before they affect guests.
 
-### 38. Carbon and resource awareness for Reservation
+**Improvement:** Add a dead-letter operations board for failed room, stay, housekeeping, and guest-request messages with retry eligibility, root-cause notes, and replay safety checks.
 
-**Justification:** Sustainability evidence should be embedded in operations instead of treated as an after-the-fact report.
+**Acceptance evidence:** Failure tests route poison messages to quarantine, authorized retries preserve idempotency, and the workbench links each dead letter to the business item it delayed.
 
-**Improvement:** Where relevant, attach carbon, energy, water, travel, capacity, compute, or resource-footprint metadata to `reservation` decisions and batch operations. Tie the behavior to `hospitality_property_operations_record_reservation_workflow` where applicable, and make it visible in `HospitalityPropertyOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+### 26. Declared cross-domain boundaries for guest and supplier data
 
-**Acceptance evidence:** Footprint fields, scheduling parameters, exception rules, and dashboards that expose operational tradeoffs. The evidence should be package-local in `src/pyAppGen/pbcs/hospitality_property_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Exact key:** `hospitality_property_operations_cross_pbc_event_federation`
 
-### 39. Resilience and offline behavior for Guest Stay
+**Current Domain Evidence Used:** `hospitality_property_operations_cross_pbc_event_federation`, `CustomerUpdated`, `SupplierQualified`, `PolicyChanged`.
 
-**Justification:** Real operations keep moving during outages; the PBC must preserve correctness when dependencies are unavailable.
+**Justification:** This context needs guest-profile freshness, supplier qualification, and policy updates, but it should not silently absorb ownership of those upstream systems.
 
-**Improvement:** Define resilience modes for `guest_stay`: degraded dependency mode, offline draft capture, delayed event replay, conflict detection, and safe recovery after partial failure. Tie the behavior to `hospitality_property_operations_create_room_inventory_workflow` where applicable, and make it visible in `HospitalityPropertyOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Formalize event and API boundaries for guest identity changes, outsourced service vendor readiness, and policy updates with freshness indicators and fallback behavior.
 
-**Acceptance evidence:** Offline fixtures, replay tests, conflict queues, recovery logs, and user-visible degraded-mode warnings. The evidence should be package-local in `src/pyAppGen/pbcs/hospitality_property_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Boundary tests prove hotel operations can continue in degraded mode using declared projections, stale upstream data is surfaced explicitly, and no hidden foreign-table dependency appears in generated artifacts.
 
-### 40. Human-in-the-loop automation for Housekeeping Task
+### 27. Predictive risk scoring for arrivals and room readiness
 
-**Justification:** Automation should accelerate rooms, reservations, housekeeping, guest service, occupancy, revenue controls, and property operations while preserving accountability for high-risk decisions.
+**Exact key:** `hospitality_property_operations_predictive_risk_scoring`
 
-**Improvement:** Set explicit automation boundaries for `housekeeping_task`: auto-approve, auto-reject, suggest-only, require-review, and block-until-evidence states with policy-based routing. Tie the behavior to `hospitality_property_operations_record_reservation_workflow` where applicable, and make it visible in `HospitalityPropertyOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Current Domain Evidence Used:** `hospitality_property_operations_predictive_risk_scoring`, `reservation`, `housekeeping_task`, `occupancy_snapshot`.
 
-**Acceptance evidence:** Automation policy tests, reviewer queues, override reasons, and assistant action audit trails. The evidence should be package-local in `src/pyAppGen/pbcs/hospitality_property_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Justification:** Managers need early warning when a high-value arrival is likely to miss room-ready time because of blocked inventory, inspection failures, or staff pressure.
 
-### 41. Package discovery and fit scoring for Guest Request
+**Improvement:** Add explainable risk models for room-not-ready arrivals, oversell exposure, guest-request breach risk, amenity shortfall, and maintenance recovery delay.
 
-**Justification:** Users selecting PBCs need transparent fit reasoning, especially when domains are adjacent but not overlapping.
+**Acceptance evidence:** Risk tests generate low, medium, and high alerts with feature explanations, feedback loops capture whether the alert was useful, and action cards open the exact queue that can reduce the risk.
 
-**Improvement:** Improve package metadata so composition can explain when `hospitality_property_operations` fits a prompt, what entities it owns, what APIs/events it exposes, and what adjacent PBCs it depends on. Tie the behavior to `hospitality_property_operations_create_room_inventory_workflow` where applicable, and make it visible in `HospitalityPropertyOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+### 28. Counterfactual simulation for sellout and disruption days
 
-**Acceptance evidence:** Discovery manifests, prompt-selection tests, overlap rationale links, and composition DSL examples. The evidence should be package-local in `src/pyAppGen/pbcs/hospitality_property_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Exact key:** `hospitality_property_operations_counterfactual_scenario_simulation`
 
-### 42. Configuration deployment pipeline for Occupancy Snapshot
+**Current Domain Evidence Used:** `hospitality_property_operations_counterfactual_scenario_simulation`, `reservation`, `occupancy_snapshot`, `rate_plan`.
 
-**Justification:** Configuration changes can materially alter hospitality property operations; they need the same discipline as code releases.
+**Justification:** Hotel leaders need to compare what happens if they accept another group block, lose ten rooms to maintenance, or shorten checkout buffers on a compressed day.
 
-**Improvement:** Add configuration promotion for `occupancy_snapshot` across draft, test, approved, active, deprecated, and rollback states with impact analysis before activation. Tie the behavior to `hospitality_property_operations_record_reservation_workflow` where applicable, and make it visible in `HospitalityPropertyOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add non-mutating scenario simulation for sellout nights, storm disruptions, housekeeping shortages, group cancellations, room-block recovery, and late-checkout surges.
 
-**Acceptance evidence:** Config diff views, approval workflows, simulation before activation, and rollback tests. The evidence should be package-local in `src/pyAppGen/pbcs/hospitality_property_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Simulation tests preserve production data immutability, scenario reports compare occupancy and service outcomes side by side, and chosen assumptions are visible to reviewers.
 
-### 43. Workbench command completeness for Rate Plan
+### 29. Autonomous anomaly detection for room-state contradictions
 
-**Justification:** A PBC does not fully surface its capabilities if users must call hidden APIs for core work.
+**Exact key:** `hospitality_property_operations_autonomous_anomaly_detection`
 
-**Improvement:** Expose every high-value operation for `rate_plan` in the UI: create, validate, approve, simulate, correct, assign, export, retry, close, and audit-proof verification. Tie the behavior to `hospitality_property_operations_create_room_inventory_workflow` where applicable, and make it visible in `HospitalityPropertyOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Current Domain Evidence Used:** `hospitality_property_operations_autonomous_anomaly_detection`, `room_inventory`, `guest_stay`, `occupancy_snapshot`.
 
-**Acceptance evidence:** UI action coverage tests, permission-aware disabled states, keyboard paths, and assistant handoff links. The evidence should be package-local in `src/pyAppGen/pbcs/hospitality_property_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Justification:** The most costly hotel mistakes are often contradictions such as occupied rooms marked vacant, cleaned rooms failing inspection, or arrivals assigned to blocked rooms.
 
-### 44. Document packet and evidence vault for Hospitality Property Operations Policy Rule
+**Improvement:** Add anomaly checks for impossible room-state combinations, duplicate active stays, repeated room moves, stuck housekeeping tasks, and occupancy spikes that do not match reservation behavior.
 
-**Justification:** Documents often carry the legal or operational truth behind rooms, reservations, housekeeping, guest service, occupancy, revenue controls, and property operations.
+**Acceptance evidence:** Anomaly tests surface contradictions with clear reasons, suppression rules are auditable, and operational dashboards show anomaly age and closure status.
 
-**Improvement:** Create a governed evidence vault for `hospitality_property_operations_policy_rule` documents, attachments, source spans, extracted fields, signatures, approvals, and retention labels. Tie the behavior to `hospitality_property_operations_record_reservation_workflow` where applicable, and make it visible in `HospitalityPropertyOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+### 30. Continuous control testing for operational integrity
 
-**Acceptance evidence:** Evidence models, source-to-field lineage, signature validation, retention policies, and proof exports. The evidence should be package-local in `src/pyAppGen/pbcs/hospitality_property_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Exact key:** `hospitality_property_operations_continuous_control_testing`
 
-### 45. Data correction and amendment history for Hospitality Property Operations Runtime Parameter
+**Current Domain Evidence Used:** `hospitality_property_operations_continuous_control_testing`, `hospitality_property_operations_control_assertion`, `permissions`.
 
-**Justification:** World-class systems correct mistakes without rewriting history or confusing downstream consumers.
+**Justification:** Property operations need recurring control checks because the biggest failures come from drift, skipped inspections, unapproved room returns, and manual queue shortcuts.
 
-**Improvement:** Support formal amendments for `hospitality_property_operations_runtime_parameter` that preserve original values, correction reason, approving actor, effective date, downstream event impacts, and replay behavior. Tie the behavior to `hospitality_property_operations_create_room_inventory_workflow` where applicable, and make it visible in `HospitalityPropertyOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add continuous controls for occupied-clean mismatch, room released without inspection, guest-request closure without evidence, unauthorized override, and stale blocked-room recovery.
 
-**Acceptance evidence:** Amendment tables, correction events, projection replay tests, and side-by-side before/after UI. The evidence should be package-local in `src/pyAppGen/pbcs/hospitality_property_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Control tests emit failures with business context, daily evidence snapshots show pass and fail counts by property, and unresolved control failures stay visible in workbench exception lanes.
 
-### 46. External participant collaboration for Hospitality Property Operations Schema Extension
+### 31. Cryptographic proof for inspection and release evidence
 
-**Justification:** Many hospitality property operations workflows require outside parties, but they must not gain direct access to internal tables.
+**Exact key:** `hospitality_property_operations_cryptographic_audit_proofs`
 
-**Improvement:** Add controlled collaboration portals or API views for external participants related to `hospitality_property_operations_schema_extension`, limited to scoped evidence submission, status checks, comments, and dispute responses. Tie the behavior to `hospitality_property_operations_record_reservation_workflow` where applicable, and make it visible in `HospitalityPropertyOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Current Domain Evidence Used:** `hospitality_property_operations_cryptographic_audit_proofs`, `hospitality_property_operations_control_assertion`, `RELEASE_EVIDENCE.md`.
 
-**Acceptance evidence:** Participant role policies, scoped tokens, submission audit trails, and inbound evidence validation. The evidence should be package-local in `src/pyAppGen/pbcs/hospitality_property_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Justification:** Inspection results, room-release approvals, and release audit packets should be tamper-evident when they support disputes or internal assurance.
 
-### 47. Advanced dependency freshness scoring for Hospitality Property Operations Control Assertion
+**Improvement:** Hash-chain critical inspection, exception, approval, and release artifacts so exported evidence packets can be verified without exposing sensitive guest details.
 
-**Justification:** A record may be valid locally but unsafe if dependency evidence is stale or incomplete.
+**Acceptance evidence:** Proof-verification tests detect altered evidence, export flows include proof manifests, and release packets show which hotel operations records are covered by each proof chain.
 
-**Improvement:** Score freshness and reliability of dependencies used by `hospitality_property_operations_control_assertion`, including consumed events PolicyChanged, CustomerUpdated, SupplierQualified, referenced projections, configuration versions, and external submissions. Tie the behavior to `hospitality_property_operations_create_room_inventory_workflow` where applicable, and make it visible in `HospitalityPropertyOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+### 32. Release evidence expansion for hotel operations flows
 
-**Acceptance evidence:** Freshness indicators, blocking rules, stale-event simulations, and workbench dependency health panels. The evidence should be package-local in `src/pyAppGen/pbcs/hospitality_property_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Exact key:** `continuous_release_assurance`
 
-### 48. Model governance and explainability for Hospitality Property Operations Governed Model
+**Current Domain Evidence Used:** `continuous_release_assurance`, `SPECIFICATION.md`, `RELEASE_EVIDENCE.md`.
 
-**Justification:** Governed AI is mandatory for professional-grade automation in Hospitality Property Operations.
+**Justification:** A release should prove the hotel operating surfaces work for rooms, stays, housekeeping, and service recovery instead of only proving files exist.
 
-**Improvement:** For every predictive or agentic feature around `hospitality_property_operations_governed_model`, record model version, prompt or ruleset version, training/evaluation evidence, confidence, explanation, and human feedback. Tie the behavior to `hospitality_property_operations_record_reservation_workflow` where applicable, and make it visible in `HospitalityPropertyOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand release evidence so it covers arrival readiness, same-day turns, guest-request SLA flows, blocked-room recovery, forecast calculations, and assistant guardrails.
 
-**Acceptance evidence:** Model cards, prompt/version manifests, feedback loops, drift tests, and audit proof for recommendations. The evidence should be package-local in `src/pyAppGen/pbcs/hospitality_property_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Release checks fail when any named operating path lacks evidence, the evidence packet links back to specification clauses, and generated smoke runs include hotel-specific scenarios rather than generic CRUD checks.
 
-### 49. High-scale partitioning and archival for Room Inventory
+### 33. Governed AI execution for front desk and housekeeping roles
 
-**Justification:** Better-than-world-class packages must remain operable after years of high-volume domain history.
+**Exact key:** `hospitality_property_operations_governed_ai_agent_execution`
 
-**Improvement:** Plan scale behavior for `room_inventory`: tenant partitioning, archival policies, cold storage, retention-aware search, projection compaction, and large-batch replay. Tie the behavior to `hospitality_property_operations_create_room_inventory_workflow` where applicable, and make it visible in `HospitalityPropertyOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Current Domain Evidence Used:** `hospitality_property_operations_governed_ai_agent_execution`, `ai_agent_task_assistance`, `permissions`.
 
-**Acceptance evidence:** Partition tests, archive/retrieve fixtures, retention enforcement, and replay benchmarks. The evidence should be package-local in `src/pyAppGen/pbcs/hospitality_property_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Justification:** Hotel staff can benefit from agent help, but room assignment, upgrade, move, and compensation decisions must remain policy-governed and reviewable.
 
-### 50. Release gate expansion for Reservation
+**Improvement:** Add governed execution policies for front desk agent skills, housekeeping dispatch skills, and manager exception skills with approval thresholds, safe-read defaults, and escalation requirements.
 
-**Justification:** The PBC should not claim domain coverage unless release evidence proves the claim end to end.
+**Acceptance evidence:** Policy tests show which actions can run automatically, which require human confirmation, and which are blocked entirely, and every assistant action writes structured governance evidence.
 
-**Improvement:** Expand release gates for `hospitality_property_operations` so every schema, service, API, event, handler, UI, rule, parameter, agent skill, seed scenario, and improvement backlog item maps to executable evidence. Tie the behavior to `hospitality_property_operations_record_reservation_workflow` where applicable, and make it visible in `HospitalityPropertyOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+### 34. Multi-property and tenant isolation
 
-**Acceptance evidence:** Release audit checks, manifest traceability, generated-app smoke tests, and missing-capability blockers. The evidence should be package-local in `src/pyAppGen/pbcs/hospitality_property_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Exact key:** `hospitality_property_operations_multi_tenant_policy_isolation`
+
+**Current Domain Evidence Used:** `hospitality_property_operations_multi_tenant_policy_isolation`, `permissions`, `configuration_workbench`.
+
+**Justification:** Hotel groups need strict isolation across brands and properties while still allowing consistent operating templates where policy permits.
+
+**Improvement:** Add tenant-scoped and property-scoped policies for room rules, service windows, dashboard visibility, and assistant behaviors with no cross-property leakage.
+
+**Acceptance evidence:** Isolation tests block cross-tenant reads and writes, approved template rollout preserves property overrides, and admin views cannot mix one property's service evidence into another's queues.
+
+### 35. Schema extension registry for property-specific room taxonomies
+
+**Exact key:** `hospitality_property_operations_schema_evolution_resilience`
+
+**Current Domain Evidence Used:** `hospitality_property_operations_schema_evolution_resilience`, `hospitality_property_operations_schema_extension`, `room_inventory`.
+
+**Justification:** Resort, city hotel, extended-stay, and serviced-apartment operations need different room and amenity fields without destabilizing the core model.
+
+**Improvement:** Add governed schema extensions for property-specific room classes, amenity bundles, inspection checklists, and service programs with compatibility checks and migration previews.
+
+**Acceptance evidence:** Extension tests protect existing APIs and projections, preview tools show downstream impact before activation, and rollback evidence exists for rejected or superseded extensions.
+
+### 36. Governed model registry for forecasting and recommendation logic
+
+**Exact key:** `hospitality_property_operations_governed_model`
+
+**Current Domain Evidence Used:** `hospitality_property_operations_governed_model`, `hospitality_property_operations_predictive_risk_scoring`, `rate_plan`.
+
+**Justification:** Forecasting and recommendation logic changes business behavior, so model versions need their own governance trail inside hotel operations.
+
+**Improvement:** Add a governed model registry for arrival-risk scoring, room-ready recommendations, overbooking alerts, and staffing-pressure predictions with version, training window, owner, and retirement state.
+
+**Acceptance evidence:** Model-governance tests require approval before activation, model cards show supported use cases and known limits, and decision traces identify the model version that influenced the recommendation.
+
+### 37. Configuration workbench for property calendars and standards
+
+**Exact key:** `configuration_workbench`
+
+**Current Domain Evidence Used:** `configuration_workbench`, `hospitality_property_operations_runtime_parameter`, `HospitalityPropertyOperationsWorkbench`.
+
+**Justification:** Operators need a safe place to manage service windows, holiday calendars, room-clean standards, and amenity defaults without editing raw configuration values.
+
+**Improvement:** Add configuration workbench screens for property calendars, room-status defaults, inspection programs, amenity-restock standards, and service-hour policies.
+
+**Acceptance evidence:** UI tests show editable but governed configuration forms, diff views explain pending changes before activation, and rollback restores prior settings without breaking active queues.
+
+### 38. Rule engine for room moves, late checkout, and service recovery
+
+**Exact key:** `rule_engine`
+
+**Current Domain Evidence Used:** `rule_engine`, `guest_stay`, `guest_request`, `rate_plan`.
+
+**Justification:** Frequent hotel exceptions such as late checkout, complimentary upgrade, or room move need consistent rules because they affect both guest experience and room availability.
+
+**Improvement:** Add rule sets for room-move eligibility, late-checkout approval, service-recovery compensation limits, amenity exception approval, and alternate-room selection.
+
+**Acceptance evidence:** Rule tests cover routine and edge-case scenarios, the applied rule path is visible to staff, and overrides cannot close without the configured justification.
+
+### 39. Parameter engine for forecast horizons and labor buffers
+
+**Exact key:** `parameter_engine`
+
+**Current Domain Evidence Used:** `parameter_engine`, `occupancy_snapshot`, `housekeeping_task`, `hospitality_property_operations_analytics`.
+
+**Justification:** Forecast usefulness depends on horizon, smoothing, labor assumptions, and rush-period buffers that differ by operating model and season.
+
+**Improvement:** Add parameter sets for forecast horizon, wash assumptions, room-turn buffers, inspector capacity, guest-request escalation windows, and same-day-turn thresholds.
+
+**Acceptance evidence:** Parameter tests show recalculated outputs after approved changes, invalid combinations are blocked before activation, and analysts can compare prior and proposed settings in one view.
+
+### 40. Permission model by role, shift, and property
+
+**Exact key:** `permissions`
+
+**Current Domain Evidence Used:** `permissions`, `reservation`, `guest_stay`, `housekeeping_task`.
+
+**Justification:** A front desk agent, housekeeping supervisor, room inspector, and operations manager should not have the same ability to move rooms, close tasks, or approve overrides.
+
+**Improvement:** Extend permissions to cover role, property, shift, action type, and exception severity for room blocks, stay edits, service recovery, and assistant-triggered commands.
+
+**Acceptance evidence:** Authorization tests block unauthorized actions, disabled UI controls explain why access is denied, and assistant flows inherit the same permission outcomes as direct user actions.
+
+### 41. Guest request API completeness and query surfaces
+
+**Exact key:** `POST /guest-requests`
+
+**Current Domain Evidence Used:** `POST /guest-requests`, `guest_request`, `GET /hospitality-property-operations-workbench`.
+
+**Justification:** Service teams need more than create-only request APIs because they must triage, assign, escalate, fulfill, and analyze request patterns in real time.
+
+**Improvement:** Expand the guest-request API set to include list, search, SLA status, escalation, fulfillment evidence, reopen, and export operations with clear versioning.
+
+**Acceptance evidence:** API contract tests cover request lifecycle commands and queries, idempotent reopen behavior is enforced, and client examples show how service workboards consume the new surfaces.
+
+### 42. Housekeeping task bulk assignment and mobile-safe updates
+
+**Exact key:** `POST /housekeeping-tasks`
+
+**Current Domain Evidence Used:** `POST /housekeeping-tasks`, `housekeeping_task`, `HospitalityPropertyOperationsWorkbench`.
+
+**Justification:** Supervisors often need to rebalance dozens of rooms at once during rush periods, and attendants may update task state from constrained devices on the floor.
+
+**Improvement:** Add bulk assign, bulk reprioritize, offline-tolerant completion updates, inspection handoff commands, and room-ready publish operations for housekeeping tasks.
+
+**Acceptance evidence:** Bulk-operation tests preserve per-room audit trails, retry behavior does not duplicate completions, and offline replay surfaces conflicts for review instead of silently overwriting them.
+
+### 43. Stay API boundaries for check-in, room move, and checkout
+
+**Exact key:** `POST /guest-stays`
+
+**Current Domain Evidence Used:** `POST /guest-stays`, `guest_stay`, `room_inventory`, `reservation`.
+
+**Justification:** Front desk workflows need explicit commands for check-in, room assignment, room move, extension, early departure, and checkout because each has different validation and side effects.
+
+**Improvement:** Expand stay APIs into separate commands for arrival validation, check-in, assign-room, move-room, extend-stay, checkout, and reopen-post-departure correction with clear payload boundaries.
+
+**Acceptance evidence:** Contract tests show each command's preconditions, side effects on room status are visible and replay-safe, and invalid direct state mutation attempts are rejected.
+
+### 44. Room inventory APIs for blocks, returns, and amenity status
+
+**Exact key:** `POST /room-inventorys`
+
+**Current Domain Evidence Used:** `POST /room-inventorys`, `room_inventory`, `housekeeping_task`, `guest_request`.
+
+**Justification:** Room operations need command surfaces for maintenance blocks, inspection release, amenity readiness updates, and temporary room holds that are distinct from initial room creation.
+
+**Improvement:** Add room commands for place-block, release-block, mark-dirty, mark-clean, fail-inspection, pass-inspection, update-amenity-readiness, and publish-room-ready.
+
+**Acceptance evidence:** API tests prove state guards on every command, duplicate room-ready publishes remain idempotent, and room command history appears consistently across room, stay, and workbench views.
+
+### 45. Consolidated workbench query boundary
+
+**Exact key:** `GET /hospitality-property-operations-workbench`
+
+**Current Domain Evidence Used:** `GET /hospitality-property-operations-workbench`, `HospitalityPropertyOperationsWorkbench`, `occupancy_snapshot`.
+
+**Justification:** Hotel operators need one query surface that joins arrivals, room readiness, housekeeping load, and guest-service pressure without forcing UI code to stitch raw records together.
+
+**Improvement:** Expand the workbench query boundary to deliver consolidated arrival queues, room-ready gaps, same-day-turn risk, guest-request heatmaps, and blocked-room summaries with freshness metadata.
+
+**Acceptance evidence:** Query tests show stable response contracts across filters and time windows, freshness markers are populated for every panel, and the UI renders without additional hidden joins.
+
+### 46. Typed emitted events for hotel operations milestones
+
+**Exact key:** `HospitalityPropertyOperationsCreated`
+
+**Current Domain Evidence Used:** `HospitalityPropertyOperationsCreated`, `HospitalityPropertyOperationsUpdated`, `HospitalityPropertyOperationsApproved`, `HospitalityPropertyOperationsExceptionOpened`.
+
+**Justification:** Generic lifecycle events are not enough when downstream consumers care about room-ready publication, oversell exception opened, guest request breached, or stay moved.
+
+**Improvement:** Add typed emitted events for room blocked, room ready, arrival checked in, stay moved, stay extended, guest request escalated, inspection failed, and sellout risk opened.
+
+**Acceptance evidence:** Event schema tests preserve backward compatibility where required, examples show hotel-specific payload intent, and release evidence includes emitted-event coverage for the named milestones.
+
+### 47. Policy change handlers for operational rule drift
+
+**Exact key:** `PolicyChanged`
+
+**Current Domain Evidence Used:** `PolicyChanged`, `hospitality_property_operations_policy_rule`, `appgen_x_outbox_inbox_eventing`.
+
+**Justification:** When upstream policy changes arrive, hotels need to recalculate room-block rules, service promises, and approval thresholds without silent drift.
+
+**Improvement:** Add handlers that ingest policy changes, identify impacted room, stay, request, and rule projections, and open explicit review work when a change alters live operating behavior.
+
+**Acceptance evidence:** Handler tests show replay-safe recalculation, impacted queues are visible to reviewers, and stale-policy conditions appear in dashboards until the new rules are acknowledged.
+
+### 48. Customer update handlers for guest preference freshness
+
+**Exact key:** `CustomerUpdated`
+
+**Current Domain Evidence Used:** `CustomerUpdated`, `reservation`, `guest_stay`, `guest_request`.
+
+**Justification:** Hotels need guest-profile freshness for accessibility requests, loyalty treatment, and service preferences, but the source guest profile still belongs elsewhere.
+
+**Improvement:** Add customer-update handlers that refresh guest preference projections, flag impacted arrivals or in-house stays, and preserve a freshness indicator on hotel-side copies.
+
+**Acceptance evidence:** Tests show preference updates affect future operational decisions without rewriting historical stay evidence, stale guest-profile data is visible to staff, and no customer-master table coupling is introduced.
+
+### 49. Supplier qualification handlers for outsourced services
+
+**Exact key:** `SupplierQualified`
+
+**Current Domain Evidence Used:** `SupplierQualified`, `housekeeping_task`, `guest_request`, `hospitality_property_operations_cross_pbc_event_federation`.
+
+**Justification:** Hotels often depend on outsourced housekeeping, linen, floral, amenity, or engineering vendors, and qualification loss can immediately change service capacity.
+
+**Improvement:** Add supplier-qualification handlers that update vendor-readiness projections, warn on tasks assigned to unavailable vendors, and open contingency work for affected service lines.
+
+**Acceptance evidence:** Tests show qualification loss creates actionable exceptions, unaffected queues continue normally, and vendor-readiness projections remain traceable to the inbound supplier event.
+
+### 50. End-to-end release proof for arrival-to-room-ready operations
+
+**Exact key:** `RELEASE_EVIDENCE.md`
+
+**Current Domain Evidence Used:** `RELEASE_EVIDENCE.md`, `SPECIFICATION.md`, `HospitalityPropertyOperationsWorkbench`, `HospitalityPropertyOperationsAssistantPanel`.
+
+**Justification:** The strongest release proof for this context is an arrival-to-departure operating story that shows reservations, room readiness, housekeeping, guest service, assistant guardrails, and evidence capture working together.
+
+**Improvement:** Add an end-to-end release scenario that starts with forecasted arrivals, processes a blocked-room exception, reassigns housekeeping work, completes inspection, checks in the guest, resolves a guest request, and closes the stay with preserved evidence.
+
+**Acceptance evidence:** Release artifacts include scenario data, expected workbench states, emitted events, control results, assistant interactions, and reviewer sign-off showing the full hotel operations loop passed.

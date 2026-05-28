@@ -1,418 +1,418 @@
-# Hotel Revenue Management PBC Better-Than-World-Class Improvement Backlog
+# Hotel Revenue Management Improvement Backlog
 
-## Purpose
-
-This file identifies, justifies, and describes 50 high-impact improvements for `hotel_revenue_management`. The backlog is specific to room inventory, rates, channels, demand forecasts, overbooking, yield, and hotel revenue controls and is intended to move the PBC from release-auditable scaffolding toward complete, specialist-grade domain coverage.
+This backlog is specific to the exact key `hotel_revenue_management` and is grounded in the manifest surfaces for room types, rate plans, inventory controls, channel inventory, demand forecasts, overbooking, yield decisions, revenue snapshots, workbench APIs, assistant support, events, and release evidence.
 
 ## Current Domain Evidence Used
 
-- Stable PBC key: `hotel_revenue_management`.
-- Domain purpose: Room inventory, rates, channels, demand forecasts, overbooking, yield, and hotel revenue controls.
-- Owned domain tables: `room_type`, `rate_plan`, `channel_inventory`, `demand_forecast`, `overbooking_policy`, `yield_decision`, `revenue_snapshot`, `hotel_revenue_management_policy_rule`, `hotel_revenue_management_runtime_parameter`, `hotel_revenue_management_schema_extension`, `hotel_revenue_management_control_assertion`, `hotel_revenue_management_governed_model`.
-- Public APIs: `POST /room-types`, `POST /rate-plans`, `POST /channel-inventorys`, `POST /demand-forecasts`, `POST /overbooking-policys`, `GET /hotel-revenue-management-workbench`.
-- Emitted AppGen-X events: `HotelRevenueManagementCreated`, `HotelRevenueManagementUpdated`, `HotelRevenueManagementApproved`, `HotelRevenueManagementExceptionOpened`.
-- Consumed AppGen-X events: `PolicyChanged`, `AuditEventSealed`, `OperationalKpiChanged`.
-- Current standard surfaces include: `room_type_management`, `hotel_revenue_management_workflow`, `hotel_revenue_management_analytics`, `configuration_schema`, `rule_engine`, `parameter_engine`, `owned_schema_migrations_models`, `appgen_x_outbox_inbox_eventing`, `idempotent_handlers`, `retry_dead_letter_evidence`.
-- Current advanced surfaces include: `hotel_revenue_management_event_sourced_operational_history`, `hotel_revenue_management_multi_tenant_policy_isolation`, `hotel_revenue_management_schema_evolution_resilience`, `hotel_revenue_management_autonomous_anomaly_detection`, `hotel_revenue_management_semantic_document_instruction_understanding`, `hotel_revenue_management_predictive_risk_scoring`, `hotel_revenue_management_counterfactual_scenario_simulation`, `hotel_revenue_management_cryptographic_audit_proofs`.
+- PBC key: `hotel_revenue_management`
+- Description: `Room inventory, rates, channels, demand forecasts, overbooking, yield, and hotel revenue controls`
+- Tables: `room_type`, `rate_plan`, `channel_inventory`, `demand_forecast`, `overbooking_policy`, `yield_decision`, `revenue_snapshot`, `hotel_revenue_management_policy_rule`, `hotel_revenue_management_runtime_parameter`, `hotel_revenue_management_schema_extension`, `hotel_revenue_management_control_assertion`, `hotel_revenue_management_governed_model`
+- APIs: `POST /room-types`, `POST /rate-plans`, `POST /channel-inventorys`, `POST /demand-forecasts`, `POST /overbooking-policys`, `GET /hotel-revenue-management-workbench`
+- Workflows: `hotel_revenue_management_create_room_type_workflow`, `hotel_revenue_management_record_rate_plan_workflow`
+- UI fragments: `HotelRevenueManagementWorkbench`, `HotelRevenueManagementDetail`, `HotelRevenueManagementAssistantPanel`
+- Emits: `HotelRevenueManagementCreated`, `HotelRevenueManagementUpdated`, `HotelRevenueManagementApproved`, `HotelRevenueManagementExceptionOpened`
+- Consumes: `PolicyChanged`, `AuditEventSealed`, `OperationalKpiChanged`
+- Analytics and advanced capabilities: `hotel_revenue_management_risk_score`, `hotel_revenue_management_workbench_metric`, `hotel_revenue_management_counterfactual_scenario_simulation`, `hotel_revenue_management_cryptographic_audit_proofs`, `hotel_revenue_management_governed_ai_agent_execution`
+- Release evidence docs: `SPECIFICATION.md`, `RELEASE_EVIDENCE.md`
+
+## Backlog
+
+### 1. Sellable room-type inventory matrix
+
+**Justification:** Revenue controls are only credible if `room_type` capacity distinguishes physical rooms, sellable rooms, out-of-order buffers, and upgrade substitutes.
+**Improvement:** Add a sellability matrix that tracks base inventory, maintenance holdbacks, complimentary allotments, and substitute-to room types by date band.
+**Acceptance evidence:** The workbench shows sellable versus physical counts, tests prove blocked rooms no longer flow into pricing or overbooking decisions, and the matrix is traceable from room-type detail.
+**Current Domain Evidence Used:** `room_type`, `POST /room-types`, `hotel_revenue_management_create_room_type_workflow`, `HotelRevenueManagementWorkbench`
+**Exact key:** `hotel_revenue_management.sellable_room_type_inventory_matrix`
+
+### 2. Rate-plan inheritance and derivation graph
+
+**Justification:** Hotels usually derive package, member, corporate, and wholesale pricing from a base ladder, and hidden overrides make rate maintenance unsafe.
+**Improvement:** Model parent-child `rate_plan` inheritance for price, fences, restrictions, and channel scope, with explicit override markers at each derived node.
+**Acceptance evidence:** The detail page renders the derivation chain, override conflicts block approval, and tests confirm parent changes only flow where a child has not overridden the field.
+**Current Domain Evidence Used:** `rate_plan`, `POST /rate-plans`, `hotel_revenue_management_record_rate_plan_workflow`, `HotelRevenueManagementDetail`
+**Exact key:** `hotel_revenue_management.rate_plan_inheritance_graph`
+
+### 3. BAR ladder and price-fence validator
+
+**Justification:** Best available rate ladders fail when refundability, advance-purchase rules, and member fences contradict each other.
+**Improvement:** Add validation for BAR ordering, discount gaps, refundability rules, membership fences, and advanced-purchase cutoffs before a rate plan can publish.
+**Acceptance evidence:** Invalid ladders are rejected with field-level reasons, the assistant can explain the broken fence, and release evidence includes a BAR validation report for active public rates.
+**Current Domain Evidence Used:** `rate_plan`, `hotel_revenue_management_policy_rule`, `HotelRevenueManagementAssistantPanel`, `RELEASE_EVIDENCE.md`
+**Exact key:** `hotel_revenue_management.bar_ladder_and_fence_validator`
+
+### 4. Restriction calendar for CTA, CTD, and LOS controls
+
+**Justification:** Hotel restrictions live on dates and stay patterns, not just on rate records.
+**Improvement:** Create a restriction calendar supporting CTA, CTD, min LOS, max LOS, and stay-through exceptions by date, room type, and rate plan.
+**Acceptance evidence:** Operators can inspect restrictions on a calendar, conflicting LOS logic opens an exception, and tests verify multi-night itinerary handling across arrival and stay dates.
+**Current Domain Evidence Used:** `rate_plan`, `channel_inventory`, `HotelRevenueManagementWorkbench`, `hotel_revenue_management_policy_rule`
+**Exact key:** `hotel_revenue_management.restriction_calendar_controls`
+
+### 5. Channel allotment and stop-sell controls
+
+**Justification:** Distribution strategy requires per-channel inventory posture rather than one undifferentiated count.
+**Improvement:** Expand `channel_inventory` to manage per-channel allotments, stop-sells, release-back rules, blackout windows, and controlled reopen actions.
+**Acceptance evidence:** The workbench shows channel-level positions, stop-sell actions are audit-trailed, and tests confirm that closing one OTA does not change direct-channel availability unless a shared rule says so.
+**Current Domain Evidence Used:** `channel_inventory`, `POST /channel-inventorys`, `HotelRevenueManagementWorkbench`, `HotelRevenueManagementUpdated`
+**Exact key:** `hotel_revenue_management.channel_allotment_stop_sell_controls`
+
+### 6. Channel parity exception tracking
+
+**Justification:** Revenue teams need to separate intentional parity breaks from defective rate distribution.
+**Improvement:** Add parity monitoring across public channels with explicit reason codes for approved exceptions such as member rates, packages, geo-fenced offers, and wholesale net rates.
+**Acceptance evidence:** Parity breaks appear in an exception queue with rationale, approved breaks are labeled distinctly from defects, and tests show approved exceptions suppress noise without hiding real mismatches.
+**Current Domain Evidence Used:** `rate_plan`, `channel_inventory`, `hotel_revenue_management_analytics`, `HotelRevenueManagementExceptionOpened`
+**Exact key:** `hotel_revenue_management.channel_parity_exception_tracking`
+
+### 7. Pickup curve baselines by stay date
+
+**Justification:** Pickup pace is one of the clearest hotel revenue signals and needs stay-date precision.
+**Improvement:** Store pickup baselines in `demand_forecast` by stay date, booking window, room type, and segment so live pace can be compared against expected build.
+**Acceptance evidence:** The workbench charts pickup versus baseline, pace deviations open forecast exceptions, and tests verify booking-window math for same-day, near-term, and long-lead demand.
+**Current Domain Evidence Used:** `demand_forecast`, `revenue_snapshot`, `hotel_revenue_management_workbench_metric`, `OperationalKpiChanged`
+**Exact key:** `hotel_revenue_management.pickup_curve_baselines`
+
+### 8. Demand forecast segmentation by transient, group, and corporate mix
+
+**Justification:** Total room demand without segment mix hides the drivers of displacement, restriction stance, and channel posture.
+**Improvement:** Extend `demand_forecast` to hold segmented transient, negotiated corporate, group, wholesale, and house-use demand with confidence bands and mix assumptions.
+**Acceptance evidence:** Forecast detail shows segment totals and mix shifts, manual overrides roll up cleanly to overall demand, and tests confirm segment totals reconcile to the property forecast.
+**Current Domain Evidence Used:** `demand_forecast`, `HotelRevenueManagementDetail`, `hotel_revenue_management_predictive_risk_scoring`, `hotel_revenue_management_workbench_metric`
+**Exact key:** `hotel_revenue_management.segmented_demand_forecast_mix`
+
+### 9. Event and holiday demand-impact modeling
+
+**Justification:** Concerts, conferences, school holidays, and citywide events distort demand in ways that ordinary seasonality cannot explain.
+**Improvement:** Add event-impact factors to `demand_forecast` so operators can model compression, shoulder spill, and post-event wash separately from baseline demand.
+**Acceptance evidence:** Forecast scenarios store event tags and impact coefficients, the workbench compares baseline versus event-adjusted views, and release evidence includes at least one peak-date replay.
+**Current Domain Evidence Used:** `demand_forecast`, `hotel_revenue_management_counterfactual_scenario_simulation`, `HotelRevenueManagementWorkbench`, `RELEASE_EVIDENCE.md`
+**Exact key:** `hotel_revenue_management.event_holiday_demand_modeling`
+
+### 10. Overbooking limits by room type and arrival pattern
+
+**Justification:** Overbooking is only safe when calibrated by room type, arrival pattern, and recovery options rather than one blanket percentage.
+**Improvement:** Redesign `overbooking_policy` to support per-room-type caps, day-of-week adjustments, arrival-day protections, recovery hierarchies, and temporary override approval.
+**Acceptance evidence:** Policy views show distinct caps by room type and date class, override history is preserved, and tests prove arrival-day protections prevent oversell beyond approved limits.
+**Current Domain Evidence Used:** `overbooking_policy`, `POST /overbooking-policys`, `HotelRevenueManagementApproved`, `HotelRevenueManagementDetail`
+**Exact key:** `hotel_revenue_management.room_type_overbooking_limits`
+
+### 11. Cancellation and no-show curve calibration
+
+**Justification:** Overbooking and pricing both rely on realistic cancellation and no-show assumptions, which vary by segment and booking window.
+**Improvement:** Attach cancellation, no-show, and early-departure curves to forecasts and overbooking policies by room type, rate family, and arrival horizon.
+**Acceptance evidence:** Curve assumptions are versioned, curve changes trigger downstream recalculation, and tests verify that updated no-show behavior changes recommended oversell limits.
+**Current Domain Evidence Used:** `demand_forecast`, `overbooking_policy`, `yield_decision`, `hotel_revenue_management_runtime_parameter`
+**Exact key:** `hotel_revenue_management.cancellation_no_show_curve_calibration`
+
+### 12. Group block wash and release rules
 
-## 50 High-Impact Improvements
+**Justification:** Group inventory behaves differently from transient demand, and wash assumptions need explicit handling to avoid inflated occupancy expectations.
+**Improvement:** Add group-block wash percentages, pickup checkpoints, cut-off dates, and automatic release rules so underperforming block rooms flow back into transient inventory on time.
+**Acceptance evidence:** The workbench shows held, picked-up, and released rooms by stay date, release actions are auditable, and tests confirm released rooms become sellable through the expected channels.
+**Current Domain Evidence Used:** `channel_inventory`, `demand_forecast`, `yield_decision`, `HotelRevenueManagementWorkbench`
+**Exact key:** `hotel_revenue_management.group_block_wash_release_rules`
 
-### 1. Canonical lifecycle state model for Room Type
+### 13. Displacement analysis for group quotes and blocks
 
-**Justification:** This closes shallow CRUD gaps by making every hotel revenue management transition explainable and testable instead of implicit in free-form status values.
+**Justification:** Accepting a group should be measured against displaced transient revenue and not just topline block value.
+**Improvement:** Add displacement analysis that estimates transient displacement, shoulder-night fill, ancillary value, and minimum acceptable group rate for the requested block pattern.
+**Acceptance evidence:** Analysts can compare accept-versus-reject scenarios, yield decisions retain the displacement inputs used, and tests verify that compression nights raise the minimum acceptable group value.
+**Current Domain Evidence Used:** `yield_decision`, `revenue_snapshot`, `hotel_revenue_management_counterfactual_scenario_simulation`, `HotelRevenueManagementDetail`
+**Exact key:** `hotel_revenue_management.group_block_displacement_analysis`
 
-**Improvement:** Define a complete state machine for `room_type` with explicit draft, validated, blocked, approved, active, suspended, corrected, closed, archived, and reopened states. Tie the behavior to `hotel_revenue_management_create_room_type_workflow` where applicable, and make it visible in `HotelRevenueManagementWorkbench` so operators do not need hidden scripts or raw table access.
+### 14. Comp-set boundary governance
 
-**Acceptance evidence:** State-transition tests, invalid-transition fixtures, workbench state badges, and emitted AppGen-X transition events for HotelRevenueManagementCreated, HotelRevenueManagementUpdated, HotelRevenueManagementApproved. The evidence should be package-local in `src/pyAppGen/pbcs/hotel_revenue_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Justification:** Competitive pricing is noisy when the comp set is stale, too broad, or mixed across incomparable hotel products.
+**Improvement:** Govern comp-set boundaries by market, submarket, star class, brand position, and room product comparability, and bind those boundaries to pricing logic.
+**Acceptance evidence:** Comp-set changes require approval, pricing explanations cite the comp-set version used, and tests confirm out-of-bound competitor inputs are ignored until approved.
+**Current Domain Evidence Used:** `hotel_revenue_management_governed_model`, `hotel_revenue_management_predictive_risk_scoring`, `yield_decision`, `HotelRevenueManagementApproved`
+**Exact key:** `hotel_revenue_management.comp_set_boundary_governance`
 
-### 2. Domain intake and normalization for Rate Plan
+### 15. Pricing experiment registry and guardrails
 
-**Justification:** The PBC cannot reach complete domain coverage unless it handles the messy front door of room inventory, rates, channels, demand forecasts, overbooking, yield, and hotel revenue controls, not only already-clean records.
+**Justification:** Revenue teams need a safe way to test rate moves, fences, and restriction strategies without losing operational traceability.
+**Improvement:** Create a registry for pricing experiments covering hypothesis, target market, eligible channels, holdout design, start and end dates, and rollback criteria.
+**Acceptance evidence:** Experiment records link to impacted rates and inventory, outcome metrics are captured in snapshots, and release evidence shows experiments can be closed or rolled back cleanly.
+**Current Domain Evidence Used:** `rate_plan`, `channel_inventory`, `revenue_snapshot`, `RELEASE_EVIDENCE.md`
+**Exact key:** `hotel_revenue_management.pricing_experiment_registry`
 
-**Improvement:** Build a typed intake pipeline for `rate_plan` that accepts structured API payloads, document-derived instructions, batch loads, and assistant-generated drafts while normalizing identifiers, dates, units, parties, and jurisdictional context. Tie the behavior to `hotel_revenue_management_record_rate_plan_workflow` where applicable, and make it visible in `HotelRevenueManagementWorkbench` so operators do not need hidden scripts or raw table access.
+### 16. Yield-decision explanation trail
 
-**Acceptance evidence:** Golden intake fixtures, rejected-record queues, field-level normalization evidence, and assistant previews before governed datastore mutation. The evidence should be package-local in `src/pyAppGen/pbcs/hotel_revenue_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Justification:** A recommended price or restriction move is only useful when the operator can see the demand, inventory, and policy drivers behind it.
+**Improvement:** Store an explanation bundle on every `yield_decision` with forecast inputs, pickup signals, restrictions, channel state, comp-set version, and rule references.
+**Acceptance evidence:** The detail view renders a readable explanation tree, decision events include explanation references, and tests verify completeness for automated and manual decisions.
+**Current Domain Evidence Used:** `yield_decision`, `demand_forecast`, `channel_inventory`, `hotel_revenue_management_policy_rule`
+**Exact key:** `hotel_revenue_management.yield_decision_explanation_trail`
 
-### 3. Specialist validation rules for Channel Inventory
+### 17. Channel-mix optimization recommendations
 
-**Justification:** World-class Hotel Revenue Management requires rules that domain experts can reason about, version, test, and roll back without code edits.
+**Justification:** Profitability depends on which channels fill the hotel, not only whether the rooms sell.
+**Improvement:** Add decision support that recommends channel open-close actions and rate differentials based on net revenue, acquisition cost, pace, and room-type scarcity.
+**Acceptance evidence:** Recommendations cite projected net-revenue delta by channel, accepted actions are written back as governed changes, and tests confirm high-cost channels are deprioritized when direct demand can absorb nights.
+**Current Domain Evidence Used:** `channel_inventory`, `yield_decision`, `revenue_snapshot`, `hotel_revenue_management_analytics`
+**Exact key:** `hotel_revenue_management.channel_mix_optimization`
 
-**Improvement:** Add a domain rule compiler for `channel_inventory` that supports threshold rules, eligibility rules, dependency rules, temporal windows, conflicting-instruction detection, and override justification. Tie the behavior to `hotel_revenue_management_create_room_type_workflow` where applicable, and make it visible in `HotelRevenueManagementWorkbench` so operators do not need hidden scripts or raw table access.
+### 18. Last-room-availability policy controls
 
-**Acceptance evidence:** Rule simulation tests, versioned rule manifests, rule impact reports, and UI rule editors linked to `HOTEL_REVENUE_MANAGEMENT_DATABASE_URL, HOTEL_REVENUE_MANAGEMENT_EVENT_TOPIC, HOTEL_REVENUE_MANAGEMENT_RETRY_LIMIT`. The evidence should be package-local in `src/pyAppGen/pbcs/hotel_revenue_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Justification:** LRA commitments shape both contract compliance and revenue leakage, so they need explicit policy treatment.
+**Improvement:** Add LRA controls by account type, room type, date class, and channel so protected inventory can be distinguished from freely closable inventory.
+**Acceptance evidence:** LRA exceptions appear before a stop-sell is approved, policy changes are audit-trailed, and tests confirm protected accounts retain access while non-LRA channels close correctly.
+**Current Domain Evidence Used:** `channel_inventory`, `hotel_revenue_management_policy_rule`, `PolicyChanged`, `HotelRevenueManagementWorkbench`
+**Exact key:** `hotel_revenue_management.last_room_availability_controls`
 
-### 4. Parameter governance and tuning for Demand Forecast
+### 19. Shoulder-night and gap-night optimizer
 
-**Justification:** Parameters are where operations teams tune hotel revenue management; unbounded constants would make the PBC brittle and unsafe in real deployments.
+**Justification:** Hotels often fill the peak night while leaving adjacent nights weak, which wastes the opportunity to lengthen stays.
+**Improvement:** Add an optimizer that detects shoulder softness and recommends LOS offers, fenced discounts, or package positioning to fill gap nights around compression periods.
+**Acceptance evidence:** Operators can review shoulder-night opportunities on the calendar, accepted plays create traceable rate or restriction changes, and tests distinguish gap nights from already-compressed nights.
+**Current Domain Evidence Used:** `rate_plan`, `demand_forecast`, `yield_decision`, `HotelRevenueManagementWorkbench`
+**Exact key:** `hotel_revenue_management.shoulder_gap_night_optimizer`
 
-**Improvement:** Expose bounded runtime parameters for `demand_forecast` covering risk thresholds, SLA windows, confidence floors, escalation cutoffs, batch sizes, retry limits, and human-confirmation requirements. Tie the behavior to `hotel_revenue_management_record_rate_plan_workflow` where applicable, and make it visible in `HotelRevenueManagementWorkbench` so operators do not need hidden scripts or raw table access.
+### 20. Compression-night playbook workbench
 
-**Acceptance evidence:** Parameter schema validation, tenant overrides, approval history, rollback controls, and workbench diff views. The evidence should be package-local in `src/pyAppGen/pbcs/hotel_revenue_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Justification:** Peak nights require fast coordination across pricing, restrictions, overbooking, and channel controls.
+**Improvement:** Build a compression-night workspace that assembles pace, scarcity, restrictions, oversell stance, and recommended operator actions for high-pressure dates.
+**Acceptance evidence:** The workbench highlights compression nights from policy thresholds, action checklists are captured with timestamps and approvers, and tests verify that the page stays coherent when one feed is stale.
+**Current Domain Evidence Used:** `HotelRevenueManagementWorkbench`, `demand_forecast`, `channel_inventory`, `overbooking_policy`
+**Exact key:** `hotel_revenue_management.compression_night_playbook_workbench`
 
-### 5. Deep owned schema expansion for Overbooking Policy
+### 21. Upgrade and downgrade substitution rules
 
-**Justification:** A single payload column cannot express the full surface of room inventory, rates, channels, demand forecasts, overbooking, yield, and hotel revenue controls or prove cross-PBC boundaries are respected.
+**Justification:** Room-type substitution affects guest recovery and sellable capacity, so it needs explicit revenue-aware rules.
+**Improvement:** Add substitution rules that describe when inventory can be upgraded or downgraded across `room_type` values, the revenue impact, and whether protected demand must be preserved.
+**Acceptance evidence:** Yield decisions can reference allowed substitution paths, overbooking recovery uses the same paths, and tests verify that blocked substitutions never appear in recommendation flows.
+**Current Domain Evidence Used:** `room_type`, `yield_decision`, `overbooking_policy`, `hotel_revenue_management_policy_rule`
+**Exact key:** `hotel_revenue_management.room_type_substitution_rules`
 
-**Improvement:** Extend the owned schema around `overbooking_policy` with normalized child tables for line-level evidence, party roles, approvals, attachments, comments, metrics, exception reasons, and control assertions. Tie the behavior to `hotel_revenue_management_create_room_type_workflow` where applicable, and make it visible in `HotelRevenueManagementWorkbench` so operators do not need hidden scripts or raw table access.
+### 22. Package-rate component margin controls
 
-**Acceptance evidence:** Migrations, models, relationship tests, schema contract snapshots, and no shared-table access outside the `hotel_revenue_management_` namespace. The evidence should be package-local in `src/pyAppGen/pbcs/hotel_revenue_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Justification:** Package rates can look healthy on occupancy while quietly eroding net revenue if inclusions are not priced explicitly.
+**Improvement:** Track package components inside `rate_plan` so breakfast, parking, credits, and other inclusions carry explicit margin assumptions and minimum contribution rules.
+**Acceptance evidence:** Package detail views show component economics, low-margin packages raise approval warnings, and tests confirm bundled inclusions change net value calculations without corrupting base BAR data.
+**Current Domain Evidence Used:** `rate_plan`, `revenue_snapshot`, `hotel_revenue_management_control_assertion`, `HotelRevenueManagementDetail`
+**Exact key:** `hotel_revenue_management.package_rate_margin_controls`
 
-### 6. Event-sourced operational history for Yield Decision
+### 23. Negotiated and corporate blackout governance
 
-**Justification:** Temporal reconstruction is essential for better-than-world-class auditability and dispute resolution in hotel revenue management.
+**Justification:** Negotiated rate access often needs temporary blackout logic during compression, but those exceptions must be deliberate and auditable.
+**Improvement:** Add blackout calendars, exemption lists, and approval flows for negotiated rates so protected accounts, crew business, and strategic contracts are handled consistently on peak dates.
+**Acceptance evidence:** Blackout rules display beside active negotiated plans, exception approvals generate audit history, and tests confirm a blackout closes only the intended account set and dates.
+**Current Domain Evidence Used:** `rate_plan`, `hotel_revenue_management_policy_rule`, `HotelRevenueManagementApproved`, `PolicyChanged`
+**Exact key:** `hotel_revenue_management.negotiated_rate_blackout_governance`
 
-**Improvement:** Capture every material mutation of `yield_decision` as immutable AppGen-X events with actor, tenant, command, policy version, idempotency key, before/after summary, and projection checkpoint. Tie the behavior to `hotel_revenue_management_record_rate_plan_workflow` where applicable, and make it visible in `HotelRevenueManagementWorkbench` so operators do not need hidden scripts or raw table access.
+### 24. Forecast override workflow with approval evidence
 
-**Acceptance evidence:** Replay tests, projection checksums, event ordering evidence, and point-in-time workbench views. The evidence should be package-local in `src/pyAppGen/pbcs/hotel_revenue_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Justification:** Manual overrides are unavoidable in revenue management, but silent overrides destroy trust in the forecast.
+**Improvement:** Add a structured override workflow for `demand_forecast` with reason, expected duration, evidence note, required approver, and automatic expiry or review date.
+**Acceptance evidence:** Overrides appear as layered values instead of silent replacements, expired overrides trigger alerts, and tests verify approval is required above configured variance thresholds.
+**Current Domain Evidence Used:** `demand_forecast`, `hotel_revenue_management_runtime_parameter`, `HotelRevenueManagementApproved`, `HotelRevenueManagementDetail`
+**Exact key:** `hotel_revenue_management.forecast_override_workflow`
 
-### 7. Projection and read-model strategy for Revenue Snapshot
+### 25. Occupancy, ADR, and RevPAR scenario simulator
 
-**Justification:** The workbench should not force users to infer domain truth from raw tables; each projection should answer a real operating question.
+**Justification:** Revenue strategy requires the ability to test pricing and restriction moves before they hit live dates.
+**Improvement:** Extend scenario simulation to compare occupancy, ADR, RevPAR, room revenue, channel mix, and oversell exposure under alternate rates, restrictions, and forecast assumptions.
+**Acceptance evidence:** The simulator stores named scenarios, compares them against the current baseline, and produces side-by-side KPI deltas with referenced inputs.
+**Current Domain Evidence Used:** `hotel_revenue_management_counterfactual_scenario_simulation`, `yield_decision`, `revenue_snapshot`, `HotelRevenueManagementWorkbench`
+**Exact key:** `hotel_revenue_management.revenue_kpi_scenario_simulator`
 
-**Improvement:** Create purpose-built projections for `revenue_snapshot`: operational queue, executive KPI rollup, exception aging, compliance evidence, agent task context, and external dependency health. Tie the behavior to `hotel_revenue_management_create_room_type_workflow` where applicable, and make it visible in `HotelRevenueManagementWorkbench` so operators do not need hidden scripts or raw table access.
+### 26. Revenue snapshot lineage to source decisions
 
-**Acceptance evidence:** Projection contracts, freshness SLAs, backfill tests, and visible stale-projection warnings. The evidence should be package-local in `src/pyAppGen/pbcs/hotel_revenue_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Justification:** Snapshot metrics lose diagnostic value when operators cannot trace them back to the rates, restrictions, and decisions that produced them.
+**Improvement:** Build lineage from `revenue_snapshot` to the rate plans, forecasts, channel controls, and yield decisions that shaped each metric period.
+**Acceptance evidence:** Each snapshot links back to source records and versions, replay tests reconstruct a prior snapshot from source state, and auditors can export a lineage report for a chosen date range.
+**Current Domain Evidence Used:** `revenue_snapshot`, `yield_decision`, `rate_plan`, `hotel_revenue_management_event_sourced_operational_history`
+**Exact key:** `hotel_revenue_management.revenue_snapshot_lineage`
 
-### 8. Exception taxonomy and remediation for Hotel Revenue Management Policy Rule
+### 27. Stale forecast and stale pickup detection
 
-**Justification:** High-value PBCs win on exception throughput; generic “failed” states hide the details operators need.
+**Justification:** A forecast can be internally valid but still operationally stale relative to current pace and volatility.
+**Improvement:** Add freshness rules that compare live pickup against forecast update age, last override date, and volatility to identify forecasts that need attention.
+**Acceptance evidence:** Stale forecasts appear in the workbench queue with severity, accepted refresh actions are timestamped, and tests verify different thresholds for low-volatility and high-volatility dates.
+**Current Domain Evidence Used:** `demand_forecast`, `revenue_snapshot`, `OperationalKpiChanged`, `hotel_revenue_management_risk_score`
+**Exact key:** `hotel_revenue_management.stale_forecast_pickup_detection`
 
-**Improvement:** Model the full exception taxonomy for `hotel_revenue_management_policy_rule`, including severity, root cause, blocking dependency, remediation owner, due date, retry eligibility, escalation path, and closure evidence. Tie the behavior to `hotel_revenue_management_record_rate_plan_workflow` where applicable, and make it visible in `HotelRevenueManagementWorkbench` so operators do not need hidden scripts or raw table access.
+### 28. Inventory correction API with idempotent replay
 
-**Acceptance evidence:** Exception queues, aging metrics, remediation playbooks, dead-letter linkage, and closure test fixtures for schedule slippage. The evidence should be package-local in `src/pyAppGen/pbcs/hotel_revenue_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Justification:** Distribution corrections happen frequently, and the package needs a safe way to repair inventory without duplicating downstream effects.
+**Improvement:** Add correction and reapply commands for `channel_inventory` that use correction types, source references, and idempotency keys for replay-safe remediation.
+**Acceptance evidence:** Duplicate corrections are ignored, correction events retain links to the original bad publish, and tests verify repair behavior across retries and out-of-order delivery.
+**Current Domain Evidence Used:** `channel_inventory`, `idempotent_handlers`, `appgen_x_outbox_inbox_eventing`, `HotelRevenueManagementUpdated`
+**Exact key:** `hotel_revenue_management.inventory_correction_api`
 
-### 9. Predictive risk scoring for Hotel Revenue Management Runtime Parameter
+### 29. Rate-plan publishing readiness gate
 
-**Justification:** The package should warn users before hotel revenue management work fails, breaches policy, or creates downstream cost.
+**Justification:** A rate should not publish unless pricing, fences, restrictions, channel mapping, and approvals are all internally consistent.
+**Improvement:** Add a readiness gate that scores every `rate_plan` against required rule checks, dependent inventory availability, approvals, and unresolved exceptions before activation.
+**Acceptance evidence:** Unready plans show explicit blocking reasons, approved plans generate a readiness artifact in release evidence, and tests verify partially configured plans cannot publish.
+**Current Domain Evidence Used:** `rate_plan`, `hotel_revenue_management_policy_rule`, `HotelRevenueManagementApproved`, `RELEASE_EVIDENCE.md`
+**Exact key:** `hotel_revenue_management.rate_plan_publish_readiness_gate`
 
-**Improvement:** Add predictive risk scoring for `hotel_revenue_management_runtime_parameter` using domain features from owned tables, consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, rule outcomes, aging, anomaly signals, and historical corrections. Tie the behavior to `hotel_revenue_management_create_room_type_workflow` where applicable, and make it visible in `HotelRevenueManagementWorkbench` so operators do not need hidden scripts or raw table access.
+### 30. Channel inventory retry and dead-letter cockpit
 
-**Acceptance evidence:** Feature manifests, score explanations, calibration reports, drift alerts, and tests for low/medium/high-risk scenarios. The evidence should be package-local in `src/pyAppGen/pbcs/hotel_revenue_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Justification:** When distribution updates fail, the revenue team needs an operational view of what failed, why it failed, and what replay will do.
+**Improvement:** Add a retry and dead-letter cockpit for `channel_inventory` changes with poison-message detection, replay preview, and suppression rules for known downstream outages.
+**Acceptance evidence:** Operators can inspect failed payload lineage, retry only eligible messages, and prove through tests that replaying a fixed message resolves the dead letter without duplicate state.
+**Current Domain Evidence Used:** `channel_inventory`, `retry_dead_letter_evidence`, `HotelRevenueManagementWorkbench`, `HotelRevenueManagementExceptionOpened`
+**Exact key:** `hotel_revenue_management.channel_inventory_retry_dead_letter_cockpit`
 
-### 10. Counterfactual simulation for Hotel Revenue Management Schema Extension
+### 31. Revenue manager workbench
 
-**Justification:** Advanced users need to ask “what would happen if” before committing changes to live room inventory, rates, channels, demand forecasts, overbooking, yield, and hotel revenue controls operations.
+**Justification:** The primary revenue manager needs one place to review pace, rates, restrictions, inventory, and exceptions by date and room type.
+**Improvement:** Shape `HotelRevenueManagementWorkbench` around a revenue-manager persona with a demand calendar, restriction board, pickup chart, decision queue, and pending approvals.
+**Acceptance evidence:** The route loads persona-specific panels, each panel links to the corresponding detail view, and UI tests cover empty, stale-data, and high-compression states.
+**Current Domain Evidence Used:** `HotelRevenueManagementWorkbench`, `HotelRevenueManagementDetail`, `hotel_revenue_management_workbench_metric`, `GET /hotel-revenue-management-workbench`
+**Exact key:** `hotel_revenue_management.revenue_manager_workbench`
 
-**Improvement:** Provide scenario simulation for `hotel_revenue_management_schema_extension`: policy change, capacity constraint, deadline shift, price/rate change, eligibility change, disruption, and manual override outcomes. Tie the behavior to `hotel_revenue_management_record_rate_plan_workflow` where applicable, and make it visible in `HotelRevenueManagementWorkbench` so operators do not need hidden scripts or raw table access.
+### 32. Distribution analyst workbench
 
-**Acceptance evidence:** Simulation APIs, non-mutating sandbox state, comparison reports, and workbench side-by-side scenario panels. The evidence should be package-local in `src/pyAppGen/pbcs/hotel_revenue_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Justification:** Channel specialists need a purpose-built view of allotments, stop-sells, parity breaks, and publish failures rather than the full revenue console.
+**Improvement:** Add a distribution analyst workspace with a channel inventory grid, parity monitor, publish health view, and channel-specific action history.
+**Acceptance evidence:** The workspace filters by channel and stay date, publish failures deep-link into retry tools, and permission tests ensure channel analysts cannot approve pricing changes outside their remit.
+**Current Domain Evidence Used:** `channel_inventory`, `HotelRevenueManagementWorkbench`, `permissions`, `HotelRevenueManagementExceptionOpened`
+**Exact key:** `hotel_revenue_management.distribution_analyst_workbench`
 
-### 11. Autonomous anomaly triage for Hotel Revenue Management Control Assertion
+### 33. Group and events workbench
 
-**Justification:** A world-class PBC should reduce analyst burden without hiding the reasoning behind automated triage.
+**Justification:** Group demand, displacement, and event-driven compression need a shared operating surface for commercial and revenue teams.
+**Improvement:** Add a group-and-events workbench focused on block pickup, wash, displacement value, shoulder-night exposure, and event-tagged dates.
+**Acceptance evidence:** Users can compare group posture against transient demand, open displacement analyses from the same page, and tests confirm event tags and group metrics stay synchronized across date edits.
+**Current Domain Evidence Used:** `demand_forecast`, `yield_decision`, `HotelRevenueManagementWorkbench`, `hotel_revenue_management_counterfactual_scenario_simulation`
+**Exact key:** `hotel_revenue_management.group_events_workbench`
 
-**Improvement:** Implement anomaly detection for `hotel_revenue_management_control_assertion` that identifies outliers, duplicate submissions, impossible sequences, stale dependencies, unusual amounts/counts/durations, and contradictory fields. Tie the behavior to `hotel_revenue_management_create_room_type_workflow` where applicable, and make it visible in `HotelRevenueManagementWorkbench` so operators do not need hidden scripts or raw table access.
+### 34. Agent skill for rate-plan drafting
 
-**Acceptance evidence:** Explainable anomaly cards, reviewer feedback loops, false-positive tracking, and suppression governance. The evidence should be package-local in `src/pyAppGen/pbcs/hotel_revenue_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Justification:** Revenue teams often start from plain-language instructions, and the assistant should convert those into governed drafts rather than chat-only responses.
+**Improvement:** Add an agent skill that drafts `rate_plan` changes from instructions, proposes fences and restrictions, and stops at a preview stage until a human confirms.
+**Acceptance evidence:** The assistant panel shows extracted assumptions and a structured diff, blocked actions surface permission reasons, and tests verify the skill cannot publish or approve its own changes.
+**Current Domain Evidence Used:** `ai_agent_task_assistance`, `agentic_document_instruction_intake`, `rate_plan`, `HotelRevenueManagementAssistantPanel`
+**Exact key:** `hotel_revenue_management.agent_skill_rate_plan_drafting`
 
-### 12. Semantic document understanding for Hotel Revenue Management Governed Model
+### 35. Agent skill for pickup anomaly triage
 
-**Justification:** Document-heavy work in Hotel Revenue Management cannot be complete if the assistant only answers questions and cannot prepare accurate governed changes.
+**Justification:** Pickup anomalies are time-sensitive, and the assistant should help analysts determine whether the cause is demand, pricing, or distribution failure.
+**Improvement:** Add an agent skill that summarizes pickup variance, checks recent rate and inventory changes, and proposes next investigations or corrective actions without mutating data until confirmed.
+**Acceptance evidence:** The assistant cites source records for its summary, accepted actions route through governed commands, and tests verify the skill can explain an anomaly but cannot bypass operator approval.
+**Current Domain Evidence Used:** `demand_forecast`, `revenue_snapshot`, `HotelRevenueManagementAssistantPanel`, `hotel_revenue_management_autonomous_anomaly_detection`
+**Exact key:** `hotel_revenue_management.agent_skill_pickup_anomaly_triage`
 
-**Improvement:** Train the package assistant to parse domain documents and instructions for `hotel_revenue_management_governed_model`, extract obligations, dates, parties, quantities, identifiers, and exceptions, then map them to safe draft mutations. Tie the behavior to `hotel_revenue_management_record_rate_plan_workflow` where applicable, and make it visible in `HotelRevenueManagementWorkbench` so operators do not need hidden scripts or raw table access.
+### 36. Agent skill for overbooking explanation and guest recovery
 
-**Acceptance evidence:** Document extraction tests, confidence thresholds, redaction handling, source span citations, and human confirmation workflows. The evidence should be package-local in `src/pyAppGen/pbcs/hotel_revenue_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Justification:** When oversell risk rises, operators need the assistant to explain exposure and recovery options quickly.
+**Improvement:** Add an agent skill that explains the active `overbooking_policy`, cites no-show assumptions and substitute room paths, and drafts guest-recovery playbooks for review.
+**Acceptance evidence:** Recovery drafts cite the active policy and substitution rules, assistant actions remain preview-only until approved, and tests confirm the skill references the correct stay dates and room types.
+**Current Domain Evidence Used:** `overbooking_policy`, `room_type`, `HotelRevenueManagementAssistantPanel`, `hotel_revenue_management_governed_ai_agent_execution`
+**Exact key:** `hotel_revenue_management.agent_skill_overbooking_recovery_planning`
 
-### 13. Agent-safe CRUD execution for Room Type
+### 37. Outbound event boundary map for hotel revenue changes
 
-**Justification:** The PBC agent must be a first-class operator but never a hidden bypass around RBAC, rules, or owned datastore boundaries.
+**Justification:** Downstream consumers need precise business events instead of generic lifecycle noise when pricing or inventory behavior changes.
+**Improvement:** Define typed outbound event boundaries for pricing approved, restriction changed, inventory stop-sell, forecast overridden, overbooking policy changed, and yield decision accepted.
+**Acceptance evidence:** Event schemas are documented with examples, the outbox emits the typed events alongside existing lifecycle events when needed, and contract tests prove payload stability and idempotent publication.
+**Current Domain Evidence Used:** `HotelRevenueManagementCreated`, `HotelRevenueManagementUpdated`, `HotelRevenueManagementApproved`, `appgen_x_outbox_inbox_eventing`
+**Exact key:** `hotel_revenue_management.outbound_event_boundary_map`
 
-**Improvement:** Add a professional chatbot skill for `room_type` that can create, update, correct, close, and annotate records only through policy-checked commands, approval gates, and previewed diffs. Tie the behavior to `hotel_revenue_management_create_room_type_workflow` where applicable, and make it visible in `HotelRevenueManagementWorkbench` so operators do not need hidden scripts or raw table access.
+### 38. Inbound handler contracts for policy and KPI events
 
-**Acceptance evidence:** Skill manifests, permission tests, preview/confirm flows, blocked-action evidence, and audit events for every assistant mutation. The evidence should be package-local in `src/pyAppGen/pbcs/hotel_revenue_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Justification:** The package already consumes governance and KPI events, and those handlers need explicit hotel-specific side effects and failure modes.
+**Improvement:** Map `PolicyChanged`, `AuditEventSealed`, and `OperationalKpiChanged` into clear update contracts for rule refresh, proof sealing status, forecast risk recalculation, and stale-dashboard warnings.
+**Acceptance evidence:** Handler tests cover duplicate delivery, out-of-order delivery, and missing dependency cases, and failure evidence is visible from the workbench rather than buried in logs.
+**Current Domain Evidence Used:** `PolicyChanged`, `AuditEventSealed`, `OperationalKpiChanged`, `idempotent_handlers`
+**Exact key:** `hotel_revenue_management.inbound_event_handler_contracts`
 
-### 14. Workbench persona coverage for Rate Plan
+### 39. Continuous pricing governance assertions
 
-**Justification:** A generic detail page underserves the domain; each role needs the exact controls and evidence they use daily.
+**Justification:** Pricing errors should be caught continuously, not only during release review or after a market issue surfaces.
+**Improvement:** Add `hotel_revenue_management_control_assertion` checks for negative price deltas beyond policy, contradictory fences, blackout leakage, missing approvals, and stale overrides on active dates.
+**Acceptance evidence:** Failed assertions open visible exceptions, each assertion references the violated rule and affected date range, and tests verify corrections clear the assertion once the issue is fixed.
+**Current Domain Evidence Used:** `hotel_revenue_management_control_assertion`, `hotel_revenue_management_policy_rule`, `HotelRevenueManagementExceptionOpened`, `continuous_release_assurance`
+**Exact key:** `hotel_revenue_management.continuous_pricing_governance_assertions`
 
-**Improvement:** Design dedicated workbench panels for `rate_plan`: operator queue, supervisor approvals, analyst exceptions, auditor evidence, configuration owner, and agent-assistance review. Tie the behavior to `hotel_revenue_management_record_rate_plan_workflow` where applicable, and make it visible in `HotelRevenueManagementWorkbench` so operators do not need hidden scripts or raw table access.
+### 40. Runtime parameter sets by season and market
 
-**Acceptance evidence:** UI contract entries, route tests, empty/error/loading states, and permission-aware action availability. The evidence should be package-local in `src/pyAppGen/pbcs/hotel_revenue_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Justification:** One global threshold rarely fits a city-center compression hotel and a resort shoulder season at the same time.
+**Improvement:** Organize `hotel_revenue_management_runtime_parameter` records into named seasonal and market-specific packs for pickup alerts, oversell caps, override thresholds, and pricing experiment limits.
+**Acceptance evidence:** Parameter packs can be previewed before activation, changes are time-bounded and auditable, and tests confirm the correct pack activates for the targeted market and date window.
+**Current Domain Evidence Used:** `hotel_revenue_management_runtime_parameter`, `configuration_workbench`, `HOTEL_REVENUE_MANAGEMENT_DEFAULT_POLICY`, `HotelRevenueManagementDetail`
+**Exact key:** `hotel_revenue_management.season_market_parameter_sets`
 
-### 15. Cross-PBC dependency contracts for Channel Inventory
+### 41. Multi-tenant isolation for brand, property, and market policy
 
-**Justification:** Composable packages fail when hidden table coupling enters the domain model.
+**Justification:** Shared-brand platforms need revenue rules isolated by tenant, property, and market so one hotel's experiments or blackouts cannot bleed into another's operations.
+**Improvement:** Apply tenant-aware boundaries across forecasts, rates, controls, workbench filters, and assistant context, with explicit property and market scoping on governed changes.
+**Acceptance evidence:** Isolation tests prove one tenant cannot read or mutate another tenant's revenue records, assistant prompts are scoped to the active tenant, and approval history shows tenant and property context on every governed change.
+**Current Domain Evidence Used:** `hotel_revenue_management_multi_tenant_policy_isolation`, `permissions`, `hotel_revenue_management_governed_model`, `HotelRevenueManagementDetail`
+**Exact key:** `hotel_revenue_management.multi_tenant_brand_property_market_isolation`
 
-**Improvement:** Represent dependencies for `channel_inventory` through declared APIs, consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, and projections rather than shared tables, with explicit freshness, ownership, and fallback behavior. Tie the behavior to `hotel_revenue_management_create_room_type_workflow` where applicable, and make it visible in `HotelRevenueManagementWorkbench` so operators do not need hidden scripts or raw table access.
+### 42. Schema extension registry for new restriction types
 
-**Acceptance evidence:** Dependency manifests, contract tests, stale dependency alerts, and no foreign-table references in generated artifacts. The evidence should be package-local in `src/pyAppGen/pbcs/hotel_revenue_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Justification:** Hotels frequently introduce new restriction logic, and custom fields should evolve without silently breaking decisions or UI flows.
+**Improvement:** Add a schema-extension registry so new restriction types, blackout qualifiers, and occupancy qualifiers are declared with compatibility rules, migration notes, and projection impact.
+**Acceptance evidence:** Extension proposals require validation before activation, backfill previews show affected data and views, and tests verify unknown restriction types never slip into live decisions without registration.
+**Current Domain Evidence Used:** `hotel_revenue_management_schema_extension`, `hotel_revenue_management_schema_evolution_resilience`, `HotelRevenueManagementDetail`, `SPECIFICATION.md`
+**Exact key:** `hotel_revenue_management.restriction_schema_extension_registry`
 
-### 16. API completeness and versioning for Demand Forecast
+### 43. Governed model registry for forecast and optimization models
 
-**Justification:** Complete domain coverage requires both command and query surfaces, not only happy-path create endpoints.
+**Justification:** Forecasts and optimization recommendations need an owned catalog of model purpose, training window, approval status, and rollback history.
+**Improvement:** Extend `hotel_revenue_management_governed_model` to track forecast, pricing, and overbooking models with business purpose, feature inputs, approval state, and retirement policy.
+**Acceptance evidence:** Model detail pages show active-versus-retired status, decisions cite the model version used, and tests prove that retired models cannot be selected for new recommendations.
+**Current Domain Evidence Used:** `hotel_revenue_management_governed_model`, `hotel_revenue_management_predictive_risk_scoring`, `yield_decision`, `HotelRevenueManagementApproved`
+**Exact key:** `hotel_revenue_management.governed_model_registry`
 
-**Improvement:** Expand APIs beyond POST /room-types, POST /rate-plans, POST /channel-inventorys to cover search, validation-only commands, simulation, bulk intake, exception closure, evidence export, projection reads, and idempotent corrections. Tie the behavior to `hotel_revenue_management_record_rate_plan_workflow` where applicable, and make it visible in `HotelRevenueManagementWorkbench` so operators do not need hidden scripts or raw table access.
+### 44. Audit-proof sealing for pricing approvals and overrides
 
-**Acceptance evidence:** OpenAPI-style route manifests, backward-compatible version tests, deprecation metadata, and idempotency assertions. The evidence should be package-local in `src/pyAppGen/pbcs/hotel_revenue_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Justification:** Pricing changes on critical dates need tamper-evident proof, not just mutable row history.
+**Improvement:** Seal approvals, overrides, and publish artifacts with cryptographic proofs and retain verifiable links between the decision record and the released rate or restriction state.
+**Acceptance evidence:** Approval records expose proof status, proof verification can be rerun after `AuditEventSealed`, and release evidence links each critical pricing decision to a sealed artifact.
+**Current Domain Evidence Used:** `hotel_revenue_management_cryptographic_audit_proofs`, `AuditEventSealed`, `HotelRevenueManagementApproved`, `RELEASE_EVIDENCE.md`
+**Exact key:** `hotel_revenue_management.audit_proof_sealed_pricing_approvals`
 
-### 17. Typed emitted-event expansion for Overbooking Policy
+### 45. API surface expansion for forecast queries and simulations
 
-**Justification:** Consumers should understand what happened in Hotel Revenue Management without parsing opaque payloads.
+**Justification:** The current API surface is command-heavy and does not yet expose the read and simulation endpoints analysts need every day.
+**Improvement:** Add read, validation-only, and simulation endpoints for forecast review, pickup diagnostics, readiness checks, and what-if pricing runs while keeping ownership inside this PBC boundary.
+**Acceptance evidence:** Route contracts document request and response shapes, compatibility tests cover versioned endpoints, and the workbench consumes the new APIs without bypassing the governed command flow.
+**Current Domain Evidence Used:** `POST /rate-plans`, `POST /channel-inventorys`, `POST /demand-forecasts`, `GET /hotel-revenue-management-workbench`
+**Exact key:** `hotel_revenue_management.forecast_and_simulation_api_surface`
 
-**Improvement:** Replace generic lifecycle emissions with typed events for each meaningful `overbooking_policy` transition, exception, approval, correction, simulation result, and downstream handoff. Tie the behavior to `hotel_revenue_management_create_room_type_workflow` where applicable, and make it visible in `HotelRevenueManagementWorkbench` so operators do not need hidden scripts or raw table access.
+### 46. Release evidence pack for pricing and inventory changes
 
-**Acceptance evidence:** Event schema tests, event examples, compatibility checks, and emitted-event coverage in release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/hotel_revenue_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Justification:** Revenue teams need release proof that a pricing or inventory change passed validation, approval, and downstream publish checks before go-live.
+**Improvement:** Build a release-evidence pack that bundles readiness results, approval references, event publication checks, and workbench screenshots for each production change set.
+**Acceptance evidence:** `RELEASE_EVIDENCE.md` references the exact rate, restriction, and inventory artifacts included in a release, and tests confirm the pack is incomplete until all required evidence is attached.
+**Current Domain Evidence Used:** `RELEASE_EVIDENCE.md`, `continuous_release_assurance`, `HotelRevenueManagementApproved`, `HotelRevenueManagementWorkbench`
+**Exact key:** `hotel_revenue_management.release_evidence_pack`
 
-### 18. Consumed-event handlers for Yield Decision
+### 47. Recovery drill for forecast failure on peak dates
 
-**Justification:** A PBC is composable only when incoming events affect its own domain state predictably and safely.
+**Justification:** Peak-date failures are expensive, so the package should prove it can recover from a broken forecast or stale signal under stress.
+**Improvement:** Add a tabletop and replay drill for peak dates that simulates stale forecasts, missing KPI events, manual overrides, and operator fallback actions.
+**Acceptance evidence:** The drill produces a reproducible checklist, event replay output, and recovery timing evidence, and release documentation shows the latest successful recovery run.
+**Current Domain Evidence Used:** `demand_forecast`, `OperationalKpiChanged`, `hotel_revenue_management_event_sourced_operational_history`, `RELEASE_EVIDENCE.md`
+**Exact key:** `hotel_revenue_management.peak_date_forecast_recovery_drill`
 
-**Improvement:** Implement idempotent handlers for consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged that update projections, open dependency exceptions, recalculate risk, and preserve source event lineage. Tie the behavior to `hotel_revenue_management_record_rate_plan_workflow` where applicable, and make it visible in `HotelRevenueManagementWorkbench` so operators do not need hidden scripts or raw table access.
+### 48. Cross-PBC boundary rules for downstream consumers
 
-**Acceptance evidence:** Duplicate-event tests, handler side-effect boundaries, dead-letter fixtures, and lineage links back to source events. The evidence should be package-local in `src/pyAppGen/pbcs/hotel_revenue_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Justification:** Pricing and inventory data are heavily reused across adjacent domains, so this PBC needs explicit rules for what leaves by API or event and what stays internal.
+**Improvement:** Document and enforce boundary rules that expose hotel revenue outputs through owned APIs and events only, never through shared-table reads or hidden joins.
+**Acceptance evidence:** Boundary tests fail on direct foreign-table coupling, outbound contracts identify the supported consumer-facing fields, and the specification records which records are internal-only.
+**Current Domain Evidence Used:** `appgen_x_outbox_inbox_eventing`, `hotel_revenue_management_cross_pbc_event_federation`, `SPECIFICATION.md`, `HotelRevenueManagementUpdated`
+**Exact key:** `hotel_revenue_management.cross_pbc_boundary_rules`
 
-### 19. Retry and dead-letter operations for Revenue Snapshot
+### 49. KPI definition library for occupancy, ADR, RevPAR, and pickup
 
-**Justification:** Dead letters are not just plumbing; they are domain work queues that can block room inventory, rates, channels, demand forecasts, overbooking, yield, and hotel revenue controls.
+**Justification:** Operators cannot trust alerts or dashboards if KPI formulas drift between analytics, workbench views, and release evidence.
+**Improvement:** Create a governed KPI library that defines occupancy, ADR, RevPAR, pickup, net room revenue, and channel-mix formulas with source fields and rounding rules.
+**Acceptance evidence:** KPI definitions are referenced by snapshots, dashboards, and release evidence, and tests verify that formula changes require explicit approval and recalculate affected derived metrics consistently.
+**Current Domain Evidence Used:** `revenue_snapshot`, `hotel_revenue_management_workbench_metric`, `hotel_revenue_management_analytics`, `RELEASE_EVIDENCE.md`
+**Exact key:** `hotel_revenue_management.kpi_definition_library`
 
-**Improvement:** Create operational tools for retrying, quarantining, explaining, and resolving dead-lettered `revenue_snapshot` events with max-attempt policy, poison-message detection, and replay safety. Tie the behavior to `hotel_revenue_management_create_room_type_workflow` where applicable, and make it visible in `HotelRevenueManagementWorkbench` so operators do not need hidden scripts or raw table access.
+### 50. Go-live scorecard and release signoff drill
 
-**Acceptance evidence:** Dead-letter workbench, retry eligibility tests, replay audit proof, and operator action logs. The evidence should be package-local in `src/pyAppGen/pbcs/hotel_revenue_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 20. RBAC and attribute policy for Hotel Revenue Management Policy Rule
-
-**Justification:** High-impact domain operations need finer controls than generic RBAC grants.
-
-**Improvement:** Extend permissions for `hotel_revenue_management_policy_rule` from coarse read/create/update/admin to action-level and attribute-aware policies based on role, tenant, jurisdiction, monetary/materiality threshold, and exception severity. Tie the behavior to `hotel_revenue_management_record_rate_plan_workflow` where applicable, and make it visible in `HotelRevenueManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Permission matrix docs, ABAC policy tests, denied-action UI states, and assistant skill permission checks. The evidence should be package-local in `src/pyAppGen/pbcs/hotel_revenue_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 21. Continuous control testing for Hotel Revenue Management Runtime Parameter
-
-**Justification:** Controls should run during operations, not only during release audit or manual review.
-
-**Improvement:** Embed control assertions for `hotel_revenue_management_runtime_parameter` that continuously test segregation of duties, required approvals, stale exceptions, policy drift, duplicate records, and boundary violations. Tie the behavior to `hotel_revenue_management_create_room_type_workflow` where applicable, and make it visible in `HotelRevenueManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Control dashboards, failing-control events, test fixtures, and release evidence tied to `hotel_revenue_management_control_assertion` records. The evidence should be package-local in `src/pyAppGen/pbcs/hotel_revenue_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 22. Cryptographic audit proofing for Hotel Revenue Management Schema Extension
-
-**Justification:** Better-than-world-class auditability requires proof of integrity, not merely logs stored in mutable tables.
-
-**Improvement:** Hash-chain material `hotel_revenue_management_schema_extension` decisions, documents, emitted events, and release-evidence snapshots to make tampering visible without exposing sensitive payloads. Tie the behavior to `hotel_revenue_management_record_rate_plan_workflow` where applicable, and make it visible in `HotelRevenueManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Proof manifests, verification APIs, redacted proof exports, and audit-ledger handoff events. The evidence should be package-local in `src/pyAppGen/pbcs/hotel_revenue_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 23. Privacy, consent, and secrecy controls for Hotel Revenue Management Control Assertion
-
-**Justification:** Complete domain coverage must account for protected data and restricted operational evidence.
-
-**Improvement:** Add field-level privacy classifications for `hotel_revenue_management_control_assertion`, consent checks, masking rules, retention schedules, legal holds, and assistant redaction policies. Tie the behavior to `hotel_revenue_management_create_room_type_workflow` where applicable, and make it visible in `HotelRevenueManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Retention tests, masked UI snapshots, consent-blocked mutation fixtures, and export controls. The evidence should be package-local in `src/pyAppGen/pbcs/hotel_revenue_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 24. Multi-tenant operating model for Hotel Revenue Management Governed Model
-
-**Justification:** The PBC should scale across organizations while preserving independent policy and compliance boundaries.
-
-**Improvement:** Support tenant-specific `hotel_revenue_management_governed_model` rules, data residency, encryption context, configuration, seed data, and release evidence without allowing cross-tenant leakage. Tie the behavior to `hotel_revenue_management_record_rate_plan_workflow` where applicable, and make it visible in `HotelRevenueManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Tenant isolation tests, tenant-scoped parameters, key-rotation evidence, and cross-tenant negative fixtures. The evidence should be package-local in `src/pyAppGen/pbcs/hotel_revenue_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 25. Schema evolution and extension registry for Room Type
-
-**Justification:** Domain teams will add fields; the PBC must evolve without breaking APIs, events, or workbench projections.
-
-**Improvement:** Make schema extensions for `room_type` first-class with compatibility checks, migration previews, projection backfills, field ownership, and rollback metadata. Tie the behavior to `hotel_revenue_management_create_room_type_workflow` where applicable, and make it visible in `HotelRevenueManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Extension registry UI, compatibility tests, migration dry-runs, and backfill release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/hotel_revenue_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 26. Master data quality gates for Rate Plan
-
-**Justification:** Many hotel revenue management errors begin as bad reference data; the PBC should catch them before workflow execution.
-
-**Improvement:** Define reference-data contracts for `rate_plan`: canonical codes, parties, locations, classifications, calendars, units, currencies, products, assets, or service categories as relevant to the domain. Tie the behavior to `hotel_revenue_management_record_rate_plan_workflow` where applicable, and make it visible in `HotelRevenueManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Reference validation fixtures, stale-code warnings, mapping tables, and dependency freshness indicators. The evidence should be package-local in `src/pyAppGen/pbcs/hotel_revenue_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 27. Bulk operations and correction workflows for Channel Inventory
-
-**Justification:** Enterprise-scale Hotel Revenue Management users cannot operate one record at a time.
-
-**Improvement:** Add bulk load, bulk validate, bulk approve, and bulk correction workflows for `channel_inventory` with partial success, row-level errors, resumability, and rollback. Tie the behavior to `hotel_revenue_management_create_room_type_workflow` where applicable, and make it visible in `HotelRevenueManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** CSV/API batch fixtures, resumable job state, row-level audit evidence, and assistant-generated correction suggestions. The evidence should be package-local in `src/pyAppGen/pbcs/hotel_revenue_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 28. Lifecycle collaboration and tasking for Demand Forecast
-
-**Justification:** Domain collaboration should live inside the PBC boundary and remain auditable with the record it affects.
-
-**Improvement:** Attach tasks, comments, ownership, due dates, handoffs, and escalation threads to `demand_forecast` without leaking into external shared task tables. Tie the behavior to `hotel_revenue_management_record_rate_plan_workflow` where applicable, and make it visible in `HotelRevenueManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Task tables, comment audit history, notification events, escalation SLAs, and role-specific task queues. The evidence should be package-local in `src/pyAppGen/pbcs/hotel_revenue_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 29. SLA and service-level governance for Overbooking Policy
-
-**Justification:** Users need to know when room inventory, rates, channels, demand forecasts, overbooking, yield, and hotel revenue controls is late, blocked, or at risk before customer or regulator impact.
-
-**Improvement:** Define SLAs for `overbooking_policy` across intake, validation, approval, exception resolution, event handling, downstream projection refresh, and release-evidence generation. Tie the behavior to `hotel_revenue_management_create_room_type_workflow` where applicable, and make it visible in `HotelRevenueManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** SLA breach events, timers, configurable calendars, workbench aging buckets, and tests for pause/resume behavior. The evidence should be package-local in `src/pyAppGen/pbcs/hotel_revenue_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 30. Operational analytics cockpit for Yield Decision
-
-**Justification:** World-class operations require leading indicators, not only record counts.
-
-**Improvement:** Build analytics for `yield_decision`: throughput, backlog, aging, approval latency, exception rate, risk distribution, automation acceptance, correction rate, and downstream dependency health. Tie the behavior to `hotel_revenue_management_record_rate_plan_workflow` where applicable, and make it visible in `HotelRevenueManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Metric definitions, projection tests, drill-through routes, export APIs, and anomaly overlays. The evidence should be package-local in `src/pyAppGen/pbcs/hotel_revenue_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 31. Decision intelligence and recommendations for Revenue Snapshot
-
-**Justification:** The PBC should help expert users decide faster while showing evidence and uncertainty.
-
-**Improvement:** Generate ranked recommendations for `revenue_snapshot` such as next best action, likely resolution, required evidence, policy adjustment, staffing/capacity response, or downstream handoff. Tie the behavior to `hotel_revenue_management_create_room_type_workflow` where applicable, and make it visible in `HotelRevenueManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Recommendation explanations, confidence intervals, feedback capture, model governance records, and rejection reasons. The evidence should be package-local in `src/pyAppGen/pbcs/hotel_revenue_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 32. Quality and completeness scoring for Hotel Revenue Management Policy Rule
-
-**Justification:** Operators should see whether a record is truly ready, not just technically saved.
-
-**Improvement:** Score each `hotel_revenue_management_policy_rule` record for completeness, consistency, policy readiness, dependency readiness, evidence sufficiency, and downstream composability. Tie the behavior to `hotel_revenue_management_record_rate_plan_workflow` where applicable, and make it visible in `HotelRevenueManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Scoring rules, missing-evidence lists, readiness badges, and blocking criteria in command handlers. The evidence should be package-local in `src/pyAppGen/pbcs/hotel_revenue_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 33. End-to-end scenario library for Hotel Revenue Management Runtime Parameter
-
-**Justification:** Release evidence is stronger when every important hotel revenue management behavior has executable examples.
-
-**Improvement:** Create seeded scenarios for `hotel_revenue_management_runtime_parameter`: normal flow, urgent path, exception path, corrected path, duplicate path, late event path, and audit export path. Tie the behavior to `hotel_revenue_management_create_room_type_workflow` where applicable, and make it visible in `HotelRevenueManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Scenario seed data, runtime smoke coverage, generated-app fixtures, and story-level workbench screenshots/contracts. The evidence should be package-local in `src/pyAppGen/pbcs/hotel_revenue_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 34. Domain ontology and terminology model for Hotel Revenue Management Schema Extension
-
-**Justification:** Precise vocabulary prevents the PBC from misclassifying specialist documents or user instructions.
-
-**Improvement:** Add an ontology for `hotel_revenue_management_schema_extension` terms, synonyms, classifications, relationships, allowed values, and phrase mappings used by the assistant and UI. Tie the behavior to `hotel_revenue_management_record_rate_plan_workflow` where applicable, and make it visible in `HotelRevenueManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Ontology files, assistant parsing tests, UI glossary, and mapping evidence for domain-specific abbreviations. The evidence should be package-local in `src/pyAppGen/pbcs/hotel_revenue_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 35. Advanced search and investigation for Hotel Revenue Management Control Assertion
-
-**Justification:** Investigators and operators need fast, explainable retrieval across the whole domain surface.
-
-**Improvement:** Provide search across `hotel_revenue_management_control_assertion` records, events, documents, exceptions, tasks, comments, and audit proofs with filters for tenant, status, risk, date, party, and dependency. Tie the behavior to `hotel_revenue_management_create_room_type_workflow` where applicable, and make it visible in `HotelRevenueManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Search index contracts, result provenance, permission-filtered queries, and stale-index warnings. The evidence should be package-local in `src/pyAppGen/pbcs/hotel_revenue_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 36. Reconciliation and closure controls for Hotel Revenue Management Governed Model
-
-**Justification:** Closure is not complete until the PBC can prove no material domain work remains unresolved.
-
-**Improvement:** Add reconciliation workflows that compare `hotel_revenue_management_governed_model` state against consumed events, external projections, expected totals/counts, approvals, and release evidence before closure. Tie the behavior to `hotel_revenue_management_record_rate_plan_workflow` where applicable, and make it visible in `HotelRevenueManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Reconciliation reports, variance thresholds, closure blockers, and AppGen-X closure events. The evidence should be package-local in `src/pyAppGen/pbcs/hotel_revenue_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 37. Regulatory and policy reporting for Room Type
-
-**Justification:** World-class PBCs turn operational evidence into credible reporting without spreadsheet reconstruction.
-
-**Improvement:** Generate domain reporting packs for `room_type` covering statutory, contractual, operational, board, customer, or regulator evidence depending on contractual obligations, site progress evidence, physical asset state, commercial controls, safety constraints, change events, and long-horizon lifecycle accountability. Tie the behavior to `hotel_revenue_management_create_room_type_workflow` where applicable, and make it visible in `HotelRevenueManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Report schemas, redaction rules, traceable metric sources, and approval/export audit events. The evidence should be package-local in `src/pyAppGen/pbcs/hotel_revenue_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 38. Carbon and resource awareness for Rate Plan
-
-**Justification:** Sustainability evidence should be embedded in operations instead of treated as an after-the-fact report.
-
-**Improvement:** Where relevant, attach carbon, energy, water, travel, capacity, compute, or resource-footprint metadata to `rate_plan` decisions and batch operations. Tie the behavior to `hotel_revenue_management_record_rate_plan_workflow` where applicable, and make it visible in `HotelRevenueManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Footprint fields, scheduling parameters, exception rules, and dashboards that expose operational tradeoffs. The evidence should be package-local in `src/pyAppGen/pbcs/hotel_revenue_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 39. Resilience and offline behavior for Channel Inventory
-
-**Justification:** Real operations keep moving during outages; the PBC must preserve correctness when dependencies are unavailable.
-
-**Improvement:** Define resilience modes for `channel_inventory`: degraded dependency mode, offline draft capture, delayed event replay, conflict detection, and safe recovery after partial failure. Tie the behavior to `hotel_revenue_management_create_room_type_workflow` where applicable, and make it visible in `HotelRevenueManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Offline fixtures, replay tests, conflict queues, recovery logs, and user-visible degraded-mode warnings. The evidence should be package-local in `src/pyAppGen/pbcs/hotel_revenue_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 40. Human-in-the-loop automation for Demand Forecast
-
-**Justification:** Automation should accelerate room inventory, rates, channels, demand forecasts, overbooking, yield, and hotel revenue controls while preserving accountability for high-risk decisions.
-
-**Improvement:** Set explicit automation boundaries for `demand_forecast`: auto-approve, auto-reject, suggest-only, require-review, and block-until-evidence states with policy-based routing. Tie the behavior to `hotel_revenue_management_record_rate_plan_workflow` where applicable, and make it visible in `HotelRevenueManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Automation policy tests, reviewer queues, override reasons, and assistant action audit trails. The evidence should be package-local in `src/pyAppGen/pbcs/hotel_revenue_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 41. Package discovery and fit scoring for Overbooking Policy
-
-**Justification:** Users selecting PBCs need transparent fit reasoning, especially when domains are adjacent but not overlapping.
-
-**Improvement:** Improve package metadata so composition can explain when `hotel_revenue_management` fits a prompt, what entities it owns, what APIs/events it exposes, and what adjacent PBCs it depends on. Tie the behavior to `hotel_revenue_management_create_room_type_workflow` where applicable, and make it visible in `HotelRevenueManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Discovery manifests, prompt-selection tests, overlap rationale links, and composition DSL examples. The evidence should be package-local in `src/pyAppGen/pbcs/hotel_revenue_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 42. Configuration deployment pipeline for Yield Decision
-
-**Justification:** Configuration changes can materially alter hotel revenue management; they need the same discipline as code releases.
-
-**Improvement:** Add configuration promotion for `yield_decision` across draft, test, approved, active, deprecated, and rollback states with impact analysis before activation. Tie the behavior to `hotel_revenue_management_record_rate_plan_workflow` where applicable, and make it visible in `HotelRevenueManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Config diff views, approval workflows, simulation before activation, and rollback tests. The evidence should be package-local in `src/pyAppGen/pbcs/hotel_revenue_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 43. Workbench command completeness for Revenue Snapshot
-
-**Justification:** A PBC does not fully surface its capabilities if users must call hidden APIs for core work.
-
-**Improvement:** Expose every high-value operation for `revenue_snapshot` in the UI: create, validate, approve, simulate, correct, assign, export, retry, close, and audit-proof verification. Tie the behavior to `hotel_revenue_management_create_room_type_workflow` where applicable, and make it visible in `HotelRevenueManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** UI action coverage tests, permission-aware disabled states, keyboard paths, and assistant handoff links. The evidence should be package-local in `src/pyAppGen/pbcs/hotel_revenue_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 44. Document packet and evidence vault for Hotel Revenue Management Policy Rule
-
-**Justification:** Documents often carry the legal or operational truth behind room inventory, rates, channels, demand forecasts, overbooking, yield, and hotel revenue controls.
-
-**Improvement:** Create a governed evidence vault for `hotel_revenue_management_policy_rule` documents, attachments, source spans, extracted fields, signatures, approvals, and retention labels. Tie the behavior to `hotel_revenue_management_record_rate_plan_workflow` where applicable, and make it visible in `HotelRevenueManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Evidence models, source-to-field lineage, signature validation, retention policies, and proof exports. The evidence should be package-local in `src/pyAppGen/pbcs/hotel_revenue_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 45. Data correction and amendment history for Hotel Revenue Management Runtime Parameter
-
-**Justification:** World-class systems correct mistakes without rewriting history or confusing downstream consumers.
-
-**Improvement:** Support formal amendments for `hotel_revenue_management_runtime_parameter` that preserve original values, correction reason, approving actor, effective date, downstream event impacts, and replay behavior. Tie the behavior to `hotel_revenue_management_create_room_type_workflow` where applicable, and make it visible in `HotelRevenueManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Amendment tables, correction events, projection replay tests, and side-by-side before/after UI. The evidence should be package-local in `src/pyAppGen/pbcs/hotel_revenue_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 46. External participant collaboration for Hotel Revenue Management Schema Extension
-
-**Justification:** Many hotel revenue management workflows require outside parties, but they must not gain direct access to internal tables.
-
-**Improvement:** Add controlled collaboration portals or API views for external participants related to `hotel_revenue_management_schema_extension`, limited to scoped evidence submission, status checks, comments, and dispute responses. Tie the behavior to `hotel_revenue_management_record_rate_plan_workflow` where applicable, and make it visible in `HotelRevenueManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Participant role policies, scoped tokens, submission audit trails, and inbound evidence validation. The evidence should be package-local in `src/pyAppGen/pbcs/hotel_revenue_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 47. Advanced dependency freshness scoring for Hotel Revenue Management Control Assertion
-
-**Justification:** A record may be valid locally but unsafe if dependency evidence is stale or incomplete.
-
-**Improvement:** Score freshness and reliability of dependencies used by `hotel_revenue_management_control_assertion`, including consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, referenced projections, configuration versions, and external submissions. Tie the behavior to `hotel_revenue_management_create_room_type_workflow` where applicable, and make it visible in `HotelRevenueManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Freshness indicators, blocking rules, stale-event simulations, and workbench dependency health panels. The evidence should be package-local in `src/pyAppGen/pbcs/hotel_revenue_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 48. Model governance and explainability for Hotel Revenue Management Governed Model
-
-**Justification:** Governed AI is mandatory for professional-grade automation in Hotel Revenue Management.
-
-**Improvement:** For every predictive or agentic feature around `hotel_revenue_management_governed_model`, record model version, prompt or ruleset version, training/evaluation evidence, confidence, explanation, and human feedback. Tie the behavior to `hotel_revenue_management_record_rate_plan_workflow` where applicable, and make it visible in `HotelRevenueManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Model cards, prompt/version manifests, feedback loops, drift tests, and audit proof for recommendations. The evidence should be package-local in `src/pyAppGen/pbcs/hotel_revenue_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 49. High-scale partitioning and archival for Room Type
-
-**Justification:** Better-than-world-class packages must remain operable after years of high-volume domain history.
-
-**Improvement:** Plan scale behavior for `room_type`: tenant partitioning, archival policies, cold storage, retention-aware search, projection compaction, and large-batch replay. Tie the behavior to `hotel_revenue_management_create_room_type_workflow` where applicable, and make it visible in `HotelRevenueManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Partition tests, archive/retrieve fixtures, retention enforcement, and replay benchmarks. The evidence should be package-local in `src/pyAppGen/pbcs/hotel_revenue_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 50. Release gate expansion for Rate Plan
-
-**Justification:** The PBC should not claim domain coverage unless release evidence proves the claim end to end.
-
-**Improvement:** Expand release gates for `hotel_revenue_management` so every schema, service, API, event, handler, UI, rule, parameter, agent skill, seed scenario, and improvement backlog item maps to executable evidence. Tie the behavior to `hotel_revenue_management_record_rate_plan_workflow` where applicable, and make it visible in `HotelRevenueManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Release audit checks, manifest traceability, generated-app smoke tests, and missing-capability blockers. The evidence should be package-local in `src/pyAppGen/pbcs/hotel_revenue_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Justification:** Revenue changes should close with a single operational scorecard that proves pricing logic, controls, APIs, events, workbench views, and assistant safeguards all held together.
+**Improvement:** Add a go-live drill that exercises one representative rate change from draft through approval, event publication, workbench visibility, and release evidence signoff.
+**Acceptance evidence:** The scorecard records pass or fail for validation, approval, event delivery, UI visibility, agent guardrails, and evidence completeness, and the latest successful run is referenced from the release evidence file.
+**Current Domain Evidence Used:** `rate_plan`, `HotelRevenueManagementWorkbench`, `HotelRevenueManagementAssistantPanel`, `RELEASE_EVIDENCE.md`
+**Exact key:** `hotel_revenue_management.go_live_scorecard_release_signoff`

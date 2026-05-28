@@ -1,418 +1,419 @@
-# Gaming and Casino Operations PBC Better-Than-World-Class Improvement Backlog
+# Gaming and Casino Operations PBC Manual Improvement Backlog
 
 ## Purpose
 
-This file identifies, justifies, and describes 50 high-impact improvements for `gaming_casino_operations`. The backlog is specific to players, tables, slots, compliance, responsible gaming, loyalty, payouts, and gaming floor operations and is intended to move the PBC from release-auditable scaffolding toward complete, specialist-grade domain coverage.
+This manual backlog for `gaming_casino_operations` focuses the PBC on auditable casino-floor execution: patron enrollment, table and slot activity, cage controls, jackpots, player ratings, compliance, responsible gaming, governed agent support, workbench operations, event boundaries, and release readiness.
 
 ## Current Domain Evidence Used
 
 - Stable PBC key: `gaming_casino_operations`.
-- Domain purpose: Players, tables, slots, compliance, responsible gaming, loyalty, payouts, and gaming floor operations.
+- Domain purpose: players, tables, slots, compliance, responsible gaming, loyalty, payouts, and gaming floor operations.
 - Owned domain tables: `player_profile`, `table_game`, `slot_machine`, `wager_session`, `payout`, `responsible_gaming_case`, `gaming_compliance`, `gaming_casino_operations_policy_rule`, `gaming_casino_operations_runtime_parameter`, `gaming_casino_operations_schema_extension`, `gaming_casino_operations_control_assertion`, `gaming_casino_operations_governed_model`.
 - Public APIs: `POST /player-profiles`, `POST /table-games`, `POST /slot-machines`, `POST /wager-sessions`, `POST /payouts`, `GET /gaming-casino-operations-workbench`.
 - Emitted AppGen-X events: `GamingCasinoOperationsCreated`, `GamingCasinoOperationsUpdated`, `GamingCasinoOperationsApproved`, `GamingCasinoOperationsExceptionOpened`.
 - Consumed AppGen-X events: `PolicyChanged`, `CustomerUpdated`, `SupplierQualified`.
-- Current standard surfaces include: `player_profile_management`, `gaming_casino_operations_workflow`, `gaming_casino_operations_analytics`, `configuration_schema`, `rule_engine`, `parameter_engine`, `owned_schema_migrations_models`, `appgen_x_outbox_inbox_eventing`, `idempotent_handlers`, `retry_dead_letter_evidence`.
-- Current advanced surfaces include: `gaming_casino_operations_event_sourced_operational_history`, `gaming_casino_operations_multi_tenant_policy_isolation`, `gaming_casino_operations_schema_evolution_resilience`, `gaming_casino_operations_autonomous_anomaly_detection`, `gaming_casino_operations_semantic_document_instruction_understanding`, `gaming_casino_operations_predictive_risk_scoring`, `gaming_casino_operations_counterfactual_scenario_simulation`, `gaming_casino_operations_cryptographic_audit_proofs`.
+- Workflow surfaces: `gaming_casino_operations_create_player_profile_workflow` and `gaming_casino_operations_record_table_game_workflow`.
+- UI fragments: `GamingCasinoOperationsWorkbench`, `GamingCasinoOperationsDetail`, and `GamingCasinoOperationsAssistantPanel`.
+- Release documents: `SPECIFICATION.md` and `RELEASE_EVIDENCE.md`.
 
 ## 50 High-Impact Improvements
 
-### 1. Canonical lifecycle state model for Player Profile
+### 1. Patron Identity Confidence and Enrollment Review
 
-**Justification:** This closes shallow CRUD gaps by making every gaming and casino operations transition explainable and testable instead of implicit in free-form status values.
+**Justification:** Casino floors cannot tolerate duplicate patron identities, missing age checks, or silent merges that blur exclusion, tax, and rating history.
 
-**Improvement:** Define a complete state machine for `player_profile` with explicit draft, validated, blocked, approved, active, suspended, corrected, closed, archived, and reopened states. Tie the behavior to `gaming_casino_operations_create_player_profile_workflow` where applicable, and make it visible in `GamingCasinoOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Extend `player_profile` with identity confidence, duplicate-candidate review, government-ID evidence, age-verification status, property enrollment state, and reversible merge decisions before a patron becomes active on the floor.
 
-**Acceptance evidence:** State-transition tests, invalid-transition fixtures, workbench state badges, and emitted AppGen-X transition events for GamingCasinoOperationsCreated, GamingCasinoOperationsUpdated, GamingCasinoOperationsApproved. The evidence should be package-local in `src/pyAppGen/pbcs/gaming_casino_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must flag duplicate patrons without auto-merging them, require reviewer evidence for a merge or rejection, and show identity uncertainty in `GamingCasinoOperationsDetail`.
 
-### 2. Domain intake and normalization for Table Game
+### 2. Patron Status, Restrictions, and Floor Access Semantics
 
-**Justification:** The PBC cannot reach complete domain coverage unless it handles the messy front door of players, tables, slots, compliance, responsible gaming, loyalty, payouts, and gaming floor operations, not only already-clean records.
+**Justification:** A patron can be active for play while blocked from markers, barred from a property, cooling off under responsible-gaming policy, or restricted to specific game types.
 
-**Improvement:** Build a typed intake pipeline for `table_game` that accepts structured API payloads, document-derived instructions, batch loads, and assistant-generated drafts while normalizing identifiers, dates, units, parties, and jurisdictional context. Tie the behavior to `gaming_casino_operations_record_table_game_workflow` where applicable, and make it visible in `GamingCasinoOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add `player_profile` states and flags for active, VIP, self-excluded, barred, suspicious-activity-review, payment-restricted, ratings-suppressed, and reinstatement-pending, with effective dates and issuing authority.
 
-**Acceptance evidence:** Golden intake fixtures, rejected-record queues, field-level normalization evidence, and assistant previews before governed datastore mutation. The evidence should be package-local in `src/pyAppGen/pbcs/gaming_casino_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must block table or slot session creation when patron restrictions apply, preserve who applied the restriction, and surface the exact floor-access reason in workbench queues.
 
-### 3. Specialist validation rules for Slot Machine
+### 3. Table Opening, Closing, and Shift Ownership
 
-**Justification:** World-class Gaming and Casino Operations requires rules that domain experts can reason about, version, test, and roll back without code edits.
+**Justification:** Pit operations depend on knowing exactly when a table opened, who owned it, what inventory it started with, and whether it closed cleanly at shift end.
 
-**Improvement:** Add a domain rule compiler for `slot_machine` that supports threshold rules, eligibility rules, dependency rules, temporal windows, conflicting-instruction detection, and override justification. Tie the behavior to `gaming_casino_operations_create_player_profile_workflow` where applicable, and make it visible in `GamingCasinoOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand `table_game` with pit, table number, game variant, opening bankroll, dealer assignment, supervisor assignment, shift window, open-close checklist, and closure exception reason.
 
-**Acceptance evidence:** Rule simulation tests, versioned rule manifests, rule impact reports, and UI rule editors linked to `GAMING_CASINO_OPERATIONS_DATABASE_URL, GAMING_CASINO_OPERATIONS_EVENT_TOPIC, GAMING_CASINO_OPERATIONS_RETRY_LIMIT`. The evidence should be package-local in `src/pyAppGen/pbcs/gaming_casino_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must reject a table close when inventory reconciliation or shift signoff is missing and must reconstruct the table's shift ownership from stored events.
 
-### 4. Parameter governance and tuning for Wager Session
+### 4. Table Fill, Credit, Buy-In, and Color-Up Evidence
 
-**Justification:** Parameters are where operations teams tune gaming and casino operations; unbounded constants would make the PBC brittle and unsafe in real deployments.
+**Justification:** Table inventory changes are high-risk events that need a precise chain from pit request to cage fulfillment to supervisor confirmation.
 
-**Improvement:** Expose bounded runtime parameters for `wager_session` covering risk thresholds, SLA windows, confidence floors, escalation cutoffs, batch sizes, retry limits, and human-confirmation requirements. Tie the behavior to `gaming_casino_operations_record_table_game_workflow` where applicable, and make it visible in `GamingCasinoOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add table inventory event records under `table_game` for fills, credits, player buy-ins, marker redemptions, color-ups, and emergency inventory adjustments with dual-control evidence.
 
-**Acceptance evidence:** Parameter schema validation, tenant overrides, approval history, rollback controls, and workbench diff views. The evidence should be package-local in `src/pyAppGen/pbcs/gaming_casino_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must trace each inventory movement to the initiating actor, approval, and resulting table balance and must open an exception when one link is missing.
 
-### 5. Deep owned schema expansion for Payout
+### 5. Slot Asset Configuration and Conversion Governance
 
-**Justification:** A single payload column cannot express the full surface of players, tables, slots, compliance, responsible gaming, loyalty, payouts, and gaming floor operations or prove cross-PBC boundaries are respected.
+**Justification:** Slot revenue and compliance depend on accurate denomination, paytable, progressive link, cabinet location, and conversion history.
 
-**Improvement:** Extend the owned schema around `payout` with normalized child tables for line-level evidence, party roles, approvals, attachments, comments, metrics, exception reasons, and control assertions. Tie the behavior to `gaming_casino_operations_create_player_profile_workflow` where applicable, and make it visible in `GamingCasinoOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Extend `slot_machine` with cabinet identifier, bank location, denomination set, paytable version, progressive participation, conversion history, floor-move history, and jurisdiction approval state.
 
-**Acceptance evidence:** Migrations, models, relationship tests, schema contract snapshots, and no shared-table access outside the `gaming_casino_operations_` namespace. The evidence should be package-local in `src/pyAppGen/pbcs/gaming_casino_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must show a conversion cannot activate without the required approval set and must preserve prior configuration history for audit replay.
 
-### 6. Event-sourced operational history for Responsible Gaming Case
+### 6. Slot Tilt, Offline, and Meter Snapshot Recovery
 
-**Justification:** Temporal reconstruction is essential for better-than-world-class auditability and dispute resolution in gaming and casino operations.
+**Justification:** Slot devices fail in ways that create dispute, jackpot, and drop-count risk if meter state is not captured at the moment of interruption.
 
-**Improvement:** Capture every material mutation of `responsible_gaming_case` as immutable AppGen-X events with actor, tenant, command, policy version, idempotency key, before/after summary, and projection checkpoint. Tie the behavior to `gaming_casino_operations_record_table_game_workflow` where applicable, and make it visible in `GamingCasinoOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add `slot_machine` outage events for tilt, offline, door-open, printer fault, bill validator fault, and communication loss, each with captured meter snapshots and recovery workflow state.
 
-**Acceptance evidence:** Replay tests, projection checksums, event ordering evidence, and point-in-time workbench views. The evidence should be package-local in `src/pyAppGen/pbcs/gaming_casino_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must preserve the last accepted meter reading before recovery, block reopening a machine with unresolved fault evidence, and route the issue to slot ops queues.
 
-### 7. Projection and read-model strategy for Gaming Compliance
+### 7. Unified Wager Session Context Across Tables and Slots
 
-**Justification:** The workbench should not force users to infer domain truth from raw tables; each projection should answer a real operating question.
+**Justification:** Hosts, surveillance, and compliance need one canonical play session lens even though tables and slots generate very different operational signals.
 
-**Improvement:** Create purpose-built projections for `gaming_compliance`: operational queue, executive KPI rollup, exception aging, compliance evidence, agent task context, and external dependency health. Tie the behavior to `gaming_casino_operations_create_player_profile_workflow` where applicable, and make it visible in `GamingCasinoOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Make `wager_session` the shared session envelope for patron, asset, start-stop time, host touchpoint, rating status, dispute flag, and loyalty-earn evidence while preserving table-versus-slot detail.
 
-**Acceptance evidence:** Projection contracts, freshness SLAs, backfill tests, and visible stale-projection warnings. The evidence should be package-local in `src/pyAppGen/pbcs/gaming_casino_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must prove a session can represent table or slot play without mixing the two event models and that workbench session views cite the owning asset.
 
-### 8. Exception taxonomy and remediation for Gaming Casino Operations Policy Rule
+### 8. Table Player Rating Capture and Theoretical Win Review
 
-**Justification:** High-value PBCs win on exception throughput; generic “failed” states hide the details operators need.
+**Justification:** Manual ratings drive host decisions, comps, and revenue estimates, so weak controls here distort both guest treatment and floor profitability.
 
-**Improvement:** Model the full exception taxonomy for `gaming_casino_operations_policy_rule`, including severity, root cause, blocking dependency, remediation owner, due date, retry eligibility, escalation path, and closure evidence. Tie the behavior to `gaming_casino_operations_record_table_game_workflow` where applicable, and make it visible in `GamingCasinoOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add `wager_session` rating evidence for average bet, game pace, time played, skill adjustment, rating source, supervisor override, and host-facing comp justification.
 
-**Acceptance evidence:** Exception queues, aging metrics, remediation playbooks, dead-letter linkage, and closure test fixtures for conflicting incident severity. The evidence should be package-local in `src/pyAppGen/pbcs/gaming_casino_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must preserve the original rating alongside any correction, require reason capture for overrides, and show when a host acted on provisional rather than final ratings.
 
-### 9. Predictive risk scoring for Gaming Casino Operations Runtime Parameter
+### 9. Slot Card-In and Card-Out Loyalty Evidence Boundary
 
-**Justification:** The package should warn users before gaming and casino operations work fails, breaches policy, or creates downstream cost.
+**Justification:** Slot play commonly starts with a card-in event, but the PBC should own session evidence rather than an enterprise loyalty balance ledger.
 
-**Improvement:** Add predictive risk scoring for `gaming_casino_operations_runtime_parameter` using domain features from owned tables, consumed events PolicyChanged, CustomerUpdated, SupplierQualified, rule outcomes, aging, anomaly signals, and historical corrections. Tie the behavior to `gaming_casino_operations_create_player_profile_workflow` where applicable, and make it visible in `GamingCasinoOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Record loyalty-related evidence in `wager_session` for card-in, card-out, linked offer, promotional multiplier, and earning basis while emitting clean handoff events for downstream loyalty accounting.
 
-**Acceptance evidence:** Feature manifests, score explanations, calibration reports, drift alerts, and tests for low/medium/high-risk scenarios. The evidence should be package-local in `src/pyAppGen/pbcs/gaming_casino_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must prove the PBC can explain why a session qualified for an offer without owning external points balances or campaign ledgers.
 
-### 10. Counterfactual simulation for Gaming Casino Operations Schema Extension
+### 10. Cage Transaction Journal and Patron Verification
 
-**Justification:** Advanced users need to ask “what would happen if” before committing changes to live players, tables, slots, compliance, responsible gaming, loyalty, payouts, and gaming floor operations operations.
+**Justification:** Cage operations need a complete journal for chip redemption, front money, marker activity, check cashing, and large cash payouts tied back to the patron and source event.
 
-**Improvement:** Provide scenario simulation for `gaming_casino_operations_schema_extension`: policy change, capacity constraint, deadline shift, price/rate change, eligibility change, disruption, and manual override outcomes. Tie the behavior to `gaming_casino_operations_record_table_game_workflow` where applicable, and make it visible in `GamingCasinoOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand `payout` into a cage-facing journal with transaction class, patron verification level, chip-versus-cash breakdown, initiating source, cashier, supervisor, and document packet status.
 
-**Acceptance evidence:** Simulation APIs, non-mutating sandbox state, comparison reports, and workbench side-by-side scenario panels. The evidence should be package-local in `src/pyAppGen/pbcs/gaming_casino_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must show every cage transaction has a journal trail from request through completion or void and must reject incomplete patron-verification states when policy requires stronger checks.
 
-### 11. Autonomous anomaly triage for Gaming Casino Operations Control Assertion
+### 11. Jackpot and Hand-Pay Lifecycle
 
-**Justification:** A world-class PBC should reduce analyst burden without hiding the reasoning behind automated triage.
+**Justification:** Jackpot handling crosses slot operations, cage procedures, tax forms, surveillance review, and patron experience in a single time-sensitive workflow.
 
-**Improvement:** Implement anomaly detection for `gaming_casino_operations_control_assertion` that identifies outliers, duplicate submissions, impossible sequences, stale dependencies, unusual amounts/counts/durations, and contradictory fields. Tie the behavior to `gaming_casino_operations_create_player_profile_workflow` where applicable, and make it visible in `GamingCasinoOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add jackpot-specific `payout` states for pending-verification, hand-pay-in-progress, tax-review, withheld, paid, disputed, voided, and closed, with meter snapshot, witness evidence, and payout split details.
 
-**Acceptance evidence:** Explainable anomaly cards, reviewer feedback loops, false-positive tracking, and suppression governance. The evidence should be package-local in `src/pyAppGen/pbcs/gaming_casino_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must prove a jackpot cannot close without its meter snapshot, reviewer evidence, and patron disposition and must show where the hand-pay stalled if it breaches SLA.
 
-### 12. Semantic document understanding for Gaming Casino Operations Governed Model
+### 12. Drop Schedule and Sealed Container Chain of Custody
 
-**Justification:** Document-heavy work in Gaming and Casino Operations cannot be complete if the assistant only answers questions and cannot prepare accurate governed changes.
+**Justification:** Table drops and slot canister removals are only credible when each transfer is sealed, witnessed, timed, and reconciled to the floor source.
 
-**Improvement:** Train the package assistant to parse domain documents and instructions for `gaming_casino_operations_governed_model`, extract obligations, dates, parties, quantities, identifiers, and exceptions, then map them to safe draft mutations. Tie the behavior to `gaming_casino_operations_record_table_game_workflow` where applicable, and make it visible in `GamingCasinoOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add drop-cycle records to `gaming_compliance` for asset, scheduled window, seal number, collector pair, route completion, count-room receipt, and broken-seal exception handling.
 
-**Acceptance evidence:** Document extraction tests, confidence thresholds, redaction handling, source span citations, and human confirmation workflows. The evidence should be package-local in `src/pyAppGen/pbcs/gaming_casino_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must reconstruct the custody chain from floor pickup to count-room receipt and open an exception immediately when a seal mismatch occurs.
 
-### 13. Agent-safe CRUD execution for Player Profile
+### 13. Count Room Reconciliation and Variance Classification
 
-**Justification:** The PBC agent must be a first-class operator but never a hidden bypass around RBAC, rules, or owned datastore boundaries.
+**Justification:** Count operations need more than a final total; they need to distinguish expected variance, suspect variance, and unresolved variance tied to its source asset.
 
-**Improvement:** Add a professional chatbot skill for `player_profile` that can create, update, correct, close, and annotate records only through policy-checked commands, approval gates, and previewed diffs. Tie the behavior to `gaming_casino_operations_create_player_profile_workflow` where applicable, and make it visible in `GamingCasinoOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add count packets under `gaming_compliance` with expected amount, counted amount, variance class, recount evidence, witness set, and downstream disposition for cage, slots, or tables.
 
-**Acceptance evidence:** Skill manifests, permission tests, preview/confirm flows, blocked-action evidence, and audit events for every assistant mutation. The evidence should be package-local in `src/pyAppGen/pbcs/gaming_casino_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must classify variance severity, require a recount when thresholds are crossed, and show whether the issue originated from a table drop, slot canister, or cage transfer.
 
-### 14. Workbench persona coverage for Table Game
+### 14. Variance Investigation Queue Across Floor, Cage, and Count
 
-**Justification:** A generic detail page underserves the domain; each role needs the exact controls and evidence they use daily.
+**Justification:** When a variance appears, the PBC should present one investigation record rather than leaving teams to stitch together table, slot, cage, and count facts manually.
 
-**Improvement:** Design dedicated workbench panels for `table_game`: operator queue, supervisor approvals, analyst exceptions, auditor evidence, configuration owner, and agent-assistance review. Tie the behavior to `gaming_casino_operations_record_table_game_workflow` where applicable, and make it visible in `GamingCasinoOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Create variance investigations in `gaming_compliance` with owner, linked source events, surveillance-review-needed flag, patron-impact flag, remediation task list, and closure evidence.
 
-**Acceptance evidence:** UI contract entries, route tests, empty/error/loading states, and permission-aware action availability. The evidence should be package-local in `src/pyAppGen/pbcs/gaming_casino_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must open one linked investigation per variance root issue, track cross-team task completion, and prevent closure without documented disposition.
 
-### 15. Cross-PBC dependency contracts for Slot Machine
+### 15. Responsible-Gaming Trigger Registry
 
-**Justification:** Composable packages fail when hidden table coupling enters the domain model.
+**Justification:** Operators need explainable, governed triggers for intervention instead of ad hoc judgment after harm signals have already escalated.
 
-**Improvement:** Represent dependencies for `slot_machine` through declared APIs, consumed events PolicyChanged, CustomerUpdated, SupplierQualified, and projections rather than shared tables, with explicit freshness, ownership, and fallback behavior. Tie the behavior to `gaming_casino_operations_create_player_profile_workflow` where applicable, and make it visible in `GamingCasinoOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add trigger definitions for `responsible_gaming_case` covering time-on-device, loss velocity, frequent ATM/cashier trips, manual observation, repeated self-limit changes, and host concern escalation.
 
-**Acceptance evidence:** Dependency manifests, contract tests, stale dependency alerts, and no foreign-table references in generated artifacts. The evidence should be package-local in `src/pyAppGen/pbcs/gaming_casino_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must show which trigger opened a case, what evidence it used, and whether the trigger came from table play, slot play, cage behavior, or manual staff observation.
 
-### 16. API completeness and versioning for Wager Session
+### 16. Self-Exclusion, Cool-Off, and Reinstatement Flow
 
-**Justification:** Complete domain coverage requires both command and query surfaces, not only happy-path create endpoints.
+**Justification:** Self-exclusion programs fail if entry, enforcement, and reinstatement steps are not consistent at every player touchpoint.
 
-**Improvement:** Expand APIs beyond POST /player-profiles, POST /table-games, POST /slot-machines to cover search, validation-only commands, simulation, bulk intake, exception closure, evidence export, projection reads, and idempotent corrections. Tie the behavior to `gaming_casino_operations_record_table_game_workflow` where applicable, and make it visible in `GamingCasinoOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Extend `responsible_gaming_case` with self-exclusion intake, effective period, property scope, reinstatement prerequisites, acknowledgment documents, and re-entry decision evidence.
 
-**Acceptance evidence:** OpenAPI-style route manifests, backward-compatible version tests, deprecation metadata, and idempotency assertions. The evidence should be package-local in `src/pyAppGen/pbcs/gaming_casino_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must block new play sessions during active exclusion, route reinstatement requests through review, and preserve the original exclusion evidence after reinstatement.
 
-### 17. Typed emitted-event expansion for Payout
+### 17. Responsible-Gaming Intervention Logging
 
-**Justification:** Consumers should understand what happened in Gaming and Casino Operations without parsing opaque payloads.
+**Justification:** Staff warnings, host outreach, welfare checks, and escorted removals need a single case narrative that survives shift changes and later review.
 
-**Improvement:** Replace generic lifecycle emissions with typed events for each meaningful `payout` transition, exception, approval, correction, simulation result, and downstream handoff. Tie the behavior to `gaming_casino_operations_create_player_profile_workflow` where applicable, and make it visible in `GamingCasinoOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add intervention events to `responsible_gaming_case` for conversation, resource handoff, play suspension, check-in reminder, escorted departure, and external referral.
 
-**Acceptance evidence:** Event schema tests, event examples, compatibility checks, and emitted-event coverage in release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/gaming_casino_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must preserve intervention chronology, show who performed each action, and require follow-up scheduling when policy says an intervention cannot be one-and-done.
 
-### 18. Consumed-event handlers for Responsible Gaming Case
+### 18. Suspicious Activity and Large-Transaction Case Assembly
 
-**Justification:** A PBC is composable only when incoming events affect its own domain state predictably and safely.
+**Justification:** Compliance analysts need candidate cases assembled from play, cage, and identity evidence before they can decide whether a regulatory filing is warranted.
 
-**Improvement:** Implement idempotent handlers for consumed events PolicyChanged, CustomerUpdated, SupplierQualified that update projections, open dependency exceptions, recalculate risk, and preserve source event lineage. Tie the behavior to `gaming_casino_operations_record_table_game_workflow` where applicable, and make it visible in `GamingCasinoOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add `gaming_compliance` case types for large cash activity, structuring indicators, source-of-funds concern, unusual redemption pattern, and repeated manual override activity.
 
-**Acceptance evidence:** Duplicate-event tests, handler side-effect boundaries, dead-letter fixtures, and lineage links back to source events. The evidence should be package-local in `src/pyAppGen/pbcs/gaming_casino_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must gather linked patron, session, and payout evidence into one candidate case, preserve analyst notes, and keep the actual filing workflow outside undeclared external systems.
 
-### 19. Retry and dead-letter operations for Gaming Compliance
+### 19. Jurisdiction-Specific Rule Registry for Games and Payouts
 
-**Justification:** Dead letters are not just plumbing; they are domain work queues that can block players, tables, slots, compliance, responsible gaming, loyalty, payouts, and gaming floor operations.
+**Justification:** Table spread limits, jackpot holds, ID checks, and exclusion procedures vary by jurisdiction and property agreement.
 
-**Improvement:** Create operational tools for retrying, quarantining, explaining, and resolving dead-lettered `gaming_compliance` events with max-attempt policy, poison-message detection, and replay safety. Tie the behavior to `gaming_casino_operations_create_player_profile_workflow` where applicable, and make it visible in `GamingCasinoOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Use `gaming_casino_operations_policy_rule` to version jurisdiction, property, game, and payout rules with effective dates, approval source, and operational impact summaries.
 
-**Acceptance evidence:** Dead-letter workbench, retry eligibility tests, replay audit proof, and operator action logs. The evidence should be package-local in `src/pyAppGen/pbcs/gaming_casino_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Rule-evaluation tests must show the same transaction can pass in one jurisdiction and fail in another and must preserve which rule version drove the outcome.
 
-### 20. RBAC and attribute policy for Gaming Casino Operations Policy Rule
+### 20. Progressive Jackpot Contribution and Liability Evidence
 
-**Justification:** High-impact domain operations need finer controls than generic RBAC grants.
+**Justification:** Progressive jackpots create a liability trail that starts with device contribution and ends with patron payout, reset, and floor communication.
 
-**Improvement:** Extend permissions for `gaming_casino_operations_policy_rule` from coarse read/create/update/admin to action-level and attribute-aware policies based on role, tenant, jurisdiction, monetary/materiality threshold, and exception severity. Tie the behavior to `gaming_casino_operations_record_table_game_workflow` where applicable, and make it visible in `GamingCasinoOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add progressive-jackpot evidence to `payout` and `slot_machine` for contribution source, liability amount, winning meter snapshot, reset approval, and linked communication to the floor team.
 
-**Acceptance evidence:** Permission matrix docs, ABAC policy tests, denied-action UI states, and assistant skill permission checks. The evidence should be package-local in `src/pyAppGen/pbcs/gaming_casino_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must reconcile progressive contributions to the winning event and must fail if a jackpot reset occurs without a completed payout trail.
 
-### 21. Continuous control testing for Gaming Casino Operations Runtime Parameter
+### 21. Table Call and Payout Dispute Resolution
 
-**Justification:** Controls should run during operations, not only during release audit or manual review.
+**Justification:** Disputed table outcomes are common flashpoints where supervisors, dealers, surveillance, and patrons need a durable fact pattern.
 
-**Improvement:** Embed control assertions for `gaming_casino_operations_runtime_parameter` that continuously test segregation of duties, required approvals, stale exceptions, policy drift, duplicate records, and boundary violations. Tie the behavior to `gaming_casino_operations_create_player_profile_workflow` where applicable, and make it visible in `GamingCasinoOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add dispute records under `payout` and `table_game` for called outcome, alternate claim, witness set, surveillance-review-request flag, ruling authority, and patron communication result.
 
-**Acceptance evidence:** Control dashboards, failing-control events, test fixtures, and release evidence tied to `gaming_casino_operations_control_assertion` records. The evidence should be package-local in `src/pyAppGen/pbcs/gaming_casino_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must preserve both the original call and final ruling, require reviewer evidence for any reversal, and show whether the patron accepted the resolution.
 
-### 22. Cryptographic audit proofing for Gaming Casino Operations Schema Extension
+### 22. Surveillance Review Request Boundary
 
-**Justification:** Better-than-world-class auditability requires proof of integrity, not merely logs stored in mutable tables.
+**Justification:** Casino operations need to request surveillance review often, but this PBC should own request metadata and disposition, not the video archive itself.
 
-**Improvement:** Hash-chain material `gaming_casino_operations_schema_extension` decisions, documents, emitted events, and release-evidence snapshots to make tampering visible without exposing sensitive payloads. Tie the behavior to `gaming_casino_operations_record_table_game_workflow` where applicable, and make it visible in `GamingCasinoOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add `gaming_compliance` review-request records with request reason, incident time window, asset, patron, urgency, requestor, disposition, and restricted redaction notes.
 
-**Acceptance evidence:** Proof manifests, verification APIs, redacted proof exports, and audit-ledger handoff events. The evidence should be package-local in `src/pyAppGen/pbcs/gaming_casino_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Boundary tests must prove the PBC stores request and outcome metadata only and never assumes ownership of surveillance media storage or retrieval tables.
 
-### 23. Privacy, consent, and secrecy controls for Gaming Casino Operations Control Assertion
+### 23. Cheat, Collusion, and Device Malfunction Incident Command
 
-**Justification:** Complete domain coverage must account for protected data and restricted operational evidence.
+**Justification:** Pit scams, suspected collusion, and device malfunctions need one command record that coordinates operations, surveillance, compliance, and cage impact.
 
-**Improvement:** Add field-level privacy classifications for `gaming_casino_operations_control_assertion`, consent checks, masking rules, retention schedules, legal holds, and assistant redaction policies. Tie the behavior to `gaming_casino_operations_create_player_profile_workflow` where applicable, and make it visible in `GamingCasinoOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add incident command cases in `gaming_compliance` with incident type, live-floor containment steps, linked sessions, linked payouts, linked surveillance request, and post-incident review.
 
-**Acceptance evidence:** Retention tests, masked UI snapshots, consent-blocked mutation fixtures, and export controls. The evidence should be package-local in `src/pyAppGen/pbcs/gaming_casino_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must route incidents by severity, hold related payouts when required, and keep every containment action visible to the assigned command owner.
 
-### 24. Multi-tenant operating model for Gaming Casino Operations Governed Model
+### 24. Supplier Qualification Gating for Floor Asset Changes
 
-**Justification:** The PBC should scale across organizations while preserving independent policy and compliance boundaries.
+**Justification:** Slot conversions and table-equipment changes should not proceed if the manufacturer, parts source, or service provider is not approved.
 
-**Improvement:** Support tenant-specific `gaming_casino_operations_governed_model` rules, data residency, encryption context, configuration, seed data, and release evidence without allowing cross-tenant leakage. Tie the behavior to `gaming_casino_operations_record_table_game_workflow` where applicable, and make it visible in `GamingCasinoOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Consume `SupplierQualified` into `slot_machine` and `table_game` readiness checks so conversions, installs, and repairs are blocked or flagged when supplier qualification changes.
 
-**Acceptance evidence:** Tenant isolation tests, tenant-scoped parameters, key-rotation evidence, and cross-tenant negative fixtures. The evidence should be package-local in `src/pyAppGen/pbcs/gaming_casino_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must show a later supplier disqualification reopens affected floor-change tasks and that the stored reasoning cites the source event lineage.
 
-### 25. Schema evolution and extension registry for Player Profile
+### 25. Customer Update Reconciliation for Patron Profiles
 
-**Justification:** Domain teams will add fields; the PBC must evolve without breaking APIs, events, or workbench projections.
+**Justification:** Patron contact and identity details can change outside the gaming floor, but floor risk decisions still depend on keeping the local patron profile synchronized.
 
-**Improvement:** Make schema extensions for `player_profile` first-class with compatibility checks, migration previews, projection backfills, field ownership, and rollback metadata. Tie the behavior to `gaming_casino_operations_create_player_profile_workflow` where applicable, and make it visible in `GamingCasinoOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Consume `CustomerUpdated` into `player_profile` reconciliation workflows with field-level diff review, merge-decision capture, and downstream refresh of open sessions and cases.
 
-**Acceptance evidence:** Extension registry UI, compatibility tests, migration dry-runs, and backfill release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/gaming_casino_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must show a customer update can create a review task instead of silently overwriting local risk-critical data and that approved changes refresh dependent workbench views.
 
-### 26. Master data quality gates for Table Game
+### 26. Policy Change Propagation to Live Floor Work
 
-**Justification:** Many gaming and casino operations errors begin as bad reference data; the PBC should catch them before workflow execution.
+**Justification:** New payout thresholds or responsible-gaming rules are dangerous if open sessions and pending jackpots keep operating under retired policy.
 
-**Improvement:** Define reference-data contracts for `table_game`: canonical codes, parties, locations, classifications, calendars, units, currencies, products, assets, or service categories as relevant to the domain. Tie the behavior to `gaming_casino_operations_record_table_game_workflow` where applicable, and make it visible in `GamingCasinoOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Consume `PolicyChanged` to recalculate affected `wager_session`, `payout`, `responsible_gaming_case`, and `gaming_compliance` records and to flag which live work needs re-review.
 
-**Acceptance evidence:** Reference validation fixtures, stale-code warnings, mapping tables, and dependency freshness indicators. The evidence should be package-local in `src/pyAppGen/pbcs/gaming_casino_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must show policy propagation identifies impacted records, preserves the prior rule version for history, and queues re-review rather than mutating closed history.
 
-### 27. Bulk operations and correction workflows for Slot Machine
+### 27. Event-Sourced Gaming Floor Timeline
 
-**Justification:** Enterprise-scale Gaming and Casino Operations users cannot operate one record at a time.
+**Justification:** Casino disputes and audits often hinge on the exact order of floor events across players, devices, cash movement, and reviews.
 
-**Improvement:** Add bulk load, bulk validate, bulk approve, and bulk correction workflows for `slot_machine` with partial success, row-level errors, resumability, and rollback. Tie the behavior to `gaming_casino_operations_create_player_profile_workflow` where applicable, and make it visible in `GamingCasinoOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Use `gaming_casino_operations_event_sourced_operational_history` to record play, payout, exception, policy, and review events with deterministic ordering and replay checkpoints.
 
-**Acceptance evidence:** CSV/API batch fixtures, resumable job state, row-level audit evidence, and assistant-generated correction suggestions. The evidence should be package-local in `src/pyAppGen/pbcs/gaming_casino_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Replay tests must rebuild table, slot, and patron timelines at a requested time and must expose any gaps or late-arriving events instead of hiding them.
 
-### 28. Lifecycle collaboration and tasking for Wager Session
+### 28. Idempotent Device and Floor Event Ingestion
 
-**Justification:** Domain collaboration should live inside the PBC boundary and remain auditable with the record it affects.
+**Justification:** Meter readings, session starts, jackpot notices, and cashier actions can be retransmitted or arrive out of order, especially during outages.
 
-**Improvement:** Attach tasks, comments, ownership, due dates, handoffs, and escalation threads to `wager_session` without leaking into external shared task tables. Tie the behavior to `gaming_casino_operations_record_table_game_workflow` where applicable, and make it visible in `GamingCasinoOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Strengthen `idempotent_handlers` around `slot_machine`, `wager_session`, and `payout` ingestion with asset-scoped idempotency keys, sequence expectations, and late-event quarantine.
 
-**Acceptance evidence:** Task tables, comment audit history, notification events, escalation SLAs, and role-specific task queues. The evidence should be package-local in `src/pyAppGen/pbcs/gaming_casino_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must prove duplicate device or cashier events cannot double-create payouts or sessions and that late arrivals are visible for manual review.
 
-### 29. SLA and service-level governance for Payout
+### 29. Dead-Letter Workbench for Floor Event Failures
 
-**Justification:** Users need to know when players, tables, slots, compliance, responsible gaming, loyalty, payouts, and gaming floor operations is late, blocked, or at risk before customer or regulator impact.
+**Justification:** When floor events fail processing, supervisors need a recoverable operational queue rather than opaque transport errors.
 
-**Improvement:** Define SLAs for `payout` across intake, validation, approval, exception resolution, event handling, downstream projection refresh, and release-evidence generation. Tie the behavior to `gaming_casino_operations_create_player_profile_workflow` where applicable, and make it visible in `GamingCasinoOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add a dead-letter queue view in `GamingCasinoOperationsWorkbench` for failed play, payout, compliance, and policy events with replay eligibility, impact summary, and remediation ownership.
 
-**Acceptance evidence:** SLA breach events, timers, configurable calendars, workbench aging buckets, and tests for pause/resume behavior. The evidence should be package-local in `src/pyAppGen/pbcs/gaming_casino_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must show dead-letter entries explain business impact, allow safe replay when preconditions are met, and preserve the original payload and failure reason.
 
-### 30. Operational analytics cockpit for Responsible Gaming Case
+### 30. Floor Supervisor Workbench
 
-**Justification:** World-class operations require leading indicators, not only record counts.
+**Justification:** Floor supervisors need one place to see spread changes, table exceptions, pending disputes, hand-pays waiting for witness, and patron restrictions before they escalate.
 
-**Improvement:** Build analytics for `responsible_gaming_case`: throughput, backlog, aging, approval latency, exception rate, risk distribution, automation acceptance, correction rate, and downstream dependency health. Tie the behavior to `gaming_casino_operations_record_table_game_workflow` where applicable, and make it visible in `GamingCasinoOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add a floor-supervisor persona to `GamingCasinoOperationsWorkbench` with pit heat, open incidents, pending approvals, rating-review alerts, and unresolved inventory movements.
 
-**Acceptance evidence:** Metric definitions, projection tests, drill-through routes, export APIs, and anomaly overlays. The evidence should be package-local in `src/pyAppGen/pbcs/gaming_casino_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** UI contract tests must show supervisor actions are permission-aware and that each queue item drills into owned records rather than hidden external state.
 
-### 31. Decision intelligence and recommendations for Gaming Compliance
+### 31. Slot Operations Workbench
 
-**Justification:** The PBC should help expert users decide faster while showing evidence and uncertainty.
+**Justification:** Slot leads need rapid visibility into outages, jackpots, meter drift, printer failures, conversions, and unreconciled machine movements.
 
-**Improvement:** Generate ranked recommendations for `gaming_compliance` such as next best action, likely resolution, required evidence, policy adjustment, staffing/capacity response, or downstream handoff. Tie the behavior to `gaming_casino_operations_create_player_profile_workflow` where applicable, and make it visible in `GamingCasinoOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add a slot-ops view to `GamingCasinoOperationsWorkbench` with bank map status, machine fault filters, jackpot timers, conversion tasks, and meter-anomaly cards sourced from `slot_machine`.
 
-**Acceptance evidence:** Recommendation explanations, confidence intervals, feedback capture, model governance records, and rejection reasons. The evidence should be package-local in `src/pyAppGen/pbcs/gaming_casino_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must prove the view groups machines by bank and status, highlights stale meter snapshots, and links every anomaly to an owned machine record or event.
 
-### 32. Quality and completeness scoring for Gaming Casino Operations Policy Rule
+### 32. Cage Workbench
 
-**Justification:** Operators should see whether a record is truly ready, not just technically saved.
+**Justification:** Cage cashiers and supervisors need to manage payouts, voids, escalations, and document packets without losing the floor event that triggered them.
 
-**Improvement:** Score each `gaming_casino_operations_policy_rule` record for completeness, consistency, policy readiness, dependency readiness, evidence sufficiency, and downstream composability. Tie the behavior to `gaming_casino_operations_record_table_game_workflow` where applicable, and make it visible in `GamingCasinoOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add a cage persona to `GamingCasinoOperationsWorkbench` with pending payouts, large-transaction review, cashier handoff, void requests, and missing-document alerts from `payout`.
 
-**Acceptance evidence:** Scoring rules, missing-evidence lists, readiness badges, and blocking criteria in command handlers. The evidence should be package-local in `src/pyAppGen/pbcs/gaming_casino_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** UI tests must show dual-control actions require the correct permissions and that each payout card exposes its linked patron, source session, and review state.
 
-### 33. End-to-end scenario library for Gaming Casino Operations Runtime Parameter
+### 33. Compliance Analyst Workbench
 
-**Justification:** Release evidence is stronger when every important gaming and casino operations behavior has executable examples.
+**Justification:** Compliance analysts need cross-cutting queues for suspicious activity, count variances, review requests, and policy breaches with lineage back to floor facts.
 
-**Improvement:** Create seeded scenarios for `gaming_casino_operations_runtime_parameter`: normal flow, urgent path, exception path, corrected path, duplicate path, late event path, and audit export path. Tie the behavior to `gaming_casino_operations_create_player_profile_workflow` where applicable, and make it visible in `GamingCasinoOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add a compliance persona to `GamingCasinoOperationsWorkbench` with case aging, severity filters, filing-candidate queues, custody-break alerts, and unresolved review requests from `gaming_compliance`.
 
-**Acceptance evidence:** Scenario seed data, runtime smoke coverage, generated-app fixtures, and story-level workbench screenshots/contracts. The evidence should be package-local in `src/pyAppGen/pbcs/gaming_casino_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must show the compliance queue can pivot from case to source session, payout, or asset and must surface lineage to `PolicyChanged`, `CustomerUpdated`, or `SupplierQualified` when relevant.
 
-### 34. Domain ontology and terminology model for Gaming Casino Operations Schema Extension
+### 34. Responsible-Gaming Workbench
 
-**Justification:** Precise vocabulary prevents the PBC from misclassifying specialist documents or user instructions.
+**Justification:** Responsible-gaming staff need to triage open cases, active exclusions, pending interventions, and reinstatement requests without searching across unrelated screens.
 
-**Improvement:** Add an ontology for `gaming_casino_operations_schema_extension` terms, synonyms, classifications, relationships, allowed values, and phrase mappings used by the assistant and UI. Tie the behavior to `gaming_casino_operations_record_table_game_workflow` where applicable, and make it visible in `GamingCasinoOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add a responsible-gaming persona to `GamingCasinoOperationsWorkbench` with trigger severity, next action due, active restrictions, intervention history, and reinstatement review panels from `responsible_gaming_case`.
 
-**Acceptance evidence:** Ontology files, assistant parsing tests, UI glossary, and mapping evidence for domain-specific abbreviations. The evidence should be package-local in `src/pyAppGen/pbcs/gaming_casino_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** UI tests must prove the queue highlights immediate-intervention cases first and keeps historical interventions visible even after a case is closed.
 
-### 35. Advanced search and investigation for Gaming Casino Operations Control Assertion
+### 35. Shift Briefing Agent Skill
 
-**Justification:** Investigators and operators need fast, explainable retrieval across the whole domain surface.
+**Justification:** Shift handoffs lose critical context when supervisors rely on memory or free-form notes instead of a governed summary.
 
-**Improvement:** Provide search across `gaming_casino_operations_control_assertion` records, events, documents, exceptions, tasks, comments, and audit proofs with filters for tenant, status, risk, date, party, and dependency. Tie the behavior to `gaming_casino_operations_create_player_profile_workflow` where applicable, and make it visible in `GamingCasinoOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add an assistant skill in `GamingCasinoOperationsAssistantPanel` that drafts shift briefings from open incidents, jackpots in progress, count issues, active exclusions, and priority machine outages.
 
-**Acceptance evidence:** Search index contracts, result provenance, permission-filtered queries, and stale-index warnings. The evidence should be package-local in `src/pyAppGen/pbcs/gaming_casino_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must prove each briefing sentence cites owned records or emitted events, and the skill must label any inference instead of presenting it as a fact.
 
-### 36. Reconciliation and closure controls for Gaming Casino Operations Governed Model
+### 36. Rating Correction and Host Review Agent Skill
 
-**Justification:** Closure is not complete until the PBC can prove no material domain work remains unresolved.
+**Justification:** Hosts and supervisors need help spotting questionable ratings, but agent suggestions must never silently change patron worth or comp posture.
 
-**Improvement:** Add reconciliation workflows that compare `gaming_casino_operations_governed_model` state against consumed events, external projections, expected totals/counts, approvals, and release evidence before closure. Tie the behavior to `gaming_casino_operations_record_table_game_workflow` where applicable, and make it visible in `GamingCasinoOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add an assistant skill that proposes `wager_session` rating corrections, identifies missing rating inputs, and prepares host review packets with visible diffs and supporting evidence.
 
-**Acceptance evidence:** Reconciliation reports, variance thresholds, closure blockers, and AppGen-X closure events. The evidence should be package-local in `src/pyAppGen/pbcs/gaming_casino_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must require explicit confirmation before a rating mutation, preserve the original rating, and record the agent suggestion alongside the approving human actor.
 
-### 37. Regulatory and policy reporting for Player Profile
+### 37. Regulator Notice and Internal Control Memo Intake
 
-**Justification:** World-class PBCs turn operational evidence into credible reporting without spreadsheet reconstruction.
+**Justification:** Casinos receive rule bulletins, internal-control revisions, and regulator directives that need structured translation into operational policy.
 
-**Improvement:** Generate domain reporting packs for `player_profile` covering statutory, contractual, operational, board, customer, or regulator evidence depending on threat response, identity assurance, operational resilience, evidence retention, privileged access controls, policy enforcement, and incident auditability. Tie the behavior to `gaming_casino_operations_create_player_profile_workflow` where applicable, and make it visible in `GamingCasinoOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Use `gaming_casino_operations_semantic_document_instruction_understanding` to parse notices into candidate `gaming_casino_operations_policy_rule` or `gaming_casino_operations_runtime_parameter` changes with cited source spans.
 
-**Acceptance evidence:** Report schemas, redaction rules, traceable metric sources, and approval/export audit events. The evidence should be package-local in `src/pyAppGen/pbcs/gaming_casino_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must keep extracted obligations in draft until approved, show the source span for each proposed rule, and reject ambiguous instructions that lack enough evidence.
 
-### 38. Carbon and resource awareness for Table Game
+### 38. Governed Agent Mutation Guardrails
 
-**Justification:** Sustainability evidence should be embedded in operations instead of treated as an after-the-fact report.
+**Justification:** The floor assistant should help operators move faster without becoming an unchecked backdoor into payouts, exclusions, or compliance cases.
 
-**Improvement:** Where relevant, attach carbon, energy, water, travel, capacity, compute, or resource-footprint metadata to `table_game` decisions and batch operations. Tie the behavior to `gaming_casino_operations_record_table_game_workflow` where applicable, and make it visible in `GamingCasinoOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Use `gaming_casino_operations_governed_ai_agent_execution` so create, update, approve, and exception-close actions run only through previewed commands, permission checks, and policy gates.
 
-**Acceptance evidence:** Footprint fields, scheduling parameters, exception rules, and dashboards that expose operational tradeoffs. The evidence should be package-local in `src/pyAppGen/pbcs/gaming_casino_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must block restricted agent actions, require preview-and-confirm on allowed mutations, and write an audit trail for both accepted and rejected commands.
 
-### 39. Resilience and offline behavior for Slot Machine
+### 39. API Surface Expansion for Search, Review, and Correction
 
-**Justification:** Real operations keep moving during outages; the PBC must preserve correctness when dependencies are unavailable.
+**Justification:** Casino operations need query and correction endpoints, not only create endpoints, to handle disputes, shift review, and midstream operational repair.
 
-**Improvement:** Define resilience modes for `slot_machine`: degraded dependency mode, offline draft capture, delayed event replay, conflict detection, and safe recovery after partial failure. Tie the behavior to `gaming_casino_operations_create_player_profile_workflow` where applicable, and make it visible in `GamingCasinoOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Extend the API set around `POST /player-profiles`, `POST /table-games`, `POST /slot-machines`, `POST /wager-sessions`, and `POST /payouts` with search, replay-safe correction, validation-only, and evidence-export routes.
 
-**Acceptance evidence:** Offline fixtures, replay tests, conflict queues, recovery logs, and user-visible degraded-mode warnings. The evidence should be package-local in `src/pyAppGen/pbcs/gaming_casino_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Contract tests must prove new routes are versioned, idempotent where required, and scoped to owned records and declared dependencies only.
 
-### 40. Human-in-the-loop automation for Wager Session
+### 40. Explicit Event and External-System Boundaries
 
-**Justification:** Automation should accelerate players, tables, slots, compliance, responsible gaming, loyalty, payouts, and gaming floor operations while preserving accountability for high-risk decisions.
+**Justification:** The PBC must be clear about what it owns versus what it references so surveillance, finance, tax reporting, and enterprise loyalty are not silently pulled inside.
 
-**Improvement:** Set explicit automation boundaries for `wager_session`: auto-approve, auto-reject, suggest-only, require-review, and block-until-evidence states with policy-based routing. Tie the behavior to `gaming_casino_operations_record_table_game_workflow` where applicable, and make it visible in `GamingCasinoOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Document and enforce boundary rules in handlers, services, and `GamingCasinoOperationsDetail` so the PBC owns gaming-floor records, emits handoff events, and stores only metadata for external domains.
 
-**Acceptance evidence:** Automation policy tests, reviewer queues, override reasons, and assistant action audit trails. The evidence should be package-local in `src/pyAppGen/pbcs/gaming_casino_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Boundary tests must fail if generated artifacts reference undeclared foreign tables and must show emitted events carry enough context for downstream consumers.
 
-### 41. Package discovery and fit scoring for Payout
+### 41. Runtime Parameter Governance for Floor Thresholds
 
-**Justification:** Users selecting PBCs need transparent fit reasoning, especially when domains are adjacent but not overlapping.
+**Justification:** Properties need to tune thresholds for large payouts, review holds, count variance escalation, and intervention timing without code edits.
 
-**Improvement:** Improve package metadata so composition can explain when `gaming_casino_operations` fits a prompt, what entities it owns, what APIs/events it exposes, and what adjacent PBCs it depends on. Tie the behavior to `gaming_casino_operations_create_player_profile_workflow` where applicable, and make it visible in `GamingCasinoOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand `gaming_casino_operations_runtime_parameter` with bounded knobs for jackpot hold amounts, dual-control thresholds, review SLAs, alert suppression rules, and peak-night staffing assumptions.
 
-**Acceptance evidence:** Discovery manifests, prompt-selection tests, overlap rationale links, and composition DSL examples. The evidence should be package-local in `src/pyAppGen/pbcs/gaming_casino_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must validate parameter bounds, tenant-specific overrides, approval history, and visible rollback from `GamingCasinoOperationsWorkbench`.
 
-### 42. Configuration deployment pipeline for Responsible Gaming Case
+### 42. Schema Extension Registry for New Game Types and Jurisdiction Fields
 
-**Justification:** Configuration changes can materially alter gaming and casino operations; they need the same discipline as code releases.
+**Justification:** Casinos add side bets, new devices, and local compliance fields over time, and the PBC must evolve without breaking existing sessions or workbench views.
 
-**Improvement:** Add configuration promotion for `responsible_gaming_case` across draft, test, approved, active, deprecated, and rollback states with impact analysis before activation. Tie the behavior to `gaming_casino_operations_record_table_game_workflow` where applicable, and make it visible in `GamingCasinoOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Use `gaming_casino_operations_schema_extension` to register new game attributes, jurisdiction fields, and UI placements with compatibility checks and projection backfill plans.
 
-**Acceptance evidence:** Config diff views, approval workflows, simulation before activation, and rollback tests. The evidence should be package-local in `src/pyAppGen/pbcs/gaming_casino_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must add and deprecate an extension safely, preserve existing records, and show backfilled projections before the extension is activated on live data.
 
-### 43. Workbench command completeness for Gaming Compliance
+### 43. Continuous Control Testing for Segregation of Duties
 
-**Justification:** A PBC does not fully surface its capabilities if users must call hidden APIs for core work.
+**Justification:** The riskiest casino failures happen when the same person can initiate, approve, and settle a sensitive action without a second control point.
 
-**Improvement:** Expose every high-value operation for `gaming_compliance` in the UI: create, validate, approve, simulate, correct, assign, export, retry, close, and audit-proof verification. Tie the behavior to `gaming_casino_operations_create_player_profile_workflow` where applicable, and make it visible in `GamingCasinoOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add `gaming_casino_operations_control_assertion` checks for payout dual control, count witness requirements, cage override approval, rating-change approval, and self-exclusion enforcement.
 
-**Acceptance evidence:** UI action coverage tests, permission-aware disabled states, keyboard paths, and assistant handoff links. The evidence should be package-local in `src/pyAppGen/pbcs/gaming_casino_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Control tests must open exceptions when duty segregation is violated and must keep the failing evidence linked to the affected payout, case, or session.
 
-### 44. Document packet and evidence vault for Gaming Casino Operations Policy Rule
+### 44. Cryptographic Proof Chains for Count and Jackpot Evidence
 
-**Justification:** Documents often carry the legal or operational truth behind players, tables, slots, compliance, responsible gaming, loyalty, payouts, and gaming floor operations.
+**Justification:** High-stakes evidence packets should be tamper-evident even when the underlying documents are redacted for privacy or investigation sensitivity.
 
-**Improvement:** Create a governed evidence vault for `gaming_casino_operations_policy_rule` documents, attachments, source spans, extracted fields, signatures, approvals, and retention labels. Tie the behavior to `gaming_casino_operations_record_table_game_workflow` where applicable, and make it visible in `GamingCasinoOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Use `gaming_casino_operations_cryptographic_audit_proofs` to hash-chain count packets, jackpot documents, review decisions, and release evidence snapshots.
 
-**Acceptance evidence:** Evidence models, source-to-field lineage, signature validation, retention policies, and proof exports. The evidence should be package-local in `src/pyAppGen/pbcs/gaming_casino_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must verify proof chains, fail on altered event order or payload digests, and support redacted proof exports for auditors.
 
-### 45. Data correction and amendment history for Gaming Casino Operations Runtime Parameter
+### 45. Release Evidence Pack for Floor Readiness
 
-**Justification:** World-class systems correct mistakes without rewriting history or confusing downstream consumers.
+**Justification:** Releasing a casino-ops PBC without explicit evidence around floor workflows, controls, and assistant guardrails creates audit and operational exposure.
 
-**Improvement:** Support formal amendments for `gaming_casino_operations_runtime_parameter` that preserve original values, correction reason, approving actor, effective date, downstream event impacts, and replay behavior. Tie the behavior to `gaming_casino_operations_create_player_profile_workflow` where applicable, and make it visible in `GamingCasinoOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand `RELEASE_EVIDENCE.md` coverage to include jackpot flow tests, count custody tests, exclusion enforcement, workbench persona evidence, agent-skill guardrails, and boundary checks.
 
-**Acceptance evidence:** Amendment tables, correction events, projection replay tests, and side-by-side before/after UI. The evidence should be package-local in `src/pyAppGen/pbcs/gaming_casino_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Release verification must fail if any required casino-floor evidence set is missing and must summarize pass-fail state by floor, cage, compliance, and responsible-gaming lanes.
 
-### 46. External participant collaboration for Gaming Casino Operations Schema Extension
+### 46. Peak-Night and Disruption Scenario Simulation
 
-**Justification:** Many gaming and casino operations workflows require outside parties, but they must not gain direct access to internal tables.
+**Justification:** Weekend peaks, headline events, system outages, and sudden jackpot clusters stress staffing and controls differently than ordinary operations.
 
-**Improvement:** Add controlled collaboration portals or API views for external participants related to `gaming_casino_operations_schema_extension`, limited to scoped evidence submission, status checks, comments, and dispute responses. Tie the behavior to `gaming_casino_operations_record_table_game_workflow` where applicable, and make it visible in `GamingCasinoOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Use `gaming_casino_operations_counterfactual_scenario_simulation` to model table spread changes, cage queue spikes, machine-bank outages, surge jackpots, and responsible-gaming case bursts.
 
-**Acceptance evidence:** Participant role policies, scoped tokens, submission audit trails, and inbound evidence validation. The evidence should be package-local in `src/pyAppGen/pbcs/gaming_casino_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Simulation tests must compare before-after queue load, approval demand, and SLA risk without mutating live records.
 
-### 47. Advanced dependency freshness scoring for Gaming Casino Operations Control Assertion
+### 47. Multi-Property and Tenant Isolation
 
-**Justification:** A record may be valid locally but unsafe if dependency evidence is stale or incomplete.
+**Justification:** A casino group can share platform code while keeping separate policies, patron restrictions, and operating practices by property and jurisdiction.
 
-**Improvement:** Score freshness and reliability of dependencies used by `gaming_casino_operations_control_assertion`, including consumed events PolicyChanged, CustomerUpdated, SupplierQualified, referenced projections, configuration versions, and external submissions. Tie the behavior to `gaming_casino_operations_create_player_profile_workflow` where applicable, and make it visible in `GamingCasinoOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Strengthen `gaming_casino_operations_multi_tenant_policy_isolation` so workbench queues, parameters, rules, and assistant responses stay scoped to the property or tenant in context.
 
-**Acceptance evidence:** Freshness indicators, blocking rules, stale-event simulations, and workbench dependency health panels. The evidence should be package-local in `src/pyAppGen/pbcs/gaming_casino_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must prove two tenants can hold different payout thresholds and exclusion rules for identical events without any queue or data leakage.
 
-### 48. Model governance and explainability for Gaming Casino Operations Governed Model
+### 48. Certification and Authority Gates for Sensitive Actions
 
-**Justification:** Governed AI is mandatory for professional-grade automation in Gaming and Casino Operations.
+**Justification:** Not every approved user should be able to approve a jackpot, clear a variance, or reinstate an excluded patron just because they have broad package access.
 
-**Improvement:** For every predictive or agentic feature around `gaming_casino_operations_governed_model`, record model version, prompt or ruleset version, training/evaluation evidence, confidence, explanation, and human feedback. Tie the behavior to `gaming_casino_operations_record_table_game_workflow` where applicable, and make it visible in `GamingCasinoOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add authority and certification requirements to `gaming_casino_operations_governed_model` for sensitive approvals, tying allowed actions to role, training status, jurisdiction, and recency of certification.
 
-**Acceptance evidence:** Model cards, prompt/version manifests, feedback loops, drift tests, and audit proof for recommendations. The evidence should be package-local in `src/pyAppGen/pbcs/gaming_casino_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must deny sensitive actions when training or authority is expired and must show the exact missing qualification in the rejection reason.
 
-### 49. High-scale partitioning and archival for Player Profile
+### 49. Offline Floor Operation and Replay Recovery
 
-**Justification:** Better-than-world-class packages must remain operable after years of high-volume domain history.
+**Justification:** Casino floors keep moving during partial outages, so the PBC needs safe capture and replay rather than assuming uninterrupted connectivity.
 
-**Improvement:** Plan scale behavior for `player_profile`: tenant partitioning, archival policies, cold storage, retention-aware search, projection compaction, and large-batch replay. Tie the behavior to `gaming_casino_operations_create_player_profile_workflow` where applicable, and make it visible in `GamingCasinoOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add offline capture states for table events, machine exceptions, and cage requests with local sequence numbers, replay status, and conflict-review rules when connectivity returns.
 
-**Acceptance evidence:** Partition tests, archive/retrieve fixtures, retention enforcement, and replay benchmarks. The evidence should be package-local in `src/pyAppGen/pbcs/gaming_casino_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must replay offline actions deterministically, prevent duplicate settlement, and route conflicting replays into a manual review queue.
 
-### 50. Release gate expansion for Table Game
+### 50. End-to-End Operating Stories for Release Rehearsal
 
-**Justification:** The PBC should not claim domain coverage unless release evidence proves the claim end to end.
+**Justification:** The final proof of quality is whether the package can run realistic casino stories from patron enrollment through play, payout, controls, intervention, and audit review.
 
-**Improvement:** Expand release gates for `gaming_casino_operations` so every schema, service, API, event, handler, UI, rule, parameter, agent skill, seed scenario, and improvement backlog item maps to executable evidence. Tie the behavior to `gaming_casino_operations_record_table_game_workflow` where applicable, and make it visible in `GamingCasinoOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add release rehearsal stories that seed `player_profile`, `table_game`, `slot_machine`, `wager_session`, `payout`, `responsible_gaming_case`, and `gaming_compliance` through realistic scenarios such as jackpot hand-pay, count variance, disputed table ruling, and self-exclusion interception.
 
-**Acceptance evidence:** Release audit checks, manifest traceability, generated-app smoke tests, and missing-capability blockers. The evidence should be package-local in `src/pyAppGen/pbcs/gaming_casino_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Release rehearsal tests must prove the stories drive APIs, events, workbench queues, assistant summaries, control assertions, and release documents end to end.
