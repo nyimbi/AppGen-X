@@ -2,314 +2,314 @@
 
 ## Purpose
 
-This backlog identifies 50 high-impact, high-value improvements for `insurance_claims_policy`. Each item is specific to the domain surface currently declared by the PBC and is intended to move the package beyond world-class breadth toward complete specialist-grade coverage.
+This backlog identifies 50 high-impact, high-value improvements for `insurance_claims_policy`. Each item is specific to insurance operations: policy issuance, policyholder management, coverages, endorsements, premiums, claims, loss events, claimants, documents, coverage determination, reserves, adjudication, settlements, payments, subrogation, recoveries, communications, fraud signals, regulatory fairness, and claims intelligence. The intent is complete domain coverage for a better-than-world-class insurance PBC while preserving AppGen-X package boundaries.
 
 ## Current Domain Evidence Used
 
-- Domain purpose: Owns policies, coverages, endorsements, premiums, claims, loss events, reserves, adjudication, settlements, recoveries, communications, and claims intelligence.
-- Representative owned tables: `insurance_claims_policy_insurance_policy`, `insurance_claims_policy_policy_holder`, `insurance_claims_policy_policy_coverage`, `insurance_claims_policy_policy_endorsement`, `insurance_claims_policy_premium_schedule`, `insurance_claims_policy_premium_payment`, `insurance_claims_policy_claim_record`, `insurance_claims_policy_loss_event`, `insurance_claims_policy_claimant`, `insurance_claims_policy_claim_document`, `insurance_claims_policy_coverage_determination`, `insurance_claims_policy_claim_reserve`, ...
-- Representative operations/APIs: `create_insurance_policy`, `register_policy_holder`, `define_policy_coverage`, `record_endorsement`, `create_premium_schedule`, `record_premium_payment`, `open_claim`, `record_loss_event`, `register_claimant`, `attach_claim_document`, `determine_coverage`, `set_claim_reserve`, ...
-- Representative events: `PolicyCreated`, `CoverageDetermined`, `ClaimOpened`, `ReserveChanged`, `ClaimAdjudicated`, `SettlementPaid`.
-- Representative advanced capabilities: `coverage reasoning engine`, `reserve adequacy forecasting`, `fraud signal fusion`, `loss exposure simulation`, `settlement optimization`, `cryptographic claim evidence`.
+- Domain purpose: owns policies, coverages, endorsements, premiums, claims, loss events, reserves, adjudication, settlements, recoveries, communications, and claims intelligence.
+- Owned tables include insurance policy, policy holder, policy coverage, endorsement, premium schedule, premium payment, claim record, loss event, claimant, claim document, coverage determination, claim reserve, reserve change, adjudication, settlement offer, settlement payment, subrogation recovery, claim communication, fraud indicator, exception case, rules, parameters, schema extensions, controls, governed models, outbox, inbox, and dead-letter evidence.
+- Operations include `create_insurance_policy`, `register_policy_holder`, `define_policy_coverage`, `record_endorsement`, `create_premium_schedule`, `record_premium_payment`, `open_claim`, `record_loss_event`, `register_claimant`, `attach_claim_document`, `determine_coverage`, `set_claim_reserve`, `record_reserve_change`, `adjudicate_claim`, `create_settlement_offer`, `execute_settlement_payment`, `record_subrogation_recovery`, `send_claim_communication`, `score_fraud_indicator`, and `simulate_loss_exposure`.
+- Events include `PolicyCreated`, `CoverageDetermined`, `ClaimOpened`, `ReserveChanged`, `ClaimAdjudicated`, and `SettlementPaid`; consumed events include payment, customer, fraud, and policy signals.
+- Existing advanced claims include coverage reasoning, reserve adequacy forecasting, fraud signal fusion, loss exposure simulation, settlement optimization, and cryptographic claim evidence.
 
 ## 50 Better-Than-World-Class Improvements
 
-### 1. Deep specialist lifecycle semantics for `insurance_claims_policy_insurance_policy`
+### 1. Policy Product and Coverage Taxonomy Engine
 
-**Justification:** This owned table is part of the Insurance Claims and Policy operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns policies, coverages, endorsements, premiums, claims, loss events, reserves, adjudication, settlements, recoveries, communications, and claims intelligence.
+**Justification:** Insurance policy administration cannot be complete if policy type, line of business, peril, coverage part, limit, deductible, exclusion, territory, and risk object are treated as generic fields. Coverage reasoning depends on an explicit insurance taxonomy.
 
-**Improvement:** Extend `insurance_claims_policy_insurance_policy` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `insurance_policy_management`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add a product and coverage taxonomy engine for `create_insurance_policy` and `define_policy_coverage` with coverage families, covered objects, perils, exclusions, sublimits, deductibles, waiting periods, territories, policy forms, riders, and jurisdiction variants. The UI should show policy structure as a coverage tree with rule citations and effective dates.
 
-### 2. Deep specialist lifecycle semantics for `insurance_claims_policy_policy_holder`
+### 2. Policy Issuance Readiness Gate
 
-**Justification:** This owned table is part of the Insurance Claims and Policy operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns policies, coverages, endorsements, premiums, claims, loss events, reserves, adjudication, settlements, recoveries, communications, and claims intelligence.
+**Justification:** A policy should not be issued until applicant identity, risk details, coverage selections, underwriting conditions, premium schedule, regulatory notices, and required documents are complete. Issuing incomplete policies creates coverage disputes and compliance exposure.
 
-**Improvement:** Extend `insurance_claims_policy_policy_holder` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `insurance_claims_policy_workflow`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add issuance readiness checks that validate policyholder data, risk object evidence, coverage completeness, endorsements, premium terms, consent and disclosure acknowledgements, bind authority, and effective-date rules. Block `PolicyCreated` until readiness gaps are resolved or explicitly waived with authority evidence.
 
-### 3. Deep specialist lifecycle semantics for `insurance_claims_policy_policy_coverage`
+### 3. Policyholder and Insured Party Identity Graph
 
-**Justification:** This owned table is part of the Insurance Claims and Policy operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns policies, coverages, endorsements, premiums, claims, loss events, reserves, adjudication, settlements, recoveries, communications, and claims intelligence.
+**Justification:** Policies often involve policyholders, named insureds, additional insureds, beneficiaries, mortgagees, lienholders, drivers, dependents, claimants, and third parties. A single holder record cannot support real coverage and claims workflows.
 
-**Improvement:** Extend `insurance_claims_policy_policy_coverage` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `insurance_claims_policy_analytics`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Expand `register_policy_holder` into a party graph with roles, relationship effective dates, authority to act, communication preferences, consent, identity verification status, and party-specific coverage rights. Claims and communications should reference party role and authority before disclosure or payment.
 
-### 4. Deep specialist lifecycle semantics for `insurance_claims_policy_policy_endorsement`
+### 4. Risk Object and Exposure Register
 
-**Justification:** This owned table is part of the Insurance Claims and Policy operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns policies, coverages, endorsements, premiums, claims, loss events, reserves, adjudication, settlements, recoveries, communications, and claims intelligence.
+**Justification:** Coverage and claims decisions depend on insured properties, vehicles, devices, cargo, lives, travel, projects, policies, or liabilities. The PBC needs owned claim/policy context without mutating external asset or customer tables.
 
-**Improvement:** Extend `insurance_claims_policy_policy_endorsement` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `configuration_schema`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add risk object records with type, identifiers, values, location, attributes, exposure period, inspection evidence, and source projections. Use these records for coverage eligibility, premium calculation, loss event matching, and reserve exposure modeling.
 
-### 5. Deep specialist lifecycle semantics for `insurance_claims_policy_premium_schedule`
+### 5. Endorsement Lifecycle and Midterm Change Control
 
-**Justification:** This owned table is part of the Insurance Claims and Policy operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns policies, coverages, endorsements, premiums, claims, loss events, reserves, adjudication, settlements, recoveries, communications, and claims intelligence.
+**Justification:** Endorsements alter coverage, premiums, insured parties, risk objects, exclusions, or limits. Poor endorsement control leads to ambiguous coverage at claim time.
 
-**Improvement:** Extend `insurance_claims_policy_premium_schedule` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `rule_engine`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Upgrade `record_endorsement` with requested change, effective date, backdating rules, premium impact, coverage impact, approval authority, customer acknowledgement, superseded terms, and claim-impact warnings. Provide a before/after policy comparison view and event evidence.
 
-### 6. Deep specialist lifecycle semantics for `insurance_claims_policy_premium_payment`
+### 6. Effective-Dated Policy Versioning
 
-**Justification:** This owned table is part of the Insurance Claims and Policy operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns policies, coverages, endorsements, premiums, claims, loss events, reserves, adjudication, settlements, recoveries, communications, and claims intelligence.
+**Justification:** Claim coverage must be evaluated against the policy terms in force at the loss date, not the current policy record. Without effective-dated versioning, coverage decisions become unreliable.
 
-**Improvement:** Extend `insurance_claims_policy_premium_payment` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `parameter_engine`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add policy version timelines with transaction time, effective time, cancellation/reinstatement windows, endorsement layering, and policy-form versions. `determine_coverage` should reconstruct the exact policy state at loss time and cite the version used.
 
-### 7. Deep specialist lifecycle semantics for `insurance_claims_policy_claim_record`
+### 7. Premium Schedule and Billing Grace Logic
 
-**Justification:** This owned table is part of the Insurance Claims and Policy operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns policies, coverages, endorsements, premiums, claims, loss events, reserves, adjudication, settlements, recoveries, communications, and claims intelligence.
+**Justification:** Premium status influences lapse, reinstatement, coverage suspension, earned premium, refunds, and claim eligibility. A basic payment table cannot capture insurance billing nuance.
 
-**Improvement:** Extend `insurance_claims_policy_claim_record` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `owned_schema_migrations_models`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Expand `create_premium_schedule` and `record_premium_payment` with installment schedules, earned/unearned premium, grace periods, lapse notices, reinstatement conditions, late fees, returned payments, premium financing, refunds, and audit evidence. Coverage decisions should reflect premium status at loss time.
 
-### 8. Deep specialist lifecycle semantics for `insurance_claims_policy_loss_event`
+### 8. Cancellation, Reinstatement, and Non-Renewal Controls
 
-**Justification:** This owned table is part of the Insurance Claims and Policy operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns policies, coverages, endorsements, premiums, claims, loss events, reserves, adjudication, settlements, recoveries, communications, and claims intelligence.
+**Justification:** Cancellation and non-renewal are heavily controlled by notice timing, reasons, jurisdictions, premium status, underwriting rules, and consumer protections. Mistakes can force coverage.
 
-**Improvement:** Extend `insurance_claims_policy_loss_event` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `appgen_x_outbox_inbox_eventing`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add cancellation and reinstatement workflows with permitted reasons, notice templates, notice delivery proof, cure windows, reinstatement requirements, non-renewal rules, and regulatory clocks. Surface impacted claims and coverage decisions before finalizing policy status changes.
 
-### 9. Deep specialist lifecycle semantics for `insurance_claims_policy_claimant`
+### 9. Claim FNOL Intake and Severity Triage
 
-**Justification:** This owned table is part of the Insurance Claims and Policy operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns policies, coverages, endorsements, premiums, claims, loss events, reserves, adjudication, settlements, recoveries, communications, and claims intelligence.
+**Justification:** First notice of loss drives coverage, reserves, adjuster assignment, fraud screening, customer communication, and regulatory deadlines. Generic claim opening misses critical insurance signals.
 
-**Improvement:** Extend `insurance_claims_policy_claimant` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `idempotent_handlers`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Upgrade `open_claim` with FNOL channels, loss description extraction, severity triage, catastrophe flagging, injury/property/third-party indicators, immediate assistance needs, missing evidence, duplicate claim detection, and initial reserve recommendations.
 
-### 10. Deep specialist lifecycle semantics for `insurance_claims_policy_claim_document`
+### 10. Loss Event Reconstruction
 
-**Justification:** This owned table is part of the Insurance Claims and Policy operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns policies, coverages, endorsements, premiums, claims, loss events, reserves, adjudication, settlements, recoveries, communications, and claims intelligence.
+**Justification:** Coverage and liability depend on what happened, when, where, to whom, and under which policy period. Loss events need structured reconstruction rather than free-text notes.
 
-**Improvement:** Extend `insurance_claims_policy_claim_document` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `retry_dead_letter_evidence`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Expand `record_loss_event` with loss date/time, discovery date, location, cause, peril, involved objects, weather/catastrophe context, police or incident references, witnesses, injury indicators, and confidence. Link the loss event to the applicable policy version and coverage parts.
 
-### 11. Make `create_insurance_policy` a complete command lifecycle
+### 11. Claimant Role and Payee Authority Management
 
-**Justification:** High-value users need `create_insurance_policy` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Payments and communications may involve insureds, third-party claimants, providers, repair vendors, attorneys, guardians, lienholders, or beneficiaries. Incorrect payee authority causes leakage and legal risk.
 
-**Improvement:** Implement `create_insurance_policy` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `PolicyCreated`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Expand `register_claimant` with claimant role, relationship to policy, authority documents, represented-party status, payment eligibility, tax or withholding fields, communication permissions, and payee validation. Block settlements and payments when authority is unresolved.
 
-### 12. Make `register_policy_holder` a complete command lifecycle
+### 12. Claim Document Evidence Room
 
-**Justification:** High-value users need `register_policy_holder` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Claims require structured evidence: photos, estimates, invoices, police reports, medical records, proof of ownership, repair records, adjuster notes, statements, and legal releases. Attachments alone are inadequate.
 
-**Improvement:** Implement `register_policy_holder` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `CoverageDetermined`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Upgrade `attach_claim_document` with evidence type, source, admissibility, required/optional status, redaction, authenticity hash, chain of custody, retention class, confidentiality, and claim-stage relevance. The UI should show missing evidence by coverage and adjudication step.
 
-### 13. Make `define_policy_coverage` a complete command lifecycle
+### 13. Coverage Reasoning Workbench
 
-**Justification:** High-value users need `define_policy_coverage` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Coverage decisions are high-value and contestable. Adjusters need transparent reasoning across policy terms, endorsements, exclusions, conditions, premiums, loss facts, and jurisdiction rules.
 
-**Improvement:** Implement `define_policy_coverage` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `ClaimOpened`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Build a coverage reasoning workbench for `determine_coverage` that shows applicable policy version, coverage grants, exclusions, exceptions, duties after loss, premium status, sublimits, deductible, uncertainty, and required review. Store every decision with cited facts and rule versions.
 
-### 14. Make `record_endorsement` a complete command lifecycle
+### 14. Reservation of Rights and Denial Letter Governance
 
-**Justification:** High-value users need `record_endorsement` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Coverage reservations and denials require precise language, jurisdiction timing, evidence, reviewer approval, and communication proof. Poor letters can waive defenses.
 
-**Improvement:** Implement `record_endorsement` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `ReserveChanged`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add governed letter workflows for reservation of rights, partial denial, full denial, and coverage acceptance. Track draft source, policy citations, facts relied upon, reviewer approvals, delivery evidence, response deadlines, and customer communication events.
 
-### 15. Make `create_premium_schedule` a complete command lifecycle
+### 15. Deductible, Limit, Sublimit, and Erosion Tracking
 
-**Justification:** High-value users need `create_premium_schedule` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Claim payments depend on remaining limits, aggregate limits, sublimits, deductibles, self-insured retention, and defense-cost erosion. These cannot be inferred from a settlement amount alone.
 
-**Improvement:** Implement `create_premium_schedule` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `ClaimAdjudicated`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add limit ledgers by policy, coverage part, claim, loss event, and claimant. Track reserve, paid, incurred, deductible applied, recoveries, aggregate erosion, defense cost treatment, and remaining authority before adjudication or settlement.
 
-### 16. Make `record_premium_payment` a complete command lifecycle
+### 16. Reserve Adequacy and Review Workflow
 
-**Justification:** High-value users need `record_premium_payment` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Reserves affect financial reporting, capital planning, claim strategy, and regulatory oversight. Under-reserving and stale reserves create enterprise risk.
 
-**Improvement:** Implement `record_premium_payment` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `SettlementPaid`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Upgrade `set_claim_reserve` and `record_reserve_change` with exposure drivers, confidence intervals, review cadence, authority thresholds, reserve rationale, stale-reserve alerts, development triangles, and reviewer approvals. Provide explainable reserve adequacy forecasts.
 
-### 17. Make `open_claim` a complete command lifecycle
+### 17. Claim Severity and Complexity Scoring
 
-**Justification:** High-value users need `open_claim` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Claims vary from simple low-value payments to complex injury, litigation, catastrophe, fraud, or multi-party cases. Assignment and controls must follow complexity.
 
-**Improvement:** Implement `open_claim` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `PolicyCreated`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add severity and complexity scoring based on loss type, injury, property value, coverage ambiguity, litigation risk, fraud signals, claimant count, recovery potential, and regulatory sensitivity. Use scores for adjuster assignment, authority levels, reserves, and SLA priorities.
 
-### 18. Make `record_loss_event` a complete command lifecycle
+### 18. Adjuster Assignment and Workload Governance
 
-**Justification:** High-value users need `record_loss_event` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Claims outcomes depend on adjuster skill, authority, capacity, jurisdiction license, line expertise, language, and workload. Assignment must be more than a queue pop.
 
-**Improvement:** Implement `record_loss_event` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `CoverageDetermined`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add adjuster profiles, licenses, authority limits, line-of-business expertise, workload, territory, conflict flags, and escalation paths. `adjudicate_claim` should validate adjuster eligibility and capacity before assignment or decision.
 
-### 19. Make `register_claimant` a complete command lifecycle
+### 19. Claims Task and Diary Management
 
-**Justification:** High-value users need `register_claimant` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Claims require diaries, investigation steps, medical record requests, estimates, coverage review, supervisor review, communication deadlines, and payment follow-ups. Missed diaries become regulatory and leakage risk.
 
-**Improvement:** Implement `register_claimant` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `ClaimOpened`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add claim diary tasks with due dates, legal/regulatory basis, ownership, escalation, completion evidence, dependency links, and overdue controls. The workbench should show adjuster diaries, supervisor queues, and regulatory deadline risks.
 
-### 20. Make `attach_claim_document` a complete command lifecycle
+### 20. Regulatory Fair Claims Handling Controls
 
-**Justification:** High-value users need `attach_claim_document` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Claims are subject to acknowledgement, investigation, communication, decision, and payment timeframes that differ by jurisdiction and claim type. Manual tracking is not enough.
 
-**Improvement:** Implement `attach_claim_document` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `ReserveChanged`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add jurisdiction-specific fair-claims rules for acknowledgement, document requests, coverage decisions, payment timing, denial notices, and complaint handling. Automatically create timers, warnings, evidence packets, and breach exceptions.
 
-### 21. Operationalize `coverage reasoning engine` as a governed decision system
+### 21. Fraud Signal Fusion and SIU Referral
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Insurance Claims and Policy and measurably improves insurance claims policy risk score without hiding assumptions.
+**Justification:** Fraud detection requires combining loss facts, claimant behavior, policy age, prior claims, documents, repair vendors, payment changes, geospatial patterns, and external alerts. Single-rule flags miss sophisticated fraud.
 
-**Improvement:** Promote `coverage reasoning engine` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `insurance_claims_policy_risk_score`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Expand `score_fraud_indicator` into a fraud signal fusion engine with explainable indicators, confidence, severity, SIU referral rules, false-positive feedback, investigator notes, and model governance. Block adverse customer actions until required human review is complete.
 
-### 22. Operationalize `reserve adequacy forecasting` as a governed decision system
+### 22. Claim Document Authenticity and Manipulation Checks
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Insurance Claims and Policy and measurably improves insurance claims policy workbench metric without hiding assumptions.
+**Justification:** Claim leakage often involves altered photos, duplicate invoices, synthetic documents, inflated estimates, or inconsistent metadata. Evidence authenticity should be built into claim handling.
 
-**Improvement:** Promote `reserve adequacy forecasting` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `insurance_claims_policy_workbench_metric`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add authenticity checks for image metadata, duplicate documents, invoice patterns, document source, tamper indicators, geotag consistency, and cross-claim reuse. Store signals as evidence, not final determinations, and route high-risk items to review.
 
-### 23. Operationalize `fraud signal fusion` as a governed decision system
+### 23. Repair, Provider, and Vendor Network Management
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Insurance Claims and Policy and measurably improves insurance claims policy risk score without hiding assumptions.
+**Justification:** Claims frequently involve repair shops, medical providers, contractors, adjusters, towing, restoration, or legal vendors. Vendor selection affects cost, quality, fraud, and customer satisfaction.
 
-**Improvement:** Promote `fraud signal fusion` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `insurance_claims_policy_risk_score`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add claim-service provider records with eligibility, specialty, rates, service area, license, performance score, customer feedback, fraud flags, and assignment constraints. Use supplier or vendor projections for master data while keeping claim decisions package-local.
 
-### 24. Operationalize `loss exposure simulation` as a governed decision system
+### 24. Estimate, Appraisal, and Damage Assessment Workflow
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Insurance Claims and Policy and measurably improves insurance claims policy workbench metric without hiding assumptions.
+**Justification:** Settlement accuracy depends on estimates, appraisals, inspections, photos, depreciation, replacement cost, actual cash value, and dispute handling. Generic adjudication cannot cover this.
 
-**Improvement:** Promote `loss exposure simulation` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `insurance_claims_policy_workbench_metric`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add damage assessment records with estimate lines, depreciation, betterment, repair/replace decision, appraisal method, reviewer approval, comparable evidence, and variance analysis. Link assessment to coverage, reserves, settlement offers, and payment calculations.
 
-### 25. Operationalize `settlement optimization` as a governed decision system
+### 25. Medical and Injury Claim Handling
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Insurance Claims and Policy and measurably improves insurance claims policy risk score without hiding assumptions.
+**Justification:** Injury claims require treatment timelines, medical bills, impairment, lost wages, liability, releases, privacy controls, and long-tail reserve analysis.
 
-**Improvement:** Promote `settlement optimization` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `insurance_claims_policy_risk_score`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add injury claim extensions for treatment events, medical provider bills, diagnosis categories, lost wage evidence, impairment ratings, causation review, privacy restrictions, and settlement authority. Ensure sensitive health data has stricter access and retention controls.
 
-### 26. Operationalize `cryptographic claim evidence` as a governed decision system
+### 26. Catastrophe and Surge Claims Operations
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Insurance Claims and Policy and measurably improves insurance claims policy workbench metric without hiding assumptions.
+**Justification:** Catastrophe events create claim surges, shared loss context, emergency payments, field adjuster assignments, vendor constraints, and fraud spikes. Ordinary claim queues are insufficient.
 
-**Improvement:** Promote `cryptographic claim evidence` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `insurance_claims_policy_workbench_metric`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add catastrophe event grouping, surge triage, mass FNOL intake, emergency payment rules, mobile adjuster deployment, event-level reserves, geospatial loss concentration, and portfolio dashboards. Keep catastrophe context linked to individual claims and policies.
 
-### 27. Operationalize `coverage reasoning engine` as a governed decision system
+### 27. Subrogation Opportunity Detection
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Insurance Claims and Policy and measurably improves insurance claims policy risk score without hiding assumptions.
+**Justification:** Recoveries are often missed when third-party liability, defective products, negligent contractors, carriers, or other insurers are not detected early.
 
-**Improvement:** Promote `coverage reasoning engine` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `insurance_claims_policy_risk_score`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Expand `record_subrogation_recovery` with subrogation opportunity scoring, responsible party records, recovery basis, evidence checklist, demand packages, statute deadlines, recovery reserves, negotiation history, and closure reasons.
 
-### 28. Operationalize `reserve adequacy forecasting` as a governed decision system
+### 28. Salvage, Residual Value, and Recovery Logistics
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Insurance Claims and Policy and measurably improves insurance claims policy workbench metric without hiding assumptions.
+**Justification:** Property, vehicle, equipment, and inventory claims may involve salvage, total loss, residual value, auction, disposal, or hazardous material handling. Recoveries affect net loss.
 
-**Improvement:** Promote `reserve adequacy forecasting` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `insurance_claims_policy_workbench_metric`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add salvage records with item identity, condition, ownership, custody, estimated residual value, disposal path, sale proceeds, environmental handling, and recovery events. Link salvage forecasts to reserves and settlement calculations.
 
-### 29. Operationalize `fraud signal fusion` as a governed decision system
+### 29. Settlement Strategy and Negotiation Ledger
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Insurance Claims and Policy and measurably improves insurance claims policy risk score without hiding assumptions.
+**Justification:** Settlement decisions involve liability, coverage, damages, reserves, litigation posture, claimant demands, authority, releases, liens, and payment timing. A single offer record is not enough.
 
-**Improvement:** Promote `fraud signal fusion` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `insurance_claims_policy_risk_score`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Expand `create_settlement_offer` with demands, offers, counteroffers, authority limits, negotiation rationale, non-monetary terms, release requirements, lien handling, payment schedule, and acceptance expiry. Show a negotiation timeline and strategy notes with role-based access.
 
-### 30. Operationalize `loss exposure simulation` as a governed decision system
+### 30. Settlement Authority and Approval Matrix
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Insurance Claims and Policy and measurably improves insurance claims policy workbench metric without hiding assumptions.
+**Justification:** Settlement authority varies by amount, reserve impact, coverage ambiguity, claim severity, litigation status, fraud indicators, jurisdiction, and customer segment.
 
-**Improvement:** Promote `loss exposure simulation` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `insurance_claims_policy_workbench_metric`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add configurable authority matrices that route settlement offers and payments through adjuster, supervisor, legal, finance, SIU, and executive approval based on claim attributes. Block `SettlementPaid` until required approvals and releases are complete.
 
-### 31. Create simulation-grade governance for `coverage_policy` and `reserve_review_threshold`
+### 31. Payment Calculation and Disbursement Controls
 
-**Justification:** Complete Insurance Claims and Policy coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Claim payments require deductible application, limits, taxes, withholdings, lienholders, multiple payees, payment method controls, duplicate prevention, and recoverable depreciation rules.
 
-**Improvement:** Add a policy cockpit where `coverage_policy` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `reserve_review_threshold` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Upgrade `execute_settlement_payment` with payment breakdowns, payee validation, deductible and limit calculations, liens, tax withholding, recoverable depreciation, split payments, payment holds, duplicate checks, and finance handoff events.
 
-### 32. Create simulation-grade governance for `reserve_authority_policy` and `settlement_authority_limit`
+### 32. Lien, Mortgagee, Beneficiary, and Provider Payment Handling
 
-**Justification:** Complete Insurance Claims and Policy coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Many claim payments cannot go only to the claimant. Mortgagees, lienholders, medical providers, body shops, attorneys, and beneficiaries may have legal payment rights.
 
-**Improvement:** Add a policy cockpit where `reserve_authority_policy` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `settlement_authority_limit` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add payee-interest records, priority rules, supporting documents, release requirements, joint-payee logic, dispute handling, and payment eligibility checks. The UI should show why each payee is included or excluded.
 
-### 33. Create simulation-grade governance for `settlement_approval_policy` and `fraud_score_threshold`
+### 33. Litigation and Legal Escalation Tracking
 
-**Justification:** Complete Insurance Claims and Policy coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Claims may become litigated, involve counsel, discovery, court deadlines, defense costs, privilege, and settlement authority changes. Claims teams need controlled legal escalation without owning legal matter tables.
 
-**Improvement:** Add a policy cockpit where `settlement_approval_policy` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `fraud_score_threshold` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add litigated-claim indicators, legal projection links, defense counsel assignment snapshots, litigation phase, defense cost treatment, discovery deadlines, privilege flags, and settlement authority impacts through declared legal APIs/events/projections.
 
-### 34. Create simulation-grade governance for `fraud_escalation_policy` and `premium_grace_days`
+### 34. Complaint, Appeal, and Reconsideration Workflow
 
-**Justification:** Complete Insurance Claims and Policy coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Customers and claimants can dispute coverage, valuation, delay, denial, service, or payment. These disputes require regulatory timers and evidence-based review.
 
-**Improvement:** Add a policy cockpit where `fraud_escalation_policy` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `premium_grace_days` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add complaint and appeal records with reason, jurisdiction deadline, reviewer independence, original decision, new evidence, outcome, communication proof, and corrective action. Escalate repeated complaint patterns into control assertions.
 
-### 35. Create simulation-grade governance for `premium_grace_policy` and `claim_sla_days`
+### 35. Claim Communication Timeline
 
-**Justification:** Complete Insurance Claims and Policy coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Claims handling quality depends on timely, documented communication with insureds, claimants, agents, providers, counsel, repair vendors, and regulators.
 
-**Improvement:** Add a policy cockpit where `premium_grace_policy` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `claim_sla_days` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Expand `send_claim_communication` with channel, recipient role, authority basis, template version, language, accessibility, required response, delivery proof, and claim timer impact. Show a full communication timeline and missing-response queues.
 
-### 36. Upgrade `insurance workbench` into a full specialist command center
+### 36. Agent-Assisted Claim Document and Instruction Intake
 
-**Justification:** The PBC UI must expose the complete Insurance Claims and Policy surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Claim teams receive forms, photos, invoices, police reports, medical records, emails, adjuster notes, and customer instructions that need structured handling without unsafe autonomous writes.
 
-**Improvement:** Expand `insurance workbench` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Give the PBC agent skills to parse claim documents and instructions into proposed claims, loss events, claimants, documents, coverage facts, reserve changes, fraud indicators, communications, and settlement tasks. The agent must show source citations, confidence, affected tables, event plans, and human confirmation gates.
 
-### 37. Upgrade `policy coverage detail` into a full specialist command center
+### 37. Customer Self-Service Claim Portal Surface
 
-**Justification:** The PBC UI must expose the complete Insurance Claims and Policy surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Policyholders expect claim status, missing documents, payments, appointments, communication history, and next steps without calling support. Self-service must be secure and role-aware.
 
-**Improvement:** Expand `policy coverage detail` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add portal-ready views for claim status, required actions, document upload, payment status, appointment scheduling, communication preferences, and dispute submission. Enforce party authority and sensitive-data masking.
 
-### 38. Upgrade `claims queue` into a full specialist command center
+### 38. Claim SLA and Customer Experience Analytics
 
-**Justification:** The PBC UI must expose the complete Insurance Claims and Policy surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Insurers need visibility into cycle time, first contact, document turnaround, coverage decisions, payment speed, complaints, reopen rates, and customer sentiment.
 
-**Improvement:** Expand `claims queue` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Build analytics for claim age, stage duration, SLA compliance, communication timeliness, settlement speed, customer feedback, complaint themes, and reopened claims. Include drilldowns by product, jurisdiction, adjuster, severity, and loss type.
 
-### 39. Upgrade `reserve console` into a full specialist command center
+### 39. Reopened Claim and Supplemental Payment Controls
 
-**Justification:** The PBC UI must expose the complete Insurance Claims and Policy surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Claims may reopen due to supplemental damage, late bills, litigation, fraud reconsideration, customer dispute, or recovery changes. Reopenings need evidence and authority.
 
-**Improvement:** Expand `reserve console` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add reopen workflows with reason codes, new evidence, prior settlement impact, reserve updates, authority approval, reopened timers, and supplemental payment controls. Track reopen rate as a quality signal.
 
-### 40. Upgrade `adjudication board` into a full specialist command center
+### 40. Claim Closure Readiness and Retention
 
-**Justification:** The PBC UI must expose the complete Insurance Claims and Policy surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Closing a claim requires completed payments, recoveries, communications, documents, reserves, regulatory timers, liens, and customer obligations. Premature closure creates leakage and compliance risk.
 
-**Improvement:** Expand `adjudication board` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Expand closure readiness checks covering open diaries, unpaid settlements, unresolved complaints, pending recoveries, missing documents, stale reserves, litigation flags, and retention requirements. Prevent closure until required evidence is complete or exceptions are approved.
 
-### 41. Prove cross-PBC federation for `POST /insurance-policies` and `PaymentCaptured`
+### 41. Predictive Loss Exposure and Scenario Simulation
 
-**Justification:** Insurance Claims and Policy must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Claim leaders need plausible outcome ranges, not only point reserves. Exposure changes with facts, coverage, liability, litigation, medical development, catastrophe conditions, and fraud review.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /insurance-policies` and consumed event `PaymentCaptured` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Extend `simulate_loss_exposure` with probabilistic scenarios, cost drivers, legal expense, recovery offsets, coverage uncertainty, claim development, confidence intervals, and saved assumptions. Show impact on reserves, settlement authority, and portfolio exposure.
 
-### 42. Prove cross-PBC federation for `POST /claims` and `CustomerUpdated`
+### 42. Portfolio Reserve and Claim Development Analytics
 
-**Justification:** Insurance Claims and Policy must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Individual claim reserves roll into portfolio adequacy, development patterns, risk appetite, and capital planning. Claim-level and portfolio views must reconcile.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /claims` and consumed event `CustomerUpdated` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Add reserve development analytics by line, product, jurisdiction, loss type, catastrophe, severity, and adjuster team. Provide reconciliation between claim reserve changes, settlement payments, recoveries, and portfolio incurred views.
 
-### 43. Prove cross-PBC federation for `POST /coverage-validations` and `FraudSignalRaised`
+### 43. Continuous Control Testing for Claims
 
-**Justification:** Insurance Claims and Policy must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Insurance controls need continuous proof: coverage approvals, reserve authority, settlement authority, communication deadlines, fraud reviews, payment checks, and access controls.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /coverage-validations` and consumed event `FraudSignalRaised` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Add executable control assertions with sampled evidence, breach queues, remediation owners, release blockers, and control trend dashboards. Control failures should emit AppGen-X evidence without mutating audit or compliance PBC tables.
 
-### 44. Prove cross-PBC federation for `POST /claim-settlements` and `PolicyChanged`
+### 44. Cryptographic Claim Evidence Packets
 
-**Justification:** Insurance Claims and Policy must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** High-value claims, disputes, audits, and litigation require tamper-evident evidence of documents, decisions, communications, reserves, payments, and approvals.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /claim-settlements` and consumed event `PolicyChanged` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Generate claim evidence packets with hashes, policy versions, coverage decisions, reserve rationale, payment calculations, communication proof, handler evidence, and event lineage. Support export for audits, regulatory exams, and legal reviews.
 
-### 45. Temporal reconstruction and bitemporal audit for Insurance Claims and Policy
+### 45. Cross-PBC Projection Boundary Enforcement
 
-**Justification:** Regulated and operationally complex domains need to answer what was known, valid, processed, and visible at any point in time.
+**Justification:** Insurance claims naturally reference customers, payments, fraud intelligence, legal matters, suppliers, assets, finance, and audit controls. The PBC must not directly mutate those domains.
 
-**Improvement:** Add transaction-time, valid-time, and processing-time fields to core records, temporal query APIs, projection rebuild tooling, and UI time travel so specialists can reconstruct decisions, reports, and automation outcomes.
+**Improvement:** Add explicit projection contracts for external context including source PBC, external identifier, snapshot time, allowed fields, freshness, authorization, and fallback behavior. Add tests proving services mutate only `insurance_claims_policy_` tables and communicate externally through APIs/events/projections.
 
-### 46. Bulk operations and migration-grade controls for Insurance Claims and Policy
+### 46. Policy and Claim Rule Studio
 
-**Justification:** World-class deployments must handle imports, mass corrections, high-volume operating days, and cutovers without bypassing governance.
+**Justification:** Coverage, reserve, settlement, fraud, premium grace, and recovery rules change by product, jurisdiction, and authority policy. Specialists need governed change without code edits.
 
-**Improvement:** Add staged bulk upload, duplicate detection, chunked validation, approval sampling, partial failure handling, retry dashboards, reconciliation summaries, and agent-generated remediation plans for large batches.
+**Improvement:** Expand insurance policy rules and runtime parameters into a rule studio with versioning, simulations against historical claims, approval workflow, effective dates, rollback, impact analysis, and agent explanations before activation.
 
-### 47. Specialist edge-case playbooks for Insurance Claims and Policy
+### 47. Accessibility and Vulnerable Customer Support
 
-**Justification:** Rare cases often carry the highest financial, legal, safety, service, or compliance risk.
+**Justification:** Insurance claimants may be injured, displaced, grieving, under stress, language-limited, elderly, disabled, or otherwise vulnerable. Claim processes must adapt without weakening controls.
 
-**Improvement:** Create a playbook catalog with detection rules, required evidence, escalation paths, fallback actions, owner roles, and release-audited tests for high-severity edge cases and exception queues.
+**Improvement:** Add vulnerable-customer indicators, communication accommodations, representative authority checks, priority assistance, hardship payment pathways, and fairness review. Ensure agent and UI guidance reflects accessibility and vulnerability policies.
 
-### 48. Pre-mutation simulation and blast-radius analysis for Insurance Claims and Policy
+### 48. Claim Fraud Governance and Adverse Action Safeguards
 
-**Justification:** Users should understand consequences before committing irreversible, customer-visible, operationally disruptive, or financially material changes.
+**Justification:** Fraud models can create unfair delays or denials if signals are treated as determinations. Insurance operations need transparent and governed fraud handling.
 
-**Improvement:** Add what-if simulation for every material command, showing impacted records, emitted events, dependent projections, rule outcomes, approvals, downstream PBC dependencies, and rollback limits.
+**Improvement:** Add adverse-action safeguards requiring human review, reason codes, model version evidence, appeal rights, protected-attribute controls, false-positive tracking, and supervisor approval before fraud signals alter coverage, settlement, or payment outcomes.
 
-### 49. Continuous control testing and operational assurance for Insurance Claims and Policy
+### 49. Insurance Operations Command Center
 
-**Justification:** Better-than-world-class PBCs prove controls continuously, not only at release or during periodic audits.
+**Justification:** Policy and claim specialists need one surface for policy terms, coverage, claim queues, reserves, adjudication, settlement, fraud, recoveries, communications, rules, and evidence. Fragmented UI prevents complete domain operation.
 
-**Improvement:** Add executable control assertions, sampled evidence checks, anomaly thresholds, control-owner dashboards, breach/recovery events, and release gates that fail when domain controls lose evidence.
+**Improvement:** Expand the workbench into role-specific command centers for policy administrator, adjuster, supervisor, SIU investigator, recovery specialist, payments analyst, compliance reviewer, and executive sponsor. Include queues, timelines, decision panels, analytics, agent previews, and release evidence.
 
-### 50. Human-in-the-loop domain agent execution for Insurance Claims and Policy
+### 50. End-to-End Insurance Release Evidence
 
-**Justification:** The PBC chatbot must help specialists perform real work while preventing unsafe autonomous mutation.
+**Justification:** A better-than-world-class insurance PBC must prove that policies, coverages, endorsements, premiums, claims, reserves, adjudications, settlements, recoveries, fraud controls, communications, and agent actions work together.
 
-**Improvement:** Add domain-specific skills, document parsing, task planning, CRUD previews, confidence/risk scoring, confirmation gates, redaction, policy explanations, and post-action evidence packets for every supported command and query.
+**Improvement:** Generate release evidence packs containing schema hashes, migration manifests, service and route contracts, event schemas, idempotent handler proofs, retry/dead-letter tests, coverage decision smoke runs, reserve simulations, settlement payment scenarios, fraud review safeguards, UI coverage, and agent skill manifests.
