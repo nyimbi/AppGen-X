@@ -12,6 +12,8 @@ from pyAppGen.dsl import graph_report_dsl
 from pyAppGen.dsl import graph_suite_report_dsl
 from pyAppGen.dsl import generate_report_dsl
 from pyAppGen.dsl import lint_report_dsl
+from pyAppGen.dsl import lint_report_dsl_path
+from pyAppGen.dsl import lint_report_dsl_sources
 from pyAppGen.dsl import lsp_service_dsl
 from pyAppGen.dsl import migration_plan_dsl
 from pyAppGen.dsl import nl_plan_dsl
@@ -152,6 +154,52 @@ def test_lint_report_maps_existing_linter_errors_to_stable_agx_diagnostics() -> 
     assert report["severity_counts"]["error"] >= 1
     assert any(item["code"] == "AGX0303" for item in report["diagnostics"])
     assert any(item["legacy_code"] == "unresolved_lookup_path" for item in report["diagnostics"])
+
+
+def test_lint_report_accepts_directory_source_sets(tmp_path: Path) -> None:
+    source_dir = tmp_path / "src" / "appgen"
+    source_dir.mkdir(parents=True)
+    finance = source_dir / "finance.appgen"
+    broken = source_dir / "broken.appgen"
+    finance.write_text(TOOLING_SAMPLE, encoding="utf-8")
+    broken.write_text("app Broken { targets: web }\n\ntable BrokenThing { id: int pk; name: galaxy }\n", encoding="utf-8")
+
+    report = lint_report_dsl_path(source_dir)
+    memory_report = lint_report_dsl_sources(
+        {
+            "memory/finance.appgen": TOOLING_SAMPLE,
+            "memory/broken.appgen": broken.read_text(encoding="utf-8"),
+        }
+    )
+
+    assert report["format"] == "appgen.lint-report.v1"
+    assert report["source_mode"] == "directory"
+    assert report["ok"] is False
+    assert {Path(item).name for item in report["files"]} == {"finance.appgen", "broken.appgen"}
+    assert len(report["file_reports"]) == 2
+    assert any(item["code"] == "AGX0201" and Path(item["file"]).name == "broken.appgen" for item in report["diagnostics"])
+    assert memory_report["source_mode"] == "directory"
+
+
+def test_appgen_lint_subcommand_accepts_directory_input(tmp_path: Path) -> None:
+    source_dir = tmp_path / "appgen"
+    source_dir.mkdir()
+    (source_dir / "one.appgen").write_text("app One { targets: web }\n\ntable OneThing { id: int pk }\n", encoding="utf-8")
+    (source_dir / "two.appgen").write_text("app Two { targets: web }\n\ntable TwoThing { id: int pk }\n", encoding="utf-8")
+
+    result = subprocess.run(
+        [sys.executable, "-m", "pyAppGen", "lint", str(source_dir), "--json"],
+        check=False,
+        cwd=Path(__file__).resolve().parents[1],
+        text=True,
+        capture_output=True,
+    )
+
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["format"] == "appgen.lint-report.v1"
+    assert payload["source_mode"] == "directory"
+    assert {Path(item).name for item in payload["files"]} == {"one.appgen", "two.appgen"}
 
 
 def test_format_validate_and_graph_reports_follow_tooling_contracts() -> None:
@@ -866,6 +914,7 @@ def test_doctor_report_checks_parser_catalog_generator_and_ide_hooks() -> None:
         "generated_parser",
         "parser_sync",
         "parser_golden_fixtures",
+        "directory_lint_input",
         "pbc_catalog",
         "template_writers",
         "generator_backends",

@@ -370,6 +370,13 @@ The linter must run in three stages:
 - Optional generator target profile.
 - Optional previous semantic-model JSON for migration comparison.
 
+Directory input is an executable contract, not just a planned mode:
+`appgen lint path/to/appgen --json` recursively discovers `*.appgen` files,
+sorts them for deterministic output, runs the same single-file lint contract for
+each file, aggregates diagnostics with a `file` field, and returns one
+`appgen.lint-report.v1` payload with `source_mode: "directory"` and nested
+`file_reports`.
+
 ### Linter Outputs
 
 Text mode is for humans. JSON mode is for CI, IDEs, agents, and generated apps.

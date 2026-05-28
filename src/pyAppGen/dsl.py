@@ -563,9 +563,64 @@ def lint_report_dsl(text: str, *, source_name: str | None = None) -> dict:
     }
 
 
+def lint_report_dsl_sources(sources: dict[str, str]) -> dict:
+    """Aggregate linter output for a multi-file AppGen-X source set."""
+    if not sources:
+        diagnostic = _spec_diagnostic("", "AGX0001", "error", "No .appgen files found in directory input.")
+        return {
+            "format": "appgen.lint-report.v1",
+            "ok": False,
+            "files": (),
+            "severity_counts": {"error": 1, "warning": 0, "info": 0, "hint": 0},
+            "diagnostics": (diagnostic,),
+            "fixes_available": False,
+            "semantic_model_available": False,
+            "source_mode": "directory",
+            "file_reports": (),
+        }
+    reports = tuple(
+        lint_report_dsl(source, source_name=name)
+        for name, source in sorted(sources.items())
+    )
+    diagnostics = tuple(
+        {**diagnostic, "file": report["files"][0] if report.get("files") else None}
+        for report in reports
+        for diagnostic in report["diagnostics"]
+    )
+    counts = {
+        "error": sum(1 for item in diagnostics if item["severity"] == "error"),
+        "warning": sum(1 for item in diagnostics if item["severity"] == "warning"),
+        "info": sum(1 for item in diagnostics if item["severity"] == "info"),
+        "hint": sum(1 for item in diagnostics if item["severity"] == "hint"),
+    }
+    return {
+        "format": "appgen.lint-report.v1",
+        "ok": not counts["error"],
+        "files": tuple(report["files"][0] for report in reports if report.get("files")),
+        "severity_counts": counts,
+        "diagnostics": diagnostics,
+        "fixes_available": any(report["fixes_available"] for report in reports),
+        "semantic_model_available": all(report["semantic_model_available"] for report in reports),
+        "source_mode": "directory" if len(reports) != 1 else "multi-source",
+        "file_reports": reports,
+    }
+
+
 def lint_report_dsl_file(path: str | Path) -> dict:
     path = Path(path)
     return lint_report_dsl(path.read_text(encoding="utf-8"), source_name=str(path))
+
+
+def lint_report_dsl_path(path: str | Path) -> dict:
+    path = Path(path)
+    if path.is_dir():
+        sources = {
+            str(item): item.read_text(encoding="utf-8")
+            for item in sorted(path.rglob("*.appgen"))
+            if item.is_file()
+        }
+        return lint_report_dsl_sources(sources)
+    return lint_report_dsl_file(path)
 
 
 def diagnostic_catalog_dsl() -> dict:
@@ -966,10 +1021,10 @@ def dsl_tooling_cli(argv: Iterable[str] | None = None) -> int:
 
     args = parser.parse_args(tuple(argv or ()))
     path = Path(args.path) if hasattr(args, "path") else None
-    source = path.read_text(encoding="utf-8") if path is not None else ""
+    source = "" if path is None or path.is_dir() else path.read_text(encoding="utf-8")
 
     if args.command == "lint":
-        report = lint_report_dsl(source, source_name=str(path))
+        report = lint_report_dsl_path(path) if path is not None else lint_report_dsl(source)
         _emit_tooling_payload(report, as_json=args.json)
         return 0 if report["ok"] else 1
     if args.command == "format":
@@ -1341,6 +1396,17 @@ def doctor_report_dsl() -> dict:
             parser_golden_audit_dsl()["ok"],
             "Parser golden fixtures cover valid and invalid DSL grammar constructs.",
             {"report_format": "appgen.parser-golden-audit.v1"},
+        ),
+        _doctor_check(
+            "directory_lint_input",
+            lint_report_dsl_sources(
+                {
+                    "doctor/app.appgen": _doctor_sample_dsl(),
+                    "doctor/agent.appgen": "app DoctorAgent { targets: web }\n\ntable AgentThing { id: int pk }\n",
+                }
+            )["ok"],
+            "Linter accepts multi-file directory-style source sets.",
+            {"report_format": "appgen.lint-report.v1"},
         ),
         _doctor_import_check("python_package_import", "pyAppGen"),
         _doctor_import_check("sqlalchemy_import", "sqlalchemy"),
