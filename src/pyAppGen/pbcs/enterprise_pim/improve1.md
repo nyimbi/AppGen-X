@@ -1,315 +1,314 @@
-# Enterprise Product Information Management PBC Improvement Backlog
+# Enterprise PIM PBC Improvement Backlog
 
 ## Purpose
 
-This backlog identifies 50 high-impact, high-value improvements for `enterprise_pim`. Each item is specific to the domain surface currently declared by the PBC and is intended to move the package beyond world-class breadth toward complete specialist-grade coverage.
+This backlog identifies 50 high-impact, high-value improvements for `enterprise_pim`. The items are specific to enterprise product-information governance: taxonomies, taxonomy nodes and relationships, product attributes, attribute groups, value options, inheritance, validation rules, quality signals, localized content, content versions, translation memory, locale fallback, completeness scoring, validation workflows, approvals, publication readiness, dependency schemas and projections, product relationships, bundles, variant families, assortments, data stewardship, exceptions, rules, parameters, configuration, AppGen-X event reliability, UI workbenches, and agent-assisted PIM operations.
 
 ## Current Domain Evidence Used
 
-- Domain purpose: Taxonomies, multilingual attributes, inheritance, localization, validation, dependency projections, publication readiness, and master-data governance.
-- Representative owned tables: `enterprise_pim_product_taxonomy`, `enterprise_pim_taxonomy_node`, `enterprise_pim_taxonomy_relationship`, `enterprise_pim_product_attribute`, `enterprise_pim_attribute_group`, `enterprise_pim_attribute_validation_rule`, `enterprise_pim_localized_content`, `enterprise_pim_localized_content_version`, `enterprise_pim_validation_workflow`, `enterprise_pim_validation_workflow_step`, `enterprise_pim_approval_decision`, `enterprise_pim_publication_readiness_check`, ...
-- Representative operations/APIs: `command_product_taxonomies`, `command_product_attributes`, `command_localized_content`, `command_validation_workflows`, `command_validation_workflows_id_approve`, `command_dependency_schemas`, `command_pim_events`, `command_pim_publications`, `query_pim_workbench`, `command_attribute_groups`, `command_attribute_options`, `command_attribute_validation_rules`, ...
-- Representative events: `TaxonomyClassified`, `AttributeDefined`, `ContentLocalized`, `ValidationApproved`, `PimMasterDataReady`, `AttributeGroupCreated`, `AttributeOptionRegistered`, `AttributeValidationRuleRegistered`, `TranslationMemoryUpdated`, `LocaleFallbackRegistered`, ...
-- Representative advanced capabilities: `event_sourced_enterprise_pim_lifecycle`, `graph_relational_taxonomy_topology`, `multi_tenant_pim_isolation`, `schema_evolution_resilient_attribute_model`, `multilingual_inheritance_localization`, `probabilistic_content_completeness_scoring`, `counterfactual_taxonomy_publication_simulation`, `temporal_enrichment_readiness_forecasting`, `autonomous_enrichment_exception_resolution`, `semantic_pim_instruction_parsing`, ...
+- Domain purpose: `enterprise_pim` owns enterprise product-information governance for taxonomies, attribute models, localized content, validation workflow, dependency intake, publication readiness, rules, parameters, configuration, UI fragments, and AppGen-X event evidence.
+- Owned boundary: product taxonomies, taxonomy nodes/relationships/publications/classification candidates, attributes, attribute groups, value options, inheritance and validation rules, quality signals, localized content and versions, translation memory, locale fallbacks, completeness scores, validation workflows/steps/approvals, readiness checks, dependency schemas/projections, media/price/tax/inventory/search/catalog projections, channel publication policy, product relationships, bundles, variants, assortments, data stewards, exceptions, audit traces, proofs, policy screening, federation projections, enrichment windows, optimization plans, workflow allocation, anomaly signals, forecasts, risk models, semantic parses, schema extensions, controls, governed models, seed data, rules, parameters, configuration, inbox/outbox, and dead-letter evidence.
+- Existing command/query surface: runtime configuration, parameters, rules, schema extensions, dependency schema acceptance, event intake, taxonomy creation, attribute definition, attribute groups/options/validation rules, localized content, translation memory, locale fallback, validation workflows, product relationships, bundles, variant families/members, assortments, data stewards, exceptions, master-data publication, workbench, API/schema/service/release evidence, permissions, UI binding, and boundary verification.
+- Existing events and dependencies: emits `TaxonomyClassified`, `AttributeDefined`, `ContentLocalized`, `ValidationApproved`, `PimMasterDataReady`, `AttributeGroupCreated`, `AttributeOptionRegistered`, `AttributeValidationRuleRegistered`, `TranslationMemoryUpdated`, `LocaleFallbackRegistered`, `ProductRelationshipCreated`, `ProductBundleDefined`, `VariantFamilyDefined`, `VariantMemberAdded`, `AssortmentAssigned`, `DataStewardAssigned`, `PimExceptionOpened`, and `PimExceptionResolved`; consumes `MediaAssetApproved`, `PricePromotionApproved`, `TaxCalculated`, and `InventoryPositionUpdated`; integrates with media, pricing, tax, inventory, search, catalog, and commerce only through declared APIs/events/projections.
 
 ## 50 Better-Than-World-Class Improvements
 
-### 1. Deep specialist lifecycle semantics for `enterprise_pim_product_taxonomy`
+### 1. Taxonomy readiness gate
 
-**Justification:** This owned table is part of the Enterprise Product Information Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Taxonomies, multilingual attributes, inheritance, localization, validation, dependency projections, publication readiness, and master-data governance.
+**Justification:** Enterprise taxonomies are foundational for attributes, localization, publication, search, and channel policy.
 
-**Improvement:** Extend `enterprise_pim_product_taxonomy` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `enterprise_taxonomies`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add readiness checks for taxonomy identity, tenant, default locale, allowed locales, root node, hierarchy state, stewardship, required attributes, relationship policy, publication status, and dependency schema compatibility.
 
-### 2. Deep specialist lifecycle semantics for `enterprise_pim_taxonomy_node`
+### 2. Taxonomy node lifecycle governance
 
-**Justification:** This owned table is part of the Enterprise Product Information Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Taxonomies, multilingual attributes, inheritance, localization, validation, dependency projections, publication readiness, and master-data governance.
+**Justification:** Category nodes need controlled states and lineage to prevent broken classification and publication.
 
-**Improvement:** Extend `enterprise_pim_taxonomy_node` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `taxonomy_nodes`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Model node states for draft, active, deprecated, merged, split, blocked, archived, and published with parent, locale names, effective dates, stewardship, migration guidance, and audit proof.
 
-### 3. Deep specialist lifecycle semantics for `enterprise_pim_taxonomy_relationship`
+### 3. Taxonomy relationship integrity
 
-**Justification:** This owned table is part of the Enterprise Product Information Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Taxonomies, multilingual attributes, inheritance, localization, validation, dependency projections, publication readiness, and master-data governance.
+**Justification:** Bad parent-child and cross-link relationships create duplicate paths, circular inheritance, and search/publication defects.
 
-**Improvement:** Extend `enterprise_pim_taxonomy_relationship` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `taxonomy_hierarchy`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Enforce acyclic hierarchy, allowed relationship types, effective windows, max depth, localized path recalculation, inherited attribute impact, and publication impact analysis.
 
-### 4. Deep specialist lifecycle semantics for `enterprise_pim_product_attribute`
+### 4. Taxonomy classification candidate workflow
 
-**Justification:** This owned table is part of the Enterprise Product Information Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Taxonomies, multilingual attributes, inheritance, localization, validation, dependency projections, publication readiness, and master-data governance.
+**Justification:** Product classification often starts as suggested taxonomy placement that needs steward review.
 
-**Improvement:** Extend `enterprise_pim_product_attribute` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `taxonomy_relationships`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add candidate states, confidence, suggested node, source signal, competing candidates, evidence, reviewer, decision reason, and `TaxonomyClassified` event linkage.
 
-### 5. Deep specialist lifecycle semantics for `enterprise_pim_attribute_group`
+### 5. Taxonomy publication simulation
 
-**Justification:** This owned table is part of the Enterprise Product Information Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Taxonomies, multilingual attributes, inheritance, localization, validation, dependency projections, publication readiness, and master-data governance.
+**Justification:** Publishing taxonomy changes can disrupt attributes, search facets, channel catalogs, and localized navigation.
 
-**Improvement:** Extend `enterprise_pim_attribute_group` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `taxonomy_publication`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Simulate publication effects on node moves, retired nodes, inherited attributes, translations, channel policies, search projections, catalog projections, and downstream dependency freshness.
 
-### 6. Deep specialist lifecycle semantics for `enterprise_pim_attribute_validation_rule`
+### 6. Attribute definition governance
 
-**Justification:** This owned table is part of the Enterprise Product Information Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Taxonomies, multilingual attributes, inheritance, localization, validation, dependency projections, publication readiness, and master-data governance.
+**Justification:** Attribute models must control data type, requiredness, units, localization, inheritance, and validation.
 
-**Improvement:** Extend `enterprise_pim_attribute_validation_rule` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `classification_candidates`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add attribute state, data type, unit, required flag, localized labels, inheritance mode, group membership, value constraints, quality rules, and publication eligibility.
 
-### 7. Deep specialist lifecycle semantics for `enterprise_pim_localized_content`
+### 7. Attribute group governance
 
-**Justification:** This owned table is part of the Enterprise Product Information Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Taxonomies, multilingual attributes, inheritance, localization, validation, dependency projections, publication readiness, and master-data governance.
+**Justification:** Attribute groups shape user entry, validation completeness, channel mapping, and product-family governance.
 
-**Improvement:** Extend `enterprise_pim_localized_content` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `product_attribute_definitions`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Model group ordering, taxonomy scope, required/optional attributes, locale labels, channel visibility, steward owner, effective dates, and publication-readiness impact.
 
-### 8. Deep specialist lifecycle semantics for `enterprise_pim_localized_content_version`
+### 8. Value-option lifecycle
 
-**Justification:** This owned table is part of the Enterprise Product Information Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Taxonomies, multilingual attributes, inheritance, localization, validation, dependency projections, publication readiness, and master-data governance.
+**Justification:** Enumerated values need controlled labels, synonyms, deprecation, mapping, and localization.
 
-**Improvement:** Extend `enterprise_pim_localized_content_version` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `attribute_groups`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add option states, code, localized display, synonyms, sort order, deprecation replacement, channel mappings, validation examples, and impacted content analysis.
 
-### 9. Deep specialist lifecycle semantics for `enterprise_pim_validation_workflow`
+### 9. Attribute inheritance engine
 
-**Justification:** This owned table is part of the Enterprise Product Information Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Taxonomies, multilingual attributes, inheritance, localization, validation, dependency projections, publication readiness, and master-data governance.
+**Justification:** Inheritance reduces duplicate data but can create hidden quality issues when depth and overrides are uncontrolled.
 
-**Improvement:** Extend `enterprise_pim_validation_workflow` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `attribute_value_options`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Implement inheritance resolution with max depth, source node, override reason, conflict detection, effective dates, completeness effect, and preview of changed product attributes.
 
-### 10. Deep specialist lifecycle semantics for `enterprise_pim_validation_workflow_step`
+### 10. Typed validation-rule execution
 
-**Justification:** This owned table is part of the Enterprise Product Information Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Taxonomies, multilingual attributes, inheritance, localization, validation, dependency projections, publication readiness, and master-data governance.
+**Justification:** Attribute quality depends on executable rules for type, format, units, ranges, dependencies, and localized requirements.
 
-**Improvement:** Extend `enterprise_pim_validation_workflow_step` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `typed_attribute_validation`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add validation rules with type, predicate, sample evaluation, failure severity, affected attributes, locale scope, channel scope, compiled hash, and quality-signal output.
 
-### 11. Make `command_product_taxonomies` a complete command lifecycle
+### 11. Attribute quality signal model
 
-**Justification:** High-value users need `command_product_taxonomies` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Data stewards need granular quality feedback rather than only pass/fail readiness.
 
-**Improvement:** Implement `command_product_taxonomies` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `TaxonomyClassified`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Generate quality signals for missing values, invalid units, stale values, inconsistent options, localization gaps, dependency mismatch, duplicate content, and suspicious changes.
 
-### 12. Make `command_product_attributes` a complete command lifecycle
+### 12. Localized content lifecycle
 
-**Justification:** High-value users need `command_product_attributes` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Product content must move through draft, machine translated, human reviewed, approved, published, superseded, and retired states.
 
-**Improvement:** Implement `command_product_attributes` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `AttributeDefined`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Model localized content states with locale, source text hash, translation source, quality score, fallback status, reviewer, version lineage, publication eligibility, and `ContentLocalized` evidence.
 
-### 13. Make `command_localized_content` a complete command lifecycle
+### 13. Localized content versioning
 
-**Justification:** High-value users need `command_localized_content` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Publishing and audit require exact reconstruction of content by locale, channel, and effective time.
 
-**Improvement:** Implement `command_localized_content` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `ContentLocalized`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Version localized content with semantic diff, source locale, target locale, effective window, reviewer, quality score, dependency references, rollback, and audit hash.
 
-### 14. Make `command_validation_workflows` a complete command lifecycle
+### 14. Translation memory governance
 
-**Justification:** High-value users need `command_validation_workflows` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Translation memory improves speed but can spread stale, low-quality, or non-compliant phrasing.
 
-**Improvement:** Implement `command_validation_workflows` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `ValidationApproved`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add translation memory entries with source hash, target locale, quality score, domain, approval status, expiry, replacement, forbidden phrase flags, and reuse evidence.
 
-### 15. Make `command_validation_workflows_id_approve` a complete command lifecycle
+### 15. Locale fallback policy
 
-**Justification:** High-value users need `command_validation_workflows_id_approve` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Missing translations need controlled fallback rather than accidental wrong-language publication.
 
-**Improvement:** Implement `command_validation_workflows_id_approve` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `PimMasterDataReady`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Register fallback chains by locale, channel, taxonomy, attribute, content type, allowed fallback depth, warning severity, and publication blocking rules.
 
-### 16. Make `command_dependency_schemas` a complete command lifecycle
+### 16. Completeness scoring engine
 
-**Justification:** High-value users need `command_dependency_schemas` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Publication readiness needs probabilistic completeness across attributes, locales, media, price, tax, inventory, search, and channel policy.
 
-**Improvement:** Implement `command_dependency_schemas` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `AttributeGroupCreated`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Compute scores by taxonomy node, channel, locale, required attributes, content quality, dependency freshness, workflow approval, and exception severity with explainable gaps.
 
-### 17. Make `command_pim_events` a complete command lifecycle
+### 17. Validation workflow lifecycle
 
-**Justification:** High-value users need `command_pim_events` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Product information needs staged validation across steward, localization, compliance, search, and channel owners.
 
-**Improvement:** Implement `command_pim_events` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `AttributeOptionRegistered`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Implement workflow states, required steps, SLA, approvers, delegated reviewers, evidence required, escalation, rejection reasons, and `ValidationApproved` event emission.
 
-### 18. Make `command_pim_publications` a complete command lifecycle
+### 18. Approval decision evidence
 
-**Justification:** High-value users need `command_pim_publications` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Approvals must show who accepted which PIM facts, under which policy, and with which risks.
 
-**Improvement:** Implement `command_pim_publications` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `AttributeValidationRuleRegistered`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Record approver, role, step, decision, scope, policy version, evidence snapshot, residual risk, expiry, and downstream publication impact.
 
-### 19. Turn `query_pim_workbench` into an expert read-model experience
+### 19. Publication readiness gate
 
-**Justification:** Domain experts rely on `query_pim_workbench` for operational decisions; a world-class read path must be explainable, filterable, temporally accurate, and safe under stale projections.
+**Justification:** Master data should not publish until attributes, locales, validation, dependencies, and channel policy are complete.
 
-**Improvement:** Build `query_pim_workbench` as a dedicated query contract with projection freshness, filter validation, pagination, saved views, temporal/as-of reads, row-level permissions, traceable source records, and UI drilldowns. Add agent explanations for how the answer was produced, what events like `TranslationMemoryUpdated` last changed the projection, and where uncertainty or missing data affects confidence.
+**Improvement:** Enforce readiness checks for required locales, required attributes, content quality, validation workflow approval, dependency projections, taxonomy status, channel policy, exceptions, and event delivery health.
 
-### 20. Make `command_attribute_groups` a complete command lifecycle
+### 20. Channel publication policy
 
-**Justification:** High-value users need `command_attribute_groups` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Each channel has different required attributes, locales, content rules, media needs, price/tax/inventory prerequisites, and embargoes.
 
-**Improvement:** Implement `command_attribute_groups` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `LocaleFallbackRegistered`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Model channel policies with required fields, locale set, dependency requirements, publication windows, embargo rules, fallback allowance, approval policy, and failure reasons.
 
-### 21. Operationalize `event_sourced_enterprise_pim_lifecycle` as a governed decision system
+### 21. Dependency schema governance
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Enterprise Product Information Management and measurably improves content completeness without hiding assumptions.
+**Justification:** PIM readiness depends on external projections that must be versioned and validated.
 
-**Improvement:** Promote `event_sourced_enterprise_pim_lifecycle` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `content_completeness`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Register dependency schemas with source, version floor, accepted events, required fields, freshness SLA, compatibility status, owner, and rejection criteria.
 
-### 22. Operationalize `graph_relational_taxonomy_topology` as a governed decision system
+### 22. Dependency projection freshness
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Enterprise Product Information Management and measurably improves publication velocity without hiding assumptions.
+**Justification:** Media, price, tax, inventory, search, and catalog projections can become stale or incompatible.
 
-**Improvement:** Promote `graph_relational_taxonomy_topology` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `publication_velocity`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Track projection source, version, source event id, freshness, confidence, schema compatibility, affected product scope, retry/dead-letter state, and readiness impact.
 
-### 23. Operationalize `multi_tenant_pim_isolation` as a governed decision system
+### 23. Media dependency coverage
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Enterprise Product Information Management and measurably improves rights exceptions without hiding assumptions.
+**Justification:** Product publication often requires approved imagery, documents, safety sheets, and channel-specific media.
 
-**Improvement:** Promote `multi_tenant_pim_isolation` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `rights_exceptions`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Project media readiness with asset type, approval state, locale, channel, rights window, rendition coverage, alt text, compliance tags, and blocking gaps.
 
-### 24. Operationalize `schema_evolution_resilient_attribute_model` as a governed decision system
+### 24. Price and tax dependency coverage
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Enterprise Product Information Management and measurably improves price effectiveness without hiding assumptions.
+**Justification:** Product master data is incomplete for commerce without valid price and tax projections.
 
-**Improvement:** Promote `schema_evolution_resilient_attribute_model` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `price_effectiveness`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Track price/tax projection status by product, channel, market, currency, jurisdiction, validity window, exception state, and publication impact.
 
-### 25. Operationalize `multilingual_inheritance_localization` as a governed decision system
+### 25. Inventory and search dependency coverage
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Enterprise Product Information Management and measurably improves taxonomy classified throughput without hiding assumptions.
+**Justification:** Published data must align with inventory visibility and search indexing readiness.
 
-**Improvement:** Promote `multilingual_inheritance_localization` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `taxonomy_classified_throughput`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Track inventory projection readiness, search schema compatibility, facet mapping, search index state, stock publication policy, and stale projection warnings.
 
-### 26. Operationalize `probabilistic_content_completeness_scoring` as a governed decision system
+### 26. Product relationship governance
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Enterprise Product Information Management and measurably improves attribute defined throughput without hiding assumptions.
+**Justification:** Accessories, substitutes, compatibility, upsell, and replacement relationships require direction, validity, and channel policy.
 
-**Improvement:** Promote `probabilistic_content_completeness_scoring` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `attribute_defined_throughput`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Model relationship type, source/target product, compatibility context, directionality, effective dates, confidence, approval, channel scope, and conflict detection.
 
-### 27. Operationalize `counterfactual_taxonomy_publication_simulation` as a governed decision system
+### 27. Bundle definition governance
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Enterprise Product Information Management and measurably improves content completeness without hiding assumptions.
+**Justification:** Bundles need component counts, compatibility, pricing/tax implications, inventory constraints, and publication readiness.
 
-**Improvement:** Promote `counterfactual_taxonomy_publication_simulation` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `content_completeness`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add bundle states, components, quantities, required/optional parts, substitution rules, price/tax/inventory dependency checks, content completeness, and publication proof.
 
-### 28. Operationalize `temporal_enrichment_readiness_forecasting` as a governed decision system
+### 28. Variant family integrity
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Enterprise Product Information Management and measurably improves publication velocity without hiding assumptions.
+**Justification:** Variant families must have consistent axes, members, inherited content, and channel behavior.
 
-**Improvement:** Promote `temporal_enrichment_readiness_forecasting` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `publication_velocity`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Define variant axes, required axis values, member uniqueness, parent/child content inheritance, disallowed combinations, locale differences, and publication readiness.
 
-### 29. Operationalize `autonomous_enrichment_exception_resolution` as a governed decision system
+### 29. Assortment assignment governance
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Enterprise Product Information Management and measurably improves rights exceptions without hiding assumptions.
+**Justification:** Products should publish only to eligible channels, markets, categories, and customer segments.
 
-**Improvement:** Promote `autonomous_enrichment_exception_resolution` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `rights_exceptions`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add assignment state, channel, market, taxonomy node, eligibility reason, embargo, start/end dates, dependency readiness, steward approval, and removal evidence.
 
-### 30. Operationalize `semantic_pim_instruction_parsing` as a governed decision system
+### 30. Data steward accountability
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Enterprise Product Information Management and measurably improves price effectiveness without hiding assumptions.
+**Justification:** PIM quality deteriorates without explicit ownership and queue assignment.
 
-**Improvement:** Promote `semantic_pim_instruction_parsing` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `price_effectiveness`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Assign stewards by taxonomy, attribute group, locale, channel, exception type, and dependency source with workload, SLA, escalation, and audit evidence.
 
-### 31. Create simulation-grade governance for `ENTERPRISE_PIM_DATABASE_URL` and `ENTERPRISE_PIM_DATABASE_URL`
+### 31. PIM exception workflow
 
-**Justification:** Complete Enterprise Product Information Management coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Missing attributes, broken dependencies, bad translations, validation failures, and publication blockers need structured resolution.
 
-**Improvement:** Add a policy cockpit where `ENTERPRISE_PIM_DATABASE_URL` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `ENTERPRISE_PIM_DATABASE_URL` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add exception cases with category, severity, affected product/taxonomy/channel, root cause, owner, SLA, recommended action, resolution plan, and closure proof.
 
-### 32. Create simulation-grade governance for `ENTERPRISE_PIM_EVENT_TOPIC` and `ENTERPRISE_PIM_EVENT_TOPIC`
+### 32. Autonomous enrichment recommendations
 
-**Justification:** Complete Enterprise Product Information Management coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Stewards need prioritized, explainable recommendations for missing or poor product information.
 
-**Improvement:** Add a policy cockpit where `ENTERPRISE_PIM_EVENT_TOPIC` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `ENTERPRISE_PIM_EVENT_TOPIC` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Recommend fixes for missing locales, missing attributes, invalid values, stale dependencies, taxonomy conflicts, media gaps, and search mapping issues with confidence and approval needs.
 
-### 33. Create simulation-grade governance for `ENTERPRISE_PIM_RETRY_LIMIT` and `ENTERPRISE_PIM_RETRY_LIMIT`
+### 33. Semantic PIM instruction parsing
 
-**Justification:** Complete Enterprise Product Information Management coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** PIM changes are often requested in natural language by merchandisers, translators, and compliance teams.
 
-**Improvement:** Add a policy cockpit where `ENTERPRISE_PIM_RETRY_LIMIT` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `ENTERPRISE_PIM_RETRY_LIMIT` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Parse instructions into safe query or command previews with target taxonomy, attribute, locale, channel, requested action, missing evidence, policy checks, confidence, and no mutation until confirmed.
 
-### 34. Create simulation-grade governance for `ENTERPRISE_PIM_DATABASE_URL` and `ENTERPRISE_PIM_DATABASE_URL`
+### 34. AppGen-X inbox reliability
 
-**Justification:** Complete Enterprise Product Information Management coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Media, price, tax, and inventory events drive publication readiness and dependency projections.
 
-**Improvement:** Add a policy cockpit where `ENTERPRISE_PIM_DATABASE_URL` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `ENTERPRISE_PIM_DATABASE_URL` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add inbox schema validation, idempotency, duplicate suppression, retry evidence, unsupported-event rejection, dead-letter promotion, projection rebuild, and workbench replay/quarantine controls.
 
-### 35. Create simulation-grade governance for `ENTERPRISE_PIM_EVENT_TOPIC` and `ENTERPRISE_PIM_EVENT_TOPIC`
+### 35. AppGen-X outbox delivery assurance
 
-**Justification:** Complete Enterprise Product Information Management coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** PIM master-data events drive catalog, search, commerce, channel publication, and audit flows.
 
-**Improvement:** Add a policy cockpit where `ENTERPRISE_PIM_EVENT_TOPIC` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `ENTERPRISE_PIM_EVENT_TOPIC` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add outbox state, ordering group, payload hash, retry attempts, next retry, delivery proof, dead-letter linkage, and replay controls for all emitted PIM events.
 
-### 36. Upgrade `EnterprisePimWorkbench` into a full specialist command center
+### 36. Cross-PBC boundary proof
 
-**Justification:** The PBC UI must expose the complete Enterprise Product Information Management surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Enterprise PIM must not directly read or write product, media, pricing, tax, inventory, search, catalog, or commerce tables.
 
-**Improvement:** Expand `EnterprisePimWorkbench` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add release evidence scanning schema descriptors, services, routes, DSL, workbench bindings, and agent plans for foreign table access, proving dependencies are APIs, events, or package-local projections only.
 
-### 37. Upgrade `EnterprisePimDetail` into a full specialist command center
+### 37. Master-data proof generation
 
-**Justification:** The PBC UI must expose the complete Enterprise Product Information Management surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Channels, auditors, and downstream systems may need proof of data completeness without seeing all content or commercial metadata.
 
-**Improvement:** Expand `EnterprisePimDetail` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Generate selective-disclosure proofs for taxonomy status, attribute completeness, localized content approval, dependency readiness, validation approval, and publication readiness.
 
-### 38. Upgrade `EnterprisePimWorkbench` into a full specialist command center
+### 38. Immutable PIM audit trail
 
-**Justification:** The PBC UI must expose the complete Enterprise Product Information Management surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Product information disputes require reconstructing taxonomy, attribute, content, workflow, and publication decisions.
 
-**Improvement:** Expand `EnterprisePimWorkbench` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Hash-chain taxonomy changes, attribute changes, localization versions, workflow approvals, dependency events, publication readiness checks, exceptions, and outbox deliveries.
 
-### 39. Upgrade `EnterprisePimDetail` into a full specialist command center
+### 39. Dynamic PIM policy screening
 
-**Justification:** The PBC UI must expose the complete Enterprise Product Information Management surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Restricted taxonomy terms, required content, locale rules, and channel policies vary by tenant, market, and product family.
 
-**Improvement:** Expand `EnterprisePimDetail` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Compile policies for taxonomy, attributes, validation, localization, dependencies, publication, restricted terms, assortment, and channel readiness with explainable outcomes.
 
-### 40. Upgrade `EnterprisePimWorkbench` into a full specialist command center
+### 40. Taxonomy optimization planning
 
-**Justification:** The PBC UI must expose the complete Enterprise Product Information Management surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Large taxonomies can become too deep, duplicated, sparse, or hard to navigate.
 
-**Improvement:** Expand `EnterprisePimWorkbench` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add optimization plans identifying duplicate nodes, over-deep branches, low-coverage nodes, missing attributes, search-facet issues, localization cost, and proposed restructuring.
 
-### 41. Prove cross-PBC federation for `POST /product-taxonomies` and `InventoryPositionUpdated`
+### 41. Workflow allocation mechanism
 
-**Justification:** Enterprise Product Information Management must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Validation queues need fair, efficient assignment across stewards, translators, compliance reviewers, and channel owners.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /product-taxonomies` and consumed event `InventoryPositionUpdated` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Allocate work using skill, locale, taxonomy ownership, workload, SLA, priority, conflict of interest, and escalation rules with allocation explanations.
 
-### 42. Prove cross-PBC federation for `POST /product-attributes` and `MediaAssetApproved`
+### 42. Content anomaly detection
 
-**Justification:** Enterprise Product Information Management must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Product content anomalies can indicate translation errors, compliance issues, duplicates, or malicious updates.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /product-attributes` and consumed event `MediaAssetApproved` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Detect anomalies in text length, language, forbidden terms, numeric attributes, units, option values, localization drift, duplicate descriptions, and sudden mass changes.
 
-### 43. Prove cross-PBC federation for `POST /localized-content` and `PricePromotionApproved`
+### 43. Enrichment readiness forecasting
 
-**Justification:** Enterprise Product Information Management must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Launch teams need forecasts for when product data will be publication-ready across channels and locales.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /localized-content` and consumed event `PricePromotionApproved` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Forecast readiness by taxonomy, channel, locale, dependency source, steward queue, workflow SLA, exception backlog, and event-delivery health.
 
-### 44. Prove cross-PBC federation for `POST /validation-workflows` and `TaxCalculated`
+### 44. Enrichment risk model governance
 
-**Justification:** Enterprise Product Information Management must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Completeness, translation quality, anomaly, and readiness models influence publication and commercial outcomes.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /validation-workflows` and consumed event `TaxCalculated` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Track model purpose, training window, feature lineage, validation metrics, drift, false-ready/false-block impact, approval status, rollback, and explainability evidence.
 
-### 45. Temporal reconstruction and bitemporal audit for Enterprise Product Information Management
+### 45. Carbon-aware enrichment scheduling
 
-**Justification:** Regulated and operationally complex domains need to answer what was known, valid, processed, and visible at any point in time.
+**Justification:** Large enrichment, translation, indexing, and proof-generation jobs can be scheduled with sustainability constraints when not urgent.
 
-**Improvement:** Add transaction-time, valid-time, and processing-time fields to core records, temporal query APIs, projection rebuild tooling, and UI time travel so specialists can reconstruct decisions, reports, and automation outcomes.
+**Improvement:** Add carbon-aware windows for batch enrichment, translation memory updates, search projection checks, proof generation, and model scoring with SLA guardrails.
 
-### 46. Bulk operations and migration-grade controls for Enterprise Product Information Management
+### 46. PIM workbench coverage
 
-**Justification:** World-class deployments must handle imports, mass corrections, high-volume operating days, and cutovers without bypassing governance.
+**Justification:** Data teams need a complete PIM command center rather than raw taxonomy and attribute tables.
 
-**Improvement:** Add staged bulk upload, duplicate detection, chunked validation, approval sampling, partial failure handling, retry dashboards, reconciliation summaries, and agent-generated remediation plans for large batches.
+**Improvement:** Expand workbench surfaces for taxonomy graph, attributes, inheritance, validation rules, localization, translation memory, fallback, workflows, readiness, dependencies, variants, bundles, assortments, stewards, exceptions, events, rules, parameters, configuration, and release evidence.
 
-### 47. Specialist edge-case playbooks for Enterprise Product Information Management
+### 47. Validation and publication cockpit
 
-**Justification:** Rare cases often carry the highest financial, legal, safety, service, or compliance risk.
+**Justification:** Operators need a single place to understand why product master data cannot publish.
 
-**Improvement:** Create a playbook catalog with detection rules, required evidence, escalation paths, fallback actions, owner roles, and release-audited tests for high-severity edge cases and exception queues.
+**Improvement:** Add cockpit views for readiness gaps, workflow approvals, missing locales, invalid attributes, stale dependencies, channel policy violations, exceptions, event failures, and safe publish actions.
 
-### 48. Pre-mutation simulation and blast-radius analysis for Enterprise Product Information Management
+### 48. Continuous PIM control testing
 
-**Justification:** Users should understand consequences before committing irreversible, customer-visible, operationally disruptive, or financially material changes.
+**Justification:** PIM controls must run continuously across taxonomy, attributes, localization, workflows, dependencies, events, and agent plans.
 
-**Improvement:** Add what-if simulation for every material command, showing impacted records, emitted events, dependent projections, rule outcomes, approvals, downstream PBC dependencies, and rollback limits.
+**Improvement:** Add assertions for publication without required locale, missing required attribute, unapproved workflow, stale dependency, invalid fallback, foreign-table access, dead-letter aging, and agent-preview bypass.
 
-### 49. Continuous control testing and operational assurance for Enterprise Product Information Management
+### 49. Enterprise PIM readiness score
 
-**Justification:** Better-than-world-class PBCs prove controls continuously, not only at release or during periodic audits.
+**Justification:** Users need an evidence-backed view of whether `enterprise_pim` is ready for live product master-data publication.
 
-**Improvement:** Add executable control assertions, sampled evidence checks, anomaly thresholds, control-owner dashboards, breach/recovery events, and release gates that fail when domain controls lose evidence.
+**Improvement:** Compute readiness from taxonomy integrity, attribute coverage, localization quality, workflow approval, dependency freshness, channel policy, variants/bundles, stewardship, event reliability, UI coverage, model governance, boundary proof, controls, and agent safety.
 
-### 50. Human-in-the-loop domain agent execution for Enterprise Product Information Management
+### 50. End-to-end PIM publication proof
 
-**Justification:** The PBC chatbot must help specialists perform real work while preventing unsafe autonomous mutation.
+**Justification:** A complete Enterprise PIM PBC must prove it can execute the full lifecycle from taxonomy setup to master-data publication.
 
-**Improvement:** Add domain-specific skills, document parsing, task planning, CRUD previews, confidence/risk scoring, confirmation gates, redaction, policy explanations, and post-action evidence packets for every supported command and query.
+**Improvement:** Add an executable proof scenario covering taxonomy, attributes, value options, validation rules, localized content, translation memory, workflow approval, dependency projections, variants/bundles, assortment assignment, publication readiness, `PimMasterDataReady` event, UI evidence, boundary proof, controls, and agent explanation.
