@@ -1,418 +1,416 @@
-# Pharma Manufacturing Quality PBC Better-Than-World-Class Improvement Backlog
+# Pharma Manufacturing Quality PBC Manual Improvement Backlog
 
 ## Purpose
 
-This file identifies, justifies, and describes 50 high-impact improvements for `pharma_manufacturing_quality`. The backlog is specific to batch records, validation, deviations, capa, release, serialization, and regulated manufacturing quality and is intended to move the PBC from release-auditable scaffolding toward complete, specialist-grade domain coverage.
+This strict backlog replaces scaffold-derived roadmap material for `pharma_manufacturing_quality` with a hand-curated regulated manufacturing quality roadmap. The PBC owns pharma batches, master batch records, validation protocols, deviations, CAPA, release, serialization, quality evidence, governed rules, agent assistance, and release evidence without owning plant maintenance, finance, EHR, or external regulatory submission systems.
 
 ## Current Domain Evidence Used
 
 - Stable PBC key: `pharma_manufacturing_quality`.
-- Domain purpose: Batch records, validation, deviations, CAPA, release, serialization, and regulated manufacturing quality.
-- Owned domain tables: `pharma_batch`, `master_batch_record`, `validation_protocol`, `deviation`, `capa`, `quality_release`, `serialization_event`, `pharma_manufacturing_quality_policy_rule`, `pharma_manufacturing_quality_runtime_parameter`, `pharma_manufacturing_quality_schema_extension`, `pharma_manufacturing_quality_control_assertion`, `pharma_manufacturing_quality_governed_model`.
+- Domain purpose: batch records, validation, deviations, CAPA, release, serialization, and regulated manufacturing quality.
+- Owned domain tables: `pharma_batch`, `master_batch_record`, `validation_protocol`, `deviation`, `capa`, `batch_release`, `serialization_event`, `pharma_manufacturing_quality_policy_rule`, `pharma_manufacturing_quality_runtime_parameter`, `pharma_manufacturing_quality_schema_extension`, `pharma_manufacturing_quality_control_assertion`, `pharma_manufacturing_quality_governed_model`.
 - Public APIs: `POST /pharma-batchs`, `POST /master-batch-records`, `POST /validation-protocols`, `POST /deviations`, `POST /capas`, `GET /pharma-manufacturing-quality-workbench`.
 - Emitted AppGen-X events: `PharmaManufacturingQualityCreated`, `PharmaManufacturingQualityUpdated`, `PharmaManufacturingQualityApproved`, `PharmaManufacturingQualityExceptionOpened`.
 - Consumed AppGen-X events: `PolicyChanged`, `AuditEventSealed`, `OperationalKpiChanged`.
-- Current standard surfaces include: `pharma_batch_management`, `pharma_manufacturing_quality_workflow`, `pharma_manufacturing_quality_analytics`, `configuration_schema`, `rule_engine`, `parameter_engine`, `owned_schema_migrations_models`, `appgen_x_outbox_inbox_eventing`, `idempotent_handlers`, `retry_dead_letter_evidence`.
-- Current advanced surfaces include: `pharma_manufacturing_quality_event_sourced_operational_history`, `pharma_manufacturing_quality_multi_tenant_policy_isolation`, `pharma_manufacturing_quality_schema_evolution_resilience`, `pharma_manufacturing_quality_autonomous_anomaly_detection`, `pharma_manufacturing_quality_semantic_document_instruction_understanding`, `pharma_manufacturing_quality_predictive_risk_scoring`, `pharma_manufacturing_quality_counterfactual_scenario_simulation`, `pharma_manufacturing_quality_cryptographic_audit_proofs`.
 
 ## 50 High-Impact Improvements
 
-### 1. Canonical lifecycle state model for Pharma Batch
+### 1. Master Batch Record Versioning
 
-**Justification:** This closes shallow CRUD gaps by making every pharma manufacturing quality transition explainable and testable instead of implicit in free-form status values.
+**Justification:** Manufacturing instructions must be controlled by product, strength, site, equipment train, process version, and effective date.
 
-**Improvement:** Define a complete state machine for `pharma_batch` with explicit draft, validated, blocked, approved, active, suspended, corrected, closed, archived, and reopened states. Tie the behavior to `pharma_manufacturing_quality_create_pharma_batch_workflow` where applicable, and make it visible in `PharmaManufacturingQualityWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand `master_batch_record` with version, product, process stage, approved instruction, critical parameter, hold point, effective window, and supersession reason.
 
-**Acceptance evidence:** State-transition tests, invalid-transition fixtures, workbench state badges, and emitted AppGen-X transition events for PharmaManufacturingQualityCreated, PharmaManufacturingQualityUpdated, PharmaManufacturingQualityApproved. The evidence should be package-local in `src/pyAppGen/pbcs/pharma_manufacturing_quality` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must prove batches execute against the active approved record and preserve historical instruction versions.
 
-### 2. Domain intake and normalization for Master Batch Record
+### 2. Electronic Batch Record Execution
 
-**Justification:** The PBC cannot reach complete domain coverage unless it handles the messy front door of batch records, validation, deviations, capa, release, serialization, and regulated manufacturing quality, not only already-clean records.
+**Justification:** Batch execution needs step-by-step evidence, operator identity, timestamps, values, exceptions, and signatures.
 
-**Improvement:** Build a typed intake pipeline for `master_batch_record` that accepts structured API payloads, document-derived instructions, batch loads, and assistant-generated drafts while normalizing identifiers, dates, units, parties, and jurisdictional context. Tie the behavior to `pharma_manufacturing_quality_record_master_batch_record_workflow` where applicable, and make it visible in `PharmaManufacturingQualityWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add batch step execution with expected value, actual value, unit, performer, verifier, timestamp, exception, and e-signature meaning.
 
-**Acceptance evidence:** Golden intake fixtures, rejected-record queues, field-level normalization evidence, and assistant previews before governed datastore mutation. The evidence should be package-local in `src/pyAppGen/pbcs/pharma_manufacturing_quality` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must prevent batch completion when required steps or signatures are missing.
 
-### 3. Specialist validation rules for Validation Protocol
+### 3. Material Lot Genealogy
 
-**Justification:** World-class Pharma Manufacturing Quality requires rules that domain experts can reason about, version, test, and roll back without code edits.
+**Justification:** Batch quality depends on raw material, intermediate, packaging, and component lot traceability.
 
-**Improvement:** Add a domain rule compiler for `validation_protocol` that supports threshold rules, eligibility rules, dependency rules, temporal windows, conflicting-instruction detection, and override justification. Tie the behavior to `pharma_manufacturing_quality_create_pharma_batch_workflow` where applicable, and make it visible in `PharmaManufacturingQualityWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add material lot usage, supplier projection, certificate status, quantity, expiry, retest date, and genealogy from input to finished batch.
 
-**Acceptance evidence:** Rule simulation tests, versioned rule manifests, rule impact reports, and UI rule editors linked to `PHARMA_MANUFACTURING_QUALITY_DATABASE_URL, PHARMA_MANUFACTURING_QUALITY_EVENT_TOPIC, PHARMA_MANUFACTURING_QUALITY_RETRY_LIMIT`. The evidence should be package-local in `src/pyAppGen/pbcs/pharma_manufacturing_quality` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must trace affected batches from a rejected or recalled input lot without reading procurement tables.
 
-### 4. Parameter governance and tuning for Deviation
+### 4. Equipment Train Qualification Boundary
 
-**Justification:** Parameters are where operations teams tune pharma manufacturing quality; unbounded constants would make the PBC brittle and unsafe in real deployments.
+**Justification:** Equipment qualification and maintenance may be owned elsewhere, but batch quality needs trusted evidence.
 
-**Improvement:** Expose bounded runtime parameters for `deviation` covering risk thresholds, SLA windows, confidence floors, escalation cutoffs, batch sizes, retry limits, and human-confirmation requirements. Tie the behavior to `pharma_manufacturing_quality_record_master_batch_record_workflow` where applicable, and make it visible in `PharmaManufacturingQualityWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Store equipment qualification projection, cleaning status, calibration status, availability, and freshness as declared dependency evidence.
 
-**Acceptance evidence:** Parameter schema validation, tenant overrides, approval history, rollback controls, and workbench diff views. The evidence should be package-local in `src/pyAppGen/pbcs/pharma_manufacturing_quality` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Boundary tests must fail on maintenance table reads and pass on declared AppGen-X projection usage.
 
-### 5. Deep owned schema expansion for Capa
+### 5. Critical Process Parameter Monitoring
 
-**Justification:** A single payload column cannot express the full surface of batch records, validation, deviations, capa, release, serialization, and regulated manufacturing quality or prove cross-PBC boundaries are respected.
+**Justification:** Temperature, pressure, speed, humidity, time, pH, and weight parameters affect product quality.
 
-**Improvement:** Extend the owned schema around `capa` with normalized child tables for line-level evidence, party roles, approvals, attachments, comments, metrics, exception reasons, and control assertions. Tie the behavior to `pharma_manufacturing_quality_create_pharma_batch_workflow` where applicable, and make it visible in `PharmaManufacturingQualityWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add parameter definitions, acceptable range, alert/action limits, sampled value, excursion, reviewer, and batch impact.
 
-**Acceptance evidence:** Migrations, models, relationship tests, schema contract snapshots, and no shared-table access outside the `pharma_manufacturing_quality_` namespace. The evidence should be package-local in `src/pyAppGen/pbcs/pharma_manufacturing_quality` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must open deviations for out-of-range critical parameters and block release until impact is assessed.
 
-### 6. Event-sourced operational history for Quality Release
+### 6. In-Process Control Testing
 
-**Justification:** Temporal reconstruction is essential for better-than-world-class auditability and dispute resolution in pharma manufacturing quality.
+**Justification:** Manufacturing stages often require checks before continuation.
 
-**Improvement:** Capture every material mutation of `quality_release` as immutable AppGen-X events with actor, tenant, command, policy version, idempotency key, before/after summary, and projection checkpoint. Tie the behavior to `pharma_manufacturing_quality_record_master_batch_record_workflow` where applicable, and make it visible in `PharmaManufacturingQualityWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add in-process tests, sampling point, specification, result, pass/fail, reviewer, and stage hold/release.
 
-**Acceptance evidence:** Replay tests, projection checksums, event ordering evidence, and point-in-time workbench views. The evidence should be package-local in `src/pyAppGen/pbcs/pharma_manufacturing_quality` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must prevent stage progression when required tests fail or are missing.
 
-### 7. Projection and read-model strategy for Serialization Event
+### 7. Environmental Monitoring Linkage
 
-**Justification:** The workbench should not force users to infer domain truth from raw tables; each projection should answer a real operating question.
+**Justification:** Cleanroom environmental failures can affect batch disposition.
 
-**Improvement:** Create purpose-built projections for `serialization_event`: operational queue, executive KPI rollup, exception aging, compliance evidence, agent task context, and external dependency health. Tie the behavior to `pharma_manufacturing_quality_create_pharma_batch_workflow` where applicable, and make it visible in `PharmaManufacturingQualityWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add environmental condition projection, room, time window, alert/action result, excursion, and affected-batch impact review.
 
-**Acceptance evidence:** Projection contracts, freshness SLAs, backfill tests, and visible stale-projection warnings. The evidence should be package-local in `src/pyAppGen/pbcs/pharma_manufacturing_quality` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must link environmental excursions to active batches and require disposition review.
 
-### 8. Exception taxonomy and remediation for Pharma Manufacturing Quality Policy Rule
+### 8. Deviation Intake Taxonomy
 
-**Justification:** High-value PBCs win on exception throughput; generic “failed” states hide the details operators need.
+**Justification:** Deviations differ by process, equipment, material, documentation, lab, contamination, mix-up, and data integrity causes.
 
-**Improvement:** Model the full exception taxonomy for `pharma_manufacturing_quality_policy_rule`, including severity, root cause, blocking dependency, remediation owner, due date, retry eligibility, escalation path, and closure evidence. Tie the behavior to `pharma_manufacturing_quality_record_master_batch_record_workflow` where applicable, and make it visible in `PharmaManufacturingQualityWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand `deviation` with category, severity, detection point, impacted batch, containment action, immediate correction, investigation owner, and due date.
 
-**Acceptance evidence:** Exception queues, aging metrics, remediation playbooks, dead-letter linkage, and closure test fixtures for sanctions or fraud holds. The evidence should be package-local in `src/pyAppGen/pbcs/pharma_manufacturing_quality` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must open and classify deviations from batch execution, testing, material, and equipment evidence.
 
-### 9. Predictive risk scoring for Pharma Manufacturing Quality Runtime Parameter
+### 9. Root Cause Analysis
 
-**Justification:** The package should warn users before pharma manufacturing quality work fails, breaches policy, or creates downstream cost.
+**Justification:** Deviation closure without root cause discipline leads to recurrence.
 
-**Improvement:** Add predictive risk scoring for `pharma_manufacturing_quality_runtime_parameter` using domain features from owned tables, consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, rule outcomes, aging, anomaly signals, and historical corrections. Tie the behavior to `pharma_manufacturing_quality_create_pharma_batch_workflow` where applicable, and make it visible in `PharmaManufacturingQualityWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add root cause method, hypotheses, evidence, confirmed cause, contributing factors, recurrence risk, and reviewer approval.
 
-**Acceptance evidence:** Feature manifests, score explanations, calibration reports, drift alerts, and tests for low/medium/high-risk scenarios. The evidence should be package-local in `src/pyAppGen/pbcs/pharma_manufacturing_quality` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must block major deviation closure without approved root cause evidence.
 
-### 10. Counterfactual simulation for Pharma Manufacturing Quality Schema Extension
+### 10. CAPA Lifecycle
 
-**Justification:** Advanced users need to ask “what would happen if” before committing changes to live batch records, validation, deviations, capa, release, serialization, and regulated manufacturing quality operations.
+**Justification:** CAPA must define corrective action, preventive action, owner, due date, effectiveness, and recurrence monitoring.
 
-**Improvement:** Provide scenario simulation for `pharma_manufacturing_quality_schema_extension`: policy change, capacity constraint, deadline shift, price/rate change, eligibility change, disruption, and manual override outcomes. Tie the behavior to `pharma_manufacturing_quality_record_master_batch_record_workflow` where applicable, and make it visible in `PharmaManufacturingQualityWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand `capa` with action type, source deviation, owner, implementation evidence, effectiveness check, overdue escalation, and closure proof.
 
-**Acceptance evidence:** Simulation APIs, non-mutating sandbox state, comparison reports, and workbench side-by-side scenario panels. The evidence should be package-local in `src/pyAppGen/pbcs/pharma_manufacturing_quality` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must prevent CAPA closure without implementation and effectiveness evidence.
 
-### 11. Autonomous anomaly triage for Pharma Manufacturing Quality Control Assertion
+### 11. Change Control Linkage
 
-**Justification:** A world-class PBC should reduce analyst burden without hiding the reasoning behind automated triage.
+**Justification:** Manufacturing quality changes must be assessed for product, process, validation, training, and regulatory impact.
 
-**Improvement:** Implement anomaly detection for `pharma_manufacturing_quality_control_assertion` that identifies outliers, duplicate submissions, impossible sequences, stale dependencies, unusual amounts/counts/durations, and contradictory fields. Tie the behavior to `pharma_manufacturing_quality_create_pharma_batch_workflow` where applicable, and make it visible in `PharmaManufacturingQualityWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add change reference, impacted records, risk assessment, validation requirement, training need, effective date, and post-change monitoring.
 
-**Acceptance evidence:** Explainable anomaly cards, reviewer feedback loops, false-positive tracking, and suppression governance. The evidence should be package-local in `src/pyAppGen/pbcs/pharma_manufacturing_quality` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must block batch record activation when required change-control evidence is missing.
 
-### 12. Semantic document understanding for Pharma Manufacturing Quality Governed Model
+### 12. Validation Protocol Management
 
-**Justification:** Document-heavy work in Pharma Manufacturing Quality cannot be complete if the assistant only answers questions and cannot prepare accurate governed changes.
+**Justification:** Processes, cleaning, methods, systems, and equipment need approved validation plans and results.
 
-**Improvement:** Train the package assistant to parse domain documents and instructions for `pharma_manufacturing_quality_governed_model`, extract obligations, dates, parties, quantities, identifiers, and exceptions, then map them to safe draft mutations. Tie the behavior to `pharma_manufacturing_quality_record_master_batch_record_workflow` where applicable, and make it visible in `PharmaManufacturingQualityWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand `validation_protocol` with validation type, objective, acceptance criteria, sample plan, execution steps, deviations, summary, and approval.
 
-**Acceptance evidence:** Document extraction tests, confidence thresholds, redaction handling, source span citations, and human confirmation workflows. The evidence should be package-local in `src/pyAppGen/pbcs/pharma_manufacturing_quality` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must execute validation protocols and reject approval when acceptance criteria fail.
 
-### 13. Agent-safe CRUD execution for Pharma Batch
+### 13. Continued Process Verification
 
-**Justification:** The PBC agent must be a first-class operator but never a hidden bypass around RBAC, rules, or owned datastore boundaries.
+**Justification:** Validated processes must remain in control over time.
 
-**Improvement:** Add a professional chatbot skill for `pharma_batch` that can create, update, correct, close, and annotate records only through policy-checked commands, approval gates, and previewed diffs. Tie the behavior to `pharma_manufacturing_quality_create_pharma_batch_workflow` where applicable, and make it visible in `PharmaManufacturingQualityWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add CPV metrics, control limits, trend rules, batch cohorts, signal detection, review state, and action recommendation.
 
-**Acceptance evidence:** Skill manifests, permission tests, preview/confirm flows, blocked-action evidence, and audit events for every assistant mutation. The evidence should be package-local in `src/pyAppGen/pbcs/pharma_manufacturing_quality` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must detect process drift and open review tasks with supporting batch evidence.
 
-### 14. Workbench persona coverage for Master Batch Record
+### 14. Cleaning Verification and Hold Times
 
-**Justification:** A generic detail page underserves the domain; each role needs the exact controls and evidence they use daily.
+**Justification:** Cross-contamination risk depends on cleaning evidence and dirty/clean hold times.
 
-**Improvement:** Design dedicated workbench panels for `master_batch_record`: operator queue, supervisor approvals, analyst exceptions, auditor evidence, configuration owner, and agent-assistance review. Tie the behavior to `pharma_manufacturing_quality_record_master_batch_record_workflow` where applicable, and make it visible in `PharmaManufacturingQualityWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add cleaning status, residue limits, swab/rinse results, dirty hold, clean hold, expiry, and affected equipment train.
 
-**Acceptance evidence:** UI contract entries, route tests, empty/error/loading states, and permission-aware action availability. The evidence should be package-local in `src/pyAppGen/pbcs/pharma_manufacturing_quality` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must block batch start when cleaning status or hold time is invalid.
 
-### 15. Cross-PBC dependency contracts for Validation Protocol
+### 15. Contamination and Mix-Up Controls
 
-**Justification:** Composable packages fail when hidden table coupling enters the domain model.
+**Justification:** Product mix-up and contamination are high-severity manufacturing risks.
 
-**Improvement:** Represent dependencies for `validation_protocol` through declared APIs, consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, and projections rather than shared tables, with explicit freshness, ownership, and fallback behavior. Tie the behavior to `pharma_manufacturing_quality_create_pharma_batch_workflow` where applicable, and make it visible in `PharmaManufacturingQualityWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add line clearance checklist, label reconciliation, material segregation, area status, contamination signal, and quarantine action.
 
-**Acceptance evidence:** Dependency manifests, contract tests, stale dependency alerts, and no foreign-table references in generated artifacts. The evidence should be package-local in `src/pyAppGen/pbcs/pharma_manufacturing_quality` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must open high-severity deviations for failed line clearance or label reconciliation.
 
-### 16. API completeness and versioning for Deviation
+### 16. Batch Genealogy and Traceability
 
-**Justification:** Complete domain coverage requires both command and query surfaces, not only happy-path create endpoints.
+**Justification:** Finished goods must trace back to materials, process steps, tests, equipment, operators, and packaging.
 
-**Improvement:** Expand APIs beyond POST /pharma-batchs, POST /master-batch-records, POST /validation-protocols to cover search, validation-only commands, simulation, bulk intake, exception closure, evidence export, projection reads, and idempotent corrections. Tie the behavior to `pharma_manufacturing_quality_record_master_batch_record_workflow` where applicable, and make it visible in `PharmaManufacturingQualityWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Build genealogy projection linking batch, intermediate, materials, equipment, test results, deviations, CAPA, and serialization events.
 
-**Acceptance evidence:** OpenAPI-style route manifests, backward-compatible version tests, deprecation metadata, and idempotency assertions. The evidence should be package-local in `src/pyAppGen/pbcs/pharma_manufacturing_quality` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Replay tests must reconstruct genealogy idempotently and support recall impact analysis.
 
-### 17. Typed emitted-event expansion for Capa
+### 17. Serialization Event Control
 
-**Justification:** Consumers should understand what happened in Pharma Manufacturing Quality without parsing opaque payloads.
+**Justification:** Serialized product events support anti-counterfeit controls and distribution traceability.
 
-**Improvement:** Replace generic lifecycle emissions with typed events for each meaningful `capa` transition, exception, approval, correction, simulation result, and downstream handoff. Tie the behavior to `pharma_manufacturing_quality_create_pharma_batch_workflow` where applicable, and make it visible in `PharmaManufacturingQualityWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand `serialization_event` with serial, aggregation, deaggregation, commission, pack, ship, decommission, exception, and destination projection.
 
-**Acceptance evidence:** Event schema tests, event examples, compatibility checks, and emitted-event coverage in release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/pharma_manufacturing_quality` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must reject duplicate active serials and preserve event order.
 
-### 18. Consumed-event handlers for Quality Release
+### 18. Batch Release Checklist
 
-**Justification:** A PBC is composable only when incoming events affect its own domain state predictably and safely.
+**Justification:** Release requires complete batch record, testing, deviations, CAPA impact, labels, serialization, and quality approval.
 
-**Improvement:** Implement idempotent handlers for consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged that update projections, open dependency exceptions, recalculate risk, and preserve source event lineage. Tie the behavior to `pharma_manufacturing_quality_record_master_batch_record_workflow` where applicable, and make it visible in `PharmaManufacturingQualityWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand `batch_release` with required evidence checklist, quality reviewer, conditional release, rejection reason, and release certificate.
 
-**Acceptance evidence:** Duplicate-event tests, handler side-effect boundaries, dead-letter fixtures, and lineage links back to source events. The evidence should be package-local in `src/pyAppGen/pbcs/pharma_manufacturing_quality` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must block release when deviations, tests, or serialization evidence are unresolved.
 
-### 19. Retry and dead-letter operations for Serialization Event
+### 19. Quarantine and Disposition
 
-**Justification:** Dead letters are not just plumbing; they are domain work queues that can block batch records, validation, deviations, capa, release, serialization, and regulated manufacturing quality.
+**Justification:** Materials, intermediates, and finished goods need controlled quarantine, reject, rework, release, or destroy decisions.
 
-**Improvement:** Create operational tools for retrying, quarantining, explaining, and resolving dead-lettered `serialization_event` events with max-attempt policy, poison-message detection, and replay safety. Tie the behavior to `pharma_manufacturing_quality_create_pharma_batch_workflow` where applicable, and make it visible in `PharmaManufacturingQualityWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add disposition state, reason, authority, affected quantity, hold location, rework instruction, destruction evidence, and event emission.
 
-**Acceptance evidence:** Dead-letter workbench, retry eligibility tests, replay audit proof, and operator action logs. The evidence should be package-local in `src/pyAppGen/pbcs/pharma_manufacturing_quality` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must prevent unauthorized disposition and preserve quantity reconciliation.
 
-### 20. RBAC and attribute policy for Pharma Manufacturing Quality Policy Rule
+### 20. Stability Program Integration
 
-**Justification:** High-impact domain operations need finer controls than generic RBAC grants.
+**Justification:** Stability failures can affect release, shelf life, and marketed product.
 
-**Improvement:** Extend permissions for `pharma_manufacturing_quality_policy_rule` from coarse read/create/update/admin to action-level and attribute-aware policies based on role, tenant, jurisdiction, monetary/materiality threshold, and exception severity. Tie the behavior to `pharma_manufacturing_quality_record_master_batch_record_workflow` where applicable, and make it visible in `PharmaManufacturingQualityWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add stability protocol projection, sample pull, test result, trend, out-of-spec event, and affected batch review.
 
-**Acceptance evidence:** Permission matrix docs, ABAC policy tests, denied-action UI states, and assistant skill permission checks. The evidence should be package-local in `src/pyAppGen/pbcs/pharma_manufacturing_quality` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must open quality review for failing or trending stability results.
 
-### 21. Continuous control testing for Pharma Manufacturing Quality Runtime Parameter
+### 21. Out-of-Spec and Out-of-Trend Handling
 
-**Justification:** Controls should run during operations, not only during release audit or manual review.
+**Justification:** Laboratory exceptions require structured investigation and batch impact assessment.
 
-**Improvement:** Embed control assertions for `pharma_manufacturing_quality_runtime_parameter` that continuously test segregation of duties, required approvals, stale exceptions, policy drift, duplicate records, and boundary violations. Tie the behavior to `pharma_manufacturing_quality_create_pharma_batch_workflow` where applicable, and make it visible in `PharmaManufacturingQualityWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add OOS/OOT case, hypothesis, retest plan, invalidation evidence, confirmed result, product impact, and closure decision.
 
-**Acceptance evidence:** Control dashboards, failing-control events, test fixtures, and release evidence tied to `pharma_manufacturing_quality_control_assertion` records. The evidence should be package-local in `src/pyAppGen/pbcs/pharma_manufacturing_quality` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must block release while related OOS/OOT cases are open.
 
-### 22. Cryptographic audit proofing for Pharma Manufacturing Quality Schema Extension
+### 22. Supplier Quality Event Linkage
 
-**Justification:** Better-than-world-class auditability requires proof of integrity, not merely logs stored in mutable tables.
+**Justification:** Supplier complaints and material defects can affect batches.
 
-**Improvement:** Hash-chain material `pharma_manufacturing_quality_schema_extension` decisions, documents, emitted events, and release-evidence snapshots to make tampering visible without exposing sensitive payloads. Tie the behavior to `pharma_manufacturing_quality_record_master_batch_record_workflow` where applicable, and make it visible in `PharmaManufacturingQualityWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add supplier event projection, affected material lots, supplier response, quality agreement obligation, and batch impact.
 
-**Acceptance evidence:** Proof manifests, verification APIs, redacted proof exports, and audit-ledger handoff events. The evidence should be package-local in `src/pyAppGen/pbcs/pharma_manufacturing_quality` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must identify batches affected by supplier quality events without owning supplier master data.
 
-### 23. Privacy, consent, and secrecy controls for Pharma Manufacturing Quality Control Assertion
+### 23. Training and Qualification Gates
 
-**Justification:** Complete domain coverage must account for protected data and restricted operational evidence.
+**Justification:** Operators must be trained and qualified for procedures before execution.
 
-**Improvement:** Add field-level privacy classifications for `pharma_manufacturing_quality_control_assertion`, consent checks, masking rules, retention schedules, legal holds, and assistant redaction policies. Tie the behavior to `pharma_manufacturing_quality_create_pharma_batch_workflow` where applicable, and make it visible in `PharmaManufacturingQualityWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add training requirement projection, qualification status, expiry, task scope, and batch-step gate.
 
-**Acceptance evidence:** Retention tests, masked UI snapshots, consent-blocked mutation fixtures, and export controls. The evidence should be package-local in `src/pyAppGen/pbcs/pharma_manufacturing_quality` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must reject execution or verification by unqualified users.
 
-### 24. Multi-tenant operating model for Pharma Manufacturing Quality Governed Model
+### 24. Document Control for Quality Records
 
-**Justification:** The PBC should scale across organizations while preserving independent policy and compliance boundaries.
+**Justification:** Procedures, specifications, protocols, and forms must be controlled and versioned.
 
-**Improvement:** Support tenant-specific `pharma_manufacturing_quality_governed_model` rules, data residency, encryption context, configuration, seed data, and release evidence without allowing cross-tenant leakage. Tie the behavior to `pharma_manufacturing_quality_record_master_batch_record_workflow` where applicable, and make it visible in `PharmaManufacturingQualityWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add document type, version, approval, effective date, retired date, linked batches, and read-and-understood evidence.
 
-**Acceptance evidence:** Tenant isolation tests, tenant-scoped parameters, key-rotation evidence, and cross-tenant negative fixtures. The evidence should be package-local in `src/pyAppGen/pbcs/pharma_manufacturing_quality` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must block use of obsolete documents in new batch execution.
 
-### 25. Schema evolution and extension registry for Pharma Batch
+### 25. Data Integrity Controls
 
-**Justification:** Domain teams will add fields; the PBC must evolve without breaking APIs, events, or workbench projections.
+**Justification:** Regulated manufacturing must prevent backdating, unauthorized changes, missing audit trails, and orphan records.
 
-**Improvement:** Make schema extensions for `pharma_batch` first-class with compatibility checks, migration previews, projection backfills, field ownership, and rollback metadata. Tie the behavior to `pharma_manufacturing_quality_create_pharma_batch_workflow` where applicable, and make it visible in `PharmaManufacturingQualityWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add controls for timestamp order, actor authorization, source checksum, required e-signatures, missing reason-for-change, and duplicate records.
 
-**Acceptance evidence:** Extension registry UI, compatibility tests, migration dry-runs, and backfill release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/pharma_manufacturing_quality` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must open data-integrity exceptions and require remediation evidence.
 
-### 26. Master data quality gates for Master Batch Record
+### 26. Deviation and CAPA Workbench
 
-**Justification:** Many pharma manufacturing quality errors begin as bad reference data; the PBC should catch them before workflow execution.
+**Justification:** Quality teams need queues by severity, overdue status, product impact, and release blocker.
 
-**Improvement:** Define reference-data contracts for `master_batch_record`: canonical codes, parties, locations, classifications, calendars, units, currencies, products, assets, or service categories as relevant to the domain. Tie the behavior to `pharma_manufacturing_quality_record_master_batch_record_workflow` where applicable, and make it visible in `PharmaManufacturingQualityWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add workbench views for open deviations, release blockers, overdue CAPA, recurrence, data integrity issues, validation blockers, and batch release readiness.
 
-**Acceptance evidence:** Reference validation fixtures, stale-code warnings, mapping tables, and dependency freshness indicators. The evidence should be package-local in `src/pyAppGen/pbcs/pharma_manufacturing_quality` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** UI tests must prove views map to owned data and permission-aware actions.
 
-### 27. Bulk operations and correction workflows for Validation Protocol
+### 27. Agent-Assisted Quality Narratives
 
-**Justification:** Enterprise-scale Pharma Manufacturing Quality users cannot operate one record at a time.
+**Justification:** Investigations need clear narratives, but quality conclusions must be evidence-cited.
 
-**Improvement:** Add bulk load, bulk validate, bulk approve, and bulk correction workflows for `validation_protocol` with partial success, row-level errors, resumability, and rollback. Tie the behavior to `pharma_manufacturing_quality_create_pharma_batch_workflow` where applicable, and make it visible in `PharmaManufacturingQualityWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add agent skills for deviation summary, root-cause draft, CAPA plan draft, batch release blocker explanation, and validation summary.
 
-**Acceptance evidence:** CSV/API batch fixtures, resumable job state, row-level audit evidence, and assistant-generated correction suggestions. The evidence should be package-local in `src/pyAppGen/pbcs/pharma_manufacturing_quality` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must require cited evidence and human approval before regulated narratives are finalized.
 
-### 28. Lifecycle collaboration and tasking for Deviation
+### 28. Governed Agent CRUD Commands
 
-**Justification:** Domain collaboration should live inside the PBC boundary and remain auditable with the record it affects.
+**Justification:** The chatbot should support quality operations without silent regulated-record changes.
 
-**Improvement:** Attach tasks, comments, ownership, due dates, handoffs, and escalation threads to `deviation` without leaking into external shared task tables. Tie the behavior to `pharma_manufacturing_quality_record_master_batch_record_workflow` where applicable, and make it visible in `PharmaManufacturingQualityWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add command previews for open deviation, assign investigation, add CAPA, record validation result, hold batch, release batch, and create serialization exception.
 
-**Acceptance evidence:** Task tables, comment audit history, notification events, escalation SLAs, and role-specific task queues. The evidence should be package-local in `src/pyAppGen/pbcs/pharma_manufacturing_quality` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Intent tests must require record identity, evidence, preview, confirmation, e-signature where required, and audit trail.
 
-### 29. SLA and service-level governance for Capa
+### 29. Quality Risk Management
 
-**Justification:** Users need to know when batch records, validation, deviations, capa, release, serialization, and regulated manufacturing quality is late, blocked, or at risk before customer or regulator impact.
+**Justification:** Batch and process decisions require documented severity, occurrence, detectability, and mitigation.
 
-**Improvement:** Define SLAs for `capa` across intake, validation, approval, exception resolution, event handling, downstream projection refresh, and release-evidence generation. Tie the behavior to `pharma_manufacturing_quality_create_pharma_batch_workflow` where applicable, and make it visible in `PharmaManufacturingQualityWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add risk assessments tied to deviations, changes, validations, release, supplier events, and process trends.
 
-**Acceptance evidence:** SLA breach events, timers, configurable calendars, workbench aging buckets, and tests for pause/resume behavior. The evidence should be package-local in `src/pyAppGen/pbcs/pharma_manufacturing_quality` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must require risk review for major deviations and high-impact changes.
 
-### 30. Operational analytics cockpit for Quality Release
+### 30. Recall Impact Analysis
 
-**Justification:** World-class operations require leading indicators, not only record counts.
+**Justification:** Recall decisions require rapid identification of affected batches, lots, serials, destinations, and quality causes.
 
-**Improvement:** Build analytics for `quality_release`: throughput, backlog, aging, approval latency, exception rate, risk distribution, automation acceptance, correction rate, and downstream dependency health. Tie the behavior to `pharma_manufacturing_quality_record_master_batch_record_workflow` where applicable, and make it visible in `PharmaManufacturingQualityWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add recall candidate analysis from genealogy, serialization, deviations, stability, complaints, and distribution projections.
 
-**Acceptance evidence:** Metric definitions, projection tests, drill-through routes, export APIs, and anomaly overlays. The evidence should be package-local in `src/pyAppGen/pbcs/pharma_manufacturing_quality` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must generate affected-batch lists and recall evidence packets without owning distribution tables.
 
-### 31. Decision intelligence and recommendations for Serialization Event
+### 31. Product Complaint Linkage
 
-**Justification:** The PBC should help expert users decide faster while showing evidence and uncertainty.
+**Justification:** Market complaints can reveal manufacturing defects or stability issues.
 
-**Improvement:** Generate ranked recommendations for `serialization_event` such as next best action, likely resolution, required evidence, policy adjustment, staffing/capacity response, or downstream handoff. Tie the behavior to `pharma_manufacturing_quality_create_pharma_batch_workflow` where applicable, and make it visible in `PharmaManufacturingQualityWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add complaint projection, defect category, affected batch, investigation link, trend, reportability assessment, and CAPA trigger.
 
-**Acceptance evidence:** Recommendation explanations, confidence intervals, feedback capture, model governance records, and rejection reasons. The evidence should be package-local in `src/pyAppGen/pbcs/pharma_manufacturing_quality` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must open investigations for serious or recurring complaints.
 
-### 32. Quality and completeness scoring for Pharma Manufacturing Quality Policy Rule
+### 32. Regulatory Inspection Evidence Room
 
-**Justification:** Operators should see whether a record is truly ready, not just technically saved.
+**Justification:** Inspectors need controlled evidence for batches, deviations, CAPA, validation, training, and data integrity.
 
-**Improvement:** Score each `pharma_manufacturing_quality_policy_rule` record for completeness, consistency, policy readiness, dependency readiness, evidence sufficiency, and downstream composability. Tie the behavior to `pharma_manufacturing_quality_record_master_batch_record_workflow` where applicable, and make it visible in `PharmaManufacturingQualityWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add evidence room generation by product, batch, site, date range, deviation, validation, or control.
 
-**Acceptance evidence:** Scoring rules, missing-evidence lists, readiness badges, and blocking criteria in command handlers. The evidence should be package-local in `src/pyAppGen/pbcs/pharma_manufacturing_quality` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must generate scoped, redacted, source-linked evidence packets.
 
-### 33. End-to-end scenario library for Pharma Manufacturing Quality Runtime Parameter
+### 33. Multi-Site and Tech Transfer Controls
 
-**Justification:** Release evidence is stronger when every important pharma manufacturing quality behavior has executable examples.
+**Justification:** Process transfer requires comparability, validation, training, and site-specific controls.
 
-**Improvement:** Create seeded scenarios for `pharma_manufacturing_quality_runtime_parameter`: normal flow, urgent path, exception path, corrected path, duplicate path, late event path, and audit export path. Tie the behavior to `pharma_manufacturing_quality_create_pharma_batch_workflow` where applicable, and make it visible in `PharmaManufacturingQualityWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add site variant, transfer protocol, comparability evidence, local adaptation, validation requirement, and launch readiness.
 
-**Acceptance evidence:** Scenario seed data, runtime smoke coverage, generated-app fixtures, and story-level workbench screenshots/contracts. The evidence should be package-local in `src/pyAppGen/pbcs/pharma_manufacturing_quality` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must block site activation for product manufacturing until transfer criteria pass.
 
-### 34. Domain ontology and terminology model for Pharma Manufacturing Quality Schema Extension
+### 34. Packaging and Label Reconciliation
 
-**Justification:** Precise vocabulary prevents the PBC from misclassifying specialist documents or user instructions.
+**Justification:** Packaging errors can cause recalls and patient harm.
 
-**Improvement:** Add an ontology for `pharma_manufacturing_quality_schema_extension` terms, synonyms, classifications, relationships, allowed values, and phrase mappings used by the assistant and UI. Tie the behavior to `pharma_manufacturing_quality_record_master_batch_record_workflow` where applicable, and make it visible in `PharmaManufacturingQualityWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add packaging line clearance, label count, reconciliation variance, artwork version, expiry print check, and destruction evidence.
 
-**Acceptance evidence:** Ontology files, assistant parsing tests, UI glossary, and mapping evidence for domain-specific abbreviations. The evidence should be package-local in `src/pyAppGen/pbcs/pharma_manufacturing_quality` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must open deviations for unreconciled label variances or wrong artwork version.
 
-### 35. Advanced search and investigation for Pharma Manufacturing Quality Control Assertion
+### 35. Hold Time and Expiry Controls
 
-**Justification:** Investigators and operators need fast, explainable retrieval across the whole domain surface.
+**Justification:** Intermediates, bulk product, and packaging stages have hold-time limits.
 
-**Improvement:** Provide search across `pharma_manufacturing_quality_control_assertion` records, events, documents, exceptions, tasks, comments, and audit proofs with filters for tenant, status, risk, date, party, and dependency. Tie the behavior to `pharma_manufacturing_quality_create_pharma_batch_workflow` where applicable, and make it visible in `PharmaManufacturingQualityWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add hold-time start, limit, storage condition, extension approval, expiry breach, and disposition impact.
 
-**Acceptance evidence:** Search index contracts, result provenance, permission-filtered queries, and stale-index warnings. The evidence should be package-local in `src/pyAppGen/pbcs/pharma_manufacturing_quality` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must block continuation or release when hold time expires without approval.
 
-### 36. Reconciliation and closure controls for Pharma Manufacturing Quality Governed Model
+### 36. Quality Metrics and Management Review
 
-**Justification:** Closure is not complete until the PBC can prove no material domain work remains unresolved.
+**Justification:** Leadership needs metrics for deviations, CAPA, batch release, right-first-time, complaints, recalls, validation, and data integrity.
 
-**Improvement:** Add reconciliation workflows that compare `pharma_manufacturing_quality_governed_model` state against consumed events, external projections, expected totals/counts, approvals, and release evidence before closure. Tie the behavior to `pharma_manufacturing_quality_record_master_batch_record_workflow` where applicable, and make it visible in `PharmaManufacturingQualityWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add metrics with definitions, numerator/denominator, trend, threshold, source, and management review action.
 
-**Acceptance evidence:** Reconciliation reports, variance thresholds, closure blockers, and AppGen-X closure events. The evidence should be package-local in `src/pyAppGen/pbcs/pharma_manufacturing_quality` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must compute metrics and open actions when thresholds are breached.
 
-### 37. Regulatory and policy reporting for Pharma Batch
+### 37. Predictive Batch Release Risk
 
-**Justification:** World-class PBCs turn operational evidence into credible reporting without spreadsheet reconstruction.
+**Justification:** Teams need early warning before a batch becomes unreleasable or delayed.
 
-**Improvement:** Generate domain reporting packs for `pharma_batch` covering statutory, contractual, operational, board, customer, or regulator evidence depending on monetary integrity, funds movement controls, counterparty risk, regulatory evidence, settlement finality, fraud prevention, and financial reconciliation. Tie the behavior to `pharma_manufacturing_quality_create_pharma_batch_workflow` where applicable, and make it visible in `PharmaManufacturingQualityWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add explainable risk scoring from deviations, test status, process parameters, equipment evidence, genealogy, and historical patterns.
 
-**Acceptance evidence:** Report schemas, redaction rules, traceable metric sources, and approval/export audit events. The evidence should be package-local in `src/pyAppGen/pbcs/pharma_manufacturing_quality` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must generate risk factors and require human review for automated recommendations.
 
-### 38. Carbon and resource awareness for Master Batch Record
+### 38. Configuration Impact Simulation
 
-**Justification:** Sustainability evidence should be embedded in operations instead of treated as an after-the-fact report.
+**Justification:** Changing specifications, process parameters, hold times, or release rules can affect many batches.
 
-**Improvement:** Where relevant, attach carbon, energy, water, travel, capacity, compute, or resource-footprint metadata to `master_batch_record` decisions and batch operations. Tie the behavior to `pharma_manufacturing_quality_record_master_batch_record_workflow` where applicable, and make it visible in `PharmaManufacturingQualityWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add side-effect-free simulations over historical and active batches with release, deviation, workload, and compliance impact.
 
-**Acceptance evidence:** Footprint fields, scheduling parameters, exception rules, and dashboards that expose operational tradeoffs. The evidence should be package-local in `src/pyAppGen/pbcs/pharma_manufacturing_quality` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must require impact evidence before activating high-risk configuration.
 
-### 39. Resilience and offline behavior for Validation Protocol
+### 39. Cross-PBC Boundary Proofs
 
-**Justification:** Real operations keep moving during outages; the PBC must preserve correctness when dependencies are unavailable.
+**Justification:** Manufacturing quality composes with inventory, LIMS, EAM, suppliers, distribution, audit, and finance without table sharing.
 
-**Improvement:** Define resilience modes for `validation_protocol`: degraded dependency mode, offline draft capture, delayed event replay, conflict detection, and safe recovery after partial failure. Tie the behavior to `pharma_manufacturing_quality_create_pharma_batch_workflow` where applicable, and make it visible in `PharmaManufacturingQualityWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add release gates proving dependencies use declared APIs, events, projections, or package metadata.
 
-**Acceptance evidence:** Offline fixtures, replay tests, conflict queues, recovery logs, and user-visible degraded-mode warnings. The evidence should be package-local in `src/pyAppGen/pbcs/pharma_manufacturing_quality` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must fail on undeclared foreign table references and pass on AppGen-X contracts.
 
-### 40. Human-in-the-loop automation for Deviation
+### 40. Electronic Signature Meaning
 
-**Justification:** Automation should accelerate batch records, validation, deviations, capa, release, serialization, and regulated manufacturing quality while preserving accountability for high-risk decisions.
+**Justification:** Regulated records need signatures with purpose, authority, and linked state change.
 
-**Improvement:** Set explicit automation boundaries for `deviation`: auto-approve, auto-reject, suggest-only, require-review, and block-until-evidence states with policy-based routing. Tie the behavior to `pharma_manufacturing_quality_record_master_batch_record_workflow` where applicable, and make it visible in `PharmaManufacturingQualityWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add e-signature purpose for execution, verification, review, approval, rejection, release, and correction.
 
-**Acceptance evidence:** Automation policy tests, reviewer queues, override reasons, and assistant action audit trails. The evidence should be package-local in `src/pyAppGen/pbcs/pharma_manufacturing_quality` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must reject signatures by unauthorized roles and preserve signature meaning.
 
-### 41. Package discovery and fit scoring for Capa
+### 41. Audit Trail Review
 
-**Justification:** Users selecting PBCs need transparent fit reasoning, especially when domains are adjacent but not overlapping.
+**Justification:** Audit trails must be reviewed for critical records and suspicious changes.
 
-**Improvement:** Improve package metadata so composition can explain when `pharma_manufacturing_quality` fits a prompt, what entities it owns, what APIs/events it exposes, and what adjacent PBCs it depends on. Tie the behavior to `pharma_manufacturing_quality_create_pharma_batch_workflow` where applicable, and make it visible in `PharmaManufacturingQualityWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add audit review schedules, reviewed record sets, exceptions, reviewer, finding, and remediation.
 
-**Acceptance evidence:** Discovery manifests, prompt-selection tests, overlap rationale links, and composition DSL examples. The evidence should be package-local in `src/pyAppGen/pbcs/pharma_manufacturing_quality` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must identify unreviewed required audit trails and open control failures.
 
-### 42. Configuration deployment pipeline for Quality Release
+### 42. Cryptographic Batch Evidence Proofs
 
-**Justification:** Configuration changes can materially alter pharma manufacturing quality; they need the same discipline as code releases.
+**Justification:** Batch and quality history needs tamper-evident proof.
 
-**Improvement:** Add configuration promotion for `quality_release` across draft, test, approved, active, deprecated, and rollback states with impact analysis before activation. Tie the behavior to `pharma_manufacturing_quality_record_master_batch_record_workflow` where applicable, and make it visible in `PharmaManufacturingQualityWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add hash chains for batch execution, material genealogy, deviations, CAPA, validation, release, and serialization events.
 
-**Acceptance evidence:** Config diff views, approval workflows, simulation before activation, and rollback tests. The evidence should be package-local in `src/pyAppGen/pbcs/pharma_manufacturing_quality` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must verify proof chains and detect altered payloads or reordered events.
 
-### 43. Workbench command completeness for Serialization Event
+### 43. Dead-Letter and Retry Operations
 
-**Justification:** A PBC does not fully surface its capabilities if users must call hidden APIs for core work.
+**Justification:** Batch events, lab results, serialization events, and audit records can fail and need safe replay.
 
-**Improvement:** Expose every high-value operation for `serialization_event` in the UI: create, validate, approve, simulate, correct, assign, export, retry, close, and audit-proof verification. Tie the behavior to `pharma_manufacturing_quality_create_pharma_batch_workflow` where applicable, and make it visible in `PharmaManufacturingQualityWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add retry reason, risk, idempotency key, replay checkpoint, remediation action, and dead-letter queue.
 
-**Acceptance evidence:** UI action coverage tests, permission-aware disabled states, keyboard paths, and assistant handoff links. The evidence should be package-local in `src/pyAppGen/pbcs/pharma_manufacturing_quality` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must replay failed events without duplicate deviations, releases, or serial events.
 
-### 44. Document packet and evidence vault for Pharma Manufacturing Quality Policy Rule
+### 44. Carbon and Resource Awareness
 
-**Justification:** Documents often carry the legal or operational truth behind batch records, validation, deviations, capa, release, serialization, and regulated manufacturing quality.
+**Justification:** Manufacturing quality can reduce waste from rework, scrap, reruns, cold storage, and excessive holds.
 
-**Improvement:** Create a governed evidence vault for `pharma_manufacturing_quality_policy_rule` documents, attachments, source spans, extracted fields, signatures, approvals, and retention labels. Tie the behavior to `pharma_manufacturing_quality_record_master_batch_record_workflow` where applicable, and make it visible in `PharmaManufacturingQualityWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add optional resource metrics for rejected quantity, rework, scrap, energy-intensive holds, sample reruns, and disposal category.
 
-**Acceptance evidence:** Evidence models, source-to-field lineage, signature validation, retention policies, and proof exports. The evidence should be package-local in `src/pyAppGen/pbcs/pharma_manufacturing_quality` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must report resource metrics without overriding quality or safety decisions.
 
-### 45. Data correction and amendment history for Pharma Manufacturing Quality Runtime Parameter
+### 45. Seeded Pharma Quality Scenario Library
 
-**Justification:** World-class systems correct mistakes without rewriting history or confusing downstream consumers.
+**Justification:** Release audits need realistic regulated manufacturing stories.
 
-**Improvement:** Support formal amendments for `pharma_manufacturing_quality_runtime_parameter` that preserve original values, correction reason, approving actor, effective date, downstream event impacts, and replay behavior. Tie the behavior to `pharma_manufacturing_quality_create_pharma_batch_workflow` where applicable, and make it visible in `PharmaManufacturingQualityWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add seeds for clean batch, process deviation, material defect, OOS, CAPA, validation failure, label reconciliation issue, serialization exception, and batch release.
 
-**Acceptance evidence:** Amendment tables, correction events, projection replay tests, and side-by-side before/after UI. The evidence should be package-local in `src/pyAppGen/pbcs/pharma_manufacturing_quality` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Scenario tests must load side-effect-free and create expected queues, events, and evidence packets.
 
-### 46. External participant collaboration for Pharma Manufacturing Quality Schema Extension
+### 46. Role-Based Permission Model
 
-**Justification:** Many pharma manufacturing quality workflows require outside parties, but they must not gain direct access to internal tables.
+**Justification:** Operators, supervisors, QA reviewers, validation engineers, release approvers, and auditors need different authority.
 
-**Improvement:** Add controlled collaboration portals or API views for external participants related to `pharma_manufacturing_quality_schema_extension`, limited to scoped evidence submission, status checks, comments, and dispute responses. Tie the behavior to `pharma_manufacturing_quality_record_master_batch_record_workflow` where applicable, and make it visible in `PharmaManufacturingQualityWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add permissions for execute step, verify step, open deviation, approve CAPA, approve validation, release batch, dispose material, and view audit packets.
 
-**Acceptance evidence:** Participant role policies, scoped tokens, submission audit trails, and inbound evidence validation. The evidence should be package-local in `src/pyAppGen/pbcs/pharma_manufacturing_quality` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Permission tests must block unauthorized commands and show disabled UI actions.
 
-### 47. Advanced dependency freshness scoring for Pharma Manufacturing Quality Control Assertion
+### 47. Regulatory Localization
 
-**Justification:** A record may be valid locally but unsafe if dependency evidence is stale or incomplete.
+**Justification:** Manufacturing quality requirements vary by product, market, site, and regulatory region.
 
-**Improvement:** Score freshness and reliability of dependencies used by `pharma_manufacturing_quality_control_assertion`, including consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, referenced projections, configuration versions, and external submissions. Tie the behavior to `pharma_manufacturing_quality_create_pharma_batch_workflow` where applicable, and make it visible in `PharmaManufacturingQualityWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add jurisdiction-specific release, retention, reportability, serialization, documentation, and signature rules.
 
-**Acceptance evidence:** Freshness indicators, blocking rules, stale-event simulations, and workbench dependency health panels. The evidence should be package-local in `src/pyAppGen/pbcs/pharma_manufacturing_quality` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must evaluate identical events differently by jurisdiction and policy version.
 
-### 48. Model governance and explainability for Pharma Manufacturing Quality Governed Model
+### 48. Full Pharma Quality Release Simulation
 
-**Justification:** Governed AI is mandatory for professional-grade automation in Pharma Manufacturing Quality.
+**Justification:** A complete PBC must prove batch-quality behavior end to end.
 
-**Improvement:** For every predictive or agentic feature around `pharma_manufacturing_quality_governed_model`, record model version, prompt or ruleset version, training/evaluation evidence, confidence, explanation, and human feedback. Tie the behavior to `pharma_manufacturing_quality_record_master_batch_record_workflow` where applicable, and make it visible in `PharmaManufacturingQualityWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add a simulation where a batch starts, materials issue, steps execute, in-process tests pass, a deviation opens, CAPA completes, serialization records, and QA releases the batch.
 
-**Acceptance evidence:** Model cards, prompt/version manifests, feedback loops, drift tests, and audit proof for recommendations. The evidence should be package-local in `src/pyAppGen/pbcs/pharma_manufacturing_quality` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** The simulation must validate owned schema, APIs, services, AppGen-X events, handlers, workbench views, agent skills, permissions, and release evidence.
 
-### 49. High-scale partitioning and archival for Pharma Batch
+### 49. Package Overlap Guardrails
 
-**Justification:** Better-than-world-class packages must remain operable after years of high-volume domain history.
+**Justification:** This PBC must not duplicate LIMS, inventory, EAM, supplier, distribution, finance, or regulatory submission ownership.
 
-**Improvement:** Plan scale behavior for `pharma_batch`: tenant partitioning, archival policies, cold storage, retention-aware search, projection compaction, and large-batch replay. Tie the behavior to `pharma_manufacturing_quality_create_pharma_batch_workflow` where applicable, and make it visible in `PharmaManufacturingQualityWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add overlap checks and declared dependency contracts for lab results, material status, equipment state, supplier quality, distribution trace, and audit events.
 
-**Acceptance evidence:** Partition tests, archive/retrieve fixtures, retention enforcement, and replay benchmarks. The evidence should be package-local in `src/pyAppGen/pbcs/pharma_manufacturing_quality` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must fail on undeclared external table references and pass on declared AppGen-X dependency usage.
 
-### 50. Release gate expansion for Master Batch Record
+### 50. Composition DSL and Unified Agent Exposure
 
-**Justification:** The PBC should not claim domain coverage unless release evidence proves the claim end to end.
+**Justification:** Generated applications must expose pharma quality capabilities through DSL, UI, APIs, and the composed application agent.
 
-**Improvement:** Expand release gates for `pharma_manufacturing_quality` so every schema, service, API, event, handler, UI, rule, parameter, agent skill, seed scenario, and improvement backlog item maps to executable evidence. Tie the behavior to `pharma_manufacturing_quality_record_master_batch_record_workflow` where applicable, and make it visible in `PharmaManufacturingQualityWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Extend composition metadata for batches, master records, validation, deviations, CAPA, release, serialization, controls, evidence rooms, workbench fragments, and agent skills.
 
-**Acceptance evidence:** Release audit checks, manifest traceability, generated-app smoke tests, and missing-capability blockers. The evidence should be package-local in `src/pyAppGen/pbcs/pharma_manufacturing_quality` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** DSL tests must prove generated apps include pharma quality models, routes, services, event contracts, UI artifacts, and assistant skills without stream-engine picker exposure.

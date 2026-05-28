@@ -1,418 +1,416 @@
-# Medical Device Lifecycle PBC Better-Than-World-Class Improvement Backlog
+# Medical Device Lifecycle PBC Manual Improvement Backlog
 
 ## Purpose
 
-This file identifies, justifies, and describes 50 high-impact improvements for `medical_device_lifecycle`. The backlog is specific to medical device registry, maintenance, calibration, recalls, usage traceability, and regulatory evidence and is intended to move the PBC from release-auditable scaffolding toward complete, specialist-grade domain coverage.
+This strict backlog replaces scaffold-derived roadmap material for `medical_device_lifecycle` with a hand-curated medical device operations roadmap. The PBC owns medical device registry, assignments, calibration, maintenance events, recall notices, usage traceability, regulatory evidence, governed rules, agent assistance, and release evidence without owning hospital biomedical finance, EHR clinical orders, or manufacturing batch quality tables.
 
 ## Current Domain Evidence Used
 
 - Stable PBC key: `medical_device_lifecycle`.
-- Domain purpose: Medical device registry, maintenance, calibration, recalls, usage traceability, and regulatory evidence.
-- Owned domain tables: `medical_device`, `device_assignment`, `calibration`, `maintenance_event`, `recall_notice`, `usage_trace`, `regulatory_evidence`, `medical_device_lifecycle_policy_rule`, `medical_device_lifecycle_runtime_parameter`, `medical_device_lifecycle_schema_extension`, `medical_device_lifecycle_control_assertion`, `medical_device_lifecycle_governed_model`.
+- Domain purpose: medical device registry, maintenance, calibration, recalls, usage traceability, and regulatory evidence.
+- Owned domain tables: `medical_device`, `device_assignment`, `calibration`, `maintenance_event`, `recall_notice`, `usage_traceability`, `regulatory_evidence`, `medical_device_lifecycle_policy_rule`, `medical_device_lifecycle_runtime_parameter`, `medical_device_lifecycle_schema_extension`, `medical_device_lifecycle_control_assertion`, `medical_device_lifecycle_governed_model`.
 - Public APIs: `POST /medical-devices`, `POST /device-assignments`, `POST /calibrations`, `POST /maintenance-events`, `POST /recall-notices`, `GET /medical-device-lifecycle-workbench`.
 - Emitted AppGen-X events: `MedicalDeviceLifecycleCreated`, `MedicalDeviceLifecycleUpdated`, `MedicalDeviceLifecycleApproved`, `MedicalDeviceLifecycleExceptionOpened`.
 - Consumed AppGen-X events: `PolicyChanged`, `AuditEventSealed`, `OperationalKpiChanged`.
-- Current standard surfaces include: `medical_device_management`, `medical_device_lifecycle_workflow`, `medical_device_lifecycle_analytics`, `configuration_schema`, `rule_engine`, `parameter_engine`, `owned_schema_migrations_models`, `appgen_x_outbox_inbox_eventing`, `idempotent_handlers`, `retry_dead_letter_evidence`.
-- Current advanced surfaces include: `medical_device_lifecycle_event_sourced_operational_history`, `medical_device_lifecycle_multi_tenant_policy_isolation`, `medical_device_lifecycle_schema_evolution_resilience`, `medical_device_lifecycle_autonomous_anomaly_detection`, `medical_device_lifecycle_semantic_document_instruction_understanding`, `medical_device_lifecycle_predictive_risk_scoring`, `medical_device_lifecycle_counterfactual_scenario_simulation`, `medical_device_lifecycle_cryptographic_audit_proofs`.
 
 ## 50 High-Impact Improvements
 
-### 1. Canonical lifecycle state model for Medical Device
+### 1. Unique Device Identity Registry
 
-**Justification:** This closes shallow CRUD gaps by making every medical device lifecycle transition explainable and testable instead of implicit in free-form status values.
+**Justification:** Medical device traceability depends on manufacturer, model, serial, lot, software version, implantability, and regulatory identifiers.
 
-**Improvement:** Define a complete state machine for `medical_device` with explicit draft, validated, blocked, approved, active, suspended, corrected, closed, archived, and reopened states. Tie the behavior to `medical_device_lifecycle_create_medical_device_workflow` where applicable, and make it visible in `MedicalDeviceLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand `medical_device` with unique device identity, model, serial, lot, firmware, hardware revision, risk class, implantable flag, sterile flag, and source evidence.
 
-**Acceptance evidence:** State-transition tests, invalid-transition fixtures, workbench state badges, and emitted AppGen-X transition events for MedicalDeviceLifecycleCreated, MedicalDeviceLifecycleUpdated, MedicalDeviceLifecycleApproved. The evidence should be package-local in `src/pyAppGen/pbcs/medical_device_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must prevent duplicate active identities and preserve historical identity corrections.
 
-### 2. Domain intake and normalization for Device Assignment
+### 2. Device Lifecycle State Machine
 
-**Justification:** The PBC cannot reach complete domain coverage unless it handles the messy front door of medical device registry, maintenance, calibration, recalls, usage traceability, and regulatory evidence, not only already-clean records.
+**Justification:** Devices move through acquisition, qualification, available, assigned, in use, quarantined, maintenance, calibration due, recall hold, retired, and disposed states.
 
-**Improvement:** Build a typed intake pipeline for `device_assignment` that accepts structured API payloads, document-derived instructions, batch loads, and assistant-generated drafts while normalizing identifiers, dates, units, parties, and jurisdictional context. Tie the behavior to `medical_device_lifecycle_record_device_assignment_workflow` where applicable, and make it visible in `MedicalDeviceLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add explicit lifecycle transitions with actor, reason, evidence, allowed next states, and AppGen-X event emission.
 
-**Acceptance evidence:** Golden intake fixtures, rejected-record queues, field-level normalization evidence, and assistant previews before governed datastore mutation. The evidence should be package-local in `src/pyAppGen/pbcs/medical_device_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must reject unsafe transitions such as assigning recalled, unqualified, retired, or calibration-overdue devices.
 
-### 3. Specialist validation rules for Calibration
+### 3. Department and Location Traceability
 
-**Justification:** World-class Medical Device Lifecycle requires rules that domain experts can reason about, version, test, and roll back without code edits.
+**Justification:** Devices are mobile assets that must be findable during care, maintenance, and recall events.
 
-**Improvement:** Add a domain rule compiler for `calibration` that supports threshold rules, eligibility rules, dependency rules, temporal windows, conflicting-instruction detection, and override justification. Tie the behavior to `medical_device_lifecycle_create_medical_device_workflow` where applicable, and make it visible in `MedicalDeviceLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add current location, owning department, physical zone, last scan, custody actor, transfer event, and location confidence.
 
-**Acceptance evidence:** Rule simulation tests, versioned rule manifests, rule impact reports, and UI rule editors linked to `MEDICAL_DEVICE_LIFECYCLE_DATABASE_URL, MEDICAL_DEVICE_LIFECYCLE_EVENT_TOPIC, MEDICAL_DEVICE_LIFECYCLE_RETRY_LIMIT`. The evidence should be package-local in `src/pyAppGen/pbcs/medical_device_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must reconstruct location history and flag missing scans or conflicting custody.
 
-### 4. Parameter governance and tuning for Maintenance Event
+### 4. Device Assignment Governance
 
-**Justification:** Parameters are where operations teams tune medical device lifecycle; unbounded constants would make the PBC brittle and unsafe in real deployments.
+**Justification:** Assignments to patients, rooms, clinicians, procedures, or departments require time-bounded evidence and privacy controls.
 
-**Improvement:** Expose bounded runtime parameters for `maintenance_event` covering risk thresholds, SLA windows, confidence floors, escalation cutoffs, batch sizes, retry limits, and human-confirmation requirements. Tie the behavior to `medical_device_lifecycle_record_device_assignment_workflow` where applicable, and make it visible in `MedicalDeviceLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand `device_assignment` with assignment type, assignee projection, start/end time, intended use, responsible role, consent/privacy flag, and release condition.
 
-**Acceptance evidence:** Parameter schema validation, tenant overrides, approval history, rollback controls, and workbench diff views. The evidence should be package-local in `src/pyAppGen/pbcs/medical_device_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must prove assignments close correctly and redacted views hide patient-linked details when permission is absent.
 
-### 5. Deep owned schema expansion for Recall Notice
+### 5. Implant Tracking
 
-**Justification:** A single payload column cannot express the full surface of medical device registry, maintenance, calibration, recalls, usage traceability, and regulatory evidence or prove cross-PBC boundaries are respected.
+**Justification:** Implantable devices require durable patient association, lot traceability, explant, adverse event, and recall follow-up.
 
-**Improvement:** Extend the owned schema around `recall_notice` with normalized child tables for line-level evidence, party roles, approvals, attachments, comments, metrics, exception reasons, and control assertions. Tie the behavior to `medical_device_lifecycle_create_medical_device_workflow` where applicable, and make it visible in `MedicalDeviceLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add implant-specific fields for implant date, procedure projection, implanting clinician, body site, explant date, explant reason, and patient notification status.
 
-**Acceptance evidence:** Migrations, models, relationship tests, schema contract snapshots, and no shared-table access outside the `medical_device_lifecycle_` namespace. The evidence should be package-local in `src/pyAppGen/pbcs/medical_device_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must identify all active patients affected by an implant recall without reading EHR tables directly.
 
-### 6. Event-sourced operational history for Usage Trace
+### 6. Calibration Schedule and Tolerance
 
-**Justification:** Temporal reconstruction is essential for better-than-world-class auditability and dispute resolution in medical device lifecycle.
+**Justification:** Calibration status determines whether device readings can be trusted.
 
-**Improvement:** Capture every material mutation of `usage_trace` as immutable AppGen-X events with actor, tenant, command, policy version, idempotency key, before/after summary, and projection checkpoint. Tie the behavior to `medical_device_lifecycle_record_device_assignment_workflow` where applicable, and make it visible in `MedicalDeviceLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand `calibration` with required interval, tolerance, standard used, before/after values, technician, pass/fail, due date, and out-of-tolerance impact.
 
-**Acceptance evidence:** Replay tests, projection checksums, event ordering evidence, and point-in-time workbench views. The evidence should be package-local in `src/pyAppGen/pbcs/medical_device_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must block use of overdue or failed-calibration devices and open impact review for out-of-tolerance findings.
 
-### 7. Projection and read-model strategy for Regulatory Evidence
+### 7. Preventive Maintenance Program
 
-**Justification:** The workbench should not force users to infer domain truth from raw tables; each projection should answer a real operating question.
+**Justification:** Maintenance should be planned, risk-based, and evidence-backed.
 
-**Improvement:** Create purpose-built projections for `regulatory_evidence`: operational queue, executive KPI rollup, exception aging, compliance evidence, agent task context, and external dependency health. Tie the behavior to `medical_device_lifecycle_create_medical_device_workflow` where applicable, and make it visible in `MedicalDeviceLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add maintenance plans by device class, usage intensity, risk class, manufacturer guidance, last service, next due, and task checklist.
 
-**Acceptance evidence:** Projection contracts, freshness SLAs, backfill tests, and visible stale-projection warnings. The evidence should be package-local in `src/pyAppGen/pbcs/medical_device_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must generate due maintenance tasks and route overdue high-risk devices to quarantine.
 
-### 8. Exception taxonomy and remediation for Medical Device Lifecycle Policy Rule
+### 8. Corrective Maintenance Events
 
-**Justification:** High-value PBCs win on exception throughput; generic “failed” states hide the details operators need.
+**Justification:** Break/fix work must capture symptoms, diagnosis, parts, labor, downtime, and return-to-service evidence.
 
-**Improvement:** Model the full exception taxonomy for `medical_device_lifecycle_policy_rule`, including severity, root cause, blocking dependency, remediation owner, due date, retry eligibility, escalation path, and closure evidence. Tie the behavior to `medical_device_lifecycle_record_device_assignment_workflow` where applicable, and make it visible in `MedicalDeviceLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand `maintenance_event` with failure mode, severity, root cause, parts replaced, technician, downtime, service vendor, and qualification result.
 
-**Acceptance evidence:** Exception queues, aging metrics, remediation playbooks, dead-letter linkage, and closure test fixtures for conflicting clinical instructions. The evidence should be package-local in `src/pyAppGen/pbcs/medical_device_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must keep failed devices unavailable until return-to-service criteria pass.
 
-### 9. Predictive risk scoring for Medical Device Lifecycle Runtime Parameter
+### 9. Recall Notice Intake
 
-**Justification:** The package should warn users before medical device lifecycle work fails, breaches policy, or creates downstream cost.
+**Justification:** Recalls can target model, lot, serial, firmware, implant cohort, or accessory groups.
 
-**Improvement:** Add predictive risk scoring for `medical_device_lifecycle_runtime_parameter` using domain features from owned tables, consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, rule outcomes, aging, anomaly signals, and historical corrections. Tie the behavior to `medical_device_lifecycle_create_medical_device_workflow` where applicable, and make it visible in `MedicalDeviceLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand `recall_notice` with recall class, manufacturer notice, affected criteria, required action, deadline, patient impact flag, and closure requirements.
 
-**Acceptance evidence:** Feature manifests, score explanations, calibration reports, drift alerts, and tests for low/medium/high-risk scenarios. The evidence should be package-local in `src/pyAppGen/pbcs/medical_device_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must match affected inventory and assignments from recall criteria and open worklists.
 
-### 10. Counterfactual simulation for Medical Device Lifecycle Schema Extension
+### 10. Recall Execution Workflow
 
-**Justification:** Advanced users need to ask “what would happen if” before committing changes to live medical device registry, maintenance, calibration, recalls, usage traceability, and regulatory evidence operations.
+**Justification:** Recall closure requires locating devices, removing them from service, notifying stakeholders, remediation, and evidence.
 
-**Improvement:** Provide scenario simulation for `medical_device_lifecycle_schema_extension`: policy change, capacity constraint, deadline shift, price/rate change, eligibility change, disruption, and manual override outcomes. Tie the behavior to `medical_device_lifecycle_record_device_assignment_workflow` where applicable, and make it visible in `MedicalDeviceLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add recall tasks for quarantine, patient notification, firmware update, replacement, return, documentation, and unresolved exception.
 
-**Acceptance evidence:** Simulation APIs, non-mutating sandbox state, comparison reports, and workbench side-by-side scenario panels. The evidence should be package-local in `src/pyAppGen/pbcs/medical_device_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must block recall closure until all affected devices or justified exceptions are resolved.
 
-### 11. Autonomous anomaly triage for Medical Device Lifecycle Control Assertion
+### 11. Field Safety Corrective Action
 
-**Justification:** A world-class PBC should reduce analyst burden without hiding the reasoning behind automated triage.
+**Justification:** Safety corrections can require inspections, software updates, labeling changes, and user training.
 
-**Improvement:** Implement anomaly detection for `medical_device_lifecycle_control_assertion` that identifies outliers, duplicate submissions, impossible sequences, stale dependencies, unusual amounts/counts/durations, and contradictory fields. Tie the behavior to `medical_device_lifecycle_create_medical_device_workflow` where applicable, and make it visible in `MedicalDeviceLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add action type, target devices, procedure, completion evidence, training requirement, and effectiveness check.
 
-**Acceptance evidence:** Explainable anomaly cards, reviewer feedback loops, false-positive tracking, and suppression governance. The evidence should be package-local in `src/pyAppGen/pbcs/medical_device_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must track action completion and prevent affected devices from use until required action is complete.
 
-### 12. Semantic document understanding for Medical Device Lifecycle Governed Model
+### 12. Firmware and Software Configuration
 
-**Justification:** Document-heavy work in Medical Device Lifecycle cannot be complete if the assistant only answers questions and cannot prepare accurate governed changes.
+**Justification:** Device software version affects safety, cybersecurity, performance, and compatibility.
 
-**Improvement:** Train the package assistant to parse domain documents and instructions for `medical_device_lifecycle_governed_model`, extract obligations, dates, parties, quantities, identifiers, and exceptions, then map them to safe draft mutations. Tie the behavior to `medical_device_lifecycle_record_device_assignment_workflow` where applicable, and make it visible in `MedicalDeviceLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add firmware/software version, approved baseline, patch status, cybersecurity risk, rollback plan, and configuration drift.
 
-**Acceptance evidence:** Document extraction tests, confidence thresholds, redaction handling, source span citations, and human confirmation workflows. The evidence should be package-local in `src/pyAppGen/pbcs/medical_device_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must detect unauthorized version drift and block devices with critical unresolved patches.
 
-### 13. Agent-safe CRUD execution for Medical Device
+### 13. Cybersecurity Vulnerability Tracking
 
-**Justification:** The PBC agent must be a first-class operator but never a hidden bypass around RBAC, rules, or owned datastore boundaries.
+**Justification:** Connected devices can introduce clinical and operational risk.
 
-**Improvement:** Add a professional chatbot skill for `medical_device` that can create, update, correct, close, and annotate records only through policy-checked commands, approval gates, and previewed diffs. Tie the behavior to `medical_device_lifecycle_create_medical_device_workflow` where applicable, and make it visible in `MedicalDeviceLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add vulnerability identifier, affected device class, severity, mitigation, network exposure, patch status, compensating control, and due date.
 
-**Acceptance evidence:** Skill manifests, permission tests, preview/confirm flows, blocked-action evidence, and audit events for every assistant mutation. The evidence should be package-local in `src/pyAppGen/pbcs/medical_device_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must open vulnerability remediation tasks and show risk by device, location, and assignment.
 
-### 14. Workbench persona coverage for Device Assignment
+### 14. Usage Traceability
 
-**Justification:** A generic detail page underserves the domain; each role needs the exact controls and evidence they use daily.
+**Justification:** Device usage history supports maintenance, recalls, utilization, and safety investigations.
 
-**Improvement:** Design dedicated workbench panels for `device_assignment`: operator queue, supervisor approvals, analyst exceptions, auditor evidence, configuration owner, and agent-assistance review. Tie the behavior to `medical_device_lifecycle_record_device_assignment_workflow` where applicable, and make it visible in `MedicalDeviceLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand `usage_traceability` with event type, start/end time, operator projection, location, patient/procedure projection, usage metric, and exception.
 
-**Acceptance evidence:** UI contract entries, route tests, empty/error/loading states, and permission-aware action availability. The evidence should be package-local in `src/pyAppGen/pbcs/medical_device_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must compute utilization and preserve redaction for patient-linked usage.
 
-### 15. Cross-PBC dependency contracts for Calibration
+### 15. Regulatory Evidence Repository
 
-**Justification:** Composable packages fail when hidden table coupling enters the domain model.
+**Justification:** Device operations require manuals, certificates, validations, service records, recall letters, and training evidence.
 
-**Improvement:** Represent dependencies for `calibration` through declared APIs, consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, and projections rather than shared tables, with explicit freshness, ownership, and fallback behavior. Tie the behavior to `medical_device_lifecycle_create_medical_device_workflow` where applicable, and make it visible in `MedicalDeviceLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand `regulatory_evidence` with document type, effective date, device scope, retention class, approval, checksum, and evidence packet membership.
 
-**Acceptance evidence:** Dependency manifests, contract tests, stale dependency alerts, and no foreign-table references in generated artifacts. The evidence should be package-local in `src/pyAppGen/pbcs/medical_device_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must generate device evidence packets and detect missing required documents.
 
-### 16. API completeness and versioning for Maintenance Event
+### 16. Incoming Inspection and Qualification
 
-**Justification:** Complete domain coverage requires both command and query surfaces, not only happy-path create endpoints.
+**Justification:** New or repaired devices must be inspected before use.
 
-**Improvement:** Expand APIs beyond POST /medical-devices, POST /device-assignments, POST /calibrations to cover search, validation-only commands, simulation, bulk intake, exception closure, evidence export, projection reads, and idempotent corrections. Tie the behavior to `medical_device_lifecycle_record_device_assignment_workflow` where applicable, and make it visible in `MedicalDeviceLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add incoming inspection checklist, acceptance criteria, device labeling check, software baseline, accessories, and qualification result.
 
-**Acceptance evidence:** OpenAPI-style route manifests, backward-compatible version tests, deprecation metadata, and idempotency assertions. The evidence should be package-local in `src/pyAppGen/pbcs/medical_device_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must keep devices unavailable until qualification passes.
 
-### 17. Typed emitted-event expansion for Recall Notice
+### 17. Loaner and Rental Device Controls
 
-**Justification:** Consumers should understand what happened in Medical Device Lifecycle without parsing opaque payloads.
+**Justification:** Temporary devices need the same traceability, service, and recall controls as owned devices.
 
-**Improvement:** Replace generic lifecycle emissions with typed events for each meaningful `recall_notice` transition, exception, approval, correction, simulation result, and downstream handoff. Tie the behavior to `medical_device_lifecycle_create_medical_device_workflow` where applicable, and make it visible in `MedicalDeviceLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add ownership type, vendor, loan/rental period, service responsibility, return condition, and evidence requirements.
 
-**Acceptance evidence:** Event schema tests, event examples, compatibility checks, and emitted-event coverage in release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/medical_device_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must track temporary devices and enforce return or extension controls.
 
-### 18. Consumed-event handlers for Usage Trace
+### 18. Sterilization and Reprocessing Evidence
 
-**Justification:** A PBC is composable only when incoming events affect its own domain state predictably and safely.
+**Justification:** Reusable devices may require cleaning, sterilization, reprocessing, and cycle tracking.
 
-**Improvement:** Implement idempotent handlers for consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged that update projections, open dependency exceptions, recalculate risk, and preserve source event lineage. Tie the behavior to `medical_device_lifecycle_record_device_assignment_workflow` where applicable, and make it visible in `MedicalDeviceLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add reprocessing cycle, method, operator, lot, pass/fail, expiration, usage count, and quarantine on failure.
 
-**Acceptance evidence:** Duplicate-event tests, handler side-effect boundaries, dead-letter fixtures, and lineage links back to source events. The evidence should be package-local in `src/pyAppGen/pbcs/medical_device_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must block assignment of devices with expired or failed reprocessing evidence.
 
-### 19. Retry and dead-letter operations for Regulatory Evidence
+### 19. Accessories and Component Hierarchy
 
-**Justification:** Dead letters are not just plumbing; they are domain work queues that can block medical device registry, maintenance, calibration, recalls, usage traceability, and regulatory evidence.
+**Justification:** Safety often depends on compatible accessories, batteries, probes, cables, and modules.
 
-**Improvement:** Create operational tools for retrying, quarantining, explaining, and resolving dead-lettered `regulatory_evidence` events with max-attempt policy, poison-message detection, and replay safety. Tie the behavior to `medical_device_lifecycle_create_medical_device_workflow` where applicable, and make it visible in `MedicalDeviceLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add parent-child device components, compatibility rules, accessory assignment, replacement history, and missing component flags.
 
-**Acceptance evidence:** Dead-letter workbench, retry eligibility tests, replay audit proof, and operator action logs. The evidence should be package-local in `src/pyAppGen/pbcs/medical_device_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must reject incompatible accessory pairings and trace component recalls.
 
-### 20. RBAC and attribute policy for Medical Device Lifecycle Policy Rule
+### 20. Battery and Consumable Readiness
 
-**Justification:** High-impact domain operations need finer controls than generic RBAC grants.
+**Justification:** Device availability depends on battery health, consumables, sensors, and sterile accessories.
 
-**Improvement:** Extend permissions for `medical_device_lifecycle_policy_rule` from coarse read/create/update/admin to action-level and attribute-aware policies based on role, tenant, jurisdiction, monetary/materiality threshold, and exception severity. Tie the behavior to `medical_device_lifecycle_record_device_assignment_workflow` where applicable, and make it visible in `MedicalDeviceLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add readiness checks for battery cycle, charge status, consumable expiry, accessory availability, and replacement due date.
 
-**Acceptance evidence:** Permission matrix docs, ABAC policy tests, denied-action UI states, and assistant skill permission checks. The evidence should be package-local in `src/pyAppGen/pbcs/medical_device_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must flag devices as not ready when critical consumables are unavailable or expired.
 
-### 21. Continuous control testing for Medical Device Lifecycle Runtime Parameter
+### 21. Clinical Alarm and Alert Evidence
 
-**Justification:** Controls should run during operations, not only during release audit or manual review.
+**Justification:** Some devices generate alarms that require review, configuration, or incident linkage.
 
-**Improvement:** Embed control assertions for `medical_device_lifecycle_runtime_parameter` that continuously test segregation of duties, required approvals, stale exceptions, policy drift, duplicate records, and boundary violations. Tie the behavior to `medical_device_lifecycle_create_medical_device_workflow` where applicable, and make it visible in `MedicalDeviceLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add alarm configuration, threshold, alarm event, acknowledgement, nuisance alarm marker, and safety review link.
 
-**Acceptance evidence:** Control dashboards, failing-control events, test fixtures, and release evidence tied to `medical_device_lifecycle_control_assertion` records. The evidence should be package-local in `src/pyAppGen/pbcs/medical_device_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must route unacknowledged high-severity alarms and preserve event history.
 
-### 22. Cryptographic audit proofing for Medical Device Lifecycle Schema Extension
+### 22. Adverse Event and Incident Linkage
 
-**Justification:** Better-than-world-class auditability requires proof of integrity, not merely logs stored in mutable tables.
+**Justification:** Device problems can require safety investigation and regulatory reporting.
 
-**Improvement:** Hash-chain material `medical_device_lifecycle_schema_extension` decisions, documents, emitted events, and release-evidence snapshots to make tampering visible without exposing sensitive payloads. Tie the behavior to `medical_device_lifecycle_record_device_assignment_workflow` where applicable, and make it visible in `MedicalDeviceLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add incident link, suspected device issue, harm severity, investigation status, reportability assessment, and corrective action.
 
-**Acceptance evidence:** Proof manifests, verification APIs, redacted proof exports, and audit-ledger handoff events. The evidence should be package-local in `src/pyAppGen/pbcs/medical_device_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must open reportability review for high-severity incidents and block closure without assessment.
 
-### 23. Privacy, consent, and secrecy controls for Medical Device Lifecycle Control Assertion
+### 23. Regulatory Reporting Readiness
 
-**Justification:** Complete domain coverage must account for protected data and restricted operational evidence.
+**Justification:** Certain device events require timely reporting with complete evidence.
 
-**Improvement:** Add field-level privacy classifications for `medical_device_lifecycle_control_assertion`, consent checks, masking rules, retention schedules, legal holds, and assistant redaction policies. Tie the behavior to `medical_device_lifecycle_create_medical_device_workflow` where applicable, and make it visible in `MedicalDeviceLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add report candidate, jurisdiction, deadline, required fields, submission status, acknowledgement, and follow-up.
 
-**Acceptance evidence:** Retention tests, masked UI snapshots, consent-blocked mutation fixtures, and export controls. The evidence should be package-local in `src/pyAppGen/pbcs/medical_device_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must escalate overdue reportable-device events and generate evidence packets.
 
-### 24. Multi-tenant operating model for Medical Device Lifecycle Governed Model
+### 24. Device Training and Competency
 
-**Justification:** The PBC should scale across organizations while preserving independent policy and compliance boundaries.
+**Justification:** Staff should only use devices for which they are trained and competent.
 
-**Improvement:** Support tenant-specific `medical_device_lifecycle_governed_model` rules, data residency, encryption context, configuration, seed data, and release evidence without allowing cross-tenant leakage. Tie the behavior to `medical_device_lifecycle_record_device_assignment_workflow` where applicable, and make it visible in `MedicalDeviceLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add training requirements by device class, role, competency expiry, user acknowledgement, and assignment/use gate.
 
-**Acceptance evidence:** Tenant isolation tests, tenant-scoped parameters, key-rotation evidence, and cross-tenant negative fixtures. The evidence should be package-local in `src/pyAppGen/pbcs/medical_device_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must warn or block use by untrained staff according to policy.
 
-### 25. Schema evolution and extension registry for Medical Device
+### 25. Work Order and Vendor Service Contract
 
-**Justification:** Domain teams will add fields; the PBC must evolve without breaking APIs, events, or workbench projections.
+**Justification:** External service work needs contract, scope, response time, parts, invoice evidence, and return-to-service control.
 
-**Improvement:** Make schema extensions for `medical_device` first-class with compatibility checks, migration previews, projection backfills, field ownership, and rollback metadata. Tie the behavior to `medical_device_lifecycle_create_medical_device_workflow` where applicable, and make it visible in `MedicalDeviceLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add vendor service fields, contract SLA, dispatch, repair notes, parts, service certification, and acceptance evidence.
 
-**Acceptance evidence:** Extension registry UI, compatibility tests, migration dry-runs, and backfill release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/medical_device_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must track vendor work and prevent return to service without acceptance.
 
-### 26. Master data quality gates for Device Assignment
+### 26. Utilization and Fleet Optimization
 
-**Justification:** Many medical device lifecycle errors begin as bad reference data; the PBC should catch them before workflow execution.
+**Justification:** Device fleets are costly and often overstocked or unavailable in the wrong places.
 
-**Improvement:** Define reference-data contracts for `device_assignment`: canonical codes, parties, locations, classifications, calendars, units, currencies, products, assets, or service categories as relevant to the domain. Tie the behavior to `medical_device_lifecycle_record_device_assignment_workflow` where applicable, and make it visible in `MedicalDeviceLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add utilization metrics by device class, site, department, shift, downtime, assignment duration, and idle inventory.
 
-**Acceptance evidence:** Reference validation fixtures, stale-code warnings, mapping tables, and dependency freshness indicators. The evidence should be package-local in `src/pyAppGen/pbcs/medical_device_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must calculate utilization and recommend redistribution without directly changing assignments.
 
-### 27. Bulk operations and correction workflows for Calibration
+### 27. Predictive Maintenance Risk
 
-**Justification:** Enterprise-scale Medical Device Lifecycle users cannot operate one record at a time.
+**Justification:** Failure can be anticipated from age, usage, service history, alarms, calibration drift, and environment.
 
-**Improvement:** Add bulk load, bulk validate, bulk approve, and bulk correction workflows for `calibration` with partial success, row-level errors, resumability, and rollback. Tie the behavior to `medical_device_lifecycle_create_medical_device_workflow` where applicable, and make it visible in `MedicalDeviceLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add risk score with explanatory factors, threshold, recommended action, and confidence.
 
-**Acceptance evidence:** CSV/API batch fixtures, resumable job state, row-level audit evidence, and assistant-generated correction suggestions. The evidence should be package-local in `src/pyAppGen/pbcs/medical_device_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must generate explainable predictions and require human approval for quarantine recommendations.
 
-### 28. Lifecycle collaboration and tasking for Maintenance Event
+### 28. Device Availability Command Center
 
-**Justification:** Domain collaboration should live inside the PBC boundary and remain auditable with the record it affects.
+**Justification:** Operations teams need a single view of available, in use, down, recalled, overdue, and missing devices.
 
-**Improvement:** Attach tasks, comments, ownership, due dates, handoffs, and escalation threads to `maintenance_event` without leaking into external shared task tables. Tie the behavior to `medical_device_lifecycle_record_device_assignment_workflow` where applicable, and make it visible in `MedicalDeviceLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add workbench queues for availability, recall, maintenance due, calibration due, cybersecurity risk, missing location, and utilization hotspots.
 
-**Acceptance evidence:** Task tables, comment audit history, notification events, escalation SLAs, and role-specific task queues. The evidence should be package-local in `src/pyAppGen/pbcs/medical_device_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** UI tests must prove queues map to owned records and declared projections with permission-aware actions.
 
-### 29. SLA and service-level governance for Recall Notice
+### 29. Agent-Assisted Device Summaries
 
-**Justification:** Users need to know when medical device registry, maintenance, calibration, recalls, usage traceability, and regulatory evidence is late, blocked, or at risk before customer or regulator impact.
+**Justification:** Biomedical and clinical users need concise device state explanations with evidence.
 
-**Improvement:** Define SLAs for `recall_notice` across intake, validation, approval, exception resolution, event handling, downstream projection refresh, and release-evidence generation. Tie the behavior to `medical_device_lifecycle_create_medical_device_workflow` where applicable, and make it visible in `MedicalDeviceLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add agent skills for device readiness summary, recall impact summary, maintenance history, calibration status, vulnerability exposure, and assignment timeline.
 
-**Acceptance evidence:** SLA breach events, timers, configurable calendars, workbench aging buckets, and tests for pause/resume behavior. The evidence should be package-local in `src/pyAppGen/pbcs/medical_device_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must require citations and mark recommendations as draft until confirmed.
 
-### 30. Operational analytics cockpit for Usage Trace
+### 30. Governed Agent CRUD Commands
 
-**Justification:** World-class operations require leading indicators, not only record counts.
+**Justification:** The chatbot should help operate device records without unsafe mutation.
 
-**Improvement:** Build analytics for `usage_trace`: throughput, backlog, aging, approval latency, exception rate, risk distribution, automation acceptance, correction rate, and downstream dependency health. Tie the behavior to `medical_device_lifecycle_record_device_assignment_workflow` where applicable, and make it visible in `MedicalDeviceLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add command previews for assign device, quarantine device, record calibration, open maintenance, close recall task, update firmware status, and retire device.
 
-**Acceptance evidence:** Metric definitions, projection tests, drill-through routes, export APIs, and anomaly overlays. The evidence should be package-local in `src/pyAppGen/pbcs/medical_device_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Intent tests must require device identity, action, evidence, preview, confirmation, and audit trail.
 
-### 31. Decision intelligence and recommendations for Regulatory Evidence
+### 31. Continuous Control Assertions
 
-**Justification:** The PBC should help expert users decide faster while showing evidence and uncertainty.
+**Justification:** Device lifecycle quality requires controls over calibration, maintenance, recalls, location, training, cybersecurity, and evidence completeness.
 
-**Improvement:** Generate ranked recommendations for `regulatory_evidence` such as next best action, likely resolution, required evidence, policy adjustment, staffing/capacity response, or downstream handoff. Tie the behavior to `medical_device_lifecycle_create_medical_device_workflow` where applicable, and make it visible in `MedicalDeviceLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add controls with threshold, population, failing devices, owner, remediation, recurrence, and closure evidence.
 
-**Acceptance evidence:** Recommendation explanations, confidence intervals, feedback capture, model governance records, and rejection reasons. The evidence should be package-local in `src/pyAppGen/pbcs/medical_device_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must open failures and require remediation proof before closure.
 
-### 32. Quality and completeness scoring for Medical Device Lifecycle Policy Rule
+### 32. Dead-Letter and Retry Operations
 
-**Justification:** Operators should see whether a record is truly ready, not just technically saved.
+**Justification:** Device scan events, service updates, recalls, and vulnerability feeds can fail.
 
-**Improvement:** Score each `medical_device_lifecycle_policy_rule` record for completeness, consistency, policy readiness, dependency readiness, evidence sufficiency, and downstream composability. Tie the behavior to `medical_device_lifecycle_record_device_assignment_workflow` where applicable, and make it visible in `MedicalDeviceLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add retry reason, risk, idempotency key, replay checkpoint, remediation action, and dead-letter queue.
 
-**Acceptance evidence:** Scoring rules, missing-evidence lists, readiness badges, and blocking criteria in command handlers. The evidence should be package-local in `src/pyAppGen/pbcs/medical_device_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must replay failed events without duplicate assignments, recalls, or maintenance records.
 
-### 33. End-to-end scenario library for Medical Device Lifecycle Runtime Parameter
+### 33. Cross-PBC Boundary Proofs
 
-**Justification:** Release evidence is stronger when every important medical device lifecycle behavior has executable examples.
+**Justification:** Device lifecycle composes with EHR, facilities, procurement, lab, quality, notifications, and audit without table sharing.
 
-**Improvement:** Create seeded scenarios for `medical_device_lifecycle_runtime_parameter`: normal flow, urgent path, exception path, corrected path, duplicate path, late event path, and audit export path. Tie the behavior to `medical_device_lifecycle_create_medical_device_workflow` where applicable, and make it visible in `MedicalDeviceLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add release gates proving external relationships use declared APIs, events, projections, or package metadata.
 
-**Acceptance evidence:** Scenario seed data, runtime smoke coverage, generated-app fixtures, and story-level workbench screenshots/contracts. The evidence should be package-local in `src/pyAppGen/pbcs/medical_device_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must fail on undeclared foreign table reads and pass on AppGen-X dependency contracts.
 
-### 34. Domain ontology and terminology model for Medical Device Lifecycle Schema Extension
+### 34. Device Timeline Projection
 
-**Justification:** Precise vocabulary prevents the PBC from misclassifying specialist documents or user instructions.
+**Justification:** Investigations and audits need a chronological view of acquisition, assignment, use, maintenance, calibration, recall, and retirement.
 
-**Improvement:** Add an ontology for `medical_device_lifecycle_schema_extension` terms, synonyms, classifications, relationships, allowed values, and phrase mappings used by the assistant and UI. Tie the behavior to `medical_device_lifecycle_record_device_assignment_workflow` where applicable, and make it visible in `MedicalDeviceLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Build timeline projection with actor, event type, source, linked record, risk impact, and evidence reference.
 
-**Acceptance evidence:** Ontology files, assistant parsing tests, UI glossary, and mapping evidence for domain-specific abbreviations. The evidence should be package-local in `src/pyAppGen/pbcs/medical_device_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Replay tests must reconstruct timelines idempotently with role-based redaction.
 
-### 35. Advanced search and investigation for Medical Device Lifecycle Control Assertion
+### 35. Recall Patient Notification Boundary
 
-**Justification:** Investigators and operators need fast, explainable retrieval across the whole domain surface.
+**Justification:** Device recalls may require patient notification while patient identity remains owned elsewhere.
 
-**Improvement:** Provide search across `medical_device_lifecycle_control_assertion` records, events, documents, exceptions, tasks, comments, and audit proofs with filters for tenant, status, risk, date, party, and dependency. Tie the behavior to `medical_device_lifecycle_create_medical_device_workflow` where applicable, and make it visible in `MedicalDeviceLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Store patient impact evidence and notification task references using declared projection identifiers, not direct patient-table writes.
 
-**Acceptance evidence:** Search index contracts, result provenance, permission-filtered queries, and stale-index warnings. The evidence should be package-local in `src/pyAppGen/pbcs/medical_device_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Boundary tests must prove notification events are emitted and no external patient tables are modified.
 
-### 36. Reconciliation and closure controls for Medical Device Lifecycle Governed Model
+### 36. Device Disposition and Disposal
 
-**Justification:** Closure is not complete until the PBC can prove no material domain work remains unresolved.
+**Justification:** Retired, returned, destroyed, donated, or sold devices require evidence and data sanitization where applicable.
 
-**Improvement:** Add reconciliation workflows that compare `medical_device_lifecycle_governed_model` state against consumed events, external projections, expected totals/counts, approvals, and release evidence before closure. Tie the behavior to `medical_device_lifecycle_record_device_assignment_workflow` where applicable, and make it visible in `MedicalDeviceLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add disposition type, approval, data wipe evidence, environmental handling, vendor return, destruction certificate, and final state.
 
-**Acceptance evidence:** Reconciliation reports, variance thresholds, closure blockers, and AppGen-X closure events. The evidence should be package-local in `src/pyAppGen/pbcs/medical_device_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must block disposal without required approvals and evidence.
 
-### 37. Regulatory and policy reporting for Medical Device
+### 37. Recall Drill and Readiness Simulation
 
-**Justification:** World-class PBCs turn operational evidence into credible reporting without spreadsheet reconstruction.
+**Justification:** Organizations need to prove they can locate affected devices quickly.
 
-**Improvement:** Generate domain reporting packs for `medical_device` covering statutory, contractual, operational, board, customer, or regulator evidence depending on patient safety, clinical traceability, consent boundaries, eligibility nuance, coding accuracy, care continuity, and regulated health evidence. Tie the behavior to `medical_device_lifecycle_create_medical_device_workflow` where applicable, and make it visible in `MedicalDeviceLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add side-effect-free recall drill simulations over inventory, assignments, locations, patient impact, and communication tasks.
 
-**Acceptance evidence:** Report schemas, redaction rules, traceable metric sources, and approval/export audit events. The evidence should be package-local in `src/pyAppGen/pbcs/medical_device_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must produce drill metrics and identify gaps without mutating live recall state.
 
-### 38. Carbon and resource awareness for Device Assignment
+### 38. Configuration and Policy Impact Simulation
 
-**Justification:** Sustainability evidence should be embedded in operations instead of treated as an after-the-fact report.
+**Justification:** Changing calibration interval, maintenance frequency, or recall handling can affect safety and availability.
 
-**Improvement:** Where relevant, attach carbon, energy, water, travel, capacity, compute, or resource-footprint metadata to `device_assignment` decisions and batch operations. Tie the behavior to `medical_device_lifecycle_record_device_assignment_workflow` where applicable, and make it visible in `MedicalDeviceLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add simulations over device cohorts for policy changes with risk, workload, availability, and compliance impact.
 
-**Acceptance evidence:** Footprint fields, scheduling parameters, exception rules, and dashboards that expose operational tradeoffs. The evidence should be package-local in `src/pyAppGen/pbcs/medical_device_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must require simulation evidence before activating high-risk parameter changes.
 
-### 39. Resilience and offline behavior for Calibration
+### 39. Regulatory Classification Localization
 
-**Justification:** Real operations keep moving during outages; the PBC must preserve correctness when dependencies are unavailable.
+**Justification:** Device risk class, reporting, maintenance, and traceability requirements vary by jurisdiction.
 
-**Improvement:** Define resilience modes for `calibration`: degraded dependency mode, offline draft capture, delayed event replay, conflict detection, and safe recovery after partial failure. Tie the behavior to `medical_device_lifecycle_create_medical_device_workflow` where applicable, and make it visible in `MedicalDeviceLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add jurisdiction-specific classification, reporting duty, retention, labeling, and recall workflow rules.
 
-**Acceptance evidence:** Offline fixtures, replay tests, conflict queues, recovery logs, and user-visible degraded-mode warnings. The evidence should be package-local in `src/pyAppGen/pbcs/medical_device_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must evaluate identical device events differently by jurisdiction and policy version.
 
-### 40. Human-in-the-loop automation for Maintenance Event
+### 40. Device Data Integrity Controls
 
-**Justification:** Automation should accelerate medical device registry, maintenance, calibration, recalls, usage traceability, and regulatory evidence while preserving accountability for high-risk decisions.
+**Justification:** Device records require trustworthy timestamps, signatures, event order, and source authenticity.
 
-**Improvement:** Set explicit automation boundaries for `maintenance_event`: auto-approve, auto-reject, suggest-only, require-review, and block-until-evidence states with policy-based routing. Tie the behavior to `medical_device_lifecycle_record_device_assignment_workflow` where applicable, and make it visible in `MedicalDeviceLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add controls for backdated events, unauthorized edits, missing source checksums, orphan assignments, and signature gaps.
 
-**Acceptance evidence:** Automation policy tests, reviewer queues, override reasons, and assistant action audit trails. The evidence should be package-local in `src/pyAppGen/pbcs/medical_device_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must open data-integrity exceptions and prevent closure without remediation.
 
-### 41. Package discovery and fit scoring for Recall Notice
+### 41. Cryptographic Device Evidence Proofs
 
-**Justification:** Users selecting PBCs need transparent fit reasoning, especially when domains are adjacent but not overlapping.
+**Justification:** Recalls, incidents, and audits need tamper-evident device history.
 
-**Improvement:** Improve package metadata so composition can explain when `medical_device_lifecycle` fits a prompt, what entities it owns, what APIs/events it exposes, and what adjacent PBCs it depends on. Tie the behavior to `medical_device_lifecycle_create_medical_device_workflow` where applicable, and make it visible in `MedicalDeviceLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add hash chains for registry creation, assignment, calibration, maintenance, recall, incident, and disposal events.
 
-**Acceptance evidence:** Discovery manifests, prompt-selection tests, overlap rationale links, and composition DSL examples. The evidence should be package-local in `src/pyAppGen/pbcs/medical_device_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must verify proof chains and detect altered payloads or reordered events.
 
-### 42. Configuration deployment pipeline for Usage Trace
+### 42. Seeded Device Scenario Library
 
-**Justification:** Configuration changes can materially alter medical device lifecycle; they need the same discipline as code releases.
+**Justification:** Release audits need realistic medical device stories.
 
-**Improvement:** Add configuration promotion for `usage_trace` across draft, test, approved, active, deprecated, and rollback states with impact analysis before activation. Tie the behavior to `medical_device_lifecycle_record_device_assignment_workflow` where applicable, and make it visible in `MedicalDeviceLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add seeds for device qualification, assignment, calibration failure, maintenance, recall, firmware vulnerability, implant trace, and disposal.
 
-**Acceptance evidence:** Config diff views, approval workflows, simulation before activation, and rollback tests. The evidence should be package-local in `src/pyAppGen/pbcs/medical_device_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Scenario tests must load side-effect-free and create expected queues, events, and metrics.
 
-### 43. Workbench command completeness for Regulatory Evidence
+### 43. Device Recall Analytics
 
-**Justification:** A PBC does not fully surface its capabilities if users must call hidden APIs for core work.
+**Justification:** Recall performance should be measurable by time to locate, time to quarantine, patient impact, exception count, and closure quality.
 
-**Improvement:** Expose every high-value operation for `regulatory_evidence` in the UI: create, validate, approve, simulate, correct, assign, export, retry, close, and audit-proof verification. Tie the behavior to `medical_device_lifecycle_create_medical_device_workflow` where applicable, and make it visible in `MedicalDeviceLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add recall analytics by recall class, device cohort, location, patient impact, overdue task, and unresolved exception.
 
-**Acceptance evidence:** UI action coverage tests, permission-aware disabled states, keyboard paths, and assistant handoff links. The evidence should be package-local in `src/pyAppGen/pbcs/medical_device_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must compute recall metrics from owned evidence.
 
-### 44. Document packet and evidence vault for Medical Device Lifecycle Policy Rule
+### 44. Maintenance Quality Analytics
 
-**Justification:** Documents often carry the legal or operational truth behind medical device registry, maintenance, calibration, recalls, usage traceability, and regulatory evidence.
+**Justification:** Repeated failures and vendor issues indicate quality problems.
 
-**Improvement:** Create a governed evidence vault for `medical_device_lifecycle_policy_rule` documents, attachments, source spans, extracted fields, signatures, approvals, and retention labels. Tie the behavior to `medical_device_lifecycle_record_device_assignment_workflow` where applicable, and make it visible in `MedicalDeviceLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add analytics for downtime, repeat repairs, parts failures, vendor SLA, calibration failure rate, and mean time between failures.
 
-**Acceptance evidence:** Evidence models, source-to-field lineage, signature validation, retention policies, and proof exports. The evidence should be package-local in `src/pyAppGen/pbcs/medical_device_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must produce source-linked metrics and open quality review for recurring failures.
 
-### 45. Data correction and amendment history for Medical Device Lifecycle Runtime Parameter
+### 45. Role-Based Permission Model
 
-**Justification:** World-class systems correct mistakes without rewriting history or confusing downstream consumers.
+**Justification:** Biomedical engineers, nurses, department managers, cybersecurity users, compliance users, and auditors need different authority.
 
-**Improvement:** Support formal amendments for `medical_device_lifecycle_runtime_parameter` that preserve original values, correction reason, approving actor, effective date, downstream event impacts, and replay behavior. Tie the behavior to `medical_device_lifecycle_create_medical_device_workflow` where applicable, and make it visible in `MedicalDeviceLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add permissions for assign, quarantine, calibrate, maintain, close recall, update firmware, dispose, and view patient-linked usage.
 
-**Acceptance evidence:** Amendment tables, correction events, projection replay tests, and side-by-side before/after UI. The evidence should be package-local in `src/pyAppGen/pbcs/medical_device_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Permission tests must block unauthorized commands and show disabled UI actions.
 
-### 46. External participant collaboration for Medical Device Lifecycle Schema Extension
+### 46. Evidence Packet Generation
 
-**Justification:** Many medical device lifecycle workflows require outside parties, but they must not gain direct access to internal tables.
+**Justification:** Device audits need focused packets, not raw exports.
 
-**Improvement:** Add controlled collaboration portals or API views for external participants related to `medical_device_lifecycle_schema_extension`, limited to scoped evidence submission, status checks, comments, and dispute responses. Tie the behavior to `medical_device_lifecycle_record_device_assignment_workflow` where applicable, and make it visible in `MedicalDeviceLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add packet generation for device history, recall, maintenance, calibration, cybersecurity vulnerability, incident, and disposition.
 
-**Acceptance evidence:** Participant role policies, scoped tokens, submission audit trails, and inbound evidence validation. The evidence should be package-local in `src/pyAppGen/pbcs/medical_device_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must generate scoped packets with source links, checksums, and redaction.
 
-### 47. Advanced dependency freshness scoring for Medical Device Lifecycle Control Assertion
+### 47. Carbon and Resource Awareness
 
-**Justification:** A record may be valid locally but unsafe if dependency evidence is stale or incomplete.
+**Justification:** Device operations involve energy, disposable accessories, shipping, and retirement waste.
 
-**Improvement:** Score freshness and reliability of dependencies used by `medical_device_lifecycle_control_assertion`, including consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, referenced projections, configuration versions, and external submissions. Tie the behavior to `medical_device_lifecycle_create_medical_device_workflow` where applicable, and make it visible in `MedicalDeviceLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add optional resource metrics for utilization efficiency, disposable use, shipping, repair versus replace decisions, and disposal category.
 
-**Acceptance evidence:** Freshness indicators, blocking rules, stale-event simulations, and workbench dependency health panels. The evidence should be package-local in `src/pyAppGen/pbcs/medical_device_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must report resource metrics without overriding safety or regulatory rules.
 
-### 48. Model governance and explainability for Medical Device Lifecycle Governed Model
+### 48. Full Device Lifecycle Release Simulation
 
-**Justification:** Governed AI is mandatory for professional-grade automation in Medical Device Lifecycle.
+**Justification:** A complete PBC must prove device lifecycle behavior end to end.
 
-**Improvement:** For every predictive or agentic feature around `medical_device_lifecycle_governed_model`, record model version, prompt or ruleset version, training/evaluation evidence, confidence, explanation, and human feedback. Tie the behavior to `medical_device_lifecycle_record_device_assignment_workflow` where applicable, and make it visible in `MedicalDeviceLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add a simulation where a device is registered, qualified, assigned, calibrated, maintained, recalled, remediated, audited, and retired.
 
-**Acceptance evidence:** Model cards, prompt/version manifests, feedback loops, drift tests, and audit proof for recommendations. The evidence should be package-local in `src/pyAppGen/pbcs/medical_device_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** The simulation must validate owned schema, APIs, services, AppGen-X events, handlers, workbench views, agent skills, permissions, and release evidence.
 
-### 49. High-scale partitioning and archival for Medical Device
+### 49. Package Overlap Guardrails
 
-**Justification:** Better-than-world-class packages must remain operable after years of high-volume domain history.
+**Justification:** This PBC must not duplicate EHR, facilities, procurement, lab, quality, cybersecurity, or finance ownership.
 
-**Improvement:** Plan scale behavior for `medical_device`: tenant partitioning, archival policies, cold storage, retention-aware search, projection compaction, and large-batch replay. Tie the behavior to `medical_device_lifecycle_create_medical_device_workflow` where applicable, and make it visible in `MedicalDeviceLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add overlap checks and dependency contracts for clinical use, location, vendor procurement, lab instrument outputs, vulnerabilities, and audit evidence.
 
-**Acceptance evidence:** Partition tests, archive/retrieve fixtures, retention enforcement, and replay benchmarks. The evidence should be package-local in `src/pyAppGen/pbcs/medical_device_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must fail on undeclared external table references and pass on declared AppGen-X contracts.
 
-### 50. Release gate expansion for Device Assignment
+### 50. Composition DSL and Unified Agent Exposure
 
-**Justification:** The PBC should not claim domain coverage unless release evidence proves the claim end to end.
+**Justification:** Generated applications must expose device lifecycle operations through DSL, UI, APIs, and the composed application agent.
 
-**Improvement:** Expand release gates for `medical_device_lifecycle` so every schema, service, API, event, handler, UI, rule, parameter, agent skill, seed scenario, and improvement backlog item maps to executable evidence. Tie the behavior to `medical_device_lifecycle_record_device_assignment_workflow` where applicable, and make it visible in `MedicalDeviceLifecycleWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Extend composition metadata for devices, assignments, calibrations, maintenance, recalls, usage traceability, regulatory evidence, workbench fragments, controls, and agent skills.
 
-**Acceptance evidence:** Release audit checks, manifest traceability, generated-app smoke tests, and missing-capability blockers. The evidence should be package-local in `src/pyAppGen/pbcs/medical_device_lifecycle` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** DSL tests must prove generated apps include device models, routes, services, event contracts, UI artifacts, and assistant skills without stream-engine picker exposure.
