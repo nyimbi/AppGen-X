@@ -140,6 +140,49 @@ agent InvoiceCopilot {
 
 ## 10. Lint And Generate
 
+## 10. Add Enterprise Contracts
+
+Add contracts for generated APIs, events, reports, menus, packaging, and tests.
+These declarations keep enterprise behavior reviewable in the same source file
+as the schema and UI.
+
+```appgen
+operation SendInvoice {
+  approved -> sent
+}
+
+api InvoiceApi {
+  GET "/invoices" -> SendInvoice
+  auth: Invoice.read
+}
+
+event InvoiceSent {
+  publish InvoiceSent -> SendInvoice
+  topic: pbc.invoicing.events
+}
+
+report AgingReport {
+  source: Invoice
+  export: csv, pdf
+}
+
+menu InvoiceMenu {
+  on Open -> SendInvoice
+}
+
+package InvoiceRelease {
+  targets: web, mobile, desktop
+  channel: stable
+}
+
+test InvoiceSmoke {
+  run happy_path -> SendInvoice
+  assert: ok
+}
+```
+
+## 11. Lint And Generate
+
 ```bash
 appgen --lint-dsl invoice.appgen
 appgen --dsl invoice.appgen --writedir generated/invoice/app
@@ -154,7 +197,7 @@ After generation, inspect:
   desktop, and chatbot target experience gate.
 - `app/agents.py` for local/API LLM readiness and agent plans.
 
-## 11. Review The Generated Studio
+## 12. Review The Generated Studio
 
 Open the generated Studio contracts when integrating with a visual builder:
 

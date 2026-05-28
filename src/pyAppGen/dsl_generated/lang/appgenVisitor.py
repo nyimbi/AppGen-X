@@ -199,6 +199,61 @@ class appgenVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
+    # Visit a parse tree produced by appgenParser#apiDecl.
+    def visitApiDecl(self, ctx:appgenParser.ApiDeclContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by appgenParser#eventDecl.
+    def visitEventDecl(self, ctx:appgenParser.EventDeclContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by appgenParser#jobDecl.
+    def visitJobDecl(self, ctx:appgenParser.JobDeclContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by appgenParser#reportDecl.
+    def visitReportDecl(self, ctx:appgenParser.ReportDeclContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by appgenParser#menuDecl.
+    def visitMenuDecl(self, ctx:appgenParser.MenuDeclContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by appgenParser#componentDecl.
+    def visitComponentDecl(self, ctx:appgenParser.ComponentDeclContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by appgenParser#packageDecl.
+    def visitPackageDecl(self, ctx:appgenParser.PackageDeclContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by appgenParser#testDecl.
+    def visitTestDecl(self, ctx:appgenParser.TestDeclContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by appgenParser#contractItem.
+    def visitContractItem(self, ctx:appgenParser.ContractItemContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by appgenParser#handlerDecl.
+    def visitHandlerDecl(self, ctx:appgenParser.HandlerDeclContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by appgenParser#contractArrow.
+    def visitContractArrow(self, ctx:appgenParser.ContractArrowContext):
+        return self.visitChildren(ctx)
+
+
     # Visit a parse tree produced by appgenParser#agenticOption.
     def visitAgenticOption(self, ctx:appgenParser.AgenticOptionContext):
         return self.visitChildren(ctx)
@@ -209,13 +264,23 @@ class appgenVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
+    # Visit a parse tree produced by appgenParser#valueAtom.
+    def visitValueAtom(self, ctx:appgenParser.ValueAtomContext):
+        return self.visitChildren(ctx)
+
+
     # Visit a parse tree produced by appgenParser#ruleItem.
     def visitRuleItem(self, ctx:appgenParser.RuleItemContext):
         return self.visitChildren(ctx)
 
 
-    # Visit a parse tree produced by appgenParser#ruleValue.
-    def visitRuleValue(self, ctx:appgenParser.RuleValueContext):
+    # Visit a parse tree produced by appgenParser#ruleExpression.
+    def visitRuleExpression(self, ctx:appgenParser.RuleExpressionContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by appgenParser#ruleTerm.
+    def visitRuleTerm(self, ctx:appgenParser.RuleTermContext):
         return self.visitChildren(ctx)
 
 
@@ -226,6 +291,11 @@ class appgenVisitor(ParseTreeVisitor):
 
     # Visit a parse tree produced by appgenParser#literal.
     def visitLiteral(self, ctx:appgenParser.LiteralContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by appgenParser#qualifiedName.
+    def visitQualifiedName(self, ctx:appgenParser.QualifiedNameContext):
         return self.visitChildren(ctx)
 
 

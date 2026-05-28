@@ -17,9 +17,12 @@ from .schema import AppSchema
 from .schema import AgentSchema
 from .schema import ColumnSchema
 from .schema import EnumSchema
+from .schema import EnterpriseContractSchema
+from .schema import EnterpriseStatementSchema
 from .schema import FormComponentSchema
 from .schema import FlowSchema
 from .schema import FlowStepSchema
+from .schema import HandlerSchema
 from .schema import LLMProviderSchema
 from .schema import PermissionSchema
 from .schema import PlatformBlockSchema
@@ -240,6 +243,14 @@ def dsl_outline(text: str, *, source_name: str | None = None) -> dict:
                     }
                     for component in view.components
                 ),
+                "handlers": tuple(
+                    {
+                        "trigger": handler.trigger,
+                        "event": handler.event,
+                        "target": handler.target,
+                    }
+                    for handler in view.handlers
+                ),
             }
             for view in schema.views
         ),
@@ -257,6 +268,10 @@ def dsl_outline(text: str, *, source_name: str | None = None) -> dict:
         "platform_blocks": tuple(
             {"kind": block.kind, "name": block.name}
             for block in schema.platform_blocks
+        ),
+        "enterprise_contracts": tuple(
+            {"kind": contract.kind, "name": contract.name}
+            for contract in _enterprise_contracts(schema)
         ),
         "summary": _lint_summary(schema),
     }
@@ -1168,6 +1183,14 @@ def schema_from_dsl(text: str, *, source_name: str | None = None) -> AppSchema:
     llm_providers: list[LLMProviderSchema] = []
     agents: list[AgentSchema] = []
     platform_blocks: list[PlatformBlockSchema] = []
+    api_contracts: list[EnterpriseContractSchema] = []
+    event_contracts: list[EnterpriseContractSchema] = []
+    job_contracts: list[EnterpriseContractSchema] = []
+    report_contracts: list[EnterpriseContractSchema] = []
+    menu_contracts: list[EnterpriseContractSchema] = []
+    component_contracts: list[EnterpriseContractSchema] = []
+    package_contracts: list[EnterpriseContractSchema] = []
+    test_contracts: list[EnterpriseContractSchema] = []
     groups = {
         element.groupDecl().IDENT().getText(): element.groupDecl().tableBody()
         for element in tree.element()
@@ -1209,6 +1232,22 @@ def schema_from_dsl(text: str, *, source_name: str | None = None) -> AppSchema:
             platform_blocks.append(_operation_block(element.operationDecl()))
         elif element.securityDecl():
             platform_blocks.append(_security_block(element.securityDecl()))
+        elif element.apiDecl():
+            api_contracts.append(_enterprise_contract("api", element.apiDecl()))
+        elif element.eventDecl():
+            event_contracts.append(_enterprise_contract("event", element.eventDecl()))
+        elif element.jobDecl():
+            job_contracts.append(_enterprise_contract("job", element.jobDecl()))
+        elif element.reportDecl():
+            report_contracts.append(_enterprise_contract("report", element.reportDecl()))
+        elif element.menuDecl():
+            menu_contracts.append(_enterprise_contract("menu", element.menuDecl()))
+        elif element.componentDecl():
+            component_contracts.append(_enterprise_contract("component", element.componentDecl()))
+        elif element.packageDecl():
+            package_contracts.append(_enterprise_contract("package", element.packageDecl()))
+        elif element.testDecl():
+            test_contracts.append(_enterprise_contract("test", element.testDecl()))
 
     tables = _apply_external_relations(tables, relations)
     schema = AppSchema(
@@ -1225,6 +1264,14 @@ def schema_from_dsl(text: str, *, source_name: str | None = None) -> AppSchema:
         llm_providers=tuple(llm_providers),
         agents=tuple(agents),
         platform_blocks=tuple(platform_blocks),
+        api_contracts=tuple(api_contracts),
+        event_contracts=tuple(event_contracts),
+        job_contracts=tuple(job_contracts),
+        report_contracts=tuple(report_contracts),
+        menu_contracts=tuple(menu_contracts),
+        component_contracts=tuple(component_contracts),
+        package_contracts=tuple(package_contracts),
+        test_contracts=tuple(test_contracts),
     )
     _validate_schema(schema)
     return schema
@@ -1242,6 +1289,7 @@ def _lint_summary(schema: AppSchema | None) -> dict:
             "llm_providers": 0,
             "agents": 0,
             "platform_blocks": 0,
+            "enterprise_contracts": 0,
             "targets": (),
         }
     targets, unknown = normalize_platform_targets(schema.app_options.get("targets"))
@@ -1256,6 +1304,7 @@ def _lint_summary(schema: AppSchema | None) -> dict:
         "llm_providers": len(schema.llm_providers),
         "agents": len(schema.agents),
         "platform_blocks": len(schema.platform_blocks),
+        "enterprise_contracts": len(_enterprise_contracts(schema)),
         "targets": targets,
         "unknown_targets": unknown,
     }
@@ -1299,6 +1348,18 @@ def _dsl_snippets() -> tuple[dict, ...]:
             "kind": "snippet",
             "detail": "Agentic workflow block.",
         },
+        {
+            "label": "API Contract",
+            "insert": "api OrdersApi {\n  GET \"/orders\" -> ListOrders\n  auth: Order.read\n}",
+            "kind": "snippet",
+            "detail": "Generated API operation contract.",
+        },
+        {
+            "label": "Package",
+            "insert": "package Release {\n  targets: web, mobile, desktop\n  channel: stable\n}",
+            "kind": "snippet",
+            "detail": "Generated app packaging contract.",
+        },
     )
 
 
@@ -1313,6 +1374,7 @@ def _outline_blocks(source: str, schema: AppSchema) -> tuple[dict, ...]:
     names.extend(("llm", provider.name) for provider in schema.llm_providers)
     names.extend(("agent", agent.name) for agent in schema.agents)
     names.extend((block.kind, block.name) for block in schema.platform_blocks)
+    names.extend((contract.kind, contract.name) for contract in _enterprise_contracts(schema))
     return tuple(_outline_block(source, kind, name) for kind, name in names if name)
 
 
@@ -1345,7 +1407,24 @@ def _regex_outline(source: str, *, source_name: str | None = None, error: str | 
         "targets": (),
         "blocks": tuple(
             _outline_block(normalized, kind, name)
-            for kind in ("table", "enum", "view", "flow", "role", "rule", "llm", "agent")
+            for kind in (
+                "table",
+                "enum",
+                "view",
+                "flow",
+                "role",
+                "rule",
+                "llm",
+                "agent",
+                "api",
+                "event",
+                "job",
+                "report",
+                "menu",
+                "component",
+                "package",
+                "test",
+            )
             for name in _declared_block_names(normalized, kind)
         ),
         "tables": tables,
@@ -1418,6 +1497,14 @@ CORE_KEYWORDS = (
     "version",
     "operation",
     "security",
+    "api",
+    "event",
+    "job",
+    "report",
+    "menu",
+    "component",
+    "package",
+    "test",
     "pk",
     "required",
     "unique",
@@ -1437,8 +1524,10 @@ KEYWORD_FREE_SYNTAX = (
     "type[] arrays",
     "= derived fields",
     "@ component placements",
+    "on Event -> Handler wiring",
     "generic app options",
     "PBC composition, audit, deployment, versioning, operations, and security blocks",
+    "API, event, job, report, menu, component, package, and test contract blocks",
     "entity/model/form/screen/workflow authoring aliases",
     "hide/searchable modifier aliases",
 )
@@ -1568,6 +1657,16 @@ def dsl_antlr_integrity_report() -> dict:
         "versionDecl",
         "operationDecl",
         "securityDecl",
+        "apiDecl",
+        "eventDecl",
+        "jobDecl",
+        "reportDecl",
+        "menuDecl",
+        "componentDecl",
+        "packageDecl",
+        "testDecl",
+        "contractItem",
+        "handlerDecl",
     )
     missing_required_rules = tuple(rule for rule in required_rules if rule not in parser_rule_set)
     missing_parser_tokens = tuple(token for token in grammar_tokens if token not in parser_symbol_set)
@@ -1771,6 +1870,8 @@ def _validate_schema(schema: AppSchema) -> None:
         _duplicate_name_errors("llm provider", (provider.name for provider in schema.llm_providers))
     )
     errors.extend(_duplicate_name_errors("agent", (agent.name for agent in schema.agents)))
+    for kind, contracts in _enterprise_contract_groups(schema).items():
+        errors.extend(_duplicate_name_errors(kind, (contract.name for contract in contracts)))
 
     for relation in schema.relations:
         if relation.source_table not in table_map:
@@ -1834,6 +1935,28 @@ def _validate_schema(schema: AppSchema) -> None:
         for agent in schema.agents:
             if agent.provider and agent.provider not in provider_names:
                 errors.append(f"Unknown agent provider: {agent.name}.{agent.provider}")
+
+    operation_names = {flow.name for flow in schema.flows}
+    operation_names.update(block.name for block in schema.platform_blocks if block.kind == "operation")
+    handler_targets = set(operation_names)
+    handler_targets.update(contract.name for contract in _enterprise_contracts(schema))
+    for view in schema.views:
+        for handler in view.handlers:
+            if handler.target not in handler_targets:
+                errors.append(f"Unknown handler target: {view.name}.{handler.target}")
+    for contract in _enterprise_contracts(schema):
+        for handler in contract.handlers:
+            if handler.target not in handler_targets:
+                errors.append(f"Unknown handler target: {contract.name}.{handler.target}")
+        for statement in contract.statements:
+            if statement.target and statement.target not in handler_targets:
+                errors.append(f"Unknown contract target: {contract.name}.{statement.target}")
+        if contract.kind == "package":
+            package_targets = contract.options.get("target", ()) or contract.options.get("targets", ())
+            if package_targets:
+                _targets, unknown = normalize_platform_targets(package_targets)
+                for target in unknown:
+                    errors.append(f"Unknown package target: {contract.name}.{target}")
 
     for table_name, field_name in _explicit_rls_targets(schema.app_options):
         if table_name not in table_map:
@@ -2051,7 +2174,11 @@ def _view(ctx) -> ViewSchema:
     fields: list[str] = []
     sections: list[ViewSectionSchema] = []
     components: list[FormComponentSchema] = []
+    handlers: list[HandlerSchema] = []
     for item in ctx.viewItem():
+        if item.handlerDecl():
+            handlers.append(_handler(item.handlerDecl()))
+            continue
         if item.componentPlacement():
             components.append(_component_placement(item.componentPlacement()))
             continue
@@ -2069,6 +2196,7 @@ def _view(ctx) -> ViewSchema:
         tuple(fields),
         tuple(sections),
         tuple(components),
+        tuple(handlers),
     )
 
 
@@ -2106,8 +2234,8 @@ def _rule(ctx) -> RuleSchema:
     identifiers = ctx.IDENT()
     conditions = []
     for item in ctx.ruleItem():
-        field_name = item.IDENT(0).getText()
         if item.REQUIRED():
+            field_name = item.IDENT(0).getText()
             message = _literal_text(item.STRING().getText()) if item.STRING() else None
             conditions.append(
                 RuleConditionSchema(
@@ -2117,12 +2245,15 @@ def _rule(ctx) -> RuleSchema:
                 )
             )
             continue
-        values = tuple(_literal(literal) for literal in item.ruleValue().literal())
-        action = item.IDENT(1).getText() if len(item.IDENT()) > 1 else None
+        expression = item.ruleExpression()
+        terms = tuple(term.getText() for term in expression.ruleTerm())
+        field_name = _first_identifier(terms[0] if terms else item.getText())
+        action = item.IDENT().getText() if item.ARROW() else None
+        values = tuple(value for value in terms[1:] if value != field_name)
         conditions.append(
             RuleConditionSchema(
                 field=field_name,
-                operator=item.ruleOperator().getText(),
+                operator=_rule_operator_text(expression),
                 values=values,
                 action=action,
             )
@@ -2130,8 +2261,90 @@ def _rule(ctx) -> RuleSchema:
     return RuleSchema(identifiers[0].getText(), identifiers[1].getText(), tuple(conditions))
 
 
+def _first_identifier(text: str) -> str:
+    match = re.search(r"[A-Za-z_][A-Za-z0-9_]*", text)
+    if not match:
+        raise AppGenSyntaxError(f"Rule expression must start with a field reference: {text}")
+    return match.group(0)
+
+
+def _rule_operator_text(ctx) -> str:
+    operators = ctx.ruleOperator()
+    if operators:
+        return operators[0].getText()
+    text = ctx.getText()
+    for operator in ("and", "or", "not"):
+        if operator in text:
+            return "expr"
+    return "expr"
+
+
 def _agentic_platform_block(kind: str, ctx) -> PlatformBlockSchema:
     return PlatformBlockSchema(kind=kind, name=ctx.IDENT().getText(), options=_agentic_options(ctx))
+
+
+def _enterprise_contracts(schema: AppSchema) -> tuple[EnterpriseContractSchema, ...]:
+    return (
+        *schema.api_contracts,
+        *schema.event_contracts,
+        *schema.job_contracts,
+        *schema.report_contracts,
+        *schema.menu_contracts,
+        *schema.component_contracts,
+        *schema.package_contracts,
+        *schema.test_contracts,
+    )
+
+
+def _enterprise_contract_groups(schema: AppSchema) -> dict[str, tuple[EnterpriseContractSchema, ...]]:
+    return {
+        "api": schema.api_contracts,
+        "event": schema.event_contracts,
+        "job": schema.job_contracts,
+        "report": schema.report_contracts,
+        "menu": schema.menu_contracts,
+        "component": schema.component_contracts,
+        "package": schema.package_contracts,
+        "test": schema.test_contracts,
+    }
+
+
+def _enterprise_contract(kind: str, ctx) -> EnterpriseContractSchema:
+    options: dict[str, tuple[str, ...]] = {}
+    statements: list[EnterpriseStatementSchema] = []
+    handlers: list[HandlerSchema] = []
+    permissions: list[PermissionSchema] = []
+    for item in ctx.contractItem():
+        if item.handlerDecl():
+            handlers.append(_handler(item.handlerDecl()))
+        elif item.contractArrow():
+            statements.append(_contract_arrow(item.contractArrow()))
+        elif item.permission():
+            identifiers = [token.getText() for token in item.permission().IDENT()]
+            permissions.append(PermissionSchema(identifiers[0], tuple(identifiers[1:])))
+        elif item.agenticOption():
+            option = item.agenticOption()
+            values = tuple(_agentic_value(value) for value in option.agenticValue())
+            options[option.IDENT().getText()] = values
+    return EnterpriseContractSchema(
+        kind=kind,
+        name=ctx.IDENT().getText(),
+        options=options,
+        statements=tuple(statements),
+        handlers=tuple(handlers),
+        permissions=tuple(permissions),
+    )
+
+
+def _handler(ctx) -> HandlerSchema:
+    trigger, event, target = [token.getText() for token in ctx.IDENT()]
+    return HandlerSchema(trigger=trigger, event=event, target=target)
+
+
+def _contract_arrow(ctx) -> EnterpriseStatementSchema:
+    identifiers = [token.getText() for token in ctx.IDENT()]
+    values = tuple(_agentic_value(value) for value in ctx.agenticValue())
+    return EnterpriseStatementSchema(verb=identifiers[0], values=values, target=identifiers[-1])
 
 
 def _composition_block(ctx) -> PlatformBlockSchema:

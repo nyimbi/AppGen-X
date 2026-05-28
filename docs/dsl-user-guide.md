@@ -96,6 +96,60 @@ Use `schema_source_example_audit()` when validating source imports. It creates
 small DBML, SQL, PonyORM, live SQLite database, and DSL examples, runs the real
 adapters, and verifies that every family produces an `AppSchema` with tables,
 relations, fingerprints, fidelity reports, and generation commands.
+
+## Enterprise Contracts
+
+Use enterprise contract blocks when the DSL needs to describe more than tables
+and forms. These blocks are parsed into typed schema collections, included in
+IDE outlines, and validated by the linter.
+
+```appgen
+operation PostJournal {
+  draft -> posted
+}
+
+api JournalsApi {
+  GET "/journals" -> PostJournal
+  auth: Journal.read
+}
+
+event JournalPosted {
+  publish JournalPosted -> PostJournal
+  topic: pbc.gl_core.events
+}
+
+job NightlyClose {
+  daily -> PostJournal
+  retry: 3
+}
+
+report TrialBalance {
+  source: Journal
+  export: csv, pdf
+}
+
+menu MainMenu {
+  on Open -> PostJournal
+}
+
+component StatusBadge {
+  on Click -> PostJournal
+  prop: status
+}
+
+package DesktopMobileWeb {
+  targets: web, mobile, desktop
+  channel: stable
+}
+
+test JournalSmoke {
+  run happy_path -> PostJournal
+  assert: ok
+}
+```
+
+Handlers and arrow statements must target an existing flow, operation, or
+enterprise contract. Package targets must be one of the supported app targets.
 Run `appgen --schema-source-audit` to emit the same release proof as JSON from
 the command line.
 Run `appgen --source-intake-release-audit` to promote DBML, SQL, PonyORM,

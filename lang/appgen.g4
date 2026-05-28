@@ -38,6 +38,14 @@ element
   | versionDecl
   | operationDecl
   | securityDecl
+  | apiDecl
+  | eventDecl
+  | jobDecl
+  | reportDecl
+  | menuDecl
+  | componentDecl
+  | packageDecl
+  | testDecl
   ;
 
 tableDecl
@@ -106,7 +114,8 @@ viewDecl
   ;
 
 viewItem
-  : componentPlacement
+  : handlerDecl
+  | componentPlacement
   | IDENT (COLON IDENT (COMMA IDENT)* | (COMMA IDENT)*) SEMI?
   ;
 
@@ -188,21 +197,107 @@ securityItem
   | agenticOption
   ;
 
+apiDecl
+  : API IDENT LBRACE contractItem* RBRACE
+  ;
+
+eventDecl
+  : EVENT IDENT LBRACE contractItem* RBRACE
+  ;
+
+jobDecl
+  : JOB IDENT LBRACE contractItem* RBRACE
+  ;
+
+reportDecl
+  : REPORT IDENT LBRACE contractItem* RBRACE
+  ;
+
+menuDecl
+  : MENU IDENT LBRACE contractItem* RBRACE
+  ;
+
+componentDecl
+  : COMPONENT IDENT LBRACE contractItem* RBRACE
+  ;
+
+packageDecl
+  : PACKAGE IDENT LBRACE contractItem* RBRACE
+  ;
+
+testDecl
+  : TEST IDENT LBRACE contractItem* RBRACE
+  ;
+
+contractItem
+  : handlerDecl
+  | contractArrow
+  | agenticOption
+  | permission
+  ;
+
+handlerDecl
+  : IDENT IDENT ARROW IDENT SEMI?
+  ;
+
+contractArrow
+  : IDENT agenticValue* ARROW IDENT SEMI?
+  ;
+
 agenticOption
   : IDENT COLON agenticValue (COMMA agenticValue)* SEMI?
   ;
 
 agenticValue
-  : literal ((DOT | MINUS) literal)*
+  : valueAtom ((DOT | MINUS) valueAtom)*
+  ;
+
+valueAtom
+  : literal
+  | APP
+  | TABLE
+  | ENUM
+  | VIEW
+  | FOR
+  | FLOW
+  | ROLE
+  | RULE
+  | PBC
+  | COMPOSITION
+  | AUDIT
+  | DEPLOY
+  | VERSION
+  | OPERATION
+  | SECURITY
+  | API
+  | EVENT
+  | JOB
+  | REPORT
+  | MENU
+  | COMPONENT
+  | PACKAGE
+  | TEST
+  | LLM
+  | AGENT
+  | INCLUDE
+  | REQUIRE
+  | EXPOSE
+  | CONNECT
   ;
 
 ruleItem
   : IDENT REQUIRED STRING? SEMI?
-  | IDENT ruleOperator ruleValue (ARROW IDENT)? SEMI?
+  | ruleExpression (ARROW IDENT)? SEMI?
   ;
 
-ruleValue
-  : literal (COMMA literal)*
+ruleExpression
+  : ruleTerm ((ruleOperator | IDENT) ruleTerm (COMMA ruleTerm)*)*
+  ;
+
+ruleTerm
+  : qualifiedName
+  | literal
+  | LPAREN ruleExpression RPAREN
   ;
 
 ruleOperator
@@ -223,12 +318,16 @@ literal
   | IDENT
   ;
 
+qualifiedName
+  : IDENT (DOT IDENT)*
+  ;
+
 expression
   : expressionAtom (operator expressionAtom)*
   ;
 
 expressionAtom
-  : target
+  : qualifiedName
   | literal
   | LPAREN expression RPAREN
   ;
@@ -256,6 +355,14 @@ DEPLOY   : 'deploy';
 VERSION  : 'version';
 OPERATION : 'operation';
 SECURITY : 'security';
+API      : 'api';
+EVENT    : 'event';
+JOB      : 'job';
+REPORT   : 'report';
+MENU     : 'menu';
+COMPONENT : 'component';
+PACKAGE  : 'package';
+TEST     : 'test';
 INCLUDE  : 'include';
 REQUIRE  : 'require';
 EXPOSE   : 'expose';

@@ -7,10 +7,14 @@ def test_dsl_accepts_pbc_composition_operations_security_surface() -> None:
     source = """
     app EnterpriseCore { targets: web, mobile, desktop }
     table Journal { id: int pk; status: string required search }
+    view JournalForm for Journal {
+      Main: status
+      on Save -> PostJournal
+    }
     flow PostJournal { draft -> posted }
     rule PostingPolicy for Journal {
       status in draft, posted
-      status == posted -> AuditReview
+      status == posted and id > 0 -> AuditReview
     }
     pbc gl_core {
       label: "General Ledger Core"
@@ -35,6 +39,37 @@ def test_dsl_accepts_pbc_composition_operations_security_surface() -> None:
       reviewed -> posted
       owner: finance_ops
     }
+    api JournalsApi {
+      GET "/journals" -> PostJournal
+      auth: Journal.read
+    }
+    event JournalPosted {
+      publish JournalPosted -> PostJournal
+      topic: pbc.gl_core.events
+    }
+    job NightlyClose {
+      daily -> CloseBooks
+      retry: 3
+    }
+    report TrialBalance {
+      source: Journal
+      export: csv, pdf
+    }
+    menu MainMenu {
+      on Open -> PostJournal
+    }
+    component StatusBadge {
+      on Click -> PostJournal
+      prop: status
+    }
+    package DesktopMobileWeb {
+      targets: web, mobile, desktop
+      channel: stable
+    }
+    test JournalSmoke {
+      run happy_path -> PostJournal
+      assert: ok
+    }
     security TenantPolicy {
       Journal: read, create, update
       rbac: enabled
@@ -50,6 +85,7 @@ def test_dsl_accepts_pbc_composition_operations_security_surface() -> None:
     report = lint_dsl(source)
     assert report["ok"] is True
     assert report["summary"]["platform_blocks"] == 7
+    assert report["summary"]["enterprise_contracts"] == 8
 
     schema = schema_from_dsl(source)
     assert {block.kind for block in schema.platform_blocks} == {
@@ -61,4 +97,27 @@ def test_dsl_accepts_pbc_composition_operations_security_surface() -> None:
         "operation",
         "security",
     }
+    assert len(schema.api_contracts) == 1
+    assert len(schema.event_contracts) == 1
+    assert len(schema.job_contracts) == 1
+    assert len(schema.report_contracts) == 1
+    assert len(schema.menu_contracts) == 1
+    assert len(schema.component_contracts) == 1
+    assert len(schema.package_contracts) == 1
+    assert len(schema.test_contracts) == 1
+    assert schema.views[0].handlers[0].target == "PostJournal"
     assert dsl_antlr_integrity_report()["ok"] is True
+
+
+def test_dsl_rejects_unknown_enterprise_contract_references() -> None:
+    source = """
+    app BadEnterprise { targets: web }
+    table Journal { id: int pk; status: string }
+    api BadApi { GET "/journals" -> MissingOperation }
+    package BadPackage { targets: toaster }
+    """
+
+    report = lint_dsl(source)
+    assert report["ok"] is False
+    assert any("Unknown contract target: BadApi.MissingOperation" in error for error in report["errors"])
+    assert any("Unknown package target: BadPackage.toaster" in error for error in report["errors"])

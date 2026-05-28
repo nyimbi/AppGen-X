@@ -350,6 +350,105 @@ class appgenListener(ParseTreeListener):
         pass
 
 
+    # Enter a parse tree produced by appgenParser#apiDecl.
+    def enterApiDecl(self, ctx:appgenParser.ApiDeclContext):
+        pass
+
+    # Exit a parse tree produced by appgenParser#apiDecl.
+    def exitApiDecl(self, ctx:appgenParser.ApiDeclContext):
+        pass
+
+
+    # Enter a parse tree produced by appgenParser#eventDecl.
+    def enterEventDecl(self, ctx:appgenParser.EventDeclContext):
+        pass
+
+    # Exit a parse tree produced by appgenParser#eventDecl.
+    def exitEventDecl(self, ctx:appgenParser.EventDeclContext):
+        pass
+
+
+    # Enter a parse tree produced by appgenParser#jobDecl.
+    def enterJobDecl(self, ctx:appgenParser.JobDeclContext):
+        pass
+
+    # Exit a parse tree produced by appgenParser#jobDecl.
+    def exitJobDecl(self, ctx:appgenParser.JobDeclContext):
+        pass
+
+
+    # Enter a parse tree produced by appgenParser#reportDecl.
+    def enterReportDecl(self, ctx:appgenParser.ReportDeclContext):
+        pass
+
+    # Exit a parse tree produced by appgenParser#reportDecl.
+    def exitReportDecl(self, ctx:appgenParser.ReportDeclContext):
+        pass
+
+
+    # Enter a parse tree produced by appgenParser#menuDecl.
+    def enterMenuDecl(self, ctx:appgenParser.MenuDeclContext):
+        pass
+
+    # Exit a parse tree produced by appgenParser#menuDecl.
+    def exitMenuDecl(self, ctx:appgenParser.MenuDeclContext):
+        pass
+
+
+    # Enter a parse tree produced by appgenParser#componentDecl.
+    def enterComponentDecl(self, ctx:appgenParser.ComponentDeclContext):
+        pass
+
+    # Exit a parse tree produced by appgenParser#componentDecl.
+    def exitComponentDecl(self, ctx:appgenParser.ComponentDeclContext):
+        pass
+
+
+    # Enter a parse tree produced by appgenParser#packageDecl.
+    def enterPackageDecl(self, ctx:appgenParser.PackageDeclContext):
+        pass
+
+    # Exit a parse tree produced by appgenParser#packageDecl.
+    def exitPackageDecl(self, ctx:appgenParser.PackageDeclContext):
+        pass
+
+
+    # Enter a parse tree produced by appgenParser#testDecl.
+    def enterTestDecl(self, ctx:appgenParser.TestDeclContext):
+        pass
+
+    # Exit a parse tree produced by appgenParser#testDecl.
+    def exitTestDecl(self, ctx:appgenParser.TestDeclContext):
+        pass
+
+
+    # Enter a parse tree produced by appgenParser#contractItem.
+    def enterContractItem(self, ctx:appgenParser.ContractItemContext):
+        pass
+
+    # Exit a parse tree produced by appgenParser#contractItem.
+    def exitContractItem(self, ctx:appgenParser.ContractItemContext):
+        pass
+
+
+    # Enter a parse tree produced by appgenParser#handlerDecl.
+    def enterHandlerDecl(self, ctx:appgenParser.HandlerDeclContext):
+        pass
+
+    # Exit a parse tree produced by appgenParser#handlerDecl.
+    def exitHandlerDecl(self, ctx:appgenParser.HandlerDeclContext):
+        pass
+
+
+    # Enter a parse tree produced by appgenParser#contractArrow.
+    def enterContractArrow(self, ctx:appgenParser.ContractArrowContext):
+        pass
+
+    # Exit a parse tree produced by appgenParser#contractArrow.
+    def exitContractArrow(self, ctx:appgenParser.ContractArrowContext):
+        pass
+
+
     # Enter a parse tree produced by appgenParser#agenticOption.
     def enterAgenticOption(self, ctx:appgenParser.AgenticOptionContext):
         pass
@@ -368,6 +467,15 @@ class appgenListener(ParseTreeListener):
         pass
 
 
+    # Enter a parse tree produced by appgenParser#valueAtom.
+    def enterValueAtom(self, ctx:appgenParser.ValueAtomContext):
+        pass
+
+    # Exit a parse tree produced by appgenParser#valueAtom.
+    def exitValueAtom(self, ctx:appgenParser.ValueAtomContext):
+        pass
+
+
     # Enter a parse tree produced by appgenParser#ruleItem.
     def enterRuleItem(self, ctx:appgenParser.RuleItemContext):
         pass
@@ -377,12 +485,21 @@ class appgenListener(ParseTreeListener):
         pass
 
 
-    # Enter a parse tree produced by appgenParser#ruleValue.
-    def enterRuleValue(self, ctx:appgenParser.RuleValueContext):
+    # Enter a parse tree produced by appgenParser#ruleExpression.
+    def enterRuleExpression(self, ctx:appgenParser.RuleExpressionContext):
         pass
 
-    # Exit a parse tree produced by appgenParser#ruleValue.
-    def exitRuleValue(self, ctx:appgenParser.RuleValueContext):
+    # Exit a parse tree produced by appgenParser#ruleExpression.
+    def exitRuleExpression(self, ctx:appgenParser.RuleExpressionContext):
+        pass
+
+
+    # Enter a parse tree produced by appgenParser#ruleTerm.
+    def enterRuleTerm(self, ctx:appgenParser.RuleTermContext):
+        pass
+
+    # Exit a parse tree produced by appgenParser#ruleTerm.
+    def exitRuleTerm(self, ctx:appgenParser.RuleTermContext):
         pass
 
 
@@ -401,6 +518,15 @@ class appgenListener(ParseTreeListener):
 
     # Exit a parse tree produced by appgenParser#literal.
     def exitLiteral(self, ctx:appgenParser.LiteralContext):
+        pass
+
+
+    # Enter a parse tree produced by appgenParser#qualifiedName.
+    def enterQualifiedName(self, ctx:appgenParser.QualifiedNameContext):
+        pass
+
+    # Exit a parse tree produced by appgenParser#qualifiedName.
+    def exitQualifiedName(self, ctx:appgenParser.QualifiedNameContext):
         pass
 
 

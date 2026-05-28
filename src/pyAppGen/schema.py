@@ -180,6 +180,7 @@ class ViewSchema:
     fields: tuple[str, ...] = field(default_factory=tuple)
     sections: tuple[ViewSectionSchema, ...] = field(default_factory=tuple)
     components: tuple[FormComponentSchema, ...] = field(default_factory=tuple)
+    handlers: tuple[HandlerSchema, ...] = field(default_factory=tuple)
 
 
 @dataclass(frozen=True)
@@ -278,6 +279,36 @@ class PlatformBlockSchema:
 
 
 @dataclass(frozen=True)
+class HandlerSchema:
+    """A UI, menu, component, or contract event handler binding."""
+
+    trigger: str
+    event: str
+    target: str
+
+
+@dataclass(frozen=True)
+class EnterpriseStatementSchema:
+    """One typed statement inside an enterprise DSL contract block."""
+
+    verb: str
+    values: tuple[str, ...] = field(default_factory=tuple)
+    target: str | None = None
+
+
+@dataclass(frozen=True)
+class EnterpriseContractSchema:
+    """A typed enterprise contract such as API, event, job, report, menu, package, or test."""
+
+    kind: str
+    name: str
+    options: dict[str, tuple[str, ...]] = field(default_factory=dict)
+    statements: tuple[EnterpriseStatementSchema, ...] = field(default_factory=tuple)
+    handlers: tuple[HandlerSchema, ...] = field(default_factory=tuple)
+    permissions: tuple[PermissionSchema, ...] = field(default_factory=tuple)
+
+
+@dataclass(frozen=True)
 class TableSchema:
     """A portable table definition."""
 
@@ -302,6 +333,14 @@ class AppSchema:
     llm_providers: tuple[LLMProviderSchema, ...] = field(default_factory=tuple)
     agents: tuple[AgentSchema, ...] = field(default_factory=tuple)
     platform_blocks: tuple[PlatformBlockSchema, ...] = field(default_factory=tuple)
+    api_contracts: tuple[EnterpriseContractSchema, ...] = field(default_factory=tuple)
+    event_contracts: tuple[EnterpriseContractSchema, ...] = field(default_factory=tuple)
+    job_contracts: tuple[EnterpriseContractSchema, ...] = field(default_factory=tuple)
+    report_contracts: tuple[EnterpriseContractSchema, ...] = field(default_factory=tuple)
+    menu_contracts: tuple[EnterpriseContractSchema, ...] = field(default_factory=tuple)
+    component_contracts: tuple[EnterpriseContractSchema, ...] = field(default_factory=tuple)
+    package_contracts: tuple[EnterpriseContractSchema, ...] = field(default_factory=tuple)
+    test_contracts: tuple[EnterpriseContractSchema, ...] = field(default_factory=tuple)
 
     def table(self, name: str) -> TableSchema:
         for table in self.tables:

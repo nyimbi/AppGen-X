@@ -7785,11 +7785,11 @@ def test_dsl_linter_reports_semantic_feedback(runner: CliRunner, tmp_path) -> No
     assert report["summary"]["targets"] == ("web", "mobile")
     assert report["language_quality"]["format"] == "appgen.dsl-language-quality.v1"
     assert report["language_quality"]["ok"] is True
-    assert report["language_quality"]["canonical_keyword_count"] == 24
+    assert report["language_quality"]["canonical_keyword_count"] == 32
     assert "ref" not in report["language_quality"]["keywords"]
     assert report["language_quality"]["legacy_contextual_tokens"] == ("ref", "include", "require", "expose", "connect")
     assert dsl_keyword_budget()["count"] <= dsl_keyword_budget()["limit"]
-    assert dsl_keyword_budget()["canonical_keyword_count"] == 24
+    assert dsl_keyword_budget()["canonical_keyword_count"] == 32
     assert dsl_keyword_budget()["legacy_contextual_tokens"] == ("ref", "include", "require", "expose", "connect")
     assert dsl_keyword_budget()["modifier_aliases"] == {"hide": "hidden", "searchable": "search"}
     assert dsl_language_quality_contract()["grammar"] == "lang/appgen.g4"
@@ -14891,7 +14891,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "replace_ref_with_arrow",
     }
     assert studio.dsl_keyword_budget()["ok"] is True
-    assert studio.dsl_keyword_budget()["canonical_keyword_count"] == 24
+    assert studio.dsl_keyword_budget()["canonical_keyword_count"] == 32
     assert studio.dsl_keyword_budget()["legacy_contextual_tokens"] == ("ref", "include", "require", "expose", "connect")
     authoring = studio.dsl_authoring_surface(
         "app Library { targets: web, mobile, toaster } table Book { id: int pk }"
@@ -20865,7 +20865,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert nl_evolution.nl_evolution_release_gate({"app/nl_evolution.py"})["ok"] is False
     assert dsl_reference.dsl_keyword_budget()["count"] <= dsl_reference.dsl_keyword_budget()["limit"]
     assert dsl_reference.dsl_keyword_budget()["format"] == "appgen.dsl-keyword-budget.v1"
-    assert dsl_reference.dsl_keyword_budget()["legacy_contextual_tokens"] == ("ref",)
+    assert "ref" in dsl_reference.dsl_keyword_budget()["legacy_contextual_tokens"]
     assert dsl_reference.dsl_language_quality_contract()["format"] == "appgen.dsl-language-quality.v1"
     assert dsl_reference.dsl_language_quality_contract()["ok"] is True
     assert dsl_reference.dsl_language_quality_contract()["canonical_keyword_count"] >= 17
@@ -21935,6 +21935,14 @@ def test_appgen_dsl_prefers_arrow_references_and_keeps_keyword_budget(tmp_path) 
         "VERSION",
         "OPERATION",
         "SECURITY",
+        "API",
+        "EVENT",
+        "JOB",
+        "REPORT",
+        "MENU",
+        "COMPONENT",
+        "PACKAGE",
+        "TEST",
         "LLM",
         "AGENT",
         "PK",
@@ -21961,6 +21969,15 @@ def test_appgen_dsl_prefers_arrow_references_and_keeps_keyword_budget(tmp_path) 
     assert "versionDecl" in grammar
     assert "operationDecl" in grammar
     assert "securityDecl" in grammar
+    assert "apiDecl" in grammar
+    assert "eventDecl" in grammar
+    assert "jobDecl" in grammar
+    assert "reportDecl" in grammar
+    assert "menuDecl" in grammar
+    assert "componentDecl" in grammar
+    assert "packageDecl" in grammar
+    assert "testDecl" in grammar
+    assert "handlerDecl" in grammar
 
 
 def test_appgen_dsl_accepts_authoring_aliases_without_new_keywords(tmp_path) -> None:

@@ -1,10 +1,11 @@
 # AppGen DSL Grammar
 
-The AppGen DSL is an ANTLR-backed language for describing data models, forms,
-workflows, roles, rules, LLM providers, agents, and target platforms with a
-small keyword budget. The canonical grammar lives in `lang/appgen.g4`; this
-document is the human reference for that grammar and the validation semantics
-enforced by `pyAppGen.dsl`.
+The AppGen DSL is an ANTLR-backed language for describing enterprise data
+models, forms, workflows, roles, rules, LLM providers, agents, PBC composition,
+APIs, events, jobs, reports, menus, reusable components, packages, tests, and
+target platforms with a small keyword budget. The canonical grammar lives in
+`lang/appgen.g4`; this document is the human reference for that grammar and the
+validation semantics enforced by `pyAppGen.dsl`.
 
 ## Complete Grammar
 
@@ -25,7 +26,22 @@ element : tableDecl
         | roleDecl
         | ruleDecl
         | llmDecl
-        | agentDecl ;
+        | agentDecl
+        | pbcDecl
+        | compositionDecl
+        | auditDecl
+        | deploymentDecl
+        | versionDecl
+        | operationDecl
+        | securityDecl
+        | apiDecl
+        | eventDecl
+        | jobDecl
+        | reportDecl
+        | menuDecl
+        | componentDecl
+        | packageDecl
+        | testDecl ;
 ```
 
 A file may start with an `app` block and then any number of declarations.
@@ -283,10 +299,78 @@ Supported operators are `==`, `!=`, `>=`, `<=`, `>`, `<`, and `in`.
 ```antlr
 ruleDecl     : RULE IDENT FOR IDENT LBRACE ruleItem* RBRACE ;
 ruleItem     : IDENT REQUIRED STRING? SEMI?
-             | IDENT ruleOperator ruleValue (ARROW IDENT)? SEMI? ;
-ruleValue    : literal (COMMA literal)* ;
+             | ruleExpression (ARROW IDENT)? SEMI? ;
+ruleExpression : ruleTerm ((ruleOperator | IDENT) ruleTerm (COMMA ruleTerm)*)* ;
+ruleTerm       : qualifiedName | literal | LPAREN ruleExpression RPAREN ;
 ruleOperator : EQEQ | NEQ | GTE | LTE | GT | LT | IN ;
 ```
+
+Rules can use compact boolean expressions such as
+`status == posted and amount > 0 -> Review`.
+
+## Enterprise Contracts
+
+Enterprise software contracts use typed top-level blocks while keeping detailed
+domain words as identifiers, options, or arrow statements.
+
+```appgen
+api JournalsApi {
+  GET "/journals" -> PostJournal
+  auth: Journal.read
+}
+
+event JournalPosted {
+  publish JournalPosted -> PostJournal
+  topic: pbc.gl_core.events
+}
+
+job NightlyClose {
+  daily -> CloseBooks
+  retry: 3
+}
+
+report TrialBalance {
+  source: Journal
+  export: csv, pdf
+}
+
+menu MainMenu {
+  on Open -> PostJournal
+}
+
+component StatusBadge {
+  on Click -> PostJournal
+  prop: status
+}
+
+package DesktopMobileWeb {
+  targets: web, mobile, desktop
+  channel: stable
+}
+
+test JournalSmoke {
+  run happy_path -> PostJournal
+  assert: ok
+}
+```
+
+```antlr
+apiDecl       : API IDENT LBRACE contractItem* RBRACE ;
+eventDecl     : EVENT IDENT LBRACE contractItem* RBRACE ;
+jobDecl       : JOB IDENT LBRACE contractItem* RBRACE ;
+reportDecl    : REPORT IDENT LBRACE contractItem* RBRACE ;
+menuDecl      : MENU IDENT LBRACE contractItem* RBRACE ;
+componentDecl : COMPONENT IDENT LBRACE contractItem* RBRACE ;
+packageDecl   : PACKAGE IDENT LBRACE contractItem* RBRACE ;
+testDecl      : TEST IDENT LBRACE contractItem* RBRACE ;
+contractItem  : handlerDecl | contractArrow | permission | agenticOption ;
+handlerDecl   : IDENT IDENT ARROW IDENT SEMI? ;
+contractArrow : IDENT agenticValue* ARROW IDENT SEMI? ;
+```
+
+The linter validates handler and contract arrow targets against declared flows,
+operations, and enterprise contracts. Package targets must normalize to
+supported platform targets.
 
 ## LLMs And Agents
 
@@ -341,7 +425,9 @@ STRING  : '"' ( '\\' . | ~["\\] )* '"'
 ```
 
 Canonical reserved words are: `app`, `table`, `enum`, `view`, `for`, `flow`,
-`role`, `rule`, `llm`, `agent`, `pk`, `required`, `unique`, `hidden`,
+`role`, `rule`, `pbc`, `composition`, `audit`, `deploy`, `version`,
+`operation`, `security`, `api`, `event`, `job`, `report`, `menu`, `component`,
+`package`, `test`, `llm`, `agent`, `pk`, `required`, `unique`, `hidden`,
 `search`, `default`, and `in`.
 
 Legacy compatibility token: `ref`. It remains parse-compatible so older DSL
@@ -361,7 +447,8 @@ it from the canonical keyword list and the linter offers `replace_ref_with_arrow
 Parsing is only the first gate. The package linter also validates:
 
 - supported app targets: `web`, `pwa`, `mobile`, `desktop`, and `chatbot`;
-- duplicate table, enum, view, flow, role, rule, LLM provider, and agent names;
+- duplicate table, enum, view, flow, role, rule, LLM provider, agent, and
+  enterprise contract names;
 - duplicate fields after group spreads are expanded;
 - relation source and target tables/fields;
 - field-level reference targets;
@@ -369,4 +456,6 @@ Parsing is only the first gate. The package linter also validates:
 - view section fields and RAD-style component fields;
 - role resources and rule table/field references;
 - agent provider names when LLM providers are declared;
-- relation cardinality values.
+- relation cardinality values;
+- handler and contract targets;
+- package targets.
