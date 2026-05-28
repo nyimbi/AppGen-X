@@ -3296,7 +3296,7 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   for out-of-DSL requests. Verification passed: Python compile for touched
   tooling entrypoints, direct NL planner CLI audit helper probe, focused NL
   planner tests (`3 passed`), scoped diff whitespace check, and restricted-name
-  scan outside archive, Git internals, and active PBC paths. Commit: pending.
+  scan outside archive, Git internals, and active PBC paths. Commit: `eb550f25`.
 - Current parallel PBC implementation pass delivered executable code for six
   PBCs rather than plan-only artifacts: `actuarial_pricing_reserving`,
   `advertising_campaign_operations`, `agri_supply_chain_traceability`,
