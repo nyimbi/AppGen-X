@@ -2,314 +2,314 @@
 
 ## Purpose
 
-This backlog identifies 50 high-impact, high-value improvements for `legal_matter_management`. Each item is specific to the domain surface currently declared by the PBC and is intended to move the package beyond world-class breadth toward complete specialist-grade coverage.
+This backlog identifies 50 high-impact, high-value improvements for `legal_matter_management`. Each item is specific to legal operations and matter management: intake, classification, parties, counsel, budgets, legal holds, custodians, deadlines, filings, documents, privilege, evidence, invoices, settlement, legal risk, outside counsel governance, and agent-assisted legal work. The intent is to move the PBC beyond table-stakes matter tracking into a complete, specialist-grade legal operating system while preserving AppGen-X package boundaries.
 
 ## Current Domain Evidence Used
 
-- Domain purpose: Owns legal matters, parties, counsel, budgets, holds, filings, deadlines, documents, invoices, risk, privilege controls, and matter lifecycle intelligence.
-- Representative owned tables: `legal_matter_management_legal_matter`, `legal_matter_management_matter_party`, `legal_matter_management_matter_counsel`, `legal_matter_management_matter_budget`, `legal_matter_management_matter_budget_line`, `legal_matter_management_legal_hold`, `legal_matter_management_hold_custodian`, `legal_matter_management_matter_deadline`, `legal_matter_management_filing_record`, `legal_matter_management_matter_document`, `legal_matter_management_document_privilege_review`, `legal_matter_management_outside_counsel_invoice`, ...
-- Representative operations/APIs: `open_legal_matter`, `register_matter_party`, `assign_counsel`, `create_matter_budget`, `capture_budget_line`, `issue_legal_hold`, `register_hold_custodian`, `track_matter_deadline`, `record_filing`, `attach_matter_document`, `review_document_privilege`, `ingest_counsel_invoice`, ...
-- Representative events: `LegalMatterOpened`, `LegalHoldIssued`, `MatterDeadlineTracked`, `FilingRecorded`, `MatterRiskChanged`, `MatterClosed`.
-- Representative advanced capabilities: `legal deadline risk prediction`, `semantic document privilege triage`, `case exposure simulation`, `outside counsel spend intelligence`, `cryptographic hold evidence`, `policy-aware settlement routing`.
+- Domain purpose: owns legal matters, parties, counsel, budgets, holds, filings, deadlines, documents, invoices, risk, privilege controls, and matter lifecycle intelligence.
+- Owned tables include matter, party, counsel, budget, budget line, legal hold, hold custodian, deadline, filing, document, privilege review, outside counsel invoice, task, risk assessment, settlement offer, outcome, exception, policy rule, parameter, schema extension, control assertion, governed model, outbox, inbox, and dead-letter evidence tables.
+- Operations include `open_legal_matter`, `register_matter_party`, `assign_counsel`, `create_matter_budget`, `capture_budget_line`, `issue_legal_hold`, `register_hold_custodian`, `track_matter_deadline`, `record_filing`, `attach_matter_document`, `review_document_privilege`, `ingest_counsel_invoice`, `create_matter_task`, `score_matter_risk`, `record_settlement_offer`, and `close_matter_outcome`.
+- Events include `LegalMatterOpened`, `LegalHoldIssued`, `MatterDeadlineTracked`, `FilingRecorded`, `MatterRiskChanged`, and `MatterClosed`; consumed events include supplier, invoice, policy, and audit proof signals.
+- Existing advanced claims include legal deadline risk prediction, semantic document privilege triage, case exposure simulation, outside counsel spend intelligence, cryptographic hold evidence, and policy-aware settlement routing.
 
 ## 50 Better-Than-World-Class Improvements
 
-### 1. Deep specialist lifecycle semantics for `legal_matter_management_legal_matter`
+### 1. Matter Intake Triage and Legal Taxonomy Engine
 
-**Justification:** This owned table is part of the Legal Matter Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns legal matters, parties, counsel, budgets, holds, filings, deadlines, documents, invoices, risk, privilege controls, and matter lifecycle intelligence.
+**Justification:** Legal operations fail early when intake captures free-text requests without normalizing jurisdiction, matter type, urgency, privilege sensitivity, business unit, regulatory exposure, and related contracts or disputes. A world-class PBC must classify legal work before tasks, counsel, budgets, or holds are created.
 
-**Improvement:** Extend `legal_matter_management_legal_matter` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `legal_matter_management`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add an intake triage engine for `open_legal_matter` that applies configurable legal taxonomies, question sets, required evidence, jurisdiction rules, urgency scoring, duplicate matter detection, and escalation paths. The UI should provide guided intake forms, document upload prompts, agent-assisted summarization, and a confidence-ranked matter classification with human override and audit evidence.
 
-### 2. Deep specialist lifecycle semantics for `legal_matter_management_matter_party`
+### 2. Conflict-of-Interest and Related-Party Screening
 
-**Justification:** This owned table is part of the Legal Matter Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns legal matters, parties, counsel, budgets, holds, filings, deadlines, documents, invoices, risk, privilege controls, and matter lifecycle intelligence.
+**Justification:** Assigning internal or outside counsel without checking adverse parties, affiliates, former clients, witnesses, and business relationships creates legal and ethical risk. The current party registration surface needs specialist conflict controls.
 
-**Improvement:** Extend `legal_matter_management_matter_party` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `legal_matter_management_workflow`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Extend `register_matter_party` and `assign_counsel` with conflict screening records, adverse-party aliases, beneficial owner projections, former representation flags, waiver tracking, wall requirements, and counsel eligibility decisions. Emit review tasks when conflicts are unresolved and block counsel assignment until waiver or clearance evidence is recorded.
 
-### 3. Deep specialist lifecycle semantics for `legal_matter_management_matter_counsel`
+### 3. Matter Type Playbooks
 
-**Justification:** This owned table is part of the Legal Matter Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns legal matters, parties, counsel, budgets, holds, filings, deadlines, documents, invoices, risk, privilege controls, and matter lifecycle intelligence.
+**Justification:** Litigation, employment, IP, regulatory, privacy, real estate, tax, commercial, and investigation matters require different phases, deadlines, documents, approvals, and risk models. A generic matter lifecycle underserves every legal team.
 
-**Improvement:** Extend `legal_matter_management_matter_counsel` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `legal_matter_management_analytics`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Create configurable matter playbooks that instantiate phase templates, tasks, filing checklists, hold requirements, budget categories, document sets, approval gates, and agent guidance by matter type and jurisdiction. The workbench should show playbook progress, missing artifacts, rule exceptions, and expected next actions.
 
-### 4. Deep specialist lifecycle semantics for `legal_matter_management_matter_budget`
+### 4. Jurisdiction and Venue Intelligence
 
-**Justification:** This owned table is part of the Legal Matter Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns legal matters, parties, counsel, budgets, holds, filings, deadlines, documents, invoices, risk, privilege controls, and matter lifecycle intelligence.
+**Justification:** Deadlines, filing formats, court calendars, service rules, preservation duties, counsel authorization, and settlement approval thresholds vary by jurisdiction and venue. Without explicit jurisdiction intelligence, the PBC cannot safely manage legal work.
 
-**Improvement:** Extend `legal_matter_management_matter_budget` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `configuration_schema`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add jurisdiction and venue profiles with local calendars, deadline computation rules, permitted filing methods, service constraints, venue-specific document requirements, local counsel rules, and holiday calendars. Link every deadline and filing to the applicable rule version and make agent recommendations cite the governing profile.
 
-### 5. Deep specialist lifecycle semantics for `legal_matter_management_matter_budget_line`
+### 5. Legal Hold Scope Builder
 
-**Justification:** This owned table is part of the Legal Matter Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns legal matters, parties, counsel, budgets, holds, filings, deadlines, documents, invoices, risk, privilege controls, and matter lifecycle intelligence.
+**Justification:** Legal holds must be precise enough to preserve relevant material while avoiding overbroad retention and unnecessary operational burden. A simple hold record is insufficient for serious discovery, investigation, or regulatory matters.
 
-**Improvement:** Extend `legal_matter_management_matter_budget_line` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `rule_engine`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Expand `issue_legal_hold` with a hold scope builder covering custodians, systems, date ranges, data categories, keywords, business processes, preservation rationale, hold notices, acknowledgements, reminders, escalations, and release criteria. Provide UI simulations of affected custodians and repositories before issuance.
 
-### 6. Deep specialist lifecycle semantics for `legal_matter_management_legal_hold`
+### 6. Custodian Interview and Acknowledgement Workflow
 
-**Justification:** This owned table is part of the Legal Matter Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns legal matters, parties, counsel, budgets, holds, filings, deadlines, documents, invoices, risk, privilege controls, and matter lifecycle intelligence.
+**Justification:** Hold effectiveness depends on defensible custodian communication, acknowledgement, follow-up, and interview evidence. Matter teams need more than a custodian list.
 
-**Improvement:** Extend `legal_matter_management_legal_hold` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `parameter_engine`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add custodian interview templates, acknowledgement records, non-response escalation, delegated acknowledgement, interview notes, preservation certifications, exception reasons, and re-issue tracking. The agent should draft custodian-specific notices from matter context and require approval before sending.
 
-### 7. Deep specialist lifecycle semantics for `legal_matter_management_hold_custodian`
+### 7. Defensible Preservation Evidence Ledger
 
-**Justification:** This owned table is part of the Legal Matter Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns legal matters, parties, counsel, budgets, holds, filings, deadlines, documents, invoices, risk, privilege controls, and matter lifecycle intelligence.
+**Justification:** Preservation disputes often turn on proof that legal hold instructions, scope changes, acknowledgements, and release decisions were timely and unaltered. Standard audit timestamps are too weak for high-stakes legal operations.
 
-**Improvement:** Extend `legal_matter_management_hold_custodian` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `owned_schema_migrations_models`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Create cryptographic hash chains for hold issuance, notice delivery, acknowledgement, custodian changes, scope amendments, and releases. Surface an evidence export package with event hashes, actor identities, policy versions, delivery receipts, and dead-letter retry history for audit and court-ready preservation proof.
 
-### 8. Deep specialist lifecycle semantics for `legal_matter_management_matter_deadline`
+### 8. Deadline Computation and Calendar Assurance
 
-**Justification:** This owned table is part of the Legal Matter Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns legal matters, parties, counsel, budgets, holds, filings, deadlines, documents, invoices, risk, privilege controls, and matter lifecycle intelligence.
+**Justification:** Missed limitation periods, court deadlines, response windows, filing cutoffs, and renewal dates can create catastrophic risk. Deadlines cannot be treated as ordinary tasks.
 
-**Improvement:** Extend `legal_matter_management_matter_deadline` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `appgen_x_outbox_inbox_eventing`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Upgrade `track_matter_deadline` with computed deadlines, source-trigger events, rule citations, jurisdiction calendars, timezone handling, business-day adjustments, dependency chains, review assignments, deadline confidence, and dual-control approval for critical dates. The UI should provide a legal deadline calendar with risk heatmaps and upcoming obligation queues.
 
-### 9. Deep specialist lifecycle semantics for `legal_matter_management_filing_record`
+### 9. Deadline Change Propagation
 
-**Justification:** This owned table is part of the Legal Matter Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns legal matters, parties, counsel, budgets, holds, filings, deadlines, documents, invoices, risk, privilege controls, and matter lifecycle intelligence.
+**Justification:** A continuance, filing rejection, court order, amended contract, policy change, or jurisdiction holiday can alter multiple linked deadlines. Manual updates invite inconsistency.
 
-**Improvement:** Extend `legal_matter_management_filing_record` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `idempotent_handlers`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add dependency graphs between triggering events, filings, service dates, response dates, appeal windows, tolling periods, and renewal obligations. When a source date changes, the PBC should compute proposed changes, show impacted matters, require approval, and emit `MatterDeadlineTracked` updates with reasoned evidence.
 
-### 10. Deep specialist lifecycle semantics for `legal_matter_management_matter_document`
+### 10. Court and Regulator Filing Dossier Management
 
-**Justification:** This owned table is part of the Legal Matter Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns legal matters, parties, counsel, budgets, holds, filings, deadlines, documents, invoices, risk, privilege controls, and matter lifecycle intelligence.
+**Justification:** Filing readiness involves forms, exhibits, signatures, service lists, fees, confidentiality markings, page limits, venue rules, and rejection handling. A basic filing record does not cover real legal workflows.
 
-**Improvement:** Extend `legal_matter_management_matter_document` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `retry_dead_letter_evidence`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Extend `record_filing` with filing dossier checklists, exhibit binders, signature status, filing fee records, service method, confidentiality designation, submission receipts, rejection reasons, corrective actions, and final acceptance evidence. The workbench should show filing readiness and block submission when required elements are missing.
 
-### 11. Make `open_legal_matter` a complete command lifecycle
+### 11. Service-of-Process Tracking
 
-**Justification:** High-value users need `open_legal_matter` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Service failures can invalidate proceedings or extend risk exposure. Legal matter management must track who was served, how, when, by whom, and under what rule.
 
-**Improvement:** Implement `open_legal_matter` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `LegalMatterOpened`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add service-of-process records for parties, agents, delivery attempts, affidavits, returned mail, publication service, substituted service, proof status, and challenge windows. Link service events to filings, deadlines, party status, and agent-generated reminders.
 
-### 12. Make `register_matter_party` a complete command lifecycle
+### 12. Document Set and Evidence Binder Assembly
 
-**Justification:** High-value users need `register_matter_party` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Matters require structured document sets, not just attachments: pleadings, correspondence, evidence, privileged material, work product, contracts, expert reports, transcripts, orders, and settlement drafts each need different handling.
 
-**Improvement:** Implement `register_matter_party` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `LegalHoldIssued`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Expand `attach_matter_document` with document set types, binder ordering, exhibit numbers, Bates ranges, source provenance, confidentiality level, privilege status, admissibility notes, chain-of-custody metadata, and version lineage. The UI should support matter binders, evidence maps, and exportable production packages.
 
-### 13. Make `assign_counsel` a complete command lifecycle
+### 13. Privilege Review Workbench
 
-**Justification:** High-value users need `assign_counsel` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Privilege review is a specialist legal workflow involving attorney-client privilege, work product, common interest, waiver risk, redaction, clawback, and review consistency. Generic document review is not enough.
 
-**Improvement:** Implement `assign_counsel` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `MatterDeadlineTracked`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Enhance `review_document_privilege` with privilege reason codes, reviewer tiers, redaction instructions, waiver risk flags, privilege log fields, challenge status, clawback protocol references, sampling queues, and review consistency analytics. The agent should suggest privilege classifications with citations to facts, not final legal determinations without review.
 
-### 14. Make `create_matter_budget` a complete command lifecycle
+### 14. Privilege Log Generation and Challenge Tracking
 
-**Justification:** High-value users need `create_matter_budget` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Legal teams must produce defensible privilege logs and respond to challenges. Missing metadata or inconsistent descriptions can waive protections.
 
-**Improvement:** Implement `create_matter_budget` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `FilingRecorded`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add privilege log generation by matter, production set, jurisdiction, and protective order. Track document family handling, redacted descriptions, privilege basis, authors, recipients, dates, withheld status, challenge responses, meet-and-confer outcomes, and court ruling impact.
 
-### 15. Make `capture_budget_line` a complete command lifecycle
+### 15. Chain-of-Custody Evidence Control
 
-**Justification:** High-value users need `capture_budget_line` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Investigations, litigation, claims, and regulatory matters require defensible evidence custody from collection through analysis, production, and return or destruction.
 
-**Improvement:** Implement `capture_budget_line` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `MatterRiskChanged`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Introduce chain-of-custody records with collector identity, source system, collection method, hash, transfer events, storage location, access logs, tamper checks, retention status, and disposition instructions. The UI should highlight custody gaps and evidence integrity anomalies.
 
-### 16. Make `issue_legal_hold` a complete command lifecycle
+### 16. eDiscovery Collection Request Orchestration
 
-**Justification:** High-value users need `issue_legal_hold` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Legal holds do not automatically collect data. Teams need collection requests, custodian scopes, search terms, system owners, status, exceptions, and quality checks.
 
-**Improvement:** Implement `issue_legal_hold` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `MatterClosed`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add collection request objects tied to legal holds and matter documents. Track sources, custodians, query criteria, export formats, chain-of-custody hashes, collection completeness, exception handling, and handoff events to discovery review tools through declared APIs or AppGen-X events.
 
-### 17. Make `register_hold_custodian` a complete command lifecycle
+### 17. Outside Counsel Panel Governance
 
-**Justification:** High-value users need `register_hold_custodian` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Counsel assignment depends on jurisdiction, practice area, conflict status, diversity commitments, rate cards, performance, capacity, language, and matter complexity. A counsel table alone cannot optimize legal service delivery.
 
-**Improvement:** Implement `register_hold_custodian` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `LegalMatterOpened`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Extend `assign_counsel` with counsel panel eligibility, practice specialization, jurisdiction admission, rate arrangements, staffing rules, diversity metrics, conflict clearance, capacity, prior outcomes, and scorecards. The UI should compare recommended firms and explain selection tradeoffs.
 
-### 18. Make `track_matter_deadline` a complete command lifecycle
+### 18. Engagement Letter and Scope Control
 
-**Justification:** High-value users need `track_matter_deadline` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Outside counsel work must be governed by approved scope, billing terms, staffing limits, reporting obligations, confidentiality, and matter budgets. Without scope control, spend and risk drift.
 
-**Improvement:** Implement `track_matter_deadline` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `LegalHoldIssued`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add engagement records with approved scope, prohibited activities, staffing plan, rate card, alternative fee terms, reporting cadence, deliverables, conflicts waivers, confidentiality terms, and change-order approvals. Block invoice lines outside engagement scope unless an exception is approved.
 
-### 19. Make `record_filing` a complete command lifecycle
+### 19. Legal Budget Phase and Task Codes
 
-**Justification:** High-value users need `record_filing` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Matter budgets need legal-specific phase, task, activity, expense, jurisdiction, and fee arrangement dimensions. A flat budget line cannot support spend control or benchmarking.
 
-**Improvement:** Implement `record_filing` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `MatterDeadlineTracked`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Expand `create_matter_budget` and `capture_budget_line` with phase/task/activity codes, blended rate assumptions, fee caps, accrual estimates, reserves, holdbacks, contingency terms, currency handling, forecast curves, and variance thresholds. The workbench should compare budget, committed spend, billed spend, approved spend, and forecast exposure.
 
-### 20. Make `attach_matter_document` a complete command lifecycle
+### 20. Outside Counsel Invoice Compliance Review
 
-**Justification:** High-value users need `attach_matter_document` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Counsel invoices require review for billing guidelines, block billing, duplicate entries, staffing violations, unauthorized expenses, rate mismatches, and budget overruns. Generic invoice ingestion misses legal spend leakage.
 
-**Improvement:** Implement `attach_matter_document` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `FilingRecorded`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Upgrade `ingest_counsel_invoice` with line-level compliance checks, billing guideline rules, rate validation, timekeeper authorization, task-code matching, duplicate detection, narrative quality scoring, expense policy checks, adjustment workflows, and counsel feedback loops.
 
-### 21. Operationalize `legal deadline risk prediction` as a governed decision system
+### 21. Legal Accrual and Reserve Management
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Legal Matter Management and measurably improves legal matter management risk score without hiding assumptions.
+**Justification:** Legal matters often require accruals, reserves, probable loss estimates, settlement exposure, insurance recoveries, and finance-facing evidence. Legal and finance teams need controlled projections without shared table mutation.
 
-**Improvement:** Promote `legal deadline risk prediction` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `legal_matter_management_risk_score`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add package-local reserve and accrual projections linked to matter risk, budget, settlement, and invoice records. Publish AppGen-X events for approved reserve changes and consume finance policy signals through read-only projections while preserving `legal_matter_management` ownership.
 
-### 22. Operationalize `semantic document privilege triage` as a governed decision system
+### 22. Case Exposure Modeling
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Legal Matter Management and measurably improves legal matter management workbench metric without hiding assumptions.
+**Justification:** Leadership needs realistic exposure ranges, not only static risk labels. Exposure changes as facts, procedural posture, insurance, defenses, venue, judge, opposing counsel, and settlement offers evolve.
 
-**Improvement:** Promote `semantic document privilege triage` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `legal_matter_management_workbench_metric`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Extend `simulate_case_exposure` with probabilistic outcome ranges, best/base/worst scenarios, legal theory weighting, damages categories, defense offsets, insurance recovery, counterclaim exposure, litigation cost forecast, and confidence explanations. Store model metadata and human overrides in governed model evidence.
 
-### 23. Operationalize `case exposure simulation` as a governed decision system
+### 23. Settlement Strategy and Offer Ledger
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Legal Matter Management and measurably improves legal matter management risk score without hiding assumptions.
+**Justification:** Settlement decisions require controlled tracking of demands, offers, authority, concessions, confidentiality terms, non-monetary obligations, payment timing, releases, and board or executive approvals.
 
-**Improvement:** Promote `case exposure simulation` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `legal_matter_management_risk_score`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Expand `record_settlement_offer` with demand/offer history, negotiation rounds, authorized limits, settlement terms, release conditions, payment schedule, non-monetary commitments, confidentiality clauses, tax considerations, and approval evidence. Show a negotiation timeline and decision rationale in the UI.
 
-### 24. Operationalize `outside counsel spend intelligence` as a governed decision system
+### 24. Settlement Approval Matrix
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Legal Matter Management and measurably improves legal matter management workbench metric without hiding assumptions.
+**Justification:** Settlement authority varies by amount, risk, jurisdiction, business unit, insurance involvement, public sensitivity, and precedent impact. Approval needs to be policy-aware.
 
-**Improvement:** Promote `outside counsel spend intelligence` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `legal_matter_management_workbench_metric`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Implement configurable settlement approval matrices that route offers through legal, finance, risk, business owner, insurance, and executive reviewers based on thresholds and matter attributes. The agent should explain required approvers and block final acceptance until policy conditions are satisfied.
 
-### 25. Operationalize `cryptographic hold evidence` as a governed decision system
+### 25. Matter Risk Taxonomy and Heatmap
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Legal Matter Management and measurably improves legal matter management risk score without hiding assumptions.
+**Justification:** Legal risk spans financial exposure, injunctive risk, regulatory risk, operational disruption, reputational harm, privilege risk, precedent risk, and criminal or personal liability. A single risk score hides critical nuance.
 
-**Improvement:** Promote `cryptographic hold evidence` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `legal_matter_management_risk_score`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add a multi-dimensional risk taxonomy to `score_matter_risk` with independent scores, trend, confidence, drivers, controls, mitigations, owner, and escalation thresholds. Provide portfolio heatmaps by business unit, jurisdiction, matter type, counsel, and risk driver.
 
-### 26. Operationalize `policy-aware settlement routing` as a governed decision system
+### 26. Early Warning Signals
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Legal Matter Management and measurably improves legal matter management workbench metric without hiding assumptions.
+**Justification:** Matter deterioration often appears through missed tasks, adverse rulings, budget variance, discovery issues, deadline compression, privilege challenges, counsel performance, or new facts before formal risk updates.
 
-**Improvement:** Promote `policy-aware settlement routing` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `legal_matter_management_workbench_metric`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Create early warning detection from matter events, deadlines, filings, invoice narratives, task aging, privilege queue metrics, settlement movement, and agent-ingested instructions. Generate explainable alerts, recommended mitigations, and event-backed risk changes.
 
-### 27. Operationalize `legal deadline risk prediction` as a governed decision system
+### 27. Investigation Matter Support
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Legal Matter Management and measurably improves legal matter management risk score without hiding assumptions.
+**Justification:** Internal investigations require allegation intake, whistleblower protection, interview planning, evidence collection, confidentiality, findings, remediation, and non-retaliation controls. They differ from ordinary litigation matters.
 
-**Improvement:** Promote `legal deadline risk prediction` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `legal_matter_management_risk_score`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add investigation-specific matter playbooks with allegation taxonomy, interview lists, witness status, investigation plan, evidence requests, finding categories, remediation tasks, escalation criteria, and restricted-access partitions. Surface an investigation workbench with sensitive access controls.
 
-### 28. Operationalize `semantic document privilege triage` as a governed decision system
+### 28. Regulatory Inquiry and Examination Workflow
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Legal Matter Management and measurably improves legal matter management workbench metric without hiding assumptions.
+**Justification:** Regulatory matters involve requests, response deadlines, production sets, issue lists, regulator communications, privilege positions, remediation commitments, and recurring reporting obligations.
 
-**Improvement:** Promote `semantic document privilege triage` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `legal_matter_management_workbench_metric`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add regulatory inquiry records for request items, response owners, production status, regulator contacts, commitments, follow-up requests, deficiency notices, and remediation links. Track regulator-specific deadlines and publish status events without mutating compliance or audit tables.
 
-### 29. Operationalize `case exposure simulation` as a governed decision system
+### 29. IP Matter Lifecycle Support
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Legal Matter Management and measurably improves legal matter management risk score without hiding assumptions.
+**Justification:** Intellectual property matters need invention disclosures, patent deadlines, trademark renewals, office actions, prosecution history, licensing links, enforcement posture, and portfolio strategy.
 
-**Improvement:** Promote `case exposure simulation` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `legal_matter_management_risk_score`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add IP-specific extensions for asset identifiers, prosecution deadlines, office actions, renewal dates, classes, jurisdictions, inventors, ownership chain, enforcement actions, and licensing dependencies. The UI should expose IP matter calendars and asset-linked matter portfolios.
 
-### 30. Operationalize `outside counsel spend intelligence` as a governed decision system
+### 30. Employment and Labor Matter Support
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Legal Matter Management and measurably improves legal matter management workbench metric without hiding assumptions.
+**Justification:** Employment matters require employee identities, allegations, accommodations, investigations, agency charges, grievance stages, settlement tax treatment, confidentiality, and reinstatement or policy-remediation obligations.
 
-**Improvement:** Promote `outside counsel spend intelligence` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `legal_matter_management_workbench_metric`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add employment matter templates with allegation types, protected-class sensitivity, agency charge tracking, grievance steps, witness lists, remediation commitments, reinstatement constraints, settlement terms, and restricted access. Integrate only through declared HR projections and events.
 
-### 31. Create simulation-grade governance for `matter_intake_policy` and `deadline_warning_days`
+### 31. Contract Dispute and Obligation Linkage
 
-**Justification:** Complete Legal Matter Management coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Many matters arise from contract obligations, notices, warranties, indemnities, service levels, termination rights, and breach allegations. The legal PBC needs linked context without owning contract tables.
 
-**Improvement:** Add a policy cockpit where `matter_intake_policy` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `deadline_warning_days` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add package-local contract dispute projections that reference contract identifiers, obligation snapshots, notice requirements, cure periods, indemnity status, limitation clauses, and dispute milestones. Consume contract events and expose read-only legal dispute views.
 
-### 32. Create simulation-grade governance for `hold_policy` and `budget_warning_percent`
+### 32. Insurance Coverage and Recovery Tracking
 
-**Justification:** Complete Legal Matter Management coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Insurance notice, reservation of rights, defense cost recovery, deductibles, coverage positions, and insurer approvals materially affect matter strategy and reserves.
 
-**Improvement:** Add a policy cockpit where `hold_policy` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `budget_warning_percent` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add insurance coverage records with policy references, notice dates, coverage positions, defense-cost eligibility, retention/deductible status, insurer counsel requirements, recovery estimates, and claim correspondence. Link coverage impacts to exposure, budget, and settlement approval workflows.
 
-### 33. Create simulation-grade governance for `deadline_escalation_policy` and `privilege_review_sla_hours`
+### 33. Expert Witness and Consultant Management
 
-**Justification:** Complete Legal Matter Management coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Expert and consultant work involves retention approvals, conflict checks, scope, reports, deposition dates, fee controls, privilege boundaries, and disclosure deadlines.
 
-**Improvement:** Add a policy cockpit where `deadline_escalation_policy` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `privilege_review_sla_hours` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add expert/consultant profiles, engagement scope, discipline, conflict status, report deadlines, deposition schedule, disclosure status, budget lines, privilege classifications, and deliverable tracking. The UI should show expert readiness and disclosure risk.
 
-### 34. Create simulation-grade governance for `privilege_review_policy` and `settlement_approval_limit`
+### 34. Witness and Interview Management
 
-**Justification:** Complete Legal Matter Management coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Witness handling requires role, relationship, availability, interview history, statement status, credibility, confidentiality constraints, and contact restrictions.
 
-**Improvement:** Add a policy cockpit where `privilege_review_policy` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `settlement_approval_limit` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add witness records linked to parties and custodians, with interview schedules, topics, notes, statement versions, privilege status, credibility factors, contact permissions, and follow-up tasks. Agent-generated interview outlines should be saved as drafts requiring legal approval.
 
-### 35. Create simulation-grade governance for `budget_policy` and `hold_review_days`
+### 35. Protective Order and Confidentiality Compliance
 
-**Justification:** Complete Legal Matter Management coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Protective orders control designations, access, redactions, production handling, filing under seal, challenges, and destruction or return obligations.
 
-**Improvement:** Add a policy cockpit where `budget_policy` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `hold_review_days` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add protective-order records, confidentiality designations, access groups, challenge windows, seal filing requirements, production restrictions, and disposition obligations. Enforce document access and production workflows based on designation rules.
 
-### 36. Upgrade `legal matter workbench` into a full specialist command center
+### 36. Legal Task Dependency Graph
 
-**Justification:** The PBC UI must expose the complete Legal Matter Management surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Matter tasks are often dependent on filings, court rulings, evidence collection, counsel review, approvals, service, and settlement events. Flat task lists conceal critical path risk.
 
-**Improvement:** Expand `legal matter workbench` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Upgrade `create_matter_task` with dependency graphs, blockers, prerequisites, legal phase links, required artifacts, critical path indicators, and aging rules. The UI should show matter boards, phase timelines, and task-risk propagation.
 
-### 37. Upgrade `matter timeline` into a full specialist command center
+### 37. Matter Timeline and Procedural History
 
-**Justification:** The PBC UI must expose the complete Legal Matter Management surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Legal teams need a reliable chronological story of facts, communications, filings, decisions, offers, rulings, evidence, and deadlines. The current timeline needs to become authoritative.
 
-**Improvement:** Expand `matter timeline` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Build a matter timeline projection combining opened matters, parties, counsel assignments, holds, filings, deadlines, documents, invoices, risk changes, settlement offers, and closure events. Include filters for procedural, factual, financial, evidence, and privileged events.
 
-### 38. Upgrade `legal hold console` into a full specialist command center
+### 38. Communications and Correspondence Register
 
-**Justification:** The PBC UI must expose the complete Legal Matter Management surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Legal correspondence with parties, counsel, courts, regulators, insurers, and business owners must be tracked for privilege, deadlines, negotiation posture, and evidence.
 
-**Improvement:** Expand `legal hold console` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add correspondence records with sender, recipients, channel, subject, privilege status, confidentiality designation, related deadline, response obligation, attachments, and business context. The agent should summarize correspondence and suggest follow-up tasks after confirmation.
 
-### 39. Upgrade `deadline calendar` into a full specialist command center
+### 39. Matter Closure and Lessons-Learned Workflow
 
-**Justification:** The PBC UI must expose the complete Legal Matter Management surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Closing a matter requires final disposition, settlement performance, release of holds, final invoices, document retention, lessons learned, control improvements, and residual obligations.
 
-**Improvement:** Expand `deadline calendar` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Expand `close_matter_outcome` with closure checklists, final exposure, outcome type, root cause, legal spend summary, hold release requirements, retention instructions, settlement obligation tracking, policy feedback, and lessons-learned reports. Prevent closure when mandatory downstream obligations remain open.
 
-### 40. Upgrade `document privilege queue` into a full specialist command center
+### 40. Hold Release and Data Disposition Controls
 
-**Justification:** The PBC UI must expose the complete Legal Matter Management surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Holding data forever creates cost, privacy, and compliance risk, while premature release creates spoliation risk. Hold release must be explicit and defensible.
 
-**Improvement:** Expand `document privilege queue` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add release workflows for legal holds with release rationale, affected custodians, systems, residual matters, retention conflicts, disposition instructions, notice delivery, acknowledgement, and evidence hashes. Require policy checks before release and publish approved release events.
 
-### 41. Prove cross-PBC federation for `POST /legal-matters` and `SupplierQualified`
+### 41. Legal Operations KPI and Portfolio Analytics
 
-**Justification:** Legal Matter Management must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Legal leaders need portfolio views across matter volume, cycle time, spend, exposure, counsel performance, deadline risk, hold burden, privilege workload, settlement outcomes, and recurring root causes.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /legal-matters` and consumed event `SupplierQualified` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Build analytics surfaces for matter aging, spend variance, exposure trend, counsel scorecards, deadline adherence, hold acknowledgement, filing rejection rates, privilege throughput, settlement efficiency, and closure outcomes. Include drilldowns that remain inside owned state or declared projections.
 
-### 42. Prove cross-PBC federation for `POST /outside-counsel` and `InvoiceCaptured`
+### 42. Outside Counsel Performance Scorecards
 
-**Justification:** Legal Matter Management must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Legal service quality must be measured across outcomes, responsiveness, budget discipline, staffing compliance, diversity, innovation, risk management, and invoice quality.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /outside-counsel` and consumed event `InvoiceCaptured` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Create counsel scorecards tied to assignments, invoices, budgets, deadlines, outcomes, matter complexity, and feedback. Use these scores in counsel recommendations and panel governance while retaining manual selection authority.
 
-### 43. Prove cross-PBC federation for `POST /matter-budgets` and `PolicyChanged`
+### 43. Rule and Parameter Studio for Legal Policies
 
-**Justification:** Legal Matter Management must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Legal teams need configurable intake, hold, deadline, privilege, budget, settlement, confidentiality, and closure policies without code changes.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /matter-budgets` and consumed event `PolicyChanged` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Expand matter policy rules and runtime parameters into a legal policy studio with versioning, simulation, approval workflow, effective dates, test cases, rollback, exception handling, and release evidence. The agent should explain rule impact before activation.
 
-### 44. Prove cross-PBC federation for `POST /legal-holds` and `AuditProofGenerated`
+### 44. Sensitive Matter Access Partitions
 
-**Justification:** Legal Matter Management must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Some matters require need-to-know isolation for investigations, executives, acquisitions, insider issues, employment claims, privileged strategy, or regulated proceedings.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /legal-holds` and consumed event `AuditProofGenerated` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Add sensitive matter partitions with explicit access groups, ethical walls, field-level masking, agent tool restrictions, export controls, audit alerts, and break-glass procedures. Ensure UI, APIs, and assistant responses honor partition rules.
 
-### 45. Temporal reconstruction and bitemporal audit for Legal Matter Management
+### 45. Agent-Assisted Document and Instruction Intake
 
-**Justification:** Regulated and operationally complex domains need to answer what was known, valid, processed, and visible at any point in time.
+**Justification:** Legal users frequently provide emails, notices, pleadings, contracts, invoices, regulator letters, or verbal instructions that must become structured matter updates without unsafe autonomous writes.
 
-**Improvement:** Add transaction-time, valid-time, and processing-time fields to core records, temporal query APIs, projection rebuild tooling, and UI time travel so specialists can reconstruct decisions, reports, and automation outcomes.
+**Improvement:** Give the PBC agent skills to parse uploaded documents and instructions into proposed matters, parties, holds, deadlines, filings, tasks, privilege reviews, invoice issues, and settlement updates. The agent must show source-grounded extraction, confidence, policy warnings, affected tables, AppGen-X events, and a confirmation step before CRUD execution.
 
-### 46. Bulk operations and migration-grade controls for Legal Matter Management
+### 46. Legal Drafting Assistance with Governance
 
-**Justification:** World-class deployments must handle imports, mass corrections, high-volume operating days, and cutovers without bypassing governance.
+**Justification:** Legal teams benefit from drafting support for notices, hold letters, status reports, filing summaries, settlement memos, and counsel instructions, but drafts require governance and traceability.
 
-**Improvement:** Add staged bulk upload, duplicate detection, chunked validation, approval sampling, partial failure handling, retry dashboards, reconciliation summaries, and agent-generated remediation plans for large batches.
+**Improvement:** Add governed drafting workflows that generate drafts from matter context, approved templates, jurisdiction rules, and policy constraints. Store draft lineage, source citations, reviewer approvals, privilege designation, export status, and prohibitions against sending without human approval.
 
-### 47. Specialist edge-case playbooks for Legal Matter Management
+### 47. Cross-PBC Projection Boundary Enforcement
 
-**Justification:** Rare cases often carry the highest financial, legal, safety, service, or compliance risk.
+**Justification:** Legal matters naturally reference suppliers, customers, employees, contracts, invoices, assets, insurance, audit controls, and finance records. The PBC must avoid shared-table coupling while still giving complete context.
 
-**Improvement:** Create a playbook catalog with detection rules, required evidence, escalation paths, fallback actions, owner roles, and release-audited tests for high-severity edge cases and exception queues.
+**Improvement:** Implement explicit projection contracts for external context, including source PBC, external identifier, snapshot time, fields allowed, freshness, consent or access basis, and fallback behavior. Add tests proving legal services mutate only `legal_matter_management_` tables and communicate externally through APIs, events, or projections.
 
-### 48. Pre-mutation simulation and blast-radius analysis for Legal Matter Management
+### 48. Release Evidence Packs for Legal Defensibility
 
-**Justification:** Users should understand consequences before committing irreversible, customer-visible, operationally disruptive, or financially material changes.
+**Justification:** Legal systems need proof that schemas, rules, events, handlers, access controls, holds, deadlines, privilege reviews, and agent actions behaved as designed at release time.
 
-**Improvement:** Add what-if simulation for every material command, showing impacted records, emitted events, dependent projections, rule outcomes, approvals, downstream PBC dependencies, and rollback limits.
+**Improvement:** Generate release evidence packs containing schema hashes, migration manifests, route contracts, service contracts, event schemas, handler idempotency proofs, retry/dead-letter tests, access-control matrices, policy test outcomes, agent skill manifests, and representative matter smoke runs.
 
-### 49. Continuous control testing and operational assurance for Legal Matter Management
+### 49. Matter Scenario Simulation and Strategy Board
 
-**Justification:** Better-than-world-class PBCs prove controls continuously, not only at release or during periodic audits.
+**Justification:** Legal strategy requires scenario planning across outcomes, costs, deadlines, settlement timing, reputational effects, precedent risk, operational burden, and probability changes.
 
-**Improvement:** Add executable control assertions, sampled evidence checks, anomaly thresholds, control-owner dashboards, breach/recovery events, and release gates that fail when domain controls lose evidence.
+**Improvement:** Add a strategy board where users can model litigation, regulatory, investigation, IP, employment, and contract dispute scenarios. Compare expected cost, exposure, time to resolution, operational impact, settlement options, required approvals, and key assumptions with saved scenario versions.
 
-### 50. Human-in-the-loop domain agent execution for Legal Matter Management
+### 50. Complete Legal Workbench Coverage
 
-**Justification:** The PBC chatbot must help specialists perform real work while preventing unsafe autonomous mutation.
+**Justification:** If advanced capabilities are hidden behind APIs, legal users cannot operate the PBC effectively. The UI must surface the full legal domain, not only matter lists.
 
-**Improvement:** Add domain-specific skills, document parsing, task planning, CRUD previews, confidence/risk scoring, confirmation gates, redaction, policy explanations, and post-action evidence packets for every supported command and query.
+**Improvement:** Expand the workbench into role-specific views for general counsel, matter owner, paralegal, legal operations, outside counsel coordinator, privilege reviewer, investigator, and executive sponsor. Include intake, matter detail, parties, counsel, holds, custodians, deadlines, filings, documents, privilege logs, evidence binders, budgets, invoices, risks, settlements, policies, analytics, agent drafts, and release-evidence status.
