@@ -3170,3 +3170,13 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   compile for touched tooling entrypoints, focused internal-error/audit tests,
   `tests/test_dsl_tooling_contracts.py -q`, tooling-audit JSON proof, scoped
   diff whitespace check, and restricted-name scan. Commit: `3875c9a4`.
+- Current CLI discoverability pass makes the documented command surface easier
+  to prove and use. The package now declares the short `apg` console-script
+  alias beside `appgen`, top-level help lists the newer tooling subcommands,
+  and `appgen.tooling-audit.v1` embeds `appgen.cli-help-surface-audit.v1`
+  proving the alias and required subcommand list. The same pass removed the
+  old visual-form terminology from active non-archived code/docs. Verification
+  passed: Python compile for touched CLI/tooling entrypoints, focused
+  help/audit tests, `tests/test_dsl_tooling_contracts.py -q`, tooling-audit
+  JSON proof, scoped diff whitespace check, and restricted-name scan. Commit:
+  `b5596989`.
