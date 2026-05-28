@@ -3246,7 +3246,7 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   warning-only sources are blocked by default, and proves `--allow-warnings`
   is the explicit command-line override. Verification passed: Python compile
   for touched tooling entrypoints and full `appgen tooling-audit --json` with
-  `16/16` checks and no blocking gaps. Commit: pending.
+  `16/16` checks and no blocking gaps. Commit: `cf0742cb`.
 - Current parallel PBC implementation pass delivered executable code for six
   PBCs rather than plan-only artifacts: `actuarial_pricing_reserving`,
   `advertising_campaign_operations`, `agri_supply_chain_traceability`,
