@@ -13,7 +13,6 @@ Generated checks:
 - policy_control_coverage
 - automation_loop_coverage
 - analytics_coverage
-- advanced_domain_not_required
 - service_commands
 - api_routes
 - event_outbox_inbox
@@ -26,4 +25,16 @@ Generated checks:
 - configuration_schema
 - seed_data
 - self_registration_metadata
+- release_rehearsal
+- smoke_plan_synthesis
+- artifact_lineage
+- documentation_matrix
+- security_review_panel
+- assistant_preview_guardrails
+- agent_competency_catalog
 - contract_tests
+
+Verification snapshot:
+- `./.venv/bin/pytest src/pyAppGen/pbcs/composition_engine/tests -q`
+- `python3 -m compileall src/pyAppGen/pbcs/composition_engine`
+- Runtime smoke and package-local release evidence returned `True`
