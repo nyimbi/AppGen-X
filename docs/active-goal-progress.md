@@ -2964,3 +2964,12 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   `tests/test_dsl_tooling_contracts.py -q`, focused DSL platform/CLI regression
   tests, scoped diff whitespace check, and restricted-name scan. Commit:
   `09006a04`.
+- Current LSP rename-safety pass makes the documented unsafe-rename block
+  executable. `textDocument/rename` still returns the candidate workspace edit
+  and migration preview, but now reports `ok: false` with an `AGX1101` blocker
+  and `add_rename_hint` fix suggestion when the preview requires explicit
+  migration approval, such as destructive relationship impact. Verification
+  passed: Python compile for touched CLI/parser modules,
+  `tests/test_dsl_tooling_contracts.py -q`, focused DSL platform/CLI regression
+  tests, scoped diff whitespace check, and restricted-name scan. Commit:
+  `8668d1aa`.
