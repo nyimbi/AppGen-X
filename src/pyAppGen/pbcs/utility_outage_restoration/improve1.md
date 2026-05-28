@@ -1,418 +1,416 @@
-# Utility Outage Restoration PBC Better-Than-World-Class Improvement Backlog
+# Utility Outage Restoration PBC Manual Improvement Backlog
 
 ## Purpose
 
-This file identifies, justifies, and describes 50 high-impact improvements for `utility_outage_restoration`. The backlog is specific to outage detection, switching, crew dispatch, restoration estimates, customer impact, and reliability reporting and is intended to move the PBC from release-auditable scaffolding toward complete, specialist-grade domain coverage.
+This hand-crafted backlog replaces generic roadmap text for `utility_outage_restoration` with utility-outage-specific improvements for incident detection, device interruptions, switching, crew dispatch, restoration estimates, customer impact, reliability reporting, storm operations, workbench operations, and governed agent assistance.
 
 ## Current Domain Evidence Used
 
 - Stable PBC key: `utility_outage_restoration`.
-- Domain purpose: Outage detection, switching, crew dispatch, restoration estimates, customer impact, and reliability reporting.
-- Owned domain tables: `outage_incident`, `device_interruption`, `switching_step`, `crew_assignment`, `restoration_estimate`, `customer_impact`, `reliability_metric`, `utility_outage_restoration_policy_rule`, `utility_outage_restoration_runtime_parameter`, `utility_outage_restoration_schema_extension`, `utility_outage_restoration_control_assertion`, `utility_outage_restoration_governed_model`.
-- Public APIs: `POST /outage-incidents`, `POST /device-interruptions`, `POST /switching-steps`, `POST /crew-assignments`, `POST /restoration-estimates`, `GET /utility-outage-restoration-workbench`.
-- Emitted AppGen-X events: `UtilityOutageRestorationCreated`, `UtilityOutageRestorationUpdated`, `UtilityOutageRestorationApproved`, `UtilityOutageRestorationExceptionOpened`.
-- Consumed AppGen-X events: `PolicyChanged`, `AuditEventSealed`, `OperationalKpiChanged`.
-- Current standard surfaces include: `outage_incident_management`, `utility_outage_restoration_workflow`, `utility_outage_restoration_analytics`, `configuration_schema`, `rule_engine`, `parameter_engine`, `owned_schema_migrations_models`, `appgen_x_outbox_inbox_eventing`, `idempotent_handlers`, `retry_dead_letter_evidence`.
-- Current advanced surfaces include: `utility_outage_restoration_event_sourced_operational_history`, `utility_outage_restoration_multi_tenant_policy_isolation`, `utility_outage_restoration_schema_evolution_resilience`, `utility_outage_restoration_autonomous_anomaly_detection`, `utility_outage_restoration_semantic_document_instruction_understanding`, `utility_outage_restoration_predictive_risk_scoring`, `utility_outage_restoration_counterfactual_scenario_simulation`, `utility_outage_restoration_cryptographic_audit_proofs`.
+- Domain purpose: outage detection, switching, crew dispatch, restoration estimates, customer impact, and reliability reporting.
+- Owned records include `outage_incident`, `device_interruption`, `switching_step`, `crew_assignment`, `restoration_estimate`, `customer_impact`, `reliability_metric`, policy rules, runtime parameters, schema extensions, control assertions, and governed models.
+- Public APIs include `POST /outage-incidents`, `POST /device-interruptions`, `POST /switching-steps`, `POST /crew-assignments`, `POST /restoration-estimates`, and `GET /utility-outage-restoration-workbench`.
+- Workbench surfaces include `UtilityOutageRestorationWorkbench`, `UtilityOutageRestorationDetail`, and `UtilityOutageRestorationAssistantPanel`.
+- AppGen-X events include `UtilityOutageRestorationCreated`, `UtilityOutageRestorationUpdated`, `UtilityOutageRestorationApproved`, and `UtilityOutageRestorationExceptionOpened`.
 
 ## 50 High-Impact Improvements
 
-### 1. Canonical lifecycle state model for Outage Incident
+### 1. Outage incident lifecycle state machine
 
-**Justification:** This closes shallow CRUD gaps by making every utility outage restoration transition explainable and testable instead of implicit in free-form status values.
+**Justification:** Outages move through reported, predicted, confirmed, assigned, switching, partially restored, restored, verified, closed, and reopened states.
 
-**Improvement:** Define a complete state machine for `outage_incident` with explicit draft, validated, blocked, approved, active, suspended, corrected, closed, archived, and reopened states. Tie the behavior to `utility_outage_restoration_create_outage_incident_workflow` where applicable, and make it visible in `UtilityOutageRestorationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add explicit `outage_incident` states with transition reason, source, owner, required evidence, allowed commands, and AppGen-X event emission.
 
-**Acceptance evidence:** State-transition tests, invalid-transition fixtures, workbench state badges, and emitted AppGen-X transition events for UtilityOutageRestorationCreated, UtilityOutageRestorationUpdated, UtilityOutageRestorationApproved. The evidence should be package-local in `src/pyAppGen/pbcs/utility_outage_restoration` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must reject invalid transitions and show next allowed actions in `UtilityOutageRestorationWorkbench`.
 
-### 2. Domain intake and normalization for Device Interruption
+### 2. Multi-source outage detection
 
-**Justification:** The PBC cannot reach complete domain coverage unless it handles the messy front door of outage detection, switching, crew dispatch, restoration estimates, customer impact, and reliability reporting, not only already-clean records.
+**Justification:** Outage detection can come from customer calls, smart meters, SCADA projections, AMI events, protection devices, social channels, and field reports.
 
-**Improvement:** Build a typed intake pipeline for `device_interruption` that accepts structured API payloads, document-derived instructions, batch loads, and assistant-generated drafts while normalizing identifiers, dates, units, parties, and jurisdictional context. Tie the behavior to `utility_outage_restoration_record_device_interruption_workflow` where applicable, and make it visible in `UtilityOutageRestorationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add detection source records with confidence, timestamp, affected service point projection, device projection, duplicate matching, and escalation rules.
 
-**Acceptance evidence:** Golden intake fixtures, rejected-record queues, field-level normalization evidence, and assistant previews before governed datastore mutation. The evidence should be package-local in `src/pyAppGen/pbcs/utility_outage_restoration` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must cluster multiple reports into one incident and flag conflicting source evidence.
 
-### 3. Specialist validation rules for Switching Step
+### 3. Device interruption hierarchy
 
-**Justification:** World-class Utility Outage Restoration requires rules that domain experts can reason about, version, test, and roll back without code edits.
+**Justification:** Restoration depends on understanding feeder, breaker, recloser, transformer, lateral, switch, and service-level interruptions.
 
-**Improvement:** Add a domain rule compiler for `switching_step` that supports threshold rules, eligibility rules, dependency rules, temporal windows, conflicting-instruction detection, and override justification. Tie the behavior to `utility_outage_restoration_create_outage_incident_workflow` where applicable, and make it visible in `UtilityOutageRestorationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand `device_interruption` with device projection, upstream/downstream relationship, interruption type, predicted fault segment, lockout status, and restoration dependency.
 
-**Acceptance evidence:** Rule simulation tests, versioned rule manifests, rule impact reports, and UI rule editors linked to `UTILITY_OUTAGE_RESTORATION_DATABASE_URL, UTILITY_OUTAGE_RESTORATION_EVENT_TOPIC, UTILITY_OUTAGE_RESTORATION_RETRY_LIMIT`. The evidence should be package-local in `src/pyAppGen/pbcs/utility_outage_restoration` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must derive affected downstream devices without mutating external network-model tables.
 
-### 4. Parameter governance and tuning for Crew Assignment
+### 4. Network model boundary
 
-**Justification:** Parameters are where operations teams tune utility outage restoration; unbounded constants would make the PBC brittle and unsafe in real deployments.
+**Justification:** The outage PBC needs topology and device data but should not own network asset or GIS source records.
 
-**Improvement:** Expose bounded runtime parameters for `crew_assignment` covering risk thresholds, SLA windows, confidence floors, escalation cutoffs, batch sizes, retry limits, and human-confirmation requirements. Tie the behavior to `utility_outage_restoration_record_device_interruption_workflow` where applicable, and make it visible in `UtilityOutageRestorationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Store topology projections with feeder, device, service point, phase, connectivity timestamp, and freshness from declared dependencies.
 
-**Acceptance evidence:** Parameter schema validation, tenant overrides, approval history, rollback controls, and workbench diff views. The evidence should be package-local in `src/pyAppGen/pbcs/utility_outage_restoration` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Boundary tests must prove topology is projected and no external network table is mutated.
 
-### 5. Deep owned schema expansion for Restoration Estimate
+### 5. Customer impact calculation
 
-**Justification:** A single payload column cannot express the full surface of outage detection, switching, crew dispatch, restoration estimates, customer impact, and reliability reporting or prove cross-PBC boundaries are respected.
+**Justification:** Dispatchers need affected customer counts, critical customers, life-support flags, priority sites, and restoration segments.
 
-**Improvement:** Extend the owned schema around `restoration_estimate` with normalized child tables for line-level evidence, party roles, approvals, attachments, comments, metrics, exception reasons, and control assertions. Tie the behavior to `utility_outage_restoration_create_outage_incident_workflow` where applicable, and make it visible in `UtilityOutageRestorationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand `customer_impact` with customer class, criticality, life-support projection, facility type, affected phase, start time, and segment.
 
-**Acceptance evidence:** Migrations, models, relationship tests, schema contract snapshots, and no shared-table access outside the `utility_outage_restoration_` namespace. The evidence should be package-local in `src/pyAppGen/pbcs/utility_outage_restoration` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must calculate customer impact from device interruptions and projections.
 
-### 6. Event-sourced operational history for Customer Impact
+### 6. Critical customer prioritization
 
-**Justification:** Temporal reconstruction is essential for better-than-world-class auditability and dispute resolution in utility outage restoration.
+**Justification:** Hospitals, water plants, emergency facilities, life-support customers, and public safety sites require special handling.
 
-**Improvement:** Capture every material mutation of `customer_impact` as immutable AppGen-X events with actor, tenant, command, policy version, idempotency key, before/after summary, and projection checkpoint. Tie the behavior to `utility_outage_restoration_record_device_interruption_workflow` where applicable, and make it visible in `UtilityOutageRestorationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add priority impact queues with critical customer type, communication requirement, backup status projection, and escalation owner.
 
-**Acceptance evidence:** Replay tests, projection checksums, event ordering evidence, and point-in-time workbench views. The evidence should be package-local in `src/pyAppGen/pbcs/utility_outage_restoration` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must elevate incidents with critical customers and show required contacts.
 
-### 7. Projection and read-model strategy for Reliability Metric
+### 7. Incident severity scoring
 
-**Justification:** The workbench should not force users to infer domain truth from raw tables; each projection should answer a real operating question.
+**Justification:** Dispatch decisions require consistent severity across customer count, hazards, critical load, weather, duration, and crew availability.
 
-**Improvement:** Create purpose-built projections for `reliability_metric`: operational queue, executive KPI rollup, exception aging, compliance evidence, agent task context, and external dependency health. Tie the behavior to `utility_outage_restoration_create_outage_incident_workflow` where applicable, and make it visible in `UtilityOutageRestorationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add severity score with factor explanations, threshold rules, manual override, and review evidence.
 
-**Acceptance evidence:** Projection contracts, freshness SLAs, backfill tests, and visible stale-projection warnings. The evidence should be package-local in `src/pyAppGen/pbcs/utility_outage_restoration` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must compute severity and show explainable factors in the workbench.
 
-### 8. Exception taxonomy and remediation for Utility Outage Restoration Policy Rule
+### 8. Estimated restoration time lifecycle
 
-**Justification:** High-value PBCs win on exception throughput; generic “failed” states hide the details operators need.
+**Justification:** Restoration estimates change as crews diagnose, switch, repair, and verify service.
 
-**Improvement:** Model the full exception taxonomy for `utility_outage_restoration_policy_rule`, including severity, root cause, blocking dependency, remediation owner, due date, retry eligibility, escalation path, and closure evidence. Tie the behavior to `utility_outage_restoration_record_device_interruption_workflow` where applicable, and make it visible in `UtilityOutageRestorationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand `restoration_estimate` with estimate type, confidence, source, assumptions, revision reason, communicated timestamp, and expiry.
 
-**Acceptance evidence:** Exception queues, aging metrics, remediation playbooks, dead-letter linkage, and closure test fixtures for conflicting clinical instructions. The evidence should be package-local in `src/pyAppGen/pbcs/utility_outage_restoration` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must preserve estimate history and reject stale estimates from public display.
 
-### 9. Predictive risk scoring for Utility Outage Restoration Runtime Parameter
+### 9. ETR communication governance
 
-**Justification:** The package should warn users before utility outage restoration work fails, breaches policy, or creates downstream cost.
+**Justification:** Customers and regulators scrutinize restoration promises and revisions.
 
-**Improvement:** Add predictive risk scoring for `utility_outage_restoration_runtime_parameter` using domain features from owned tables, consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, rule outcomes, aging, anomaly signals, and historical corrections. Tie the behavior to `utility_outage_restoration_create_outage_incident_workflow` where applicable, and make it visible in `UtilityOutageRestorationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add communication rules for estimate approval, audience, channel, revision threshold, message template, and suppression.
 
-**Acceptance evidence:** Feature manifests, score explanations, calibration reports, drift alerts, and tests for low/medium/high-risk scenarios. The evidence should be package-local in `src/pyAppGen/pbcs/utility_outage_restoration` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must require approval for broad estimate communication and log all revisions.
 
-### 10. Counterfactual simulation for Utility Outage Restoration Schema Extension
+### 10. Switching plan workflow
 
-**Justification:** Advanced users need to ask “what would happen if” before committing changes to live outage detection, switching, crew dispatch, restoration estimates, customer impact, and reliability reporting operations.
+**Justification:** Switching must be safe, sequenced, authorized, and visible before field execution.
 
-**Improvement:** Provide scenario simulation for `utility_outage_restoration_schema_extension`: policy change, capacity constraint, deadline shift, price/rate change, eligibility change, disruption, and manual override outcomes. Tie the behavior to `utility_outage_restoration_record_device_interruption_workflow` where applicable, and make it visible in `UtilityOutageRestorationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand `switching_step` with sequence, device, action, hold point, authority, clearance, expected customer impact, and completion evidence.
 
-**Acceptance evidence:** Simulation APIs, non-mutating sandbox state, comparison reports, and workbench side-by-side scenario panels. The evidence should be package-local in `src/pyAppGen/pbcs/utility_outage_restoration` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must reject out-of-order steps and require authorization before energization.
 
-### 11. Autonomous anomaly triage for Utility Outage Restoration Control Assertion
+### 11. Safety clearance and hold tags
 
-**Justification:** A world-class PBC should reduce analyst burden without hiding the reasoning behind automated triage.
+**Justification:** Crews and operators need lockout, clearance, grounding, and hold-tag controls during restoration.
 
-**Improvement:** Implement anomaly detection for `utility_outage_restoration_control_assertion` that identifies outliers, duplicate submissions, impossible sequences, stale dependencies, unusual amounts/counts/durations, and contradictory fields. Tie the behavior to `utility_outage_restoration_create_outage_incident_workflow` where applicable, and make it visible in `UtilityOutageRestorationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add clearance records with affected devices, issuer, holder, grounding evidence, release criteria, and blocked commands.
 
-**Acceptance evidence:** Explainable anomaly cards, reviewer feedback loops, false-positive tracking, and suppression governance. The evidence should be package-local in `src/pyAppGen/pbcs/utility_outage_restoration` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must block switching completion while active clearances prohibit it.
 
-### 12. Semantic document understanding for Utility Outage Restoration Governed Model
+### 12. Crew assignment capability matching
 
-**Justification:** Document-heavy work in Utility Outage Restoration cannot be complete if the assistant only answers questions and cannot prepare accurate governed changes.
+**Justification:** Restoration tasks require correct crew type, voltage qualification, equipment, location, and availability.
 
-**Improvement:** Train the package assistant to parse domain documents and instructions for `utility_outage_restoration_governed_model`, extract obligations, dates, parties, quantities, identifiers, and exceptions, then map them to safe draft mutations. Tie the behavior to `utility_outage_restoration_record_device_interruption_workflow` where applicable, and make it visible in `UtilityOutageRestorationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand `crew_assignment` with crew projection, skills, equipment, shift status, travel estimate, task type, and safety briefing.
 
-**Acceptance evidence:** Document extraction tests, confidence thresholds, redaction handling, source span citations, and human confirmation workflows. The evidence should be package-local in `src/pyAppGen/pbcs/utility_outage_restoration` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must reject assignment to crews lacking required qualifications.
 
-### 13. Agent-safe CRUD execution for Outage Incident
+### 13. Crew routing and staging
 
-**Justification:** The PBC agent must be a first-class operator but never a hidden bypass around RBAC, rules, or owned datastore boundaries.
+**Justification:** Large outages require staging crews by geography, damage pattern, priority customers, and feeder dependencies.
 
-**Improvement:** Add a professional chatbot skill for `outage_incident` that can create, update, correct, close, and annotate records only through policy-checked commands, approval gates, and previewed diffs. Tie the behavior to `utility_outage_restoration_create_outage_incident_workflow` where applicable, and make it visible in `UtilityOutageRestorationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add crew staging areas, route plans, access constraints, storm base, and task sequencing.
 
-**Acceptance evidence:** Skill manifests, permission tests, preview/confirm flows, blocked-action evidence, and audit events for every assistant mutation. The evidence should be package-local in `src/pyAppGen/pbcs/utility_outage_restoration` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must produce route-aware assignments and show staging status.
 
-### 14. Workbench persona coverage for Device Interruption
+### 14. Damage assessment workflow
 
-**Justification:** A generic detail page underserves the domain; each role needs the exact controls and evidence they use daily.
+**Justification:** Restoration estimates and repair plans depend on field assessment of poles, wires, transformers, vegetation, and hazards.
 
-**Improvement:** Design dedicated workbench panels for `device_interruption`: operator queue, supervisor approvals, analyst exceptions, auditor evidence, configuration owner, and agent-assistance review. Tie the behavior to `utility_outage_restoration_record_device_interruption_workflow` where applicable, and make it visible in `UtilityOutageRestorationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add damage assessments with location, asset projection, severity, photos, hazard type, material need, and repair recommendation.
 
-**Acceptance evidence:** UI contract entries, route tests, empty/error/loading states, and permission-aware action availability. The evidence should be package-local in `src/pyAppGen/pbcs/utility_outage_restoration` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must update incident diagnosis and estimate after approved assessment.
 
-### 15. Cross-PBC dependency contracts for Switching Step
+### 15. Hazard and public safety controls
 
-**Justification:** Composable packages fail when hidden table coupling enters the domain model.
+**Justification:** Downed wires, fire, flooding, gas proximity, road closures, and energized equipment require public-safety coordination.
 
-**Improvement:** Represent dependencies for `switching_step` through declared APIs, consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, and projections rather than shared tables, with explicit freshness, ownership, and fallback behavior. Tie the behavior to `utility_outage_restoration_create_outage_incident_workflow` where applicable, and make it visible in `UtilityOutageRestorationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add hazard records with type, perimeter, responder notification, blocked work, mitigation owner, and clearance evidence.
 
-**Acceptance evidence:** Dependency manifests, contract tests, stale dependency alerts, and no foreign-table references in generated artifacts. The evidence should be package-local in `src/pyAppGen/pbcs/utility_outage_restoration` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must prevent restoration steps that ignore unresolved severe hazards.
 
-### 16. API completeness and versioning for Crew Assignment
+### 16. Mutual aid request tracking
 
-**Justification:** Complete domain coverage requires both command and query surfaces, not only happy-path create endpoints.
+**Justification:** Major events require requesting, staging, and tracking external crews and resources.
 
-**Improvement:** Expand APIs beyond POST /outage-incidents, POST /device-interruptions, POST /switching-steps to cover search, validation-only commands, simulation, bulk intake, exception closure, evidence export, projection reads, and idempotent corrections. Tie the behavior to `utility_outage_restoration_record_device_interruption_workflow` where applicable, and make it visible in `UtilityOutageRestorationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add mutual aid requests with requesting region, crew type, quantity, ETA, lodging/staging, assigned incidents, and release status.
 
-**Acceptance evidence:** OpenAPI-style route manifests, backward-compatible version tests, deprecation metadata, and idempotency assertions. The evidence should be package-local in `src/pyAppGen/pbcs/utility_outage_restoration` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must show mutual-aid availability and assignment history.
 
-### 17. Typed emitted-event expansion for Restoration Estimate
+### 17. Materials and equipment boundary
 
-**Justification:** Consumers should understand what happened in Utility Outage Restoration without parsing opaque payloads.
+**Justification:** Restoration needs transformers, wire, fuses, poles, and mobile equipment but should not own inventory.
 
-**Improvement:** Replace generic lifecycle emissions with typed events for each meaningful `restoration_estimate` transition, exception, approval, correction, simulation result, and downstream handoff. Tie the behavior to `utility_outage_restoration_create_outage_incident_workflow` where applicable, and make it visible in `UtilityOutageRestorationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Store material availability projections, reservation status, delivery ETA, and shortage alerts from declared dependencies.
 
-**Acceptance evidence:** Event schema tests, event examples, compatibility checks, and emitted-event coverage in release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/utility_outage_restoration` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Boundary tests must prove material data is projected and no inventory table is mutated.
 
-### 18. Consumed-event handlers for Customer Impact
+### 18. Vegetation-related outage handling
 
-**Justification:** A PBC is composable only when incoming events affect its own domain state predictably and safely.
+**Justification:** Vegetation events require tree crews, hazard assessment, blocked roads, and recurrence analytics.
 
-**Improvement:** Implement idempotent handlers for consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged that update projections, open dependency exceptions, recalculate risk, and preserve source event lineage. Tie the behavior to `utility_outage_restoration_record_device_interruption_workflow` where applicable, and make it visible in `UtilityOutageRestorationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add vegetation flags, tree crew requirement, location, clearance status, recurrence marker, and follow-up prevention task.
 
-**Acceptance evidence:** Duplicate-event tests, handler side-effect boundaries, dead-letter fixtures, and lineage links back to source events. The evidence should be package-local in `src/pyAppGen/pbcs/utility_outage_restoration` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must route vegetation outages to appropriate crew assignment queues.
 
-### 19. Retry and dead-letter operations for Reliability Metric
+### 19. Weather and storm mode
 
-**Justification:** Dead letters are not just plumbing; they are domain work queues that can block outage detection, switching, crew dispatch, restoration estimates, customer impact, and reliability reporting.
+**Justification:** Storms change dispatch priorities, crew staging, estimates, communication cadence, and reliability reporting.
 
-**Improvement:** Create operational tools for retrying, quarantining, explaining, and resolving dead-lettered `reliability_metric` events with max-attempt policy, poison-message detection, and replay safety. Tie the behavior to `utility_outage_restoration_create_outage_incident_workflow` where applicable, and make it visible in `UtilityOutageRestorationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add storm mode with weather projection, operating level, staging plan, communication interval, estimate policy, and mutual aid triggers.
 
-**Acceptance evidence:** Dead-letter workbench, retry eligibility tests, replay audit proof, and operator action logs. The evidence should be package-local in `src/pyAppGen/pbcs/utility_outage_restoration` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must apply storm-specific rules and queues during active storm mode.
 
-### 20. RBAC and attribute policy for Utility Outage Restoration Policy Rule
+### 20. Nested outage and partial restoration handling
 
-**Justification:** High-impact domain operations need finer controls than generic RBAC grants.
+**Justification:** Feeder-level restoration may reveal nested transformer or service outages.
 
-**Improvement:** Extend permissions for `utility_outage_restoration_policy_rule` from coarse read/create/update/admin to action-level and attribute-aware policies based on role, tenant, jurisdiction, monetary/materiality threshold, and exception severity. Tie the behavior to `utility_outage_restoration_record_device_interruption_workflow` where applicable, and make it visible in `UtilityOutageRestorationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add parent-child incident links, partial restoration events, nested detection, and customer impact recalculation.
 
-**Acceptance evidence:** Permission matrix docs, ABAC policy tests, denied-action UI states, and assistant skill permission checks. The evidence should be package-local in `src/pyAppGen/pbcs/utility_outage_restoration` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must preserve parent incident history while opening nested incidents for remaining outages.
 
-### 21. Continuous control testing for Utility Outage Restoration Runtime Parameter
+### 21. Momentary interruption tracking
 
-**Justification:** Controls should run during operations, not only during release audit or manual review.
+**Justification:** Momentary outages and repeated recloser operations affect reliability and customer experience even when service restores.
 
-**Improvement:** Embed control assertions for `utility_outage_restoration_runtime_parameter` that continuously test segregation of duties, required approvals, stale exceptions, policy drift, duplicate records, and boundary violations. Tie the behavior to `utility_outage_restoration_create_outage_incident_workflow` where applicable, and make it visible in `UtilityOutageRestorationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add momentary interruption events with device, duration, count, affected customers, and recurrence analysis.
 
-**Acceptance evidence:** Control dashboards, failing-control events, test fixtures, and release evidence tied to `utility_outage_restoration_control_assertion` records. The evidence should be package-local in `src/pyAppGen/pbcs/utility_outage_restoration` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must calculate momentary metrics separately from sustained outage duration.
 
-### 22. Cryptographic audit proofing for Utility Outage Restoration Schema Extension
+### 22. Reliability metric calculation
 
-**Justification:** Better-than-world-class auditability requires proof of integrity, not merely logs stored in mutable tables.
+**Justification:** Utilities track reliability metrics such as interruption frequency, duration, customers interrupted, and major event exclusions.
 
-**Improvement:** Hash-chain material `utility_outage_restoration_schema_extension` decisions, documents, emitted events, and release-evidence snapshots to make tampering visible without exposing sensitive payloads. Tie the behavior to `utility_outage_restoration_record_device_interruption_workflow` where applicable, and make it visible in `UtilityOutageRestorationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand `reliability_metric` with metric type, period, customer count, outage duration, exclusion flag, event linkage, and certification.
 
-**Acceptance evidence:** Proof manifests, verification APIs, redacted proof exports, and audit-ledger handoff events. The evidence should be package-local in `src/pyAppGen/pbcs/utility_outage_restoration` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must calculate reliability metrics from closed incidents and customer impact.
 
-### 23. Privacy, consent, and secrecy controls for Utility Outage Restoration Control Assertion
+### 23. Major event classification
 
-**Justification:** Complete domain coverage must account for protected data and restricted operational evidence.
+**Justification:** Reliability reporting can treat major event days differently and requires defensible classification.
 
-**Improvement:** Add field-level privacy classifications for `utility_outage_restoration_control_assertion`, consent checks, masking rules, retention schedules, legal holds, and assistant redaction policies. Tie the behavior to `utility_outage_restoration_create_outage_incident_workflow` where applicable, and make it visible in `UtilityOutageRestorationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add major event classification with threshold, weather evidence, affected area, approval, and reporting treatment.
 
-**Acceptance evidence:** Retention tests, masked UI snapshots, consent-blocked mutation fixtures, and export controls. The evidence should be package-local in `src/pyAppGen/pbcs/utility_outage_restoration` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must mark eligible incidents for major-event treatment with audit evidence.
 
-### 24. Multi-tenant operating model for Utility Outage Restoration Governed Model
+### 24. Regulatory reporting package
 
-**Justification:** The PBC should scale across organizations while preserving independent policy and compliance boundaries.
+**Justification:** Outage duration, customers affected, critical load, and restoration performance may require regulator-ready reports.
 
-**Improvement:** Support tenant-specific `utility_outage_restoration_governed_model` rules, data residency, encryption context, configuration, seed data, and release evidence without allowing cross-tenant leakage. Tie the behavior to `utility_outage_restoration_record_device_interruption_workflow` where applicable, and make it visible in `UtilityOutageRestorationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add report packages with period, included incidents, exclusions, metrics, certification, attachments, and submission evidence.
 
-**Acceptance evidence:** Tenant isolation tests, tenant-scoped parameters, key-rotation evidence, and cross-tenant negative fixtures. The evidence should be package-local in `src/pyAppGen/pbcs/utility_outage_restoration` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must generate reports from owned outage records and projections.
 
-### 25. Schema evolution and extension registry for Outage Incident
+### 25. Public outage map feed
 
-**Justification:** Domain teams will add fields; the PBC must evolve without breaking APIs, events, or workbench projections.
+**Justification:** Customers expect outage map updates without exposing sensitive device or customer details.
 
-**Improvement:** Make schema extensions for `outage_incident` first-class with compatibility checks, migration previews, projection backfills, field ownership, and rollback metadata. Tie the behavior to `utility_outage_restoration_create_outage_incident_workflow` where applicable, and make it visible in `UtilityOutageRestorationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add public feed projection with generalized location, affected count range, status, estimate, cause category, and suppression rules.
 
-**Acceptance evidence:** Extension registry UI, compatibility tests, migration dry-runs, and backfill release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/utility_outage_restoration` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must redact sensitive data and publish only approved outage-map fields.
 
-### 26. Master data quality gates for Device Interruption
+### 26. Customer notification timeline
 
-**Justification:** Many utility outage restoration errors begin as bad reference data; the PBC should catch them before workflow execution.
+**Justification:** Customers need timely notices for outage confirmation, estimate updates, restoration, and nested outage discovery.
 
-**Improvement:** Define reference-data contracts for `device_interruption`: canonical codes, parties, locations, classifications, calendars, units, currencies, products, assets, or service categories as relevant to the domain. Tie the behavior to `utility_outage_restoration_record_device_interruption_workflow` where applicable, and make it visible in `UtilityOutageRestorationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add notification events with audience, channel, template, trigger, delivery evidence, and opt-out handling.
 
-**Acceptance evidence:** Reference validation fixtures, stale-code warnings, mapping tables, and dependency freshness indicators. The evidence should be package-local in `src/pyAppGen/pbcs/utility_outage_restoration` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must create notices for configured milestones and prevent duplicate sends.
 
-### 27. Bulk operations and correction workflows for Switching Step
+### 27. Call center synchronization
 
-**Justification:** Enterprise-scale Utility Outage Restoration users cannot operate one record at a time.
+**Justification:** Agents need current incident status, estimates, safety messages, and customer-specific impact.
 
-**Improvement:** Add bulk load, bulk validate, bulk approve, and bulk correction workflows for `switching_step` with partial success, row-level errors, resumability, and rollback. Tie the behavior to `utility_outage_restoration_create_outage_incident_workflow` where applicable, and make it visible in `UtilityOutageRestorationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add call-center projection with incident summary, affected customer status, estimate, safety message, and next update time.
 
-**Acceptance evidence:** CSV/API batch fixtures, resumable job state, row-level audit evidence, and assistant-generated correction suggestions. The evidence should be package-local in `src/pyAppGen/pbcs/utility_outage_restoration` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must expose current call-center-ready summaries without raw datastore access.
 
-### 28. Lifecycle collaboration and tasking for Crew Assignment
+### 28. Cause code governance
 
-**Justification:** Domain collaboration should live inside the PBC boundary and remain auditable with the record it affects.
+**Justification:** Cause codes drive reliability analytics, prevention work, regulatory reporting, and customer communication.
 
-**Improvement:** Attach tasks, comments, ownership, due dates, handoffs, and escalation threads to `crew_assignment` without leaking into external shared task tables. Tie the behavior to `utility_outage_restoration_record_device_interruption_workflow` where applicable, and make it visible in `UtilityOutageRestorationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add cause classification with preliminary, confirmed, corrected, unknown, and multi-cause handling.
 
-**Acceptance evidence:** Task tables, comment audit history, notification events, escalation SLAs, and role-specific task queues. The evidence should be package-local in `src/pyAppGen/pbcs/utility_outage_restoration` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must require cause confirmation before final closure unless unknown is justified.
 
-### 29. SLA and service-level governance for Restoration Estimate
+### 29. Restoration verification
 
-**Justification:** Users need to know when outage detection, switching, crew dispatch, restoration estimates, customer impact, and reliability reporting is late, blocked, or at risk before customer or regulator impact.
+**Justification:** Crews may report completion before all customers are restored or nested outages are discovered.
 
-**Improvement:** Define SLAs for `restoration_estimate` across intake, validation, approval, exception resolution, event handling, downstream projection refresh, and release-evidence generation. Tie the behavior to `utility_outage_restoration_create_outage_incident_workflow` where applicable, and make it visible in `UtilityOutageRestorationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add verification checks using meter pings, customer callbacks, crew confirmation, and device state projections.
 
-**Acceptance evidence:** SLA breach events, timers, configurable calendars, workbench aging buckets, and tests for pause/resume behavior. The evidence should be package-local in `src/pyAppGen/pbcs/utility_outage_restoration` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must keep incidents in verification until configured checks pass.
 
-### 30. Operational analytics cockpit for Customer Impact
+### 30. Reopen and callback workflow
 
-**Justification:** World-class operations require leading indicators, not only record counts.
+**Justification:** Customer callbacks after closure can indicate nested faults, incorrect status, or service-side issues.
 
-**Improvement:** Build analytics for `customer_impact`: throughput, backlog, aging, approval latency, exception rate, risk distribution, automation acceptance, correction rate, and downstream dependency health. Tie the behavior to `utility_outage_restoration_record_device_interruption_workflow` where applicable, and make it visible in `UtilityOutageRestorationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add reopen records with callback source, affected customer, prior incident, diagnosis, nested flag, and resolution.
 
-**Acceptance evidence:** Metric definitions, projection tests, drill-through routes, export APIs, and anomaly overlays. The evidence should be package-local in `src/pyAppGen/pbcs/utility_outage_restoration` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must reopen or create child incidents based on callback evidence.
 
-### 31. Decision intelligence and recommendations for Reliability Metric
+### 31. Workbench incident command board
 
-**Justification:** The PBC should help expert users decide faster while showing evidence and uncertainty.
+**Justification:** Dispatchers need one command surface for incidents, devices, crews, switching, estimates, hazards, and customers.
 
-**Improvement:** Generate ranked recommendations for `reliability_metric` such as next best action, likely resolution, required evidence, policy adjustment, staffing/capacity response, or downstream handoff. Tie the behavior to `utility_outage_restoration_create_outage_incident_workflow` where applicable, and make it visible in `UtilityOutageRestorationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add command-board views with severity, map context, crew status, switching steps, ETR, hazards, and customer impact.
 
-**Acceptance evidence:** Recommendation explanations, confidence intervals, feedback capture, model governance records, and rejection reasons. The evidence should be package-local in `src/pyAppGen/pbcs/utility_outage_restoration` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** UI tests must expose command board sections and role-specific actions.
 
-### 32. Quality and completeness scoring for Utility Outage Restoration Policy Rule
+### 32. Crew mobile task packet
 
-**Justification:** Operators should see whether a record is truly ready, not just technically saved.
+**Justification:** Field crews need concise packets with location, hazard, device, switching, materials, customer priority, and evidence capture.
 
-**Improvement:** Score each `utility_outage_restoration_policy_rule` record for completeness, consistency, policy readiness, dependency readiness, evidence sufficiency, and downstream composability. Tie the behavior to `utility_outage_restoration_record_device_interruption_workflow` where applicable, and make it visible in `UtilityOutageRestorationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add mobile task packets with checklist, photos, GPS, safety briefing, material needs, and completion notes.
 
-**Acceptance evidence:** Scoring rules, missing-evidence lists, readiness badges, and blocking criteria in command handlers. The evidence should be package-local in `src/pyAppGen/pbcs/utility_outage_restoration` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must render crew task context from owned records and projections.
 
-### 33. End-to-end scenario library for Utility Outage Restoration Runtime Parameter
+### 33. Outage rule and parameter workbench
 
-**Justification:** Release evidence is stronger when every important utility outage restoration behavior has executable examples.
+**Justification:** Outage operations tune thresholds for severity, estimates, storm mode, major events, and notifications.
 
-**Improvement:** Create seeded scenarios for `utility_outage_restoration_runtime_parameter`: normal flow, urgent path, exception path, corrected path, duplicate path, late event path, and audit export path. Tie the behavior to `utility_outage_restoration_create_outage_incident_workflow` where applicable, and make it visible in `UtilityOutageRestorationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add governed editors for incident clustering, severity factors, ETR confidence, notification cadence, storm rules, and reliability exclusions.
 
-**Acceptance evidence:** Scenario seed data, runtime smoke coverage, generated-app fixtures, and story-level workbench screenshots/contracts. The evidence should be package-local in `src/pyAppGen/pbcs/utility_outage_restoration` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must validate parameter bounds, approval history, rollback, and runtime effect.
 
-### 34. Domain ontology and terminology model for Utility Outage Restoration Schema Extension
+### 34. Agent-assisted outage summarization
 
-**Justification:** Precise vocabulary prevents the PBC from misclassifying specialist documents or user instructions.
+**Justification:** Dispatchers need fast narrative summaries from noisy incident, crew, device, and customer data.
 
-**Improvement:** Add an ontology for `utility_outage_restoration_schema_extension` terms, synonyms, classifications, relationships, allowed values, and phrase mappings used by the assistant and UI. Tie the behavior to `utility_outage_restoration_record_device_interruption_workflow` where applicable, and make it visible in `UtilityOutageRestorationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add assistant skills that summarize incident status, blockers, next actions, affected customers, and communication guidance.
 
-**Acceptance evidence:** Ontology files, assistant parsing tests, UI glossary, and mapping evidence for domain-specific abbreviations. The evidence should be package-local in `src/pyAppGen/pbcs/utility_outage_restoration` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must verify assistant output cites current owned records and projections.
 
-### 35. Advanced search and investigation for Utility Outage Restoration Control Assertion
+### 35. Agent-assisted switching review
 
-**Justification:** Investigators and operators need fast, explainable retrieval across the whole domain surface.
+**Justification:** Switching errors can create safety incidents and wider outages.
 
-**Improvement:** Provide search across `utility_outage_restoration_control_assertion` records, events, documents, exceptions, tasks, comments, and audit proofs with filters for tenant, status, risk, date, party, and dependency. Tie the behavior to `utility_outage_restoration_create_outage_incident_workflow` where applicable, and make it visible in `UtilityOutageRestorationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add assistant checks for missing hold points, conflicting clearances, out-of-order steps, and mismatched device projections.
 
-**Acceptance evidence:** Search index contracts, result provenance, permission-filtered queries, and stale-index warnings. The evidence should be package-local in `src/pyAppGen/pbcs/utility_outage_restoration` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must produce review warnings without auto-approving switching.
 
-### 36. Reconciliation and closure controls for Utility Outage Restoration Governed Model
+### 36. Agent safety restrictions
 
-**Justification:** Closure is not complete until the PBC can prove no material domain work remains unresolved.
+**Justification:** AI must not silently energize devices, close incidents, dispatch crews, or publish customer estimates.
 
-**Improvement:** Add reconciliation workflows that compare `utility_outage_restoration_governed_model` state against consumed events, external projections, expected totals/counts, approvals, and release evidence before closure. Tie the behavior to `utility_outage_restoration_record_device_interruption_workflow` where applicable, and make it visible in `UtilityOutageRestorationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Require agent proposals to declare command, affected records, safety impact, customer impact, evidence, confidence, and approval role.
 
-**Acceptance evidence:** Reconciliation reports, variance thresholds, closure blockers, and AppGen-X closure events. The evidence should be package-local in `src/pyAppGen/pbcs/utility_outage_restoration` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must block high-impact agent writes without explicit approval.
 
-### 37. Regulatory and policy reporting for Outage Incident
+### 37. AppGen-X event specialization
 
-**Justification:** World-class PBCs turn operational evidence into credible reporting without spreadsheet reconstruction.
+**Justification:** Outage restoration composes with grid operations, field service, customer communications, inventory, and billing through events.
 
-**Improvement:** Generate domain reporting packs for `outage_incident` covering statutory, contractual, operational, board, customer, or regulator evidence depending on patient safety, clinical traceability, consent boundaries, eligibility nuance, coding accuracy, care continuity, and regulated health evidence. Tie the behavior to `utility_outage_restoration_create_outage_incident_workflow` where applicable, and make it visible in `UtilityOutageRestorationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Define typed events for outage confirmed, device interrupted, switching approved, crew assigned, estimate revised, customer restored, and incident closed.
 
-**Acceptance evidence:** Report schemas, redaction rules, traceable metric sources, and approval/export audit events. The evidence should be package-local in `src/pyAppGen/pbcs/utility_outage_restoration` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Event tests must verify idempotency keys, retry behavior, dead-letter evidence, and declared dependency usage.
 
-### 38. Carbon and resource awareness for Device Interruption
+### 38. Point-in-time outage reconstruction
 
-**Justification:** Sustainability evidence should be embedded in operations instead of treated as an after-the-fact report.
+**Justification:** Disputes and regulatory reviews require reconstructing what was known during an outage.
 
-**Improvement:** Where relevant, attach carbon, energy, water, travel, capacity, compute, or resource-footprint metadata to `device_interruption` decisions and batch operations. Tie the behavior to `utility_outage_restoration_record_device_interruption_workflow` where applicable, and make it visible in `UtilityOutageRestorationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add event replay for incident state, customer impact, estimates, switching, crew assignments, and communications at any timestamp.
 
-**Acceptance evidence:** Footprint fields, scheduling parameters, exception rules, and dashboards that expose operational tradeoffs. The evidence should be package-local in `src/pyAppGen/pbcs/utility_outage_restoration` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must reproduce historical outage snapshots from owned events.
 
-### 39. Resilience and offline behavior for Switching Step
+### 39. Cryptographic outage evidence packet
 
-**Justification:** Real operations keep moving during outages; the PBC must preserve correctness when dependencies are unavailable.
+**Justification:** Major events, claims, and regulatory reports need tamper-evident evidence.
 
-**Improvement:** Define resilience modes for `switching_step`: degraded dependency mode, offline draft capture, delayed event replay, conflict detection, and safe recovery after partial failure. Tie the behavior to `utility_outage_restoration_create_outage_incident_workflow` where applicable, and make it visible in `UtilityOutageRestorationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add hash-linked packets for incident timeline, switching plan, customer impact, estimate revisions, crew assignments, and closure.
 
-**Acceptance evidence:** Offline fixtures, replay tests, conflict queues, recovery logs, and user-visible degraded-mode warnings. The evidence should be package-local in `src/pyAppGen/pbcs/utility_outage_restoration` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must detect altered packet contents and verify packet generation from owned records.
 
-### 40. Human-in-the-loop automation for Crew Assignment
+### 40. Equity and vulnerability analytics
 
-**Justification:** Automation should accelerate outage detection, switching, crew dispatch, restoration estimates, customer impact, and reliability reporting while preserving accountability for high-risk decisions.
+**Justification:** Utilities must understand whether restoration patterns disproportionately affect vulnerable communities.
 
-**Improvement:** Set explicit automation boundaries for `crew_assignment`: auto-approve, auto-reject, suggest-only, require-review, and block-until-evidence states with policy-based routing. Tie the behavior to `utility_outage_restoration_record_device_interruption_workflow` where applicable, and make it visible in `UtilityOutageRestorationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add privacy-safe analytics for critical customers, medical vulnerability projections, community impact, duration, and restoration sequence.
 
-**Acceptance evidence:** Automation policy tests, reviewer queues, override reasons, and assistant action audit trails. The evidence should be package-local in `src/pyAppGen/pbcs/utility_outage_restoration` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must aggregate without exposing individual sensitive data.
 
-### 41. Package discovery and fit scoring for Restoration Estimate
+### 41. Estimated crew arrival tracking
 
-**Justification:** Users selecting PBCs need transparent fit reasoning, especially when domains are adjacent but not overlapping.
+**Justification:** Dispatchers need to know when crews will arrive and whether travel constraints delay diagnosis.
 
-**Improvement:** Improve package metadata so composition can explain when `utility_outage_restoration` fits a prompt, what entities it owns, what APIs/events it exposes, and what adjacent PBCs it depends on. Tie the behavior to `utility_outage_restoration_create_outage_incident_workflow` where applicable, and make it visible in `UtilityOutageRestorationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add crew ETA, travel status, route blockers, staging changes, and arrival confirmation.
 
-**Acceptance evidence:** Discovery manifests, prompt-selection tests, overlap rationale links, and composition DSL examples. The evidence should be package-local in `src/pyAppGen/pbcs/utility_outage_restoration` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must update incident workflow when crew arrival is delayed or confirmed.
 
-### 42. Configuration deployment pipeline for Customer Impact
+### 42. Feeder patrol workflow
 
-**Justification:** Configuration changes can materially alter utility outage restoration; they need the same discipline as code releases.
+**Justification:** Unknown-cause outages require structured patrol of feeders, laterals, and devices.
 
-**Improvement:** Add configuration promotion for `customer_impact` across draft, test, approved, active, deprecated, and rollback states with impact analysis before activation. Tie the behavior to `utility_outage_restoration_record_device_interruption_workflow` where applicable, and make it visible in `UtilityOutageRestorationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add patrol segments, assigned crew, inspected devices, findings, no-fault markers, and next segment recommendations.
 
-**Acceptance evidence:** Config diff views, approval workflows, simulation before activation, and rollback tests. The evidence should be package-local in `src/pyAppGen/pbcs/utility_outage_restoration` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must show patrol progress and prevent duplicate segment assignments.
 
-### 43. Workbench command completeness for Reliability Metric
+### 43. Restoration dependency graph
 
-**Justification:** A PBC does not fully surface its capabilities if users must call hidden APIs for core work.
+**Justification:** Some repairs and switching steps must happen before others can safely restore customers.
 
-**Improvement:** Expose every high-value operation for `reliability_metric` in the UI: create, validate, approve, simulate, correct, assign, export, retry, close, and audit-proof verification. Tie the behavior to `utility_outage_restoration_create_outage_incident_workflow` where applicable, and make it visible in `UtilityOutageRestorationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add dependency graph linking incidents, device interruptions, switching steps, crews, materials, and hazards.
 
-**Acceptance evidence:** UI action coverage tests, permission-aware disabled states, keyboard paths, and assistant handoff links. The evidence should be package-local in `src/pyAppGen/pbcs/utility_outage_restoration` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must block dependent tasks until prerequisites are complete.
 
-### 44. Document packet and evidence vault for Utility Outage Restoration Policy Rule
+### 44. Mutual-aid cost and release evidence
 
-**Justification:** Documents often carry the legal or operational truth behind outage detection, switching, crew dispatch, restoration estimates, customer impact, and reliability reporting.
+**Justification:** Mutual aid crews require release, demobilization, work evidence, and cost handoff.
 
-**Improvement:** Create a governed evidence vault for `utility_outage_restoration_policy_rule` documents, attachments, source spans, extracted fields, signatures, approvals, and retention labels. Tie the behavior to `utility_outage_restoration_record_device_interruption_workflow` where applicable, and make it visible in `UtilityOutageRestorationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add mutual aid work logs, release status, demobilization time, work packet evidence, and cost projection handoff.
 
-**Acceptance evidence:** Evidence models, source-to-field lineage, signature validation, retention policies, and proof exports. The evidence should be package-local in `src/pyAppGen/pbcs/utility_outage_restoration` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must produce mutual-aid summary reports without owning finance records.
 
-### 45. Data correction and amendment history for Utility Outage Restoration Runtime Parameter
+### 45. Customer claims handoff boundary
 
-**Justification:** World-class systems correct mistakes without rewriting history or confusing downstream consumers.
+**Justification:** Outages can create customer claims, but claims case handling belongs elsewhere.
 
-**Improvement:** Support formal amendments for `utility_outage_restoration_runtime_parameter` that preserve original values, correction reason, approving actor, effective date, downstream event impacts, and replay behavior. Tie the behavior to `utility_outage_restoration_create_outage_incident_workflow` where applicable, and make it visible in `UtilityOutageRestorationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add claim-intake event payloads with incident, customer impact, duration, cause, and evidence packet reference.
 
-**Acceptance evidence:** Amendment tables, correction events, projection replay tests, and side-by-side before/after UI. The evidence should be package-local in `src/pyAppGen/pbcs/utility_outage_restoration` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Boundary tests must show claim handoff through declared events only.
 
-### 46. External participant collaboration for Utility Outage Restoration Schema Extension
+### 46. Restoration performance benchmarking
 
-**Justification:** Many utility outage restoration workflows require outside parties, but they must not gain direct access to internal tables.
+**Justification:** Operations teams need to compare restoration performance by cause, area, crew type, storm mode, and device class.
 
-**Improvement:** Add controlled collaboration portals or API views for external participants related to `utility_outage_restoration_schema_extension`, limited to scoped evidence submission, status checks, comments, and dispute responses. Tie the behavior to `utility_outage_restoration_record_device_interruption_workflow` where applicable, and make it visible in `UtilityOutageRestorationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add performance analytics for time to detect, assign, arrive, switch, restore, verify, and close.
 
-**Acceptance evidence:** Participant role policies, scoped tokens, submission audit trails, and inbound evidence validation. The evidence should be package-local in `src/pyAppGen/pbcs/utility_outage_restoration` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must calculate benchmarks from owned timeline events.
 
-### 47. Advanced dependency freshness scoring for Utility Outage Restoration Control Assertion
+### 47. Release smoke scenarios
 
-**Justification:** A record may be valid locally but unsafe if dependency evidence is stale or incomplete.
+**Justification:** Generated apps need evidence that realistic outage workflows execute after composition.
 
-**Improvement:** Score freshness and reliability of dependencies used by `utility_outage_restoration_control_assertion`, including consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, referenced projections, configuration versions, and external submissions. Tie the behavior to `utility_outage_restoration_create_outage_incident_workflow` where applicable, and make it visible in `UtilityOutageRestorationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add smoke scenarios for customer-reported outage, device interruption, switching plan, crew assignment, ETR revision, partial restoration, and closure.
 
-**Acceptance evidence:** Freshness indicators, blocking rules, stale-event simulations, and workbench dependency health panels. The evidence should be package-local in `src/pyAppGen/pbcs/utility_outage_restoration` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Release evidence must show owned records, AppGen-X events, UI artifacts, and boundary checks for every scenario.
 
-### 48. Model governance and explainability for Utility Outage Restoration Governed Model
+### 48. Cross-PBC boundary proof
 
-**Justification:** Governed AI is mandatory for professional-grade automation in Utility Outage Restoration.
+**Justification:** Outage restoration touches grid topology, field crews, customer data, inventory, communications, and billing without owning them.
 
-**Improvement:** For every predictive or agentic feature around `utility_outage_restoration_governed_model`, record model version, prompt or ruleset version, training/evaluation evidence, confidence, explanation, and human feedback. Tie the behavior to `utility_outage_restoration_record_device_interruption_workflow` where applicable, and make it visible in `UtilityOutageRestorationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add automated proof that generated models, services, routes, handlers, projections, and agent commands use only owned tables plus declared APIs/events.
 
-**Acceptance evidence:** Model cards, prompt/version manifests, feedback loops, drift tests, and audit proof for recommendations. The evidence should be package-local in `src/pyAppGen/pbcs/utility_outage_restoration` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must fail on undeclared table references and pass for declared projection or event dependency references.
 
-### 49. High-scale partitioning and archival for Outage Incident
+### 49. Storm command center
 
-**Justification:** Better-than-world-class packages must remain operable after years of high-volume domain history.
+**Justification:** Major events need a unified storm room surface for incidents, crews, mutual aid, critical customers, estimates, and public messages.
 
-**Improvement:** Plan scale behavior for `outage_incident`: tenant partitioning, archival policies, cold storage, retention-aware search, projection compaction, and large-batch replay. Tie the behavior to `utility_outage_restoration_create_outage_incident_workflow` where applicable, and make it visible in `UtilityOutageRestorationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add storm command center with operating level, map, crew staging, top incidents, ETR policy, mutual aid, and reliability impact.
 
-**Acceptance evidence:** Partition tests, archive/retrieve fixtures, retention enforcement, and replay benchmarks. The evidence should be package-local in `src/pyAppGen/pbcs/utility_outage_restoration` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** UI tests must expose storm mode controls and summary metrics.
 
-### 50. Release gate expansion for Device Interruption
+### 50. Outage restoration executive briefing
 
-**Justification:** The PBC should not claim domain coverage unless release evidence proves the claim end to end.
+**Justification:** Leaders need concise status without interrupting dispatchers during active restoration.
 
-**Improvement:** Expand release gates for `utility_outage_restoration` so every schema, service, API, event, handler, UI, rule, parameter, agent skill, seed scenario, and improvement backlog item maps to executable evidence. Tie the behavior to `utility_outage_restoration_record_device_interruption_workflow` where applicable, and make it visible in `UtilityOutageRestorationWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add briefing generator with active incidents, customers out, critical impacts, crew status, ETR confidence, risks, and next updates.
 
-**Acceptance evidence:** Release audit checks, manifest traceability, generated-app smoke tests, and missing-capability blockers. The evidence should be package-local in `src/pyAppGen/pbcs/utility_outage_restoration` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must generate a briefing from owned records and projections with no raw datastore access.

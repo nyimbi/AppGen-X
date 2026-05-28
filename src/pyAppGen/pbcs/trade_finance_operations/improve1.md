@@ -1,418 +1,263 @@
-# Trade Finance Operations PBC Better-Than-World-Class Improvement Backlog
-
-## Purpose
-
-This file identifies, justifies, and describes 50 high-impact improvements for `trade_finance_operations`. The backlog is specific to letters of credit, guarantees, documentary collections, sanctions checks, shipment documents, and trade settlement and is intended to move the PBC from release-auditable scaffolding toward complete, specialist-grade domain coverage.
+# Trade Finance Operations Improvement Backlog
 
 ## Current Domain Evidence Used
 
-- Stable PBC key: `trade_finance_operations`.
-- Domain purpose: Letters of credit, guarantees, documentary collections, sanctions checks, shipment documents, and trade settlement.
-- Owned domain tables: `letter_of_credit`, `bank_guarantee`, `documentary_collection`, `trade_document`, `sanctions_check`, `shipment_evidence`, `trade_settlement`, `trade_finance_operations_policy_rule`, `trade_finance_operations_runtime_parameter`, `trade_finance_operations_schema_extension`, `trade_finance_operations_control_assertion`, `trade_finance_operations_governed_model`.
-- Public APIs: `POST /letter-of-credits`, `POST /bank-guarantees`, `POST /documentary-collections`, `POST /trade-documents`, `POST /sanctions-checks`, `GET /trade-finance-operations-workbench`.
-- Emitted AppGen-X events: `TradeFinanceOperationsCreated`, `TradeFinanceOperationsUpdated`, `TradeFinanceOperationsApproved`, `TradeFinanceOperationsExceptionOpened`.
-- Consumed AppGen-X events: `PolicyChanged`, `AuditEventSealed`, `OperationalKpiChanged`.
-- Current standard surfaces include: `letter_of_credit_management`, `trade_finance_operations_workflow`, `trade_finance_operations_analytics`, `configuration_schema`, `rule_engine`, `parameter_engine`, `owned_schema_migrations_models`, `appgen_x_outbox_inbox_eventing`, `idempotent_handlers`, `retry_dead_letter_evidence`.
-- Current advanced surfaces include: `trade_finance_operations_event_sourced_operational_history`, `trade_finance_operations_multi_tenant_policy_isolation`, `trade_finance_operations_schema_evolution_resilience`, `trade_finance_operations_autonomous_anomaly_detection`, `trade_finance_operations_semantic_document_instruction_understanding`, `trade_finance_operations_predictive_risk_scoring`, `trade_finance_operations_counterfactual_scenario_simulation`, `trade_finance_operations_cryptographic_audit_proofs`.
-
-## 50 High-Impact Improvements
-
-### 1. Canonical lifecycle state model for Letter Of Credit
-
-**Justification:** This closes shallow CRUD gaps by making every trade finance operations transition explainable and testable instead of implicit in free-form status values.
-
-**Improvement:** Define a complete state machine for `letter_of_credit` with explicit draft, validated, blocked, approved, active, suspended, corrected, closed, archived, and reopened states. Tie the behavior to `trade_finance_operations_create_letter_of_credit_workflow` where applicable, and make it visible in `TradeFinanceOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** State-transition tests, invalid-transition fixtures, workbench state badges, and emitted AppGen-X transition events for TradeFinanceOperationsCreated, TradeFinanceOperationsUpdated, TradeFinanceOperationsApproved. The evidence should be package-local in `src/pyAppGen/pbcs/trade_finance_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 2. Domain intake and normalization for Bank Guarantee
-
-**Justification:** The PBC cannot reach complete domain coverage unless it handles the messy front door of letters of credit, guarantees, documentary collections, sanctions checks, shipment documents, and trade settlement, not only already-clean records.
-
-**Improvement:** Build a typed intake pipeline for `bank_guarantee` that accepts structured API payloads, document-derived instructions, batch loads, and assistant-generated drafts while normalizing identifiers, dates, units, parties, and jurisdictional context. Tie the behavior to `trade_finance_operations_record_bank_guarantee_workflow` where applicable, and make it visible in `TradeFinanceOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Golden intake fixtures, rejected-record queues, field-level normalization evidence, and assistant previews before governed datastore mutation. The evidence should be package-local in `src/pyAppGen/pbcs/trade_finance_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 3. Specialist validation rules for Documentary Collection
-
-**Justification:** World-class Trade Finance Operations requires rules that domain experts can reason about, version, test, and roll back without code edits.
-
-**Improvement:** Add a domain rule compiler for `documentary_collection` that supports threshold rules, eligibility rules, dependency rules, temporal windows, conflicting-instruction detection, and override justification. Tie the behavior to `trade_finance_operations_create_letter_of_credit_workflow` where applicable, and make it visible in `TradeFinanceOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Rule simulation tests, versioned rule manifests, rule impact reports, and UI rule editors linked to `TRADE_FINANCE_OPERATIONS_DATABASE_URL, TRADE_FINANCE_OPERATIONS_EVENT_TOPIC, TRADE_FINANCE_OPERATIONS_RETRY_LIMIT`. The evidence should be package-local in `src/pyAppGen/pbcs/trade_finance_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 4. Parameter governance and tuning for Trade Document
-
-**Justification:** Parameters are where operations teams tune trade finance operations; unbounded constants would make the PBC brittle and unsafe in real deployments.
-
-**Improvement:** Expose bounded runtime parameters for `trade_document` covering risk thresholds, SLA windows, confidence floors, escalation cutoffs, batch sizes, retry limits, and human-confirmation requirements. Tie the behavior to `trade_finance_operations_record_bank_guarantee_workflow` where applicable, and make it visible in `TradeFinanceOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Parameter schema validation, tenant overrides, approval history, rollback controls, and workbench diff views. The evidence should be package-local in `src/pyAppGen/pbcs/trade_finance_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 5. Deep owned schema expansion for Sanctions Check
-
-**Justification:** A single payload column cannot express the full surface of letters of credit, guarantees, documentary collections, sanctions checks, shipment documents, and trade settlement or prove cross-PBC boundaries are respected.
-
-**Improvement:** Extend the owned schema around `sanctions_check` with normalized child tables for line-level evidence, party roles, approvals, attachments, comments, metrics, exception reasons, and control assertions. Tie the behavior to `trade_finance_operations_create_letter_of_credit_workflow` where applicable, and make it visible in `TradeFinanceOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Migrations, models, relationship tests, schema contract snapshots, and no shared-table access outside the `trade_finance_operations_` namespace. The evidence should be package-local in `src/pyAppGen/pbcs/trade_finance_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 6. Event-sourced operational history for Shipment Evidence
-
-**Justification:** Temporal reconstruction is essential for better-than-world-class auditability and dispute resolution in trade finance operations.
-
-**Improvement:** Capture every material mutation of `shipment_evidence` as immutable AppGen-X events with actor, tenant, command, policy version, idempotency key, before/after summary, and projection checkpoint. Tie the behavior to `trade_finance_operations_record_bank_guarantee_workflow` where applicable, and make it visible in `TradeFinanceOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Replay tests, projection checksums, event ordering evidence, and point-in-time workbench views. The evidence should be package-local in `src/pyAppGen/pbcs/trade_finance_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 7. Projection and read-model strategy for Trade Settlement
-
-**Justification:** The workbench should not force users to infer domain truth from raw tables; each projection should answer a real operating question.
-
-**Improvement:** Create purpose-built projections for `trade_settlement`: operational queue, executive KPI rollup, exception aging, compliance evidence, agent task context, and external dependency health. Tie the behavior to `trade_finance_operations_create_letter_of_credit_workflow` where applicable, and make it visible in `TradeFinanceOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Projection contracts, freshness SLAs, backfill tests, and visible stale-projection warnings. The evidence should be package-local in `src/pyAppGen/pbcs/trade_finance_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 8. Exception taxonomy and remediation for Trade Finance Operations Policy Rule
-
-**Justification:** High-value PBCs win on exception throughput; generic “failed” states hide the details operators need.
-
-**Improvement:** Model the full exception taxonomy for `trade_finance_operations_policy_rule`, including severity, root cause, blocking dependency, remediation owner, due date, retry eligibility, escalation path, and closure evidence. Tie the behavior to `trade_finance_operations_record_bank_guarantee_workflow` where applicable, and make it visible in `TradeFinanceOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Exception queues, aging metrics, remediation playbooks, dead-letter linkage, and closure test fixtures for sanctions or fraud holds. The evidence should be package-local in `src/pyAppGen/pbcs/trade_finance_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 9. Predictive risk scoring for Trade Finance Operations Runtime Parameter
-
-**Justification:** The package should warn users before trade finance operations work fails, breaches policy, or creates downstream cost.
-
-**Improvement:** Add predictive risk scoring for `trade_finance_operations_runtime_parameter` using domain features from owned tables, consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, rule outcomes, aging, anomaly signals, and historical corrections. Tie the behavior to `trade_finance_operations_create_letter_of_credit_workflow` where applicable, and make it visible in `TradeFinanceOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Feature manifests, score explanations, calibration reports, drift alerts, and tests for low/medium/high-risk scenarios. The evidence should be package-local in `src/pyAppGen/pbcs/trade_finance_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 10. Counterfactual simulation for Trade Finance Operations Schema Extension
-
-**Justification:** Advanced users need to ask “what would happen if” before committing changes to live letters of credit, guarantees, documentary collections, sanctions checks, shipment documents, and trade settlement operations.
-
-**Improvement:** Provide scenario simulation for `trade_finance_operations_schema_extension`: policy change, capacity constraint, deadline shift, price/rate change, eligibility change, disruption, and manual override outcomes. Tie the behavior to `trade_finance_operations_record_bank_guarantee_workflow` where applicable, and make it visible in `TradeFinanceOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Simulation APIs, non-mutating sandbox state, comparison reports, and workbench side-by-side scenario panels. The evidence should be package-local in `src/pyAppGen/pbcs/trade_finance_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 11. Autonomous anomaly triage for Trade Finance Operations Control Assertion
-
-**Justification:** A world-class PBC should reduce analyst burden without hiding the reasoning behind automated triage.
-
-**Improvement:** Implement anomaly detection for `trade_finance_operations_control_assertion` that identifies outliers, duplicate submissions, impossible sequences, stale dependencies, unusual amounts/counts/durations, and contradictory fields. Tie the behavior to `trade_finance_operations_create_letter_of_credit_workflow` where applicable, and make it visible in `TradeFinanceOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Explainable anomaly cards, reviewer feedback loops, false-positive tracking, and suppression governance. The evidence should be package-local in `src/pyAppGen/pbcs/trade_finance_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 12. Semantic document understanding for Trade Finance Operations Governed Model
-
-**Justification:** Document-heavy work in Trade Finance Operations cannot be complete if the assistant only answers questions and cannot prepare accurate governed changes.
-
-**Improvement:** Train the package assistant to parse domain documents and instructions for `trade_finance_operations_governed_model`, extract obligations, dates, parties, quantities, identifiers, and exceptions, then map them to safe draft mutations. Tie the behavior to `trade_finance_operations_record_bank_guarantee_workflow` where applicable, and make it visible in `TradeFinanceOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Document extraction tests, confidence thresholds, redaction handling, source span citations, and human confirmation workflows. The evidence should be package-local in `src/pyAppGen/pbcs/trade_finance_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 13. Agent-safe CRUD execution for Letter Of Credit
-
-**Justification:** The PBC agent must be a first-class operator but never a hidden bypass around RBAC, rules, or owned datastore boundaries.
-
-**Improvement:** Add a professional chatbot skill for `letter_of_credit` that can create, update, correct, close, and annotate records only through policy-checked commands, approval gates, and previewed diffs. Tie the behavior to `trade_finance_operations_create_letter_of_credit_workflow` where applicable, and make it visible in `TradeFinanceOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Skill manifests, permission tests, preview/confirm flows, blocked-action evidence, and audit events for every assistant mutation. The evidence should be package-local in `src/pyAppGen/pbcs/trade_finance_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 14. Workbench persona coverage for Bank Guarantee
-
-**Justification:** A generic detail page underserves the domain; each role needs the exact controls and evidence they use daily.
-
-**Improvement:** Design dedicated workbench panels for `bank_guarantee`: operator queue, supervisor approvals, analyst exceptions, auditor evidence, configuration owner, and agent-assistance review. Tie the behavior to `trade_finance_operations_record_bank_guarantee_workflow` where applicable, and make it visible in `TradeFinanceOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** UI contract entries, route tests, empty/error/loading states, and permission-aware action availability. The evidence should be package-local in `src/pyAppGen/pbcs/trade_finance_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 15. Cross-PBC dependency contracts for Documentary Collection
-
-**Justification:** Composable packages fail when hidden table coupling enters the domain model.
-
-**Improvement:** Represent dependencies for `documentary_collection` through declared APIs, consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, and projections rather than shared tables, with explicit freshness, ownership, and fallback behavior. Tie the behavior to `trade_finance_operations_create_letter_of_credit_workflow` where applicable, and make it visible in `TradeFinanceOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Dependency manifests, contract tests, stale dependency alerts, and no foreign-table references in generated artifacts. The evidence should be package-local in `src/pyAppGen/pbcs/trade_finance_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 16. API completeness and versioning for Trade Document
-
-**Justification:** Complete domain coverage requires both command and query surfaces, not only happy-path create endpoints.
-
-**Improvement:** Expand APIs beyond POST /letter-of-credits, POST /bank-guarantees, POST /documentary-collections to cover search, validation-only commands, simulation, bulk intake, exception closure, evidence export, projection reads, and idempotent corrections. Tie the behavior to `trade_finance_operations_record_bank_guarantee_workflow` where applicable, and make it visible in `TradeFinanceOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** OpenAPI-style route manifests, backward-compatible version tests, deprecation metadata, and idempotency assertions. The evidence should be package-local in `src/pyAppGen/pbcs/trade_finance_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 17. Typed emitted-event expansion for Sanctions Check
-
-**Justification:** Consumers should understand what happened in Trade Finance Operations without parsing opaque payloads.
-
-**Improvement:** Replace generic lifecycle emissions with typed events for each meaningful `sanctions_check` transition, exception, approval, correction, simulation result, and downstream handoff. Tie the behavior to `trade_finance_operations_create_letter_of_credit_workflow` where applicable, and make it visible in `TradeFinanceOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Event schema tests, event examples, compatibility checks, and emitted-event coverage in release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/trade_finance_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 18. Consumed-event handlers for Shipment Evidence
-
-**Justification:** A PBC is composable only when incoming events affect its own domain state predictably and safely.
-
-**Improvement:** Implement idempotent handlers for consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged that update projections, open dependency exceptions, recalculate risk, and preserve source event lineage. Tie the behavior to `trade_finance_operations_record_bank_guarantee_workflow` where applicable, and make it visible in `TradeFinanceOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Duplicate-event tests, handler side-effect boundaries, dead-letter fixtures, and lineage links back to source events. The evidence should be package-local in `src/pyAppGen/pbcs/trade_finance_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 19. Retry and dead-letter operations for Trade Settlement
-
-**Justification:** Dead letters are not just plumbing; they are domain work queues that can block letters of credit, guarantees, documentary collections, sanctions checks, shipment documents, and trade settlement.
-
-**Improvement:** Create operational tools for retrying, quarantining, explaining, and resolving dead-lettered `trade_settlement` events with max-attempt policy, poison-message detection, and replay safety. Tie the behavior to `trade_finance_operations_create_letter_of_credit_workflow` where applicable, and make it visible in `TradeFinanceOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Dead-letter workbench, retry eligibility tests, replay audit proof, and operator action logs. The evidence should be package-local in `src/pyAppGen/pbcs/trade_finance_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 20. RBAC and attribute policy for Trade Finance Operations Policy Rule
-
-**Justification:** High-impact domain operations need finer controls than generic RBAC grants.
-
-**Improvement:** Extend permissions for `trade_finance_operations_policy_rule` from coarse read/create/update/admin to action-level and attribute-aware policies based on role, tenant, jurisdiction, monetary/materiality threshold, and exception severity. Tie the behavior to `trade_finance_operations_record_bank_guarantee_workflow` where applicable, and make it visible in `TradeFinanceOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Permission matrix docs, ABAC policy tests, denied-action UI states, and assistant skill permission checks. The evidence should be package-local in `src/pyAppGen/pbcs/trade_finance_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 21. Continuous control testing for Trade Finance Operations Runtime Parameter
-
-**Justification:** Controls should run during operations, not only during release audit or manual review.
-
-**Improvement:** Embed control assertions for `trade_finance_operations_runtime_parameter` that continuously test segregation of duties, required approvals, stale exceptions, policy drift, duplicate records, and boundary violations. Tie the behavior to `trade_finance_operations_create_letter_of_credit_workflow` where applicable, and make it visible in `TradeFinanceOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Control dashboards, failing-control events, test fixtures, and release evidence tied to `trade_finance_operations_control_assertion` records. The evidence should be package-local in `src/pyAppGen/pbcs/trade_finance_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 22. Cryptographic audit proofing for Trade Finance Operations Schema Extension
-
-**Justification:** Better-than-world-class auditability requires proof of integrity, not merely logs stored in mutable tables.
-
-**Improvement:** Hash-chain material `trade_finance_operations_schema_extension` decisions, documents, emitted events, and release-evidence snapshots to make tampering visible without exposing sensitive payloads. Tie the behavior to `trade_finance_operations_record_bank_guarantee_workflow` where applicable, and make it visible in `TradeFinanceOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Proof manifests, verification APIs, redacted proof exports, and audit-ledger handoff events. The evidence should be package-local in `src/pyAppGen/pbcs/trade_finance_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 23. Privacy, consent, and secrecy controls for Trade Finance Operations Control Assertion
-
-**Justification:** Complete domain coverage must account for protected data and restricted operational evidence.
-
-**Improvement:** Add field-level privacy classifications for `trade_finance_operations_control_assertion`, consent checks, masking rules, retention schedules, legal holds, and assistant redaction policies. Tie the behavior to `trade_finance_operations_create_letter_of_credit_workflow` where applicable, and make it visible in `TradeFinanceOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Retention tests, masked UI snapshots, consent-blocked mutation fixtures, and export controls. The evidence should be package-local in `src/pyAppGen/pbcs/trade_finance_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 24. Multi-tenant operating model for Trade Finance Operations Governed Model
-
-**Justification:** The PBC should scale across organizations while preserving independent policy and compliance boundaries.
-
-**Improvement:** Support tenant-specific `trade_finance_operations_governed_model` rules, data residency, encryption context, configuration, seed data, and release evidence without allowing cross-tenant leakage. Tie the behavior to `trade_finance_operations_record_bank_guarantee_workflow` where applicable, and make it visible in `TradeFinanceOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Tenant isolation tests, tenant-scoped parameters, key-rotation evidence, and cross-tenant negative fixtures. The evidence should be package-local in `src/pyAppGen/pbcs/trade_finance_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 25. Schema evolution and extension registry for Letter Of Credit
-
-**Justification:** Domain teams will add fields; the PBC must evolve without breaking APIs, events, or workbench projections.
-
-**Improvement:** Make schema extensions for `letter_of_credit` first-class with compatibility checks, migration previews, projection backfills, field ownership, and rollback metadata. Tie the behavior to `trade_finance_operations_create_letter_of_credit_workflow` where applicable, and make it visible in `TradeFinanceOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Extension registry UI, compatibility tests, migration dry-runs, and backfill release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/trade_finance_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 26. Master data quality gates for Bank Guarantee
-
-**Justification:** Many trade finance operations errors begin as bad reference data; the PBC should catch them before workflow execution.
-
-**Improvement:** Define reference-data contracts for `bank_guarantee`: canonical codes, parties, locations, classifications, calendars, units, currencies, products, assets, or service categories as relevant to the domain. Tie the behavior to `trade_finance_operations_record_bank_guarantee_workflow` where applicable, and make it visible in `TradeFinanceOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Reference validation fixtures, stale-code warnings, mapping tables, and dependency freshness indicators. The evidence should be package-local in `src/pyAppGen/pbcs/trade_finance_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 27. Bulk operations and correction workflows for Documentary Collection
-
-**Justification:** Enterprise-scale Trade Finance Operations users cannot operate one record at a time.
-
-**Improvement:** Add bulk load, bulk validate, bulk approve, and bulk correction workflows for `documentary_collection` with partial success, row-level errors, resumability, and rollback. Tie the behavior to `trade_finance_operations_create_letter_of_credit_workflow` where applicable, and make it visible in `TradeFinanceOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** CSV/API batch fixtures, resumable job state, row-level audit evidence, and assistant-generated correction suggestions. The evidence should be package-local in `src/pyAppGen/pbcs/trade_finance_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 28. Lifecycle collaboration and tasking for Trade Document
-
-**Justification:** Domain collaboration should live inside the PBC boundary and remain auditable with the record it affects.
-
-**Improvement:** Attach tasks, comments, ownership, due dates, handoffs, and escalation threads to `trade_document` without leaking into external shared task tables. Tie the behavior to `trade_finance_operations_record_bank_guarantee_workflow` where applicable, and make it visible in `TradeFinanceOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Task tables, comment audit history, notification events, escalation SLAs, and role-specific task queues. The evidence should be package-local in `src/pyAppGen/pbcs/trade_finance_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 29. SLA and service-level governance for Sanctions Check
-
-**Justification:** Users need to know when letters of credit, guarantees, documentary collections, sanctions checks, shipment documents, and trade settlement is late, blocked, or at risk before customer or regulator impact.
-
-**Improvement:** Define SLAs for `sanctions_check` across intake, validation, approval, exception resolution, event handling, downstream projection refresh, and release-evidence generation. Tie the behavior to `trade_finance_operations_create_letter_of_credit_workflow` where applicable, and make it visible in `TradeFinanceOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** SLA breach events, timers, configurable calendars, workbench aging buckets, and tests for pause/resume behavior. The evidence should be package-local in `src/pyAppGen/pbcs/trade_finance_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 30. Operational analytics cockpit for Shipment Evidence
-
-**Justification:** World-class operations require leading indicators, not only record counts.
-
-**Improvement:** Build analytics for `shipment_evidence`: throughput, backlog, aging, approval latency, exception rate, risk distribution, automation acceptance, correction rate, and downstream dependency health. Tie the behavior to `trade_finance_operations_record_bank_guarantee_workflow` where applicable, and make it visible in `TradeFinanceOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Metric definitions, projection tests, drill-through routes, export APIs, and anomaly overlays. The evidence should be package-local in `src/pyAppGen/pbcs/trade_finance_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 31. Decision intelligence and recommendations for Trade Settlement
-
-**Justification:** The PBC should help expert users decide faster while showing evidence and uncertainty.
-
-**Improvement:** Generate ranked recommendations for `trade_settlement` such as next best action, likely resolution, required evidence, policy adjustment, staffing/capacity response, or downstream handoff. Tie the behavior to `trade_finance_operations_create_letter_of_credit_workflow` where applicable, and make it visible in `TradeFinanceOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Recommendation explanations, confidence intervals, feedback capture, model governance records, and rejection reasons. The evidence should be package-local in `src/pyAppGen/pbcs/trade_finance_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 32. Quality and completeness scoring for Trade Finance Operations Policy Rule
-
-**Justification:** Operators should see whether a record is truly ready, not just technically saved.
-
-**Improvement:** Score each `trade_finance_operations_policy_rule` record for completeness, consistency, policy readiness, dependency readiness, evidence sufficiency, and downstream composability. Tie the behavior to `trade_finance_operations_record_bank_guarantee_workflow` where applicable, and make it visible in `TradeFinanceOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Scoring rules, missing-evidence lists, readiness badges, and blocking criteria in command handlers. The evidence should be package-local in `src/pyAppGen/pbcs/trade_finance_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 33. End-to-end scenario library for Trade Finance Operations Runtime Parameter
-
-**Justification:** Release evidence is stronger when every important trade finance operations behavior has executable examples.
-
-**Improvement:** Create seeded scenarios for `trade_finance_operations_runtime_parameter`: normal flow, urgent path, exception path, corrected path, duplicate path, late event path, and audit export path. Tie the behavior to `trade_finance_operations_create_letter_of_credit_workflow` where applicable, and make it visible in `TradeFinanceOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Scenario seed data, runtime smoke coverage, generated-app fixtures, and story-level workbench screenshots/contracts. The evidence should be package-local in `src/pyAppGen/pbcs/trade_finance_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 34. Domain ontology and terminology model for Trade Finance Operations Schema Extension
-
-**Justification:** Precise vocabulary prevents the PBC from misclassifying specialist documents or user instructions.
-
-**Improvement:** Add an ontology for `trade_finance_operations_schema_extension` terms, synonyms, classifications, relationships, allowed values, and phrase mappings used by the assistant and UI. Tie the behavior to `trade_finance_operations_record_bank_guarantee_workflow` where applicable, and make it visible in `TradeFinanceOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Ontology files, assistant parsing tests, UI glossary, and mapping evidence for domain-specific abbreviations. The evidence should be package-local in `src/pyAppGen/pbcs/trade_finance_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 35. Advanced search and investigation for Trade Finance Operations Control Assertion
-
-**Justification:** Investigators and operators need fast, explainable retrieval across the whole domain surface.
-
-**Improvement:** Provide search across `trade_finance_operations_control_assertion` records, events, documents, exceptions, tasks, comments, and audit proofs with filters for tenant, status, risk, date, party, and dependency. Tie the behavior to `trade_finance_operations_create_letter_of_credit_workflow` where applicable, and make it visible in `TradeFinanceOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Search index contracts, result provenance, permission-filtered queries, and stale-index warnings. The evidence should be package-local in `src/pyAppGen/pbcs/trade_finance_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 36. Reconciliation and closure controls for Trade Finance Operations Governed Model
-
-**Justification:** Closure is not complete until the PBC can prove no material domain work remains unresolved.
-
-**Improvement:** Add reconciliation workflows that compare `trade_finance_operations_governed_model` state against consumed events, external projections, expected totals/counts, approvals, and release evidence before closure. Tie the behavior to `trade_finance_operations_record_bank_guarantee_workflow` where applicable, and make it visible in `TradeFinanceOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Reconciliation reports, variance thresholds, closure blockers, and AppGen-X closure events. The evidence should be package-local in `src/pyAppGen/pbcs/trade_finance_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 37. Regulatory and policy reporting for Letter Of Credit
-
-**Justification:** World-class PBCs turn operational evidence into credible reporting without spreadsheet reconstruction.
-
-**Improvement:** Generate domain reporting packs for `letter_of_credit` covering statutory, contractual, operational, board, customer, or regulator evidence depending on monetary integrity, funds movement controls, counterparty risk, regulatory evidence, settlement finality, fraud prevention, and financial reconciliation. Tie the behavior to `trade_finance_operations_create_letter_of_credit_workflow` where applicable, and make it visible in `TradeFinanceOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Report schemas, redaction rules, traceable metric sources, and approval/export audit events. The evidence should be package-local in `src/pyAppGen/pbcs/trade_finance_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 38. Carbon and resource awareness for Bank Guarantee
-
-**Justification:** Sustainability evidence should be embedded in operations instead of treated as an after-the-fact report.
-
-**Improvement:** Where relevant, attach carbon, energy, water, travel, capacity, compute, or resource-footprint metadata to `bank_guarantee` decisions and batch operations. Tie the behavior to `trade_finance_operations_record_bank_guarantee_workflow` where applicable, and make it visible in `TradeFinanceOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Footprint fields, scheduling parameters, exception rules, and dashboards that expose operational tradeoffs. The evidence should be package-local in `src/pyAppGen/pbcs/trade_finance_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 39. Resilience and offline behavior for Documentary Collection
-
-**Justification:** Real operations keep moving during outages; the PBC must preserve correctness when dependencies are unavailable.
-
-**Improvement:** Define resilience modes for `documentary_collection`: degraded dependency mode, offline draft capture, delayed event replay, conflict detection, and safe recovery after partial failure. Tie the behavior to `trade_finance_operations_create_letter_of_credit_workflow` where applicable, and make it visible in `TradeFinanceOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Offline fixtures, replay tests, conflict queues, recovery logs, and user-visible degraded-mode warnings. The evidence should be package-local in `src/pyAppGen/pbcs/trade_finance_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 40. Human-in-the-loop automation for Trade Document
-
-**Justification:** Automation should accelerate letters of credit, guarantees, documentary collections, sanctions checks, shipment documents, and trade settlement while preserving accountability for high-risk decisions.
-
-**Improvement:** Set explicit automation boundaries for `trade_document`: auto-approve, auto-reject, suggest-only, require-review, and block-until-evidence states with policy-based routing. Tie the behavior to `trade_finance_operations_record_bank_guarantee_workflow` where applicable, and make it visible in `TradeFinanceOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Automation policy tests, reviewer queues, override reasons, and assistant action audit trails. The evidence should be package-local in `src/pyAppGen/pbcs/trade_finance_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 41. Package discovery and fit scoring for Sanctions Check
-
-**Justification:** Users selecting PBCs need transparent fit reasoning, especially when domains are adjacent but not overlapping.
-
-**Improvement:** Improve package metadata so composition can explain when `trade_finance_operations` fits a prompt, what entities it owns, what APIs/events it exposes, and what adjacent PBCs it depends on. Tie the behavior to `trade_finance_operations_create_letter_of_credit_workflow` where applicable, and make it visible in `TradeFinanceOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Discovery manifests, prompt-selection tests, overlap rationale links, and composition DSL examples. The evidence should be package-local in `src/pyAppGen/pbcs/trade_finance_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 42. Configuration deployment pipeline for Shipment Evidence
-
-**Justification:** Configuration changes can materially alter trade finance operations; they need the same discipline as code releases.
-
-**Improvement:** Add configuration promotion for `shipment_evidence` across draft, test, approved, active, deprecated, and rollback states with impact analysis before activation. Tie the behavior to `trade_finance_operations_record_bank_guarantee_workflow` where applicable, and make it visible in `TradeFinanceOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Config diff views, approval workflows, simulation before activation, and rollback tests. The evidence should be package-local in `src/pyAppGen/pbcs/trade_finance_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 43. Workbench command completeness for Trade Settlement
-
-**Justification:** A PBC does not fully surface its capabilities if users must call hidden APIs for core work.
-
-**Improvement:** Expose every high-value operation for `trade_settlement` in the UI: create, validate, approve, simulate, correct, assign, export, retry, close, and audit-proof verification. Tie the behavior to `trade_finance_operations_create_letter_of_credit_workflow` where applicable, and make it visible in `TradeFinanceOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** UI action coverage tests, permission-aware disabled states, keyboard paths, and assistant handoff links. The evidence should be package-local in `src/pyAppGen/pbcs/trade_finance_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 44. Document packet and evidence vault for Trade Finance Operations Policy Rule
-
-**Justification:** Documents often carry the legal or operational truth behind letters of credit, guarantees, documentary collections, sanctions checks, shipment documents, and trade settlement.
-
-**Improvement:** Create a governed evidence vault for `trade_finance_operations_policy_rule` documents, attachments, source spans, extracted fields, signatures, approvals, and retention labels. Tie the behavior to `trade_finance_operations_record_bank_guarantee_workflow` where applicable, and make it visible in `TradeFinanceOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Evidence models, source-to-field lineage, signature validation, retention policies, and proof exports. The evidence should be package-local in `src/pyAppGen/pbcs/trade_finance_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 45. Data correction and amendment history for Trade Finance Operations Runtime Parameter
-
-**Justification:** World-class systems correct mistakes without rewriting history or confusing downstream consumers.
-
-**Improvement:** Support formal amendments for `trade_finance_operations_runtime_parameter` that preserve original values, correction reason, approving actor, effective date, downstream event impacts, and replay behavior. Tie the behavior to `trade_finance_operations_create_letter_of_credit_workflow` where applicable, and make it visible in `TradeFinanceOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Amendment tables, correction events, projection replay tests, and side-by-side before/after UI. The evidence should be package-local in `src/pyAppGen/pbcs/trade_finance_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 46. External participant collaboration for Trade Finance Operations Schema Extension
-
-**Justification:** Many trade finance operations workflows require outside parties, but they must not gain direct access to internal tables.
-
-**Improvement:** Add controlled collaboration portals or API views for external participants related to `trade_finance_operations_schema_extension`, limited to scoped evidence submission, status checks, comments, and dispute responses. Tie the behavior to `trade_finance_operations_record_bank_guarantee_workflow` where applicable, and make it visible in `TradeFinanceOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Participant role policies, scoped tokens, submission audit trails, and inbound evidence validation. The evidence should be package-local in `src/pyAppGen/pbcs/trade_finance_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 47. Advanced dependency freshness scoring for Trade Finance Operations Control Assertion
-
-**Justification:** A record may be valid locally but unsafe if dependency evidence is stale or incomplete.
-
-**Improvement:** Score freshness and reliability of dependencies used by `trade_finance_operations_control_assertion`, including consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, referenced projections, configuration versions, and external submissions. Tie the behavior to `trade_finance_operations_create_letter_of_credit_workflow` where applicable, and make it visible in `TradeFinanceOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Freshness indicators, blocking rules, stale-event simulations, and workbench dependency health panels. The evidence should be package-local in `src/pyAppGen/pbcs/trade_finance_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 48. Model governance and explainability for Trade Finance Operations Governed Model
-
-**Justification:** Governed AI is mandatory for professional-grade automation in Trade Finance Operations.
-
-**Improvement:** For every predictive or agentic feature around `trade_finance_operations_governed_model`, record model version, prompt or ruleset version, training/evaluation evidence, confidence, explanation, and human feedback. Tie the behavior to `trade_finance_operations_record_bank_guarantee_workflow` where applicable, and make it visible in `TradeFinanceOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Model cards, prompt/version manifests, feedback loops, drift tests, and audit proof for recommendations. The evidence should be package-local in `src/pyAppGen/pbcs/trade_finance_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 49. High-scale partitioning and archival for Letter Of Credit
-
-**Justification:** Better-than-world-class packages must remain operable after years of high-volume domain history.
-
-**Improvement:** Plan scale behavior for `letter_of_credit`: tenant partitioning, archival policies, cold storage, retention-aware search, projection compaction, and large-batch replay. Tie the behavior to `trade_finance_operations_create_letter_of_credit_workflow` where applicable, and make it visible in `TradeFinanceOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Partition tests, archive/retrieve fixtures, retention enforcement, and replay benchmarks. The evidence should be package-local in `src/pyAppGen/pbcs/trade_finance_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 50. Release gate expansion for Bank Guarantee
-
-**Justification:** The PBC should not claim domain coverage unless release evidence proves the claim end to end.
-
-**Improvement:** Expand release gates for `trade_finance_operations` so every schema, service, API, event, handler, UI, rule, parameter, agent skill, seed scenario, and improvement backlog item maps to executable evidence. Tie the behavior to `trade_finance_operations_record_bank_guarantee_workflow` where applicable, and make it visible in `TradeFinanceOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Release audit checks, manifest traceability, generated-app smoke tests, and missing-capability blockers. The evidence should be package-local in `src/pyAppGen/pbcs/trade_finance_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+- Manifest key: `trade_finance_operations`.
+- Manifest description: letters of credit, guarantees, documentary collections, sanctions checks, shipment documents, and trade settlement.
+- Current APIs: `POST /letter-of-credits`, `POST /bank-guarantees`, `POST /documentary-collections`, `POST /trade-documents`, `POST /sanctions-checks`, `GET /trade-finance-operations-workbench`.
+- Current owned tables: `letter_of_credit`, `bank_guarantee`, `documentary_collection`, `trade_document`, `sanctions_check`, `shipment_evidence`, `trade_settlement`, `trade_finance_operations_policy_rule`, `trade_finance_operations_runtime_parameter`, `trade_finance_operations_schema_extension`, `trade_finance_operations_control_assertion`, `trade_finance_operations_governed_model`.
+- Current emitted events: `TradeFinanceOperationsCreated`, `TradeFinanceOperationsUpdated`, `TradeFinanceOperationsApproved`, `TradeFinanceOperationsExceptionOpened`.
+- Current consumed events: `PolicyChanged`, `AuditEventSealed`, `OperationalKpiChanged`.
+- Current workflow surfaces: `trade_finance_operations_create_letter_of_credit_workflow`, `trade_finance_operations_record_bank_guarantee_workflow`, `letter_of_credit_management`, `agentic_document_instruction_intake`, `ai_agent_task_assistance`, `continuous_release_assurance`, `trade_finance_operations_event_sourced_operational_history`, `trade_finance_operations_predictive_risk_scoring`, `trade_finance_operations_continuous_control_testing`.
+- Current UI surfaces: `TradeFinanceOperationsWorkbench`, `TradeFinanceOperationsDetail`, `TradeFinanceOperationsAssistantPanel`.
+- Current documentation targets: `SPECIFICATION.md` and `RELEASE_EVIDENCE.md`.
+
+### 1. Canonical letter of credit taxonomy
+**Justification:** The current PBC names a letter-of-credit capability, but the domain model is still too shallow unless it distinguishes import, export, standby, confirmed, transferable, revolving, sight, and usance instruments with explicit semantics.
+**Improvement:** Add a canonical instrument taxonomy on `letter_of_credit` that captures credit type, availability method, confirmation status, tolerance rules, revolving terms, transferable flags, and linked governing rules so downstream examination and settlement logic stops relying on free text.
+**Acceptance evidence:** Schema fields and fixtures for each instrument type, API validation that rejects invalid combinations, and workbench filters that segment cases by credit subtype.
+
+### 2. Trade finance party-role graph
+**Justification:** Letters of credit, guarantees, and collections fail in practice when applicant, beneficiary, issuing bank, advising bank, confirming bank, reimbursing bank, presenter, and collecting bank roles are not modeled explicitly.
+**Improvement:** Introduce a role graph that binds every trade instrument to its obligated and informational parties, role effective dates, branch identifiers, contact points, and authority evidence, with support for party changes driven by amendments.
+**Acceptance evidence:** Relationship tests for core party permutations, UI role cards on the detail page, and event payloads that preserve party-role lineage over time.
+
+### 3. Amount, tenor, and availability controls
+**Justification:** Trade finance exposure turns on amount ceilings, sight versus deferred availability, mixed payment terms, and tolerance usage, not just a nominal amount field.
+**Improvement:** Expand the core model to capture available amount, amount utilized, drawing schedule, tenor basis, deferred-payment maturity logic, acceptance dates, tolerance percentages, and auto-close rules when balances are exhausted.
+**Acceptance evidence:** Calculation tests for sight and usance cases, maturity-date scenarios with weekends and holidays, and settlement views that show outstanding versus available exposure.
+
+### 4. Amendment chain governance
+**Justification:** Amendments are central to trade finance operations and must be versioned as legally meaningful changes rather than flat updates that erase prior obligations.
+**Improvement:** Build an amendment chain model that records proposed clause changes, party acceptances, effective timestamps, beneficiary consent status, superseded terms, and amendment-specific discrepancy impacts across credits and guarantees.
+**Acceptance evidence:** Version timeline rendering in the detail view, regression tests proving historical terms remain reconstructable, and release evidence that shows amendment replay accuracy.
+
+### 5. Expiry, presentation period, and calendar handling
+**Justification:** Presentation validity depends on expiry place, presentation period, banking days, and cut-off calendars; generic date fields are not sufficient.
+**Improvement:** Add banking-calendar-aware logic for expiry date, last presentation day, shipment cut-off, grace handling, and place-of-expiry controls, including local non-business day roll rules where applicable.
+**Acceptance evidence:** Calendar fixture coverage for weekend and holiday edge cases, UI warnings before expiry breaches, and discrepancy generation when late presentation occurs.
+
+### 6. Presentation package document matrix
+**Justification:** Trade transactions are decided on document packages, not isolated files, so the system needs a first-class document requirement matrix per instrument.
+**Improvement:** Model required, optional, conditional, and waived document lines for each case, with quantities, originals versus copies, issuer constraints, wording constraints, and cross-document dependencies.
+**Acceptance evidence:** A persisted document matrix tied to `trade_document`, API responses that expose requirement status, and test packs that fail when conditional documents are missing.
+
+### 7. Document examination workbench
+**Justification:** Document examination is the operational heart of letters of credit and collections, and it requires a structured compare-and-decide workspace rather than generic attachment review.
+**Improvement:** Create an examination workspace that compares document facts to credit terms line by line, highlights mismatches, records examiner findings, tracks examination deadlines, and preserves an audit-grade examiner narrative.
+**Acceptance evidence:** UI screenshots or story states for the examination panel, scenario tests for compliant and discrepant presentations, and event history showing who examined what and when.
+
+### 8. Discrepancy codebook and severity model
+**Justification:** Without a controlled discrepancy taxonomy, the PBC cannot support consistent refusal notices, waiver requests, or analytics on recurring trade document defects.
+**Improvement:** Add a discrepancy catalog covering data mismatch, late presentation, missing document, stale transport date, unsigned certificate, prohibited transshipment, excess amount, inconsistent consignee, and sanctions-triggered hold, each with severity and allowed remediation paths.
+**Acceptance evidence:** A discrepancy reference table, tests proving only approved discrepancy codes can be applied, and workbench reports that group backlog by discrepancy type and severity.
+
+### 9. Discrepancy waiver and response workflow
+**Justification:** Trade operations need a full post-examination path that distinguishes refusal, applicant waiver request, beneficiary resubmission, and accepted-under-reserve decisions.
+**Improvement:** Implement a discrepancy workflow with timer-backed applicant waiver requests, beneficiary resubmission handling, partial acceptance logic, refusal notice generation, and settlement release conditions tied to final discrepancy disposition.
+**Acceptance evidence:** Lifecycle tests from discrepancy opening to resolution, event traces for waiver requests and decisions, and UI states showing whether payment is blocked, released, or pending waiver.
+
+### 10. Sight, deferred payment, acceptance, and negotiation flows
+**Justification:** The PBC should not treat every drawing as immediate payment because trade finance settlement differs materially across sight, deferred-payment, acceptance, and negotiation structures.
+**Improvement:** Add separate operational paths for sight reimbursement, deferred-payment undertakings, draft acceptance with maturity tracking, and negotiation with recourse or without recourse where supported by policy.
+**Acceptance evidence:** Settlement scenario coverage for each availability type, maturity aging queues, and accounting-ready settlement evidence that identifies the exact obligation type.
+
+### 11. Transferable and back-to-back credit support
+**Justification:** Transferable credits and back-to-back arrangements introduce beneficiary substitution, amount reduction, and shipment timing controls that a basic LC model will miss.
+**Improvement:** Extend `letter_of_credit` to support first and second beneficiary roles, transferred amount and quantity limits, clause inheritance rules, substituted document handling, and linked-credit relationships for back-to-back structures.
+**Acceptance evidence:** Multi-beneficiary test cases, relationship views that show parent and child credits, and control assertions that prevent unauthorized term expansion in transferred credits.
+
+### 12. Standby letter of credit handling under ISP rules
+**Justification:** Standby credits operate differently from commercial credits, especially around demand wording, statement requirements, and governing practice under ISP rather than shipment-led document sets.
+**Improvement:** Add a standby-specific workflow with demand package templates, beneficiary statement validation, drawing windows, automatic reduction logic, and rule selection between commercial-credit handling and standby handling.
+**Acceptance evidence:** Case fixtures for standby financial and performance credits, rule-engine outputs that cite ISP logic, and detail views that show demand-package completeness before honor.
+
+### 13. Guarantee issuance and lifecycle controls
+**Justification:** Guarantees involve issuance, amendments, reductions, extensions, claims, expiries, and releases; treating them as flat records prevents safe operational control.
+**Improvement:** Build a guarantee lifecycle on `bank_guarantee` that covers issuance approval, effective date, reduction schedule, auto-expiry, extension requests, claim receipt, claim decision, and final discharge evidence.
+**Acceptance evidence:** State-machine tests for guarantee lifecycle edges, detail-page milestone rendering, and release evidence that proves claims and expiries were handled according to policy.
+
+### 14. Counter-guarantee and indirect guarantee chains
+**Justification:** Cross-border guarantee structures often include local issuing banks backed by counter-guarantees, and the chain of obligation must be visible to operations and control teams.
+**Improvement:** Add linked-instrument support for guarantee hierarchies, counter-guarantee exposures, message dependencies, local-law overrides, and claim propagation rules across the chain.
+**Acceptance evidence:** Hierarchy diagrams in the UI, scenario tests for downstream claims bubbling to upstream obligations, and event lineage that ties each claim to its guarantee chain.
+
+### 15. Documentary collections for D/P and D/A
+**Justification:** Documentary collections are operationally distinct from credits because banks handle documents and instructions without the same independent payment undertaking.
+**Improvement:** Expand `documentary_collection` to model documents against payment, documents against acceptance, collecting-bank instructions, release conditions, drawee actions, maturity tracking, and non-payment or non-acceptance handling.
+**Acceptance evidence:** Workflow tests for D/P and D/A paths, UI indicators for document release status, and analytics that separate unpaid, unaccepted, and matured collection items.
+
+### 16. Collection instruction and release conditions
+**Justification:** Collection operations depend on precise release wording, protest instructions, storage instructions, and charges allocation, which are usually hidden in free-text cover letters.
+**Improvement:** Convert collection instructions into typed fields with protest flags, partial-payment rules, storage or warehousing instructions, contact escalation paths, and charge-bearer settings that drive operational decisions.
+**Acceptance evidence:** Parsed instruction fixtures, API validation against unsupported instruction combinations, and generated release notices that draw only from typed instruction fields.
+
+### 17. Trade loan linkage to trade instruments
+**Justification:** Trade loans are not isolated credit products; they are often secured by, or timed against, letters of credit, guarantees, shipment evidence, or collection proceeds.
+**Improvement:** Introduce explicit trade-loan records linked to the underlying credit, collection, shipment, or receivable so the PBC can track loan purpose, collateral basis, repayment source, and documentary prerequisites before drawdown.
+**Acceptance evidence:** Linked-case views showing instrument-to-loan relationships, tests that block loan utilization when documentary prerequisites are unmet, and event payloads that expose linked obligations.
+
+### 18. Pre-shipment and post-shipment loan utilization
+**Justification:** Pre-shipment finance, packing credit, and post-shipment finance have different eligibility and aging logic, which should be operationally distinct.
+**Improvement:** Add loan stages for pre-shipment, post-shipment, discounting, and collection-backed finance with utilization ceilings, rollover rules, due-date logic, and repayment waterfalls tied to export proceeds or accepted drafts.
+**Acceptance evidence:** Utilization and repayment calculation tests, delinquency queues for overdue trade loans, and dashboard slices showing finance exposure by stage.
+
+### 19. Sanctions and AML boundary orchestration
+**Justification:** The PBC should own the trade decision boundary around sanctions and AML relevance without pretending to be the system of record for all customer due diligence.
+**Improvement:** Define a boundary model in which `sanctions_check` stores trade-case screening requests, hits, adjudications, and release blocks while external KYC or customer-risk systems remain referenced by evidence links rather than duplicated profiles.
+**Acceptance evidence:** Boundary contract documentation, tests proving only trade-relevant screening attributes are persisted locally, and operator screens showing when an external AML decision is required before release.
+
+### 20. Rescreening triggers and watchlist evidence
+**Justification:** A clean sanctions result at issuance is not enough when amendments, new shipment documents, vessel data, or beneficiary changes can alter risk.
+**Improvement:** Add rescreen triggers for party changes, amendment terms, vessel updates, country changes, drawing requests, and elapsed time since last screen, with stored watchlist snapshots and adjudication notes.
+**Acceptance evidence:** Event-driven rescreen tests, stale-screen alerts in the workbench, and evidence bundles showing what list version and matching rationale supported each decision.
+
+### 21. Vessel, port, route, and jurisdiction risk checks
+**Justification:** Shipment risk is not limited to named parties; vessel ownership, sanctioned ports, unusual routing, and high-risk jurisdictions can materially change trade compliance outcomes.
+**Improvement:** Extend `shipment_evidence` and `sanctions_check` to capture vessel identifiers, ports of loading and discharge, transshipment nodes, carrier data, and jurisdiction tags that feed policy checks and exception routing.
+**Acceptance evidence:** Policy-rule fixtures for prohibited ports and routes, UI badges for route-risk findings, and event evidence linking shipment facts to the compliance decision.
+
+### 22. Canonical shipment document registry
+**Justification:** Shipment evidence is broader than a file attachment list and should preserve document identity, issuer, version, and business meaning across amendments and presentations.
+**Improvement:** Build a shipment-document registry that normalizes bill of lading, airway bill, road consignment note, commercial invoice, packing list, certificate of origin, insurance certificate, inspection certificate, and beneficiary certificate records under `trade_document`.
+**Acceptance evidence:** Typed document records with version history, search filters by document class, and tests that prevent duplicate or conflicting document identity within a single presentation.
+
+### 23. Bill of lading rule pack
+**Justification:** Bills of lading carry high documentary risk around shipment date, on-board notation, consignee, notify party, freight terms, and clean-versus-clause status.
+**Improvement:** Add a bill-of-lading rule pack that checks transport mode, on-board date, clean notation, consignee wording, notify party, freight prepaid or collect status, original-count requirements, and transshipment consistency against instrument terms.
+**Acceptance evidence:** Examination fixtures for compliant and discrepant bills, UI diff views that highlight clause mismatches, and refusal notices that cite the exact transport discrepancy detected.
+
+### 24. Invoice, packing list, origin, and inspection consistency checks
+**Justification:** Trade presentations often fail because values, quantities, marks, country of origin, and goods descriptions disagree across documents even when each document looks individually plausible.
+**Improvement:** Implement cross-document consistency checks over invoice values, packing-list quantities, goods descriptions, origin declarations, inspection findings, beneficiary names, and buyer references, with tolerance policies where allowed.
+**Acceptance evidence:** Multi-document scenario tests, discrepancy generation tied to specific conflicting fields, and a document matrix view that shows reconciled versus conflicting facts.
+
+### 25. Insurance and transport document adequacy
+**Justification:** Insurance certificates and transport evidence have clause-level adequacy rules that affect whether a presentation can be honored.
+**Improvement:** Add checks for insured amount, covered risks, currency alignment, claims payable location, endorsement status, policy date, and transport-document cross-references, with separate handling for marine, air, and multimodal shipments.
+**Acceptance evidence:** Rule tests for under-insurance and misdated coverage, UI warnings on insufficient coverage, and audit trails showing who overrode any document adequacy issue.
+
+### 26. Partial shipment, transshipment, and split-presentation rules
+**Justification:** Operations teams need explicit control over whether partial shipment and transshipment are allowed because those terms drive documentary acceptance and discrepancy outcomes.
+**Improvement:** Add term-level controls and rule evaluation for partial shipment, transshipment, split drawings, multiple presentations, and staged shipment schedules, with document-level checks against those permissions.
+**Acceptance evidence:** Policy tests for allowed and prohibited combinations, workbench alerts when a presentation breaches shipment terms, and amendment-impact evidence when these permissions change mid-case.
+
+### 27. Drawing and claim package assembly
+**Justification:** Drawings on credits, guarantees, and standbys should be assembled as governed packages with required statements and supporting documents, not ad hoc file uploads.
+**Improvement:** Build a drawing package model that captures draw amount, demand basis, supporting statement templates, required document set, beneficiary certifications, partial-drawing history, and rule-based completeness checks before submission.
+**Acceptance evidence:** Package completeness tests, UI package checklists, and event emissions that distinguish draft drawing, submitted drawing, examined drawing, and honored or refused drawing.
+
+### 28. Settlement orchestration and release conditions
+**Justification:** Settlement should occur only when documentary, compliance, and approval conditions are satisfied, and those dependencies must be transparent to operators.
+**Improvement:** Expand `trade_settlement` to include release conditions, blocked reason, value date, reimbursement path, beneficiary payment instructions, partial settlement handling, returned funds, and post-settlement proof artifacts.
+**Acceptance evidence:** End-to-end settlement tests from compliant presentation to release, blocked-settlement dashboard states, and release evidence that ties settlement authorization to documentary and sanctions outcomes.
+
+### 29. Charges, commissions, interest, and fee accruals
+**Justification:** Trade finance revenue and customer communication depend on correctly assigning issuance fees, advising fees, confirmation commissions, handling charges, discrepancy fees, and usance interest.
+**Improvement:** Add typed fee schedules with charge bearer, accrual basis, waiver flags, tax handling, and reversal logic for amendments, cancellations, and returned collections.
+**Acceptance evidence:** Fee calculation fixtures, UI fee breakdowns by case, and settlement outputs that reconcile net proceeds after charges and commissions.
+
+### 30. Foreign exchange and amount-mismatch controls
+**Justification:** Trade instruments often operate across invoice currency, credit currency, settlement currency, and financing currency, which creates preventable amount and exposure errors.
+**Improvement:** Add FX-aware validation for amount tolerances, financed amount versus available amount, currency conversion snapshots, and mismatch handling when presented values differ from expected instrument or shipment values.
+**Acceptance evidence:** Multi-currency scenario tests, detail views showing conversion basis and tolerance usage, and risk alerts when a case exceeds allowed FX or amount mismatch thresholds.
+
+### 31. UCP 600 rule-engine coverage
+**Justification:** Commercial letters of credit need rule execution grounded in UCP 600 concepts rather than generic validation slogans.
+**Improvement:** Build a rule pack that evaluates presentation timing, document consistency, originals and copies, transport-document requirements, stale shipment dates, and refusal timing with clause references traceable to the governing practice configuration.
+**Acceptance evidence:** Rule-engine fixtures keyed to UCP-style scenarios, examiner screens that show rule citations behind findings, and release evidence listing which rule set governed each decision.
+
+### 32. ISP98 rule-engine coverage
+**Justification:** Standby credits and demand instruments need a separate rules surface because demand wording, statement conditions, and honor timing differ from shipment-led commercial credits.
+**Improvement:** Add an ISP-focused rule set for documentary or statement conditions, drawing windows, extension clauses, automatic reduction, and demand-package sufficiency, selectable at the instrument level.
+**Acceptance evidence:** Standby-specific rule outputs, scenario tests for demand-package sufficiency, and UI labels that make the governing practice visible to examiners and approvers.
+
+### 33. Documentary collection rules under collection practice
+**Justification:** Collections should not be forced into LC logic because release conditions, presentation decisions, and bank obligations differ materially.
+**Improvement:** Add a collection-rule layer for release against payment, release against acceptance, protest instructions, partial-payment rules, return-of-documents handling, and drawer notification obligations.
+**Acceptance evidence:** Collection scenario coverage, event histories showing release or return decisions, and workbench views that distinguish collection outcomes from credit outcomes.
+
+### 34. Exception prioritization and service-level timers
+**Justification:** Exceptions only become manageable when the queue is ordered by exposure, expiry risk, compliance severity, and customer-impact timers rather than creation time alone.
+**Improvement:** Introduce SLA timers and prioritization logic that ranks examination exceptions, sanctions holds, expired waivers, overdue maturities, unclaimed guarantees, and stalled collections by operational urgency.
+**Acceptance evidence:** Prioritized queue views, timer breach events, and analytics proving exception aging can be segmented by root cause and severity.
+
+### 35. Four-eyes control and override justification
+**Justification:** Honor, refusal, sanctions release, guarantee claim handling, and fee waivers are high-impact actions that need clear segregation of duties and override discipline.
+**Improvement:** Add approval matrices requiring dual control for critical actions, including mandatory override reason codes, linked evidence, and policy-rule references whenever an operator bypasses a warning or soft block.
+**Acceptance evidence:** Permission tests for maker-checker separation, UI prompts that require reason capture, and control-assertion records showing override frequency and approver identity.
+
+### 36. Domain event taxonomy expansion
+**Justification:** Generic created or updated events are not enough for downstream consumers to understand trade operations state changes.
+**Improvement:** Extend emitted events to include amendment requested, amendment accepted, presentation received, discrepancy raised, waiver requested, screening blocked, drawing honored, collection released, guarantee claimed, settlement completed, and loan utilized.
+**Acceptance evidence:** Event-schema definitions with examples, compatibility tests for consumers, and release evidence showing emitted-event coverage for each major workflow branch.
+
+### 37. Outbox, inbox, idempotency, and replay evidence
+**Justification:** Trade operations cannot afford duplicate honors, duplicate claim handling, or lost screening updates when event delivery is retried.
+**Improvement:** Tighten outbox and inbox behavior with case-scoped idempotency keys, replay-safe handlers, duplicate detection on external callbacks, and operator tooling to inspect message status and retry reasons.
+**Acceptance evidence:** Retry and duplicate-delivery tests, dead-letter scenarios with recovery steps, and UI evidence that shows message lineage from command to emitted event to projection update.
+
+### 38. Trade finance workbench queue design
+**Justification:** The current workbench surface should behave like an operations cockpit for credits, guarantees, collections, screenings, and settlements rather than a generic list page.
+**Improvement:** Redesign `TradeFinanceOperationsWorkbench` into domain queues for instruments awaiting issuance, amended cases, presented documents, discrepancies, sanctions holds, pending drawings, due settlements, overdue maturities, and release-evidence gaps.
+**Acceptance evidence:** Queue definitions mapped to real case states, navigation tests for every queue, and operator evidence showing one-click access from queue row to the exact pending action.
+
+### 39. Detail page timeline and obligation view
+**Justification:** Operators need a single narrative that combines amendments, document receipts, screenings, examination decisions, claims, settlements, and loan actions in time order.
+**Improvement:** Expand `TradeFinanceOperationsDetail` into a timeline-plus-obligation view with instrument terms, outstanding obligations, documentary status, compliance status, fee status, and next required action grouped by lifecycle stage.
+**Acceptance evidence:** Detail-page state stories for LC, guarantee, collection, and trade-loan linked cases, plus event-replay tests that recreate the same timeline from stored history.
+
+### 40. Document viewer and discrepancy comparison UI
+**Justification:** Examiners lose time when they have to jump between attachments and manually compare clause wording, shipment dates, quantities, and amounts.
+**Improvement:** Build a document viewer that aligns extracted facts beside governing terms, highlights differing text spans, tracks examiner comments per field, and supports side-by-side comparison across invoice, bill of lading, insurance, and certificate documents.
+**Acceptance evidence:** UI component states for compare mode, examiner annotation persistence tests, and usability evidence that discrepancies can be opened directly from a highlighted mismatch.
+
+### 41. Agent skill for clause extraction and draft setup
+**Justification:** Agent assistance is most useful when it prepares accurate drafts from applications or instrument text instead of producing generic summaries.
+**Improvement:** Add an assistant skill that extracts clauses, parties, amounts, dates, shipment terms, and required documents from applications or incoming instrument text and converts them into governed draft records for operator review.
+**Acceptance evidence:** Prompt-to-draft test fixtures, operator approval flows that show every extracted field before commit, and release evidence proving the assistant never bypasses governed mutation paths.
+
+### 42. Agent skill for document examination support
+**Justification:** Examination work is repetitive and detail-heavy, making it a strong fit for constrained AI support if findings remain explainable and reviewable.
+**Improvement:** Add an assistant skill that pre-checks presentation packages against governing terms, suggests discrepancy codes, cites the triggering clause or field mismatch, and drafts refusal or waiver-request text without sending it automatically.
+**Acceptance evidence:** Evaluation sets comparing assistant suggestions to human examiner outcomes, UI controls for accept or reject per suggested discrepancy, and audit logs for all assistant-generated examination content.
+
+### 43. Agent skill for sanctions and AML boundary guidance
+**Justification:** Screening escalations need consistent operator guidance that respects the boundary between trade-case screening and wider AML decisioning.
+**Improvement:** Add an assistant skill that explains why a trade case was screened, what shipment or party facts triggered escalation, what evidence is still missing, and when the operator must wait for an external AML or compliance decision before proceeding.
+**Acceptance evidence:** Guided-case fixtures for clear, false-positive, and escalation-required outcomes, detail-page assistant panels that surface missing evidence, and control tests proving the skill cannot clear a blocked case on its own.
+
+### 44. Release evidence pack automation
+**Justification:** The manifest already calls for `RELEASE_EVIDENCE.md`, so the backlog should make release evidence a first-class operational deliverable rather than a manual afterthought.
+**Improvement:** Generate a release-evidence pack that bundles executed workflow tests, rule-pack coverage, event-contract verification, screening boundary tests, UI state evidence, unresolved-risk lists, and migration or backfill status for the trade finance package.
+**Acceptance evidence:** A reproducible release-evidence checklist, generated artifacts tied to build outputs, and proofs that each critical trade workflow has current evidence attached to the release candidate.
+
+### 45. Synthetic trade-document corpus and edge-case fixtures
+**Justification:** Domain-deep quality depends on a representative test corpus of shipment documents, amendments, guarantees, demands, and collections rather than shallow happy-path examples.
+**Improvement:** Build a synthetic corpus that covers compliant and discrepant document sets, forged-looking but structurally valid inputs, late shipments, partial drawings, split bills of lading, vessel changes, expired guarantees, and loan-linked trade cases.
+**Acceptance evidence:** Versioned fixtures stored with clear scenario labels, automated tests that consume the corpus across parsing and examination flows, and release evidence that reports corpus coverage by product type.
+
+### 46. Counterfactual simulation for amendments, drawings, and delays
+**Justification:** Trade operations teams need to know the downstream impact of a proposed amendment, delayed vessel, changed shipment quantity, or partial drawing before they commit the change.
+**Improvement:** Add non-mutating simulation flows that show how a candidate amendment or operational delay would affect document requirements, sanctions rescreening, settlement timing, guarantee exposure, and linked trade-loan repayment assumptions.
+**Acceptance evidence:** Simulation result views with before-and-after comparisons, tests proving no live state is mutated during simulation, and operator exports that can be attached to approval decisions.
+
+### 47. Operational analytics and KPI definitions
+**Justification:** A trade finance workbench should expose domain KPIs such as examination turnaround, discrepancy rate, waiver aging, claim frequency, settlement timeliness, and screened-case conversion.
+**Improvement:** Define metrics and projections for issuance cycle time, amendment volume, first-pass clean presentation rate, discrepancy recurrence, sanctions hold duration, maturity punctuality, collection release rate, and trade-loan utilization versus settlement outcome.
+**Acceptance evidence:** Metric definitions with exact formulas, projection tests, dashboard cards wired to owned read models, and release evidence that shows KPI calculations were validated on known fixtures.
+
+### 48. Multi-entity, branch, and correspondent operating model
+**Justification:** Trade finance frequently spans branches, regional operations centers, and correspondent-bank handoffs, which must be modeled without cross-tenant leakage or blurred accountability.
+**Improvement:** Extend the PBC to capture booking branch, operating branch, advising location, correspondent role, branch-specific calendars, and local-policy overrides while preserving tenant isolation and action auditability.
+**Acceptance evidence:** Multi-entity access tests, branch-scoped queue views, and control assertions that prevent users from one branch or tenant acting on another entity's restricted cases.
+
+### 49. API and query completeness for trade operations
+**Justification:** The current API list is command-heavy and needs richer query and correction surfaces for real operational use.
+**Improvement:** Expand the API surface with search, detail retrieval, examination save or submit, discrepancy response, amendment preview, drawing submission, settlement release, rescreen request, trade-loan linkage, and release-evidence export endpoints, all with explicit idempotency and pagination rules.
+**Acceptance evidence:** Contract tests for new command and query routes, pagination and filter fixtures on the workbench feeds, and event-to-API traceability proving every critical UI action is backed by a governed endpoint.
+
+### 50. Go-live control gates and release readiness
+**Justification:** A domain-heavy package should not ship on feature count alone; it should ship only when trade-specific controls, evidence, and operational playbooks are complete.
+**Improvement:** Define release gates that require passing rule-pack tests, document-examination regression suites, sanctions-boundary verification, event replay checks, UI critical-path validation, unresolved-exception review, and signed-off operational runbooks for credits, guarantees, collections, loans, and settlements.
+**Acceptance evidence:** A go-live checklist tied to `RELEASE_EVIDENCE.md`, explicit pass or fail criteria for each control gate, and a release summary that names any remaining risks rather than hiding them.

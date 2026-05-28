@@ -1,418 +1,261 @@
-# Telecom Network Operations PBC Better-Than-World-Class Improvement Backlog
-
-## Purpose
-
-This file identifies, justifies, and describes 50 high-impact improvements for `telecom_network_operations`. The backlog is specific to network inventory, capacity, incidents, alarms, service assurance, maintenance windows, and sla impact and is intended to move the PBC from release-auditable scaffolding toward complete, specialist-grade domain coverage.
+# Telecom Network Operations Improvement Backlog
 
 ## Current Domain Evidence Used
 
-- Stable PBC key: `telecom_network_operations`.
-- Domain purpose: Network inventory, capacity, incidents, alarms, service assurance, maintenance windows, and SLA impact.
-- Owned domain tables: `network_element`, `capacity_segment`, `network_incident`, `alarm_event`, `service_assurance_case`, `maintenance_window`, `sla_impact`, `telecom_network_operations_policy_rule`, `telecom_network_operations_runtime_parameter`, `telecom_network_operations_schema_extension`, `telecom_network_operations_control_assertion`, `telecom_network_operations_governed_model`.
-- Public APIs: `POST /network-elements`, `POST /capacity-segments`, `POST /network-incidents`, `POST /alarm-events`, `POST /service-assurance-cases`, `GET /telecom-network-operations-workbench`.
-- Emitted AppGen-X events: `TelecomNetworkOperationsCreated`, `TelecomNetworkOperationsUpdated`, `TelecomNetworkOperationsApproved`, `TelecomNetworkOperationsExceptionOpened`.
-- Consumed AppGen-X events: `PolicyChanged`, `AuditEventSealed`, `OperationalKpiChanged`.
-- Current standard surfaces include: `network_element_management`, `telecom_network_operations_workflow`, `telecom_network_operations_analytics`, `configuration_schema`, `rule_engine`, `parameter_engine`, `owned_schema_migrations_models`, `appgen_x_outbox_inbox_eventing`, `idempotent_handlers`, `retry_dead_letter_evidence`.
-- Current advanced surfaces include: `telecom_network_operations_event_sourced_operational_history`, `telecom_network_operations_multi_tenant_policy_isolation`, `telecom_network_operations_schema_evolution_resilience`, `telecom_network_operations_autonomous_anomaly_detection`, `telecom_network_operations_semantic_document_instruction_understanding`, `telecom_network_operations_predictive_risk_scoring`, `telecom_network_operations_counterfactual_scenario_simulation`, `telecom_network_operations_cryptographic_audit_proofs`.
-
-## 50 High-Impact Improvements
-
-### 1. Canonical lifecycle state model for Network Element
-
-**Justification:** This closes shallow CRUD gaps by making every telecom network operations transition explainable and testable instead of implicit in free-form status values.
-
-**Improvement:** Define a complete state machine for `network_element` with explicit draft, validated, blocked, approved, active, suspended, corrected, closed, archived, and reopened states. Tie the behavior to `telecom_network_operations_create_network_element_workflow` where applicable, and make it visible in `TelecomNetworkOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** State-transition tests, invalid-transition fixtures, workbench state badges, and emitted AppGen-X transition events for TelecomNetworkOperationsCreated, TelecomNetworkOperationsUpdated, TelecomNetworkOperationsApproved. The evidence should be package-local in `src/pyAppGen/pbcs/telecom_network_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 2. Domain intake and normalization for Capacity Segment
-
-**Justification:** The PBC cannot reach complete domain coverage unless it handles the messy front door of network inventory, capacity, incidents, alarms, service assurance, maintenance windows, and sla impact, not only already-clean records.
-
-**Improvement:** Build a typed intake pipeline for `capacity_segment` that accepts structured API payloads, document-derived instructions, batch loads, and assistant-generated drafts while normalizing identifiers, dates, units, parties, and jurisdictional context. Tie the behavior to `telecom_network_operations_record_capacity_segment_workflow` where applicable, and make it visible in `TelecomNetworkOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Golden intake fixtures, rejected-record queues, field-level normalization evidence, and assistant previews before governed datastore mutation. The evidence should be package-local in `src/pyAppGen/pbcs/telecom_network_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 3. Specialist validation rules for Network Incident
-
-**Justification:** World-class Telecom Network Operations requires rules that domain experts can reason about, version, test, and roll back without code edits.
-
-**Improvement:** Add a domain rule compiler for `network_incident` that supports threshold rules, eligibility rules, dependency rules, temporal windows, conflicting-instruction detection, and override justification. Tie the behavior to `telecom_network_operations_create_network_element_workflow` where applicable, and make it visible in `TelecomNetworkOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Rule simulation tests, versioned rule manifests, rule impact reports, and UI rule editors linked to `TELECOM_NETWORK_OPERATIONS_DATABASE_URL, TELECOM_NETWORK_OPERATIONS_EVENT_TOPIC, TELECOM_NETWORK_OPERATIONS_RETRY_LIMIT`. The evidence should be package-local in `src/pyAppGen/pbcs/telecom_network_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 4. Parameter governance and tuning for Alarm Event
-
-**Justification:** Parameters are where operations teams tune telecom network operations; unbounded constants would make the PBC brittle and unsafe in real deployments.
-
-**Improvement:** Expose bounded runtime parameters for `alarm_event` covering risk thresholds, SLA windows, confidence floors, escalation cutoffs, batch sizes, retry limits, and human-confirmation requirements. Tie the behavior to `telecom_network_operations_record_capacity_segment_workflow` where applicable, and make it visible in `TelecomNetworkOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Parameter schema validation, tenant overrides, approval history, rollback controls, and workbench diff views. The evidence should be package-local in `src/pyAppGen/pbcs/telecom_network_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 5. Deep owned schema expansion for Service Assurance Case
-
-**Justification:** A single payload column cannot express the full surface of network inventory, capacity, incidents, alarms, service assurance, maintenance windows, and sla impact or prove cross-PBC boundaries are respected.
-
-**Improvement:** Extend the owned schema around `service_assurance_case` with normalized child tables for line-level evidence, party roles, approvals, attachments, comments, metrics, exception reasons, and control assertions. Tie the behavior to `telecom_network_operations_create_network_element_workflow` where applicable, and make it visible in `TelecomNetworkOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Migrations, models, relationship tests, schema contract snapshots, and no shared-table access outside the `telecom_network_operations_` namespace. The evidence should be package-local in `src/pyAppGen/pbcs/telecom_network_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 6. Event-sourced operational history for Maintenance Window
-
-**Justification:** Temporal reconstruction is essential for better-than-world-class auditability and dispute resolution in telecom network operations.
-
-**Improvement:** Capture every material mutation of `maintenance_window` as immutable AppGen-X events with actor, tenant, command, policy version, idempotency key, before/after summary, and projection checkpoint. Tie the behavior to `telecom_network_operations_record_capacity_segment_workflow` where applicable, and make it visible in `TelecomNetworkOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Replay tests, projection checksums, event ordering evidence, and point-in-time workbench views. The evidence should be package-local in `src/pyAppGen/pbcs/telecom_network_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 7. Projection and read-model strategy for Sla Impact
-
-**Justification:** The workbench should not force users to infer domain truth from raw tables; each projection should answer a real operating question.
-
-**Improvement:** Create purpose-built projections for `sla_impact`: operational queue, executive KPI rollup, exception aging, compliance evidence, agent task context, and external dependency health. Tie the behavior to `telecom_network_operations_create_network_element_workflow` where applicable, and make it visible in `TelecomNetworkOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Projection contracts, freshness SLAs, backfill tests, and visible stale-projection warnings. The evidence should be package-local in `src/pyAppGen/pbcs/telecom_network_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 8. Exception taxonomy and remediation for Telecom Network Operations Policy Rule
-
-**Justification:** High-value PBCs win on exception throughput; generic “failed” states hide the details operators need.
-
-**Improvement:** Model the full exception taxonomy for `telecom_network_operations_policy_rule`, including severity, root cause, blocking dependency, remediation owner, due date, retry eligibility, escalation path, and closure evidence. Tie the behavior to `telecom_network_operations_record_capacity_segment_workflow` where applicable, and make it visible in `TelecomNetworkOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Exception queues, aging metrics, remediation playbooks, dead-letter linkage, and closure test fixtures for missing approvals. The evidence should be package-local in `src/pyAppGen/pbcs/telecom_network_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 9. Predictive risk scoring for Telecom Network Operations Runtime Parameter
-
-**Justification:** The package should warn users before telecom network operations work fails, breaches policy, or creates downstream cost.
-
-**Improvement:** Add predictive risk scoring for `telecom_network_operations_runtime_parameter` using domain features from owned tables, consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, rule outcomes, aging, anomaly signals, and historical corrections. Tie the behavior to `telecom_network_operations_create_network_element_workflow` where applicable, and make it visible in `TelecomNetworkOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Feature manifests, score explanations, calibration reports, drift alerts, and tests for low/medium/high-risk scenarios. The evidence should be package-local in `src/pyAppGen/pbcs/telecom_network_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 10. Counterfactual simulation for Telecom Network Operations Schema Extension
-
-**Justification:** Advanced users need to ask “what would happen if” before committing changes to live network inventory, capacity, incidents, alarms, service assurance, maintenance windows, and sla impact operations.
-
-**Improvement:** Provide scenario simulation for `telecom_network_operations_schema_extension`: policy change, capacity constraint, deadline shift, price/rate change, eligibility change, disruption, and manual override outcomes. Tie the behavior to `telecom_network_operations_record_capacity_segment_workflow` where applicable, and make it visible in `TelecomNetworkOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Simulation APIs, non-mutating sandbox state, comparison reports, and workbench side-by-side scenario panels. The evidence should be package-local in `src/pyAppGen/pbcs/telecom_network_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 11. Autonomous anomaly triage for Telecom Network Operations Control Assertion
-
-**Justification:** A world-class PBC should reduce analyst burden without hiding the reasoning behind automated triage.
-
-**Improvement:** Implement anomaly detection for `telecom_network_operations_control_assertion` that identifies outliers, duplicate submissions, impossible sequences, stale dependencies, unusual amounts/counts/durations, and contradictory fields. Tie the behavior to `telecom_network_operations_create_network_element_workflow` where applicable, and make it visible in `TelecomNetworkOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Explainable anomaly cards, reviewer feedback loops, false-positive tracking, and suppression governance. The evidence should be package-local in `src/pyAppGen/pbcs/telecom_network_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 12. Semantic document understanding for Telecom Network Operations Governed Model
-
-**Justification:** Document-heavy work in Telecom Network Operations cannot be complete if the assistant only answers questions and cannot prepare accurate governed changes.
-
-**Improvement:** Train the package assistant to parse domain documents and instructions for `telecom_network_operations_governed_model`, extract obligations, dates, parties, quantities, identifiers, and exceptions, then map them to safe draft mutations. Tie the behavior to `telecom_network_operations_record_capacity_segment_workflow` where applicable, and make it visible in `TelecomNetworkOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Document extraction tests, confidence thresholds, redaction handling, source span citations, and human confirmation workflows. The evidence should be package-local in `src/pyAppGen/pbcs/telecom_network_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 13. Agent-safe CRUD execution for Network Element
-
-**Justification:** The PBC agent must be a first-class operator but never a hidden bypass around RBAC, rules, or owned datastore boundaries.
-
-**Improvement:** Add a professional chatbot skill for `network_element` that can create, update, correct, close, and annotate records only through policy-checked commands, approval gates, and previewed diffs. Tie the behavior to `telecom_network_operations_create_network_element_workflow` where applicable, and make it visible in `TelecomNetworkOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Skill manifests, permission tests, preview/confirm flows, blocked-action evidence, and audit events for every assistant mutation. The evidence should be package-local in `src/pyAppGen/pbcs/telecom_network_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 14. Workbench persona coverage for Capacity Segment
-
-**Justification:** A generic detail page underserves the domain; each role needs the exact controls and evidence they use daily.
-
-**Improvement:** Design dedicated workbench panels for `capacity_segment`: operator queue, supervisor approvals, analyst exceptions, auditor evidence, configuration owner, and agent-assistance review. Tie the behavior to `telecom_network_operations_record_capacity_segment_workflow` where applicable, and make it visible in `TelecomNetworkOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** UI contract entries, route tests, empty/error/loading states, and permission-aware action availability. The evidence should be package-local in `src/pyAppGen/pbcs/telecom_network_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 15. Cross-PBC dependency contracts for Network Incident
-
-**Justification:** Composable packages fail when hidden table coupling enters the domain model.
-
-**Improvement:** Represent dependencies for `network_incident` through declared APIs, consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, and projections rather than shared tables, with explicit freshness, ownership, and fallback behavior. Tie the behavior to `telecom_network_operations_create_network_element_workflow` where applicable, and make it visible in `TelecomNetworkOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Dependency manifests, contract tests, stale dependency alerts, and no foreign-table references in generated artifacts. The evidence should be package-local in `src/pyAppGen/pbcs/telecom_network_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 16. API completeness and versioning for Alarm Event
-
-**Justification:** Complete domain coverage requires both command and query surfaces, not only happy-path create endpoints.
-
-**Improvement:** Expand APIs beyond POST /network-elements, POST /capacity-segments, POST /network-incidents to cover search, validation-only commands, simulation, bulk intake, exception closure, evidence export, projection reads, and idempotent corrections. Tie the behavior to `telecom_network_operations_record_capacity_segment_workflow` where applicable, and make it visible in `TelecomNetworkOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** OpenAPI-style route manifests, backward-compatible version tests, deprecation metadata, and idempotency assertions. The evidence should be package-local in `src/pyAppGen/pbcs/telecom_network_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 17. Typed emitted-event expansion for Service Assurance Case
-
-**Justification:** Consumers should understand what happened in Telecom Network Operations without parsing opaque payloads.
-
-**Improvement:** Replace generic lifecycle emissions with typed events for each meaningful `service_assurance_case` transition, exception, approval, correction, simulation result, and downstream handoff. Tie the behavior to `telecom_network_operations_create_network_element_workflow` where applicable, and make it visible in `TelecomNetworkOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Event schema tests, event examples, compatibility checks, and emitted-event coverage in release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/telecom_network_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 18. Consumed-event handlers for Maintenance Window
-
-**Justification:** A PBC is composable only when incoming events affect its own domain state predictably and safely.
-
-**Improvement:** Implement idempotent handlers for consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged that update projections, open dependency exceptions, recalculate risk, and preserve source event lineage. Tie the behavior to `telecom_network_operations_record_capacity_segment_workflow` where applicable, and make it visible in `TelecomNetworkOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Duplicate-event tests, handler side-effect boundaries, dead-letter fixtures, and lineage links back to source events. The evidence should be package-local in `src/pyAppGen/pbcs/telecom_network_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 19. Retry and dead-letter operations for Sla Impact
-
-**Justification:** Dead letters are not just plumbing; they are domain work queues that can block network inventory, capacity, incidents, alarms, service assurance, maintenance windows, and sla impact.
-
-**Improvement:** Create operational tools for retrying, quarantining, explaining, and resolving dead-lettered `sla_impact` events with max-attempt policy, poison-message detection, and replay safety. Tie the behavior to `telecom_network_operations_create_network_element_workflow` where applicable, and make it visible in `TelecomNetworkOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Dead-letter workbench, retry eligibility tests, replay audit proof, and operator action logs. The evidence should be package-local in `src/pyAppGen/pbcs/telecom_network_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 20. RBAC and attribute policy for Telecom Network Operations Policy Rule
-
-**Justification:** High-impact domain operations need finer controls than generic RBAC grants.
-
-**Improvement:** Extend permissions for `telecom_network_operations_policy_rule` from coarse read/create/update/admin to action-level and attribute-aware policies based on role, tenant, jurisdiction, monetary/materiality threshold, and exception severity. Tie the behavior to `telecom_network_operations_record_capacity_segment_workflow` where applicable, and make it visible in `TelecomNetworkOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Permission matrix docs, ABAC policy tests, denied-action UI states, and assistant skill permission checks. The evidence should be package-local in `src/pyAppGen/pbcs/telecom_network_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 21. Continuous control testing for Telecom Network Operations Runtime Parameter
-
-**Justification:** Controls should run during operations, not only during release audit or manual review.
-
-**Improvement:** Embed control assertions for `telecom_network_operations_runtime_parameter` that continuously test segregation of duties, required approvals, stale exceptions, policy drift, duplicate records, and boundary violations. Tie the behavior to `telecom_network_operations_create_network_element_workflow` where applicable, and make it visible in `TelecomNetworkOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Control dashboards, failing-control events, test fixtures, and release evidence tied to `telecom_network_operations_control_assertion` records. The evidence should be package-local in `src/pyAppGen/pbcs/telecom_network_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 22. Cryptographic audit proofing for Telecom Network Operations Schema Extension
-
-**Justification:** Better-than-world-class auditability requires proof of integrity, not merely logs stored in mutable tables.
-
-**Improvement:** Hash-chain material `telecom_network_operations_schema_extension` decisions, documents, emitted events, and release-evidence snapshots to make tampering visible without exposing sensitive payloads. Tie the behavior to `telecom_network_operations_record_capacity_segment_workflow` where applicable, and make it visible in `TelecomNetworkOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Proof manifests, verification APIs, redacted proof exports, and audit-ledger handoff events. The evidence should be package-local in `src/pyAppGen/pbcs/telecom_network_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 23. Privacy, consent, and secrecy controls for Telecom Network Operations Control Assertion
-
-**Justification:** Complete domain coverage must account for protected data and restricted operational evidence.
-
-**Improvement:** Add field-level privacy classifications for `telecom_network_operations_control_assertion`, consent checks, masking rules, retention schedules, legal holds, and assistant redaction policies. Tie the behavior to `telecom_network_operations_create_network_element_workflow` where applicable, and make it visible in `TelecomNetworkOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Retention tests, masked UI snapshots, consent-blocked mutation fixtures, and export controls. The evidence should be package-local in `src/pyAppGen/pbcs/telecom_network_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 24. Multi-tenant operating model for Telecom Network Operations Governed Model
-
-**Justification:** The PBC should scale across organizations while preserving independent policy and compliance boundaries.
-
-**Improvement:** Support tenant-specific `telecom_network_operations_governed_model` rules, data residency, encryption context, configuration, seed data, and release evidence without allowing cross-tenant leakage. Tie the behavior to `telecom_network_operations_record_capacity_segment_workflow` where applicable, and make it visible in `TelecomNetworkOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Tenant isolation tests, tenant-scoped parameters, key-rotation evidence, and cross-tenant negative fixtures. The evidence should be package-local in `src/pyAppGen/pbcs/telecom_network_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 25. Schema evolution and extension registry for Network Element
-
-**Justification:** Domain teams will add fields; the PBC must evolve without breaking APIs, events, or workbench projections.
-
-**Improvement:** Make schema extensions for `network_element` first-class with compatibility checks, migration previews, projection backfills, field ownership, and rollback metadata. Tie the behavior to `telecom_network_operations_create_network_element_workflow` where applicable, and make it visible in `TelecomNetworkOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Extension registry UI, compatibility tests, migration dry-runs, and backfill release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/telecom_network_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 26. Master data quality gates for Capacity Segment
-
-**Justification:** Many telecom network operations errors begin as bad reference data; the PBC should catch them before workflow execution.
-
-**Improvement:** Define reference-data contracts for `capacity_segment`: canonical codes, parties, locations, classifications, calendars, units, currencies, products, assets, or service categories as relevant to the domain. Tie the behavior to `telecom_network_operations_record_capacity_segment_workflow` where applicable, and make it visible in `TelecomNetworkOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Reference validation fixtures, stale-code warnings, mapping tables, and dependency freshness indicators. The evidence should be package-local in `src/pyAppGen/pbcs/telecom_network_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 27. Bulk operations and correction workflows for Network Incident
-
-**Justification:** Enterprise-scale Telecom Network Operations users cannot operate one record at a time.
-
-**Improvement:** Add bulk load, bulk validate, bulk approve, and bulk correction workflows for `network_incident` with partial success, row-level errors, resumability, and rollback. Tie the behavior to `telecom_network_operations_create_network_element_workflow` where applicable, and make it visible in `TelecomNetworkOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** CSV/API batch fixtures, resumable job state, row-level audit evidence, and assistant-generated correction suggestions. The evidence should be package-local in `src/pyAppGen/pbcs/telecom_network_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 28. Lifecycle collaboration and tasking for Alarm Event
-
-**Justification:** Domain collaboration should live inside the PBC boundary and remain auditable with the record it affects.
-
-**Improvement:** Attach tasks, comments, ownership, due dates, handoffs, and escalation threads to `alarm_event` without leaking into external shared task tables. Tie the behavior to `telecom_network_operations_record_capacity_segment_workflow` where applicable, and make it visible in `TelecomNetworkOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Task tables, comment audit history, notification events, escalation SLAs, and role-specific task queues. The evidence should be package-local in `src/pyAppGen/pbcs/telecom_network_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 29. SLA and service-level governance for Service Assurance Case
-
-**Justification:** Users need to know when network inventory, capacity, incidents, alarms, service assurance, maintenance windows, and sla impact is late, blocked, or at risk before customer or regulator impact.
-
-**Improvement:** Define SLAs for `service_assurance_case` across intake, validation, approval, exception resolution, event handling, downstream projection refresh, and release-evidence generation. Tie the behavior to `telecom_network_operations_create_network_element_workflow` where applicable, and make it visible in `TelecomNetworkOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** SLA breach events, timers, configurable calendars, workbench aging buckets, and tests for pause/resume behavior. The evidence should be package-local in `src/pyAppGen/pbcs/telecom_network_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 30. Operational analytics cockpit for Maintenance Window
-
-**Justification:** World-class operations require leading indicators, not only record counts.
-
-**Improvement:** Build analytics for `maintenance_window`: throughput, backlog, aging, approval latency, exception rate, risk distribution, automation acceptance, correction rate, and downstream dependency health. Tie the behavior to `telecom_network_operations_record_capacity_segment_workflow` where applicable, and make it visible in `TelecomNetworkOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Metric definitions, projection tests, drill-through routes, export APIs, and anomaly overlays. The evidence should be package-local in `src/pyAppGen/pbcs/telecom_network_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 31. Decision intelligence and recommendations for Sla Impact
-
-**Justification:** The PBC should help expert users decide faster while showing evidence and uncertainty.
-
-**Improvement:** Generate ranked recommendations for `sla_impact` such as next best action, likely resolution, required evidence, policy adjustment, staffing/capacity response, or downstream handoff. Tie the behavior to `telecom_network_operations_create_network_element_workflow` where applicable, and make it visible in `TelecomNetworkOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Recommendation explanations, confidence intervals, feedback capture, model governance records, and rejection reasons. The evidence should be package-local in `src/pyAppGen/pbcs/telecom_network_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 32. Quality and completeness scoring for Telecom Network Operations Policy Rule
-
-**Justification:** Operators should see whether a record is truly ready, not just technically saved.
-
-**Improvement:** Score each `telecom_network_operations_policy_rule` record for completeness, consistency, policy readiness, dependency readiness, evidence sufficiency, and downstream composability. Tie the behavior to `telecom_network_operations_record_capacity_segment_workflow` where applicable, and make it visible in `TelecomNetworkOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Scoring rules, missing-evidence lists, readiness badges, and blocking criteria in command handlers. The evidence should be package-local in `src/pyAppGen/pbcs/telecom_network_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 33. End-to-end scenario library for Telecom Network Operations Runtime Parameter
-
-**Justification:** Release evidence is stronger when every important telecom network operations behavior has executable examples.
-
-**Improvement:** Create seeded scenarios for `telecom_network_operations_runtime_parameter`: normal flow, urgent path, exception path, corrected path, duplicate path, late event path, and audit export path. Tie the behavior to `telecom_network_operations_create_network_element_workflow` where applicable, and make it visible in `TelecomNetworkOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Scenario seed data, runtime smoke coverage, generated-app fixtures, and story-level workbench screenshots/contracts. The evidence should be package-local in `src/pyAppGen/pbcs/telecom_network_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 34. Domain ontology and terminology model for Telecom Network Operations Schema Extension
-
-**Justification:** Precise vocabulary prevents the PBC from misclassifying specialist documents or user instructions.
-
-**Improvement:** Add an ontology for `telecom_network_operations_schema_extension` terms, synonyms, classifications, relationships, allowed values, and phrase mappings used by the assistant and UI. Tie the behavior to `telecom_network_operations_record_capacity_segment_workflow` where applicable, and make it visible in `TelecomNetworkOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Ontology files, assistant parsing tests, UI glossary, and mapping evidence for domain-specific abbreviations. The evidence should be package-local in `src/pyAppGen/pbcs/telecom_network_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 35. Advanced search and investigation for Telecom Network Operations Control Assertion
-
-**Justification:** Investigators and operators need fast, explainable retrieval across the whole domain surface.
-
-**Improvement:** Provide search across `telecom_network_operations_control_assertion` records, events, documents, exceptions, tasks, comments, and audit proofs with filters for tenant, status, risk, date, party, and dependency. Tie the behavior to `telecom_network_operations_create_network_element_workflow` where applicable, and make it visible in `TelecomNetworkOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Search index contracts, result provenance, permission-filtered queries, and stale-index warnings. The evidence should be package-local in `src/pyAppGen/pbcs/telecom_network_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 36. Reconciliation and closure controls for Telecom Network Operations Governed Model
-
-**Justification:** Closure is not complete until the PBC can prove no material domain work remains unresolved.
-
-**Improvement:** Add reconciliation workflows that compare `telecom_network_operations_governed_model` state against consumed events, external projections, expected totals/counts, approvals, and release evidence before closure. Tie the behavior to `telecom_network_operations_record_capacity_segment_workflow` where applicable, and make it visible in `TelecomNetworkOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Reconciliation reports, variance thresholds, closure blockers, and AppGen-X closure events. The evidence should be package-local in `src/pyAppGen/pbcs/telecom_network_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 37. Regulatory and policy reporting for Network Element
-
-**Justification:** World-class PBCs turn operational evidence into credible reporting without spreadsheet reconstruction.
-
-**Improvement:** Generate domain reporting packs for `network_element` covering statutory, contractual, operational, board, customer, or regulator evidence depending on domain lifecycle completeness, operational evidence, exception handling, governed automation, composable integration, and release-grade auditability. Tie the behavior to `telecom_network_operations_create_network_element_workflow` where applicable, and make it visible in `TelecomNetworkOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Report schemas, redaction rules, traceable metric sources, and approval/export audit events. The evidence should be package-local in `src/pyAppGen/pbcs/telecom_network_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 38. Carbon and resource awareness for Capacity Segment
-
-**Justification:** Sustainability evidence should be embedded in operations instead of treated as an after-the-fact report.
-
-**Improvement:** Where relevant, attach carbon, energy, water, travel, capacity, compute, or resource-footprint metadata to `capacity_segment` decisions and batch operations. Tie the behavior to `telecom_network_operations_record_capacity_segment_workflow` where applicable, and make it visible in `TelecomNetworkOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Footprint fields, scheduling parameters, exception rules, and dashboards that expose operational tradeoffs. The evidence should be package-local in `src/pyAppGen/pbcs/telecom_network_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 39. Resilience and offline behavior for Network Incident
-
-**Justification:** Real operations keep moving during outages; the PBC must preserve correctness when dependencies are unavailable.
-
-**Improvement:** Define resilience modes for `network_incident`: degraded dependency mode, offline draft capture, delayed event replay, conflict detection, and safe recovery after partial failure. Tie the behavior to `telecom_network_operations_create_network_element_workflow` where applicable, and make it visible in `TelecomNetworkOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Offline fixtures, replay tests, conflict queues, recovery logs, and user-visible degraded-mode warnings. The evidence should be package-local in `src/pyAppGen/pbcs/telecom_network_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 40. Human-in-the-loop automation for Alarm Event
-
-**Justification:** Automation should accelerate network inventory, capacity, incidents, alarms, service assurance, maintenance windows, and sla impact while preserving accountability for high-risk decisions.
-
-**Improvement:** Set explicit automation boundaries for `alarm_event`: auto-approve, auto-reject, suggest-only, require-review, and block-until-evidence states with policy-based routing. Tie the behavior to `telecom_network_operations_record_capacity_segment_workflow` where applicable, and make it visible in `TelecomNetworkOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Automation policy tests, reviewer queues, override reasons, and assistant action audit trails. The evidence should be package-local in `src/pyAppGen/pbcs/telecom_network_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 41. Package discovery and fit scoring for Service Assurance Case
-
-**Justification:** Users selecting PBCs need transparent fit reasoning, especially when domains are adjacent but not overlapping.
-
-**Improvement:** Improve package metadata so composition can explain when `telecom_network_operations` fits a prompt, what entities it owns, what APIs/events it exposes, and what adjacent PBCs it depends on. Tie the behavior to `telecom_network_operations_create_network_element_workflow` where applicable, and make it visible in `TelecomNetworkOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Discovery manifests, prompt-selection tests, overlap rationale links, and composition DSL examples. The evidence should be package-local in `src/pyAppGen/pbcs/telecom_network_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 42. Configuration deployment pipeline for Maintenance Window
-
-**Justification:** Configuration changes can materially alter telecom network operations; they need the same discipline as code releases.
-
-**Improvement:** Add configuration promotion for `maintenance_window` across draft, test, approved, active, deprecated, and rollback states with impact analysis before activation. Tie the behavior to `telecom_network_operations_record_capacity_segment_workflow` where applicable, and make it visible in `TelecomNetworkOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Config diff views, approval workflows, simulation before activation, and rollback tests. The evidence should be package-local in `src/pyAppGen/pbcs/telecom_network_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 43. Workbench command completeness for Sla Impact
-
-**Justification:** A PBC does not fully surface its capabilities if users must call hidden APIs for core work.
-
-**Improvement:** Expose every high-value operation for `sla_impact` in the UI: create, validate, approve, simulate, correct, assign, export, retry, close, and audit-proof verification. Tie the behavior to `telecom_network_operations_create_network_element_workflow` where applicable, and make it visible in `TelecomNetworkOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** UI action coverage tests, permission-aware disabled states, keyboard paths, and assistant handoff links. The evidence should be package-local in `src/pyAppGen/pbcs/telecom_network_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 44. Document packet and evidence vault for Telecom Network Operations Policy Rule
-
-**Justification:** Documents often carry the legal or operational truth behind network inventory, capacity, incidents, alarms, service assurance, maintenance windows, and sla impact.
-
-**Improvement:** Create a governed evidence vault for `telecom_network_operations_policy_rule` documents, attachments, source spans, extracted fields, signatures, approvals, and retention labels. Tie the behavior to `telecom_network_operations_record_capacity_segment_workflow` where applicable, and make it visible in `TelecomNetworkOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Evidence models, source-to-field lineage, signature validation, retention policies, and proof exports. The evidence should be package-local in `src/pyAppGen/pbcs/telecom_network_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 45. Data correction and amendment history for Telecom Network Operations Runtime Parameter
-
-**Justification:** World-class systems correct mistakes without rewriting history or confusing downstream consumers.
-
-**Improvement:** Support formal amendments for `telecom_network_operations_runtime_parameter` that preserve original values, correction reason, approving actor, effective date, downstream event impacts, and replay behavior. Tie the behavior to `telecom_network_operations_create_network_element_workflow` where applicable, and make it visible in `TelecomNetworkOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Amendment tables, correction events, projection replay tests, and side-by-side before/after UI. The evidence should be package-local in `src/pyAppGen/pbcs/telecom_network_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 46. External participant collaboration for Telecom Network Operations Schema Extension
-
-**Justification:** Many telecom network operations workflows require outside parties, but they must not gain direct access to internal tables.
-
-**Improvement:** Add controlled collaboration portals or API views for external participants related to `telecom_network_operations_schema_extension`, limited to scoped evidence submission, status checks, comments, and dispute responses. Tie the behavior to `telecom_network_operations_record_capacity_segment_workflow` where applicable, and make it visible in `TelecomNetworkOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Participant role policies, scoped tokens, submission audit trails, and inbound evidence validation. The evidence should be package-local in `src/pyAppGen/pbcs/telecom_network_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 47. Advanced dependency freshness scoring for Telecom Network Operations Control Assertion
-
-**Justification:** A record may be valid locally but unsafe if dependency evidence is stale or incomplete.
-
-**Improvement:** Score freshness and reliability of dependencies used by `telecom_network_operations_control_assertion`, including consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, referenced projections, configuration versions, and external submissions. Tie the behavior to `telecom_network_operations_create_network_element_workflow` where applicable, and make it visible in `TelecomNetworkOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Freshness indicators, blocking rules, stale-event simulations, and workbench dependency health panels. The evidence should be package-local in `src/pyAppGen/pbcs/telecom_network_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 48. Model governance and explainability for Telecom Network Operations Governed Model
-
-**Justification:** Governed AI is mandatory for professional-grade automation in Telecom Network Operations.
-
-**Improvement:** For every predictive or agentic feature around `telecom_network_operations_governed_model`, record model version, prompt or ruleset version, training/evaluation evidence, confidence, explanation, and human feedback. Tie the behavior to `telecom_network_operations_record_capacity_segment_workflow` where applicable, and make it visible in `TelecomNetworkOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Model cards, prompt/version manifests, feedback loops, drift tests, and audit proof for recommendations. The evidence should be package-local in `src/pyAppGen/pbcs/telecom_network_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 49. High-scale partitioning and archival for Network Element
-
-**Justification:** Better-than-world-class packages must remain operable after years of high-volume domain history.
-
-**Improvement:** Plan scale behavior for `network_element`: tenant partitioning, archival policies, cold storage, retention-aware search, projection compaction, and large-batch replay. Tie the behavior to `telecom_network_operations_create_network_element_workflow` where applicable, and make it visible in `TelecomNetworkOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Partition tests, archive/retrieve fixtures, retention enforcement, and replay benchmarks. The evidence should be package-local in `src/pyAppGen/pbcs/telecom_network_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 50. Release gate expansion for Capacity Segment
-
-**Justification:** The PBC should not claim domain coverage unless release evidence proves the claim end to end.
-
-**Improvement:** Expand release gates for `telecom_network_operations` so every schema, service, API, event, handler, UI, rule, parameter, agent skill, seed scenario, and improvement backlog item maps to executable evidence. Tie the behavior to `telecom_network_operations_record_capacity_segment_workflow` where applicable, and make it visible in `TelecomNetworkOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Release audit checks, manifest traceability, generated-app smoke tests, and missing-capability blockers. The evidence should be package-local in `src/pyAppGen/pbcs/telecom_network_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+- Manifest key: `telecom_network_operations`.
+- Manifest description: network inventory, capacity, incidents, alarms, service assurance, maintenance windows, and SLA impact.
+- Current owned tables: `network_element`, `capacity_segment`, `network_incident`, `alarm_event`, `service_assurance_case`, `maintenance_window`, and `sla_impact`.
+- Current APIs: `POST /network-elements`, `POST /capacity-segments`, `POST /network-incidents`, `POST /alarm-events`, `POST /service-assurance-cases`, and `GET /telecom-network-operations-workbench`.
+- Current event contract: emits `TelecomNetworkOperationsCreated`, `TelecomNetworkOperationsUpdated`, `TelecomNetworkOperationsApproved`, `TelecomNetworkOperationsExceptionOpened`; consumes `PolicyChanged`, `AuditEventSealed`, and `OperationalKpiChanged`.
+- Current UI surfaces: `TelecomNetworkOperationsWorkbench`, `TelecomNetworkOperationsDetail`, and `TelecomNetworkOperationsAssistantPanel`.
+- Existing backlog signal: the package already points at inventory, capacity, incidents, alarms, service assurance, maintenance windows, SLA impact, analytics, governed AI, and release evidence, but it does not yet go deep on sites, cells, circuits, fiber, outages, planned work, and NOC operating detail.
+
+### 1. Canonical site hierarchy and geospatial identity
+**Justification:** The package cannot reason about outages, planned work, or field dispatch accurately until every record anchors to a site hierarchy that NOC and field teams actually use.
+**Improvement:** Extend `network_element` so a site can own shelter, room, cabinet, rack, power plant, battery bank, generator, microwave node, rooftop, and fiber hut variants with canonical site codes, latitude/longitude, access restrictions, and parent-child geography.
+**Acceptance evidence:** Schema and API contracts expose site hierarchy fields; workbench site pages roll alarms, trouble tickets, planned work, outages, and SLA impact up by site; seeded examples prove one incident can be traced from site to dependent cells and circuits.
+
+### 2. Cell, sector, carrier, and radio identity model
+**Justification:** Telecom operations run at cell and sector level for congestion, degradation, and customer impact, so generic assets are not enough.
+**Improvement:** Add explicit models for BTS, NodeB, eNodeB, gNodeB, sector, carrier, band, PCI/PSC/BCCH, azimuth, tilt, transmit chain, and neighbor relations beneath `network_element`.
+**Acceptance evidence:** Detail views show a site with its cells and sectors; KPI drill-down works from site to sector; acceptance fixtures prove alarms and trouble tickets can target a single cell without losing parent site context.
+
+### 3. Circuit and service path topology
+**Justification:** NOC operators need path-aware impact analysis before they can prioritize restoration or estimate SLA exposure.
+**Improvement:** Use `capacity_segment` and related topology records to model logical circuits, A-end/Z-end endpoints, VLANs, pseudowires, leased lines, backhaul links, protection groups, and route diversity across microwave and fiber.
+**Acceptance evidence:** Circuit queries show full path membership, protected versus unprotected state, and impacted services during a cut; seeded scenarios prove a failed segment can identify every affected circuit and SLA clock.
+
+### 4. Fiber route, strand, and splice ownership
+**Justification:** Fiber faults are resolved on the basis of route sections, closures, strands, and splice plans, not on abstract capacity rows.
+**Improvement:** Deepen the package with fiber route, cable, sheath, tube, strand, closure, patch panel, handhole, and route-diversity metadata while keeping that physical plant inside the telecom inventory boundary.
+**Acceptance evidence:** Topology screens trace a service over specific fiber segments and closures; outage evidence shows likely cut location candidates; field evidence links before/after splice validation to the affected route objects.
+
+### 5. Alarm catalog normalization across vendors
+**Justification:** Alarm floods remain unusable if vendor-specific names, severities, and probable causes are not normalized.
+**Improvement:** Normalize `alarm_event` into a canonical alarm catalog with source vendor code, normalized alarm family, perceived severity, probable cause, object class, clear condition, and suppressibility flags.
+**Acceptance evidence:** Alarm list pages display normalized family and severity alongside raw source values; duplicate vendor codes map to one canonical alarm; tests prove clear events close the correct normalized alarm instance.
+
+### 6. Root-cause alarm correlation and suppression
+**Justification:** A major outage can emit thousands of child alarms, and the NOC needs root cause rather than noise.
+**Improvement:** Add correlation rules that collapse child alarms under transport loss, power loss, fiber cut, transmission failure, or controller failure parents while preserving the original event stream for audit.
+**Acceptance evidence:** A simulated fiber cut produces one parent incident view with suppressed child counts; operators can expand suppressed alarms on demand; release evidence includes before/after alarm volume comparisons.
+
+### 7. Trouble ticket ownership and boundary rules
+**Justification:** Trouble tickets are central to telecom operations, but the package must be clear about what it owns versus what an external ITSM or workforce system owns.
+**Improvement:** Make `service_assurance_case` the owned telecom trouble ticket record for network-originated issues, with mirrored external references, handoff state, severity, customer impact, and dispatch status without taking over non-telecom HR or billing workflows.
+**Acceptance evidence:** Boundary notes in APIs and UI distinguish owned ticket fields from referenced external fields; seeded tickets show bi-directional linkage to alarms and outages; no write path crosses into non-owned workforce records.
+
+### 8. Planned work and maintenance window depth
+**Justification:** Planned work must capture MOP detail, rollback triggers, and customer-risk context or it will not prevent avoidable outages.
+**Improvement:** Expand `maintenance_window` to represent planned work class, method-of-procedure version, rollback plan, change owner, freeze-window status, expected service impact, and dependent site/cell/circuit scope.
+**Acceptance evidence:** Calendar and detail screens show planned work scope and risk; validation blocks maintenance windows without rollback criteria; release evidence includes approved MOP-to-window traceability.
+
+### 9. Outage lifecycle and major incident control
+**Justification:** Outages need a stricter lifecycle than generic incidents because restoration, communications, and SLA handling are time-critical.
+**Improvement:** Add telecom outage states for suspected, declared, major incident, service restored, monitoring, closed, and reopened, with bridge commander, restoration ETA, impacted services, and customer communication milestones stored on `network_incident`.
+**Acceptance evidence:** Major incident views show state transitions with timestamps and commanders; outage timelines include restoration checkpoints; scenario tests prove reopened outages preserve prior restoration evidence.
+
+### 10. SLA clock engine tied to service impact
+**Justification:** SLA exposure is the operational and commercial consequence of network faults, so it must be calculated from actual impact rather than hand-written notes.
+**Improvement:** Use `sla_impact` to model start, pause, resume, exclude, and stop logic by service class, maintenance approval, customer contract, and outage cause so each trouble ticket carries a defensible SLA position.
+**Acceptance evidence:** Simulated incidents show clock behavior for planned and unplanned events; breach forecasts appear on the workbench; audit exports show why each pause or exclusion was allowed.
+
+### 11. Capacity modeling for radio, transport, and core edges
+**Justification:** Capacity shortages can appear at cell, backhaul, aggregation, or core edges, and a single flat model cannot explain them.
+**Improvement:** Split `capacity_segment` into radio, microwave, fiber backhaul, aggregation, and service-edge capacity classes with installed, reserved, used, forecast, and emergency headroom values.
+**Acceptance evidence:** Capacity views compare installed versus used by class; congestion analysis can trace whether the bottleneck sits at sector, backhaul, or upstream transport; forecasts preserve historical snapshots.
+
+### 12. Performance KPI catalog with telecom baselines
+**Justification:** Performance issues often surface before hard outages, but only if the package knows what KPIs matter per technology and service.
+**Improvement:** Add KPI definitions for availability, CSSR, DCR, handover success, PRB utilization, throughput, latency, packet loss, jitter, backhaul utilization, MTTR, and repeat-fault rate with thresholds per vendor and market.
+**Acceptance evidence:** KPI cards appear on site, cell, circuit, and outage views; consumed `OperationalKpiChanged` events update projections; tests prove threshold breaches create the right warning state without opening false outages.
+
+### 13. Congestion and degradation early warning
+**Justification:** NOC teams need early warning before customer complaints turn into mass trouble tickets.
+**Improvement:** Detect gradual degradations on cells, circuits, and transport segments by combining KPI trend breaches, repeat minor alarms, and growing ticket volume into predictive risk on `network_incident` and `capacity_segment`.
+**Acceptance evidence:** Risk badges appear before hard failure in synthetic scenarios; operator feedback can confirm or dismiss warnings; model output cites the exact KPIs, alarms, and ticket trends that drove the score.
+
+### 14. Field operations boundary
+**Justification:** Telecom network operations must support field crews without absorbing job functions that belong to dispatch, payroll, warehouse, or contractor management systems.
+**Improvement:** Define the field boundary so this PBC owns work order context, site access notes, safety prerequisites, equipment needed, and restoration evidence, while external systems remain owners of roster management, time capture, and procurement execution.
+**Acceptance evidence:** Boundary diagrams are reflected in command handlers and UI labels; field-ready incidents export the owned context but never mutate external workforce masters; review tests prove only scoped field data is stored locally.
+
+### 15. Inventory boundary
+**Justification:** Telecom reliability depends on a clean line between owned operational inventory and referenced enterprise data that the package should not rewrite.
+**Improvement:** Document and enforce that `network_element` owns operational topology, telecom attributes, and state needed for NOC, while finance, vendor master, and enterprise asset ledgers remain referenced systems of record.
+**Acceptance evidence:** APIs reject writes to non-owned inventory attributes; mapping tables show how referenced IDs attach to owned objects; release evidence includes negative tests proving boundary enforcement.
+
+### 16. NOC workbench queue design
+**Justification:** Operators need a single workbench that surfaces what is hot now, what is aging badly, and what is blocked by missing evidence.
+**Improvement:** Redesign `TelecomNetworkOperationsWorkbench` into alarm triage, outage control, planned work, capacity risk, SLA risk, and dead-letter queues with explicit filters for market, site, severity, and aging bucket.
+**Acceptance evidence:** Workbench routes show stable queue definitions; queue cards expose impacted sites, cells, circuits, and tickets; empty, stale, and degraded-data states are all covered by UI tests.
+
+### 17. Topology, map, and path UI
+**Justification:** Telecom operations need visual topology and geography, not only tabular lists.
+**Improvement:** Add UI views for geospatial site maps, logical path traces, fiber route diagrams, and site rack summaries with drill-down from outage to site to cell to circuit to fiber path.
+**Acceptance evidence:** Click-through flows prove the same outage can be explored in map and path views; screenshots show degraded links highlighted; accessibility checks cover dense topology rendering.
+
+### 18. Site detail UI with power and access context
+**Justification:** A site page must answer whether the fault is radio, transport, power, or access-related before a truck roll is approved.
+**Improvement:** Expand `TelecomNetworkOperationsDetail` for sites to show power alarms, generator status, battery autonomy estimate, access restrictions, active trouble tickets, planned work, and recent field visits.
+**Acceptance evidence:** Seeded site details display distinct power, access, and radio panels; incident drill-in proves power loss can be seen as the likely root cause; release evidence includes screenshots for a live-like site detail flow.
+
+### 19. Outage war room UI
+**Justification:** Major incidents need a focused screen that keeps commanders, NOC analysts, and communications aligned.
+**Improvement:** Build an outage war room view with bridge commander, event timeline, impacted services, current hypotheses, field crew status, customer updates, and SLA breach countdown.
+**Acceptance evidence:** A synthetic major outage produces a populated war room; command actions are permission-gated; audit history proves every manual status update and ETA change is attributable.
+
+### 20. Planned work calendar and conflict UI
+**Justification:** Planned work causes preventable outages when conflicting windows, freeze periods, and shared dependencies are not visible.
+**Improvement:** Add a calendar-first interface for `maintenance_window` that highlights market freeze periods, overlapping work on shared circuits, risky co-timed fiber activities, and missing rollback evidence.
+**Acceptance evidence:** Conflict banners appear when overlapping windows touch the same dependent cells or circuits; operators can see approved versus draft work in one calendar; tests cover freeze-window blocking behavior.
+
+### 21. Alarm triage agent skill
+**Justification:** An assistant is only useful in telecom operations if it can reduce alarm load without bypassing human accountability.
+**Improvement:** Add an agent skill in `TelecomNetworkOperationsAssistantPanel` that groups related alarms, proposes likely root cause, drafts the initial outage record, and asks for confirmation before mutating `alarm_event` or `network_incident`.
+**Acceptance evidence:** Assistant traces show source alarms, correlation logic, and the exact draft changes; blocked actions remain blocked without approval; release evidence includes accepted and rejected triage examples.
+
+### 22. Trouble ticket summarizer and next-action skill
+**Justification:** Ticket handovers are slower when the next engineer must reconstruct the last hour from free text.
+**Improvement:** Add an agent skill that summarizes `service_assurance_case` history, recent alarms, impacted sites, field notes, and SLA position, then proposes next actions such as dispatch, monitor, reroute, or customer update.
+**Acceptance evidence:** Generated summaries cite underlying events and notes; users can compare proposed actions against final human choice; audit logs prove the assistant only writes through governed commands.
+
+### 23. Planned work risk reviewer skill
+**Justification:** Planned work quality depends on whether the MOP actually matches the live topology and current freeze conditions.
+**Improvement:** Add an agent skill that reviews a maintenance window and its MOP, checks dependency overlap, evaluates rollback completeness, and flags risky cells, circuits, fiber segments, or customer services before approval.
+**Acceptance evidence:** Approval flows show the assistant's cited risks and recommended mitigations; false-positive feedback is captured; test windows prove the skill catches missing rollback steps and shared-path conflicts.
+
+### 24. Outage communications drafting skill
+**Justification:** Customer and executive updates must be fast, accurate, and aligned with the operational truth already in the NOC record.
+**Improvement:** Add an agent skill that drafts outage updates from `network_incident`, `service_assurance_case`, and `sla_impact` facts, with templates for internal bridge notes, customer advisories, and restoration updates.
+**Acceptance evidence:** Drafts cite the incident facts they used; approvals are required before distribution; regression fixtures prove customer-facing text never invents root cause or ETA not present in the record.
+
+### 25. Performance degradation investigator skill
+**Justification:** Many telecom incidents start as performance complaints rather than hard-down alarms, and analysts need help linking weak signals.
+**Improvement:** Add an agent skill that correlates KPI drift, low-severity alarms, repeat trouble tickets, and recent planned work to propose a degradation hypothesis on a site, cell, or circuit.
+**Acceptance evidence:** Synthetic degradations show the assistant linking KPIs, alarms, and tickets into a ranked hypothesis set; each hypothesis cites evidence spans; dismissal feedback retrains thresholds without direct data mutation.
+
+### 26. Telecom event taxonomy and naming
+**Justification:** Generic lifecycle events are not rich enough for composable telecom operations.
+**Improvement:** Expand the event model beyond the current broad events so the package emits typed telecom events for alarm raised, alarm cleared, outage declared, outage restored, planned work approved, fiber cut confirmed, SLA breach forecast, and field evidence attached.
+**Acceptance evidence:** Event catalogs and schemas list telecom-specific event names and payloads; replay tests show downstream projections updating from the new taxonomy; release evidence maps each UI queue to the events that feed it.
+
+### 27. Event ordering, idempotency, and replay safety
+**Justification:** Telecom feeds arrive late, duplicated, and out of order, especially during major incidents and vendor outages.
+**Improvement:** Harden handlers so `alarm_event`, `network_incident`, `service_assurance_case`, and `sla_impact` can tolerate duplicate clears, delayed KPI changes, and repeated ticket sync callbacks without corrupting state.
+**Acceptance evidence:** Replay suites cover duplicate, late, and out-of-order telecom events; dead-letter queues retain source lineage; state snapshots after replay match the expected outage and ticket history.
+
+### 28. Event-sourced operational timeline
+**Justification:** Outage review, dispute resolution, and release evidence all need a trustworthy chronological record.
+**Improvement:** Store a visible timeline for each major object that shows alarms, outage declarations, field updates, customer communications, SLA state changes, and approvals in event order with actor and source metadata.
+**Acceptance evidence:** War room and ticket detail views can render the same event-sourced timeline; audit exports include actor, source system, and idempotency keys; tests prove edits append corrections rather than rewriting history.
+
+### 29. Impact propagation from network fault to service and customer
+**Justification:** A telecom incident is operationally useful only when it can show what services, regions, and customer classes are actually affected.
+**Improvement:** Add propagation logic from site, cell, circuit, and fiber faults to affected service-assurance cases and SLA exposures using topology and service-path membership.
+**Acceptance evidence:** A cut on one backhaul path produces the right impacted sites, cells, circuits, and tickets; operators can inspect why each service was marked impacted; negative tests prove unrelated services stay untouched.
+
+### 30. External integration boundaries for OSS and customer systems
+**Justification:** Telecom network operations sits between OSS telemetry, field execution systems, and customer-facing channels, so ownership boundaries must be explicit.
+**Improvement:** Define connector contracts for NMS, PM counters, inventory discovery, ITSM, dispatch, and customer notification systems while keeping this PBC as owner of telecom operational state and evidence, not every neighboring workflow.
+**Acceptance evidence:** Integration manifests show source-of-truth boundaries; connector failures degrade gracefully into visible queue states; release evidence includes negative tests that prevent writes into non-owned customer or dispatch masters.
+
+### 31. Circuit restoration and reroute playbooks
+**Justification:** Transport outages are resolved faster when reroute options and restoration steps are attached to the affected circuits.
+**Improvement:** Add playbooks for protected switch, temporary reroute, traffic shed, and service-priority restoration linked to the circuit topology and available alternate paths in `capacity_segment`.
+**Acceptance evidence:** Synthetic transport failures show playbook recommendations with eligible alternate paths; operator actions record why a reroute was or was not chosen; SLA projections update after reroute activation.
+
+### 32. Fiber cut response playbooks
+**Justification:** Fiber cuts have distinct evidence, field workflow, and restoration patterns that deserve first-class handling.
+**Improvement:** Create fiber-specific incident templates with route segment localization, likely closure list, dispatch prerequisites, splice validation steps, and post-restoration soak monitoring.
+**Acceptance evidence:** A simulated fiber cut opens a templated incident with route and closure candidates; field evidence requires splice completion and optical validation; post-restore monitoring status is visible before closure.
+
+### 33. Power and environmental incident handling
+**Justification:** Many site outages come from commercial power loss, generator failure, overheating, or access alarms rather than radio faults.
+**Improvement:** Model power and environment incident dimensions on site records, including mains state, generator run state, battery autonomy, fuel concern, HVAC alarms, intrusion alarms, and site access denial.
+**Acceptance evidence:** Site and outage views show power/environment panels; correlation rules can declare power loss as root cause for downstream cell alarms; acceptance tests cover recovery after mains restoration and battery exhaustion risk.
+
+### 34. Field evidence capture and spares boundary
+**Justification:** Field teams must attach proof of what changed without forcing the package to own warehouse or procurement systems.
+**Improvement:** Allow incidents and planned work to collect photos, meter readings, OTDR traces, replaced part numbers, and closure notes while keeping spare stocking, reorder, and purchase workflows outside the local boundary.
+**Acceptance evidence:** Evidence uploads attach to the correct site, circuit, or fiber object; controlled fields store replaced-part references without becoming a stock ledger; boundary tests reject warehouse mutations.
+
+### 35. Search and topology query language
+**Justification:** Analysts need one fast way to ask for all alarms on a fiber route, all tickets tied to a cell, or all outages in a market.
+**Improvement:** Add a telecom-aware search layer that understands site code, cell ID, circuit ID, fiber route, alarm family, outage bridge, and ticket number across owned tables and projections.
+**Acceptance evidence:** Search results preserve permission filters and provenance; example queries return mixed alarm, incident, ticket, and topology objects; stale-index warnings appear when projections lag.
+
+### 36. Bulk reconciliation with discovery and monitoring feeds
+**Justification:** Inventory drift and stale operational context accumulate when discovery feeds are not reconciled against the owned model.
+**Improvement:** Build reconciliation jobs that compare owned sites, cells, circuits, and alarms against discovery or telemetry imports, then queue corrections for human review instead of silently overwriting records.
+**Acceptance evidence:** Reconciliation reports classify missing, extra, and mismatched objects; operators can accept or reject proposed corrections in bulk; audit trails show who approved each topology correction.
+
+### 37. Stale inventory and orphaned topology controls
+**Justification:** Outages are misdiagnosed when cells, circuits, or fiber paths linger in the model after they were retired or rerouted in reality.
+**Improvement:** Add controls that flag stale sites, orphaned cells, unused circuits, unreachable fiber segments, and missing parent-child links using age, last-seen telemetry, and reconciliation history.
+**Acceptance evidence:** Control dashboards expose stale-object counts by market; queue filters can isolate orphaned topology; release evidence includes fixtures for stale versus active inventory states.
+
+### 38. Release evidence matrix for telecom scenarios
+**Justification:** The package should only claim telecom depth if release evidence proves the critical NOC scenarios end to end.
+**Improvement:** Create a release matrix that maps sites, cells, circuits, fiber, alarms, trouble tickets, planned work, outages, capacity, KPIs, UI flows, agent skills, and events to executable evidence in `RELEASE_EVIDENCE.md`.
+**Acceptance evidence:** The matrix lists every telecom scenario and its proving test or artifact; missing evidence blocks release; generated evidence includes screenshots, event traces, and queue snapshots from seeded scenarios.
+
+### 39. Seed scenarios and synthetic incident library
+**Justification:** Telecom regressions are easier to catch when the same realistic faults can be replayed in every build.
+**Improvement:** Ship seed data and test scenarios for a fiber cut, site power loss, congested cell, noisy alarm storm, failed planned work rollback, repeated trouble ticket, and protected circuit reroute.
+**Acceptance evidence:** Smoke runs can stand up the seeded topology and execute each scenario; workbench and detail views render stable outputs; release evidence references the scenario IDs used in verification.
+
+### 40. Change approval, freeze windows, and rollback governance
+**Justification:** Planned work should not move forward when approvals are missing or freeze periods apply to the affected market or service class.
+**Improvement:** Add approval and freeze policy layers to `maintenance_window` and `network_incident`, including emergency change override, executive approval, rollback timeout, and post-change validation requirements.
+**Acceptance evidence:** Approval history is visible on every planned work item; freeze-window blocks are enforced in the UI and APIs; synthetic emergency changes prove the override path remains fully audited.
+
+### 41. SLA breach forecasting and escalation
+**Justification:** Teams need time to act before a breach is certain, especially when restoration is waiting on field access or shared transport work.
+**Improvement:** Forecast SLA risk from outage age, restoration ETA confidence, customer class, and pending field steps so `sla_impact` can escalate before the breach rather than only after it.
+**Acceptance evidence:** Forecast badges appear with confidence and time-to-breach; major incident queues sort by breach risk; simulation evidence shows risk moving correctly when ETA or service scope changes.
+
+### 42. Capacity forecasting with reservation awareness
+**Justification:** Installed capacity is misleading if reserved headroom, planned adds, and temporary reroutes are not included.
+**Improvement:** Extend `capacity_segment` forecasting to include installed, active, reserved, planned, emergency, and temporarily borrowed capacity by sector, link, and aggregation domain.
+**Acceptance evidence:** Forecast charts show capacity posture before and after planned work or reroutes; congestion warnings account for reserved headroom; seeded tests prove planned capacity adds clear the expected alerts.
+
+### 43. KPI anomaly detection with operator feedback
+**Justification:** Threshold-only monitoring misses subtle degradations and creates false alarms when normal patterns shift by market or season.
+**Improvement:** Add anomaly detection over KPI baselines for cells, circuits, and sites, with operator feedback loops that can suppress, confirm, or tune seasonal and market-specific behavior.
+**Acceptance evidence:** KPI anomaly cards cite the baseline and deviation; confirmed anomalies can open or enrich incidents; dismissal feedback is stored and visible in release evidence for threshold tuning.
+
+### 44. Customer and service view stitched from telecom causes
+**Justification:** Customer-facing impact must trace back to technical causes without forcing the NOC to leave the operational package.
+**Improvement:** Build service views that show which sites, cells, circuits, and outages are degrading a customer or service class, while preserving the boundary between internal topology and external account ownership.
+**Acceptance evidence:** A service view can drill back to the underlying fault path; customer-impact counts are explainable; tests prove internal topology is visible only to allowed roles while service summaries remain scoped.
+
+### 45. Dead-letter and replay workbench
+**Justification:** Event failures are operational work, not hidden plumbing, during major outages and feed interruptions.
+**Improvement:** Add a dead-letter queue in the NOC workbench for failed alarm, KPI, and ticket-sync events with replay, quarantine, root-cause notes, and blast-radius indicators.
+**Acceptance evidence:** Operators can replay a failed event and see the affected queues recover; poison messages stay quarantined with explanation; release evidence includes at least one forced dead-letter recovery scenario.
+
+### 46. Regional calendar, market hierarchy, and local operating rules
+**Justification:** Telecom operations vary by market, timezone, access rules, and local freeze periods, and the package must reflect that without branching the whole code path.
+**Improvement:** Add market hierarchy, timezone, holiday calendar, permit restrictions, and local response rules that shape planned work, SLA clocks, field access, and escalation routing.
+**Acceptance evidence:** The same scenario behaves differently in two configured markets where rules differ; workbench filters can group by market and timezone; calendar-driven pauses and freezes are visible in audit exports.
+
+### 47. Role segmentation and least-privilege telecom controls
+**Justification:** NOC analysts, outage commanders, field reviewers, and auditors should not all have the same powers.
+**Improvement:** Expand permissions so roles can separately view topology, declare outages, attach field evidence, approve planned work, override SLA states, replay events, and use high-impact agent skills.
+**Acceptance evidence:** Permission tests cover allowed and denied actions across UI and APIs; disabled controls explain why access is blocked; assistant actions inherit the same role checks as manual actions.
+
+### 48. Document intake for MOP, RCA, and field reports
+**Justification:** Telecom teams rely on written MOPs, RCAs, shift handovers, and field reports that should inform the operational record without free-form copy-paste loss.
+**Improvement:** Use governed document intake to parse MOP steps, rollback criteria, RCA findings, splice reports, and field visit outcomes into structured drafts linked to `maintenance_window`, `network_incident`, or `service_assurance_case`.
+**Acceptance evidence:** Parsed drafts cite source spans from the uploaded document; approval is required before structured fields change; release evidence includes successful parsing of one MOP, one RCA, and one field report.
+
+### 49. Separate executive and NOC dashboard projections
+**Justification:** Executives need summarized outage and SLA posture, while NOC teams need queue-level operational detail.
+**Improvement:** Create distinct projections so executives see major outage count, breach risk, MTTR, and chronic markets, while the NOC sees live alarms, blocked tickets, field waits, and pending planned work conflicts.
+**Acceptance evidence:** Two dashboards render from the same underlying events with role-appropriate detail; projection freshness is visible; tests prove executive dashboards never expose raw alarm floods or operator-only notes.
+
+### 50. Manifest-to-backlog traceability gate
+**Justification:** The backlog should remain connected to package reality so improvements do not drift away from what the PBC claims to own and release.
+**Improvement:** Add a release gate that traces manifest capabilities, APIs, tables, UI fragments, event contracts, and release evidence artifacts against this telecom-specific backlog, with blockers when a claimed surface has no telecom proof.
+**Acceptance evidence:** The release gate reports coverage for `network_element`, `capacity_segment`, `network_incident`, `alarm_event`, `service_assurance_case`, `maintenance_window`, `sla_impact`, workbench UI, agent skills, and telecom events; uncovered claims fail the build and are listed in release evidence.

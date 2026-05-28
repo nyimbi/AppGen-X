@@ -1,418 +1,260 @@
-# Public Sector Tax Administration PBC Better-Than-World-Class Improvement Backlog
-
-## Purpose
-
-This file identifies, justifies, and describes 50 high-impact improvements for `tax_administration_public_sector`. The backlog is specific to taxpayer accounts, filings, assessments, audits, collections, appeals, and public revenue administration and is intended to move the PBC from release-auditable scaffolding toward complete, specialist-grade domain coverage.
-
 ## Current Domain Evidence Used
 
-- Stable PBC key: `tax_administration_public_sector`.
-- Domain purpose: Taxpayer accounts, filings, assessments, audits, collections, appeals, and public revenue administration.
-- Owned domain tables: `taxpayer_account`, `tax_filing`, `assessment`, `audit_case`, `collection_action`, `appeal`, `tax_notice`, `tax_administration_public_sector_policy_rule`, `tax_administration_public_sector_runtime_parameter`, `tax_administration_public_sector_schema_extension`, `tax_administration_public_sector_control_assertion`, `tax_administration_public_sector_governed_model`.
-- Public APIs: `POST /taxpayer-accounts`, `POST /tax-filings`, `POST /assessments`, `POST /audit-cases`, `POST /collection-actions`, `GET /tax-administration-public-sector-workbench`.
-- Emitted AppGen-X events: `TaxAdministrationPublicSectorCreated`, `TaxAdministrationPublicSectorUpdated`, `TaxAdministrationPublicSectorApproved`, `TaxAdministrationPublicSectorExceptionOpened`.
-- Consumed AppGen-X events: `PolicyChanged`, `AuditEventSealed`, `OperationalKpiChanged`.
-- Current standard surfaces include: `taxpayer_account_management`, `tax_administration_public_sector_workflow`, `tax_administration_public_sector_analytics`, `configuration_schema`, `rule_engine`, `parameter_engine`, `owned_schema_migrations_models`, `appgen_x_outbox_inbox_eventing`, `idempotent_handlers`, `retry_dead_letter_evidence`.
-- Current advanced surfaces include: `tax_administration_public_sector_event_sourced_operational_history`, `tax_administration_public_sector_multi_tenant_policy_isolation`, `tax_administration_public_sector_schema_evolution_resilience`, `tax_administration_public_sector_autonomous_anomaly_detection`, `tax_administration_public_sector_semantic_document_instruction_understanding`, `tax_administration_public_sector_predictive_risk_scoring`, `tax_administration_public_sector_counterfactual_scenario_simulation`, `tax_administration_public_sector_cryptographic_audit_proofs`.
-
-## 50 High-Impact Improvements
-
-### 1. Canonical lifecycle state model for Taxpayer Account
-
-**Justification:** This closes shallow CRUD gaps by making every public sector tax administration transition explainable and testable instead of implicit in free-form status values.
-
-**Improvement:** Define a complete state machine for `taxpayer_account` with explicit draft, validated, blocked, approved, active, suspended, corrected, closed, archived, and reopened states. Tie the behavior to `tax_administration_public_sector_create_taxpayer_account_workflow` where applicable, and make it visible in `TaxAdministrationPublicSectorWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** State-transition tests, invalid-transition fixtures, workbench state badges, and emitted AppGen-X transition events for TaxAdministrationPublicSectorCreated, TaxAdministrationPublicSectorUpdated, TaxAdministrationPublicSectorApproved. The evidence should be package-local in `src/pyAppGen/pbcs/tax_administration_public_sector` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 2. Domain intake and normalization for Tax Filing
-
-**Justification:** The PBC cannot reach complete domain coverage unless it handles the messy front door of taxpayer accounts, filings, assessments, audits, collections, appeals, and public revenue administration, not only already-clean records.
-
-**Improvement:** Build a typed intake pipeline for `tax_filing` that accepts structured API payloads, document-derived instructions, batch loads, and assistant-generated drafts while normalizing identifiers, dates, units, parties, and jurisdictional context. Tie the behavior to `tax_administration_public_sector_record_tax_filing_workflow` where applicable, and make it visible in `TaxAdministrationPublicSectorWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Golden intake fixtures, rejected-record queues, field-level normalization evidence, and assistant previews before governed datastore mutation. The evidence should be package-local in `src/pyAppGen/pbcs/tax_administration_public_sector` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 3. Specialist validation rules for Assessment
-
-**Justification:** World-class Public Sector Tax Administration requires rules that domain experts can reason about, version, test, and roll back without code edits.
-
-**Improvement:** Add a domain rule compiler for `assessment` that supports threshold rules, eligibility rules, dependency rules, temporal windows, conflicting-instruction detection, and override justification. Tie the behavior to `tax_administration_public_sector_create_taxpayer_account_workflow` where applicable, and make it visible in `TaxAdministrationPublicSectorWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Rule simulation tests, versioned rule manifests, rule impact reports, and UI rule editors linked to `TAX_ADMINISTRATION_PUBLIC_SECTOR_DATABASE_URL, TAX_ADMINISTRATION_PUBLIC_SECTOR_EVENT_TOPIC, TAX_ADMINISTRATION_PUBLIC_SECTOR_RETRY_LIMIT`. The evidence should be package-local in `src/pyAppGen/pbcs/tax_administration_public_sector` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 4. Parameter governance and tuning for Audit Case
-
-**Justification:** Parameters are where operations teams tune public sector tax administration; unbounded constants would make the PBC brittle and unsafe in real deployments.
-
-**Improvement:** Expose bounded runtime parameters for `audit_case` covering risk thresholds, SLA windows, confidence floors, escalation cutoffs, batch sizes, retry limits, and human-confirmation requirements. Tie the behavior to `tax_administration_public_sector_record_tax_filing_workflow` where applicable, and make it visible in `TaxAdministrationPublicSectorWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Parameter schema validation, tenant overrides, approval history, rollback controls, and workbench diff views. The evidence should be package-local in `src/pyAppGen/pbcs/tax_administration_public_sector` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 5. Deep owned schema expansion for Collection Action
-
-**Justification:** A single payload column cannot express the full surface of taxpayer accounts, filings, assessments, audits, collections, appeals, and public revenue administration or prove cross-PBC boundaries are respected.
-
-**Improvement:** Extend the owned schema around `collection_action` with normalized child tables for line-level evidence, party roles, approvals, attachments, comments, metrics, exception reasons, and control assertions. Tie the behavior to `tax_administration_public_sector_create_taxpayer_account_workflow` where applicable, and make it visible in `TaxAdministrationPublicSectorWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Migrations, models, relationship tests, schema contract snapshots, and no shared-table access outside the `tax_administration_public_sector_` namespace. The evidence should be package-local in `src/pyAppGen/pbcs/tax_administration_public_sector` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 6. Event-sourced operational history for Appeal
-
-**Justification:** Temporal reconstruction is essential for better-than-world-class auditability and dispute resolution in public sector tax administration.
-
-**Improvement:** Capture every material mutation of `appeal` as immutable AppGen-X events with actor, tenant, command, policy version, idempotency key, before/after summary, and projection checkpoint. Tie the behavior to `tax_administration_public_sector_record_tax_filing_workflow` where applicable, and make it visible in `TaxAdministrationPublicSectorWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Replay tests, projection checksums, event ordering evidence, and point-in-time workbench views. The evidence should be package-local in `src/pyAppGen/pbcs/tax_administration_public_sector` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 7. Projection and read-model strategy for Tax Notice
-
-**Justification:** The workbench should not force users to infer domain truth from raw tables; each projection should answer a real operating question.
-
-**Improvement:** Create purpose-built projections for `tax_notice`: operational queue, executive KPI rollup, exception aging, compliance evidence, agent task context, and external dependency health. Tie the behavior to `tax_administration_public_sector_create_taxpayer_account_workflow` where applicable, and make it visible in `TaxAdministrationPublicSectorWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Projection contracts, freshness SLAs, backfill tests, and visible stale-projection warnings. The evidence should be package-local in `src/pyAppGen/pbcs/tax_administration_public_sector` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 8. Exception taxonomy and remediation for Tax Administration Public Sector Policy Rule
-
-**Justification:** High-value PBCs win on exception throughput; generic “failed” states hide the details operators need.
-
-**Improvement:** Model the full exception taxonomy for `tax_administration_public_sector_policy_rule`, including severity, root cause, blocking dependency, remediation owner, due date, retry eligibility, escalation path, and closure evidence. Tie the behavior to `tax_administration_public_sector_record_tax_filing_workflow` where applicable, and make it visible in `TaxAdministrationPublicSectorWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Exception queues, aging metrics, remediation playbooks, dead-letter linkage, and closure test fixtures for schedule slippage. The evidence should be package-local in `src/pyAppGen/pbcs/tax_administration_public_sector` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 9. Predictive risk scoring for Tax Administration Public Sector Runtime Parameter
-
-**Justification:** The package should warn users before public sector tax administration work fails, breaches policy, or creates downstream cost.
-
-**Improvement:** Add predictive risk scoring for `tax_administration_public_sector_runtime_parameter` using domain features from owned tables, consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, rule outcomes, aging, anomaly signals, and historical corrections. Tie the behavior to `tax_administration_public_sector_create_taxpayer_account_workflow` where applicable, and make it visible in `TaxAdministrationPublicSectorWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Feature manifests, score explanations, calibration reports, drift alerts, and tests for low/medium/high-risk scenarios. The evidence should be package-local in `src/pyAppGen/pbcs/tax_administration_public_sector` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 10. Counterfactual simulation for Tax Administration Public Sector Schema Extension
-
-**Justification:** Advanced users need to ask “what would happen if” before committing changes to live taxpayer accounts, filings, assessments, audits, collections, appeals, and public revenue administration operations.
-
-**Improvement:** Provide scenario simulation for `tax_administration_public_sector_schema_extension`: policy change, capacity constraint, deadline shift, price/rate change, eligibility change, disruption, and manual override outcomes. Tie the behavior to `tax_administration_public_sector_record_tax_filing_workflow` where applicable, and make it visible in `TaxAdministrationPublicSectorWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Simulation APIs, non-mutating sandbox state, comparison reports, and workbench side-by-side scenario panels. The evidence should be package-local in `src/pyAppGen/pbcs/tax_administration_public_sector` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 11. Autonomous anomaly triage for Tax Administration Public Sector Control Assertion
-
-**Justification:** A world-class PBC should reduce analyst burden without hiding the reasoning behind automated triage.
-
-**Improvement:** Implement anomaly detection for `tax_administration_public_sector_control_assertion` that identifies outliers, duplicate submissions, impossible sequences, stale dependencies, unusual amounts/counts/durations, and contradictory fields. Tie the behavior to `tax_administration_public_sector_create_taxpayer_account_workflow` where applicable, and make it visible in `TaxAdministrationPublicSectorWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Explainable anomaly cards, reviewer feedback loops, false-positive tracking, and suppression governance. The evidence should be package-local in `src/pyAppGen/pbcs/tax_administration_public_sector` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 12. Semantic document understanding for Tax Administration Public Sector Governed Model
-
-**Justification:** Document-heavy work in Public Sector Tax Administration cannot be complete if the assistant only answers questions and cannot prepare accurate governed changes.
-
-**Improvement:** Train the package assistant to parse domain documents and instructions for `tax_administration_public_sector_governed_model`, extract obligations, dates, parties, quantities, identifiers, and exceptions, then map them to safe draft mutations. Tie the behavior to `tax_administration_public_sector_record_tax_filing_workflow` where applicable, and make it visible in `TaxAdministrationPublicSectorWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Document extraction tests, confidence thresholds, redaction handling, source span citations, and human confirmation workflows. The evidence should be package-local in `src/pyAppGen/pbcs/tax_administration_public_sector` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 13. Agent-safe CRUD execution for Taxpayer Account
-
-**Justification:** The PBC agent must be a first-class operator but never a hidden bypass around RBAC, rules, or owned datastore boundaries.
-
-**Improvement:** Add a professional chatbot skill for `taxpayer_account` that can create, update, correct, close, and annotate records only through policy-checked commands, approval gates, and previewed diffs. Tie the behavior to `tax_administration_public_sector_create_taxpayer_account_workflow` where applicable, and make it visible in `TaxAdministrationPublicSectorWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Skill manifests, permission tests, preview/confirm flows, blocked-action evidence, and audit events for every assistant mutation. The evidence should be package-local in `src/pyAppGen/pbcs/tax_administration_public_sector` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 14. Workbench persona coverage for Tax Filing
-
-**Justification:** A generic detail page underserves the domain; each role needs the exact controls and evidence they use daily.
-
-**Improvement:** Design dedicated workbench panels for `tax_filing`: operator queue, supervisor approvals, analyst exceptions, auditor evidence, configuration owner, and agent-assistance review. Tie the behavior to `tax_administration_public_sector_record_tax_filing_workflow` where applicable, and make it visible in `TaxAdministrationPublicSectorWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** UI contract entries, route tests, empty/error/loading states, and permission-aware action availability. The evidence should be package-local in `src/pyAppGen/pbcs/tax_administration_public_sector` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 15. Cross-PBC dependency contracts for Assessment
-
-**Justification:** Composable packages fail when hidden table coupling enters the domain model.
-
-**Improvement:** Represent dependencies for `assessment` through declared APIs, consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, and projections rather than shared tables, with explicit freshness, ownership, and fallback behavior. Tie the behavior to `tax_administration_public_sector_create_taxpayer_account_workflow` where applicable, and make it visible in `TaxAdministrationPublicSectorWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Dependency manifests, contract tests, stale dependency alerts, and no foreign-table references in generated artifacts. The evidence should be package-local in `src/pyAppGen/pbcs/tax_administration_public_sector` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 16. API completeness and versioning for Audit Case
-
-**Justification:** Complete domain coverage requires both command and query surfaces, not only happy-path create endpoints.
-
-**Improvement:** Expand APIs beyond POST /taxpayer-accounts, POST /tax-filings, POST /assessments to cover search, validation-only commands, simulation, bulk intake, exception closure, evidence export, projection reads, and idempotent corrections. Tie the behavior to `tax_administration_public_sector_record_tax_filing_workflow` where applicable, and make it visible in `TaxAdministrationPublicSectorWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** OpenAPI-style route manifests, backward-compatible version tests, deprecation metadata, and idempotency assertions. The evidence should be package-local in `src/pyAppGen/pbcs/tax_administration_public_sector` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 17. Typed emitted-event expansion for Collection Action
-
-**Justification:** Consumers should understand what happened in Public Sector Tax Administration without parsing opaque payloads.
-
-**Improvement:** Replace generic lifecycle emissions with typed events for each meaningful `collection_action` transition, exception, approval, correction, simulation result, and downstream handoff. Tie the behavior to `tax_administration_public_sector_create_taxpayer_account_workflow` where applicable, and make it visible in `TaxAdministrationPublicSectorWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Event schema tests, event examples, compatibility checks, and emitted-event coverage in release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/tax_administration_public_sector` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 18. Consumed-event handlers for Appeal
-
-**Justification:** A PBC is composable only when incoming events affect its own domain state predictably and safely.
-
-**Improvement:** Implement idempotent handlers for consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged that update projections, open dependency exceptions, recalculate risk, and preserve source event lineage. Tie the behavior to `tax_administration_public_sector_record_tax_filing_workflow` where applicable, and make it visible in `TaxAdministrationPublicSectorWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Duplicate-event tests, handler side-effect boundaries, dead-letter fixtures, and lineage links back to source events. The evidence should be package-local in `src/pyAppGen/pbcs/tax_administration_public_sector` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 19. Retry and dead-letter operations for Tax Notice
-
-**Justification:** Dead letters are not just plumbing; they are domain work queues that can block taxpayer accounts, filings, assessments, audits, collections, appeals, and public revenue administration.
-
-**Improvement:** Create operational tools for retrying, quarantining, explaining, and resolving dead-lettered `tax_notice` events with max-attempt policy, poison-message detection, and replay safety. Tie the behavior to `tax_administration_public_sector_create_taxpayer_account_workflow` where applicable, and make it visible in `TaxAdministrationPublicSectorWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Dead-letter workbench, retry eligibility tests, replay audit proof, and operator action logs. The evidence should be package-local in `src/pyAppGen/pbcs/tax_administration_public_sector` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 20. RBAC and attribute policy for Tax Administration Public Sector Policy Rule
-
-**Justification:** High-impact domain operations need finer controls than generic RBAC grants.
-
-**Improvement:** Extend permissions for `tax_administration_public_sector_policy_rule` from coarse read/create/update/admin to action-level and attribute-aware policies based on role, tenant, jurisdiction, monetary/materiality threshold, and exception severity. Tie the behavior to `tax_administration_public_sector_record_tax_filing_workflow` where applicable, and make it visible in `TaxAdministrationPublicSectorWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Permission matrix docs, ABAC policy tests, denied-action UI states, and assistant skill permission checks. The evidence should be package-local in `src/pyAppGen/pbcs/tax_administration_public_sector` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 21. Continuous control testing for Tax Administration Public Sector Runtime Parameter
-
-**Justification:** Controls should run during operations, not only during release audit or manual review.
-
-**Improvement:** Embed control assertions for `tax_administration_public_sector_runtime_parameter` that continuously test segregation of duties, required approvals, stale exceptions, policy drift, duplicate records, and boundary violations. Tie the behavior to `tax_administration_public_sector_create_taxpayer_account_workflow` where applicable, and make it visible in `TaxAdministrationPublicSectorWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Control dashboards, failing-control events, test fixtures, and release evidence tied to `tax_administration_public_sector_control_assertion` records. The evidence should be package-local in `src/pyAppGen/pbcs/tax_administration_public_sector` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 22. Cryptographic audit proofing for Tax Administration Public Sector Schema Extension
-
-**Justification:** Better-than-world-class auditability requires proof of integrity, not merely logs stored in mutable tables.
-
-**Improvement:** Hash-chain material `tax_administration_public_sector_schema_extension` decisions, documents, emitted events, and release-evidence snapshots to make tampering visible without exposing sensitive payloads. Tie the behavior to `tax_administration_public_sector_record_tax_filing_workflow` where applicable, and make it visible in `TaxAdministrationPublicSectorWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Proof manifests, verification APIs, redacted proof exports, and audit-ledger handoff events. The evidence should be package-local in `src/pyAppGen/pbcs/tax_administration_public_sector` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 23. Privacy, consent, and secrecy controls for Tax Administration Public Sector Control Assertion
-
-**Justification:** Complete domain coverage must account for protected data and restricted operational evidence.
-
-**Improvement:** Add field-level privacy classifications for `tax_administration_public_sector_control_assertion`, consent checks, masking rules, retention schedules, legal holds, and assistant redaction policies. Tie the behavior to `tax_administration_public_sector_create_taxpayer_account_workflow` where applicable, and make it visible in `TaxAdministrationPublicSectorWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Retention tests, masked UI snapshots, consent-blocked mutation fixtures, and export controls. The evidence should be package-local in `src/pyAppGen/pbcs/tax_administration_public_sector` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 24. Multi-tenant operating model for Tax Administration Public Sector Governed Model
-
-**Justification:** The PBC should scale across organizations while preserving independent policy and compliance boundaries.
-
-**Improvement:** Support tenant-specific `tax_administration_public_sector_governed_model` rules, data residency, encryption context, configuration, seed data, and release evidence without allowing cross-tenant leakage. Tie the behavior to `tax_administration_public_sector_record_tax_filing_workflow` where applicable, and make it visible in `TaxAdministrationPublicSectorWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Tenant isolation tests, tenant-scoped parameters, key-rotation evidence, and cross-tenant negative fixtures. The evidence should be package-local in `src/pyAppGen/pbcs/tax_administration_public_sector` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 25. Schema evolution and extension registry for Taxpayer Account
-
-**Justification:** Domain teams will add fields; the PBC must evolve without breaking APIs, events, or workbench projections.
-
-**Improvement:** Make schema extensions for `taxpayer_account` first-class with compatibility checks, migration previews, projection backfills, field ownership, and rollback metadata. Tie the behavior to `tax_administration_public_sector_create_taxpayer_account_workflow` where applicable, and make it visible in `TaxAdministrationPublicSectorWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Extension registry UI, compatibility tests, migration dry-runs, and backfill release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/tax_administration_public_sector` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 26. Master data quality gates for Tax Filing
-
-**Justification:** Many public sector tax administration errors begin as bad reference data; the PBC should catch them before workflow execution.
-
-**Improvement:** Define reference-data contracts for `tax_filing`: canonical codes, parties, locations, classifications, calendars, units, currencies, products, assets, or service categories as relevant to the domain. Tie the behavior to `tax_administration_public_sector_record_tax_filing_workflow` where applicable, and make it visible in `TaxAdministrationPublicSectorWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Reference validation fixtures, stale-code warnings, mapping tables, and dependency freshness indicators. The evidence should be package-local in `src/pyAppGen/pbcs/tax_administration_public_sector` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 27. Bulk operations and correction workflows for Assessment
-
-**Justification:** Enterprise-scale Public Sector Tax Administration users cannot operate one record at a time.
-
-**Improvement:** Add bulk load, bulk validate, bulk approve, and bulk correction workflows for `assessment` with partial success, row-level errors, resumability, and rollback. Tie the behavior to `tax_administration_public_sector_create_taxpayer_account_workflow` where applicable, and make it visible in `TaxAdministrationPublicSectorWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** CSV/API batch fixtures, resumable job state, row-level audit evidence, and assistant-generated correction suggestions. The evidence should be package-local in `src/pyAppGen/pbcs/tax_administration_public_sector` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 28. Lifecycle collaboration and tasking for Audit Case
-
-**Justification:** Domain collaboration should live inside the PBC boundary and remain auditable with the record it affects.
-
-**Improvement:** Attach tasks, comments, ownership, due dates, handoffs, and escalation threads to `audit_case` without leaking into external shared task tables. Tie the behavior to `tax_administration_public_sector_record_tax_filing_workflow` where applicable, and make it visible in `TaxAdministrationPublicSectorWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Task tables, comment audit history, notification events, escalation SLAs, and role-specific task queues. The evidence should be package-local in `src/pyAppGen/pbcs/tax_administration_public_sector` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 29. SLA and service-level governance for Collection Action
-
-**Justification:** Users need to know when taxpayer accounts, filings, assessments, audits, collections, appeals, and public revenue administration is late, blocked, or at risk before customer or regulator impact.
-
-**Improvement:** Define SLAs for `collection_action` across intake, validation, approval, exception resolution, event handling, downstream projection refresh, and release-evidence generation. Tie the behavior to `tax_administration_public_sector_create_taxpayer_account_workflow` where applicable, and make it visible in `TaxAdministrationPublicSectorWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** SLA breach events, timers, configurable calendars, workbench aging buckets, and tests for pause/resume behavior. The evidence should be package-local in `src/pyAppGen/pbcs/tax_administration_public_sector` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 30. Operational analytics cockpit for Appeal
-
-**Justification:** World-class operations require leading indicators, not only record counts.
-
-**Improvement:** Build analytics for `appeal`: throughput, backlog, aging, approval latency, exception rate, risk distribution, automation acceptance, correction rate, and downstream dependency health. Tie the behavior to `tax_administration_public_sector_record_tax_filing_workflow` where applicable, and make it visible in `TaxAdministrationPublicSectorWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Metric definitions, projection tests, drill-through routes, export APIs, and anomaly overlays. The evidence should be package-local in `src/pyAppGen/pbcs/tax_administration_public_sector` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 31. Decision intelligence and recommendations for Tax Notice
-
-**Justification:** The PBC should help expert users decide faster while showing evidence and uncertainty.
-
-**Improvement:** Generate ranked recommendations for `tax_notice` such as next best action, likely resolution, required evidence, policy adjustment, staffing/capacity response, or downstream handoff. Tie the behavior to `tax_administration_public_sector_create_taxpayer_account_workflow` where applicable, and make it visible in `TaxAdministrationPublicSectorWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Recommendation explanations, confidence intervals, feedback capture, model governance records, and rejection reasons. The evidence should be package-local in `src/pyAppGen/pbcs/tax_administration_public_sector` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 32. Quality and completeness scoring for Tax Administration Public Sector Policy Rule
-
-**Justification:** Operators should see whether a record is truly ready, not just technically saved.
-
-**Improvement:** Score each `tax_administration_public_sector_policy_rule` record for completeness, consistency, policy readiness, dependency readiness, evidence sufficiency, and downstream composability. Tie the behavior to `tax_administration_public_sector_record_tax_filing_workflow` where applicable, and make it visible in `TaxAdministrationPublicSectorWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Scoring rules, missing-evidence lists, readiness badges, and blocking criteria in command handlers. The evidence should be package-local in `src/pyAppGen/pbcs/tax_administration_public_sector` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 33. End-to-end scenario library for Tax Administration Public Sector Runtime Parameter
-
-**Justification:** Release evidence is stronger when every important public sector tax administration behavior has executable examples.
-
-**Improvement:** Create seeded scenarios for `tax_administration_public_sector_runtime_parameter`: normal flow, urgent path, exception path, corrected path, duplicate path, late event path, and audit export path. Tie the behavior to `tax_administration_public_sector_create_taxpayer_account_workflow` where applicable, and make it visible in `TaxAdministrationPublicSectorWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Scenario seed data, runtime smoke coverage, generated-app fixtures, and story-level workbench screenshots/contracts. The evidence should be package-local in `src/pyAppGen/pbcs/tax_administration_public_sector` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 34. Domain ontology and terminology model for Tax Administration Public Sector Schema Extension
-
-**Justification:** Precise vocabulary prevents the PBC from misclassifying specialist documents or user instructions.
-
-**Improvement:** Add an ontology for `tax_administration_public_sector_schema_extension` terms, synonyms, classifications, relationships, allowed values, and phrase mappings used by the assistant and UI. Tie the behavior to `tax_administration_public_sector_record_tax_filing_workflow` where applicable, and make it visible in `TaxAdministrationPublicSectorWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Ontology files, assistant parsing tests, UI glossary, and mapping evidence for domain-specific abbreviations. The evidence should be package-local in `src/pyAppGen/pbcs/tax_administration_public_sector` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 35. Advanced search and investigation for Tax Administration Public Sector Control Assertion
-
-**Justification:** Investigators and operators need fast, explainable retrieval across the whole domain surface.
-
-**Improvement:** Provide search across `tax_administration_public_sector_control_assertion` records, events, documents, exceptions, tasks, comments, and audit proofs with filters for tenant, status, risk, date, party, and dependency. Tie the behavior to `tax_administration_public_sector_create_taxpayer_account_workflow` where applicable, and make it visible in `TaxAdministrationPublicSectorWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Search index contracts, result provenance, permission-filtered queries, and stale-index warnings. The evidence should be package-local in `src/pyAppGen/pbcs/tax_administration_public_sector` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 36. Reconciliation and closure controls for Tax Administration Public Sector Governed Model
-
-**Justification:** Closure is not complete until the PBC can prove no material domain work remains unresolved.
-
-**Improvement:** Add reconciliation workflows that compare `tax_administration_public_sector_governed_model` state against consumed events, external projections, expected totals/counts, approvals, and release evidence before closure. Tie the behavior to `tax_administration_public_sector_record_tax_filing_workflow` where applicable, and make it visible in `TaxAdministrationPublicSectorWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Reconciliation reports, variance thresholds, closure blockers, and AppGen-X closure events. The evidence should be package-local in `src/pyAppGen/pbcs/tax_administration_public_sector` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 37. Regulatory and policy reporting for Taxpayer Account
-
-**Justification:** World-class PBCs turn operational evidence into credible reporting without spreadsheet reconstruction.
-
-**Improvement:** Generate domain reporting packs for `taxpayer_account` covering statutory, contractual, operational, board, customer, or regulator evidence depending on contractual obligations, site progress evidence, physical asset state, commercial controls, safety constraints, change events, and long-horizon lifecycle accountability. Tie the behavior to `tax_administration_public_sector_create_taxpayer_account_workflow` where applicable, and make it visible in `TaxAdministrationPublicSectorWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Report schemas, redaction rules, traceable metric sources, and approval/export audit events. The evidence should be package-local in `src/pyAppGen/pbcs/tax_administration_public_sector` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 38. Carbon and resource awareness for Tax Filing
-
-**Justification:** Sustainability evidence should be embedded in operations instead of treated as an after-the-fact report.
-
-**Improvement:** Where relevant, attach carbon, energy, water, travel, capacity, compute, or resource-footprint metadata to `tax_filing` decisions and batch operations. Tie the behavior to `tax_administration_public_sector_record_tax_filing_workflow` where applicable, and make it visible in `TaxAdministrationPublicSectorWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Footprint fields, scheduling parameters, exception rules, and dashboards that expose operational tradeoffs. The evidence should be package-local in `src/pyAppGen/pbcs/tax_administration_public_sector` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 39. Resilience and offline behavior for Assessment
-
-**Justification:** Real operations keep moving during outages; the PBC must preserve correctness when dependencies are unavailable.
-
-**Improvement:** Define resilience modes for `assessment`: degraded dependency mode, offline draft capture, delayed event replay, conflict detection, and safe recovery after partial failure. Tie the behavior to `tax_administration_public_sector_create_taxpayer_account_workflow` where applicable, and make it visible in `TaxAdministrationPublicSectorWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Offline fixtures, replay tests, conflict queues, recovery logs, and user-visible degraded-mode warnings. The evidence should be package-local in `src/pyAppGen/pbcs/tax_administration_public_sector` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 40. Human-in-the-loop automation for Audit Case
-
-**Justification:** Automation should accelerate taxpayer accounts, filings, assessments, audits, collections, appeals, and public revenue administration while preserving accountability for high-risk decisions.
-
-**Improvement:** Set explicit automation boundaries for `audit_case`: auto-approve, auto-reject, suggest-only, require-review, and block-until-evidence states with policy-based routing. Tie the behavior to `tax_administration_public_sector_record_tax_filing_workflow` where applicable, and make it visible in `TaxAdministrationPublicSectorWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Automation policy tests, reviewer queues, override reasons, and assistant action audit trails. The evidence should be package-local in `src/pyAppGen/pbcs/tax_administration_public_sector` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 41. Package discovery and fit scoring for Collection Action
-
-**Justification:** Users selecting PBCs need transparent fit reasoning, especially when domains are adjacent but not overlapping.
-
-**Improvement:** Improve package metadata so composition can explain when `tax_administration_public_sector` fits a prompt, what entities it owns, what APIs/events it exposes, and what adjacent PBCs it depends on. Tie the behavior to `tax_administration_public_sector_create_taxpayer_account_workflow` where applicable, and make it visible in `TaxAdministrationPublicSectorWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Discovery manifests, prompt-selection tests, overlap rationale links, and composition DSL examples. The evidence should be package-local in `src/pyAppGen/pbcs/tax_administration_public_sector` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 42. Configuration deployment pipeline for Appeal
-
-**Justification:** Configuration changes can materially alter public sector tax administration; they need the same discipline as code releases.
-
-**Improvement:** Add configuration promotion for `appeal` across draft, test, approved, active, deprecated, and rollback states with impact analysis before activation. Tie the behavior to `tax_administration_public_sector_record_tax_filing_workflow` where applicable, and make it visible in `TaxAdministrationPublicSectorWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Config diff views, approval workflows, simulation before activation, and rollback tests. The evidence should be package-local in `src/pyAppGen/pbcs/tax_administration_public_sector` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 43. Workbench command completeness for Tax Notice
-
-**Justification:** A PBC does not fully surface its capabilities if users must call hidden APIs for core work.
-
-**Improvement:** Expose every high-value operation for `tax_notice` in the UI: create, validate, approve, simulate, correct, assign, export, retry, close, and audit-proof verification. Tie the behavior to `tax_administration_public_sector_create_taxpayer_account_workflow` where applicable, and make it visible in `TaxAdministrationPublicSectorWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** UI action coverage tests, permission-aware disabled states, keyboard paths, and assistant handoff links. The evidence should be package-local in `src/pyAppGen/pbcs/tax_administration_public_sector` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 44. Document packet and evidence vault for Tax Administration Public Sector Policy Rule
-
-**Justification:** Documents often carry the legal or operational truth behind taxpayer accounts, filings, assessments, audits, collections, appeals, and public revenue administration.
-
-**Improvement:** Create a governed evidence vault for `tax_administration_public_sector_policy_rule` documents, attachments, source spans, extracted fields, signatures, approvals, and retention labels. Tie the behavior to `tax_administration_public_sector_record_tax_filing_workflow` where applicable, and make it visible in `TaxAdministrationPublicSectorWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Evidence models, source-to-field lineage, signature validation, retention policies, and proof exports. The evidence should be package-local in `src/pyAppGen/pbcs/tax_administration_public_sector` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 45. Data correction and amendment history for Tax Administration Public Sector Runtime Parameter
-
-**Justification:** World-class systems correct mistakes without rewriting history or confusing downstream consumers.
-
-**Improvement:** Support formal amendments for `tax_administration_public_sector_runtime_parameter` that preserve original values, correction reason, approving actor, effective date, downstream event impacts, and replay behavior. Tie the behavior to `tax_administration_public_sector_create_taxpayer_account_workflow` where applicable, and make it visible in `TaxAdministrationPublicSectorWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Amendment tables, correction events, projection replay tests, and side-by-side before/after UI. The evidence should be package-local in `src/pyAppGen/pbcs/tax_administration_public_sector` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 46. External participant collaboration for Tax Administration Public Sector Schema Extension
-
-**Justification:** Many public sector tax administration workflows require outside parties, but they must not gain direct access to internal tables.
-
-**Improvement:** Add controlled collaboration portals or API views for external participants related to `tax_administration_public_sector_schema_extension`, limited to scoped evidence submission, status checks, comments, and dispute responses. Tie the behavior to `tax_administration_public_sector_record_tax_filing_workflow` where applicable, and make it visible in `TaxAdministrationPublicSectorWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Participant role policies, scoped tokens, submission audit trails, and inbound evidence validation. The evidence should be package-local in `src/pyAppGen/pbcs/tax_administration_public_sector` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 47. Advanced dependency freshness scoring for Tax Administration Public Sector Control Assertion
-
-**Justification:** A record may be valid locally but unsafe if dependency evidence is stale or incomplete.
-
-**Improvement:** Score freshness and reliability of dependencies used by `tax_administration_public_sector_control_assertion`, including consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, referenced projections, configuration versions, and external submissions. Tie the behavior to `tax_administration_public_sector_create_taxpayer_account_workflow` where applicable, and make it visible in `TaxAdministrationPublicSectorWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Freshness indicators, blocking rules, stale-event simulations, and workbench dependency health panels. The evidence should be package-local in `src/pyAppGen/pbcs/tax_administration_public_sector` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 48. Model governance and explainability for Tax Administration Public Sector Governed Model
-
-**Justification:** Governed AI is mandatory for professional-grade automation in Public Sector Tax Administration.
-
-**Improvement:** For every predictive or agentic feature around `tax_administration_public_sector_governed_model`, record model version, prompt or ruleset version, training/evaluation evidence, confidence, explanation, and human feedback. Tie the behavior to `tax_administration_public_sector_record_tax_filing_workflow` where applicable, and make it visible in `TaxAdministrationPublicSectorWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Model cards, prompt/version manifests, feedback loops, drift tests, and audit proof for recommendations. The evidence should be package-local in `src/pyAppGen/pbcs/tax_administration_public_sector` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 49. High-scale partitioning and archival for Taxpayer Account
-
-**Justification:** Better-than-world-class packages must remain operable after years of high-volume domain history.
-
-**Improvement:** Plan scale behavior for `taxpayer_account`: tenant partitioning, archival policies, cold storage, retention-aware search, projection compaction, and large-batch replay. Tie the behavior to `tax_administration_public_sector_create_taxpayer_account_workflow` where applicable, and make it visible in `TaxAdministrationPublicSectorWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Partition tests, archive/retrieve fixtures, retention enforcement, and replay benchmarks. The evidence should be package-local in `src/pyAppGen/pbcs/tax_administration_public_sector` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 50. Release gate expansion for Tax Filing
-
-**Justification:** The PBC should not claim domain coverage unless release evidence proves the claim end to end.
-
-**Improvement:** Expand release gates for `tax_administration_public_sector` so every schema, service, API, event, handler, UI, rule, parameter, agent skill, seed scenario, and improvement backlog item maps to executable evidence. Tie the behavior to `tax_administration_public_sector_record_tax_filing_workflow` where applicable, and make it visible in `TaxAdministrationPublicSectorWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Release audit checks, manifest traceability, generated-app smoke tests, and missing-capability blockers. The evidence should be package-local in `src/pyAppGen/pbcs/tax_administration_public_sector` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+- Manifest key: `tax_administration_public_sector`.
+- Manifest description: taxpayer accounts, filings, assessments, audits, collections, appeals, and public revenue administration.
+- Owned tables named in the manifest: `taxpayer_account`, `tax_filing`, `assessment`, `audit_case`, `collection_action`, `appeal`, `tax_notice`, policy-rule, runtime-parameter, schema-extension, control-assertion, and governed-model tables.
+- Current command and read surfaces in the manifest: `POST /taxpayer-accounts`, `POST /tax-filings`, `POST /assessments`, `POST /audit-cases`, `POST /collection-actions`, and `GET /tax-administration-public-sector-workbench`.
+- Current workflows in the manifest: taxpayer-account creation and tax-filing recording.
+- Current UI fragments in the manifest: `TaxAdministrationPublicSectorWorkbench`, `TaxAdministrationPublicSectorDetail`, and `TaxAdministrationPublicSectorAssistantPanel`.
+- Current event contract evidence in the manifest: emitted lifecycle events plus consumed `PolicyChanged`, `AuditEventSealed`, and `OperationalKpiChanged`.
+- Current release artifacts named in the manifest: `SPECIFICATION.md`, `RELEASE_EVIDENCE.md`, `migrations/001_initial.sql`, and `tests/test_contract.py`.
+
+### 1. Canonical taxpayer identity and TIN lifecycle
+**Justification:** Identity defects contaminate registrations, returns, assessments, collections, refunds, and appeals; the package needs one authoritative taxpayer account history instead of ad hoc corrections.
+**Improvement:** Extend `taxpayer_account` to track provisional identifiers, final TIN issuance, duplicate detection, merge and split operations, successor liability, deceased or dissolved status, and effective-dated name, address, and contact history.
+**Acceptance evidence:** Contract tests for merge, split, and successor scenarios; detail-page timeline showing effective-dated identity changes; event snapshots for account registration, correction, merge, split, suspension, and closure.
+
+### 2. Registration case model by taxpayer role
+**Justification:** Public-sector tax administration must distinguish ordinary taxpayers from employers, withholding agents, VAT registrants, excise operators, and exempt entities because each role drives different obligations and controls.
+**Improvement:** Add a registration case layer that captures legal form, residency, tax roles, start and cessation dates, supporting documents, approval checkpoints, and registration outcome codes before an account becomes active.
+**Acceptance evidence:** Seed scenarios for individual, company, government body, employer, and withholding-agent registrations; approval-path tests; UI queue separating pending, approved, rejected, and ceased registrations.
+
+### 3. Branch, site, and establishment registration
+**Justification:** Many liabilities attach to operating locations rather than the head office alone, so one flat account record cannot support inspection, local filing, and collection work.
+**Improvement:** Model branch and establishment registrations with parent-child linkage, effective dates, local jurisdiction assignment, closure reason, and filing responsibilities inherited or overridden at site level.
+**Acceptance evidence:** Schema and handler tests for branch activation and closure; workbench views that roll liabilities up to the parent while preserving branch detail; audit trail for branch obligation reassignment.
+
+### 4. Filing obligation engine by tax type and status
+**Justification:** Filing compliance depends on registration status, tax type, period frequency, threshold changes, and cessation events; missing this engine makes downstream notices and penalties unreliable.
+**Improvement:** Create an obligation service that derives monthly, quarterly, annual, event-driven, and nil-return obligations from registration facts, policy rules, and effective dates, then materializes due dates and grace periods.
+**Acceptance evidence:** Executable fixtures for VAT, payroll withholding, corporate income, presumptive, and annual information returns; tests for cessation, late registration, and threshold-triggered obligation creation; UI obligation calendar.
+
+### 5. Return intake normalization across channels
+**Justification:** Returns arrive through API payloads, keyed forms, uploaded schedules, and agent-assisted drafts; without normalization the package will create inconsistent balances and false audit risk.
+**Improvement:** Build a return-intake pipeline for `tax_filing` that standardizes tax period references, currency precision, schedule totals, taxpayer references, preparer details, and document attachments before validation.
+**Acceptance evidence:** Golden fixtures for manual, API, bulk-upload, and document-derived return intake; rejected-record queue with field-level reasons; preview step in `TaxAdministrationPublicSectorAssistantPanel` before mutation.
+
+### 6. Return validation for original, nil, late, and amended filings
+**Justification:** Public revenue operations depend on period integrity; the package must distinguish original returns, nil returns, replacements, and amendments so assessments and penalties remain defensible.
+**Improvement:** Add validation rules for overlapping periods, missing schedules, out-of-range amounts, nil-return eligibility, amendment reason codes, superseded versions, and statutory cutoffs for amendment acceptance.
+**Acceptance evidence:** Tests covering duplicate period submissions, nil-return misuse, late amendments, and supersession chains; UI badges for original versus amended status; clear rejection reasons in API responses.
+
+### 7. Assessment engine for self, default, estimated, and adjusted liabilities
+**Justification:** Assessment is more than storing a number; public-sector tax administration needs to show why liability exists and how it changed over time.
+**Improvement:** Expand `assessment` to support self-assessed, default, estimated, audit-adjusted, additional, reduced, and jeopardy assessments with linked basis, effective dates, tax period references, and statutory authority codes.
+**Acceptance evidence:** Assessment-calculation fixtures for each assessment type; audit-proof links from assessment records to return, audit, or policy basis; statement-of-account projection showing reversal and replacement chains.
+
+### 8. Penalty and interest accrual rules
+**Justification:** Penalties and interest are core revenue controls and frequent appeal subjects; they cannot remain implicit side effects outside the package.
+**Improvement:** Add a rules engine for late-filing penalties, late-payment penalties, interest accrual, suspension, waiver, remission, and recalculation when an assessment is amended or an appeal stays recovery.
+**Acceptance evidence:** Rule-version manifests, accrual tests across changing rates and calendars, supervisor override logs, and UI evidence showing how each balance component was computed.
+
+### 9. Statement-of-account and balance reconstruction
+**Justification:** Caseworkers, taxpayers, auditors, and courts need one explainable account statement that reconciles obligations, assessments, penalties, credits, refunds, and collection actions.
+**Improvement:** Create a taxpayer account statement projection that orders every posting by effective date and posting date, groups by tax type and period, and exposes opening balance, charges, credits, payments, refunds, write-downs, and closing balance.
+**Acceptance evidence:** Replay tests that reconstruct balances from events; downloadable statement samples for multiple tax types; workbench drill-through from balance line to source return, assessment, notice, or collection action.
+
+### 10. Payments boundary with treasury and banking channels
+**Justification:** The package must own liability, allocation intent, and payment status evidence while avoiding hidden ownership of settlement rails, bank acquiring, or card processing.
+**Improvement:** Define an explicit payments boundary where `tax_administration_public_sector` records payment references, receipt evidence, allocation instructions, reversals, and reconciliation results while consuming settlement confirmations from treasury or payment platforms.
+**Acceptance evidence:** Boundary contract documenting owned versus external states; idempotent handlers for payment-confirmed, payment-reversed, and reconciliation-failed events; negative tests proving no direct dependency on bank settlement tables.
+
+### 11. Payment allocation and reallocation controls
+**Justification:** A single payment often covers several periods or tax types, and poor allocation drives avoidable debt, notices, and refund claims.
+**Improvement:** Add allocation rules for oldest debt first, taxpayer-declared reference, legal priority, penalty-first or principal-first treatment, and supervised reallocation with reason codes and approval thresholds.
+**Acceptance evidence:** Allocation fixtures spanning single and mixed-tax payments; reallocation approval tests; account detail view showing original allocation and subsequent reallocations with actor attribution.
+
+### 12. Suspense, unapplied cash, and credit balances
+**Justification:** Public-sector ledgers accumulate unidentified or excess amounts that must remain visible and controlled until ownership and application are resolved.
+**Improvement:** Introduce suspense and credit-balance states for unmatched receipts, overpayments, and misdirected deposits, with work queues for identification, taxpayer confirmation, transfer, offset, or refund.
+**Acceptance evidence:** Queue metrics for aged suspense items; offset and clearance tests; release evidence showing suspense items cannot disappear without documented resolution.
+
+### 13. Refund eligibility and fraud screening
+**Justification:** Refunds are high-risk cash outflows; the package needs stronger control than a simple negative balance check.
+**Improvement:** Model refund claims, automatic eligibility gates, offset-against-debt rules, pre-refund risk scoring, document requirements, bank-detail verification, and maker-checker approvals before a refund instruction is emitted.
+**Acceptance evidence:** Seed cases for clean refund, debt-offset refund, duplicate bank account flag, and fraudulent document flag; approval logs; exported refund packet containing liability, offset, and verification evidence.
+
+### 14. Exemptions, waivers, and certificate governance
+**Justification:** Exemptions and waivers change obligations, assessments, and collections, so they need first-class lifecycle management with expiry and revocation.
+**Improvement:** Add controlled records for statutory exemptions, discretionary waivers, withholding certificates, zero-rate certificates, and remission decisions, including legal basis, effective period, limits, and revocation triggers.
+**Acceptance evidence:** Tests for exemption issuance, expiry, renewal, and revocation; obligation recalculation when an exemption changes; UI panel linking certificates to affected liabilities and notices.
+
+### 15. Notice template governance and statutory wording
+**Justification:** Notices carry legal consequences; incorrect wording, dates, or citations can void enforcement and weaken appeals defense.
+**Improvement:** Create governed notice templates for registration outcomes, return reminders, estimated assessments, debt demands, audit invitations, appeal decisions, and refund decisions with policy versioning and jurisdiction-specific clauses.
+**Acceptance evidence:** Template snapshots with version history; rendering tests for each notice type; approval workflow proving only authorized policy owners can publish statutory wording.
+
+### 16. Notice delivery evidence and returned-contact handling
+**Justification:** Service of notice is often litigated, so the package must prove when, how, and to which address or channel each notice was delivered or failed.
+**Improvement:** Track outbound mail, email, portal publication, SMS summary, delivery attempts, bounce or return status, address quality issues, and re-service actions on `tax_notice`.
+**Acceptance evidence:** Delivery-event contracts, returned-mail work queue, address-correction workflow, and appeal packet exports showing service evidence for the contested notice.
+
+### 17. Audit case selection and intake
+**Justification:** Audit capacity is limited; case selection must be explainable to supervisors and defensible against bias and arbitrary targeting claims.
+**Improvement:** Expand `audit_case` intake to record source trigger, selected risk factors, third-party discrepancy links, random-sample flags, campaign membership, materiality score, and required approval for high-profile or sensitive audits.
+**Acceptance evidence:** Risk-trigger fixtures, campaign selection reports, and UI cards showing why a case entered audit; tests ensuring non-selected taxpayers are not exposed in audit queues.
+
+### 18. Audit workpapers and evidence chain
+**Justification:** Audit findings fail in objection and appeal if evidence lineage, document handling, and interview notes are incomplete or mutable.
+**Improvement:** Add governed workpaper records for evidence requests, field visits, interviews, third-party confirmations, sample tests, computation sheets, and findings, each with source references and tamper-evident history.
+**Acceptance evidence:** Workpaper model tests, attachment lineage reports, immutable history checks, and detail-page tabs for evidence, interviews, findings, and supervisor review.
+
+### 19. Audit outcomes and post-audit adjustments
+**Justification:** Audit results should flow into assessments, penalties, notices, and collection posture without manual spreadsheet bridges.
+**Improvement:** Create audited adjustment flows that post additional assessments, reduce liabilities, close findings with no-change outcomes, and trigger follow-on notices, penalties, or refund reconsideration.
+**Acceptance evidence:** End-to-end scenario from audit finding to adjusted assessment and notice issuance; reversal tests when an audit adjustment is overturned; release evidence tying audit outcomes to account balance changes.
+
+### 20. Objection intake and dispute-clock management
+**Justification:** Objections are time-bound rights; missing receipt date, grounds, or completeness checks creates avoidable litigation risk.
+**Improvement:** Add an objection intake layer that records challenged decision, date served, date received, grounds, requested relief, supporting documents, completeness status, and stay-of-collection effect.
+**Acceptance evidence:** Timeliness tests around statutory deadlines; completeness checklist in the assistant panel; queue views for accepted, deficient, withdrawn, and out-of-time objections.
+
+### 21. Appeals lifecycle and external forum handoff
+**Justification:** Appeals often move from internal review to tribunal or court, and the package must preserve one continuity chain across those stages.
+**Improvement:** Expand `appeal` to cover internal appeal, tribunal appeal, court escalation, remand, consent settlement, and decision implementation, with forum reference numbers and hearing dates.
+**Acceptance evidence:** Scenario tests for internal appeal through tribunal remand; calendar integration for hearings; event evidence showing when collections were stayed, resumed, or permanently adjusted.
+
+### 22. Collections strategy ladder
+**Justification:** Debt recovery needs ordered, policy-driven escalation rather than isolated collection actions that ignore debt age, dispute status, or taxpayer behavior.
+**Improvement:** Add a collections strategy engine that sequences reminder, demand, call task, payment arrangement offer, offset, agency referral, asset action, garnishment request, and write-off recommendation based on debt attributes.
+**Acceptance evidence:** Treatment-path fixtures by debt age and risk; supervisor override logs; queue panels showing current strategy stage, next action, and legal blockers.
+
+### 23. Installment plans, hardship relief, and compromise
+**Justification:** Public-sector collections must balance recovery with legal relief mechanisms; those decisions need controlled terms and monitoring.
+**Improvement:** Model installment agreements, hardship deferrals, settlement offers, and compromise approvals with affordability evidence, broken-plan detection, re-default logic, and linkage to underlying debt items.
+**Acceptance evidence:** Tests for plan creation, missed installment, reinstatement, and compromise rejection; balance projection reflecting stayed penalties or resumed accruals; approval evidence for relief decisions.
+
+### 24. Enforcement prerequisites and legal holds
+**Justification:** Enforcement taken before notice, appeal, or approval prerequisites are met creates reputational and legal exposure.
+**Improvement:** Add hard gating rules so high-impact `collection_action` records cannot proceed unless service evidence, debt certification, appeal status, approval thresholds, and legal-hold checks all pass.
+**Acceptance evidence:** Negative tests blocking premature enforcement; UI lock indicators with unmet prerequisites; audit reports listing every enforcement action and its satisfied legal conditions.
+
+### 25. Account holds, freezes, and release controls
+**Justification:** Investigations, insolvency, litigation, identity compromise, and policy moratoria all require partial or full holds on taxpayer activity.
+**Improvement:** Introduce hold types on `taxpayer_account` for registration change, refund release, enforcement pause, audit hold, appeal stay, and data-correction freeze, each with start, end, reason, and approving actor.
+**Acceptance evidence:** Hold-lifecycle tests; detail-page banner showing active holds and blocked actions; event records proving held actions were denied or deferred rather than silently processed.
+
+### 26. Third-party data matching and discrepancy cases
+**Justification:** Tax administrations increasingly rely on payroll, customs, land, financial, and procurement feeds to detect under-reporting and non-filing.
+**Improvement:** Add discrepancy-case handling that compares returns and account data against third-party statements, flags mismatches, opens cases, and tracks taxpayer explanation, correction, or escalation to audit.
+**Acceptance evidence:** Matching-rule fixtures, discrepancy queues by feed type, and case timelines showing source statement, detected variance, taxpayer response, and resolved outcome.
+
+### 27. Risk scoring for compliance and revenue exposure
+**Justification:** Risk scoring must support selection, treatment, and approval prioritization without becoming an opaque black box.
+**Improvement:** Expand analytics to score non-registration risk, non-filing risk, underpayment risk, refund fraud risk, audit yield potential, and collection recoverability using explainable features from obligations, returns, notices, and historical behavior.
+**Acceptance evidence:** Feature manifest, calibration report, and explanation cards on workbench items; supervisor feedback loop for false positives and false negatives; drift alerts in release evidence.
+
+### 28. Debt prioritization and treatment recommendation
+**Justification:** Collection teams need recommendations that weigh materiality, collectability, dispute posture, and public-interest sensitivity, not only balance size.
+**Improvement:** Add treatment recommendations that rank debts for reminder, arrangement, field visit, offset, enforcement, or hold based on debt age, asset indicators, appeal status, compliance history, and expected recovery.
+**Acceptance evidence:** Ranked debt queue with factor explanations; backtesting against historical recovery outcomes; evidence showing recommendations can be accepted, overridden, or rejected with reasons.
+
+### 29. Domain event catalog expansion
+**Justification:** The current generic emitted events are too coarse to support downstream consumers that need tax-specific state changes and evidence handoffs.
+**Improvement:** Define typed events for registration accepted or ceased, obligation created, return received, assessment raised or amended, payment allocated, refund approved, notice served, audit opened or closed, appeal stayed, and debt treatment changed.
+**Acceptance evidence:** Versioned schema snapshots, producer and consumer contract tests, and traceability from each event to the originating record and actor.
+
+### 30. Idempotent commands and duplicate suppression
+**Justification:** Duplicate return submissions, repeated payment notifications, and retried notice commands are common in tax operations and will corrupt balances if not controlled.
+**Improvement:** Strengthen idempotent handlers around account creation, return receipt, assessment posting, payment allocation, refund initiation, and collection action issuance using natural business keys plus explicit request identifiers.
+**Acceptance evidence:** Replay tests with repeated API commands and repeated consumed events; dead-letter entries only for unresolved conflicts; release evidence proving no duplicate postings in seeded scenarios.
+
+### 31. Exception taxonomy and dead-letter remediation
+**Justification:** Operators need domain-language failures such as unmatched payment, invalid tax period, missing service evidence, and stayed debt, not generic transport errors.
+**Improvement:** Create a tax-specific exception catalog with severity, taxpayer impact, legal impact, retry eligibility, owner role, and remediation playbook for inbound commands, event handlers, notice generation, and risk-scoring jobs.
+**Acceptance evidence:** Dead-letter workbench showing domain reasons and next steps; SLA metrics by exception type; closure evidence linking each resolved exception to the corrected record or policy change.
+
+### 32. Workbench queue design by operating function
+**Justification:** Registration officers, return reviewers, auditors, collectors, appeals officers, and supervisors each need different queue semantics and evidence density.
+**Improvement:** Rework `TaxAdministrationPublicSectorWorkbench` into function-specific queues for registrations, obligations, returns, assessments, refunds, audits, appeals, notices, and collections, each with tailored filters and bulk actions.
+**Acceptance evidence:** Route and permission tests for each queue; empty, error, and stale-data states; operator usability evidence showing queues no longer require raw-table lookups.
+
+### 33. Account detail UI with chronology, balances, and linked cases
+**Justification:** A tax caseworker should understand the whole taxpayer relationship from one page rather than stitching together separate screens and exports.
+**Improvement:** Expand `TaxAdministrationPublicSectorDetail` into an account cockpit showing identity history, active registrations, obligation calendar, account statement, notices, payments, refunds, audits, appeals, and collection actions in one chronological view.
+**Acceptance evidence:** Component tests for chronology tabs and balance drill-through; screenshots in release evidence; access-control tests ensuring sensitive panels respect role and hold state.
+
+### 34. Supervisor and policy owner UI for rules and parameters
+**Justification:** Penalty rules, filing calendars, treatment thresholds, and assistant policies must be tunable by authorized owners without code edits or undocumented database changes.
+**Improvement:** Add governed screens for rule versioning, parameter promotion, impact preview, rollback, and approval of tax policy changes that affect obligations, scoring, notices, and automation boundaries.
+**Acceptance evidence:** UI tests for draft, review, approve, activate, and rollback flows; audit logs for every rule or parameter change; comparison view showing before and after operational impact.
+
+### 35. Caseworker assistant skill for taxpayer account operations
+**Justification:** Frontline staff benefit from AI assistance only if it is grounded in owned records, constrained by permissions, and explicit about uncertainty.
+**Improvement:** Create an assistant skill that summarizes taxpayer posture, highlights overdue obligations and active disputes, drafts next steps, and prepares account notes without bypassing approvals or hidden data access.
+**Acceptance evidence:** Skill manifest, permission tests, cited summaries using owned records, and blocked-action evidence when the assistant attempts a restricted operation.
+
+### 36. Registration and return intake assistant skill
+**Justification:** Public-sector intake work is document-heavy and repetitive; the assistant should reduce manual data entry while preserving legal accuracy.
+**Improvement:** Add a governed intake skill that extracts registration facts, return figures, schedules, and attachment metadata from uploaded documents and prepares drafts with source-span citations for human confirmation.
+**Acceptance evidence:** Extraction fixtures for registration forms and return schedules; confidence thresholds and fallback handling; assistant preview in `TaxAdministrationPublicSectorAssistantPanel` before saving.
+
+### 37. Notice drafting and correspondence assistant skill
+**Justification:** Notice preparation consumes expert time and errors in dates, periods, or statutory wording create downstream appeal risk.
+**Improvement:** Add an assistant skill that drafts notices and internal correspondence from approved templates, pulling period data, balances, due dates, and service channels from governed records while forcing human approval before issue.
+**Acceptance evidence:** Prompt and output governance record, rendered-draft tests by notice type, and audit events showing who reviewed and issued each assistant-generated notice.
+
+### 38. Audit and appeals research assistant skill
+**Justification:** Officers need fast synthesis of prior adjustments, cited evidence, notice history, and procedural deadlines when preparing audit findings or appeal decisions.
+**Improvement:** Create a research skill that compiles chronology, disputed issues, linked evidence, prior decisions, and deadline warnings for a given audit or appeal without generating uncited assertions.
+**Acceptance evidence:** Response fixtures with source citations to account, notice, audit, and appeal records; negative tests blocking unsupported claims; user feedback capture on usefulness and accuracy.
+
+### 39. Release evidence traceability from manifest to proof
+**Justification:** The package should not claim readiness unless every declared capability, API, table, event, workflow, and UI fragment maps to executable evidence.
+**Improvement:** Build a traceability matrix from `manifest.py` entries to tests, scenario seeds, screenshots, API contracts, event contracts, and release checks in `RELEASE_EVIDENCE.md`.
+**Acceptance evidence:** Machine-readable trace table, failing release gate when a manifest item lacks proof, and generated report linking each manifest claim to current verification artifacts.
+
+### 40. Seeded taxpayer journey scenarios
+**Justification:** Tax administration quality is best proven through whole journeys, not isolated unit tests.
+**Improvement:** Add scenario packs for new registration to first return, chronic non-filer to default assessment, matched payment to clearance, refund claim with fraud review, audit adjustment to appeal, and installment-plan breach to enforcement review.
+**Acceptance evidence:** Named seed datasets, smoke-test outputs, and release screenshots for each journey; replayable end-to-end logs showing record, event, and UI consistency.
+
+### 41. Jurisdiction and tenant isolation
+**Justification:** Public-sector deployments often span multiple jurisdictions or agencies with different forms, rates, notice wording, and secrecy rules.
+**Improvement:** Strengthen tenant and jurisdiction partitioning so rules, templates, parameters, risk models, and release evidence are scoped cleanly without cross-jurisdiction leakage.
+**Acceptance evidence:** Cross-tenant negative tests, policy-difference fixtures, and workbench views showing jurisdiction-specific wording, calendars, and thresholds from isolated configuration.
+
+### 42. Privacy, secrecy, legal hold, and retention controls
+**Justification:** Tax records are among the most sensitive public-sector datasets, and the package must enforce secrecy and retention law as a built-in control.
+**Improvement:** Add field classifications, masking rules, export approvals, retention clocks, litigation hold support, and assistant redaction policies across accounts, returns, notices, audits, and appeals.
+**Acceptance evidence:** Masked UI snapshots, export-denial tests, retention-expiry jobs with hold exceptions, and release evidence documenting secrecy controls on assistant outputs.
+
+### 43. Filing campaigns, reminders, and compliance outreach
+**Justification:** Raising voluntary compliance requires targeted campaigns before liabilities age into enforcement.
+**Improvement:** Create campaign management for obligation-based reminders, segmented by tax type, geography, risk band, and filing history, with controlled reminder frequency and channel preference.
+**Acceptance evidence:** Campaign seed cases, reminder delivery metrics, opt-out or preference handling where allowed, and evidence that campaign actions feed obligation and notice history rather than separate shadow systems.
+
+### 44. API surface completeness for tax operations
+**Justification:** The current manifest exposes create-heavy endpoints but lacks the query, correction, simulation, export, and bulk interfaces needed for real tax administration work.
+**Improvement:** Expand the API contract to include search, obligation retrieval, statement retrieval, amendment commands, refund workflow actions, notice issue actions, simulation endpoints, and export endpoints with strict versioning.
+**Acceptance evidence:** OpenAPI-style contract snapshots, backward-compatibility tests, idempotency tests for action endpoints, and examples for bulk and query operations tied to seeded journeys.
+
+### 45. Counterfactual simulation for policy and workload changes
+**Justification:** Leaders need to know how changing due dates, thresholds, penalty rates, or audit-selection policy would affect revenue, queues, and taxpayer impact before activation.
+**Improvement:** Add a simulation workbench that replays obligations, returns, debt treatment, and audit selection under alternate policy parameters without mutating live records.
+**Acceptance evidence:** Scenario reports comparing baseline and simulated outcomes; non-mutating test guarantees; supervisor review log for simulation assumptions and chosen policy action.
+
+### 46. Historical migration and balance backfill
+**Justification:** Most deployments begin with partial historical data, and inaccurate opening balances will undermine trust in every subsequent action.
+**Improvement:** Build migration and reconciliation tooling to import legacy taxpayer accounts, obligations, assessments, and payments, classify unresolved gaps, and establish opening balances with variance explanations.
+**Acceptance evidence:** Migration dry-run reports, reconciliation variance thresholds, import idempotency tests, and detail-page evidence distinguishing migrated history from native events.
+
+### 47. Operational metrics and service-level evidence
+**Justification:** Tax operations need measurable control over registration turnaround, filing backlog, refund aging, appeal delay, audit cycle time, and debt treatment effectiveness.
+**Improvement:** Expand analytics to produce queue age, processing time, breach rates, recovery rate, refund turnaround, objection timeliness, and assistant-acceptance metrics by function and jurisdiction.
+**Acceptance evidence:** Metric definitions with data lineage, dashboard tests, SLA breach alerts, and release evidence showing current values against configured thresholds.
+
+### 48. Accessibility, localization, and format correctness
+**Justification:** A public-sector tax system must work for diverse taxpayers and officers across languages, disability contexts, and local date, amount, and address formats.
+**Improvement:** Improve UI and notice rendering to support keyboard-only workflows, screen readers, locale-specific amounts and dates, multilingual labels, and jurisdiction-specific terminology.
+**Acceptance evidence:** Accessibility checks on workbench and detail screens, localized notice snapshots, and automated tests for date, currency, and address formatting by locale.
+
+### 49. Continuous controls and cryptographic audit proof
+**Justification:** High-trust public revenue systems need live control monitoring and proof that key evidence was not silently altered after the fact.
+**Improvement:** Add continuous assertions for maker-checker separation, stayed-debt enforcement blocks, refund approval thresholds, notice-service completeness, and event-chain integrity, then seal key evidence with hash-linked proofs.
+**Acceptance evidence:** Failing-control fixtures, control dashboards, proof-verification scripts, and audit exports showing sealed evidence for selected registration, refund, audit, and collections cases.
+
+### 50. Go-live release gate and rollback evidence
+**Justification:** Production promotion should require proof that registrations, obligations, returns, assessments, payments boundary handling, refunds, audits, appeals, notices, collections, UI, agent skills, and events all behave coherently.
+**Improvement:** Define a final release gate that blocks deployment unless seeded journeys, API contracts, event contracts, UI checks, assistant-skill checks, control assertions, and rollback rehearsals all pass for the current package version.
+**Acceptance evidence:** Signed release checklist, rollback drill output, manifest-to-evidence report, and a failing gate when any declared area of `tax_administration_public_sector` lacks current proof.
