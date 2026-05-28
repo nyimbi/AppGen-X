@@ -1,315 +1,314 @@
-# Distributed Order Routing and Optimization PBC Improvement Backlog
+# Order Routing Optimization PBC Improvement Backlog
 
 ## Purpose
 
-This backlog identifies 50 high-impact, high-value improvements for `order_routing_optimization`. Each item is specific to the domain surface currently declared by the PBC and is intended to move the package beyond world-class breadth toward complete specialist-grade coverage.
+This backlog identifies 50 high-impact, high-value improvements for `order_routing_optimization`. The items are specific to distributed order routing: routing plans, plan legs, node topology, node calendars, services, capacity, constraints, cost components, promises, split shipments, inventory/transport/service inputs, route candidates, capacity snapshots, routing decisions, reservations, simulations, optimization runs, exceptions, approvals, feedback, policy screening, federation, carbon-aware scheduling, network optimization, capacity allocation, anomaly detection, exposure modeling, forecasts, parsed requests, rules, parameters, configuration, AppGen-X event reliability, UI workbenches, and agent-assisted routing operations.
 
 ## Current Domain Evidence Used
 
-- Domain purpose: Fulfillment route optimization by distance, cost, tax, and node capacity.
-- Representative owned tables: `order_routing_optimization_routing_rule`, `order_routing_optimization_route_candidate`, `order_routing_optimization_capacity_snapshot`, `order_routing_optimization_routing_decision`.
-- Representative operations/APIs: `command_route_orders`, `query_route_candidates`, `command_capacity`.
-- Representative events: `FulfillmentRouteSelected`, `NodeCapacityReserved`.
-- Representative advanced capabilities: `event_sourced_routing_lifecycle`, `graph_relational_fulfillment_topology`, `multi_tenant_routing_isolation`, `schema_evolution_resilient_routing_schema`, `probabilistic_sla_cost_capacity_scoring`, `counterfactual_routing_simulation`, `temporal_capacity_forecasting`, `autonomous_routing_exception_resolution`, `semantic_route_request_parsing`, `predictive_fulfillment_risk`, ...
+- Domain purpose: `order_routing_optimization` owns optimized fulfillment route selection across orders, regions, nodes, capacity, costs, promises, tax, inventory, transportation, service inputs, split shipments, approvals, feedback, and routing evidence.
+- Owned boundary: routing plans and legs, nodes, node calendars, node services, node capacity, routing constraints, cost components, promises, split shipments and legs, inventory/transport/service input projections, route candidates, capacity snapshots, decisions, node reservations, simulations, optimization runs, exceptions and resolutions, approvals, feedback, policy screening, audit traces, federation projections, carbon schedules, network optimization, capacity allocation, anomaly signals, exposure models, forecasts, parsed requests, seed data, schema extensions, control assertions, governed models, rules, parameters, configuration, inbox/outbox, and dead-letter evidence.
+- Existing command/query surface: configuration, parameters, rules, schema extensions, event handling, capacity snapshot intake, route candidate upsert, order routing, node capacity reservation, simulations, capacity forecasts, exception recommendations, request parsing, fulfillment-risk scoring, self-healing route selection, routing proofs, policy screening, control tests, federation, resilience drills, crypto rotation, carbon-aware scheduling, network optimization, capacity auctions, anomaly detection, stochastic exposure, governed model registration, workbench, schema/service/release evidence, permissions, UI binding, and boundary verification.
+- Existing events and dependencies: emits `FulfillmentRouteSelected` and `NodeCapacityReserved`; consumes `OrderVerified`, `AvailabilityProjected`, and `TaxCalculated`; integrates with order, inventory, tax, WMS, transportation, DOM, approval, and feedback capabilities only through declared APIs/events/projections.
 
 ## 50 Better-Than-World-Class Improvements
 
-### 1. Deep specialist lifecycle semantics for `order_routing_optimization_routing_rule`
+### 1. Routing request readiness gate
 
-**Justification:** This owned table is part of the Distributed Order Routing and Optimization operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Fulfillment route optimization by distance, cost, tax, and node capacity.
+**Justification:** Route selection is unsafe when order verification, availability, tax, destination, service level, item restrictions, and promise requirements are incomplete.
 
-**Improvement:** Extend `order_routing_optimization_routing_rule` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `routing_plans`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add a readiness gate validating order projection, destination, items, quantities, service commitment, channel, customer priority, availability projection freshness, tax projection freshness, regional restrictions, split policy, substitution mode, and approval requirements before routing begins.
 
-### 2. Deep specialist lifecycle semantics for `order_routing_optimization_route_candidate`
+### 2. Routing plan lifecycle state machine
 
-**Justification:** This owned table is part of the Distributed Order Routing and Optimization operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Fulfillment route optimization by distance, cost, tax, and node capacity.
+**Justification:** Routing plans move through draft, candidate collection, optimization, policy review, approval, reservation, selected, superseded, failed, and cancelled states.
 
-**Improvement:** Extend `order_routing_optimization_route_candidate` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `routing_nodes`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Implement plan state transitions with actor, timestamp, reason, idempotency key, required evidence, allowed next states, emitted event expectations, and invalid-transition explanations.
 
-### 3. Deep specialist lifecycle semantics for `order_routing_optimization_capacity_snapshot`
+### 3. Plan leg modeling
 
-**Justification:** This owned table is part of the Distributed Order Routing and Optimization operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Fulfillment route optimization by distance, cost, tax, and node capacity.
+**Justification:** Multi-leg fulfillment can include node pick, pack, handoff, carrier movement, consolidation, cross-dock, pickup, and final delivery.
 
-**Improvement:** Extend `order_routing_optimization_capacity_snapshot` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `routing_constraints`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Model each leg with sequence, origin, destination, service, carrier, cutoff, expected duration, cost, capacity, risk, carbon, dependency, and proof of inclusion in the selected route.
 
-### 4. Deep specialist lifecycle semantics for `order_routing_optimization_routing_decision`
+### 4. Routing node readiness
 
-**Justification:** This owned table is part of the Distributed Order Routing and Optimization operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Fulfillment route optimization by distance, cost, tax, and node capacity.
+**Justification:** Nodes cannot be selected unless calendars, services, capacity, inventory, restrictions, and operating status are current.
 
-**Improvement:** Extend `order_routing_optimization_routing_decision` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `routing_costs`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add node readiness checks for status, calendar, cutoff, service coverage, capacity snapshot freshness, supported fulfillment modes, inventory projection, tax region, transport options, carbon profile, and exception state.
 
-### 5. Deep specialist lifecycle semantics for `order_routing_optimization_routing_rule`
+### 5. Node calendar and cutoff intelligence
 
-**Justification:** This owned table is part of the Distributed Order Routing and Optimization operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Fulfillment route optimization by distance, cost, tax, and node capacity.
+**Justification:** Promises fail when routing ignores holidays, shift calendars, processing cutoffs, blackout windows, and carrier pickup times.
 
-**Improvement:** Extend `order_routing_optimization_routing_rule` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `routing_promises`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add calendar logic for node operating windows, regional holidays, carrier cutoffs, processing lead time, blackout periods, surge exceptions, and promise feasibility calculations.
 
-### 6. Deep specialist lifecycle semantics for `order_routing_optimization_route_candidate`
+### 6. Node service capability catalog
 
-**Justification:** This owned table is part of the Distributed Order Routing and Optimization operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Fulfillment route optimization by distance, cost, tax, and node capacity.
+**Justification:** Nodes differ by pick, pack, ship, pickup, return, hazmat, cold chain, oversized, custom handling, and marketplace capabilities.
 
-**Improvement:** Extend `order_routing_optimization_route_candidate` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `split_shipments`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Model node services with eligibility, item constraints, channel constraints, throughput, service-level support, required equipment, compliance flags, and route-candidate compatibility checks.
 
-### 7. Deep specialist lifecycle semantics for `order_routing_optimization_capacity_snapshot`
+### 7. Capacity snapshot integrity
 
-**Justification:** This owned table is part of the Distributed Order Routing and Optimization operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Fulfillment route optimization by distance, cost, tax, and node capacity.
+**Justification:** Routing decisions rely on capacity signals that may be stale, duplicated, or inconsistent with reservations.
 
-**Improvement:** Extend `order_routing_optimization_capacity_snapshot` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `inventory_transport_service_inputs`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Validate capacity snapshots by node, service, date/time bucket, capacity type, available quantity, reserved quantity, source timestamp, freshness SLA, confidence, and prior reservation effects.
 
-### 8. Deep specialist lifecycle semantics for `order_routing_optimization_routing_decision`
+### 8. Node capacity reservation lifecycle
 
-**Justification:** This owned table is part of the Distributed Order Routing and Optimization operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Fulfillment route optimization by distance, cost, tax, and node capacity.
+**Justification:** Capacity must be reserved, confirmed, released, expired, or rebalanced without double-booking nodes.
 
-**Improvement:** Extend `order_routing_optimization_routing_decision` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `routing_rules`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Implement reservation states with hold minutes, quantity, service bucket, order reference, route plan, expiration, release reason, confirmation, conflict detection, and `NodeCapacityReserved` evidence.
 
-### 9. Deep specialist lifecycle semantics for `order_routing_optimization_routing_rule`
+### 9. Routing constraint compiler
 
-**Justification:** This owned table is part of the Distributed Order Routing and Optimization operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Fulfillment route optimization by distance, cost, tax, and node capacity.
+**Justification:** Constraints such as blocked nodes, regions, item restrictions, split limits, service levels, and carbon budgets must be deterministic and explainable.
 
-**Improvement:** Extend `order_routing_optimization_routing_rule` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `route_candidates`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Compile routing constraints from rules into hash-backed predicates with eligible nodes, regions, capacity floors, split policy, substitution mode, status, effective dates, and human-readable decision explanations.
 
-### 10. Deep specialist lifecycle semantics for `order_routing_optimization_route_candidate`
+### 10. Cost component traceability
 
-**Justification:** This owned table is part of the Distributed Order Routing and Optimization operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Fulfillment route optimization by distance, cost, tax, and node capacity.
+**Justification:** Routing cost is a composite of fulfillment, handling, shipping, tax, split, delay, exception, carbon, and service-failure risk.
 
-**Improvement:** Extend `order_routing_optimization_route_candidate` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `capacity_snapshots`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Record cost components per candidate and selected route with source, currency, formula, confidence, tax projection reference, carbon cost, risk adjustment, and counterfactual comparison.
 
-### 11. Make `command_route_orders` a complete command lifecycle
+### 11. Delivery promise evidence
 
-**Justification:** High-value users need `command_route_orders` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Selected routes must prove how the promised date, service level, and confidence were derived.
 
-**Improvement:** Implement `command_route_orders` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `FulfillmentRouteSelected`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Store promise evidence with cutoff, processing time, carrier service, transit time, destination, calendar, capacity, tax constraints, freshness, confidence, and customer-facing promise text.
 
-### 12. Turn `query_route_candidates` into an expert read-model experience
+### 12. Split-shipment governance
 
-**Justification:** Domain experts rely on `query_route_candidates` for operational decisions; a world-class read path must be explainable, filterable, temporally accurate, and safe under stale projections.
+**Justification:** Splits improve availability but increase cost, complexity, emissions, customer friction, and failure risk.
 
-**Improvement:** Build `query_route_candidates` as a dedicated query contract with projection freshness, filter validation, pagination, saved views, temporal/as-of reads, row-level permissions, traceable source records, and UI drilldowns. Add agent explanations for how the answer was produced, what events like `NodeCapacityReserved` last changed the projection, and where uncertainty or missing data affects confidence.
+**Improvement:** Add split eligibility, max split count, item grouping, shipment leg evidence, incremental cost, promise impact, carbon impact, customer policy, approval threshold, and split-suppression rationale.
 
-### 13. Make `command_capacity` a complete command lifecycle
+### 13. Inventory input projection controls
 
-**Justification:** High-value users need `command_capacity` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Routing must not directly read inventory tables and must trust only declared availability projections.
 
-**Improvement:** Implement `command_capacity` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `FulfillmentRouteSelected`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Validate inventory input projections for item, quantity, node, channel, freshness, confidence, ATP/CTP mode, reservation compatibility, and idempotent `AvailabilityProjected` lineage.
 
-### 14. Make `command_route_orders` a complete command lifecycle
+### 14. Transport input projection controls
 
-**Justification:** High-value users need `command_route_orders` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Carrier and service options can change by lane, cutoff, capacity, disruption, cost, and compliance.
 
-**Improvement:** Implement `command_route_orders` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `NodeCapacityReserved`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Normalize transport inputs by carrier, service, origin, destination, lane, cutoff, ETA, cost, capacity, disruption flag, carbon estimate, and eligibility constraints.
 
-### 15. Turn `query_route_candidates` into an expert read-model experience
+### 15. Service input projection controls
 
-**Justification:** Domain experts rely on `query_route_candidates` for operational decisions; a world-class read path must be explainable, filterable, temporally accurate, and safe under stale projections.
+**Justification:** Service promises depend on customer tier, channel policy, subscription promise, delivery window, and handling requirements.
 
-**Improvement:** Build `query_route_candidates` as a dedicated query contract with projection freshness, filter validation, pagination, saved views, temporal/as-of reads, row-level permissions, traceable source records, and UI drilldowns. Add agent explanations for how the answer was produced, what events like `FulfillmentRouteSelected` last changed the projection, and where uncertainty or missing data affects confidence.
+**Improvement:** Normalize service inputs into customer/service level, time window, channel rule, handling requirement, substitution allowance, split preference, promise penalty, and approval policy.
 
-### 16. Make `command_capacity` a complete command lifecycle
+### 16. Route candidate completeness scoring
 
-**Justification:** High-value users need `command_capacity` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Candidates are not comparable unless costs, capacity, promises, risk, carbon, constraints, and dependencies are complete.
 
-**Improvement:** Implement `command_capacity` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `NodeCapacityReserved`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Score candidate completeness and block selection when required fields, projection freshness, node readiness, cost evidence, promise evidence, or policy screening evidence are missing.
 
-### 17. Make `command_route_orders` a complete command lifecycle
+### 17. Multi-objective route scoring
 
-**Justification:** High-value users need `command_route_orders` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** The best route is not always cheapest or fastest; it must balance SLA, cost, capacity, risk, tax, carbon, and customer experience.
 
-**Improvement:** Implement `command_route_orders` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `FulfillmentRouteSelected`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add weighted scoring with configurable cost, SLA, capacity, risk, carbon, split, margin, customer priority, and confidence weights plus an explanation of tradeoffs.
 
-### 18. Turn `query_route_candidates` into an expert read-model experience
+### 18. Probabilistic promise confidence
 
-**Justification:** Domain experts rely on `query_route_candidates` for operational decisions; a world-class read path must be explainable, filterable, temporally accurate, and safe under stale projections.
+**Justification:** Deterministic promise dates hide uncertainty from stale availability, transport disruption, capacity variance, and node performance.
 
-**Improvement:** Build `query_route_candidates` as a dedicated query contract with projection freshness, filter validation, pagination, saved views, temporal/as-of reads, row-level permissions, traceable source records, and UI drilldowns. Add agent explanations for how the answer was produced, what events like `NodeCapacityReserved` last changed the projection, and where uncertainty or missing data affects confidence.
+**Improvement:** Compute confidence intervals for delivery promise, capacity availability, split success, cost estimate, and route completion using projection freshness and historical performance.
 
-### 19. Make `command_capacity` a complete command lifecycle
+### 19. Fulfillment risk score
 
-**Justification:** High-value users need `command_capacity` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Route decisions should surface likely failures before an order is promised.
 
-**Improvement:** Implement `command_capacity` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `FulfillmentRouteSelected`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Score fulfillment risk by node capacity, node reliability, inventory freshness, transport disruption, tax confidence, split complexity, weather/service disruptions, and exception history.
 
-### 20. Make `command_route_orders` a complete command lifecycle
+### 20. Counterfactual simulation lab
 
-**Justification:** High-value users need `command_route_orders` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Operators need to understand what would happen if a different node, split policy, carrier, or carbon weight were used.
 
-**Improvement:** Implement `command_route_orders` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `NodeCapacityReserved`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add simulations comparing alternate nodes, service modes, split limits, substitution modes, capacity reservations, carbon weights, and approval policies with cost, SLA, risk, and capacity outcomes.
 
-### 21. Operationalize `event_sourced_routing_lifecycle` as a governed decision system
+### 21. Network optimization runs
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Distributed Order Routing and Optimization and measurably improves authorization rate without hiding assumptions.
+**Justification:** Route optimization must operate at network scale, not only one order at a time.
 
-**Improvement:** Promote `event_sourced_routing_lifecycle` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `authorization_rate`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add optimization runs over order batches, nodes, service buckets, constraints, carbon windows, and capacity limits with candidate rankings, objective values, infeasibility reasons, and reproducible inputs.
 
-### 22. Operationalize `graph_relational_fulfillment_topology` as a governed decision system
+### 22. Capacity allocation auction
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Distributed Order Routing and Optimization and measurably improves route margin without hiding assumptions.
+**Justification:** Scarce node capacity may need principled allocation across channels, customers, service levels, and order values.
 
-**Improvement:** Promote `graph_relational_fulfillment_topology` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `route_margin`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add capacity allocation mechanisms with demand bids, priority classes, fairness constraints, reserve prices, allocation proof, losing-bid explanation, and override governance.
 
-### 23. Operationalize `multi_tenant_routing_isolation` as a governed decision system
+### 23. Carbon-aware routing schedule
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Distributed Order Routing and Optimization and measurably improves return cycle time without hiding assumptions.
+**Justification:** Routing can reduce emissions when lower-carbon nodes or lanes still meet promise constraints.
 
-**Improvement:** Promote `multi_tenant_routing_isolation` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `return_cycle_time`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add carbon schedules using node carbon profile, lane emissions, service guardrails, cost tradeoff, promise confidence, approval thresholds, and customer/channel carbon policy.
 
-### 24. Operationalize `schema_evolution_resilient_routing_schema` as a governed decision system
+### 24. Dynamic routing policy screening
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Distributed Order Routing and Optimization and measurably improves landed cost accuracy without hiding assumptions.
+**Justification:** Some routes must be blocked due to geography, tax, item restrictions, capacity floor, customer promises, compliance, or carbon budgets.
 
-**Improvement:** Promote `schema_evolution_resilient_routing_schema` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `landed_cost_accuracy`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add policy screening with allow/block/review outcomes, violated rule references, override eligibility, approval queue, evidence requirements, and selected-route impact.
 
-### 25. Operationalize `probabilistic_sla_cost_capacity_scoring` as a governed decision system
+### 25. Routing approval workflow
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Distributed Order Routing and Optimization and measurably improves fulfillment route selected throughput without hiding assumptions.
+**Justification:** High-risk routes, high-cost splits, customer-impacting substitutions, and carbon/cost overrides need controlled approval.
 
-**Improvement:** Promote `probabilistic_sla_cost_capacity_scoring` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `fulfillment_route_selected_throughput`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add approval states, approver role, threshold, policy reason, route evidence packet, escalation, expiry, denial reason, and audit trace before route finalization.
 
-### 26. Operationalize `counterfactual_routing_simulation` as a governed decision system
+### 26. Routing feedback ledger
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Distributed Order Routing and Optimization and measurably improves node capacity reserved throughput without hiding assumptions.
+**Justification:** Optimization improves only when selected routes are compared with fulfillment outcomes.
 
-**Improvement:** Promote `counterfactual_routing_simulation` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `node_capacity_reserved_throughput`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Capture feedback for actual ship node, ship time, delivery date, cost variance, service failure, customer complaint, split success, capacity accuracy, and model training eligibility.
 
-### 27. Operationalize `temporal_capacity_forecasting` as a governed decision system
+### 27. Exception resolution workflow
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Distributed Order Routing and Optimization and measurably improves authorization rate without hiding assumptions.
+**Justification:** Nodes go offline, capacity disappears, projections go stale, tax changes, and carriers fail after route planning.
 
-**Improvement:** Promote `temporal_capacity_forecasting` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `authorization_rate`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add exception cases with category, severity, affected order/plan, stale dependency, recommended reroute, approval requirement, customer impact, replay option, and closure evidence.
 
-### 28. Operationalize `autonomous_routing_exception_resolution` as a governed decision system
+### 28. Self-healing route selection
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Distributed Order Routing and Optimization and measurably improves route margin without hiding assumptions.
+**Justification:** Routing should recover safely when a selected node becomes unavailable before fulfillment execution.
 
-**Improvement:** Promote `autonomous_routing_exception_resolution` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `route_margin`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add self-healing that detects capacity loss, node outage, stale availability, rejected reservation, or transport disruption, then proposes safe reroute candidates with human approval for material impacts.
 
-### 29. Operationalize `semantic_route_request_parsing` as a governed decision system
+### 29. Capacity forecast engine
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Distributed Order Routing and Optimization and measurably improves return cycle time without hiding assumptions.
+**Justification:** Future routing decisions need forecasted node capacity and saturation risk.
 
-**Improvement:** Promote `semantic_route_request_parsing` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `return_cycle_time`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Forecast capacity by node, service, calendar bucket, channel, demand class, planned labor, transportation constraints, current reservations, and historical throughput.
 
-### 30. Operationalize `predictive_fulfillment_risk` as a governed decision system
+### 30. Demand surge protection
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Distributed Order Routing and Optimization and measurably improves landed cost accuracy without hiding assumptions.
+**Justification:** Promotions, holidays, regional spikes, and marketplace events can overwhelm normal routing policies.
 
-**Improvement:** Promote `predictive_fulfillment_risk` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `landed_cost_accuracy`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add surge detection, capacity buffers, channel throttles, split controls, priority protection, promise confidence downgrade, and automatic escalation.
 
-### 31. Create simulation-grade governance for `ORDER_ROUTING_OPTIMIZATION_DATABASE_URL` and `ORDER_ROUTING_OPTIMIZATION_DATABASE_URL`
+### 31. Natural-language route request parsing
 
-**Justification:** Complete Distributed Order Routing and Optimization coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Users ask routing questions in operational language such as "find the lowest-risk route that avoids node X."
 
-**Improvement:** Add a policy cockpit where `ORDER_ROUTING_OPTIMIZATION_DATABASE_URL` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `ORDER_ROUTING_OPTIMIZATION_DATABASE_URL` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Parse route requests into safe query/simulation inputs with item, region, service level, forbidden nodes, carbon preference, split policy, confidence floor, and no mutation unless confirmed.
 
-### 32. Create simulation-grade governance for `ORDER_ROUTING_OPTIMIZATION_EVENT_TOPIC` and `ORDER_ROUTING_OPTIMIZATION_EVENT_TOPIC`
+### 32. Agent-safe routing plans
 
-**Justification:** Complete Distributed Order Routing and Optimization coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** AI assistance must not silently select routes, reserve capacity, or change rules.
 
-**Improvement:** Add a policy cockpit where `ORDER_ROUTING_OPTIMIZATION_EVENT_TOPIC` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `ORDER_ROUTING_OPTIMIZATION_EVENT_TOPIC` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Require side-effect-free agent plans for route selection, capacity reservation, simulation, rule changes, approvals, exceptions, and feedback, naming permission, owned tables, idempotency key, expected event, risks, and human confirmation.
 
-### 33. Create simulation-grade governance for `ORDER_ROUTING_OPTIMIZATION_RETRY_LIMIT` and `ORDER_ROUTING_OPTIMIZATION_RETRY_LIMIT`
+### 33. Document and instruction intake
 
-**Justification:** Complete Distributed Order Routing and Optimization coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Routing constraints arrive through customer instructions, carrier notices, regional restrictions, approval notes, and operational playbooks.
 
-**Improvement:** Add a policy cockpit where `ORDER_ROUTING_OPTIMIZATION_RETRY_LIMIT` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `ORDER_ROUTING_OPTIMIZATION_RETRY_LIMIT` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Extract candidate constraints, node restrictions, service preferences, carbon requirements, split instructions, approval needs, and exception facts with confidence, evidence links, and governed mutation previews.
 
-### 34. Create simulation-grade governance for `ORDER_ROUTING_OPTIMIZATION_DATABASE_URL` and `ORDER_ROUTING_OPTIMIZATION_DATABASE_URL`
+### 34. AppGen-X inbox reliability
 
-**Justification:** Complete Distributed Order Routing and Optimization coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Order, availability, and tax events are foundational inputs to routing decisions.
 
-**Improvement:** Add a policy cockpit where `ORDER_ROUTING_OPTIMIZATION_DATABASE_URL` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `ORDER_ROUTING_OPTIMIZATION_DATABASE_URL` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add inbox idempotency, schema-version checks, payload validation, retry evidence, unsupported-event rejection, projection rebuild, dead-letter promotion, and workbench replay/quarantine controls.
 
-### 35. Create simulation-grade governance for `ORDER_ROUTING_OPTIMIZATION_EVENT_TOPIC` and `ORDER_ROUTING_OPTIMIZATION_EVENT_TOPIC`
+### 35. AppGen-X outbox delivery assurance
 
-**Justification:** Complete Distributed Order Routing and Optimization coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Fulfillment route and node-capacity events must reliably reach downstream execution and orchestration capabilities.
 
-**Improvement:** Add a policy cockpit where `ORDER_ROUTING_OPTIMIZATION_EVENT_TOPIC` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `ORDER_ROUTING_OPTIMIZATION_EVENT_TOPIC` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add outbox state, ordering group, payload hash, delivery attempts, next retry, delivery proof, dead-letter linkage, and replay controls for `FulfillmentRouteSelected` and `NodeCapacityReserved`.
 
-### 36. Upgrade `OrderRoutingOptimizationWorkbench` into a full specialist command center
+### 36. Cross-PBC dependency boundary proof
 
-**Justification:** The PBC UI must expose the complete Distributed Order Routing and Optimization surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Routing must not bypass composition by reading checkout, order, inventory, tax, transportation, WMS, DOM, approval, or feedback tables.
 
-**Improvement:** Expand `OrderRoutingOptimizationWorkbench` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add release evidence scanning schema descriptors, services, routes, DSL, and agent plans for foreign table access, proving dependencies are only APIs, AppGen-X events, or package-local projections.
 
-### 37. Upgrade `OrderRoutingOptimizationDetail` into a full specialist command center
+### 37. Routing federation view
 
-**Justification:** The PBC UI must expose the complete Distributed Order Routing and Optimization surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Operations need one view of routing state across orders, nodes, capacity, promises, approvals, exceptions, and feedback.
 
-**Improvement:** Expand `OrderRoutingOptimizationDetail` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Build a federation projection with source lineage, freshness, authorization, version compatibility, projection lag, and drilldowns into each package-owned routing artifact.
 
-### 38. Upgrade `OrderRoutingOptimizationWorkbench` into a full specialist command center
+### 38. Routing anomaly detection
 
-**Justification:** The PBC UI must expose the complete Distributed Order Routing and Optimization surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Abnormal routing decisions may indicate bad data, model drift, capacity feed failures, or policy misconfiguration.
 
-**Improvement:** Expand `OrderRoutingOptimizationWorkbench` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Detect anomalies in route cost, split frequency, node selection, capacity consumption, promise failures, carbon cost, approval overrides, duplicate events, and feedback variance.
 
-### 39. Upgrade `OrderRoutingOptimizationDetail` into a full specialist command center
+### 39. Stochastic exposure model
 
-**Justification:** The PBC UI must expose the complete Distributed Order Routing and Optimization surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Routing risk spans delivery failure, cost overruns, capacity shortfalls, service penalties, carbon exposure, and customer dissatisfaction.
 
-**Improvement:** Expand `OrderRoutingOptimizationDetail` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Model exposure distributions by route, node, region, service level, channel, item class, and time bucket with mitigation recommendations and confidence intervals.
 
-### 40. Upgrade `OrderRoutingOptimizationWorkbench` into a full specialist command center
+### 40. Governed optimization model evidence
 
-**Justification:** The PBC UI must expose the complete Distributed Order Routing and Optimization surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Routing models influence customer promises, revenue, cost, capacity, and emissions.
 
-**Improvement:** Expand `OrderRoutingOptimizationWorkbench` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Track model purpose, training window, feature lineage, objective function, constraints, validation metrics, drift, fairness/service impact, approval, rollback, and explainability evidence.
 
-### 41. Prove cross-PBC federation for `POST /route-orders` and `OrderVerified`
+### 41. Crypto-agile routing proof
 
-**Justification:** Distributed Order Routing and Optimization must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** High-value routing decisions may need proof of policy compliance without exposing costs or customer details.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /route-orders` and consumed event `OrderVerified` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Generate selective-disclosure routing proofs with route hash, policy hash, timestamp, proof type, verifier, crypto epoch, key rotation evidence, expiry, and revocation.
 
-### 42. Prove cross-PBC federation for `GET /route-candidates` and `AvailabilityProjected`
+### 42. Route audit trail time travel
 
-**Justification:** Distributed Order Routing and Optimization must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Disputes require reconstructing what projections, constraints, costs, and approvals were visible at route decision time.
 
-**Improvement:** Add compatibility tests and workbench evidence for `GET /route-candidates` and consumed event `AvailabilityProjected` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Add temporal query support over routing plans, candidates, capacity snapshots, decisions, reservations, approvals, events, and policy versions using transaction, valid, and processing times.
 
-### 43. Prove cross-PBC federation for `POST /capacity` and `TaxCalculated`
+### 43. Runtime parameter impact controls
 
-**Justification:** Distributed Order Routing and Optimization must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Weights and thresholds directly change fulfillment decisions and customer promises.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /capacity` and consumed event `TaxCalculated` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Add parameter bounds, impact simulation, approval workflow, effective dating, rollback, tenant/region overrides, and release evidence for cost, SLA, capacity, risk, carbon, split, forecast, and confidence parameters.
 
-### 44. Prove cross-PBC federation for `POST /route-orders` and `OrderVerified`
+### 44. Schema extension governance
 
-**Justification:** Distributed Order Routing and Optimization must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Routing implementations need custom node, carrier, region, item, and customer attributes without breaking package ownership.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /route-orders` and consumed event `OrderVerified` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Allow extensions only on owned routing tables with field validation, migration preview, UI binding preview, API exposure review, and release-audit evidence.
 
-### 45. Temporal reconstruction and bitemporal audit for Distributed Order Routing and Optimization
+### 45. Workbench coverage
 
-**Justification:** Regulated and operationally complex domains need to answer what was known, valid, processed, and visible at any point in time.
+**Justification:** Route operators need a full command center instead of scattered tables.
 
-**Improvement:** Add transaction-time, valid-time, and processing-time fields to core records, temporal query APIs, projection rebuild tooling, and UI time travel so specialists can reconstruct decisions, reports, and automation outcomes.
+**Improvement:** Expand workbench surfaces for plans, legs, nodes, calendars, services, capacity, constraints, costs, promises, splits, inputs, candidates, decisions, reservations, simulations, optimizations, exceptions, approvals, feedback, events, rules, parameters, configuration, and release evidence.
 
-### 46. Bulk operations and migration-grade controls for Distributed Order Routing and Optimization
+### 46. Routing decision explanation UI
 
-**Justification:** World-class deployments must handle imports, mass corrections, high-volume operating days, and cutovers without bypassing governance.
+**Justification:** Users need to understand why a route was chosen, rejected, approved, or blocked.
 
-**Improvement:** Add staged bulk upload, duplicate detection, chunked validation, approval sampling, partial failure handling, retry dashboards, reconciliation summaries, and agent-generated remediation plans for large batches.
+**Improvement:** Add explainability panels showing candidate ranking, constraints, costs, SLA, capacity, inventory freshness, tax, carbon, risk, split rationale, approval status, and counterfactual alternatives.
 
-### 47. Specialist edge-case playbooks for Distributed Order Routing and Optimization
+### 47. Continuous routing control testing
 
-**Justification:** Rare cases often carry the highest financial, legal, safety, service, or compliance risk.
+**Justification:** Better-than-world-class routing proves controls continuously, not just in release tests.
 
-**Improvement:** Create a playbook catalog with detection rules, required evidence, escalation paths, fallback actions, owner roles, and release-audited tests for high-severity edge cases and exception queues.
+**Improvement:** Add assertions for route without verified order, stale availability, stale tax, capacity over-reservation, blocked-node selection, split above max, missing approval, foreign-table access, dead-letter aging, and agent-preview bypass.
 
-### 48. Pre-mutation simulation and blast-radius analysis for Distributed Order Routing and Optimization
+### 48. Routing resilience drills
 
-**Justification:** Users should understand consequences before committing irreversible, customer-visible, operationally disruptive, or financially material changes.
+**Justification:** Route selection must degrade safely when nodes, projections, optimization, or event delivery fail.
 
-**Improvement:** Add what-if simulation for every material command, showing impacted records, emitted events, dependent projections, rule outcomes, approvals, downstream PBC dependencies, and rollback limits.
+**Improvement:** Add drills for duplicate order event, stale availability, tax projection delay, node outage, optimization timeout, reservation conflict, outbox dead letter, and workbench degraded mode.
 
-### 49. Continuous control testing and operational assurance for Distributed Order Routing and Optimization
+### 49. Order Routing readiness score
 
-**Justification:** Better-than-world-class PBCs prove controls continuously, not only at release or during periodic audits.
+**Justification:** Users need an evidence-backed view of whether `order_routing_optimization` is ready to select fulfillment routes.
 
-**Improvement:** Add executable control assertions, sampled evidence checks, anomaly thresholds, control-owner dashboards, breach/recovery events, and release gates that fail when domain controls lose evidence.
+**Improvement:** Compute readiness from order/availability/tax inputs, node topology, capacity, candidates, constraints, cost and promise evidence, simulations, approvals, feedback, event reliability, UI coverage, model governance, controls, and agent safety.
 
-### 50. Human-in-the-loop domain agent execution for Distributed Order Routing and Optimization
+### 50. End-to-end route selection proof
 
-**Justification:** The PBC chatbot must help specialists perform real work while preventing unsafe autonomous mutation.
+**Justification:** A complete Order Routing Optimization PBC must prove it can route an order through all controlled decision steps.
 
-**Improvement:** Add domain-specific skills, document parsing, task planning, CRUD previews, confidence/risk scoring, confirmation gates, redaction, policy explanations, and post-action evidence packets for every supported command and query.
+**Improvement:** Add an executable proof scenario covering `OrderVerified`, `AvailabilityProjected`, `TaxCalculated`, node readiness, capacity snapshot, route candidate intake, scoring, policy screening, split decision, approval if needed, capacity reservation, selected route event, workbench evidence, boundary proof, controls, and agent explanation.
