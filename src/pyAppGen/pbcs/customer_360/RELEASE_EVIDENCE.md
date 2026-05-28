@@ -27,3 +27,12 @@ Generated checks:
 - seed_data
 - self_registration_metadata
 - contract_tests
+- standalone_app_surface
+- package_documentation_present
+
+Standalone package-local release artifacts:
+
+- `README.md`
+- `implementation-plan.md`
+- `implementation-status.md`
+- sqlite-backed standalone store and service/route/UI/agent composition in `standalone.py`

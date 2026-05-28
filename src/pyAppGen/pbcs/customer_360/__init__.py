@@ -39,7 +39,12 @@ from .runtime import customer_360_set_preference
 from .runtime import customer_360_verify_owned_table_boundary
 from .ui import CUSTOMER_360_UI_FRAGMENT_KEYS
 from .ui import customer_360_render_workbench
+from .ui import customer_360_render_standalone_workbench
+from .ui import customer_360_standalone_workbench_blueprint
 from .ui import customer_360_ui_contract
+from .standalone import customer_360_bootstrap_standalone_app
+from .standalone import customer_360_standalone_app_contract
+from .standalone import customer_360_standalone_app_smoke
 
 PBC_KEY = "customer_360"
 
@@ -63,6 +68,7 @@ def implementation_contract() -> dict:
         "release_evidence_contract": customer_360_build_release_evidence(),
         "permissions_contract": customer_360_permissions_contract(),
         "boundary_contract": customer_360_verify_owned_table_boundary(CUSTOMER_360_OWNED_TABLES),
+        "standalone_app_contract": customer_360_standalone_app_contract(),
     }
 
 
@@ -76,7 +82,7 @@ def registration_plan(existing_catalog: dict | None = None) -> dict:
     return source_registration_plan(
         PBC_KEY,
         register_pbc(),
-        existing_catalog=existing_catalog,
+        existing_catalog={} if existing_catalog is None else existing_catalog,
     )
 
 
@@ -112,4 +118,3 @@ def smoke_test() -> dict:
         "discovery": discovery,
         "side_effects": (),
     }
-

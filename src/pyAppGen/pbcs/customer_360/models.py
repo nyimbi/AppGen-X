@@ -1,5 +1,12 @@
 """Owned model metadata for the customer_360 PBC."""
 
+from __future__ import annotations
+
+import hashlib
+import json
+import sqlite3
+from datetime import UTC, datetime
+
 PBC_KEY = 'customer_360'
 OWNED_SCHEMA = {'schema': 'customer_360',
  'table_prefix': 'customer_360_',
@@ -1195,3 +1202,782 @@ def smoke_test():
         'instance': instance,
         'side_effects': (),
     }
+
+
+STANDALONE_SQLITE_TABLES = (
+    {
+        "table": "customer_360_customer_profile",
+        "description": "Primary customer profile spine for the standalone one-PBC app.",
+        "key_field": "profile_id",
+        "columns": (
+            ("profile_id", "TEXT PRIMARY KEY"),
+            ("tenant", "TEXT NOT NULL"),
+            ("display_name", "TEXT NOT NULL"),
+            ("region", "TEXT NOT NULL"),
+            ("lifecycle_state", "TEXT NOT NULL"),
+            ("account_type", "TEXT NOT NULL"),
+            ("attributes", "TEXT NOT NULL"),
+            ("created_at", "TEXT NOT NULL"),
+            ("updated_at", "TEXT NOT NULL"),
+        ),
+    },
+    {
+        "table": "customer_360_customer_identity",
+        "description": "Identity evidence linked to a customer profile.",
+        "key_field": "identity_id",
+        "columns": (
+            ("identity_id", "TEXT PRIMARY KEY"),
+            ("tenant", "TEXT NOT NULL"),
+            ("profile_id", "TEXT NOT NULL"),
+            ("identity_type", "TEXT NOT NULL"),
+            ("identity_value_hash", "TEXT NOT NULL"),
+            ("confidence", "REAL NOT NULL"),
+            ("verified", "INTEGER NOT NULL"),
+            ("evidence", "TEXT NOT NULL"),
+            ("linked_at", "TEXT NOT NULL"),
+        ),
+    },
+    {
+        "table": "customer_360_consent_record",
+        "description": "Consent state used by the standalone preference center.",
+        "key_field": "consent_id",
+        "columns": (
+            ("consent_id", "TEXT PRIMARY KEY"),
+            ("tenant", "TEXT NOT NULL"),
+            ("profile_id", "TEXT NOT NULL"),
+            ("purpose", "TEXT NOT NULL"),
+            ("region", "TEXT NOT NULL"),
+            ("status", "TEXT NOT NULL"),
+            ("confidence", "REAL NOT NULL"),
+            ("effective", "INTEGER NOT NULL"),
+            ("captured_at", "TEXT NOT NULL"),
+        ),
+    },
+    {
+        "table": "customer_360_communication_preference",
+        "description": "Channel/topic preference records for standalone workbench edits.",
+        "key_field": "preference_id",
+        "columns": (
+            ("preference_id", "TEXT PRIMARY KEY"),
+            ("tenant", "TEXT NOT NULL"),
+            ("profile_id", "TEXT NOT NULL"),
+            ("channel", "TEXT NOT NULL"),
+            ("topic", "TEXT NOT NULL"),
+            ("status", "TEXT NOT NULL"),
+            ("locale", "TEXT NOT NULL"),
+            ("quiet_hours", "TEXT NOT NULL"),
+            ("effective", "INTEGER NOT NULL"),
+            ("updated_at", "TEXT NOT NULL"),
+        ),
+    },
+    {
+        "table": "customer_360_touchpoint",
+        "description": "Captured touchpoints for timeline reconstruction.",
+        "key_field": "touchpoint_id",
+        "columns": (
+            ("touchpoint_id", "TEXT PRIMARY KEY"),
+            ("tenant", "TEXT NOT NULL"),
+            ("profile_id", "TEXT NOT NULL"),
+            ("channel", "TEXT NOT NULL"),
+            ("source", "TEXT NOT NULL"),
+            ("status", "TEXT NOT NULL"),
+            ("occurred_at", "TEXT NOT NULL"),
+            ("metadata", "TEXT NOT NULL"),
+        ),
+    },
+    {
+        "table": "customer_360_engagement_event",
+        "description": "Engagement and projected inbox events used by timeline and workbench.",
+        "key_field": "event_id",
+        "columns": (
+            ("event_id", "TEXT PRIMARY KEY"),
+            ("tenant", "TEXT NOT NULL"),
+            ("profile_id", "TEXT NOT NULL"),
+            ("event_type", "TEXT NOT NULL"),
+            ("channel", "TEXT NOT NULL"),
+            ("value", "REAL NOT NULL"),
+            ("sentiment", "REAL NOT NULL"),
+            ("occurred_at", "TEXT NOT NULL"),
+            ("metadata", "TEXT NOT NULL"),
+        ),
+    },
+    {
+        "table": "customer_360_profile_merge_case",
+        "description": "Merge-review queue for duplicate profile remediation.",
+        "key_field": "merge_case_id",
+        "columns": (
+            ("merge_case_id", "TEXT PRIMARY KEY"),
+            ("tenant", "TEXT NOT NULL"),
+            ("winning_profile_id", "TEXT NOT NULL"),
+            ("candidate_profile_id", "TEXT NOT NULL"),
+            ("match_score", "REAL NOT NULL"),
+            ("reason", "TEXT NOT NULL"),
+            ("status", "TEXT NOT NULL"),
+            ("resolved_by", "TEXT"),
+            ("created_at", "TEXT NOT NULL"),
+            ("updated_at", "TEXT NOT NULL"),
+        ),
+    },
+    {
+        "table": "customer_360_appgen_outbox_event",
+        "description": "AppGen-X emitted event queue for standalone package flows.",
+        "key_field": "event_id",
+        "columns": (
+            ("event_id", "TEXT PRIMARY KEY"),
+            ("event_type", "TEXT NOT NULL"),
+            ("tenant", "TEXT NOT NULL"),
+            ("payload", "TEXT NOT NULL"),
+            ("status", "TEXT NOT NULL"),
+            ("attempts", "INTEGER NOT NULL"),
+            ("published_at", "TEXT NOT NULL"),
+            ("idempotency_key", "TEXT NOT NULL UNIQUE"),
+        ),
+    },
+    {
+        "table": "customer_360_appgen_inbox_event",
+        "description": "Idempotent AppGen-X inbox queue for consumed events.",
+        "key_field": "event_id",
+        "columns": (
+            ("event_id", "TEXT PRIMARY KEY"),
+            ("event_type", "TEXT NOT NULL"),
+            ("handler", "TEXT NOT NULL"),
+            ("payload", "TEXT NOT NULL"),
+            ("attempts", "INTEGER NOT NULL"),
+            ("status", "TEXT NOT NULL"),
+            ("processed_at", "TEXT NOT NULL"),
+        ),
+    },
+    {
+        "table": "customer_360_dead_letter_event",
+        "description": "Dead-letter evidence for unsupported or failed inbox events.",
+        "key_field": "event_id",
+        "columns": (
+            ("event_id", "TEXT PRIMARY KEY"),
+            ("event_type", "TEXT NOT NULL"),
+            ("failure_reason", "TEXT NOT NULL"),
+            ("payload", "TEXT NOT NULL"),
+            ("attempts", "INTEGER NOT NULL"),
+            ("failed_at", "TEXT NOT NULL"),
+        ),
+    },
+)
+_JSON_TEXT_COLUMNS = {"attributes", "evidence", "quiet_hours", "metadata", "payload"}
+_STANDALONE_ALLOWED_CONSUMED_EVENTS = (
+    "InvoiceIssued",
+    "PaymentCaptured",
+    "OrderVerified",
+    "ServiceTicketClosed",
+    "LoyaltyRewardEarned",
+    "CandidateHired",
+)
+
+
+def standalone_model_contract() -> dict:
+    tables = tuple(item["table"] for item in STANDALONE_SQLITE_TABLES)
+    return {
+        "format": "appgen.customer-360-standalone-model-contract.v1",
+        "ok": bool(tables) and all(table.startswith(f"{PBC_KEY}_") for table in tables),
+        "pbc": PBC_KEY,
+        "development_database_backend": "sqlite",
+        "deployment_database_backends": ("postgresql", "mysql", "mariadb"),
+        "tables": STANDALONE_SQLITE_TABLES,
+        "table_keys": tables,
+        "event_tables": (
+            "customer_360_appgen_outbox_event",
+            "customer_360_appgen_inbox_event",
+            "customer_360_dead_letter_event",
+        ),
+        "side_effects": (),
+    }
+
+
+def standalone_sqlite_schema() -> str:
+    statements = []
+    for table in STANDALONE_SQLITE_TABLES:
+        columns = ",\n  ".join(f"{name} {column_type}" for name, column_type in table["columns"])
+        statements.append(f"CREATE TABLE IF NOT EXISTS {table['table']} (\n  {columns}\n);")
+    return "\n\n".join(statements)
+
+
+def _standalone_timestamp() -> str:
+    return datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+
+
+def _standalone_json(value: object) -> str:
+    return json.dumps(value, sort_keys=True)
+
+
+def _row_to_dict(row: sqlite3.Row | None) -> dict | None:
+    if row is None:
+        return None
+    data = dict(row)
+    for key in tuple(data):
+        if key in _JSON_TEXT_COLUMNS and isinstance(data[key], str):
+            try:
+                data[key] = json.loads(data[key])
+            except json.JSONDecodeError:
+                continue
+        if key in {"verified", "effective"} and data[key] is not None:
+            data[key] = bool(data[key])
+    return data
+
+
+class Customer360StandaloneStore:
+    """SQLite-backed standalone store for the package-local one-PBC app."""
+
+    def __init__(self, database_path: str = ":memory:", connection: sqlite3.Connection | None = None):
+        self.database_path = database_path
+        self.connection = connection or sqlite3.connect(database_path)
+        self.connection.row_factory = sqlite3.Row
+        self._ensure_schema()
+
+    def close(self) -> None:
+        self.connection.close()
+
+    def _ensure_schema(self) -> None:
+        self.connection.executescript(standalone_sqlite_schema())
+        self.connection.commit()
+
+    def _query_one(self, sql: str, params: tuple = ()) -> dict | None:
+        return _row_to_dict(self.connection.execute(sql, params).fetchone())
+
+    def _query_all(self, sql: str, params: tuple = ()) -> tuple[dict, ...]:
+        rows = self.connection.execute(sql, params).fetchall()
+        return tuple(_row_to_dict(row) for row in rows if row is not None)
+
+    def _upsert(self, table: str, key_field: str, record: dict) -> str:
+        existing = self._query_one(
+            f"SELECT {key_field} FROM {table} WHERE {key_field} = ?",
+            (record[key_field],),
+        )
+        if existing:
+            columns = [column for column in record if column != key_field]
+            assignments = ", ".join(f"{column} = ?" for column in columns)
+            values = tuple(record[column] for column in columns) + (record[key_field],)
+            self.connection.execute(
+                f"UPDATE {table} SET {assignments} WHERE {key_field} = ?",
+                values,
+            )
+            action = "updated"
+        else:
+            columns = tuple(record)
+            placeholders = ", ".join("?" for _ in columns)
+            self.connection.execute(
+                f"INSERT INTO {table} ({', '.join(columns)}) VALUES ({placeholders})",
+                tuple(record[column] for column in columns),
+            )
+            action = "created"
+        self.connection.commit()
+        return action
+
+    def _append_outbox(self, event_type: str, tenant: str, payload: dict, *, key: str) -> dict:
+        now = _standalone_timestamp()
+        record = {
+            "event_id": key,
+            "event_type": event_type,
+            "tenant": tenant,
+            "payload": _standalone_json(payload),
+            "status": "pending",
+            "attempts": 0,
+            "published_at": now,
+            "idempotency_key": key,
+        }
+        self._upsert("customer_360_appgen_outbox_event", "event_id", record)
+        return record
+
+    def create_profile(self, payload: dict) -> dict:
+        required = ("profile_id", "tenant", "display_name", "region")
+        missing = tuple(field for field in required if not payload.get(field))
+        if missing:
+            return {"ok": False, "reason": "missing_fields", "missing": missing}
+        now = _standalone_timestamp()
+        core_fields = {"profile_id", "tenant", "display_name", "region", "lifecycle_state", "account_type"}
+        record = {
+            "profile_id": payload["profile_id"],
+            "tenant": payload["tenant"],
+            "display_name": payload["display_name"],
+            "region": payload["region"],
+            "lifecycle_state": payload.get("lifecycle_state", "active"),
+            "account_type": payload.get("account_type", "consumer"),
+            "attributes": _standalone_json(
+                {key: value for key, value in payload.items() if key not in core_fields}
+            ),
+            "created_at": payload.get("created_at", now),
+            "updated_at": now,
+        }
+        action = self._upsert("customer_360_customer_profile", "profile_id", record)
+        self._append_outbox(
+            "CustomerUpdated",
+            payload["tenant"],
+            {"profile_id": payload["profile_id"], "region": payload["region"]},
+            key=f"customer_360:profile:{payload['profile_id']}",
+        )
+        return {"ok": True, "action": action, "profile": self.get_profile(payload["profile_id"])}
+
+    def get_profile(self, profile_id: str) -> dict | None:
+        return self._query_one(
+            "SELECT * FROM customer_360_customer_profile WHERE profile_id = ?",
+            (profile_id,),
+        )
+
+    def list_profiles(self, tenant: str) -> tuple[dict, ...]:
+        return self._query_all(
+            "SELECT * FROM customer_360_customer_profile WHERE tenant = ? ORDER BY profile_id",
+            (tenant,),
+        )
+
+    def link_identity(self, payload: dict) -> dict:
+        required = ("identity_id", "tenant", "profile_id", "identity_type", "value")
+        missing = tuple(field for field in required if not payload.get(field))
+        if missing:
+            return {"ok": False, "reason": "missing_fields", "missing": missing}
+        if not self.get_profile(payload["profile_id"]):
+            return {"ok": False, "reason": "profile_not_found", "profile_id": payload["profile_id"]}
+        record = {
+            "identity_id": payload["identity_id"],
+            "tenant": payload["tenant"],
+            "profile_id": payload["profile_id"],
+            "identity_type": payload["identity_type"],
+            "identity_value_hash": hashlib.sha256(str(payload["value"]).encode("utf-8")).hexdigest(),
+            "confidence": float(payload.get("confidence", 0.0)),
+            "verified": int(bool(payload.get("verified", False))),
+            "evidence": _standalone_json(payload.get("evidence", {"source": "standalone_form"})),
+            "linked_at": payload.get("linked_at", _standalone_timestamp()),
+        }
+        action = self._upsert("customer_360_customer_identity", "identity_id", record)
+        self._append_outbox(
+            "CustomerIdentityLinked",
+            payload["tenant"],
+            {"profile_id": payload["profile_id"], "identity_type": payload["identity_type"]},
+            key=f"customer_360:identity:{payload['identity_id']}",
+        )
+        identity = self._query_one(
+            "SELECT * FROM customer_360_customer_identity WHERE identity_id = ?",
+            (payload["identity_id"],),
+        )
+        return {"ok": True, "action": action, "identity": identity}
+
+    def record_consent(self, payload: dict) -> dict:
+        required = ("consent_id", "tenant", "profile_id", "purpose", "region", "status")
+        missing = tuple(field for field in required if not payload.get(field))
+        if missing:
+            return {"ok": False, "reason": "missing_fields", "missing": missing}
+        effective = payload["status"] == "granted" and float(payload.get("confidence", 0.0)) >= 0.9
+        record = {
+            "consent_id": payload["consent_id"],
+            "tenant": payload["tenant"],
+            "profile_id": payload["profile_id"],
+            "purpose": payload["purpose"],
+            "region": payload["region"],
+            "status": payload["status"],
+            "confidence": float(payload.get("confidence", 0.0)),
+            "effective": int(effective),
+            "captured_at": payload.get("captured_at", _standalone_timestamp()),
+        }
+        action = self._upsert("customer_360_consent_record", "consent_id", record)
+        self._append_outbox(
+            "ConsentRecorded",
+            payload["tenant"],
+            {"profile_id": payload["profile_id"], "purpose": payload["purpose"], "status": payload["status"]},
+            key=f"customer_360:consent:{payload['consent_id']}",
+        )
+        consent = self._query_one(
+            "SELECT * FROM customer_360_consent_record WHERE consent_id = ?",
+            (payload["consent_id"],),
+        )
+        return {"ok": True, "action": action, "consent": consent}
+
+    def set_preference(self, payload: dict) -> dict:
+        required = ("preference_id", "tenant", "profile_id", "channel", "topic", "status")
+        missing = tuple(field for field in required if not payload.get(field))
+        if missing:
+            return {"ok": False, "reason": "missing_fields", "missing": missing}
+        effective = payload["status"] == "opt_in"
+        record = {
+            "preference_id": payload["preference_id"],
+            "tenant": payload["tenant"],
+            "profile_id": payload["profile_id"],
+            "channel": payload["channel"],
+            "topic": payload["topic"],
+            "status": payload["status"],
+            "locale": payload.get("locale", "en-US"),
+            "quiet_hours": _standalone_json(payload.get("quiet_hours", {"start": "22:00", "end": "07:00"})),
+            "effective": int(effective),
+            "updated_at": payload.get("updated_at", _standalone_timestamp()),
+        }
+        action = self._upsert("customer_360_communication_preference", "preference_id", record)
+        self._append_outbox(
+            "PreferenceChanged",
+            payload["tenant"],
+            {"profile_id": payload["profile_id"], "channel": payload["channel"], "topic": payload["topic"]},
+            key=f"customer_360:preference:{payload['preference_id']}",
+        )
+        preference = self._query_one(
+            "SELECT * FROM customer_360_communication_preference WHERE preference_id = ?",
+            (payload["preference_id"],),
+        )
+        return {"ok": True, "action": action, "preference": preference}
+
+    def capture_touchpoint(self, payload: dict) -> dict:
+        required = ("touchpoint_id", "tenant", "profile_id", "channel", "source")
+        missing = tuple(field for field in required if not payload.get(field))
+        if missing:
+            return {"ok": False, "reason": "missing_fields", "missing": missing}
+        record = {
+            "touchpoint_id": payload["touchpoint_id"],
+            "tenant": payload["tenant"],
+            "profile_id": payload["profile_id"],
+            "channel": payload["channel"],
+            "source": payload["source"],
+            "status": payload.get("status", "captured"),
+            "occurred_at": payload.get("occurred_at", _standalone_timestamp()),
+            "metadata": _standalone_json(payload.get("metadata", {})),
+        }
+        action = self._upsert("customer_360_touchpoint", "touchpoint_id", record)
+        self._append_outbox(
+            "TouchpointCaptured",
+            payload["tenant"],
+            {"profile_id": payload["profile_id"], "channel": payload["channel"]},
+            key=f"customer_360:touchpoint:{payload['touchpoint_id']}",
+        )
+        touchpoint = self._query_one(
+            "SELECT * FROM customer_360_touchpoint WHERE touchpoint_id = ?",
+            (payload["touchpoint_id"],),
+        )
+        return {"ok": True, "action": action, "touchpoint": touchpoint}
+
+    def ingest_engagement_event(self, payload: dict, *, emit_outbox: bool = True) -> dict:
+        required = ("event_id", "tenant", "profile_id", "event_type", "channel")
+        missing = tuple(field for field in required if not payload.get(field))
+        if missing:
+            return {"ok": False, "reason": "missing_fields", "missing": missing}
+        record = {
+            "event_id": payload["event_id"],
+            "tenant": payload["tenant"],
+            "profile_id": payload["profile_id"],
+            "event_type": payload["event_type"],
+            "channel": payload["channel"],
+            "value": float(payload.get("value", 0.0)),
+            "sentiment": float(payload.get("sentiment", 0.0)),
+            "occurred_at": payload.get("occurred_at", _standalone_timestamp()),
+            "metadata": _standalone_json(payload.get("metadata", {})),
+        }
+        action = self._upsert("customer_360_engagement_event", "event_id", record)
+        if emit_outbox:
+            self._append_outbox(
+                "CustomerSegmentUpdated",
+                payload["tenant"],
+                {"profile_id": payload["profile_id"], "event_type": payload["event_type"]},
+                key=f"customer_360:engagement:{payload['event_id']}",
+            )
+        engagement = self._query_one(
+            "SELECT * FROM customer_360_engagement_event WHERE event_id = ?",
+            (payload["event_id"],),
+        )
+        return {"ok": True, "action": action, "engagement": engagement}
+
+    def open_merge_case(self, payload: dict) -> dict:
+        required = (
+            "merge_case_id",
+            "tenant",
+            "winning_profile_id",
+            "candidate_profile_id",
+            "match_score",
+            "reason",
+        )
+        missing = tuple(field for field in required if payload.get(field) in (None, ""))
+        if missing:
+            return {"ok": False, "reason": "missing_fields", "missing": missing}
+        now = _standalone_timestamp()
+        record = {
+            "merge_case_id": payload["merge_case_id"],
+            "tenant": payload["tenant"],
+            "winning_profile_id": payload["winning_profile_id"],
+            "candidate_profile_id": payload["candidate_profile_id"],
+            "match_score": float(payload["match_score"]),
+            "reason": payload["reason"],
+            "status": payload.get("status", "open"),
+            "resolved_by": payload.get("resolved_by"),
+            "created_at": payload.get("created_at", now),
+            "updated_at": now,
+        }
+        action = self._upsert("customer_360_profile_merge_case", "merge_case_id", record)
+        self._append_outbox(
+            "ProfileMergeCaseOpened",
+            payload["tenant"],
+            {"merge_case_id": payload["merge_case_id"], "winning_profile_id": payload["winning_profile_id"]},
+            key=f"customer_360:merge:{payload['merge_case_id']}:open",
+        )
+        merge_case = self._query_one(
+            "SELECT * FROM customer_360_profile_merge_case WHERE merge_case_id = ?",
+            (payload["merge_case_id"],),
+        )
+        return {"ok": True, "action": action, "merge_case": merge_case}
+
+    def resolve_merge_case(self, merge_case_id: str, resolved_by: str) -> dict:
+        merge_case = self._query_one(
+            "SELECT * FROM customer_360_profile_merge_case WHERE merge_case_id = ?",
+            (merge_case_id,),
+        )
+        if not merge_case:
+            return {"ok": False, "reason": "merge_case_not_found", "merge_case_id": merge_case_id}
+        self.connection.execute(
+            """
+            UPDATE customer_360_profile_merge_case
+            SET status = ?, resolved_by = ?, updated_at = ?
+            WHERE merge_case_id = ?
+            """,
+            ("resolved", resolved_by, _standalone_timestamp(), merge_case_id),
+        )
+        self.connection.commit()
+        self._append_outbox(
+            "ProfileMergeResolved",
+            merge_case["tenant"],
+            {"merge_case_id": merge_case_id, "resolved_by": resolved_by},
+            key=f"customer_360:merge:{merge_case_id}:resolved",
+        )
+        return {
+            "ok": True,
+            "merge_case": self._query_one(
+                "SELECT * FROM customer_360_profile_merge_case WHERE merge_case_id = ?",
+                (merge_case_id,),
+            ),
+        }
+
+    def receive_event(self, payload: dict) -> dict:
+        event_id = payload.get("event_id")
+        event_type = payload.get("event_type")
+        data = dict(payload.get("payload") or {})
+        if not event_id or not event_type:
+            return {"ok": False, "reason": "missing_event_identity"}
+        duplicate = self._query_one(
+            "SELECT event_id, status FROM customer_360_appgen_inbox_event WHERE event_id = ?",
+            (event_id,),
+        )
+        if duplicate:
+            return {"ok": True, "duplicate": True, "event_id": event_id, "status": duplicate["status"]}
+        now = _standalone_timestamp()
+        if event_type not in _STANDALONE_ALLOWED_CONSUMED_EVENTS or not data:
+            dead_letter = {
+                "event_id": event_id,
+                "event_type": event_type,
+                "failure_reason": "unsupported_or_missing_payload",
+                "payload": _standalone_json(data),
+                "attempts": 1,
+                "failed_at": now,
+            }
+            self._upsert("customer_360_dead_letter_event", "event_id", dead_letter)
+            return {"ok": False, "duplicate": False, "status": "dead_letter", "event": dead_letter}
+        inbox = {
+            "event_id": event_id,
+            "event_type": event_type,
+            "handler": f"handle_{event_type.lower()}",
+            "payload": _standalone_json(data),
+            "attempts": 1,
+            "status": "processed",
+            "processed_at": now,
+        }
+        self._upsert("customer_360_appgen_inbox_event", "event_id", inbox)
+        if data.get("profile_id"):
+            self.ingest_engagement_event(
+                {
+                    "event_id": f"inbox_{event_id}",
+                    "tenant": data.get("tenant", "tenant_default"),
+                    "profile_id": data["profile_id"],
+                    "event_type": event_type,
+                    "channel": "appgen_inbox",
+                    "value": data.get("amount", 0.0),
+                    "sentiment": 0.0,
+                    "metadata": {"source_event_id": event_id},
+                    "occurred_at": data.get("occurred_at", now),
+                },
+                emit_outbox=False,
+            )
+        return {"ok": True, "duplicate": False, "status": "processed", "event_id": event_id}
+
+    def build_timeline(self, profile_id: str) -> dict:
+        touchpoints = self._query_all(
+            "SELECT touchpoint_id AS entry_id, occurred_at, channel, source, status, metadata FROM customer_360_touchpoint WHERE profile_id = ?",
+            (profile_id,),
+        )
+        engagements = self._query_all(
+            "SELECT event_id AS entry_id, occurred_at, channel, event_type, value, sentiment, metadata FROM customer_360_engagement_event WHERE profile_id = ?",
+            (profile_id,),
+        )
+        consents = self._query_all(
+            "SELECT consent_id AS entry_id, captured_at AS occurred_at, purpose, status, effective FROM customer_360_consent_record WHERE profile_id = ?",
+            (profile_id,),
+        )
+        preferences = self._query_all(
+            "SELECT preference_id AS entry_id, updated_at AS occurred_at, channel, topic, status, effective FROM customer_360_communication_preference WHERE profile_id = ?",
+            (profile_id,),
+        )
+        entries = tuple(
+            sorted(
+                (
+                    *({"kind": "touchpoint", **row} for row in touchpoints),
+                    *({"kind": "engagement", **row} for row in engagements),
+                    *({"kind": "consent", **row} for row in consents),
+                    *({"kind": "preference", **row} for row in preferences),
+                ),
+                key=lambda row: row["occurred_at"],
+                reverse=True,
+            )
+        )
+        return {"ok": True, "profile_id": profile_id, "entries": entries, "event_count": len(entries)}
+
+    def build_workbench(self, tenant: str) -> dict:
+        counts = {
+            "profile_count": self.connection.execute(
+                "SELECT COUNT(*) FROM customer_360_customer_profile WHERE tenant = ?",
+                (tenant,),
+            ).fetchone()[0],
+            "identity_count": self.connection.execute(
+                "SELECT COUNT(*) FROM customer_360_customer_identity WHERE tenant = ?",
+                (tenant,),
+            ).fetchone()[0],
+            "consent_count": self.connection.execute(
+                "SELECT COUNT(*) FROM customer_360_consent_record WHERE tenant = ?",
+                (tenant,),
+            ).fetchone()[0],
+            "effective_consent_count": self.connection.execute(
+                "SELECT COUNT(*) FROM customer_360_consent_record WHERE tenant = ? AND effective = 1",
+                (tenant,),
+            ).fetchone()[0],
+            "preference_count": self.connection.execute(
+                "SELECT COUNT(*) FROM customer_360_communication_preference WHERE tenant = ?",
+                (tenant,),
+            ).fetchone()[0],
+            "opt_in_count": self.connection.execute(
+                "SELECT COUNT(*) FROM customer_360_communication_preference WHERE tenant = ? AND effective = 1",
+                (tenant,),
+            ).fetchone()[0],
+            "touchpoint_count": self.connection.execute(
+                "SELECT COUNT(*) FROM customer_360_touchpoint WHERE tenant = ?",
+                (tenant,),
+            ).fetchone()[0],
+            "engagement_event_count": self.connection.execute(
+                "SELECT COUNT(*) FROM customer_360_engagement_event WHERE tenant = ?",
+                (tenant,),
+            ).fetchone()[0],
+            "open_merge_case_count": self.connection.execute(
+                "SELECT COUNT(*) FROM customer_360_profile_merge_case WHERE tenant = ? AND status != 'resolved'",
+                (tenant,),
+            ).fetchone()[0],
+            "outbox_count": self.connection.execute(
+                "SELECT COUNT(*) FROM customer_360_appgen_outbox_event WHERE tenant = ?",
+                (tenant,),
+            ).fetchone()[0],
+        }
+        inbox_count = self.connection.execute(
+            "SELECT COUNT(*) FROM customer_360_appgen_inbox_event",
+        ).fetchone()[0]
+        dead_letter_count = self.connection.execute(
+            "SELECT COUNT(*) FROM customer_360_dead_letter_event",
+        ).fetchone()[0]
+        customer_value = self.connection.execute(
+            "SELECT COALESCE(SUM(value), 0) FROM customer_360_engagement_event WHERE tenant = ?",
+            (tenant,),
+        ).fetchone()[0]
+        return {
+            "ok": True,
+            "tenant": tenant,
+            **counts,
+            "customer_value": round(float(customer_value or 0.0), 2),
+            "inbox_count": inbox_count,
+            "dead_letter_count": dead_letter_count,
+            "profiles": self.list_profiles(tenant),
+        }
+
+
+def standalone_store_smoke_test() -> dict:
+    store = Customer360StandaloneStore()
+    try:
+        profile = store.create_profile(
+            {
+                "profile_id": "cust_smoke",
+                "tenant": "tenant_smoke",
+                "display_name": "Smoke Customer",
+                "region": "US",
+            }
+        )
+        identity = store.link_identity(
+            {
+                "identity_id": "id_smoke",
+                "tenant": "tenant_smoke",
+                "profile_id": "cust_smoke",
+                "identity_type": "email",
+                "value": "smoke@example.com",
+                "confidence": 0.97,
+                "verified": True,
+            }
+        )
+        consent = store.record_consent(
+            {
+                "consent_id": "consent_smoke",
+                "tenant": "tenant_smoke",
+                "profile_id": "cust_smoke",
+                "purpose": "marketing",
+                "region": "US",
+                "status": "granted",
+                "confidence": 0.95,
+            }
+        )
+        preference = store.set_preference(
+            {
+                "preference_id": "pref_smoke",
+                "tenant": "tenant_smoke",
+                "profile_id": "cust_smoke",
+                "channel": "email",
+                "topic": "offers",
+                "status": "opt_in",
+            }
+        )
+        touchpoint = store.capture_touchpoint(
+            {
+                "touchpoint_id": "tp_smoke",
+                "tenant": "tenant_smoke",
+                "profile_id": "cust_smoke",
+                "channel": "web",
+                "source": "portal",
+            }
+        )
+        engagement = store.ingest_engagement_event(
+            {
+                "event_id": "eng_smoke",
+                "tenant": "tenant_smoke",
+                "profile_id": "cust_smoke",
+                "event_type": "purchase",
+                "channel": "web",
+                "value": 125.0,
+            }
+        )
+        inbox = store.receive_event(
+            {
+                "event_id": "evt_smoke",
+                "event_type": "InvoiceIssued",
+                "payload": {
+                    "tenant": "tenant_smoke",
+                    "profile_id": "cust_smoke",
+                    "amount": 125.0,
+                },
+            }
+        )
+        timeline = store.build_timeline("cust_smoke")
+        workbench = store.build_workbench("tenant_smoke")
+        return {
+            "ok": all(
+                result.get("ok") is True
+                for result in (profile, identity, consent, preference, touchpoint, engagement, inbox, timeline, workbench)
+            )
+            and timeline["event_count"] >= 4
+            and workbench["profile_count"] == 1
+            and workbench["outbox_count"] >= 5,
+            "contract": standalone_model_contract(),
+            "profile": profile,
+            "timeline": timeline,
+            "workbench": workbench,
+            "side_effects": (),
+        }
+    finally:
+        store.close()
