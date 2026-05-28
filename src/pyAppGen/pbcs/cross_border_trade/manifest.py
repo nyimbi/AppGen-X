@@ -51,6 +51,10 @@ PBC_MANIFEST = {
         'carrier_status_tracking',
         'document_packet_lifecycle',
         'denied_party_case_management',
+        'single_pbc_domain_app',
+        'forms',
+        'wizards',
+        'controls',
     ),
     'workflows': PBC_MANIFEST['workflows']
     + (
@@ -62,5 +66,15 @@ PBC_MANIFEST = {
         'command_hold_resolutions',
         'command_country_restrictions',
         'command_declaration_releases',
+    ),
+    'docs': PBC_MANIFEST['docs']
+    + (
+        'README.md',
+        'implementation-plan.md',
+        'implementation-status.md',
+    ),
+    'tests': PBC_MANIFEST['tests']
+    + (
+        'tests/test_app_surface.py',
     ),
 }
