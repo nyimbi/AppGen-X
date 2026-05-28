@@ -2,314 +2,313 @@
 
 ## Purpose
 
-This backlog identifies 50 high-impact, high-value improvements for `product_catalog_pim`. Each item is specific to the domain surface currently declared by the PBC and is intended to move the package beyond world-class breadth toward complete specialist-grade coverage.
+This backlog identifies 50 high-impact, high-value improvements for `product_catalog_pim`. The items are specific to product information management: product masters, families, variants, SKU governance, taxonomy, category assignments, attribute schemas, localized content, media evidence, SEO metadata, pricing metadata, compliance claims, lifecycle approvals, publication, syndication, assortment, data quality, product relationships, bundles, semantic enrichment, event reliability, UI workbenches, and agent-assisted catalog operations.
 
 ## Current Domain Evidence Used
 
-- Domain purpose: Product schemas, pricing, localized descriptions, media, and read models.
-- Representative owned tables: `product_catalog_pim_product`, `product_catalog_pim_product_price`, `product_catalog_pim_product_media`, `product_catalog_pim_product_attribute`.
-- Representative operations/APIs: `command_products`, `query_product_read_models`, `command_prices`.
-- Representative events: `ProductClassified`, `ProductPublished`, `ForecastUpdated`.
-- Representative advanced capabilities: `event_sourced_product_lifecycle`, `graph_relational_product_topology`, `multi_tenant_catalog_isolation`, `schema_evolution_resilient_attribute_schema`, `probabilistic_sellability_compliance_scoring`, `real_time_catalog_readiness_analytics`, `counterfactual_publication_simulation`, `temporal_content_sellability_forecasting`, `autonomous_enrichment_exception_resolution`, `semantic_product_instruction_parsing`, ...
+- Domain purpose: product catalog and PIM behavior for product masters, families, variants, taxonomies, categories, assortments, attribute schemas, localized content, media evidence, pricing metadata, approval and lifecycle evidence, publication readiness, syndication evidence, rules, parameters, configuration, API descriptors, permissions, UI/workbench bindings, and AppGen-X event evidence.
+- Owned boundary: product, product families, variants, variant options and members, product taxonomies, taxonomy nodes and relationships, categories, category assignments, attribute schemas, attributes, validation rules, value options, localized content, localization memory, SEO metadata, media, enrichment tasks, product/channel prices, compliance claims, lifecycle stages, approval workflows and decisions, catalog publications, channel projections and policies, syndication feeds and deliveries, assortments, data quality scores/issues, bundles, product relationships, identity credentials, graph projections, semantic embeddings, readiness forecasts, risk models, policy screenings, publication proofs, audit traces, schema extensions, control assertions, governed models, rules, parameters, configuration, inbox/outbox, and dead-letter evidence.
+- Existing command/query surface: configuration, rules, parameters, schema extensions, product family and product creation, attribute schemas, attributes, media, locale content, prices, compliance claims, publications, event inbox, workbench, schema/service/release evidence, permissions, binding evidence, boundary checks, semantic parsing, forecasts, risk scoring, recommendations, federation, identity, anomaly detection, and stochastic exposure modeling.
+- Existing events and dependencies: emits `ProductClassified`, `ProductRegistered`, `AttributeSchemaDefined`, `ProductEnriched`, `ProductMediaAttached`, `ProductPriceReady`, `ProductComplianceClaimed`, and `ProductPublished`; consumes tax, media approval, inventory position, price promotion, and search index events through declared APIs/projections only.
 
 ## 50 Better-Than-World-Class Improvements
 
-### 1. Deep specialist lifecycle semantics for `product_catalog_pim_product`
+### 1. Product master identity governance
 
-**Justification:** This owned table is part of the Enterprise Product Catalog and PIM operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Product schemas, pricing, localized descriptions, media, and read models.
+**Justification:** Product identity is the anchor for catalog, commerce, inventory, tax, search, and analytics; weak identity creates duplicates and broken downstream projections.
 
-**Improvement:** Extend `product_catalog_pim_product` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `product_master`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add product identity rules for internal ID, external keys, GTIN/UPC/EAN/ISBN where applicable, manufacturer part number, brand, tenant, effective dates, duplicate detection, merge/split evidence, and immutable identity history.
 
-### 2. Deep specialist lifecycle semantics for `product_catalog_pim_product_price`
+### 2. Product family modeling depth
 
-**Justification:** This owned table is part of the Enterprise Product Catalog and PIM operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Product schemas, pricing, localized descriptions, media, and read models.
+**Justification:** Families define shared attributes, variant structures, publishing rules, content inheritance, and commercial consistency.
 
-**Improvement:** Extend `product_catalog_pim_product_price` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `product_family`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Model families with inherited attributes, mandatory variant axes, default content, common media, channel policies, compliance defaults, lifecycle rules, and override constraints. UI should show inheritance and deviations clearly.
 
-### 3. Deep specialist lifecycle semantics for `product_catalog_pim_product_media`
+### 3. Variant option and member governance
 
-**Justification:** This owned table is part of the Enterprise Product Catalog and PIM operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Product schemas, pricing, localized descriptions, media, and read models.
+**Justification:** Variant confusion causes incorrect SKUs, duplicate options, broken PDPs, and incorrect inventory handoffs.
 
-**Improvement:** Extend `product_catalog_pim_product_media` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `variant_model`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add variant option schemas with axis type, display order, allowed values, swatches, localization, media binding, SKU member rules, compatibility constraints, and inactive option handling. Validate every variant member against the active model.
 
-### 4. Deep specialist lifecycle semantics for `product_catalog_pim_product_attribute`
+### 4. SKU readiness gate
 
-**Justification:** This owned table is part of the Enterprise Product Catalog and PIM operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Product schemas, pricing, localized descriptions, media, and read models.
+**Justification:** A SKU should not be published or syndicated until identity, attributes, content, media, price metadata, compliance, and channel rules are complete.
 
-**Improvement:** Extend `product_catalog_pim_product_attribute` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `variant_options`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Compute SKU readiness with required attributes, family/variant validity, category assignment, locale content, SEO, media roles, price readiness, tax/compliance status, inventory projection readiness, and approval evidence.
 
-### 5. Deep specialist lifecycle semantics for `product_catalog_pim_product`
+### 5. Taxonomy governance and versioning
 
-**Justification:** This owned table is part of the Enterprise Product Catalog and PIM operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Product schemas, pricing, localized descriptions, media, and read models.
+**Justification:** Taxonomy changes affect navigation, search, attributes, reporting, syndication, and compliance mapping.
 
-**Improvement:** Extend `product_catalog_pim_product` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `sku_governance`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add taxonomy versions, node lifecycle, parent/child rules, effective dates, deprecation path, migration impact analysis, and publication-ready snapshots. Category assignments should cite taxonomy version.
 
-### 6. Deep specialist lifecycle semantics for `product_catalog_pim_product_price`
+### 6. Category assignment intelligence
 
-**Justification:** This owned table is part of the Enterprise Product Catalog and PIM operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Product schemas, pricing, localized descriptions, media, and read models.
+**Justification:** Incorrect categorization reduces discoverability, breaks attributes, and causes channel policy failures.
 
-**Improvement:** Extend `product_catalog_pim_product_price` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `taxonomy_assignment`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add category recommendation with confidence, required attribute gap analysis, competing categories, regional/channel restrictions, and human approval. Store why each assignment was accepted or rejected.
 
-### 7. Deep specialist lifecycle semantics for `product_catalog_pim_product_media`
+### 7. Assortment eligibility engine
 
-**Justification:** This owned table is part of the Enterprise Product Catalog and PIM operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Product schemas, pricing, localized descriptions, media, and read models.
+**Justification:** Products may be valid globally but ineligible for a specific channel, region, store, marketplace, or customer segment.
 
-**Improvement:** Extend `product_catalog_pim_product_media` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `taxonomy_hierarchy`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Model assortment rules by channel, locale, region, customer segment, season, lifecycle, compliance, inventory readiness, and commercial strategy. Publication should respect assortment eligibility.
 
-### 8. Deep specialist lifecycle semantics for `product_catalog_pim_product_attribute`
+### 8. Attribute schema lifecycle
 
-**Justification:** This owned table is part of the Enterprise Product Catalog and PIM operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Product schemas, pricing, localized descriptions, media, and read models.
+**Justification:** Attribute schema changes can break validation, localization, search facets, feeds, and downstream integrations.
 
-**Improvement:** Extend `product_catalog_pim_product_attribute` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `category_management`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add schema states, versioning, compatibility rules, required/optional semantics, datatype constraints, units, allowed locales, facetability, searchability, channel usage, and migration guidance for existing values.
 
-### 9. Deep specialist lifecycle semantics for `product_catalog_pim_product`
+### 9. Attribute validation rule library
 
-**Justification:** This owned table is part of the Enterprise Product Catalog and PIM operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Product schemas, pricing, localized descriptions, media, and read models.
+**Justification:** Product data quality depends on domain-specific validations beyond required fields.
 
-**Improvement:** Extend `product_catalog_pim_product` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `attribute_schema`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add reusable validators for range, unit, regex, controlled vocabulary, dependency, conditional requirement, mutually exclusive values, locale completeness, measurement consistency, and channel-specific constraints. Data quality issues should cite the failed rule.
 
-### 10. Deep specialist lifecycle semantics for `product_catalog_pim_product_price`
+### 10. Controlled value option governance
 
-**Justification:** This owned table is part of the Enterprise Product Catalog and PIM operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Product schemas, pricing, localized descriptions, media, and read models.
+**Justification:** Uncontrolled values create duplicate colors, sizes, materials, claims, and facet pollution.
 
-**Improvement:** Extend `product_catalog_pim_product_price` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `attribute_validation`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Manage value options with canonical label, synonyms, locale translations, deprecation status, replacement mapping, display order, channel eligibility, and merge history. Attribute entry should prefer canonical options.
 
-### 11. Make `command_products` a complete command lifecycle
+### 11. Localization memory and translation workflow
 
-**Justification:** High-value users need `command_products` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Global catalogs need consistent, compliant, and culturally appropriate localized product content.
 
-**Improvement:** Implement `command_products` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `ProductClassified`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add localization memory with source phrase, locale, translation, confidence, reviewer, restricted terminology, legal disclaimers, and reuse tracking. Workflows should route low-confidence or regulated content to reviewers.
 
-### 12. Turn `query_product_read_models` into an expert read-model experience
+### 12. Product content completeness scoring
 
-**Justification:** Domain experts rely on `query_product_read_models` for operational decisions; a world-class read path must be explainable, filterable, temporally accurate, and safe under stale projections.
+**Justification:** Content quality affects conversion, search ranking, marketplace acceptance, and return rates.
 
-**Improvement:** Build `query_product_read_models` as a dedicated query contract with projection freshness, filter validation, pagination, saved views, temporal/as-of reads, row-level permissions, traceable source records, and UI drilldowns. Add agent explanations for how the answer was produced, what events like `ProductPublished` last changed the projection, and where uncertainty or missing data affects confidence.
+**Improvement:** Score title, description, bullets, specifications, dimensions, usage instructions, care instructions, warnings, locale coverage, readability, uniqueness, and channel-specific requirements. Show actionable gaps by product and channel.
 
-### 13. Make `command_prices` a complete command lifecycle
+### 13. SEO metadata governance
 
-**Justification:** High-value users need `command_prices` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** SEO metadata drives organic discovery but can conflict with brand, compliance, and localized content policies.
 
-**Improvement:** Implement `command_prices` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `ForecastUpdated`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add SEO title, meta description, slug, keywords, canonical URL, noindex flag, locale variants, duplicate detection, restricted term screening, and publication preview. Track SEO changes in audit trace.
 
-### 14. Make `command_products` a complete command lifecycle
+### 14. Media asset role and rights enforcement
 
-**Justification:** High-value users need `command_products` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Publishing unapproved, expired, wrong-role, or rights-restricted media creates legal and customer experience risk.
 
-**Improvement:** Implement `command_products` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `ProductClassified`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Enforce media roles, channel usage rights, region restrictions, approval status, expiry, alt text, resolution, background, aspect ratio, file lineage, and `MediaAssetApproved` projection freshness before publication.
 
-### 15. Turn `query_product_read_models` into an expert read-model experience
+### 15. Rich media and accessibility readiness
 
-**Justification:** Domain experts rely on `query_product_read_models` for operational decisions; a world-class read path must be explainable, filterable, temporally accurate, and safe under stale projections.
+**Justification:** Modern catalogs require images, video, 3D, manuals, certificates, and accessible descriptions.
 
-**Improvement:** Build `query_product_read_models` as a dedicated query contract with projection freshness, filter validation, pagination, saved views, temporal/as-of reads, row-level permissions, traceable source records, and UI drilldowns. Add agent explanations for how the answer was produced, what events like `ProductPublished` last changed the projection, and where uncertainty or missing data affects confidence.
+**Improvement:** Add media readiness by role and channel, alt text quality, transcript/caption requirements, document type, 3D model references, accessibility flags, and fallback assets. Workbench should show missing media by channel.
 
-### 16. Make `command_prices` a complete command lifecycle
+### 16. Pricing metadata readiness
 
-**Justification:** High-value users need `command_prices` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** PIM may not own pricing strategy, but catalog publication needs price readiness and channel price metadata.
 
-**Improvement:** Implement `command_prices` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `ForecastUpdated`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Store price metadata projection, channel price readiness, currency, effective date, minimum margin parameter, promo projection, price source, and stale status. Block publication when price readiness violates policy.
 
-### 17. Make `command_products` a complete command lifecycle
+### 17. Channel policy compiler
 
-**Justification:** High-value users need `command_products` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Channels have different content, media, price, compliance, and feed requirements.
 
-**Improvement:** Implement `command_products` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `ProductClassified`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Compile channel policies into deterministic rules for required attributes, locales, media roles, pricing, restricted regions, taxonomy mapping, feed fields, and approval requirements. Publication should cite the policy hash.
 
-### 18. Turn `query_product_read_models` into an expert read-model experience
+### 18. Publication readiness simulation
 
-**Justification:** Domain experts rely on `query_product_read_models` for operational decisions; a world-class read path must be explainable, filterable, temporally accurate, and safe under stale projections.
+**Justification:** Teams need to know what would fail before attempting channel publication.
 
-**Improvement:** Build `query_product_read_models` as a dedicated query contract with projection freshness, filter validation, pagination, saved views, temporal/as-of reads, row-level permissions, traceable source records, and UI drilldowns. Add agent explanations for how the answer was produced, what events like `ProductPublished` last changed the projection, and where uncertainty or missing data affects confidence.
+**Improvement:** Simulate publication by channel, locale, region, assortment, and lifecycle stage, showing blocking gaps, warnings, downstream event effects, feed payload preview, and rollback limits without mutating state.
 
-### 19. Make `command_prices` a complete command lifecycle
+### 19. Catalog publication lifecycle
 
-**Justification:** High-value users need `command_prices` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Publication is a governed lifecycle, not a simple flag.
 
-**Improvement:** Implement `command_prices` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `ForecastUpdated`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Model publication states from draft to staged, approved, published, partially published, failed, rolled back, superseded, and archived. Store batch, channel, locale, product set, approval, proof, and emitted `ProductPublished` evidence.
 
-### 20. Make `command_products` a complete command lifecycle
+### 20. Syndication feed mapping
 
-**Justification:** High-value users need `command_products` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Marketplaces, search, commerce, and partner feeds require different field mappings and validation.
 
-**Improvement:** Implement `command_products` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `ProductClassified`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add feed mapping definitions with source fields, transformations, required fields, locale/channel variants, validation rules, error taxonomy, delivery schedule, and acceptance evidence. Preserve feed version history.
 
-### 21. Operationalize `event_sourced_product_lifecycle` as a governed decision system
+### 21. Syndication delivery observability
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Enterprise Product Catalog and PIM and measurably improves conversion quality without hiding assumptions.
+**Justification:** Catalog quality is incomplete if teams cannot see whether feeds were delivered and accepted.
 
-**Improvement:** Promote `event_sourced_product_lifecycle` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `conversion_quality`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Track delivery attempts, endpoint, payload hash, acceptance/rejection, rejected rows, retry schedule, dead-letter link, and recovery action. Workbench should expose feed health by channel.
 
-### 22. Operationalize `graph_relational_product_topology` as a governed decision system
+### 22. Compliance claim lifecycle
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Enterprise Product Catalog and PIM and measurably improves fulfillment accuracy without hiding assumptions.
+**Justification:** Claims such as organic, recyclable, medical, safety, origin, age-restricted, and warranty require proof and expiry.
 
-**Improvement:** Promote `graph_relational_product_topology` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `fulfillment_accuracy`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Model claims with claim type, jurisdiction, evidence document, verifier, expiry, restricted phrases, affected products, channel eligibility, and revocation. Publication should block expired or unapproved claims.
 
-### 23. Operationalize `multi_tenant_catalog_isolation` as a governed decision system
+### 23. Restricted-region screening
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Enterprise Product Catalog and PIM and measurably improves customer health without hiding assumptions.
+**Justification:** Products may be sellable in one region and restricted in another because of compliance, tax, safety, or channel rules.
 
-**Improvement:** Promote `multi_tenant_catalog_isolation` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `customer_health`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add region restriction rules tied to claims, attributes, taxonomy, media, age limits, hazardous flags, and tax projections. Assortment and publication should explain regional eligibility.
 
-### 24. Operationalize `schema_evolution_resilient_attribute_schema` as a governed decision system
+### 24. Lifecycle stage governance
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Enterprise Product Catalog and PIM and measurably improves margin impact without hiding assumptions.
+**Justification:** Product lifecycle affects enrichment, publication, assortment, replacement, serviceability, and discontinuation behavior.
 
-**Improvement:** Promote `schema_evolution_resilient_attribute_schema` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `margin_impact`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Model stages such as concept, draft, enrichment, review, approved, active, seasonal, discontinued, superseded, and archived with allowed transitions, required evidence, owner, and downstream effects.
 
-### 25. Operationalize `probabilistic_sellability_compliance_scoring` as a governed decision system
+### 25. Approval workflow specialization
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Enterprise Product Catalog and PIM and measurably improves product classified throughput without hiding assumptions.
+**Justification:** PIM approvals differ for content, compliance, pricing readiness, taxonomy, media, lifecycle, and publication.
 
-**Improvement:** Promote `probabilistic_sellability_compliance_scoring` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `product_classified_throughput`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add approval workflows with approver roles, parallel/sequential steps, evidence requirements, escalation, rejection reasons, rework loops, and segregation-of-duties checks. Decisions should cite the changed fields.
 
-### 26. Operationalize `real_time_catalog_readiness_analytics` as a governed decision system
+### 26. Product data quality issue management
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Enterprise Product Catalog and PIM and measurably improves product published throughput without hiding assumptions.
+**Justification:** Data quality issues need ownership, severity, remediation, and validation rather than static scores.
 
-**Improvement:** Promote `real_time_catalog_readiness_analytics` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `product_published_throughput`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add issue lifecycle with source, failed rule, affected channels, severity, owner, SLA, remediation suggestion, duplicate grouping, and closure proof. UI should show quality debt by category and channel.
 
-### 27. Operationalize `counterfactual_publication_simulation` as a governed decision system
+### 27. Product relationship graph
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Enterprise Product Catalog and PIM and measurably improves conversion quality without hiding assumptions.
+**Justification:** Products relate as accessories, replacements, parts, kits, bundles, warranties, alternatives, supersessions, and incompatibilities.
 
-**Improvement:** Promote `counterfactual_publication_simulation` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `conversion_quality`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Model typed relationships with direction, effective dates, compatibility, channel usage, merchandising purpose, and validation rules. Read models should expose relationship graph with conflict detection.
 
-### 28. Operationalize `temporal_content_sellability_forecasting` as a governed decision system
+### 28. Bundle and kit definition governance
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Enterprise Product Catalog and PIM and measurably improves fulfillment accuracy without hiding assumptions.
+**Justification:** Bundles and kits need component rules, pricing readiness, media, inventory implications, and publication clarity.
 
-**Improvement:** Promote `temporal_content_sellability_forecasting` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `fulfillment_accuracy`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add bundle definitions with components, quantities, optional/required parts, variant compatibility, display behavior, price metadata, inventory projection readiness, and substitution constraints.
 
-### 29. Operationalize `autonomous_enrichment_exception_resolution` as a governed decision system
+### 29. Product graph projection
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Enterprise Product Catalog and PIM and measurably improves customer health without hiding assumptions.
+**Justification:** Search, recommendations, compliance, and analytics need a consistent graph view without bypassing owned tables.
 
-**Improvement:** Promote `autonomous_enrichment_exception_resolution` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `customer_health`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Generate graph projections from product, family, variant, taxonomy, category, attributes, media, relationships, bundles, and publication evidence. Include freshness and rebuild lineage.
 
-### 30. Operationalize `semantic_product_instruction_parsing` as a governed decision system
+### 30. Semantic enrichment tasking
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Enterprise Product Catalog and PIM and measurably improves margin impact without hiding assumptions.
+**Justification:** PIM work includes enriching raw product data from supplier documents, images, manuals, and user instructions.
 
-**Improvement:** Promote `semantic_product_instruction_parsing` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `margin_impact`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add enrichment tasks with source document, extracted fields, confidence, suggested values, validation results, reviewer, approved changes, rejected suggestions, and expected emitted events. Keep AI changes preview-only until approved.
 
-### 31. Create simulation-grade governance for `PRODUCT_CATALOG_PIM_DATABASE_URL` and `PRODUCT_CATALOG_PIM_DATABASE_URL`
+### 31. Semantic embedding governance
 
-**Justification:** Complete Enterprise Product Catalog and PIM coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Embeddings improve search and deduplication but must be governed for drift, privacy, and explainability.
 
-**Improvement:** Add a policy cockpit where `PRODUCT_CATALOG_PIM_DATABASE_URL` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `PRODUCT_CATALOG_PIM_DATABASE_URL` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Store embedding purpose, model version, source fields, locale, timestamp, drift status, rebuild policy, and exclusion flags. Provide evidence for search/recommendation use without exposing sensitive payloads.
 
-### 32. Create simulation-grade governance for `PRODUCT_CATALOG_PIM_EVENT_TOPIC` and `PRODUCT_CATALOG_PIM_EVENT_TOPIC`
+### 32. Product duplicate and merge workflow
 
-**Justification:** Complete Enterprise Product Catalog and PIM coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Duplicate products fragment content, prices, inventory projections, reviews, and search ranking.
 
-**Improvement:** Add a policy cockpit where `PRODUCT_CATALOG_PIM_EVENT_TOPIC` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `PRODUCT_CATALOG_PIM_EVENT_TOPIC` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Detect duplicates using identity, attributes, media similarity, supplier identifiers, semantic embeddings, and taxonomy. Add merge/split workflow with impact preview, retained identity, relationship updates, and audit trace.
 
-### 33. Create simulation-grade governance for `PRODUCT_CATALOG_PIM_RETRY_LIMIT` and `PRODUCT_CATALOG_PIM_RETRY_LIMIT`
+### 33. Sellability and readiness forecasting
 
-**Justification:** Complete Enterprise Product Catalog and PIM coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Catalog teams should anticipate which products will miss launch, marketplace acceptance, or seasonal readiness.
 
-**Improvement:** Add a policy cockpit where `PRODUCT_CATALOG_PIM_RETRY_LIMIT` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `PRODUCT_CATALOG_PIM_RETRY_LIMIT` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Forecast readiness by product, channel, locale, category, and owner using quality gaps, approval aging, media delays, compliance expiry, pricing readiness, and syndication history. Provide confidence and recommended actions.
 
-### 34. Create simulation-grade governance for `PRODUCT_CATALOG_PIM_DATABASE_URL` and `PRODUCT_CATALOG_PIM_DATABASE_URL`
+### 34. Product risk model governance
 
-**Justification:** Complete Enterprise Product Catalog and PIM coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Risk scoring for compliance, publication failure, duplicate likelihood, or low quality affects business outcomes.
 
-**Improvement:** Add a policy cockpit where `PRODUCT_CATALOG_PIM_DATABASE_URL` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `PRODUCT_CATALOG_PIM_DATABASE_URL` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add governed model evidence with feature lineage, training window, approval status, drift checks, explainability, fairness/coverage review, and rollback for all PIM risk and readiness models.
 
-### 35. Create simulation-grade governance for `PRODUCT_CATALOG_PIM_EVENT_TOPIC` and `PRODUCT_CATALOG_PIM_EVENT_TOPIC`
+### 35. Catalog anomaly detection
 
-**Justification:** Complete Enterprise Product Catalog and PIM coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Sudden catalog changes can indicate bad imports, policy errors, broken feeds, or malicious edits.
 
-**Improvement:** Add a policy cockpit where `PRODUCT_CATALOG_PIM_EVENT_TOPIC` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `PRODUCT_CATALOG_PIM_EVENT_TOPIC` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Detect anomalies in attribute value distributions, price metadata readiness, media removals, taxonomy moves, publication failures, locale gaps, duplicate spikes, and approval bypass attempts. Route anomalies to review.
 
-### 36. Upgrade `ProductCatalogPimWorkbench` into a full specialist command center
+### 36. Product publication proof
 
-**Justification:** The PBC UI must expose the complete Enterprise Product Catalog and PIM surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Teams need evidence that a product was published with the right content, media, price readiness, compliance, and channel policy.
 
-**Improvement:** Expand `ProductCatalogPimWorkbench` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Generate publication proofs with product snapshot, channel, locale, policy hash, approval decisions, feed delivery hash, emitted event, and verification status. Support redacted proof views where needed.
 
-### 37. Upgrade `ProductCatalogPimDetail` into a full specialist command center
+### 37. Immutable product audit trace
 
-**Justification:** The PBC UI must expose the complete Enterprise Product Catalog and PIM surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Product data changes can create legal, commercial, and customer-facing consequences.
 
-**Improvement:** Expand `ProductCatalogPimDetail` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Hash-chain identity changes, attribute updates, content edits, media attachments, approvals, compliance claims, publications, syndication deliveries, agent previews, and event handling. UI timelines should support temporal reconstruction.
 
-### 38. Upgrade `ProductCatalogPimWorkbench` into a full specialist command center
+### 38. Event reliability cockpit
 
-**Justification:** The PBC UI must expose the complete Enterprise Product Catalog and PIM surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** PIM depends on consumed tax, media, inventory, pricing, and search events and emitted catalog lifecycle events.
 
-**Improvement:** Expand `ProductCatalogPimWorkbench` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add inbox/outbox/dead-letter views for idempotency, duplicates, retries, handler version, payload lineage, projection freshness, replay eligibility, and downstream publication effects. Warn when stale projections affect readiness.
 
-### 39. Upgrade `ProductCatalogPimDetail` into a full specialist command center
+### 39. Boundary proof for catalog ownership
 
-**Justification:** The PBC UI must expose the complete Enterprise Product Catalog and PIM surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** PIM must integrate with commerce, pricing, inventory, tax, content, and search without shared tables.
 
-**Improvement:** Expand `ProductCatalogPimDetail` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add static and runtime checks proving commands touch only PIM-owned tables plus AppGen-X runtime tables. Include failing fixtures for direct pricing, inventory, media DAM, tax, search, and commerce table access.
 
-### 40. Upgrade `ProductCatalogPimWorkbench` into a full specialist command center
+### 40. PIM workbench coverage
 
-**Justification:** The PBC UI must expose the complete Enterprise Product Catalog and PIM surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Product teams need full UI access to PIM operations rather than hidden backend-only functions.
 
-**Improvement:** Expand `ProductCatalogPimWorkbench` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Expand UI into product master, family/variant modeling, taxonomy, categories, attributes, localization, SEO, media, pricing readiness, compliance, lifecycle, approvals, publication, syndication, assortments, data quality, relationships, bundles, analytics, rules, parameters, configuration, event reliability, and agent panels.
 
-### 41. Prove cross-PBC federation for `POST /products` and `TaxCalculated`
+### 41. Agent-safe product document intake
 
-**Justification:** Enterprise Product Catalog and PIM must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** The PIM chatbot should parse supplier sheets, product manuals, media notes, compliance certificates, and merchandising instructions without unsafe writes.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /products` and consumed event `TaxCalculated` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Add intake skills that extract candidate product facts, map them to PIM-owned tables, validate rules/permissions, reject foreign-table mutations, and produce side-effect-free previews with confidence, risks, required approvals, and expected AppGen-X events.
 
-### 42. Prove cross-PBC federation for `GET /product-read-models` and `TaxCalculated`
+### 42. Agent-safe enrichment and publication planning
 
-**Justification:** Enterprise Product Catalog and PIM must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** AI can accelerate catalog work only if changes are governed and reviewed.
 
-**Improvement:** Add compatibility tests and workbench evidence for `GET /product-read-models` and consumed event `TaxCalculated` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Require agent plans for create, enrich, attach media, define schema, approve claim, publish, syndicate, or resolve quality issues to list command, permission, owned tables, idempotency key, emitted event, affected channels/locales, rollback limits, and human approval.
 
-### 43. Prove cross-PBC federation for `POST /prices` and `TaxCalculated`
+### 43. Bulk import and migration controls
 
-**Justification:** Enterprise Product Catalog and PIM must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Catalog programs often involve high-volume supplier imports, replatforming, taxonomy migrations, and feed repairs.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /prices` and consumed event `TaxCalculated` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Add staged import with schema mapping, sample validation, duplicate detection, chunked processing, partial failure handling, rollback windows, approval sampling, quality scoring, and remediation queues.
 
-### 44. Prove cross-PBC federation for `POST /products` and `TaxCalculated`
+### 44. Rule and parameter simulation
 
-**Justification:** Enterprise Product Catalog and PIM must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Changing completeness thresholds, required attributes, media roles, margin thresholds, publication batch size, or locales can disrupt publication readiness.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /products` and consumed event `TaxCalculated` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Simulate rule and parameter changes against current and historical catalog data, showing products blocked/unblocked, quality score changes, publication impact, syndication errors, workload, and dead-letter volume.
 
-### 45. Temporal reconstruction and bitemporal audit for Enterprise Product Catalog and PIM
+### 45. Carbon-aware publication and assortment
 
-**Justification:** Regulated and operationally complex domains need to answer what was known, valid, processed, and visible at any point in time.
+**Justification:** Catalog choices influence fulfillment promises, packaging, assortment, and channel exposure.
 
-**Improvement:** Add transaction-time, valid-time, and processing-time fields to core records, temporal query APIs, projection rebuild tooling, and UI time travel so specialists can reconstruct decisions, reports, and automation outcomes.
+**Improvement:** Add carbon-aware signals for assortment and publication using inventory, packaging, shipping-distance projections, locale/channel demand, and carbon route projections. Show tradeoffs rather than blocking silently.
 
-### 46. Bulk operations and migration-grade controls for Enterprise Product Catalog and PIM
+### 46. Catalog federation views
 
-**Justification:** World-class deployments must handle imports, mass corrections, high-volume operating days, and cutovers without bypassing governance.
+**Justification:** Business users need product views enriched by pricing, inventory, tax, content, search, and commerce signals without table sharing.
 
-**Improvement:** Add staged bulk upload, duplicate detection, chunked validation, approval sampling, partial failure handling, retry dashboards, reconciliation summaries, and agent-generated remediation plans for large batches.
+**Improvement:** Build federated read views using declared projections only, with freshness, source event, confidence, and boundary evidence. UI should mark projected data distinctly from PIM-owned data.
 
-### 47. Specialist edge-case playbooks for Enterprise Product Catalog and PIM
+### 47. Continuous catalog control testing
 
-**Justification:** Rare cases often carry the highest financial, legal, safety, service, or compliance risk.
+**Justification:** Catalog controls should run continuously across identity, attributes, media, claims, publication, feeds, and event handling.
 
-**Improvement:** Create a playbook catalog with detection rules, required evidence, escalation paths, fallback actions, owner roles, and release-audited tests for high-severity edge cases and exception queues.
+**Improvement:** Add assertions for duplicate identity, missing required attributes, invalid controlled values, expired media rights, unapproved claims, blocked-region publication, stale price readiness, feed rejection aging, dead-letter aging, and agent-preview bypass.
 
-### 48. Pre-mutation simulation and blast-radius analysis for Enterprise Product Catalog and PIM
+### 48. Product close and retirement workflow
 
-**Justification:** Users should understand consequences before committing irreversible, customer-visible, operationally disruptive, or financially material changes.
+**Justification:** Retiring or superseding products affects search, assortment, inventory projections, service parts, replacements, and compliance records.
 
-**Improvement:** Add what-if simulation for every material command, showing impacted records, emitted events, dependent projections, rule outcomes, approvals, downstream PBC dependencies, and rollback limits.
+**Improvement:** Add retirement workflow with replacement links, publication withdrawal, syndication updates, search deindex projection, assortment removal, compliance archive, customer-facing messaging evidence, and audit closure.
 
-### 49. Continuous control testing and operational assurance for Enterprise Product Catalog and PIM
+### 49. Product catalog readiness score
 
-**Justification:** Better-than-world-class PBCs prove controls continuously, not only at release or during periodic audits.
+**Justification:** Users need a concise evidence-backed measure of production readiness for catalog operations.
 
-**Improvement:** Add executable control assertions, sampled evidence checks, anomaly thresholds, control-owner dashboards, breach/recovery events, and release gates that fail when domain controls lose evidence.
+**Improvement:** Compute readiness from identity quality, schema coverage, attribute completeness, localization, media rights, SEO, compliance, lifecycle approvals, price readiness, publication proofs, syndication health, UI coverage, event reliability, boundary proof, model governance, and agent safety.
 
-### 50. Human-in-the-loop domain agent execution for Enterprise Product Catalog and PIM
+### 50. End-to-end product launch proof
 
-**Justification:** The PBC chatbot must help specialists perform real work while preventing unsafe autonomous mutation.
+**Justification:** A complete PIM PBC must prove it can launch a product across the full governed catalog lifecycle.
 
-**Improvement:** Add domain-specific skills, document parsing, task planning, CRUD previews, confidence/risk scoring, confirmation gates, redaction, policy explanations, and post-action evidence packets for every supported command and query.
+**Improvement:** Add an executable proof scenario covering product family, variant, attribute schema, localization, media approval projection, price readiness, compliance claim, approval workflow, publication simulation, catalog publication, syndication delivery, emitted `ProductPublished`, audit trace, UI evidence, controls, and agent explanation.
