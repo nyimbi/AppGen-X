@@ -2745,3 +2745,21 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   audit, treasury generation smoke audit, treasury specification contract,
   direct runtime/schema gap check, and restricted legacy-name scan. Commit:
   `0d89c8e`.
+- Current all-PBC artifact alignment pass closes the remaining runtime/package
+  materialization drift across built-in PBC directories. The package-local
+  `schema_contract.py`, `models.py`, and `migrations/001_initial.sql` artifacts
+  now cover every runtime-owned table for all 47 built-in PBCs, including
+  AppGen-X outbox, inbox, dead-letter, rule, parameter, configuration,
+  projection, AI/agent, audit, and advanced domain tables where declared by the
+  executable runtime. Added `tests/test_pbc_runtime_artifact_alignment.py` to
+  prove runtime-owned tables are present in schema, model manifests, and
+  migration DDL, with datastore backends constrained to PostgreSQL, MySQL, and
+  MariaDB. Focused verification under the low-battery constraint passed:
+  direct runtime/schema/model/migration gap audit returned zero gaps,
+  `tests/test_pbc_runtime_artifact_alignment.py -q`, Python compile for all
+  PBC schema/model artifacts, `pbc_implementation_release_audit()` for all 47
+  PBCs, `pbc_generation_smoke_audit(tuple(PBC_CATALOG))` for all 47 PBCs, and
+  restricted legacy/eventing-term diff scan. Full `tests/test_main.py -q -x`
+  was not completed because it stops on an unrelated existing
+  `ideas_release_audit`/`palette_breadth` assertion before PBC coverage.
+  Commit: `0729fee`.
