@@ -2,314 +2,314 @@
 
 ## Purpose
 
-This backlog identifies 50 high-impact, high-value improvements for `travel_management`. Each item is specific to the domain surface currently declared by the PBC and is intended to move the package beyond world-class breadth toward complete specialist-grade coverage.
+This backlog identifies 50 high-impact, high-value improvements for `travel_management`. Each item is specific to trip requests, traveler profiles, travel policy, approval routing, booking intents, air/hotel/ground bookings, itineraries, duty-of-care, disruptions, unused tickets, travel-expense handoffs, supplier offers, risk assessment, traveler assistance, agent guidance, and AppGen-X event reliability.
 
 ## Current Domain Evidence Used
 
-- Domain purpose: Owns trip requests, travel policy, booking intents, itineraries, approvals, duty-of-care, disruptions, unused tickets, settlement, and traveler assistance.
-- Representative owned tables: `travel_management_trip_request`, `travel_management_traveler_profile`, `travel_management_travel_policy`, `travel_management_travel_approval_task`, `travel_management_booking_intent`, `travel_management_air_booking`, `travel_management_hotel_booking`, `travel_management_ground_booking`, `travel_management_itinerary_item`, `travel_management_duty_of_care_alert`, `travel_management_travel_disruption`, `travel_management_unused_ticket`, ...
-- Representative operations/APIs: `create_trip_request`, `validate_travel_policy`, `route_travel_approval`, `create_booking_intent`, `record_air_booking`, `record_hotel_booking`, `record_ground_booking`, `build_itinerary`, `screen_duty_of_care`, `open_travel_disruption`, `track_unused_ticket`, `link_travel_expense`, ...
-- Representative events: `TripRequested`, `TravelApproved`, `ItineraryBuilt`, `DutyOfCareAlertOpened`, `TravelDisruptionOpened`, `UnusedTicketRecorded`.
-- Representative advanced capabilities: `traveler-aware policy guidance`, `disruption counterfactual routing`, `semantic itinerary ingestion`, `duty-of-care risk intelligence`, `unused-ticket optimization`, `carbon-aware booking comparison`.
+- Domain purpose: trip requests, travel policy, booking intents, itineraries, approvals, duty-of-care, disruptions, unused tickets, settlement, and traveler assistance.
+- Owned operational surface: trip requests, traveler profiles, travel policies, approval tasks, booking intents, air bookings, hotel bookings, ground bookings, itinerary items, duty-of-care alerts, travel disruptions, unused tickets, travel-expense links, risk assessments, supplier offers, exception cases, policy rules, runtime parameters, schema extensions, control assertions, governed models, and AppGen-X runtime event tables.
+- Declared operations: trip request creation, travel policy validation, approval routing, booking intent creation, air/hotel/ground booking recording, itinerary building, duty-of-care screening, disruption opening, unused ticket tracking, expense linking, travel risk scoring, supplier offer comparison, exception resolution, travel rule compilation, and disruption impact simulation.
+- Declared events and integrations: emits `TripRequested`, `TravelApproved`, `ItineraryBuilt`, `DutyOfCareAlertOpened`, `TravelDisruptionOpened`, and `UnusedTicketRecorded`; consumes `EmployeeCreated`, `ExpenseReportCreated`, `PolicyChanged`, and `PaymentExecuted`; catalog traceability also covers employee, expense, supplier, booking, duty-of-care, and expense-handoff events.
+- Advanced capability evidence: traveler-aware policy guidance, disruption counterfactual routing, semantic itinerary ingestion, duty-of-care risk intelligence, unused-ticket optimization, carbon-aware booking comparison, event-sourced operational history, multi-tenant policy isolation, anomaly detection, predictive risk scoring, scenario simulation, cryptographic audit proofs, continuous control testing, cross-PBC event federation, and governed agent execution.
 
 ## 50 Better-Than-World-Class Improvements
 
-### 1. Deep specialist lifecycle semantics for `travel_management_trip_request`
+### 1. Trip request readiness gate
 
-**Justification:** This owned table is part of the Travel Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns trip requests, travel policy, booking intents, itineraries, approvals, duty-of-care, disruptions, unused tickets, settlement, and traveler assistance.
+**Justification:** Travel requests without traveler, destination, business purpose, dates, risk, budget, and policy evidence lead to unsafe bookings and approval rework.
 
-**Improvement:** Extend `travel_management_trip_request` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `travel_request_management`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add a readiness gate that verifies traveler projection, trip purpose, destination, dates, cost estimate, risk level, policy version, required approvals, visa/passport needs, and duty-of-care prerequisites before a request can proceed.
 
-### 2. Deep specialist lifecycle semantics for `travel_management_traveler_profile`
+### 2. Trip lifecycle state machine
 
-**Justification:** This owned table is part of the Travel Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns trip requests, travel policy, booking intents, itineraries, approvals, duty-of-care, disruptions, unused tickets, settlement, and traveler assistance.
+**Justification:** Trips move through draft, submitted, approved, booking, booked, in-trip, disrupted, completed, cancelled, expensed, and archived states with different policy and assistance actions.
 
-**Improvement:** Extend `travel_management_traveler_profile` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `travel_management_workflow`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Implement a strict state machine with allowed transitions, required evidence, owner, notifications, booking effects, expense handoff eligibility, and audit proofs. Release tests should reject bookings and expense links in invalid states.
 
-### 3. Deep specialist lifecycle semantics for `travel_management_travel_policy`
+### 3. Traveler profile completeness scoring
 
-**Justification:** This owned table is part of the Travel Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns trip requests, travel policy, booking intents, itineraries, approvals, duty-of-care, disruptions, unused tickets, settlement, and traveler assistance.
+**Justification:** Traveler profiles need contact, emergency, document, preference, accessibility, loyalty, region, and risk information to support bookings and duty-of-care.
 
-**Improvement:** Extend `travel_management_travel_policy` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `travel_management_analytics`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Score profile completeness for contact methods, emergency contacts, identity documents, home region, preferred language, accessibility requirements, loyalty identifiers, notification preferences, and risk consent. Surface missing items before approval or travel.
 
-### 4. Deep specialist lifecycle semantics for `travel_management_travel_approval_task`
+### 4. Traveler preference and accessibility handling
 
-**Justification:** This owned table is part of the Travel Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns trip requests, travel policy, booking intents, itineraries, approvals, duty-of-care, disruptions, unused tickets, settlement, and traveler assistance.
+**Justification:** Travel management must respect seat, meal, accessibility, schedule, lodging, language, and communication needs without exposing sensitive information unnecessarily.
 
-**Improvement:** Extend `travel_management_travel_approval_task` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `configuration_schema`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add preference categories, sensitivity levels, booking applicability, consent state, visibility controls, and override rules. Booking intent comparisons should explain which preferences were satisfied, unavailable, or policy-blocked.
 
-### 5. Deep specialist lifecycle semantics for `travel_management_booking_intent`
+### 5. Travel policy versioning
 
-**Justification:** This owned table is part of the Travel Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns trip requests, travel policy, booking intents, itineraries, approvals, duty-of-care, disruptions, unused tickets, settlement, and traveler assistance.
+**Justification:** Fare class, hotel rate, advance booking, approval thresholds, supplier rules, and risk policies change over time and by employee group.
 
-**Improvement:** Extend `travel_management_booking_intent` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `rule_engine`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Version policies by effective interval, region, employee level, business unit, trip type, supplier category, fare class, hotel cap, ground rules, and exception paths. Store the policy version on every validation and approval decision.
 
-### 6. Deep specialist lifecycle semantics for `travel_management_air_booking`
+### 6. Travel policy rule compiler
 
-**Justification:** This owned table is part of the Travel Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns trip requests, travel policy, booking intents, itineraries, approvals, duty-of-care, disruptions, unused tickets, settlement, and traveler assistance.
+**Justification:** Travel policies often live in documents with nested exceptions, role-specific thresholds, emergency overrides, and supplier preferences.
 
-**Improvement:** Extend `travel_management_air_booking` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `parameter_engine`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Compile travel policy documents into executable predicates with ambiguity flags, examples, test cases, approvers, and effective dates. The agent should request clarification for unclear rules before activation.
 
-### 7. Deep specialist lifecycle semantics for `travel_management_hotel_booking`
+### 7. Pre-trip policy coaching
 
-**Justification:** This owned table is part of the Travel Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns trip requests, travel policy, booking intents, itineraries, approvals, duty-of-care, disruptions, unused tickets, settlement, and traveler assistance.
+**Justification:** Travelers need guidance before selecting expensive or noncompliant options, not after expenses are submitted.
 
-**Improvement:** Extend `travel_management_hotel_booking` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `owned_schema_migrations_models`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add counterfactual coaching that compares compliant alternatives by fare class, booking window, hotel rate, preferred supplier, route, carbon, and traveler constraints. Show why options pass, warn, or require exception approval.
 
-### 8. Deep specialist lifecycle semantics for `travel_management_ground_booking`
+### 8. Approval routing graph
 
-**Justification:** This owned table is part of the Travel Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns trip requests, travel policy, booking intents, itineraries, approvals, duty-of-care, disruptions, unused tickets, settlement, and traveler assistance.
+**Justification:** Travel approvals depend on cost, destination risk, traveler role, advance notice, policy exceptions, project, budget owner, and duty-of-care escalation.
 
-**Improvement:** Extend `travel_management_ground_booking` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `appgen_x_outbox_inbox_eventing`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Build approval graphs with manager, budget owner, risk/security, HR, finance, and executive nodes. Store route rationale, skipped approvers, delegation, escalation timers, and approval evidence.
 
-### 9. Deep specialist lifecycle semantics for `travel_management_itinerary_item`
+### 9. Emergency and exception approval lane
 
-**Justification:** This owned table is part of the Travel Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns trip requests, travel policy, booking intents, itineraries, approvals, duty-of-care, disruptions, unused tickets, settlement, and traveler assistance.
+**Justification:** Urgent travel may require rapid approval without bypassing duty-of-care and spend controls.
 
-**Improvement:** Extend `travel_management_itinerary_item` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `idempotent_handlers`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add emergency approval states with reason, risk screen, post-approval review, time-boxed authorization, and exception evidence. UI should distinguish emergency policy overrides from normal approval paths.
 
-### 10. Deep specialist lifecycle semantics for `travel_management_duty_of_care_alert`
+### 10. Booking intent lifecycle
 
-**Justification:** This owned table is part of the Travel Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns trip requests, travel policy, booking intents, itineraries, approvals, duty-of-care, disruptions, unused tickets, settlement, and traveler assistance.
+**Justification:** Booking intent is the bridge between approved need and actual air, hotel, and ground reservations.
 
-**Improvement:** Extend `travel_management_duty_of_care_alert` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `retry_dead_letter_evidence`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Model intents with purpose, traveler, policy constraints, preferred suppliers, budget, travel window, risk constraints, booking deadline, and option comparison. Track draft, compared, selected, held, booked, expired, and cancelled states.
 
-### 11. Make `create_trip_request` a complete command lifecycle
+### 11. Supplier offer normalization
 
-**Justification:** High-value users need `create_trip_request` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Offers from airlines, hotels, ground providers, agencies, and supplier feeds vary in fare rules, restrictions, fees, cancellation terms, and carbon data.
 
-**Improvement:** Implement `create_trip_request` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `TripRequested`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Normalize offers into comparable structures with base price, taxes, fees, restrictions, refundability, loyalty accrual, baggage, cancellation, supplier rating, risk, and carbon estimate. Preserve source payload hashes.
 
-### 12. Make `validate_travel_policy` a complete command lifecycle
+### 12. Air booking controls
 
-**Justification:** High-value users need `validate_travel_policy` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Air bookings require fare class, routing, layover, refundability, baggage, change fees, ticketing deadlines, and unused ticket implications.
 
-**Improvement:** Implement `validate_travel_policy` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `TravelApproved`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add air-specific validation for fare class policy, connection risk, travel time, ticket deadline, seat/accessibility needs, cancellation rules, and unused-ticket eligibility. Store ticket numbers, status, and change history.
 
-### 13. Make `route_travel_approval` a complete command lifecycle
+### 13. Hotel booking controls
 
-**Justification:** High-value users need `route_travel_approval` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Hotel bookings depend on nightly rate caps, location safety, tax/fee transparency, cancellation windows, traveler accessibility, and preferred supplier status.
 
-**Improvement:** Implement `route_travel_approval` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `ItineraryBuilt`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Validate hotels by location, rate cap, total stay cost, cancellation terms, safety rating, accessibility, check-in/out, preferred supplier, and policy exceptions. Surface rate-cap overages and safer alternatives.
 
-### 14. Make `create_booking_intent` a complete command lifecycle
+### 14. Ground transport controls
 
-**Justification:** High-value users need `create_booking_intent` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Ground transport includes rail, rental car, rideshare, taxi, shuttle, and personal vehicle with distinct policy and safety rules.
 
-**Improvement:** Implement `create_booking_intent` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `DutyOfCareAlertOpened`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add ground booking validation for mode eligibility, distance, rate, class, insurance, driver eligibility, pickup/dropoff timing, safety, and carbon. Link personal vehicle use to mileage policy and expense handoff.
 
-### 15. Make `record_air_booking` a complete command lifecycle
+### 15. Semantic itinerary ingestion
 
-**Justification:** High-value users need `record_air_booking` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Itineraries arrive as emails, PDFs, calendar invites, agency feeds, and supplier confirmations with inconsistent formats.
 
-**Improvement:** Implement `record_air_booking` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `TravelDisruptionOpened`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Parse itinerary documents into air, hotel, ground, meeting, and risk-relevant items with time zones, confirmation numbers, supplier, location, and status. The agent should flag uncertain fields and require confirmation before writing itinerary records.
 
-### 16. Make `record_hotel_booking` a complete command lifecycle
+### 16. Itinerary integrity timeline
 
-**Justification:** High-value users need `record_hotel_booking` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** A traveler itinerary must reflect current booking state, time zones, disruptions, cancellations, and manual changes.
 
-**Improvement:** Implement `record_hotel_booking` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `UnusedTicketRecorded`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Build an itinerary timeline with item dependencies, local times, confirmation status, source evidence, conflict detection, gaps, and change history. UI should highlight impossible connections and missing accommodation nights.
 
-### 17. Make `record_ground_booking` a complete command lifecycle
+### 17. Duty-of-care risk assessment
 
-**Justification:** High-value users need `record_ground_booking` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Travel risk changes by destination, time, traveler profile, geopolitical events, health advisories, weather, and local operations.
 
-**Improvement:** Implement `record_ground_booking` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `TripRequested`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Score trip risk using destination, itinerary, traveler profile, emergency contact, alert feeds, time proximity, transport modes, and company policy. Store risk drivers, confidence, and required mitigation.
 
-### 18. Make `build_itinerary` a complete command lifecycle
+### 18. Duty-of-care alert workflow
 
-**Justification:** High-value users need `build_itinerary` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Alerts must move from detection to traveler contact, acknowledgement, escalation, assistance, and closure.
 
-**Improvement:** Implement `build_itinerary` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `TravelApproved`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add alert states, severity, affected travelers, contact attempts, acknowledgment, escalation owner, assistance actions, and closure proof. Track missed contact attempts and unresolved high-risk travelers.
 
-### 19. Make `screen_duty_of_care` a complete command lifecycle
+### 19. Traveler location confidence
 
-**Justification:** High-value users need `screen_duty_of_care` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Duty-of-care actions need to know where the traveler likely is without overclaiming certainty.
 
-**Improvement:** Implement `screen_duty_of_care` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `ItineraryBuilt`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Estimate location confidence from itinerary, check-ins, expense links, traveler updates, and declared projections. Show current, planned, stale, and unknown location states with privacy controls.
 
-### 20. Make `open_travel_disruption` a complete command lifecycle
+### 20. Disruption detection and triage
 
-**Justification:** High-value users need `open_travel_disruption` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Flight cancellations, delays, hotel closures, strikes, weather, security incidents, and supplier failures require fast triage.
 
-**Improvement:** Implement `open_travel_disruption` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `DutyOfCareAlertOpened`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add disruption records with source, affected itinerary items, severity, traveler impact, options, policy implications, duty-of-care risk, and expense impact. Route severe cases to assistance queues.
 
-### 21. Operationalize `traveler-aware policy guidance` as a governed decision system
+### 21. Disruption counterfactual routing
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Travel Management and measurably improves travel management risk score without hiding assumptions.
+**Justification:** During disruption, teams need to compare rebooking options by time, cost, policy, traveler safety, carbon, and downstream meetings.
 
-**Improvement:** Promote `traveler-aware policy guidance` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `travel_management_risk_score`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Simulate alternatives with cost, arrival time, connection risk, cancellation penalties, unused ticket use, hotel impact, traveler preference, and duty-of-care score. Store selected and rejected route rationale.
 
-### 22. Operationalize `disruption counterfactual routing` as a governed decision system
+### 22. Traveler assistance case workflow
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Travel Management and measurably improves travel management workbench metric without hiding assumptions.
+**Justification:** Assistance requests can involve safety, lost documents, medical issues, missed flights, hotel problems, and emergency repatriation.
 
-**Improvement:** Promote `disruption counterfactual routing` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `travel_management_workbench_metric`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add assistance cases with category, severity, location, contact method, owner, actions, supplier interactions, policy exceptions, cost estimate, and closure evidence. Keep sensitive details access-controlled.
 
-### 23. Operationalize `semantic itinerary ingestion` as a governed decision system
+### 23. Unused ticket inventory optimization
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Travel Management and measurably improves travel management risk score without hiding assumptions.
+**Justification:** Unused tickets represent recoverable value that is often lost due to expiration, traveler mismatch, supplier rules, or poor visibility.
 
-**Improvement:** Promote `semantic itinerary ingestion` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `travel_management_risk_score`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Track unused tickets with value, currency, traveler, supplier, expiration, transferability, fare rules, residual value, and reuse eligibility. Recommend reuse during booking-intent comparison and warn before expiration.
 
-### 24. Operationalize `duty-of-care risk intelligence` as a governed decision system
+### 24. Unused ticket expiration controls
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Travel Management and measurably improves travel management workbench metric without hiding assumptions.
+**Justification:** Tickets can expire silently without operational ownership or traveler awareness.
 
-**Improvement:** Promote `duty-of-care risk intelligence` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `travel_management_workbench_metric`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add expiration alerts, owner assignment, reuse campaigns, exception handling, write-off evidence, and recovered-value analytics. Include unused-ticket status in travel readiness dashboards.
 
-### 25. Operationalize `unused-ticket optimization` as a governed decision system
+### 25. Travel expense handoff readiness
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Travel Management and measurably improves travel management risk score without hiding assumptions.
+**Justification:** Expense handoff should connect approved trips, bookings, itineraries, receipts, and reimbursement context without sharing foreign tables.
 
-**Improvement:** Promote `unused-ticket optimization` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `travel_management_risk_score`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Generate travel-expense links with trip, itinerary, policy, approved budget, booking references, expected categories, per diem eligibility, mileage eligibility, and source evidence. Emit handoff events through AppGen-X only.
 
-### 26. Operationalize `carbon-aware booking comparison` as a governed decision system
+### 26. Settlement and payment reconciliation
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Travel Management and measurably improves travel management workbench metric without hiding assumptions.
+**Justification:** Travel bookings can be prepaid, centrally billed, reimbursed, cancelled, refunded, or settled through supplier statements.
 
-**Improvement:** Promote `carbon-aware booking comparison` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `travel_management_workbench_metric`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Reconcile payment execution, supplier charges, cancellations, refunds, unused ticket credits, and traveler expenses through declared events/projections. Store settlement status and exception reasons.
 
-### 27. Operationalize `traveler-aware policy guidance` as a governed decision system
+### 27. Supplier performance scorecard
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Travel Management and measurably improves travel management risk score without hiding assumptions.
+**Justification:** Supplier choices should reflect reliability, traveler experience, policy compliance, disruption handling, cost, carbon, and duty-of-care support.
 
-**Improvement:** Promote `traveler-aware policy guidance` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `travel_management_risk_score`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Score suppliers by booking success, disruption rate, refund behavior, safety incidents, traveler feedback, preferred status, cost variance, and carbon data completeness. Use scorecards in offer comparison.
 
-### 28. Operationalize `disruption counterfactual routing` as a governed decision system
+### 28. Preferred supplier compliance
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Travel Management and measurably improves travel management workbench metric without hiding assumptions.
+**Justification:** Travel programs negotiate preferred suppliers, but exceptions may be justified by safety, availability, accessibility, or cost.
 
-**Improvement:** Promote `disruption counterfactual routing` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `travel_management_workbench_metric`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Validate supplier selections against preferred-supplier rules, exception reasons, negotiated rates, traveler needs, and disruption conditions. Store compliance or exception evidence for sourcing analytics.
 
-### 29. Operationalize `semantic itinerary ingestion` as a governed decision system
+### 29. Carbon-aware booking comparison
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Travel Management and measurably improves travel management risk score without hiding assumptions.
+**Justification:** Travel programs increasingly need to compare emissions alongside cost, time, safety, and policy.
 
-**Improvement:** Promote `semantic itinerary ingestion` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `travel_management_risk_score`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add carbon estimates for air, hotel, ground, and route alternatives with assumptions, data source, confidence, and tradeoffs. Allow carbon-aware recommendations subject to traveler safety and business constraints.
 
-### 30. Operationalize `duty-of-care risk intelligence` as a governed decision system
+### 30. Traveler wellbeing controls
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Travel Management and measurably improves travel management workbench metric without hiding assumptions.
+**Justification:** Overly aggressive travel plans can create fatigue, safety issues, and poor performance even when policy-compliant.
 
-**Improvement:** Promote `duty-of-care risk intelligence` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `travel_management_workbench_metric`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add controls for red-eye frequency, minimum rest, long layovers, excessive trip density, time-zone burden, and accessibility needs. Surface wellbeing warnings and approval requirements.
 
-### 31. Create simulation-grade governance for `travel_approval_policy` and `advance_booking_days`
+### 31. Visa and document readiness
 
-**Justification:** Complete Travel Management coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** International travel can fail if passports, visas, entry permits, health documents, or traveler identity records are incomplete.
 
-**Improvement:** Add a policy cockpit where `travel_approval_policy` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `advance_booking_days` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add document readiness checks with expiration, destination requirements, lead times, traveler nationality, document sensitivity, and reminders. Block booking finalization where mandatory documents are missing.
 
-### 32. Create simulation-grade governance for `fare_class_policy` and `hotel_rate_limit`
+### 32. Travel risk exception governance
 
-**Justification:** Complete Travel Management coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** High-risk destinations may require extra approval, mitigation, security briefing, tracking, or prohibition.
 
-**Improvement:** Add a policy cockpit where `fare_class_policy` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `hotel_rate_limit` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add risk exception workflows with destination category, traveler rationale, mitigation plan, approvers, emergency contacts, insurance, and travel restrictions. Store approval and traveler acknowledgement.
 
-### 33. Create simulation-grade governance for `hotel_rate_policy` and `risk_alert_threshold`
+### 33. Trip budget and cost forecast
 
-**Justification:** Complete Travel Management coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Travel costs should be estimated before approval and compared against actual bookings and expenses.
 
-**Improvement:** Add a policy cockpit where `hotel_rate_policy` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `risk_alert_threshold` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Forecast trip cost across air, hotel, ground, per diem, fees, taxes, unused-ticket offsets, and expected expense categories. Compare approved budget, booked cost, settled cost, and expensed cost.
 
-### 34. Create simulation-grade governance for `duty_of_care_policy` and `unused_ticket_warning_days`
+### 34. Travel anomaly detection
 
-**Justification:** Complete Travel Management coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Unusual routes, high hotel rates, repeated late booking, excessive cancellations, and supplier anomalies can signal waste or risk.
 
-**Improvement:** Add a policy cockpit where `duty_of_care_policy` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `unused_ticket_warning_days` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Detect anomalies by traveler, route, supplier, booking window, fare class, cancellation rate, destination risk, and cost variance. Route high-risk patterns to exception or audit queues.
 
-### 35. Create simulation-grade governance for `unused_ticket_policy` and `approval_amount_limit`
+### 35. Travel policy impact analysis
 
-**Justification:** Complete Travel Management coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Changing booking windows, hotel caps, fare class rules, or approval thresholds affects cost, traveler experience, and compliance load.
 
-**Improvement:** Add a policy cockpit where `unused_ticket_policy` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `approval_amount_limit` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Simulate policy changes against historical trips and pending intents to estimate savings, exceptions, approval volume, traveler impact, carbon impact, and duty-of-care consequences.
 
-### 36. Upgrade `travel workbench` into a full specialist command center
+### 36. Continuous travel control testing
 
-**Justification:** The PBC UI must expose the complete Travel Management surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Travel controls need continuous assurance across policy, approvals, bookings, duty-of-care, unused tickets, settlement, and expense handoffs.
 
-**Improvement:** Expand `travel workbench` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add controls for unapproved bookings, missing risk screens, policy exceptions, stale itinerary items, unused-ticket leakage, missing expense handoffs, and unresolved disruptions. Store assertion results and remediation tasks.
 
-### 37. Upgrade `trip request board` into a full specialist command center
+### 37. Travel exception case workflow
 
-**Justification:** The PBC UI must expose the complete Travel Management surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Travel exceptions such as policy override, supplier failure, refund dispute, traveler emergency, or missing documents need structured resolution.
 
-**Improvement:** Expand `trip request board` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add exception cases with type, severity, owner, affected trip/bookings, required evidence, financial exposure, traveler impact, resolution action, and closure proof.
 
-### 38. Upgrade `booking intent console` into a full specialist command center
+### 38. Cryptographic travel audit proof
 
-**Justification:** The PBC UI must expose the complete Travel Management surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Travel approvals, bookings, risk checks, and expense handoffs may be audited for policy, safety, and spend governance.
 
-**Improvement:** Expand `booking intent console` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Generate hash-chain proofs for trip requests, approvals, policy evaluations, bookings, itinerary changes, duty-of-care alerts, disruptions, unused tickets, and expense handoffs. Provide redacted verifier exports.
 
-### 39. Upgrade `itinerary timeline` into a full specialist command center
+### 39. AppGen-X event reliability proof
 
-**Justification:** The PBC UI must expose the complete Travel Management surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Travel management depends on employee, policy, payment, expense, and supplier events; lost or duplicate events can break booking and care flows.
 
-**Improvement:** Expand `itinerary timeline` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Harden event descriptors with schema versions, idempotency keys, ordering assumptions, retry envelopes, dead-letter taxonomy, replay eligibility, and handler evidence. Add tests for duplicate employee events and late payment callbacks.
 
-### 40. Upgrade `duty of care map` into a full specialist command center
+### 40. Cross-PBC boundary proof
 
-**Justification:** The PBC UI must expose the complete Travel Management surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Travel needs employee, expense, payment, supplier, policy, and risk context without direct foreign-table access.
 
-**Improvement:** Expand `duty of care map` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Generate a boundary proof enumerating every declared API, projection, consumed event, cached field, staleness policy, and retention rule. Release audits should fail undeclared employee, expense, payment, or supplier table references.
 
-### 41. Prove cross-PBC federation for `POST /travel-requests` and `EmployeeCreated`
+### 41. Agent-assisted trip planning
 
-**Justification:** Travel Management must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Travelers need help turning business goals, meeting locations, policy constraints, and personal needs into compliant trip plans.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /travel-requests` and consumed event `EmployeeCreated` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Let the agent draft trip requests, compare compliant options, explain policy, identify missing traveler profile data, and prepare approval-ready plans. It must not book or submit without explicit confirmation.
 
-### 42. Prove cross-PBC federation for `POST /travel-bookings` and `ExpenseReportCreated`
+### 42. Agent-assisted disruption recovery
 
-**Justification:** Travel Management must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Disruptions require fast, reasoned choices under uncertainty.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /travel-bookings` and consumed event `ExpenseReportCreated` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Let the agent summarize disruption impact, compare rebooking alternatives, check duty-of-care risk, estimate cost and carbon, propose traveler messages, and prepare safe service commands for approval.
 
-### 43. Prove cross-PBC federation for `POST /itineraries` and `PolicyChanged`
+### 43. Agent-assisted itinerary ingestion
 
-**Justification:** Travel Management must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Users often forward confirmations or upload documents instead of manually entering itinerary items.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /itineraries` and consumed event `PolicyChanged` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Let the agent extract itinerary items, confirmation numbers, supplier contacts, locations, time zones, cancellation windows, and expense hints from documents. It should surface uncertainty and require review before CRUD.
 
-### 44. Prove cross-PBC federation for `POST /policy-checks` and `PaymentExecuted`
+### 44. Traveler communication center
 
-**Justification:** Travel Management must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Travel operations need controlled communication for approvals, booking changes, risk alerts, disruption assistance, and unused-ticket reminders.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /policy-checks` and consumed event `PaymentExecuted` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Add communication templates, preference-aware delivery plans, message history, acknowledgement tracking, and escalation for unanswered critical alerts. Integrate only through declared notification events/projections.
 
-### 45. Temporal reconstruction and bitemporal audit for Travel Management
+### 45. Travel operations cockpit
 
-**Justification:** Regulated and operationally complex domains need to answer what was known, valid, processed, and visible at any point in time.
+**Justification:** Managers need a unified view of pending trips, approvals, bookings, disruptions, duty-of-care alerts, unused tickets, exceptions, and supplier issues.
 
-**Improvement:** Add transaction-time, valid-time, and processing-time fields to core records, temporal query APIs, projection rebuild tooling, and UI time travel so specialists can reconstruct decisions, reports, and automation outcomes.
+**Improvement:** Build cockpit panels with filters by traveler, region, destination risk, trip state, policy exception, supplier, cost, and alert severity. Include safe bulk actions for reminders, escalation, and evidence export.
 
-### 46. Bulk operations and migration-grade controls for Travel Management
+### 46. UI capability surface proof
 
-**Justification:** World-class deployments must handle imports, mass corrections, high-volume operating days, and cutovers without bypassing governance.
+**Justification:** A complete Travel Management PBC must expose all travel capabilities, not hide advanced operations in generic records.
 
-**Improvement:** Add staged bulk upload, duplicate detection, chunked validation, approval sampling, partial failure handling, retry dashboards, reconciliation summaries, and agent-generated remediation plans for large batches.
+**Improvement:** Add release checks proving UI coverage for trip requests, traveler profiles, policies, approvals, booking intents, air/hotel/ground bookings, itineraries, duty-of-care alerts, disruptions, unused tickets, expense links, risk assessments, supplier offers, exceptions, rules, parameters, controls, models, events, and agent tools.
 
-### 47. Specialist edge-case playbooks for Travel Management
+### 47. Travel resilience drills
 
-**Justification:** Rare cases often carry the highest financial, legal, safety, service, or compliance risk.
+**Justification:** Travel systems must recover from supplier feed outages, itinerary ingestion failures, payment callback delays, policy mistakes, and duty-of-care event floods.
 
-**Improvement:** Create a playbook catalog with detection rules, required evidence, escalation paths, fallback actions, owner roles, and release-audited tests for high-severity edge cases and exception queues.
+**Improvement:** Add drills for supplier outage, duplicate booking replay, itinerary parser failure, policy rollback, risk-alert surge, unused-ticket expiration backlog, and dead-letter recovery. Store recovery time, affected travelers, and cost exposure.
 
-### 48. Pre-mutation simulation and blast-radius analysis for Travel Management
+### 48. Travel readiness score
 
-**Justification:** Users should understand consequences before committing irreversible, customer-visible, operationally disruptive, or financially material changes.
+**Justification:** Operators need a concise signal showing whether the PBC is production-ready for managed travel in a composed application.
 
-**Improvement:** Add what-if simulation for every material command, showing impacted records, emitted events, dependent projections, rule outcomes, approvals, downstream PBC dependencies, and rollback limits.
+**Improvement:** Compute readiness from traveler profile completeness, policy coverage, approval routing, supplier offer quality, booking controls, duty-of-care health, unused-ticket controls, expense handoff readiness, event health, UI coverage, and agent safety.
 
-### 49. Continuous control testing and operational assurance for Travel Management
+### 49. Traveler data privacy and retention
 
-**Justification:** Better-than-world-class PBCs prove controls continuously, not only at release or during periodic audits.
+**Justification:** Travel records include location, identity documents, accessibility needs, emergency contacts, and risk details that require careful handling.
 
-**Improvement:** Add executable control assertions, sampled evidence checks, anomaly thresholds, control-owner dashboards, breach/recovery events, and release gates that fail when domain controls lose evidence.
+**Improvement:** Add privacy classifications, retention rules, access scopes, redaction support, purpose constraints, and audit for sensitive traveler fields. Agent summaries should avoid exposing unnecessary sensitive profile details.
 
-### 50. Human-in-the-loop domain agent execution for Travel Management
+### 50. End-to-end travel release proof
 
-**Justification:** The PBC chatbot must help specialists perform real work while preventing unsafe autonomous mutation.
+**Justification:** A world-class Travel Management PBC needs one evidence package proving that travel can flow from request through approval, booking, itinerary, care, disruption, unused ticket, settlement, expense handoff, and assistance safely.
 
-**Improvement:** Add domain-specific skills, document parsing, task planning, CRUD previews, confidence/risk scoring, confirmation gates, redaction, policy explanations, and post-action evidence packets for every supported command and query.
+**Improvement:** Create an end-to-end proof exercising trip request readiness, traveler profile, policy compilation, approval routing, booking intent, supplier offer comparison, air/hotel/ground booking, itinerary ingestion, duty-of-care screening, disruption simulation, unused ticket tracking, expense handoff, settlement reconciliation, exception resolution, UI coverage, AppGen-X eventing, boundary verification, and agent-safe CRUD planning.
