@@ -1,315 +1,314 @@
-# Digital Asset Management Core PBC Improvement Backlog
+# DAM Core PBC Improvement Backlog
 
 ## Purpose
 
-This backlog identifies 50 high-impact, high-value improvements for `dam_core`. Each item is specific to the domain surface currently declared by the PBC and is intended to move the package beyond world-class breadth toward complete specialist-grade coverage.
+This backlog identifies 50 high-impact, high-value improvements for `dam_core`. The items are specific to digital asset management: media asset lifecycle, binary fingerprints, storage metadata, collections, rendition generation, transcode routes, rights policies, licenses, usage entitlements, metadata taxonomies, enrichment, semantic annotations, asset workflows, review tasks, exceptions, duplicate detection, lineage, usage snapshots, product projections, rules, parameters, configuration, AppGen-X event reliability, UI workbenches, and agent-assisted asset operations.
 
 ## Current Domain Evidence Used
 
-- Domain purpose: Media storage, transformation, transcoding, metadata tagging, and rights controls.
-- Representative owned tables: `dam_core_asset`, `dam_core_asset_rendition`, `dam_core_rights_policy`, `dam_core_metadata_tag`, `dam_core_asset_collection`, `dam_core_asset_collection_member`, `dam_core_license_agreement`, `dam_core_usage_entitlement`, `dam_core_metadata_taxonomy`, `dam_core_metadata_enrichment`, `dam_core_semantic_annotation`, `dam_core_asset_workflow_case`, ...
-- Representative operations/APIs: `command_assets`, `command_renditions`, `query_rights`, `command_collections`, `command_collection_members`, `command_license_agreements`, `command_usage_entitlements`, `command_metadata_taxonomies`, `command_metadata_enrichments`, `command_semantic_annotations`, `command_asset_workflows`, `command_review_tasks`, ...
-- Representative events: `AssetPublished`, `RightsPolicyChanged`, `AssetCollectionCreated`, `AssetAddedToCollection`, `LicenseAgreementRegistered`, `UsageEntitlementGranted`, `MetadataTaxonomyRegistered`, `MetadataEnriched`, `SemanticAnnotationAdded`, `AssetWorkflowStarted`, ...
-- Representative advanced capabilities: `event_sourced_asset_lifecycle`, `owned_media_schema_boundary`, `multi_tenant_asset_isolation`, `schema_evolution_resilient_asset_metadata`, `content_addressed_binary_fingerprinting`, `rendition_transcoding_pipeline`, `semantic_metadata_tagging`, `rights_policy_enforcement`, `product_published_projection_handling`, `probabilistic_rights_and_quality_scoring`, ...
+- Domain purpose: `dam_core` owns media asset lifecycle, rendition generation, rights enforcement, metadata governance, asset quality, and commerce/content projection integration.
+- Owned boundary: assets, renditions, rights policies, metadata tags, asset collections and members, license agreements, usage entitlements, metadata taxonomies, metadata enrichment, semantic annotations, workflow cases, review tasks, exceptions, quality scoring, usage snapshots, forecasts, duplicate candidates, lineage, audit entries, policy screenings, control assertions, federation views, resilience drills, crypto epochs, carbon windows, route allocations, anomaly/exposure forecasts, identity attestations, governed models, seed data, rules, parameters, configuration, inbox/outbox, and dead-letter evidence.
+- Existing command/query surface: runtime configuration, parameters, rules, schema extensions, event receiving, asset registration, collections, rights policies, licenses, usage entitlements, metadata tags/taxonomies/enrichment/annotations, rendition request/completion, rights enforcement, asset workflow and review tasks, exceptions, usage snapshots, duplicate candidates, lineage, workbench, API/schema/service/release evidence, permissions, UI binding, and boundary verification.
+- Existing events and dependencies: consumes `ProductPublished` only as an internal product projection; emits `AssetRegistered`, `AssetRenditionRequested`, `AssetRenditionReady`, `AssetRightsPolicyAttached`, `AssetMetadataTagged`, `AssetCollectionCreated`, `AssetAddedToCollection`, `LicenseAgreementRegistered`, `UsageEntitlementGranted`, `MetadataTaxonomyRegistered`, `MetadataEnriched`, `SemanticAnnotationAdded`, `AssetWorkflowStarted`, `AssetReviewTaskCompleted`, `AssetExceptionOpened`, `AssetExceptionResolved`, `AssetUsageSnapshotRecorded`, `AssetDuplicateCandidateDetected`, and `AssetLineageRecorded`; integrates with product, commerce, search, and content only through declared APIs/events/projections.
 
 ## 50 Better-Than-World-Class Improvements
 
-### 1. Deep specialist lifecycle semantics for `dam_core_asset`
+### 1. Asset intake readiness gate
 
-**Justification:** This owned table is part of the Digital Asset Management Core operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Media storage, transformation, transcoding, metadata tagging, and rights controls.
+**Justification:** Assets become unusable when identity, binary metadata, storage URI, MIME type, rights, locale, and product projection are incomplete.
 
-**Improvement:** Extend `dam_core_asset` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `asset_lifecycle`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add readiness checks for tenant, filename, MIME type, size, storage URI, fingerprint, locale, creator, product projection, initial status, rights reference, metadata minimums, and audit hash before `AssetRegistered`.
 
-### 2. Deep specialist lifecycle semantics for `dam_core_asset_rendition`
+### 2. Asset lifecycle state machine
 
-**Justification:** This owned table is part of the Digital Asset Management Core operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Media storage, transformation, transcoding, metadata tagging, and rights controls.
+**Justification:** DAM assets move through uploaded, quarantined, processing, review, approved, published, deprecated, archived, expired, and deleted states.
 
-**Improvement:** Extend `dam_core_asset_rendition` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `asset_versioning`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Implement asset state transitions with actor, reason, timestamp, idempotency key, required evidence, rights effect, rendition effect, product projection effect, and invalid-transition explanations.
 
-### 3. Deep specialist lifecycle semantics for `dam_core_rights_policy`
+### 3. Content-addressed fingerprint governance
 
-**Justification:** This owned table is part of the Digital Asset Management Core operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Media storage, transformation, transcoding, metadata tagging, and rights controls.
+**Justification:** Binary fingerprints drive duplicate detection, lineage, storage integrity, and proof generation.
 
-**Improvement:** Extend `dam_core_rights_policy` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `asset_binary_storage`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Store fingerprint algorithm, hash, storage URI, byte size, MIME signature, checksum validation, duplicate similarity, tamper flag, and hash-chain audit linkage.
 
-### 4. Deep specialist lifecycle semantics for `dam_core_metadata_tag`
+### 4. Storage tier policy
 
-**Justification:** This owned table is part of the Digital Asset Management Core operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Media storage, transformation, transcoding, metadata tagging, and rights controls.
+**Justification:** Assets have different storage needs for hot delivery, archive, legal hold, review, and rendition processing.
 
-**Improvement:** Extend `dam_core_metadata_tag` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `asset_binary_fingerprint`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Model storage tier, retention class, region, encryption profile, access policy, lifecycle transition, cold-retrieval delay, and cost/carbon effect.
 
-### 5. Deep specialist lifecycle semantics for `dam_core_asset_collection`
+### 5. MIME and file policy screening
 
-**Justification:** This owned table is part of the Digital Asset Management Core operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Media storage, transformation, transcoding, metadata tagging, and rights controls.
+**Justification:** Unsupported or unsafe formats can break rendition pipelines and introduce compliance or security risk.
 
-**Improvement:** Extend `dam_core_asset_collection` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `asset_collections`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Compile MIME policies with allowed types, max size, file signature validation, malware/quarantine hook, rendition profile eligibility, and rejection evidence.
 
-### 6. Deep specialist lifecycle semantics for `dam_core_asset_collection_member`
+### 6. Asset collection lifecycle
 
-**Justification:** This owned table is part of the Digital Asset Management Core operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Media storage, transformation, transcoding, metadata tagging, and rights controls.
+**Justification:** Collections support campaigns, product launches, localization batches, channel packs, and review packages.
 
-**Improvement:** Extend `dam_core_asset_collection_member` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `asset_rendition`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add collection states, purpose, owner, membership policy, locale/channel scope, publication window, rights consistency, membership count, and event evidence.
 
-### 7. Deep specialist lifecycle semantics for `dam_core_license_agreement`
+### 7. Collection membership governance
 
-**Justification:** This owned table is part of the Digital Asset Management Core operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Media storage, transformation, transcoding, metadata tagging, and rights controls.
+**Justification:** Collection errors can publish wrong, expired, or unauthorized assets together.
 
-**Improvement:** Extend `dam_core_license_agreement` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `transcoding_job`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Validate member asset status, rights policy, locale, rendition readiness, duplicate membership, collection scope, sort order, and membership audit lineage.
 
-### 8. Deep specialist lifecycle semantics for `dam_core_usage_entitlement`
+### 8. Rendition request lifecycle
 
-**Justification:** This owned table is part of the Digital Asset Management Core operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Media storage, transformation, transcoding, metadata tagging, and rights controls.
+**Justification:** Renditions require controlled request, queue, processing, completion, failure, retry, and replacement states.
 
-**Improvement:** Extend `dam_core_usage_entitlement` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `transcode_route_selection`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Track profile, target MIME, dimensions, output URI, quality target, route, retry count, duration, error class, source fingerprint, and `AssetRenditionRequested`/`AssetRenditionReady` evidence.
 
-### 9. Deep specialist lifecycle semantics for `dam_core_metadata_taxonomy`
+### 9. Transcode route selection
 
-**Justification:** This owned table is part of the Digital Asset Management Core operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Media storage, transformation, transcoding, metadata tagging, and rights controls.
+**Justification:** Transcoding can fail or become expensive depending on file type, route, profile, cost, latency, and carbon.
 
-**Improvement:** Extend `dam_core_metadata_taxonomy` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `rendition_profiles`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add route candidates with supported profiles, cost, latency, quality, failure rate, carbon score, retry policy, and self-healing failover evidence.
 
-### 10. Deep specialist lifecycle semantics for `dam_core_metadata_enrichment`
+### 10. Rendition quality scoring
 
-**Justification:** This owned table is part of the Digital Asset Management Core operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Media storage, transformation, transcoding, metadata tagging, and rights controls.
+**Justification:** Ready renditions can still be unusable due to distortion, poor resolution, wrong aspect ratio, or missing audio/video tracks.
 
-**Improvement:** Extend `dam_core_metadata_enrichment` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `metadata_tag`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Score renditions on dimensions, bitrate, duration, color profile, audio track, aspect ratio, watermark, visual quality, accessibility metadata, and profile compliance.
 
-### 11. Make `command_assets` a complete command lifecycle
+### 11. Rights policy lifecycle
 
-**Justification:** High-value users need `command_assets` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Rights policies must control license type, markets, expiration, attribution, approver, and enforcement outcomes.
 
-**Improvement:** Implement `command_assets` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `AssetPublished`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Implement rights states for draft, pending, active, blocked, expired, superseded, revoked, and archived with approver, market scope, use cases, attribution, and audit proof.
 
-### 12. Make `command_renditions` a complete command lifecycle
+### 12. Rights enforcement engine
 
-**Justification:** High-value users need `command_renditions` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Assets must be blocked from markets, channels, or use cases when rights are insufficient or expired.
 
-**Improvement:** Implement `command_renditions` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `RightsPolicyChanged`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Evaluate market, use case, channel, date, asset status, license, entitlement, attribution requirement, and policy version with allow/block/review outcomes.
 
-### 13. Turn `query_rights` into an expert read-model experience
+### 13. License agreement governance
 
-**Justification:** Domain experts rely on `query_rights` for operational decisions; a world-class read path must be explainable, filterable, temporally accurate, and safe under stale projections.
+**Justification:** Licenses define commercial and legal use conditions beyond simple rights flags.
 
-**Improvement:** Build `query_rights` as a dedicated query contract with projection freshness, filter validation, pagination, saved views, temporal/as-of reads, row-level permissions, traceable source records, and UI drilldowns. Add agent explanations for how the answer was produced, what events like `AssetCollectionCreated` last changed the projection, and where uncertainty or missing data affects confidence.
+**Improvement:** Model license counterparty, scope, term, territory, media type, usage limit, exclusivity, renewal, termination, evidence document, and policy linkage.
 
-### 14. Make `command_collections` a complete command lifecycle
+### 14. Usage entitlement lifecycle
 
-**Justification:** High-value users need `command_collections` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Entitlements translate rights into specific permitted usage for teams, channels, campaigns, or partners.
 
-**Improvement:** Implement `command_collections` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `AssetAddedToCollection`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add entitlement states, asset scope, grantee, channel, market, use case, start/end dates, quota, revocation, and `UsageEntitlementGranted` event evidence.
 
-### 15. Make `command_collection_members` a complete command lifecycle
+### 15. Metadata taxonomy governance
 
-**Justification:** High-value users need `command_collection_members` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Metadata tags are only useful when taxonomies are controlled, localized, and confidence-aware.
 
-**Improvement:** Implement `command_collection_members` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `LicenseAgreementRegistered`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add taxonomy states, allowed values, localized labels, hierarchy, synonyms, confidence floors, steward owner, deprecation, and channel visibility.
 
-### 16. Make `command_license_agreements` a complete command lifecycle
+### 16. Metadata tag quality controls
 
-**Justification:** High-value users need `command_license_agreements` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Low-confidence, inconsistent, or stale tags undermine search, rights decisions, and product readiness.
 
-**Improvement:** Implement `command_license_agreements` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `UsageEntitlementGranted`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Validate tag taxonomy, value, confidence, source, tenant, locale, effective date, steward review, duplicate tags, and publication impact.
 
-### 17. Make `command_usage_entitlements` a complete command lifecycle
+### 17. Metadata enrichment workflow
 
-**Justification:** High-value users need `command_usage_entitlements` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Asset metadata is often created from automated extraction, human review, and external product context.
 
-**Improvement:** Implement `command_usage_entitlements` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `MetadataTaxonomyRegistered`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add enrichment states, extractor source, candidate tags, confidence, product projection context, reviewer decision, rejected suggestions, and `MetadataEnriched` evidence.
 
-### 18. Make `command_metadata_taxonomies` a complete command lifecycle
+### 18. Semantic annotation governance
 
-**Justification:** High-value users need `command_metadata_taxonomies` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Object, scene, transcript, alt text, and sentiment annotations affect accessibility, search, and compliance.
 
-**Improvement:** Implement `command_metadata_taxonomies` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `MetadataEnriched`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Model annotation type, target region/timecode, source model/person, confidence, locale, accessibility relevance, prohibited content flag, and review status.
 
-### 19. Make `command_metadata_enrichments` a complete command lifecycle
+### 19. Product projection handling
 
-**Justification:** High-value users need `command_metadata_enrichments` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** DAM assets need product context without directly reading product or PIM tables.
 
-**Improvement:** Implement `command_metadata_enrichments` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `SemanticAnnotationAdded`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Consume `ProductPublished` into package-local projections with product key, version, taxonomy, channel, status, freshness, source event id, and dead-letter handling.
 
-### 20. Make `command_semantic_annotations` a complete command lifecycle
+### 20. Asset workflow cases
 
-**Justification:** High-value users need `command_semantic_annotations` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Asset readiness often requires review, rights approval, metadata enrichment, rendition checks, and publication approval.
 
-**Improvement:** Implement `command_semantic_annotations` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `AssetWorkflowStarted`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add workflow states, required tasks, owner, SLA, evidence, approval gate, blocked reason, escalation, and emitted workflow events.
 
-### 21. Operationalize `event_sourced_asset_lifecycle` as a governed decision system
+### 21. Review task controls
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Digital Asset Management Core and measurably improves content completeness without hiding assumptions.
+**Justification:** Review tasks need clear scope, decision criteria, evidence, and auditability.
 
-**Improvement:** Promote `event_sourced_asset_lifecycle` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `content_completeness`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Track task type, assignee, due date, asset/rendition/rights scope, decision, comments, required evidence, escalation, and completion proof.
 
-### 22. Operationalize `owned_media_schema_boundary` as a governed decision system
+### 22. Asset exception workflow
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Digital Asset Management Core and measurably improves publication velocity without hiding assumptions.
+**Justification:** Missing rights, failed transcodes, low quality, metadata gaps, and duplicate conflicts require structured resolution.
 
-**Improvement:** Promote `owned_media_schema_boundary` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `publication_velocity`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add exception cases with category, severity, affected asset, root cause, owner, SLA, recommended action, resolution plan, and closure evidence.
 
-### 23. Operationalize `multi_tenant_asset_isolation` as a governed decision system
+### 23. Autonomous exception recommendations
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Digital Asset Management Core and measurably improves rights exceptions without hiding assumptions.
+**Justification:** DAM teams need fast, explainable suggestions without unsafe autonomous mutation.
 
-**Improvement:** Promote `multi_tenant_asset_isolation` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `rights_exceptions`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Recommend fixes for failed rendition, missing rights, expired license, low metadata confidence, duplicate asset, bad quality, and stale product projection with confidence and required approval.
 
-### 24. Operationalize `schema_evolution_resilient_asset_metadata` as a governed decision system
+### 24. Duplicate candidate detection
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Digital Asset Management Core and measurably improves price effectiveness without hiding assumptions.
+**Justification:** Duplicate assets waste storage, fragment rights, and confuse product publication.
 
-**Improvement:** Promote `schema_evolution_resilient_asset_metadata` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `price_effectiveness`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Detect candidates using fingerprint, perceptual hash, filename, metadata, dimensions, duration, product projection, and collection context with merge/suppress recommendations.
 
-### 25. Operationalize `content_addressed_binary_fingerprinting` as a governed decision system
+### 25. Asset lineage tracking
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Digital Asset Management Core and measurably improves asset published throughput without hiding assumptions.
+**Justification:** Derived renditions, edits, replacements, and localized variants need provenance.
 
-**Improvement:** Promote `content_addressed_binary_fingerprinting` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `asset_published_throughput`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Record source asset, derived asset, transformation, editor, timestamp, reason, fingerprint delta, rights inheritance, metadata inheritance, and audit hash.
 
-### 26. Operationalize `rendition_transcoding_pipeline` as a governed decision system
+### 26. Usage snapshot analytics
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Digital Asset Management Core and measurably improves rights policy changed throughput without hiding assumptions.
+**Justification:** Asset value and risk depend on where and how assets are used over time.
 
-**Improvement:** Promote `rendition_transcoding_pipeline` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `rights_policy_changed_throughput`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Capture usage by channel, product, campaign, market, rendition, customer-facing surface, rights policy, view/download count, and stale/expired rights exposure.
 
-### 27. Operationalize `semantic_metadata_tagging` as a governed decision system
+### 27. Temporal usage forecasting
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Digital Asset Management Core and measurably improves content completeness without hiding assumptions.
+**Justification:** Forecasts guide archival, rendition pre-generation, rights renewal, and storage optimization.
 
-**Improvement:** Promote `semantic_metadata_tagging` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `content_completeness`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Forecast usage by asset, collection, product, channel, market, season, campaign, and rights expiry with confidence and recommended actions.
 
-### 28. Operationalize `rights_policy_enforcement` as a governed decision system
+### 28. Asset quality risk scoring
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Digital Asset Management Core and measurably improves publication velocity without hiding assumptions.
+**Justification:** Low-quality assets damage conversion, accessibility, brand trust, and channel acceptance.
 
-**Improvement:** Promote `rights_policy_enforcement` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `publication_velocity`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Score quality using resolution, aspect ratio, rendition coverage, metadata completeness, rights confidence, annotation quality, product context, duplicate risk, and channel requirements.
 
-### 29. Operationalize `product_published_projection_handling` as a governed decision system
+### 29. Rights risk scoring
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Digital Asset Management Core and measurably improves rights exceptions without hiding assumptions.
+**Justification:** Rights violations can create legal and commercial exposure.
 
-**Improvement:** Promote `product_published_projection_handling` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `rights_exceptions`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Score rights risk by license expiry, market restrictions, attribution requirements, entitlement gaps, usage history, product/channel linkage, and policy uncertainty.
 
-### 30. Operationalize `probabilistic_rights_and_quality_scoring` as a governed decision system
+### 30. Counterfactual rendition simulation
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Digital Asset Management Core and measurably improves price effectiveness without hiding assumptions.
+**Justification:** Teams need to compare rendition profiles, routes, costs, carbon, and quality before batch processing.
 
-**Improvement:** Promote `probabilistic_rights_and_quality_scoring` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `price_effectiveness`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Simulate profile sets, transcode routes, storage tiers, quality thresholds, retry counts, cost, carbon, and expected failure rate.
 
-### 31. Create simulation-grade governance for `DAM_CORE_DATABASE_URL` and `DAM_CORE_DATABASE_URL`
+### 31. Carbon-aware rendition scheduling
 
-**Justification:** Complete Digital Asset Management Core coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Rendition and enrichment workloads can be energy-intensive but often schedulable.
 
-**Improvement:** Add a policy cockpit where `DAM_CORE_DATABASE_URL` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `DAM_CORE_DATABASE_URL` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add carbon windows for batch transcodes, metadata enrichment, proof generation, duplicate scanning, and usage forecasting with SLA and priority guardrails.
 
-### 32. Create simulation-grade governance for `DAM_CORE_EVENT_TOPIC` and `DAM_CORE_EVENT_TOPIC`
+### 32. Cryptographic asset proof
 
-**Justification:** Complete Digital Asset Management Core coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Partners and auditors may need proof of asset integrity, rights status, or rendition readiness without full metadata disclosure.
 
-**Improvement:** Add a policy cockpit where `DAM_CORE_EVENT_TOPIC` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `DAM_CORE_EVENT_TOPIC` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Generate selective-disclosure proofs for fingerprint, rights policy, rendition readiness, metadata confidence, usage entitlement, and review approval with verifier and expiry.
 
-### 33. Create simulation-grade governance for `DAM_CORE_RETRY_LIMIT` and `DAM_CORE_RETRY_LIMIT`
+### 33. Immutable asset audit trail
 
-**Justification:** Complete Digital Asset Management Core coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Asset disputes require exact reconstruction of binary, rights, metadata, workflow, and rendition decisions.
 
-**Improvement:** Add a policy cockpit where `DAM_CORE_RETRY_LIMIT` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `DAM_CORE_RETRY_LIMIT` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Hash-chain asset registration, metadata changes, rights policy changes, license events, rendition requests/completions, workflow reviews, exceptions, usage snapshots, and event deliveries.
 
-### 34. Create simulation-grade governance for `DAM_CORE_DATABASE_URL` and `DAM_CORE_DATABASE_URL`
+### 34. Dynamic DAM policy screening
 
-**Justification:** Complete Digital Asset Management Core coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Asset actions vary by MIME, rights, market, channel, product status, locale, quality, and metadata completeness.
 
-**Improvement:** Add a policy cockpit where `DAM_CORE_DATABASE_URL` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `DAM_CORE_DATABASE_URL` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Compile policies for upload, rendition, metadata, rights, usage entitlement, collection membership, publication readiness, and deletion/archive with explainable outcomes.
 
-### 35. Create simulation-grade governance for `DAM_CORE_EVENT_TOPIC` and `DAM_CORE_EVENT_TOPIC`
+### 35. AppGen-X inbox reliability
 
-**Justification:** Complete Digital Asset Management Core coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Product projection events drive asset linking and commerce/content readiness.
 
-**Improvement:** Add a policy cockpit where `DAM_CORE_EVENT_TOPIC` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `DAM_CORE_EVENT_TOPIC` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add inbox schema validation, idempotency, duplicate suppression, retry evidence, unsupported-event rejection, dead-letter promotion, projection rebuild, and workbench replay/quarantine controls.
 
-### 36. Upgrade `DamCoreWorkbench` into a full specialist command center
+### 36. AppGen-X outbox delivery assurance
 
-**Justification:** The PBC UI must expose the complete Digital Asset Management Core surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Asset events drive PIM, catalog, search, commerce, campaigns, rights, and audit flows.
 
-**Improvement:** Expand `DamCoreWorkbench` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add outbox state, ordering group, payload hash, retry attempts, next retry, delivery proof, dead-letter linkage, and replay controls for all emitted DAM events.
 
-### 37. Upgrade `DamCoreDetail` into a full specialist command center
+### 37. Cross-PBC boundary proof
 
-**Justification:** The PBC UI must expose the complete Digital Asset Management Core surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** DAM Core must not directly read or write product, commerce, search, campaign, or content tables.
 
-**Improvement:** Expand `DamCoreDetail` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add release evidence scanning schema descriptors, services, routes, DSL, workbench bindings, and agent plans for foreign table access, proving dependencies are APIs, events, or package-local projections only.
 
-### 38. Upgrade `DamCoreWorkbench` into a full specialist command center
+### 38. Schema extension governance
 
-**Justification:** The PBC UI must expose the complete Digital Asset Management Core surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Asset businesses need custom metadata and workflow fields while preserving owned boundaries.
 
-**Improvement:** Expand `DamCoreWorkbench` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Allow extensions only on owned DAM tables with field validation, sensitivity classification, migration preview, UI binding preview, API exposure review, and release-audit evidence.
 
-### 39. Upgrade `DamCoreDetail` into a full specialist command center
+### 39. Governed metadata model evidence
 
-**Justification:** The PBC UI must expose the complete Digital Asset Management Core surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Semantic tagging, duplicate detection, quality scoring, and risk models influence publication and rights outcomes.
 
-**Improvement:** Expand `DamCoreDetail` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Track model purpose, training window, feature lineage, validation metrics, drift, false-tag/false-clear impact, approval status, rollback, and explainability evidence.
 
-### 40. Upgrade `DamCoreWorkbench` into a full specialist command center
+### 40. Asset anomaly detection
 
-**Justification:** The PBC UI must expose the complete Digital Asset Management Core surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Abnormal assets or changes can indicate bad ingestion, rights risk, duplicate floods, or content abuse.
 
-**Improvement:** Expand `DamCoreWorkbench` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Detect anomalies in file size, MIME mismatch, fingerprint collisions, metadata changes, rights overrides, rendition failures, duplicate clusters, usage spikes, and dead letters.
 
-### 41. Prove cross-PBC federation for `POST /assets` and `ProductPublished`
+### 41. Stochastic asset exposure model
 
-**Justification:** Digital Asset Management Core must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** DAM risk spans rights violations, bad renditions, storage cost, duplicate proliferation, missing metadata, and channel rejection.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /assets` and consumed event `ProductPublished` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Model exposure distributions by asset, collection, product, channel, market, rights policy, rendition profile, and usage history with mitigation recommendations.
 
-### 42. Prove cross-PBC federation for `POST /renditions` and `ProductPublished`
+### 42. DAM workbench coverage
 
-**Justification:** Digital Asset Management Core must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** DAM teams need a full command center rather than scattered asset tables.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /renditions` and consumed event `ProductPublished` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Expand workbench surfaces for assets, collections, product projections, renditions, routes, rights, licenses, entitlements, metadata taxonomies, enrichment, annotations, workflows, review tasks, exceptions, duplicates, lineage, usage, events, rules, parameters, configuration, and release evidence.
 
-### 43. Prove cross-PBC federation for `GET /rights` and `ProductPublished`
+### 43. Rights enforcement console
 
-**Justification:** Digital Asset Management Core must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Rights reviewers need focused visibility into market blocks, expiration, attribution, licenses, and entitlements.
 
-**Improvement:** Add compatibility tests and workbench evidence for `GET /rights` and consumed event `ProductPublished` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Add console views for expiring rights, blocked markets, missing attribution, license gaps, entitlement requests, usage exposure, policy decisions, and release actions.
 
-### 44. Prove cross-PBC federation for `POST /collections` and `ProductPublished`
+### 44. Rendition pipeline console
 
-**Justification:** Digital Asset Management Core must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Operators need operational control over transcode queues, failed routes, retries, and quality gaps.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /collections` and consumed event `ProductPublished` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Add queues for requested, processing, failed, ready, low-quality, missing profile, route fallback, retry exhaustion, and carbon-window scheduling.
 
-### 45. Temporal reconstruction and bitemporal audit for Digital Asset Management Core
+### 45. Metadata stewardship console
 
-**Justification:** Regulated and operationally complex domains need to answer what was known, valid, processed, and visible at any point in time.
+**Justification:** Stewards need to triage tag quality, enrichment candidates, taxonomy gaps, and annotation review.
 
-**Improvement:** Add transaction-time, valid-time, and processing-time fields to core records, temporal query APIs, projection rebuild tooling, and UI time travel so specialists can reconstruct decisions, reports, and automation outcomes.
+**Improvement:** Add queues by taxonomy, confidence, missing required tags, rejected enrichment, annotation risk, locale, product projection, and steward ownership.
 
-### 46. Bulk operations and migration-grade controls for Digital Asset Management Core
+### 46. Continuous DAM control testing
 
-**Justification:** World-class deployments must handle imports, mass corrections, high-volume operating days, and cutovers without bypassing governance.
+**Justification:** DAM controls must run continuously across asset integrity, rights, renditions, metadata, events, and agent plans.
 
-**Improvement:** Add staged bulk upload, duplicate detection, chunked validation, approval sampling, partial failure handling, retry dashboards, reconciliation summaries, and agent-generated remediation plans for large batches.
+**Improvement:** Add assertions for missing fingerprint, rendition without source, published asset without rights, expired license in use, metadata below confidence, foreign-table access, dead-letter aging, and agent-preview bypass.
 
-### 47. Specialist edge-case playbooks for Digital Asset Management Core
+### 47. DAM resilience drills
 
-**Justification:** Rare cases often carry the highest financial, legal, safety, service, or compliance risk.
+**Justification:** Asset operations must degrade safely through storage, transcode, projection, event, and workbench failures.
 
-**Improvement:** Create a playbook catalog with detection rules, required evidence, escalation paths, fallback actions, owner roles, and release-audited tests for high-severity edge cases and exception queues.
+**Improvement:** Add drills for duplicate product event, storage URI failure, transcode route outage, rights policy conflict, metadata enrichment failure, outbox dead letter, and workbench degraded mode.
 
-### 48. Pre-mutation simulation and blast-radius analysis for Digital Asset Management Core
+### 48. Agent-safe DAM plans
 
-**Justification:** Users should understand consequences before committing irreversible, customer-visible, operationally disruptive, or financially material changes.
+**Justification:** The DAM chatbot must not silently upload, publish, retag, grant rights, or delete/archive assets.
 
-**Improvement:** Add what-if simulation for every material command, showing impacted records, emitted events, dependent projections, rule outcomes, approvals, downstream PBC dependencies, and rollback limits.
+**Improvement:** Require side-effect-free plans naming command, permission, owned tables, idempotency key, expected event, rights impact, sensitive fields, rollback limits, and human confirmation.
 
-### 49. Continuous control testing and operational assurance for Digital Asset Management Core
+### 49. DAM Core readiness score
 
-**Justification:** Better-than-world-class PBCs prove controls continuously, not only at release or during periodic audits.
+**Justification:** Users need an evidence-backed view of whether `dam_core` is ready for live asset operations.
 
-**Improvement:** Add executable control assertions, sampled evidence checks, anomaly thresholds, control-owner dashboards, breach/recovery events, and release gates that fail when domain controls lose evidence.
+**Improvement:** Compute readiness from asset intake, fingerprint integrity, storage, collections, renditions, rights, licenses, entitlements, metadata, workflows, exceptions, product projections, event reliability, UI coverage, model governance, controls, boundary proof, and agent safety.
 
-### 50. Human-in-the-loop domain agent execution for Digital Asset Management Core
+### 50. End-to-end asset publication proof
 
-**Justification:** The PBC chatbot must help specialists perform real work while preventing unsafe autonomous mutation.
+**Justification:** A complete DAM Core PBC must prove it can execute the full lifecycle from asset registration to rights-safe rendition publication.
 
-**Improvement:** Add domain-specific skills, document parsing, task planning, CRUD previews, confidence/risk scoring, confirmation gates, redaction, policy explanations, and post-action evidence packets for every supported command and query.
+**Improvement:** Add an executable proof scenario covering product projection intake, asset registration, duplicate check, metadata taxonomy/tagging, rights policy, license/entitlement, rendition request/completion, workflow review, usage snapshot, emitted events, UI evidence, boundary proof, controls, and agent explanation.
