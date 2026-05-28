@@ -17,6 +17,7 @@ def smoke_test():
 # Full UI capability surface bound to the world-class domain-depth contract.
 from .domain_depth import ui_capability_surface_contract as field_service_management_ui_capability_surface_contract
 from .domain_depth import domain_capability_surface_contract as field_service_management_domain_capability_surface_contract
+from .field_operations import FIELD_WORKFORCE_UI_SURFACES, field_service_management_workforce_capability_contract
 
 _BASE_FIELD_SERVICE_MANAGEMENT_UI_CONTRACT = field_service_management_ui_contract
 _BASE_FIELD_SERVICE_MANAGEMENT_RENDER_WORKBENCH = field_service_management_render_workbench
@@ -25,30 +26,39 @@ _BASE_FIELD_SERVICE_MANAGEMENT_RENDER_WORKBENCH = field_service_management_rende
 def field_service_management_ui_contract():
     base = dict(_BASE_FIELD_SERVICE_MANAGEMENT_UI_CONTRACT())
     full = field_service_management_ui_capability_surface_contract()
+    workforce = field_service_management_workforce_capability_contract()
     return {
         **base,
-        'ok': base.get('ok') is True and full['ok'],
+        'ok': base.get('ok') is True and full['ok'] and workforce['ok'],
         'full_capability_surface': full,
+        'workforce_capability_surface': workforce,
         'operation_actions': full['operation_actions'],
         'rule_editors': full['rule_editors'],
         'parameter_editors': full['parameter_editors'],
-        'advanced_panels': full['advanced_panels'],
+        'advanced_panels': tuple(dict.fromkeys(tuple(full['advanced_panels']) + FIELD_WORKFORCE_UI_SURFACES)),
         'edge_case_queues': full['edge_case_queues'],
         'table_browsers': full['table_browsers'],
-        'navigation_sections': full['navigation_sections'],
+        'navigation_sections': tuple(dict.fromkeys(tuple(full['navigation_sections']) + FIELD_WORKFORCE_UI_SURFACES)),
+        'live_workforce_map': True,
+        'route_optimizer': True,
+        'skill_assignment_console': True,
+        'job_tool_requirement_planner': True,
+        'task_dependency_board': True,
     }
 
 
 def field_service_management_render_workbench(state=None):
     base = dict(_BASE_FIELD_SERVICE_MANAGEMENT_RENDER_WORKBENCH(state=state))
     full = field_service_management_ui_capability_surface_contract()
+    workforce = field_service_management_workforce_capability_contract()
     return {
         **base,
-        'ok': base.get('ok') is True and full['ok'],
-        'panels': tuple(dict.fromkeys(tuple(base.get('panels', ())) + full['navigation_sections'])),
+        'ok': base.get('ok') is True and full['ok'] and workforce['ok'],
+        'panels': tuple(dict.fromkeys(tuple(base.get('panels', ())) + full['navigation_sections'] + FIELD_WORKFORCE_UI_SURFACES)),
         'operation_actions': full['operation_actions'],
-        'advanced_panels': full['advanced_panels'],
+        'advanced_panels': tuple(dict.fromkeys(tuple(full['advanced_panels']) + FIELD_WORKFORCE_UI_SURFACES)),
         'edge_case_queues': full['edge_case_queues'],
         'table_browsers': full['table_browsers'],
         'agent_tools': full['agent_tools'],
+        'workforce_capability_surface': workforce,
     }

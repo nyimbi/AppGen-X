@@ -237,3 +237,161 @@ def field_service_management_runtime_capabilities():
         'domain_advanced_capabilities': tuple(domain['advanced_capabilities']),
         'side_effects': (),
     }
+
+# Advanced workforce execution layer: live location, routing, tasking, tools,
+# and skill-based assignment.
+from .field_operations import (
+    FIELD_WORKFORCE_OPERATIONS,
+    FIELD_WORKFORCE_TABLES,
+    FIELD_WORKFORCE_UI_SURFACES,
+    field_service_management_advanced_field_operations_smoke,
+    field_service_management_assign_by_skill_location_and_tools,
+    field_service_management_optimize_service_route,
+    field_service_management_plan_mobile_task_dependencies,
+    field_service_management_reoptimize_route_for_disruption,
+    field_service_management_reserve_job_tools,
+    field_service_management_track_technician_location,
+    field_service_management_update_technician_availability,
+    field_service_management_validate_job_tool_requirements,
+    field_service_management_workforce_capability_contract,
+)
+
+_FIELD_SERVICE_MANAGEMENT_DOMAIN_BUILD_SCHEMA_CONTRACT = field_service_management_build_schema_contract
+_FIELD_SERVICE_MANAGEMENT_DOMAIN_BUILD_SERVICE_CONTRACT = field_service_management_build_service_contract
+_FIELD_SERVICE_MANAGEMENT_DOMAIN_BUILD_API_CONTRACT = field_service_management_build_api_contract
+_FIELD_SERVICE_MANAGEMENT_DOMAIN_BUILD_RELEASE_EVIDENCE = field_service_management_build_release_evidence
+_FIELD_SERVICE_MANAGEMENT_DOMAIN_BUILD_WORKBENCH_VIEW = field_service_management_build_workbench_view
+_FIELD_SERVICE_MANAGEMENT_DOMAIN_RUNTIME_SMOKE = field_service_management_runtime_smoke
+_FIELD_SERVICE_MANAGEMENT_DOMAIN_RUNTIME_CAPABILITIES = field_service_management_runtime_capabilities
+
+
+def _field_workforce_table_contract(table: str) -> dict:
+    return {
+        'table': table,
+        'fields': ('id', 'tenant', 'work_order_id', 'technician_id', 'code', 'status', 'version', 'payload', 'created_at', 'updated_at'),
+        'primary_key': ('id',),
+        'owned_by': PBC_KEY,
+    }
+
+
+def field_service_management_build_schema_contract():
+    schema = dict(_FIELD_SERVICE_MANAGEMENT_DOMAIN_BUILD_SCHEMA_CONTRACT())
+    existing = tuple(schema.get('tables', ()))
+    existing_names = {table['table'] for table in existing}
+    additions = tuple(_field_workforce_table_contract(table) for table in FIELD_WORKFORCE_TABLES if table not in existing_names)
+    tables = existing + additions
+    owned_tables = tuple(dict.fromkeys(tuple(schema.get('owned_tables', ())) + FIELD_WORKFORCE_TABLES))
+    migrations = tuple(schema.get('migrations', ())) + tuple(
+        {
+            'path': f'pbcs/field_service_management/migrations/field_workforce_{index:03d}_{table["table"]}.sql',
+            'operation': 'create_owned_table',
+            'table': table['table'],
+            'backend_allowlist': FIELD_SERVICE_MANAGEMENT_ALLOWED_DATABASE_BACKENDS,
+        }
+        for index, table in enumerate(additions, start=1)
+    )
+    models = tuple(schema.get('models', ())) + tuple(
+        {'class_name': ''.join(part.capitalize() for part in table['table'].split('_')), 'table': table['table'], 'fields': table['fields']}
+        for table in additions
+    )
+    return {**schema, 'tables': tables, 'migrations': migrations, 'models': models, 'owned_tables': owned_tables}
+
+
+def field_service_management_build_service_contract():
+    service = dict(_FIELD_SERVICE_MANAGEMENT_DOMAIN_BUILD_SERVICE_CONTRACT())
+    commands = tuple(dict.fromkeys(tuple(service.get('command_methods', ())) + FIELD_WORKFORCE_OPERATIONS))
+    return {
+        **service,
+        'command_methods': commands,
+        'workforce_operations': FIELD_WORKFORCE_OPERATIONS,
+        'tracks_live_technician_location': True,
+        'supports_route_optimization': True,
+        'supports_job_tool_requirements': True,
+        'supports_skill_based_assignment': True,
+    }
+
+
+def field_service_management_build_api_contract():
+    api = dict(_FIELD_SERVICE_MANAGEMENT_DOMAIN_BUILD_API_CONTRACT())
+    routes = tuple(dict.fromkeys(tuple(api.get('routes', ())) + (
+        'POST /field-service/technician-locations',
+        'POST /field-service/technician-availability',
+        'POST /field-service/routes/optimize',
+        'POST /field-service/routes/reoptimize',
+        'POST /field-service/mobile-task-dependencies',
+        'POST /field-service/job-tool-requirements',
+        'POST /field-service/job-tool-reservations',
+        'POST /field-service/skill-assignment',
+        'GET /field-service/live-workforce-map',
+    )))
+    return {**api, 'routes': routes, 'owned_tables': tuple(dict.fromkeys(tuple(api.get('owned_tables', ())) + FIELD_WORKFORCE_TABLES))}
+
+
+def field_service_management_build_release_evidence():
+    evidence = dict(_FIELD_SERVICE_MANAGEMENT_DOMAIN_BUILD_RELEASE_EVIDENCE())
+    workforce = field_service_management_workforce_capability_contract()
+    smoke = field_service_management_advanced_field_operations_smoke()
+    checks = tuple(evidence.get('checks', ())) + (
+        {'id': 'live_technician_location_tracking', 'ok': workforce['tracks_live_technician_location']},
+        {'id': 'route_optimization_and_reoptimization', 'ok': workforce['supports_route_optimization']},
+        {'id': 'task_dependency_planning', 'ok': workforce['supports_task_dependency_planning']},
+        {'id': 'job_tool_requirement_and_calibration_validation', 'ok': workforce['supports_job_tool_requirements']},
+        {'id': 'skill_location_tool_assignment_scoring', 'ok': workforce['supports_skill_based_assignment']},
+        {'id': 'advanced_field_operations_smoke', 'ok': smoke['ok']},
+    )
+    return {
+        **evidence,
+        'ok': evidence.get('ok') is True and all(check['ok'] for check in checks),
+        'checks': checks,
+        'workforce_capability_contract': workforce,
+        'advanced_field_operations_smoke': smoke,
+        'blocking_gaps': tuple(check for check in checks if not check['ok']),
+    }
+
+
+def field_service_management_build_workbench_view(state=None, tenant='default'):
+    view = dict(_FIELD_SERVICE_MANAGEMENT_DOMAIN_BUILD_WORKBENCH_VIEW(state=state, tenant=tenant))
+    return {
+        **view,
+        'panels': tuple(dict.fromkeys(tuple(view.get('panels', ())) + FIELD_WORKFORCE_UI_SURFACES)),
+        'live_workforce_map': True,
+        'route_optimizer': True,
+        'skill_assignment_console': True,
+        'job_tool_requirement_planner': True,
+        'task_dependency_board': True,
+    }
+
+
+def field_service_management_runtime_smoke():
+    base = _FIELD_SERVICE_MANAGEMENT_DOMAIN_RUNTIME_SMOKE()
+    advanced = field_service_management_advanced_field_operations_smoke()
+    return {
+        **base,
+        'ok': base.get('ok') is True and advanced['ok'],
+        'advanced_field_operations': advanced,
+        'checks': tuple(base.get('checks', ())) + ({'id': 'advanced_field_operations', 'ok': advanced['ok']},),
+    }
+
+
+def field_service_management_runtime_capabilities():
+    runtime = dict(_FIELD_SERVICE_MANAGEMENT_DOMAIN_RUNTIME_CAPABILITIES())
+    workforce = field_service_management_workforce_capability_contract()
+    smoke = field_service_management_advanced_field_operations_smoke()
+    workforce_capabilities = (
+        'field_service_management_live_workforce_location_tracking',
+        'field_service_management_constraint_aware_route_optimization',
+        'field_service_management_job_tool_calibration_and_custody',
+        'field_service_management_skill_location_tool_assignment_scoring',
+        'field_service_management_mobile_task_dependency_orchestration',
+    )
+    return {
+        **runtime,
+        'ok': runtime.get('ok') is True and workforce['ok'] and smoke['ok'],
+        'owned_tables': tuple(dict.fromkeys(tuple(runtime.get('owned_tables', ())) + FIELD_WORKFORCE_TABLES)),
+        'operations': tuple(dict.fromkeys(tuple(runtime.get('operations', ())) + FIELD_WORKFORCE_OPERATIONS + ('workforce_capability_contract',))),
+        'capabilities': tuple(dict.fromkeys(tuple(runtime.get('capabilities', ())) + workforce_capabilities)),
+        'workforce_capability_contract': workforce,
+        'advanced_field_operations_smoke': smoke,
+        'field_workforce_ui_surfaces': FIELD_WORKFORCE_UI_SURFACES,
+        'side_effects': (),
+    }

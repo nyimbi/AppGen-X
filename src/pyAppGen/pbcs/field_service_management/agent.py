@@ -31,3 +31,51 @@ def composed_agent_contribution():
 
 def smoke_test():
     return {'ok': agent_skill_manifest()['ok'] and chatbot_interface_contract()['ok'] and document_instruction_plan('doc','create')['ok'] and datastore_crud_plan('create')['ok'] and datastore_crud_plan('update', table='foreign_table')['ok'] is False and composed_agent_contribution()['ok'], 'side_effects': ()}
+
+# Advanced field-service assistant skills for dispatchers, supervisors, and
+# mobile technicians.
+from .field_operations import FIELD_WORKFORCE_OPERATIONS, field_service_management_workforce_capability_contract
+
+_BASE_AGENT_SKILL_MANIFEST = agent_skill_manifest
+_BASE_CHATBOT_INTERFACE_CONTRACT = chatbot_interface_contract
+_BASE_COMPOSED_AGENT_CONTRIBUTION = composed_agent_contribution
+
+
+def agent_skill_manifest():
+    base = dict(_BASE_AGENT_SKILL_MANIFEST())
+    workforce_skills = tuple(
+        {
+            'name': f'{PBC_KEY}_{operation}',
+            'scope': PBC_KEY,
+            'description': f'Guide, preview, and plan {operation} for {PBC_KEY}',
+            'requires_confirmation_for_mutation': True,
+            'uses_appgen_event_contract': True,
+            'stream_engine_picker_visible': False,
+        }
+        for operation in FIELD_WORKFORCE_OPERATIONS
+    )
+    return {**base, 'ok': base['ok'], 'skills': tuple(base['skills']) + workforce_skills}
+
+
+def chatbot_interface_contract():
+    base = dict(_BASE_CHATBOT_INTERFACE_CONTRACT())
+    return {
+        **base,
+        'capabilities': tuple(dict.fromkeys(tuple(base['capabilities']) + (
+            'live_workforce_location_guidance',
+            'route_optimization_guidance',
+            'skill_based_assignment_recommendations',
+            'job_tool_requirement_validation',
+            'task_dependency_and_safety_gate_guidance',
+        ))),
+        'workforce_capability_surface': field_service_management_workforce_capability_contract(),
+    }
+
+
+def composed_agent_contribution():
+    base = dict(_BASE_COMPOSED_AGENT_CONTRIBUTION())
+    namespace = base['single_agent_skill_namespace']
+    return {
+        **base,
+        'dsl_tools': tuple(dict.fromkeys(tuple(base['dsl_tools']) + tuple(f'{namespace}.{operation}' for operation in FIELD_WORKFORCE_OPERATIONS))),
+    }

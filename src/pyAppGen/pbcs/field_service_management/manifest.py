@@ -95,3 +95,65 @@ PBC_MANIFEST = {'pbc': 'field_service_management',
                            'field_service_management_governed_ai_agent_execution'),
  'workflows': ('field_work_order_workflow', 'field_service_management_approval_workflow'),
  'analytics': ('field_service_management_risk_score', 'field_service_management_workbench_metric')}
+
+_FIELD_WORKFORCE_TABLES = (
+    'technician_live_location',
+    'technician_location_breadcrumb',
+    'technician_availability',
+    'technician_home_base',
+    'service_route_plan',
+    'service_route_stop',
+    'service_route_leg',
+    'route_reoptimization',
+    'mobile_task_dependency',
+    'task_safety_gate',
+    'job_tool_requirement',
+    'tool_inventory',
+    'tool_calibration',
+    'van_stock_position',
+    'skill_assignment_score',
+    'assignment_constraint',
+    'geofence_event',
+    'location_privacy_consent',
+)
+
+PBC_MANIFEST = {
+    **PBC_MANIFEST,
+    'description': (
+        'Work orders, dispatch, technicians, live workforce location, route optimization, mobile tasking, '
+        'job-tool requirements, parts usage, skill-based assignment, SLA tracking, service history, and customer updates.'
+    ),
+    'tables': tuple(dict.fromkeys(tuple(PBC_MANIFEST['tables']) + _FIELD_WORKFORCE_TABLES)),
+    'apis': tuple(dict.fromkeys(tuple(PBC_MANIFEST['apis']) + (
+        'POST /field-service/technician-locations',
+        'POST /field-service/technician-availability',
+        'POST /field-service/routes/optimize',
+        'POST /field-service/routes/reoptimize',
+        'POST /field-service/mobile-task-dependencies',
+        'POST /field-service/job-tool-requirements',
+        'POST /field-service/job-tool-reservations',
+        'POST /field-service/skill-assignment',
+        'GET /field-service/live-workforce-map',
+    ))),
+    'emits': tuple(dict.fromkeys(tuple(PBC_MANIFEST['emits']) + (
+        'TechnicianLocationUpdated',
+        'TechnicianAvailabilityChanged',
+        'ServiceRouteOptimized',
+        'RouteReoptimizationRequested',
+        'MobileTaskDependenciesPlanned',
+        'JobToolRequirementsValidated',
+        'JobToolsReserved',
+        'SkillBasedAssignmentRecommended',
+    ))),
+    'advanced_capabilities': tuple(dict.fromkeys(tuple(PBC_MANIFEST['advanced_capabilities']) + (
+        'field_service_management_live_workforce_location_tracking',
+        'field_service_management_constraint_aware_route_optimization',
+        'field_service_management_job_tool_calibration_and_custody',
+        'field_service_management_skill_location_tool_assignment_scoring',
+        'field_service_management_mobile_task_dependency_orchestration',
+    ))),
+}
+PBC_MANIFEST = {
+    **PBC_MANIFEST,
+    'capabilities': tuple(dict.fromkeys(tuple(PBC_MANIFEST['standard_features']) + tuple(PBC_MANIFEST['advanced_capabilities']))),
+}

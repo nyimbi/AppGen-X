@@ -8,6 +8,7 @@ from pyAppGen.pbcs.field_service_management.services import service_operation_co
 from pyAppGen.pbcs.field_service_management.routes import api_route_contracts, validate_api_route_contracts
 from pyAppGen.pbcs.field_service_management.config import governance_smoke_test
 from pyAppGen.pbcs.field_service_management.agent import agent_skill_manifest, chatbot_interface_contract, document_instruction_plan, datastore_crud_plan
+from pyAppGen.pbcs.field_service_management.field_operations import field_service_management_advanced_field_operations_smoke, field_service_management_workforce_capability_contract
 
 
 def test_generated_schema_service_and_release_evidence():
@@ -55,3 +56,14 @@ def test_event_handlers_are_idempotent_and_retryable():
     assert manifest['ok'] is True
     assert dispatch_event({'event_type': ('ServiceTicketOpened', 'InventoryPositionUpdated', 'CustomerUpdated')[0], 'idempotency_key': 'idem'})['ok'] is True
     assert dispatch_event({'event_type': 'Unexpected', 'idempotency_key': 'idem'})['dead_letter_table'].endswith('dead_letter_event')
+
+
+def test_advanced_field_operations_are_executable():
+    contract = field_service_management_workforce_capability_contract()
+    smoke = field_service_management_advanced_field_operations_smoke()
+    assert contract['tracks_live_technician_location'] is True
+    assert contract['supports_route_optimization'] is True
+    assert contract['supports_task_dependency_planning'] is True
+    assert contract['supports_job_tool_requirements'] is True
+    assert contract['supports_skill_based_assignment'] is True
+    assert smoke['ok'] is True

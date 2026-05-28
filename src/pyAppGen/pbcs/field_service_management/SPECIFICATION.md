@@ -70,8 +70,26 @@ Each command is side-effect-free in package tests and returns the target owned t
 - mobile offline evidence capture: deterministic smoke evidence, governed model metadata where relevant, explainable output, and boundary-safe event/API collaboration.
 - SLA breach simulation: deterministic smoke evidence, governed model metadata where relevant, explainable output, and boundary-safe event/API collaboration.
 - repeat-visit root-cause intelligence: deterministic smoke evidence, governed model metadata where relevant, explainable output, and boundary-safe event/API collaboration.
+- consented live workforce geospatial tracking: records current technician position, breadcrumb evidence, accuracy, capture source, geofence events, and privacy consent before any location mutation is accepted.
+- constraint-aware route optimization and reoptimization: plans route stops and legs with priority, time-window, traffic, skill, tool, depot, and travel-buffer constraints, then emits AppGen-X route events for downstream projections.
+- mobile task dependency orchestration: decomposes work orders into ordered mobile tasks with dependency checks, safety gates, offline rules, and conflict queues for field execution.
+- job-tool calibration and custody validation: validates required job tools, tool availability, van stock, calibration status, custody, and reservation readiness before assignment.
+- skill-location-tool assignment scoring: ranks candidate technicians by required skills, tool readiness, live location proximity, availability, and configurable assignment thresholds.
 
 Advanced execution is represented in `domain_depth_contract()`, `execute_domain_operation()`, package release evidence, and runtime capabilities. These functions are deterministic and can be used by generation smoke audits, external package validators, and composed application agents.
+
+## Workforce Tracking, Routing, Tasking, Tools, and Skills
+
+The PBC now owns a complete field workforce execution surface rather than a generic dispatch placeholder.
+
+- Live workforce tracking is represented by `field_service_management_technician_live_location`, `field_service_management_technician_location_breadcrumb`, `field_service_management_geofence_event`, and `field_service_management_location_privacy_consent`. Location updates require explicit privacy consent and record technician, tenant, latitude, longitude, accuracy, source, capture time, and AppGen-X event evidence.
+- Technician availability is represented by `field_service_management_technician_availability` and `field_service_management_technician_home_base`, covering shift capacity, status, home/depot start points, and schedule windows.
+- Routing is represented by `field_service_management_service_route_plan`, `field_service_management_service_route_stop`, `field_service_management_service_route_leg`, and `field_service_management_route_reoptimization`, covering stop ordering, route legs, ETA minutes, distance, traffic state, time windows, disruption reasons, blocked stops, and reoptimization constraints.
+- Tasking is represented by `field_service_management_mobile_task_dependency` and `field_service_management_task_safety_gate`, covering task dependencies, safety prerequisites, offline execution flags, dependency blocking, and mobile conflict policies.
+- Job-tool requirements are represented by `field_service_management_job_tool_requirement`, `field_service_management_tool_inventory`, `field_service_management_tool_calibration`, and `field_service_management_van_stock_position`, covering required tool classes, availability, calibration state, custody/readiness, and van-stock/depot readiness.
+- Skill-based assignment is represented by `field_service_management_skill_assignment_score` and `field_service_management_assignment_constraint`, covering candidate ranking by skill match, required tools, location proximity, availability, explanation factors, and configurable minimum assignment score.
+- UI surfaces include live workforce map, route optimizer, technician availability board, skill assignment console, job-tool requirement planner, tool calibration and custody console, task dependency board, and offline mobile conflict queue.
+- Agent skills expose the same operations to the composed assistant: `track_technician_location`, `update_technician_availability`, `optimize_service_route`, `reoptimize_route_for_disruption`, `plan_mobile_task_dependencies`, `validate_job_tool_requirements`, `reserve_job_tools`, and `assign_by_skill_location_and_tools`.
 
 ## Rules, Parameters, and Configuration
 
