@@ -1,45 +1,348 @@
-"""Service layer for the clinical_trials_management PBC."""
-PBC_KEY = 'clinical_trials_management'
-EVENT_CONTRACT = {'outbox_table': f'{PBC_KEY}_appgen_outbox_event', 'inbox_table': f'{PBC_KEY}_appgen_inbox_event', 'dead_letter_table': f'{PBC_KEY}_appgen_dead_letter_event', 'event_contract': 'AppGen-X'}
-from .domain_depth import DOMAIN_OPERATIONS as DOMAIN_DEPTH_COMMAND_OPERATIONS, DOMAIN_OWNED_TABLES as DOMAIN_DEPTH_OWNED_TABLES, execute_domain_operation as execute_domain_depth_operation
-COMMAND_OPERATIONS = tuple(dict.fromkeys(('command_trial_protocol','configure_runtime','set_parameter','register_rule') + tuple(DOMAIN_DEPTH_COMMAND_OPERATIONS)))
-QUERY_OPERATIONS = ('query_workbench',)
-OWNED_TABLES = DOMAIN_DEPTH_OWNED_TABLES
+"""Command and query service layer for the clinical_trials_management PBC."""
 
-def _operation_contract(name, kind):
-    return {'operation': name, 'operation_kind': kind, 'owned_tables': OWNED_TABLES[:2] if kind == 'command' else (), 'read_tables': OWNED_TABLES[:2] if kind == 'query' else (), 'emitted_event': ('ClinicalTrialsManagementCreated',
- 'ClinicalTrialsManagementUpdated',
- 'ClinicalTrialsManagementApproved',
- 'ClinicalTrialsManagementExceptionOpened')[0] if kind == 'command' else None, 'transaction_boundary': 'owned_datastore_plus_outbox' if kind == 'command' else 'read_only_projection'}
+from __future__ import annotations
+
+from .agent import clinical_trials_management_assistant_preview
+from .controls import clinical_trials_management_control_center
+from .events import EVENT_CONTRACT
+from .forms import clinical_trials_management_form_catalog
+from .runtime import clinical_trials_management_build_workbench_view
+from .runtime import clinical_trials_management_runtime_smoke
+from .wizards import clinical_trials_management_wizard_catalog
+
+
+OPERATION_CONTRACTS = (
+    {
+        "operation": "command_trial_protocols",
+        "operation_kind": "command",
+        "method": "POST",
+        "path": "/api/pbc/clinical_trials_management/trial-protocols",
+        "permission": "clinical_trials_management.protocol_admin",
+        "owned_tables": ("clinical_trials_management_trial_protocol",),
+        "read_tables": (),
+        "emitted_event": "ClinicalTrialProtocolRegistered",
+        "transaction_boundary": "owned_datastore_plus_outbox",
+        "event_contract": "AppGen-X",
+    },
+    {
+        "operation": "command_study_sites",
+        "operation_kind": "command",
+        "method": "POST",
+        "path": "/api/pbc/clinical_trials_management/study-sites",
+        "permission": "clinical_trials_management.site_activation",
+        "owned_tables": ("clinical_trials_management_study_site",),
+        "read_tables": (),
+        "emitted_event": "ClinicalTrialSiteActivated",
+        "transaction_boundary": "owned_datastore_plus_outbox",
+        "event_contract": "AppGen-X",
+    },
+    {
+        "operation": "command_subjects",
+        "operation_kind": "command",
+        "method": "POST",
+        "path": "/api/pbc/clinical_trials_management/subjects",
+        "permission": "clinical_trials_management.subject_enrollment",
+        "owned_tables": ("clinical_trials_management_subject",),
+        "read_tables": (),
+        "emitted_event": "ClinicalTrialSubjectEnrollmentReviewed",
+        "transaction_boundary": "owned_datastore_plus_outbox",
+        "event_contract": "AppGen-X",
+    },
+    {
+        "operation": "command_consent_records",
+        "operation_kind": "command",
+        "method": "POST",
+        "path": "/api/pbc/clinical_trials_management/consent-records",
+        "permission": "clinical_trials_management.consent_manage",
+        "owned_tables": ("clinical_trials_management_consent_record",),
+        "read_tables": (),
+        "emitted_event": "ClinicalTrialConsentRecorded",
+        "transaction_boundary": "owned_datastore_plus_outbox",
+        "event_contract": "AppGen-X",
+    },
+    {
+        "operation": "command_visit_schedules",
+        "operation_kind": "command",
+        "method": "POST",
+        "path": "/api/pbc/clinical_trials_management/visit-schedules",
+        "permission": "clinical_trials_management.visit_manage",
+        "owned_tables": ("clinical_trials_management_visit_schedule",),
+        "read_tables": (),
+        "emitted_event": "ClinicalTrialVisitScheduled",
+        "transaction_boundary": "owned_datastore_plus_outbox",
+        "event_contract": "AppGen-X",
+    },
+    {
+        "operation": "command_adverse_events",
+        "operation_kind": "command",
+        "method": "POST",
+        "path": "/api/pbc/clinical_trials_management/adverse-events",
+        "permission": "clinical_trials_management.safety_review",
+        "owned_tables": ("clinical_trials_management_adverse_event",),
+        "read_tables": (),
+        "emitted_event": "ClinicalTrialSeriousAdverseEventReported",
+        "transaction_boundary": "owned_datastore_plus_outbox",
+        "event_contract": "AppGen-X",
+    },
+    {
+        "operation": "command_monitoring_findings",
+        "operation_kind": "command",
+        "method": "POST",
+        "path": "/api/pbc/clinical_trials_management/monitoring-findings",
+        "permission": "clinical_trials_management.monitoring_manage",
+        "owned_tables": ("clinical_trials_management_monitoring_finding",),
+        "read_tables": (),
+        "emitted_event": "ClinicalTrialMonitoringFindingOpened",
+        "transaction_boundary": "owned_datastore_plus_outbox",
+        "event_contract": "AppGen-X",
+    },
+    {
+        "operation": "command_policy_rules",
+        "operation_kind": "command",
+        "method": "POST",
+        "path": "/api/pbc/clinical_trials_management/policy-rules",
+        "permission": "clinical_trials_management.configure",
+        "owned_tables": ("clinical_trials_management_clinical_trials_management_policy_rule",),
+        "read_tables": (),
+        "emitted_event": None,
+        "transaction_boundary": "owned_datastore_plus_outbox",
+        "event_contract": "AppGen-X",
+    },
+    {
+        "operation": "command_runtime_parameters",
+        "operation_kind": "command",
+        "method": "POST",
+        "path": "/api/pbc/clinical_trials_management/runtime-parameters",
+        "permission": "clinical_trials_management.configure",
+        "owned_tables": ("clinical_trials_management_clinical_trials_management_runtime_parameter",),
+        "read_tables": (),
+        "emitted_event": None,
+        "transaction_boundary": "owned_datastore_plus_outbox",
+        "event_contract": "AppGen-X",
+    },
+    {
+        "operation": "query_clinical_trials_management_workbench",
+        "operation_kind": "query",
+        "method": "GET",
+        "path": "/api/pbc/clinical_trials_management/clinical-trials-workbench",
+        "permission": "clinical_trials_management.read",
+        "owned_tables": (),
+        "read_tables": (
+            "clinical_trials_management_trial_protocol",
+            "clinical_trials_management_study_site",
+            "clinical_trials_management_subject",
+            "clinical_trials_management_visit_schedule",
+            "clinical_trials_management_adverse_event",
+            "clinical_trials_management_monitoring_finding",
+        ),
+        "emitted_event": None,
+        "transaction_boundary": "read_only_projection",
+        "event_contract": "AppGen-X",
+    },
+    {
+        "operation": "query_clinical_trials_management_controls",
+        "operation_kind": "query",
+        "method": "GET",
+        "path": "/api/pbc/clinical_trials_management/controls",
+        "permission": "clinical_trials_management.audit",
+        "owned_tables": (),
+        "read_tables": (
+            "clinical_trials_management_clinical_trials_management_control_assertion",
+            "clinical_trials_management_adverse_event",
+            "clinical_trials_management_monitoring_finding",
+            "clinical_trials_management_appgen_dead_letter_event",
+        ),
+        "emitted_event": None,
+        "transaction_boundary": "read_only_projection",
+        "event_contract": "AppGen-X",
+    },
+    {
+        "operation": "query_clinical_trials_management_assistant_preview",
+        "operation_kind": "query",
+        "method": "POST",
+        "path": "/api/pbc/clinical_trials_management/assistant/document-preview",
+        "permission": "clinical_trials_management.audit",
+        "owned_tables": (),
+        "read_tables": (
+            "clinical_trials_management_trial_protocol",
+            "clinical_trials_management_study_site",
+            "clinical_trials_management_subject",
+            "clinical_trials_management_consent_record",
+            "clinical_trials_management_visit_schedule",
+            "clinical_trials_management_adverse_event",
+            "clinical_trials_management_monitoring_finding",
+            "clinical_trials_management_clinical_trials_management_policy_rule",
+            "clinical_trials_management_clinical_trials_management_runtime_parameter",
+        ),
+        "emitted_event": None,
+        "transaction_boundary": "read_only_projection",
+        "event_contract": "AppGen-X",
+    },
+)
+
+
+def service_operation_contracts() -> dict:
+    """Return route-bound service operation contracts for this PBC."""
+    operations = tuple(item["operation"] for item in OPERATION_CONTRACTS)
+    command_contracts = tuple(item for item in OPERATION_CONTRACTS if item["operation_kind"] == "command")
+    query_contracts = tuple(item for item in OPERATION_CONTRACTS if item["operation_kind"] == "query")
+    return {
+        "ok": bool(OPERATION_CONTRACTS)
+        and all(item["event_contract"] == "AppGen-X" for item in OPERATION_CONTRACTS)
+        and all(item["transaction_boundary"] for item in OPERATION_CONTRACTS)
+        and all(item["owned_tables"] and not item["read_tables"] for item in command_contracts)
+        and all(item["read_tables"] and not item["owned_tables"] for item in query_contracts),
+        "pbc": "clinical_trials_management",
+        "operations": operations,
+        "command_operations": tuple(item["operation"] for item in command_contracts),
+        "query_operations": tuple(item["operation"] for item in query_contracts),
+        "contracts": OPERATION_CONTRACTS,
+        "side_effects": (),
+    }
+
+
+def operation_plan(operation_name: str, payload: dict | None = None) -> dict:
+    """Plan one service operation without mutating state."""
+    contract = next((item for item in OPERATION_CONTRACTS if item["operation"] == operation_name), None)
+    if contract is None:
+        return {"ok": False, "reason": "unknown_operation", "operation": operation_name, "side_effects": ()}
+    supplied = dict(payload or {})
+    table_scope = contract["owned_tables"] or contract["read_tables"]
+    return {
+        "ok": bool(table_scope) and contract["event_contract"] == "AppGen-X",
+        "pbc": "clinical_trials_management",
+        "operation": operation_name,
+        "operation_kind": contract["operation_kind"],
+        "route": {"method": contract["method"], "path": contract["path"]},
+        "permission": contract["permission"],
+        "owned_tables": contract["owned_tables"],
+        "read_tables": contract["read_tables"],
+        "emitted_event": contract["emitted_event"],
+        "payload_keys": tuple(sorted(supplied)),
+        "transaction_boundary": contract["transaction_boundary"],
+        "event_contract": contract["event_contract"],
+        "side_effects": (),
+    }
+
 
 class ClinicalTrialsManagementService:
-    def __getattr__(self, name):
-        if name in COMMAND_OPERATIONS:
-            return lambda payload=None, _name=name: self._command(_name, payload or {})
-        if name in QUERY_OPERATIONS:
-            return lambda payload=None, _name=name: self._query(_name, payload or {})
-        raise AttributeError(name)
-    def _command(self, name, payload):
-        if name in DOMAIN_DEPTH_COMMAND_OPERATIONS:
-            plan = execute_domain_depth_operation(name, payload)
-            return {'ok': plan['ok'], 'operation': name, 'operation_kind': 'command', 'read_only': False, 'payload': dict(payload), 'operation_contract': {'operation': name, 'operation_kind': 'command', 'owned_tables': plan.get('owned_tables', ()), 'read_tables': (), 'emitted_event': plan.get('emitted_event'), 'transaction_boundary': 'owned_datastore_plus_outbox'}, 'outbox_table': EVENT_CONTRACT['outbox_table'], 'emits': (plan.get('emitted_event'),), 'transaction_boundary': 'owned_datastore_plus_outbox', 'domain_depth': plan, 'side_effects': ()}
-        contract = _operation_contract(name, 'command')
-        return {'ok': True, 'operation': name, 'operation_kind': 'command', 'read_only': False, 'payload': dict(payload), 'operation_contract': contract, 'outbox_table': EVENT_CONTRACT['outbox_table'], 'emits': (contract['emitted_event'],), 'transaction_boundary': 'owned_datastore_plus_outbox', 'side_effects': ()}
-    def _query(self, name, payload):
-        contract = _operation_contract(name, 'query')
-        return {'ok': True, 'operation': name, 'operation_kind': 'query', 'read_only': True, 'payload': dict(payload), 'operation_contract': contract, 'outbox_table': None, 'emits': (), 'side_effects': ()}
+    """Side-effect-free package-local service facade."""
 
-def service_operation_manifest():
-    return {'ok': True, 'pbc': PBC_KEY, 'service_class': 'ClinicalTrialsManagementService', 'command_operations': COMMAND_OPERATIONS, 'query_operations': QUERY_OPERATIONS, 'event_contract': EVENT_CONTRACT, 'side_effects': ()}
+    def _execute(self, operation_name: str, payload: dict) -> dict:
+        plan = operation_plan(operation_name, payload)
+        operation_kind = plan.get("operation_kind")
+        result = {
+            "ok": plan["ok"],
+            "pbc": "clinical_trials_management",
+            "operation": operation_name,
+            "operation_kind": operation_kind,
+            "payload": dict(payload),
+            "operation_contract": plan,
+            "transaction_boundary": plan.get("transaction_boundary"),
+            "side_effects": (),
+        }
+        if operation_kind == "command":
+            event_type = plan.get("emitted_event")
+            result.update(
+                {
+                    "command": operation_name,
+                    "read_only": False,
+                    "outbox_table": EVENT_CONTRACT["outbox_table"],
+                    "emits": (event_type,) if event_type else (),
+                }
+            )
+        else:
+            result.update({"query": operation_name, "read_only": True, "outbox_table": None, "emits": ()})
+        return result
 
-def service_operation_contracts():
-    contracts = tuple(_operation_contract(name, 'command') for name in COMMAND_OPERATIONS) + tuple(_operation_contract(name, 'query') for name in QUERY_OPERATIONS)
-    return {'ok': True, 'pbc': PBC_KEY, 'contracts': contracts, 'operation_contract': contracts[0], 'side_effects': ()}
+    def command_trial_protocols(self, payload: dict | None = None) -> dict:
+        return self._execute("command_trial_protocols", payload or {})
 
-def operation_plan(operation, payload=None):
-    manifest = service_operation_manifest(); kind = 'query' if operation in manifest['query_operations'] else 'command'
-    return {'ok': operation in manifest['query_operations'] + manifest['command_operations'], 'operation': operation, 'operation_kind': kind, 'payload': dict(payload or {}), 'side_effects': ()}
+    def command_study_sites(self, payload: dict | None = None) -> dict:
+        return self._execute("command_study_sites", payload or {})
 
-def smoke_test():
-    service = ClinicalTrialsManagementService(); command = getattr(service, COMMAND_OPERATIONS[0])({'tenant': 'tenant-smoke'}); query = getattr(service, QUERY_OPERATIONS[0])({'tenant': 'tenant-smoke'})
-    return {'ok': command['ok'] and query['ok'] and service_operation_contracts()['ok'], 'command': command, 'query': query, 'side_effects': ()}
+    def command_subjects(self, payload: dict | None = None) -> dict:
+        return self._execute("command_subjects", payload or {})
+
+    def command_consent_records(self, payload: dict | None = None) -> dict:
+        return self._execute("command_consent_records", payload or {})
+
+    def command_visit_schedules(self, payload: dict | None = None) -> dict:
+        return self._execute("command_visit_schedules", payload or {})
+
+    def command_adverse_events(self, payload: dict | None = None) -> dict:
+        return self._execute("command_adverse_events", payload or {})
+
+    def command_monitoring_findings(self, payload: dict | None = None) -> dict:
+        return self._execute("command_monitoring_findings", payload or {})
+
+    def command_policy_rules(self, payload: dict | None = None) -> dict:
+        return self._execute("command_policy_rules", payload or {})
+
+    def command_runtime_parameters(self, payload: dict | None = None) -> dict:
+        return self._execute("command_runtime_parameters", payload or {})
+
+    def query_clinical_trials_management_workbench(self, payload: dict | None = None) -> dict:
+        base = self._execute("query_clinical_trials_management_workbench", payload or {})
+        workbench = clinical_trials_management_build_workbench_view("tenant-smoke", clinical_trials_management_runtime_smoke()["state"])
+        return {
+            **base,
+            "workbench": workbench,
+            "app_surface": {
+                "form_count": len(clinical_trials_management_form_catalog()["forms"]),
+                "wizard_count": len(clinical_trials_management_wizard_catalog()["wizards"]),
+            },
+        }
+
+    def query_clinical_trials_management_controls(self, payload: dict | None = None) -> dict:
+        base = self._execute("query_clinical_trials_management_controls", payload or {})
+        control_center = clinical_trials_management_control_center()
+        return {
+            **base,
+            "control_center": {
+                "ok": control_center["ok"],
+                "lock_readiness": control_center["lock_readiness"],
+                "assistant_guardrails": control_center["assistant_guardrails"],
+            },
+        }
+
+    def query_clinical_trials_management_assistant_preview(self, payload: dict | None = None) -> dict:
+        base = self._execute("query_clinical_trials_management_assistant_preview", payload or {})
+        preview = clinical_trials_management_assistant_preview(payload or {})
+        return {**base, "preview": preview}
+
+
+def service_operation_manifest() -> dict:
+    """Return the executable service operation surface."""
+    service = ClinicalTrialsManagementService()
+    operations = tuple(
+        name
+        for name in dir(service)
+        if (name.startswith("command_") or name.startswith("query_")) and callable(getattr(service, name))
+    )
+    return {
+        "ok": bool(operations) and service_operation_contracts()["ok"],
+        "pbc": "clinical_trials_management",
+        "service_class": service.__class__.__name__,
+        "operations": operations,
+        "command_operations": service_operation_contracts()["command_operations"],
+        "query_operations": service_operation_contracts()["query_operations"],
+        "operation_contracts": service_operation_contracts()["contracts"],
+        "transaction_boundary": "owned_datastore_plus_outbox",
+        "outbox_table": EVENT_CONTRACT["outbox_table"],
+        "side_effects": (),
+    }
+
+
+def smoke_test() -> dict:
+    """Execute one side-effect-free service operation through the facade."""
+    manifest = service_operation_manifest()
+    service = ClinicalTrialsManagementService()
+    operation = manifest["operations"][0] if manifest["operations"] else None
+    result = getattr(service, operation)({"smoke": True}) if operation else {"ok": False}
+    return {
+        "ok": manifest["ok"] and result.get("ok") is True and result.get("operation_contract", {}).get("ok") is True,
+        "manifest": manifest,
+        "result": result,
+        "side_effects": (),
+    }
