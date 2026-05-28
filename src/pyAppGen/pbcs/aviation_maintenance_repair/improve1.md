@@ -1,418 +1,263 @@
-# Aviation Maintenance and Repair PBC Better-Than-World-Class Improvement Backlog
-
-## Purpose
-
-This file identifies, justifies, and describes 50 high-impact improvements for `aviation_maintenance_repair`. The backlog is specific to aircraft maintenance, components, work cards, compliance, airworthiness, deferred defects, and mro operations and is intended to move the PBC from release-auditable scaffolding toward complete, specialist-grade domain coverage.
+# Aviation Maintenance Repair Improvement Backlog for `aviation_maintenance_repair`
 
 ## Current Domain Evidence Used
 
-- Stable PBC key: `aviation_maintenance_repair`.
-- Domain purpose: Aircraft maintenance, components, work cards, compliance, airworthiness, deferred defects, and MRO operations.
-- Owned domain tables: `aircraft`, `component`, `work_card`, `maintenance_visit`, `airworthiness_directive`, `deferred_defect`, `compliance_release`, `aviation_maintenance_repair_policy_rule`, `aviation_maintenance_repair_runtime_parameter`, `aviation_maintenance_repair_schema_extension`, `aviation_maintenance_repair_control_assertion`, `aviation_maintenance_repair_governed_model`.
-- Public APIs: `POST /aircrafts`, `POST /components`, `POST /work-cards`, `POST /maintenance-visits`, `POST /airworthiness-directives`, `GET /aviation-maintenance-repair-workbench`.
-- Emitted AppGen-X events: `AviationMaintenanceRepairCreated`, `AviationMaintenanceRepairUpdated`, `AviationMaintenanceRepairApproved`, `AviationMaintenanceRepairExceptionOpened`.
-- Consumed AppGen-X events: `PolicyChanged`, `AuditEventSealed`, `OperationalKpiChanged`.
-- Current standard surfaces include: `aircraft_management`, `aviation_maintenance_repair_workflow`, `aviation_maintenance_repair_analytics`, `configuration_schema`, `rule_engine`, `parameter_engine`, `owned_schema_migrations_models`, `appgen_x_outbox_inbox_eventing`, `idempotent_handlers`, `retry_dead_letter_evidence`.
-- Current advanced surfaces include: `aviation_maintenance_repair_event_sourced_operational_history`, `aviation_maintenance_repair_multi_tenant_policy_isolation`, `aviation_maintenance_repair_schema_evolution_resilience`, `aviation_maintenance_repair_autonomous_anomaly_detection`, `aviation_maintenance_repair_semantic_document_instruction_understanding`, `aviation_maintenance_repair_predictive_risk_scoring`, `aviation_maintenance_repair_counterfactual_scenario_simulation`, `aviation_maintenance_repair_cryptographic_audit_proofs`.
-
-## 50 High-Impact Improvements
-
-### 1. Canonical lifecycle state model for Aircraft
-
-**Justification:** This closes shallow CRUD gaps by making every aviation maintenance and repair transition explainable and testable instead of implicit in free-form status values.
-
-**Improvement:** Define a complete state machine for `aircraft` with explicit draft, validated, blocked, approved, active, suspended, corrected, closed, archived, and reopened states. Tie the behavior to `aviation_maintenance_repair_create_aircraft_workflow` where applicable, and make it visible in `AviationMaintenanceRepairWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** State-transition tests, invalid-transition fixtures, workbench state badges, and emitted AppGen-X transition events for AviationMaintenanceRepairCreated, AviationMaintenanceRepairUpdated, AviationMaintenanceRepairApproved. The evidence should be package-local in `src/pyAppGen/pbcs/aviation_maintenance_repair` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 2. Domain intake and normalization for Component
-
-**Justification:** The PBC cannot reach complete domain coverage unless it handles the messy front door of aircraft maintenance, components, work cards, compliance, airworthiness, deferred defects, and mro operations, not only already-clean records.
-
-**Improvement:** Build a typed intake pipeline for `component` that accepts structured API payloads, document-derived instructions, batch loads, and assistant-generated drafts while normalizing identifiers, dates, units, parties, and jurisdictional context. Tie the behavior to `aviation_maintenance_repair_record_component_workflow` where applicable, and make it visible in `AviationMaintenanceRepairWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Golden intake fixtures, rejected-record queues, field-level normalization evidence, and assistant previews before governed datastore mutation. The evidence should be package-local in `src/pyAppGen/pbcs/aviation_maintenance_repair` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 3. Specialist validation rules for Work Card
-
-**Justification:** World-class Aviation Maintenance and Repair requires rules that domain experts can reason about, version, test, and roll back without code edits.
-
-**Improvement:** Add a domain rule compiler for `work_card` that supports threshold rules, eligibility rules, dependency rules, temporal windows, conflicting-instruction detection, and override justification. Tie the behavior to `aviation_maintenance_repair_create_aircraft_workflow` where applicable, and make it visible in `AviationMaintenanceRepairWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Rule simulation tests, versioned rule manifests, rule impact reports, and UI rule editors linked to `AVIATION_MAINTENANCE_REPAIR_DATABASE_URL, AVIATION_MAINTENANCE_REPAIR_EVENT_TOPIC, AVIATION_MAINTENANCE_REPAIR_RETRY_LIMIT`. The evidence should be package-local in `src/pyAppGen/pbcs/aviation_maintenance_repair` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 4. Parameter governance and tuning for Maintenance Visit
-
-**Justification:** Parameters are where operations teams tune aviation maintenance and repair; unbounded constants would make the PBC brittle and unsafe in real deployments.
-
-**Improvement:** Expose bounded runtime parameters for `maintenance_visit` covering risk thresholds, SLA windows, confidence floors, escalation cutoffs, batch sizes, retry limits, and human-confirmation requirements. Tie the behavior to `aviation_maintenance_repair_record_component_workflow` where applicable, and make it visible in `AviationMaintenanceRepairWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Parameter schema validation, tenant overrides, approval history, rollback controls, and workbench diff views. The evidence should be package-local in `src/pyAppGen/pbcs/aviation_maintenance_repair` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 5. Deep owned schema expansion for Airworthiness Directive
-
-**Justification:** A single payload column cannot express the full surface of aircraft maintenance, components, work cards, compliance, airworthiness, deferred defects, and mro operations or prove cross-PBC boundaries are respected.
-
-**Improvement:** Extend the owned schema around `airworthiness_directive` with normalized child tables for line-level evidence, party roles, approvals, attachments, comments, metrics, exception reasons, and control assertions. Tie the behavior to `aviation_maintenance_repair_create_aircraft_workflow` where applicable, and make it visible in `AviationMaintenanceRepairWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Migrations, models, relationship tests, schema contract snapshots, and no shared-table access outside the `aviation_maintenance_repair_` namespace. The evidence should be package-local in `src/pyAppGen/pbcs/aviation_maintenance_repair` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 6. Event-sourced operational history for Deferred Defect
-
-**Justification:** Temporal reconstruction is essential for better-than-world-class auditability and dispute resolution in aviation maintenance and repair.
-
-**Improvement:** Capture every material mutation of `deferred_defect` as immutable AppGen-X events with actor, tenant, command, policy version, idempotency key, before/after summary, and projection checkpoint. Tie the behavior to `aviation_maintenance_repair_record_component_workflow` where applicable, and make it visible in `AviationMaintenanceRepairWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Replay tests, projection checksums, event ordering evidence, and point-in-time workbench views. The evidence should be package-local in `src/pyAppGen/pbcs/aviation_maintenance_repair` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 7. Projection and read-model strategy for Compliance Release
-
-**Justification:** The workbench should not force users to infer domain truth from raw tables; each projection should answer a real operating question.
-
-**Improvement:** Create purpose-built projections for `compliance_release`: operational queue, executive KPI rollup, exception aging, compliance evidence, agent task context, and external dependency health. Tie the behavior to `aviation_maintenance_repair_create_aircraft_workflow` where applicable, and make it visible in `AviationMaintenanceRepairWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Projection contracts, freshness SLAs, backfill tests, and visible stale-projection warnings. The evidence should be package-local in `src/pyAppGen/pbcs/aviation_maintenance_repair` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 8. Exception taxonomy and remediation for Aviation Maintenance Repair Policy Rule
-
-**Justification:** High-value PBCs win on exception throughput; generic “failed” states hide the details operators need.
-
-**Improvement:** Model the full exception taxonomy for `aviation_maintenance_repair_policy_rule`, including severity, root cause, blocking dependency, remediation owner, due date, retry eligibility, escalation path, and closure evidence. Tie the behavior to `aviation_maintenance_repair_record_component_workflow` where applicable, and make it visible in `AviationMaintenanceRepairWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Exception queues, aging metrics, remediation playbooks, dead-letter linkage, and closure test fixtures for sanctions or fraud holds. The evidence should be package-local in `src/pyAppGen/pbcs/aviation_maintenance_repair` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 9. Predictive risk scoring for Aviation Maintenance Repair Runtime Parameter
-
-**Justification:** The package should warn users before aviation maintenance and repair work fails, breaches policy, or creates downstream cost.
-
-**Improvement:** Add predictive risk scoring for `aviation_maintenance_repair_runtime_parameter` using domain features from owned tables, consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, rule outcomes, aging, anomaly signals, and historical corrections. Tie the behavior to `aviation_maintenance_repair_create_aircraft_workflow` where applicable, and make it visible in `AviationMaintenanceRepairWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Feature manifests, score explanations, calibration reports, drift alerts, and tests for low/medium/high-risk scenarios. The evidence should be package-local in `src/pyAppGen/pbcs/aviation_maintenance_repair` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 10. Counterfactual simulation for Aviation Maintenance Repair Schema Extension
-
-**Justification:** Advanced users need to ask “what would happen if” before committing changes to live aircraft maintenance, components, work cards, compliance, airworthiness, deferred defects, and mro operations operations.
-
-**Improvement:** Provide scenario simulation for `aviation_maintenance_repair_schema_extension`: policy change, capacity constraint, deadline shift, price/rate change, eligibility change, disruption, and manual override outcomes. Tie the behavior to `aviation_maintenance_repair_record_component_workflow` where applicable, and make it visible in `AviationMaintenanceRepairWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Simulation APIs, non-mutating sandbox state, comparison reports, and workbench side-by-side scenario panels. The evidence should be package-local in `src/pyAppGen/pbcs/aviation_maintenance_repair` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 11. Autonomous anomaly triage for Aviation Maintenance Repair Control Assertion
-
-**Justification:** A world-class PBC should reduce analyst burden without hiding the reasoning behind automated triage.
-
-**Improvement:** Implement anomaly detection for `aviation_maintenance_repair_control_assertion` that identifies outliers, duplicate submissions, impossible sequences, stale dependencies, unusual amounts/counts/durations, and contradictory fields. Tie the behavior to `aviation_maintenance_repair_create_aircraft_workflow` where applicable, and make it visible in `AviationMaintenanceRepairWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Explainable anomaly cards, reviewer feedback loops, false-positive tracking, and suppression governance. The evidence should be package-local in `src/pyAppGen/pbcs/aviation_maintenance_repair` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 12. Semantic document understanding for Aviation Maintenance Repair Governed Model
-
-**Justification:** Document-heavy work in Aviation Maintenance and Repair cannot be complete if the assistant only answers questions and cannot prepare accurate governed changes.
-
-**Improvement:** Train the package assistant to parse domain documents and instructions for `aviation_maintenance_repair_governed_model`, extract obligations, dates, parties, quantities, identifiers, and exceptions, then map them to safe draft mutations. Tie the behavior to `aviation_maintenance_repair_record_component_workflow` where applicable, and make it visible in `AviationMaintenanceRepairWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Document extraction tests, confidence thresholds, redaction handling, source span citations, and human confirmation workflows. The evidence should be package-local in `src/pyAppGen/pbcs/aviation_maintenance_repair` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 13. Agent-safe CRUD execution for Aircraft
-
-**Justification:** The PBC agent must be a first-class operator but never a hidden bypass around RBAC, rules, or owned datastore boundaries.
-
-**Improvement:** Add a professional chatbot skill for `aircraft` that can create, update, correct, close, and annotate records only through policy-checked commands, approval gates, and previewed diffs. Tie the behavior to `aviation_maintenance_repair_create_aircraft_workflow` where applicable, and make it visible in `AviationMaintenanceRepairWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Skill manifests, permission tests, preview/confirm flows, blocked-action evidence, and audit events for every assistant mutation. The evidence should be package-local in `src/pyAppGen/pbcs/aviation_maintenance_repair` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 14. Workbench persona coverage for Component
-
-**Justification:** A generic detail page underserves the domain; each role needs the exact controls and evidence they use daily.
-
-**Improvement:** Design dedicated workbench panels for `component`: operator queue, supervisor approvals, analyst exceptions, auditor evidence, configuration owner, and agent-assistance review. Tie the behavior to `aviation_maintenance_repair_record_component_workflow` where applicable, and make it visible in `AviationMaintenanceRepairWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** UI contract entries, route tests, empty/error/loading states, and permission-aware action availability. The evidence should be package-local in `src/pyAppGen/pbcs/aviation_maintenance_repair` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 15. Cross-PBC dependency contracts for Work Card
-
-**Justification:** Composable packages fail when hidden table coupling enters the domain model.
-
-**Improvement:** Represent dependencies for `work_card` through declared APIs, consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, and projections rather than shared tables, with explicit freshness, ownership, and fallback behavior. Tie the behavior to `aviation_maintenance_repair_create_aircraft_workflow` where applicable, and make it visible in `AviationMaintenanceRepairWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Dependency manifests, contract tests, stale dependency alerts, and no foreign-table references in generated artifacts. The evidence should be package-local in `src/pyAppGen/pbcs/aviation_maintenance_repair` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 16. API completeness and versioning for Maintenance Visit
-
-**Justification:** Complete domain coverage requires both command and query surfaces, not only happy-path create endpoints.
-
-**Improvement:** Expand APIs beyond POST /aircrafts, POST /components, POST /work-cards to cover search, validation-only commands, simulation, bulk intake, exception closure, evidence export, projection reads, and idempotent corrections. Tie the behavior to `aviation_maintenance_repair_record_component_workflow` where applicable, and make it visible in `AviationMaintenanceRepairWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** OpenAPI-style route manifests, backward-compatible version tests, deprecation metadata, and idempotency assertions. The evidence should be package-local in `src/pyAppGen/pbcs/aviation_maintenance_repair` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 17. Typed emitted-event expansion for Airworthiness Directive
-
-**Justification:** Consumers should understand what happened in Aviation Maintenance and Repair without parsing opaque payloads.
-
-**Improvement:** Replace generic lifecycle emissions with typed events for each meaningful `airworthiness_directive` transition, exception, approval, correction, simulation result, and downstream handoff. Tie the behavior to `aviation_maintenance_repair_create_aircraft_workflow` where applicable, and make it visible in `AviationMaintenanceRepairWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Event schema tests, event examples, compatibility checks, and emitted-event coverage in release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/aviation_maintenance_repair` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 18. Consumed-event handlers for Deferred Defect
-
-**Justification:** A PBC is composable only when incoming events affect its own domain state predictably and safely.
-
-**Improvement:** Implement idempotent handlers for consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged that update projections, open dependency exceptions, recalculate risk, and preserve source event lineage. Tie the behavior to `aviation_maintenance_repair_record_component_workflow` where applicable, and make it visible in `AviationMaintenanceRepairWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Duplicate-event tests, handler side-effect boundaries, dead-letter fixtures, and lineage links back to source events. The evidence should be package-local in `src/pyAppGen/pbcs/aviation_maintenance_repair` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 19. Retry and dead-letter operations for Compliance Release
-
-**Justification:** Dead letters are not just plumbing; they are domain work queues that can block aircraft maintenance, components, work cards, compliance, airworthiness, deferred defects, and mro operations.
-
-**Improvement:** Create operational tools for retrying, quarantining, explaining, and resolving dead-lettered `compliance_release` events with max-attempt policy, poison-message detection, and replay safety. Tie the behavior to `aviation_maintenance_repair_create_aircraft_workflow` where applicable, and make it visible in `AviationMaintenanceRepairWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Dead-letter workbench, retry eligibility tests, replay audit proof, and operator action logs. The evidence should be package-local in `src/pyAppGen/pbcs/aviation_maintenance_repair` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 20. RBAC and attribute policy for Aviation Maintenance Repair Policy Rule
-
-**Justification:** High-impact domain operations need finer controls than generic RBAC grants.
-
-**Improvement:** Extend permissions for `aviation_maintenance_repair_policy_rule` from coarse read/create/update/admin to action-level and attribute-aware policies based on role, tenant, jurisdiction, monetary/materiality threshold, and exception severity. Tie the behavior to `aviation_maintenance_repair_record_component_workflow` where applicable, and make it visible in `AviationMaintenanceRepairWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Permission matrix docs, ABAC policy tests, denied-action UI states, and assistant skill permission checks. The evidence should be package-local in `src/pyAppGen/pbcs/aviation_maintenance_repair` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 21. Continuous control testing for Aviation Maintenance Repair Runtime Parameter
-
-**Justification:** Controls should run during operations, not only during release audit or manual review.
-
-**Improvement:** Embed control assertions for `aviation_maintenance_repair_runtime_parameter` that continuously test segregation of duties, required approvals, stale exceptions, policy drift, duplicate records, and boundary violations. Tie the behavior to `aviation_maintenance_repair_create_aircraft_workflow` where applicable, and make it visible in `AviationMaintenanceRepairWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Control dashboards, failing-control events, test fixtures, and release evidence tied to `aviation_maintenance_repair_control_assertion` records. The evidence should be package-local in `src/pyAppGen/pbcs/aviation_maintenance_repair` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 22. Cryptographic audit proofing for Aviation Maintenance Repair Schema Extension
-
-**Justification:** Better-than-world-class auditability requires proof of integrity, not merely logs stored in mutable tables.
-
-**Improvement:** Hash-chain material `aviation_maintenance_repair_schema_extension` decisions, documents, emitted events, and release-evidence snapshots to make tampering visible without exposing sensitive payloads. Tie the behavior to `aviation_maintenance_repair_record_component_workflow` where applicable, and make it visible in `AviationMaintenanceRepairWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Proof manifests, verification APIs, redacted proof exports, and audit-ledger handoff events. The evidence should be package-local in `src/pyAppGen/pbcs/aviation_maintenance_repair` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 23. Privacy, consent, and secrecy controls for Aviation Maintenance Repair Control Assertion
-
-**Justification:** Complete domain coverage must account for protected data and restricted operational evidence.
-
-**Improvement:** Add field-level privacy classifications for `aviation_maintenance_repair_control_assertion`, consent checks, masking rules, retention schedules, legal holds, and assistant redaction policies. Tie the behavior to `aviation_maintenance_repair_create_aircraft_workflow` where applicable, and make it visible in `AviationMaintenanceRepairWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Retention tests, masked UI snapshots, consent-blocked mutation fixtures, and export controls. The evidence should be package-local in `src/pyAppGen/pbcs/aviation_maintenance_repair` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 24. Multi-tenant operating model for Aviation Maintenance Repair Governed Model
-
-**Justification:** The PBC should scale across organizations while preserving independent policy and compliance boundaries.
-
-**Improvement:** Support tenant-specific `aviation_maintenance_repair_governed_model` rules, data residency, encryption context, configuration, seed data, and release evidence without allowing cross-tenant leakage. Tie the behavior to `aviation_maintenance_repair_record_component_workflow` where applicable, and make it visible in `AviationMaintenanceRepairWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Tenant isolation tests, tenant-scoped parameters, key-rotation evidence, and cross-tenant negative fixtures. The evidence should be package-local in `src/pyAppGen/pbcs/aviation_maintenance_repair` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 25. Schema evolution and extension registry for Aircraft
-
-**Justification:** Domain teams will add fields; the PBC must evolve without breaking APIs, events, or workbench projections.
-
-**Improvement:** Make schema extensions for `aircraft` first-class with compatibility checks, migration previews, projection backfills, field ownership, and rollback metadata. Tie the behavior to `aviation_maintenance_repair_create_aircraft_workflow` where applicable, and make it visible in `AviationMaintenanceRepairWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Extension registry UI, compatibility tests, migration dry-runs, and backfill release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/aviation_maintenance_repair` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 26. Master data quality gates for Component
-
-**Justification:** Many aviation maintenance and repair errors begin as bad reference data; the PBC should catch them before workflow execution.
-
-**Improvement:** Define reference-data contracts for `component`: canonical codes, parties, locations, classifications, calendars, units, currencies, products, assets, or service categories as relevant to the domain. Tie the behavior to `aviation_maintenance_repair_record_component_workflow` where applicable, and make it visible in `AviationMaintenanceRepairWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Reference validation fixtures, stale-code warnings, mapping tables, and dependency freshness indicators. The evidence should be package-local in `src/pyAppGen/pbcs/aviation_maintenance_repair` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 27. Bulk operations and correction workflows for Work Card
-
-**Justification:** Enterprise-scale Aviation Maintenance and Repair users cannot operate one record at a time.
-
-**Improvement:** Add bulk load, bulk validate, bulk approve, and bulk correction workflows for `work_card` with partial success, row-level errors, resumability, and rollback. Tie the behavior to `aviation_maintenance_repair_create_aircraft_workflow` where applicable, and make it visible in `AviationMaintenanceRepairWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** CSV/API batch fixtures, resumable job state, row-level audit evidence, and assistant-generated correction suggestions. The evidence should be package-local in `src/pyAppGen/pbcs/aviation_maintenance_repair` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 28. Lifecycle collaboration and tasking for Maintenance Visit
-
-**Justification:** Domain collaboration should live inside the PBC boundary and remain auditable with the record it affects.
-
-**Improvement:** Attach tasks, comments, ownership, due dates, handoffs, and escalation threads to `maintenance_visit` without leaking into external shared task tables. Tie the behavior to `aviation_maintenance_repair_record_component_workflow` where applicable, and make it visible in `AviationMaintenanceRepairWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Task tables, comment audit history, notification events, escalation SLAs, and role-specific task queues. The evidence should be package-local in `src/pyAppGen/pbcs/aviation_maintenance_repair` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 29. SLA and service-level governance for Airworthiness Directive
-
-**Justification:** Users need to know when aircraft maintenance, components, work cards, compliance, airworthiness, deferred defects, and mro operations is late, blocked, or at risk before customer or regulator impact.
-
-**Improvement:** Define SLAs for `airworthiness_directive` across intake, validation, approval, exception resolution, event handling, downstream projection refresh, and release-evidence generation. Tie the behavior to `aviation_maintenance_repair_create_aircraft_workflow` where applicable, and make it visible in `AviationMaintenanceRepairWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** SLA breach events, timers, configurable calendars, workbench aging buckets, and tests for pause/resume behavior. The evidence should be package-local in `src/pyAppGen/pbcs/aviation_maintenance_repair` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 30. Operational analytics cockpit for Deferred Defect
-
-**Justification:** World-class operations require leading indicators, not only record counts.
-
-**Improvement:** Build analytics for `deferred_defect`: throughput, backlog, aging, approval latency, exception rate, risk distribution, automation acceptance, correction rate, and downstream dependency health. Tie the behavior to `aviation_maintenance_repair_record_component_workflow` where applicable, and make it visible in `AviationMaintenanceRepairWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Metric definitions, projection tests, drill-through routes, export APIs, and anomaly overlays. The evidence should be package-local in `src/pyAppGen/pbcs/aviation_maintenance_repair` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 31. Decision intelligence and recommendations for Compliance Release
-
-**Justification:** The PBC should help expert users decide faster while showing evidence and uncertainty.
-
-**Improvement:** Generate ranked recommendations for `compliance_release` such as next best action, likely resolution, required evidence, policy adjustment, staffing/capacity response, or downstream handoff. Tie the behavior to `aviation_maintenance_repair_create_aircraft_workflow` where applicable, and make it visible in `AviationMaintenanceRepairWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Recommendation explanations, confidence intervals, feedback capture, model governance records, and rejection reasons. The evidence should be package-local in `src/pyAppGen/pbcs/aviation_maintenance_repair` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 32. Quality and completeness scoring for Aviation Maintenance Repair Policy Rule
-
-**Justification:** Operators should see whether a record is truly ready, not just technically saved.
-
-**Improvement:** Score each `aviation_maintenance_repair_policy_rule` record for completeness, consistency, policy readiness, dependency readiness, evidence sufficiency, and downstream composability. Tie the behavior to `aviation_maintenance_repair_record_component_workflow` where applicable, and make it visible in `AviationMaintenanceRepairWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Scoring rules, missing-evidence lists, readiness badges, and blocking criteria in command handlers. The evidence should be package-local in `src/pyAppGen/pbcs/aviation_maintenance_repair` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 33. End-to-end scenario library for Aviation Maintenance Repair Runtime Parameter
-
-**Justification:** Release evidence is stronger when every important aviation maintenance and repair behavior has executable examples.
-
-**Improvement:** Create seeded scenarios for `aviation_maintenance_repair_runtime_parameter`: normal flow, urgent path, exception path, corrected path, duplicate path, late event path, and audit export path. Tie the behavior to `aviation_maintenance_repair_create_aircraft_workflow` where applicable, and make it visible in `AviationMaintenanceRepairWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Scenario seed data, runtime smoke coverage, generated-app fixtures, and story-level workbench screenshots/contracts. The evidence should be package-local in `src/pyAppGen/pbcs/aviation_maintenance_repair` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 34. Domain ontology and terminology model for Aviation Maintenance Repair Schema Extension
-
-**Justification:** Precise vocabulary prevents the PBC from misclassifying specialist documents or user instructions.
-
-**Improvement:** Add an ontology for `aviation_maintenance_repair_schema_extension` terms, synonyms, classifications, relationships, allowed values, and phrase mappings used by the assistant and UI. Tie the behavior to `aviation_maintenance_repair_record_component_workflow` where applicable, and make it visible in `AviationMaintenanceRepairWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Ontology files, assistant parsing tests, UI glossary, and mapping evidence for domain-specific abbreviations. The evidence should be package-local in `src/pyAppGen/pbcs/aviation_maintenance_repair` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 35. Advanced search and investigation for Aviation Maintenance Repair Control Assertion
-
-**Justification:** Investigators and operators need fast, explainable retrieval across the whole domain surface.
-
-**Improvement:** Provide search across `aviation_maintenance_repair_control_assertion` records, events, documents, exceptions, tasks, comments, and audit proofs with filters for tenant, status, risk, date, party, and dependency. Tie the behavior to `aviation_maintenance_repair_create_aircraft_workflow` where applicable, and make it visible in `AviationMaintenanceRepairWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Search index contracts, result provenance, permission-filtered queries, and stale-index warnings. The evidence should be package-local in `src/pyAppGen/pbcs/aviation_maintenance_repair` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 36. Reconciliation and closure controls for Aviation Maintenance Repair Governed Model
-
-**Justification:** Closure is not complete until the PBC can prove no material domain work remains unresolved.
-
-**Improvement:** Add reconciliation workflows that compare `aviation_maintenance_repair_governed_model` state against consumed events, external projections, expected totals/counts, approvals, and release evidence before closure. Tie the behavior to `aviation_maintenance_repair_record_component_workflow` where applicable, and make it visible in `AviationMaintenanceRepairWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Reconciliation reports, variance thresholds, closure blockers, and AppGen-X closure events. The evidence should be package-local in `src/pyAppGen/pbcs/aviation_maintenance_repair` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 37. Regulatory and policy reporting for Aircraft
-
-**Justification:** World-class PBCs turn operational evidence into credible reporting without spreadsheet reconstruction.
-
-**Improvement:** Generate domain reporting packs for `aircraft` covering statutory, contractual, operational, board, customer, or regulator evidence depending on monetary integrity, funds movement controls, counterparty risk, regulatory evidence, settlement finality, fraud prevention, and financial reconciliation. Tie the behavior to `aviation_maintenance_repair_create_aircraft_workflow` where applicable, and make it visible in `AviationMaintenanceRepairWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Report schemas, redaction rules, traceable metric sources, and approval/export audit events. The evidence should be package-local in `src/pyAppGen/pbcs/aviation_maintenance_repair` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 38. Carbon and resource awareness for Component
-
-**Justification:** Sustainability evidence should be embedded in operations instead of treated as an after-the-fact report.
-
-**Improvement:** Where relevant, attach carbon, energy, water, travel, capacity, compute, or resource-footprint metadata to `component` decisions and batch operations. Tie the behavior to `aviation_maintenance_repair_record_component_workflow` where applicable, and make it visible in `AviationMaintenanceRepairWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Footprint fields, scheduling parameters, exception rules, and dashboards that expose operational tradeoffs. The evidence should be package-local in `src/pyAppGen/pbcs/aviation_maintenance_repair` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 39. Resilience and offline behavior for Work Card
-
-**Justification:** Real operations keep moving during outages; the PBC must preserve correctness when dependencies are unavailable.
-
-**Improvement:** Define resilience modes for `work_card`: degraded dependency mode, offline draft capture, delayed event replay, conflict detection, and safe recovery after partial failure. Tie the behavior to `aviation_maintenance_repair_create_aircraft_workflow` where applicable, and make it visible in `AviationMaintenanceRepairWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Offline fixtures, replay tests, conflict queues, recovery logs, and user-visible degraded-mode warnings. The evidence should be package-local in `src/pyAppGen/pbcs/aviation_maintenance_repair` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 40. Human-in-the-loop automation for Maintenance Visit
-
-**Justification:** Automation should accelerate aircraft maintenance, components, work cards, compliance, airworthiness, deferred defects, and mro operations while preserving accountability for high-risk decisions.
-
-**Improvement:** Set explicit automation boundaries for `maintenance_visit`: auto-approve, auto-reject, suggest-only, require-review, and block-until-evidence states with policy-based routing. Tie the behavior to `aviation_maintenance_repair_record_component_workflow` where applicable, and make it visible in `AviationMaintenanceRepairWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Automation policy tests, reviewer queues, override reasons, and assistant action audit trails. The evidence should be package-local in `src/pyAppGen/pbcs/aviation_maintenance_repair` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 41. Package discovery and fit scoring for Airworthiness Directive
-
-**Justification:** Users selecting PBCs need transparent fit reasoning, especially when domains are adjacent but not overlapping.
-
-**Improvement:** Improve package metadata so composition can explain when `aviation_maintenance_repair` fits a prompt, what entities it owns, what APIs/events it exposes, and what adjacent PBCs it depends on. Tie the behavior to `aviation_maintenance_repair_create_aircraft_workflow` where applicable, and make it visible in `AviationMaintenanceRepairWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Discovery manifests, prompt-selection tests, overlap rationale links, and composition DSL examples. The evidence should be package-local in `src/pyAppGen/pbcs/aviation_maintenance_repair` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 42. Configuration deployment pipeline for Deferred Defect
-
-**Justification:** Configuration changes can materially alter aviation maintenance and repair; they need the same discipline as code releases.
-
-**Improvement:** Add configuration promotion for `deferred_defect` across draft, test, approved, active, deprecated, and rollback states with impact analysis before activation. Tie the behavior to `aviation_maintenance_repair_record_component_workflow` where applicable, and make it visible in `AviationMaintenanceRepairWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Config diff views, approval workflows, simulation before activation, and rollback tests. The evidence should be package-local in `src/pyAppGen/pbcs/aviation_maintenance_repair` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 43. Workbench command completeness for Compliance Release
-
-**Justification:** A PBC does not fully surface its capabilities if users must call hidden APIs for core work.
-
-**Improvement:** Expose every high-value operation for `compliance_release` in the UI: create, validate, approve, simulate, correct, assign, export, retry, close, and audit-proof verification. Tie the behavior to `aviation_maintenance_repair_create_aircraft_workflow` where applicable, and make it visible in `AviationMaintenanceRepairWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** UI action coverage tests, permission-aware disabled states, keyboard paths, and assistant handoff links. The evidence should be package-local in `src/pyAppGen/pbcs/aviation_maintenance_repair` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 44. Document packet and evidence vault for Aviation Maintenance Repair Policy Rule
-
-**Justification:** Documents often carry the legal or operational truth behind aircraft maintenance, components, work cards, compliance, airworthiness, deferred defects, and mro operations.
-
-**Improvement:** Create a governed evidence vault for `aviation_maintenance_repair_policy_rule` documents, attachments, source spans, extracted fields, signatures, approvals, and retention labels. Tie the behavior to `aviation_maintenance_repair_record_component_workflow` where applicable, and make it visible in `AviationMaintenanceRepairWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Evidence models, source-to-field lineage, signature validation, retention policies, and proof exports. The evidence should be package-local in `src/pyAppGen/pbcs/aviation_maintenance_repair` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 45. Data correction and amendment history for Aviation Maintenance Repair Runtime Parameter
-
-**Justification:** World-class systems correct mistakes without rewriting history or confusing downstream consumers.
-
-**Improvement:** Support formal amendments for `aviation_maintenance_repair_runtime_parameter` that preserve original values, correction reason, approving actor, effective date, downstream event impacts, and replay behavior. Tie the behavior to `aviation_maintenance_repair_create_aircraft_workflow` where applicable, and make it visible in `AviationMaintenanceRepairWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Amendment tables, correction events, projection replay tests, and side-by-side before/after UI. The evidence should be package-local in `src/pyAppGen/pbcs/aviation_maintenance_repair` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 46. External participant collaboration for Aviation Maintenance Repair Schema Extension
-
-**Justification:** Many aviation maintenance and repair workflows require outside parties, but they must not gain direct access to internal tables.
-
-**Improvement:** Add controlled collaboration portals or API views for external participants related to `aviation_maintenance_repair_schema_extension`, limited to scoped evidence submission, status checks, comments, and dispute responses. Tie the behavior to `aviation_maintenance_repair_record_component_workflow` where applicable, and make it visible in `AviationMaintenanceRepairWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Participant role policies, scoped tokens, submission audit trails, and inbound evidence validation. The evidence should be package-local in `src/pyAppGen/pbcs/aviation_maintenance_repair` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 47. Advanced dependency freshness scoring for Aviation Maintenance Repair Control Assertion
-
-**Justification:** A record may be valid locally but unsafe if dependency evidence is stale or incomplete.
-
-**Improvement:** Score freshness and reliability of dependencies used by `aviation_maintenance_repair_control_assertion`, including consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, referenced projections, configuration versions, and external submissions. Tie the behavior to `aviation_maintenance_repair_create_aircraft_workflow` where applicable, and make it visible in `AviationMaintenanceRepairWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Freshness indicators, blocking rules, stale-event simulations, and workbench dependency health panels. The evidence should be package-local in `src/pyAppGen/pbcs/aviation_maintenance_repair` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 48. Model governance and explainability for Aviation Maintenance Repair Governed Model
-
-**Justification:** Governed AI is mandatory for professional-grade automation in Aviation Maintenance and Repair.
-
-**Improvement:** For every predictive or agentic feature around `aviation_maintenance_repair_governed_model`, record model version, prompt or ruleset version, training/evaluation evidence, confidence, explanation, and human feedback. Tie the behavior to `aviation_maintenance_repair_record_component_workflow` where applicable, and make it visible in `AviationMaintenanceRepairWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Model cards, prompt/version manifests, feedback loops, drift tests, and audit proof for recommendations. The evidence should be package-local in `src/pyAppGen/pbcs/aviation_maintenance_repair` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 49. High-scale partitioning and archival for Aircraft
-
-**Justification:** Better-than-world-class packages must remain operable after years of high-volume domain history.
-
-**Improvement:** Plan scale behavior for `aircraft`: tenant partitioning, archival policies, cold storage, retention-aware search, projection compaction, and large-batch replay. Tie the behavior to `aviation_maintenance_repair_create_aircraft_workflow` where applicable, and make it visible in `AviationMaintenanceRepairWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Partition tests, archive/retrieve fixtures, retention enforcement, and replay benchmarks. The evidence should be package-local in `src/pyAppGen/pbcs/aviation_maintenance_repair` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 50. Release gate expansion for Component
-
-**Justification:** The PBC should not claim domain coverage unless release evidence proves the claim end to end.
-
-**Improvement:** Expand release gates for `aviation_maintenance_repair` so every schema, service, API, event, handler, UI, rule, parameter, agent skill, seed scenario, and improvement backlog item maps to executable evidence. Tie the behavior to `aviation_maintenance_repair_record_component_workflow` where applicable, and make it visible in `AviationMaintenanceRepairWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Release audit checks, manifest traceability, generated-app smoke tests, and missing-capability blockers. The evidence should be package-local in `src/pyAppGen/pbcs/aviation_maintenance_repair` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+- PBC key from `manifest.py`: `aviation_maintenance_repair`.
+- Domain description in the manifest: aircraft maintenance, components, work cards, compliance, airworthiness, deferred defects, and MRO operations.
+- Owned tables in scope today: `aircraft`, `component`, `work_card`, `maintenance_visit`, `airworthiness_directive`, `deferred_defect`, and `compliance_release`.
+- Public APIs in scope today: `POST /aircrafts`, `POST /components`, `POST /work-cards`, `POST /maintenance-visits`, `POST /airworthiness-directives`, and `GET /aviation-maintenance-repair-workbench`.
+- Event surfaces already declared: emitted `AviationMaintenanceRepairCreated`, `AviationMaintenanceRepairUpdated`, `AviationMaintenanceRepairApproved`, `AviationMaintenanceRepairExceptionOpened`; consumed `PolicyChanged`, `AuditEventSealed`, `OperationalKpiChanged`.
+- UI fragments already declared: `AviationMaintenanceRepairWorkbench`, `AviationMaintenanceRepairDetail`, and `AviationMaintenanceRepairAssistantPanel`.
+- Release artifacts already expected by the PBC: `SPECIFICATION.md` and `RELEASE_EVIDENCE.md`.
+
+## Hand-Curated Improvement Backlog
+
+### 1. Aircraft configuration baseline and effectivity control
+**Justification:** Maintenance planning is only trustworthy when each tail has a precise baseline for operator configuration, installed options, engine/APU fit, cabin layout, and effectivity cut-ins that change task applicability.
+**Improvement:** Add a governed aircraft configuration baseline that records tail number, manufacturer serial number, fleet subtype, option codes, embodiment status, and task effectivity logic down to ATA chapter and mod standard.
+**Acceptance evidence:** A tail-level baseline view shows current configuration, superseded configurations, effectivity-driven task inclusions, and a trace from each active requirement back to the configuration element that made it applicable.
+
+### 2. Aircraft status and utilization synchronization
+**Justification:** Line and base maintenance decisions depend on current flight hours, flight cycles, parking status, route assignment, and AOG state, not static aircraft master data.
+**Improvement:** Introduce a utilization timeline for each aircraft that synchronizes daily FH/FC accrual, station status, operational interruptions, and maintenance-grounded intervals into one planning surface.
+**Acceptance evidence:** Planning screens can explain why a due task moved forward or backward, and each forecast change is traceable to an underlying utilization update rather than a manual spreadsheet adjustment.
+
+### 3. Serialized component hierarchy and as-installed history
+**Justification:** Aviation MRO requires a reliable as-installed record for serialized components so engineers can reconstruct where a unit was installed, when it moved, and what maintenance history follows it.
+**Improvement:** Model parent-child installation history across aircraft, engine, module, assembly, and rotable component positions with removal reason, install reason, and condition at movement time.
+**Acceptance evidence:** For any serialized unit, the system can show full movement history, current position, prior defects carried with the unit, and related work cards that triggered install or removal.
+
+### 4. Time-controlled component and life-limited part tracking
+**Justification:** LLPs and other time-controlled parts are safety-critical; missing remaining life or incorrect back-to-birth logic creates direct airworthiness risk.
+**Improvement:** Expand component records to carry back-to-birth time, since-new/since-overhaul counters, hard-time limits, soft alerts, and shop visit resets for serialized and batch-controlled parts.
+**Acceptance evidence:** The backlog includes alerts for approaching limits, a clear reason when a component is blocked from installation, and release evidence showing remaining life calculations used at signoff.
+
+### 5. Maintenance program versioning and applicability
+**Justification:** A maintenance organization needs to know which program revision governed planning at any moment, especially when MPD, operator AMP, escalation approvals, or reliability-driven interval changes diverge.
+**Improvement:** Create versioned maintenance program entities that hold task intervals, effectivity, escalation references, bridging logic, and supersession history for each fleet or operator group.
+**Acceptance evidence:** A planner can open any forecasted task and see the exact program revision, interval source, escalation approval reference, and superseded revision history that produced it.
+
+### 6. Work card revision, effectivity, and signoff block control
+**Justification:** Work cards are not generic tickets; they must preserve the revision of the source data, required signoff blocks, consumables, tooling, and effectivity to the aircraft or component being worked.
+**Improvement:** Add work card versioning with revision source, task skill code, access requirements, reference document revision, required signatures, and effectivity rules before execution begins.
+**Acceptance evidence:** A technician opening a work card sees the locked revision set, required signoff roles, and a warning if the card was generated against an out-of-date manual or inapplicable effectivity.
+
+### 7. Non-routine work card generation during visit execution
+**Justification:** Heavy checks and defect-finding inspections routinely create non-routine work that must stay linked to the originating inspection, zone, panel, and finding evidence.
+**Improvement:** Enable controlled generation of non-routine work cards from routine tasks, inspections, and defect findings, with linkage back to originating card, station, zone, and inspection result.
+**Acceptance evidence:** Visit control can trace every non-routine card to the triggering finding, see its impact on visit critical path, and confirm whether closure evidence satisfied the originating inspection requirement.
+
+### 8. Defect log model from pilot report to rectification
+**Justification:** Defects move through observation, troubleshooting, rectification, deferral, recurrence review, and closure; the backlog should reflect that operating chain instead of treating defects as flat records.
+**Improvement:** Rework deferred defect handling into a full defect log that records pilot reports, maintenance observations, troubleshooting steps, rectification attempts, deferral decisions, and closeout statements.
+**Acceptance evidence:** Each defect shows a chronological technical narrative with who reported it, what troubleshooting occurred, why it was deferred or cleared, and which maintenance release ultimately closed it.
+
+### 9. MEL/CDL deferment control with countdown management
+**Justification:** MEL and CDL items are governed by category limits, operating procedures, placarding, dispatch conditions, and expiration countdowns that require far more control than a generic deferred defect status.
+**Improvement:** Add MEL/CDL-specific deferment records with category, expiry basis, operational limitations, maintenance procedures, placard requirements, station limitations, and countdown visibility.
+**Acceptance evidence:** Dispatch-facing views show remaining time before expiry, required operational procedures, required maintenance actions, and automatic escalation when a deferment approaches its allowed limit.
+
+### 10. Airworthiness directive applicability and compliance planning
+**Justification:** AD control is core to continuous airworthiness; the system must distinguish not-applicable, one-time, repetitive, terminating action, and AMOC-driven compliance paths.
+**Improvement:** Extend airworthiness directive records to hold applicability logic, compliance method, repeat interval, terminating action, AMOC references, embodiment evidence, and overdue exposure by aircraft and component.
+**Acceptance evidence:** For every AD, the PBC can show applicable population, due status, compliance evidence, open exceptions, and whether the next due is suppressed by terminating action or modified by approved alternative means.
+
+### 11. Service bulletin and OEM campaign decision register
+**Justification:** Not every SB is mandatory, but maintenance planning needs a disciplined decision trail for incorporation, deferral, partial embodiment, or rejection.
+**Improvement:** Introduce an SB decision register that records technical evaluation, cost and downtime impact, embodiment strategy, affected fleet, required kits, and linkage to work scope when adopted.
+**Acceptance evidence:** Engineering can review an SB and see the decision basis, adoption status by tail or component population, embodiment completion, and open exposure where the decision has not yet been executed.
+
+### 12. Engineering order and repair scheme governance
+**Justification:** Operators often work through engineering orders, repair drawings, and approved repairs that sit between discovered damage and routine card execution.
+**Improvement:** Add controlled engineering order records with repair classification, approval basis, structural or systems effect, serial or tail applicability, and expiry or replacement conditions.
+**Acceptance evidence:** A damage or repair record can be traced to the engineering authorization that allowed it, with evidence that the repair was performed on the approved population and within its stated conditions.
+
+### 13. Maintenance visit planning around check packages and ground time
+**Justification:** A maintenance visit is a constrained event balancing check package content, slot duration, hangar capacity, labor mix, material readiness, and operational return-to-service date.
+**Improvement:** Expand `maintenance_visit` into a visit planning model with planned scope, visit milestones, dock or bay assignment, critical path tasks, access dependencies, and ground-time consumption.
+**Acceptance evidence:** Visit dashboards show planned versus actual milestone movement, slipped critical path work cards, material blockers, and the impact of added non-routine scope on the release date.
+
+### 14. Zone, ATA, and inspection campaign orchestration
+**Justification:** Inspections are usually organized by zone, ATA system, structural area, or campaign type, and planners need a way to understand where open inspection exposure still sits.
+**Improvement:** Introduce inspection campaign objects for zonal inspections, structural programs, corrosion programs, borescope campaigns, and repetitive inspection clusters, all linked to work card generation and findings.
+**Acceptance evidence:** Supervisors can filter open inspection findings by zone or ATA, review associated non-routines, and confirm whether a campaign is complete enough to release the aircraft or component.
+
+### 15. Duplicate inspection and critical task enforcement
+**Justification:** Certain maintenance tasks require independent inspection or duplicate inspection; missing that second check is a direct compliance failure.
+**Improvement:** Add task-level flags for independent inspection, duplicate inspection, and critical task status, with separate authorization checks for performer and inspector and explicit block on self-release.
+**Acceptance evidence:** The system prevents invalid self-signoff, records both inspection roles distinctly, and includes duplicate-inspection evidence in release-to-service packages.
+
+### 16. Technician authorization matrix by task family and aircraft type
+**Justification:** Signoff rights are constrained by license, type authorization, company authorization, shop qualification, and sometimes special process approval.
+**Improvement:** Model technician authorizations by aircraft type, engine type, task family, inspection privilege, shop capability, and authorization validity dates.
+**Acceptance evidence:** Before signoff, the workbench can explain whether the selected technician is authorized, which authorization record was used, and why an attempted certification was blocked if it failed.
+
+### 17. Shift handover and unfinished work continuity
+**Justification:** Multi-shift maintenance fails when task context, tool status, panel access, and safety precautions disappear between handovers.
+**Improvement:** Add structured shift handover records to maintenance visits and work cards that capture open access panels, isolated systems, installed tags, incomplete steps, and outstanding engineering questions.
+**Acceptance evidence:** Incoming shifts can open a handover board showing unfinished work, safety-critical precautions still active, and explicit acknowledgement that handover information was reviewed before work resumed.
+
+### 18. Tooling issue, return, and calibration lockout
+**Justification:** A released task should not rely on uncalibrated torque tools, expired test equipment, or missing controlled tooling.
+**Improvement:** Track controlled tooling assignment to work cards, including issue and return status, calibration expiry, substitute-tool approvals, and special-tool availability during visit planning.
+**Acceptance evidence:** Execution screens block work requiring a lapsed tool, and release evidence shows calibrated tools used for tasks that demanded controlled tooling.
+
+### 19. Consumables, shelf-life, and hazardous material checks
+**Justification:** Sealants, adhesives, lubricants, and hazardous materials often have shelf-life, mix-life, storage, and disposal constraints that matter to maintenance quality records.
+**Improvement:** Add consumable controls for batch identity, expiry, mix start and end time, storage condition, and hazardous handling notes linked to work card execution.
+**Acceptance evidence:** Completed work cards can show which consumable batch was used, whether it was within allowed life, and whether special handling or disposal evidence was captured.
+
+### 20. Parts request, kitting, and pick shortage visibility
+**Justification:** Work scope slips when cards are released without material readiness; planners need a live view of kit completeness before docking or line execution windows.
+**Improvement:** Create a maintenance material board that links work cards to requested parts, kit status, shortages, alternates under evaluation, and expected delivery against visit milestones.
+**Acceptance evidence:** Visit control can see which critical path cards are blocked by material, which kits are complete, and which shortages have approved alternates or engineering concessions.
+
+### 21. Parts traceability pack for serialized and life-limited parts
+**Justification:** Airworthy installation depends on traceable release documents, serial identity, life status, and authorized source, especially for serialized and life-limited hardware.
+**Improvement:** Add a traceability pack to component records holding authorized release certificate data, serial and batch information, life documents, repair history, and source chain before installation.
+**Acceptance evidence:** Installation screens can show the full traceability pack, highlight missing or conflicting release data, and prevent installation of a part lacking required authorized release evidence.
+
+### 22. Quarantine flow for suspect, unapproved, or damaged parts
+**Justification:** Suspect or damaged material must be segregated immediately so it cannot accidentally re-enter stock or be fitted to an aircraft.
+**Improvement:** Introduce quarantine states for parts with damage, traceability gaps, suspected unapproved part indicators, missing release documents, or failed incoming inspection results.
+**Acceptance evidence:** Quarantined items are visibly segregated from serviceable material, every release from quarantine requires explicit technical justification, and blocked installations reference the quarantine reason.
+
+### 23. Rotable exchange, repair, and warranty loop visibility
+**Justification:** Rotables move through removal, replacement, repair vendor dispatch, return, warranty claim, and re-stock; that loop should stay connected to the originating aircraft event.
+**Improvement:** Add rotable lifecycle tracking with removal cause, replacement serial, repair order progress, warranty claim state, and serviceable return disposition.
+**Acceptance evidence:** Reliability and planning teams can open a rotable history and see whether repeat removals, repair turnaround delays, or warranty recoveries are affecting fleet availability.
+
+### 24. Cannibalization governance and restoration tracking
+**Justification:** Cannibalization is sometimes operationally necessary but creates secondary restoration work and traceability obligations that need close control.
+**Improvement:** Add a governed cannibalization process recording donor aircraft, recipient aircraft, urgency basis, restoration due-back, reinspection requirements, and final technical closeout.
+**Acceptance evidence:** Every cannibalization action is reversible in the record, restoration tasks remain visible until complete, and fleet controllers can see open donor-aircraft exposure created by the removal.
+
+### 25. Vendor repair station and subcontracted work evidence
+**Justification:** MRO organizations frequently rely on outside repair stations, but the operator still needs complete evidence of capability, release, and turn-around performance.
+**Improvement:** Extend component and maintenance visit records to capture subcontracted work scope, vendor capability basis, expected return date, received documentation, and technical acceptance checks on return.
+**Acceptance evidence:** A returned unit or outsourced work package cannot close until required vendor release evidence is present and accepted by the receiving technical authority.
+
+### 26. NDT, borescope, and photographic evidence capture
+**Justification:** Findings from NDT, borescope inspections, and visual damage assessments often depend on media evidence and method details, not just typed remarks.
+**Improvement:** Add structured inspection evidence capture for inspection method, inspector qualification, defect location reference, measured result, annotated images, and disposition decision.
+**Acceptance evidence:** Engineering can review a finding with its supporting media, qualification context, and measured values, and the release package includes references to accepted inspection evidence where required.
+
+### 27. Release-to-service and certificate of release to service pack
+**Justification:** The final release decision needs a complete, auditable bundle proving the aircraft or component met technical, inspection, material, and authorization requirements.
+**Improvement:** Build a release-to-service pack around `compliance_release` that assembles completed work cards, required inspections, defect disposition, deferred item status, tooling checks, part traceability, and certifier authorization.
+**Acceptance evidence:** Certifying staff can review one release pack showing why the item is eligible for release, and the system blocks release if any mandatory evidence is still missing or contradictory.
+
+### 28. Deferred defect risk board and fleet exposure view
+**Justification:** A deferred defect is rarely isolated; fleet-wide exposure matters when the same issue is active across multiple tails or stations.
+**Improvement:** Add a defect risk board that ranks open deferred defects by MEL/CDL category, recurrence, route limitations, overdue risk, and fleet concentration.
+**Acceptance evidence:** Reliability and maintenance control can see which defects are concentrated across the fleet, which ones are nearing dispatch or interval limits, and which require immediate engineering attention.
+
+### 29. Repeat defect and recurring snag detection
+**Justification:** Recurring snags often signal ineffective troubleshooting, unsuitable repairs, or latent design problems; they should be visible without manual spreadsheet work.
+**Improvement:** Detect repeats by ATA, symptom pattern, aircraft tail, station, component serial, and elapsed time since last clearance, with thresholds configurable by fleet engineering.
+**Acceptance evidence:** A defect card clearly states when it is considered recurrent, references related prior occurrences, and routes repeat events into engineering or reliability review queues.
+
+### 30. Reliability program metrics by ATA, system, and component
+**Justification:** Reliability control is a core MRO discipline, and the backlog should support measures such as repeat rates, removals, delay causes, and defect concentration by system.
+**Improvement:** Add a reliability analytics layer that computes recurring defect rate, unscheduled removal rate, delay and cancellation contributors, repeat intervals, and top offenders by ATA chapter and component family.
+**Acceptance evidence:** Reliability users can drill from a fleet metric into the exact defects, removals, and work cards that produced it, with period-over-period trend comparisons.
+
+### 31. Deferred defect aging versus MEL/CDL interval conflict detection
+**Justification:** Aging defects become especially dangerous when planning systems miss the interaction between actual aircraft utilization and deferment category clocks.
+**Improvement:** Add a rule set that compares projected aircraft utilization against MEL/CDL expiry logic and warns when an apparently acceptable deferral will breach before the next planned maintenance opportunity.
+**Acceptance evidence:** Maintenance control receives forward-looking alerts that explain the forecast breach date, the utilization assumption behind it, and the maintenance options available to avoid non-compliance.
+
+### 32. Maintenance forecast from FH, FC, and calendar projections
+**Justification:** Effective planning depends on combining hours, cycles, and calendar limits into a single due list that updates as fleet usage changes.
+**Improvement:** Build a forecast engine that projects due tasks and component removals using actual accrual history, planned schedule, buffer rules, and operator planning thresholds.
+**Acceptance evidence:** Planners can compare today’s forecast with a prior snapshot, identify what changed, and verify that the due driver for each item is clearly labeled as FH, FC, calendar, or combined logic.
+
+### 33. AOG triage workbench
+**Justification:** AOG events compress maintenance decision time and require a different operating surface than routine planning or visit execution.
+**Improvement:** Add an AOG workbench focused on immediate defect status, available authorized staff, nearby parts options, open engineering questions, deferred possibilities, and release blockers.
+**Acceptance evidence:** Controllers can open a single screen for an AOG event and see technical status, material status, manpower status, and the next decision needed to recover the aircraft.
+
+### 34. Line maintenance execution workbench
+**Justification:** Transit and overnight line work relies on short windows, station-specific capability, and rapid signoff, so it needs its own focused UI rather than a generic detail page.
+**Improvement:** Create a line maintenance workbench optimized for open defects, due tasks, shift assignment, dispatch-critical limits, and rapid review of release blockers.
+**Acceptance evidence:** Line users can move from tail status to due cards, open defects, authorizations, and release readiness within one workflow without traversing visit-oriented screens.
+
+### 35. Base maintenance and heavy check control tower
+**Justification:** Heavy checks need dock-level control over zones, trades, materials, non-routines, and critical path progress across many days or weeks.
+**Improvement:** Create a base maintenance control tower showing dock occupancy, package progress, open access dependencies, major findings, material blockers, and release-to-service readiness by visit.
+**Acceptance evidence:** Visit managers can review progress by zone and trade, identify the true release driver, and see whether late findings are still cascading into downstream task groups.
+
+### 36. Release evidence pack generation for visits and major work scopes
+**Justification:** Release evidence should not be assembled manually at the end of a visit; the pack should accumulate throughout execution and expose gaps early.
+**Improvement:** Generate a release evidence pack that continuously gathers signed cards, duplicate inspection proof, deferred defect statements, parts traceability, and authorization checks as work progresses.
+**Acceptance evidence:** Before final signoff, the visit team can preview the release pack, see missing evidence by category, and export a final package aligned with the PBC’s `RELEASE_EVIDENCE.md` expectation.
+
+### 37. Event boundary hardening for maintenance state changes
+**Justification:** MRO state changes should emit technically meaningful events so downstream consumers can react without reading internal tables or reverse-engineering status text.
+**Improvement:** Replace generic lifecycle emissions with domain-specific maintenance events for aircraft grounded, work card released, work card signed, defect deferred, AD complied, component installed, and release issued.
+**Acceptance evidence:** Event catalogs show clear payload contracts, each event maps to a business action in the UI, and no downstream integration depends on undocumented interpretation of internal statuses.
+
+### 38. API boundary expansion for validation, simulation, and evidence export
+**Justification:** The current create-oriented APIs are too thin for serious maintenance planning, operational review, and controlled integration with surrounding systems.
+**Improvement:** Add explicit APIs for applicability validation, forecast simulation, evidence export, release pack preview, defect recurrence lookup, and authorization pre-check without bypassing governed workflows.
+**Acceptance evidence:** API consumers can validate or simulate decisions before mutation, obtain evidence bundles without scraping UI views, and receive structured failure reasons when a command is blocked.
+
+### 39. Audit trail by aircraft, component, work card, and certifier
+**Justification:** Investigations often start from a tail, a serial number, a work card, or a certifier, and the audit story should be reconstructable from any of those entry points.
+**Improvement:** Build a cross-linked audit trail that pivots across aircraft, component serial, work card, maintenance visit, defect, and certifying staff actions with exact timestamps and source context.
+**Acceptance evidence:** An investigator can start from any one of those entities and reconstruct the full maintenance narrative without separate database forensics.
+
+### 40. Controlled correction and supersession of signed maintenance records
+**Justification:** Maintenance records occasionally require correction, but corrections must preserve the original statement and make the superseding rationale explicit.
+**Improvement:** Add a controlled correction workflow for signed records that preserves original content, records who requested the correction, why it was needed, and which statement superseded it.
+**Acceptance evidence:** Corrected records remain fully visible in audit history, the active statement is clearly marked, and release evidence distinguishes original signoff from authorized correction.
+
+### 41. Technical document intake for AMM, CMM, IPC, AD, and SB revisions
+**Justification:** Maintenance execution quality depends on the current technical document set, and document change control should drive task and planning change rather than sit outside the PBC.
+**Improvement:** Add controlled ingestion for manual revisions, IPC updates, AD revisions, SB revisions, and shop findings so the PBC can detect affected tasks, cards, or component rules.
+**Acceptance evidence:** When a source document changes, planners can see impacted tasks or components, acknowledge the review outcome, and verify whether existing cards must be regenerated or reissued.
+
+### 42. Agent skill for work-scope drafting from planning packages
+**Justification:** Agent assistance is useful only if it accelerates real planner work such as drafting visit scope, grouping due tasks, and identifying missing prerequisites from source documents.
+**Improvement:** Add an assistant skill that reads maintenance program inputs, AD/SB decisions, open defects, and material status to draft a proposed visit or line package for planner review.
+**Acceptance evidence:** The assistant produces a reviewable draft scope with cited source reasons for each proposed task, and planners can accept, reject, or edit each proposal before work cards are generated.
+
+### 43. Agent skill for defect troubleshooting and evidence assembly
+**Justification:** Troubleshooting assistance should help technicians and controllers gather evidence and prior history without inventing technical actions or bypassing approved data.
+**Improvement:** Add an assistant skill that summarizes similar prior defects, related troubleshooting steps, component movement history, and open engineering references while clearly separating facts from recommendations.
+**Acceptance evidence:** Defect users can see the evidence set the assistant used, confirm that proposed next steps came from approved references or prior internal outcomes, and reject unsupported suggestions.
+
+### 44. Agent guardrails around maintenance release and certifying authority
+**Justification:** The assistant must never imply certifying authority it does not hold, especially around maintenance release, duplicate inspection, or airworthiness decisions.
+**Improvement:** Introduce hard guardrails so assistant actions stop at evidence gathering, draft preparation, and controlled recommendations unless a human with the right authorization completes the certifying step.
+**Acceptance evidence:** Attempted assistant actions that would cross certifying boundaries are blocked with explicit rationale, and release packs show only human certifier identities in final signoff fields.
+
+### 45. Reliability-to-planning feedback loop
+**Justification:** Reliability findings are valuable only if they influence planning, troubleshooting depth, inspection focus, or component strategy in future work.
+**Improvement:** Link reliability findings back into maintenance program reviews, visit planning decisions, repeat defect thresholds, and targeted inspection campaigns for high-failure systems.
+**Acceptance evidence:** A reliability trend can be traced to a resulting planning change, extra inspection, engineering review, or component strategy decision instead of remaining a read-only report.
+
+### 46. Fleet configuration drift and embodiment status dashboard
+**Justification:** Operators frequently manage mixed embodiment states across a fleet, and missing visibility leads to wrong assumptions about AD, SB, or engineering order applicability.
+**Improvement:** Add a configuration drift dashboard showing embodiment status for mods, SBs, repairs, software loads, and cabin or systems differences across the fleet.
+**Acceptance evidence:** Engineering and planning can identify which tails remain unembodied, why they differ from the fleet baseline, and what task or compliance exposure that difference creates.
+
+### 47. Lease return and redelivery technical records readiness
+**Justification:** Redelivery events put unusual pressure on technical records quality, traceability, and open item closure, so they deserve explicit backlog treatment.
+**Improvement:** Add a redelivery readiness mode that assembles aircraft configuration history, major maintenance records, AD status, LLP traceability, repair status, and open defect exposure into one review package.
+**Acceptance evidence:** Commercial and technical teams can see a gap list for redelivery readiness, with each missing technical record or unresolved exposure assigned to a specific owner.
+
+### 48. Cabin damage, structural repair, and corrosion campaign management
+**Justification:** Corrosion findings, structural repairs, and cabin damage often span multiple visits and require long-lived tracking beyond the card that first detected them.
+**Improvement:** Add campaign tracking for corrosion prevention, structural repair follow-up, and cabin damage recovery with recurring inspection requirements, engineering references, and long-term embodiment status.
+**Acceptance evidence:** Users can review open corrosion or structural campaigns by aircraft and zone, see prior repairs and follow-up requirements, and confirm whether the next visit must carry forward work.
+
+### 49. Pre-close cross-check gate before visit or line release
+**Justification:** Many release escapes happen because open cards, missing tools, unresolved material issues, or authorization gaps are discovered too late.
+**Improvement:** Add a pre-close gate that cross-checks open work cards, outstanding defects, overdue inspections, missing tool returns, unresolved part traceability issues, and invalid signoff authority before release.
+**Acceptance evidence:** The system produces a release-blocker checklist with explicit pass or fail status for each category, and nothing can progress to final release while blockers remain unresolved.
+
+### 50. Continuous airworthiness executive dashboard
+**Justification:** Leadership needs a live view of technical risk, release confidence, and fleet exposure that stays grounded in actual maintenance data rather than after-the-fact spreadsheets.
+**Improvement:** Build an executive dashboard showing AD compliance risk, deferred defect exposure, repeat defect pressure, visit release confidence, tooling and material readiness, and certifier capacity across the fleet.
+**Acceptance evidence:** Leaders can review a current fleet airworthiness posture, drill into the underlying technical records driving each indicator, and export a defensible summary for release and compliance reviews.

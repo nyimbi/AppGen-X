@@ -1,418 +1,414 @@
-# Advertising Campaign Operations PBC Better-Than-World-Class Improvement Backlog
+# Advertising Campaign Operations Improvement Backlog
 
-## Purpose
-
-This file identifies, justifies, and describes 50 high-impact improvements for `advertising_campaign_operations`. The backlog is specific to campaigns, budgets, audiences, placements, creative approvals, performance, billing, and optimization and is intended to move the PBC from release-auditable scaffolding toward complete, specialist-grade domain coverage.
+This backlog replaces scaffold content with a single hand-curated, advertising-specific improvement set for the `advertising_campaign_operations` PBC.
 
 ## Current Domain Evidence Used
 
-- Stable PBC key: `advertising_campaign_operations`.
-- Domain purpose: Campaigns, budgets, audiences, placements, creative approvals, performance, billing, and optimization.
-- Owned domain tables: `ad_campaign`, `audience_segment`, `media_placement`, `creative_asset`, `campaign_budget`, `performance_result`, `billing_event`, `advertising_campaign_operations_policy_rule`, `advertising_campaign_operations_runtime_parameter`, `advertising_campaign_operations_schema_extension`, `advertising_campaign_operations_control_assertion`, `advertising_campaign_operations_governed_model`.
-- Public APIs: `POST /ad-campaigns`, `POST /audience-segments`, `POST /media-placements`, `POST /creative-assets`, `POST /campaign-budgets`, `GET /advertising-campaign-operations-workbench`.
-- Emitted AppGen-X events: `AdvertisingCampaignOperationsCreated`, `AdvertisingCampaignOperationsUpdated`, `AdvertisingCampaignOperationsApproved`, `AdvertisingCampaignOperationsExceptionOpened`.
-- Consumed AppGen-X events: `PolicyChanged`, `CustomerUpdated`, `SupplierQualified`.
-- Current standard surfaces include: `ad_campaign_management`, `advertising_campaign_operations_workflow`, `advertising_campaign_operations_analytics`, `configuration_schema`, `rule_engine`, `parameter_engine`, `owned_schema_migrations_models`, `appgen_x_outbox_inbox_eventing`, `idempotent_handlers`, `retry_dead_letter_evidence`.
-- Current advanced surfaces include: `advertising_campaign_operations_event_sourced_operational_history`, `advertising_campaign_operations_multi_tenant_policy_isolation`, `advertising_campaign_operations_schema_evolution_resilience`, `advertising_campaign_operations_autonomous_anomaly_detection`, `advertising_campaign_operations_semantic_document_instruction_understanding`, `advertising_campaign_operations_predictive_risk_scoring`, `advertising_campaign_operations_counterfactual_scenario_simulation`, `advertising_campaign_operations_cryptographic_audit_proofs`.
+- Exact manifest key: `advertising_campaign_operations`.
+- Manifest description: campaigns, budgets, audiences, placements, creative approvals, performance, billing, and optimization.
+- Owned tables named in the manifest: `ad_campaign`, `audience_segment`, `media_placement`, `creative_asset`, `campaign_budget`, `performance_result`, `billing_event`, `advertising_campaign_operations_policy_rule`, `advertising_campaign_operations_runtime_parameter`, `advertising_campaign_operations_schema_extension`, `advertising_campaign_operations_control_assertion`, and `advertising_campaign_operations_governed_model`.
+- Public APIs named in the manifest: `POST /ad-campaigns`, `POST /audience-segments`, `POST /media-placements`, `POST /creative-assets`, `POST /campaign-budgets`, and `GET /advertising-campaign-operations-workbench`.
+- Emitted events named in the manifest: `AdvertisingCampaignOperationsCreated`, `AdvertisingCampaignOperationsUpdated`, `AdvertisingCampaignOperationsApproved`, and `AdvertisingCampaignOperationsExceptionOpened`.
+- Consumed events named in the manifest: `PolicyChanged`, `CustomerUpdated`, and `SupplierQualified`.
+- Existing UI fragments named in the manifest: `AdvertisingCampaignOperationsWorkbench`, `AdvertisingCampaignOperationsDetail`, and `AdvertisingCampaignOperationsAssistantPanel`.
+- Existing workflows named in the manifest: `advertising_campaign_operations_create_ad_campaign_workflow` and `advertising_campaign_operations_record_audience_segment_workflow`.
 
-## 50 High-Impact Improvements
+### 1. Canonical campaign brief and objective model
 
-### 1. Canonical lifecycle state model for Ad Campaign
+**Justification:** Campaign execution quality falls apart when the brief is just free text and operators interpret objectives, audience promises, and success metrics differently.
 
-**Justification:** This closes shallow CRUD gaps by making every advertising campaign operations transition explainable and testable instead of implicit in free-form status values.
+**Improvement:** Add a structured campaign brief model for objective, offer, audience promise, channels, primary KPI, guardrails, and launch dependencies so every `ad_campaign` starts from a shared planning record instead of improvised notes.
 
-**Improvement:** Define a complete state machine for `ad_campaign` with explicit draft, validated, blocked, approved, active, suspended, corrected, closed, archived, and reopened states. Tie the behavior to `advertising_campaign_operations_create_ad_campaign_workflow` where applicable, and make it visible in `AdvertisingCampaignOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Brief templates render in the workbench, required fields block incomplete launch requests, and tests prove the same brief produces the same draft campaign shape across repeated submissions.
 
-**Acceptance evidence:** State-transition tests, invalid-transition fixtures, workbench state badges, and emitted AppGen-X transition events for AdvertisingCampaignOperationsCreated, AdvertisingCampaignOperationsUpdated, AdvertisingCampaignOperationsApproved. The evidence should be package-local in `src/pyAppGen/pbcs/advertising_campaign_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 2. Flight plan and channel-mix planning
 
-### 2. Domain intake and normalization for Audience Segment
+**Justification:** Advertising teams need an explicit record of when spend should start, peak, pause, and taper across channels or pacing conversations become guesswork.
 
-**Justification:** The PBC cannot reach complete domain coverage unless it handles the messy front door of campaigns, budgets, audiences, placements, creative approvals, performance, billing, and optimization, not only already-clean records.
+**Improvement:** Extend campaign planning to capture flight windows, channel mix, daypart intent, geo splits, and planned ramp curves for each campaign so media buying and pacing share one source of truth.
 
-**Improvement:** Build a typed intake pipeline for `audience_segment` that accepts structured API payloads, document-derived instructions, batch loads, and assistant-generated drafts while normalizing identifiers, dates, units, parties, and jurisdictional context. Tie the behavior to `advertising_campaign_operations_record_audience_segment_workflow` where applicable, and make it visible in `AdvertisingCampaignOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Flight-plan views appear in the detail page, plan changes are versioned, and scenario tests compare planned versus adjusted mix before launch approval.
 
-**Acceptance evidence:** Golden intake fixtures, rejected-record queues, field-level normalization evidence, and assistant previews before governed datastore mutation. The evidence should be package-local in `src/pyAppGen/pbcs/advertising_campaign_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 3. Media buying package negotiation and hold ledger
 
-### 3. Specialist validation rules for Media Placement
+**Justification:** Inventory reservations, rate negotiations, and publisher holds are core buying work, yet they are usually lost in email and never reconciled to final placements.
 
-**Justification:** World-class Advertising Campaign Operations requires rules that domain experts can reason about, version, test, and roll back without code edits.
+**Improvement:** Add a buying ledger that records negotiated packages, rates, hold expiries, seller contacts, make-good promises, and approval status for each proposed `media_placement`.
 
-**Improvement:** Add a domain rule compiler for `media_placement` that supports threshold rules, eligibility rules, dependency rules, temporal windows, conflicting-instruction detection, and override justification. Tie the behavior to `advertising_campaign_operations_create_ad_campaign_workflow` where applicable, and make it visible in `AdvertisingCampaignOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Buyers can see open holds and expired options in one queue, package changes are auditable, and launch cannot proceed when required inventory holds have lapsed.
 
-**Acceptance evidence:** Rule simulation tests, versioned rule manifests, rule impact reports, and UI rule editors linked to `ADVERTISING_CAMPAIGN_OPERATIONS_DATABASE_URL, ADVERTISING_CAMPAIGN_OPERATIONS_EVENT_TOPIC, ADVERTISING_CAMPAIGN_OPERATIONS_RETRY_LIMIT`. The evidence should be package-local in `src/pyAppGen/pbcs/advertising_campaign_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 4. Budget versioning, reserves, and commitment tracking
 
-### 4. Parameter governance and tuning for Creative Asset
+**Justification:** Campaign budgets change constantly, and without versioned reserve logic it is impossible to explain why approved spend diverged from booked spend.
 
-**Justification:** Parameters are where operations teams tune advertising campaign operations; unbounded constants would make the PBC brittle and unsafe in real deployments.
+**Improvement:** Model `campaign_budget` as a versioned object with working budget, approved budget, committed budget, held reserve, contingency reserve, and released reserve values tied to campaign milestones.
 
-**Improvement:** Expose bounded runtime parameters for `creative_asset` covering risk thresholds, SLA windows, confidence floors, escalation cutoffs, batch sizes, retry limits, and human-confirmation requirements. Tie the behavior to `advertising_campaign_operations_record_audience_segment_workflow` where applicable, and make it visible in `AdvertisingCampaignOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Budget diffs show who changed what and why, reserve releases require the right approval path, and reconciliation tests prove no placement can commit above approved available funds.
 
-**Acceptance evidence:** Parameter schema validation, tenant overrides, approval history, rollback controls, and workbench diff views. The evidence should be package-local in `src/pyAppGen/pbcs/advertising_campaign_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 5. Daily and weekly pacing guardrails
 
-### 5. Deep owned schema expansion for Campaign Budget
+**Justification:** Overspend and underdelivery are the operational failures users feel first, so pacing has to be a first-class control rather than a downstream report.
 
-**Justification:** A single payload column cannot express the full surface of campaigns, budgets, audiences, placements, creative approvals, performance, billing, and optimization or prove cross-PBC boundaries are respected.
+**Improvement:** Build pacing controls that compare actual spend and delivery against daily, weekly, and flight-to-date targets, with configurable tolerance bands and automated exception opening when variance persists.
 
-**Improvement:** Extend the owned schema around `campaign_budget` with normalized child tables for line-level evidence, party roles, approvals, attachments, comments, metrics, exception reasons, and control assertions. Tie the behavior to `advertising_campaign_operations_create_ad_campaign_workflow` where applicable, and make it visible in `AdvertisingCampaignOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** The workbench shows pacing heatmaps, persistent variance triggers exceptions, and tests cover overspend, underdelivery, and controlled recovery after manual intervention.
 
-**Acceptance evidence:** Migrations, models, relationship tests, schema contract snapshots, and no shared-table access outside the `advertising_campaign_operations_` namespace. The evidence should be package-local in `src/pyAppGen/pbcs/advertising_campaign_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 6. Creative brief-to-asset lineage
 
-### 6. Event-sourced operational history for Performance Result
+**Justification:** Creative operations need to know which approved brief produced which asset set, otherwise performance and compliance reviews cannot trace intent to execution.
 
-**Justification:** Temporal reconstruction is essential for better-than-world-class auditability and dispute resolution in advertising campaign operations.
+**Improvement:** Connect each `creative_asset` to its originating brief, requested message angle, required disclosures, target audience, format constraints, and revision chain from first draft to final approved export.
 
-**Improvement:** Capture every material mutation of `performance_result` as immutable AppGen-X events with actor, tenant, command, policy version, idempotency key, before/after summary, and projection checkpoint. Tie the behavior to `advertising_campaign_operations_record_audience_segment_workflow` where applicable, and make it visible in `AdvertisingCampaignOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Asset detail views show revision lineage, superseded assets are visibly marked, and launch validation fails when a placement references an asset without approved brief lineage.
 
-**Acceptance evidence:** Replay tests, projection checksums, event ordering evidence, and point-in-time workbench views. The evidence should be package-local in `src/pyAppGen/pbcs/advertising_campaign_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 7. Multi-stage creative approval matrix
 
-### 7. Projection and read-model strategy for Billing Event
+**Justification:** Creative approval is rarely one click; brand, legal, regulatory, and client sign-off often occur in a specific order with different evidence requirements.
 
-**Justification:** The workbench should not force users to infer domain truth from raw tables; each projection should answer a real operating question.
+**Improvement:** Add approval matrices for `creative_asset` that define required approver roles, serial versus parallel steps, conditional review paths, rejection reasons, and expiry rules for stale approvals.
 
-**Improvement:** Create purpose-built projections for `billing_event`: operational queue, executive KPI rollup, exception aging, compliance evidence, agent task context, and external dependency health. Tie the behavior to `advertising_campaign_operations_create_ad_campaign_workflow` where applicable, and make it visible in `AdvertisingCampaignOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Approval queues show stage ownership, rejection comments remain attached to the asset version they refer to, and tests prove that missing approvals block trafficking.
 
-**Acceptance evidence:** Projection contracts, freshness SLAs, backfill tests, and visible stale-projection warnings. The evidence should be package-local in `src/pyAppGen/pbcs/advertising_campaign_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 8. Audience eligibility, suppression, and recency rules
 
-### 8. Exception taxonomy and remediation for Advertising Campaign Operations Policy Rule
+**Justification:** Audience targeting quality depends on who is explicitly excluded as much as who is included, especially for churn, remarketing, and conversion campaigns.
 
-**Justification:** High-value PBCs win on exception throughput; generic “failed” states hide the details operators need.
+**Improvement:** Expand `audience_segment` governance with inclusion criteria, suppression lists, recency windows, exclusion precedence, audience freshness timestamps, and approval for high-risk targeting combinations.
 
-**Improvement:** Model the full exception taxonomy for `advertising_campaign_operations_policy_rule`, including severity, root cause, blocking dependency, remediation owner, due date, retry eligibility, escalation path, and closure evidence. Tie the behavior to `advertising_campaign_operations_record_audience_segment_workflow` where applicable, and make it visible in `AdvertisingCampaignOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Segment previews show included and suppressed counts, stale audiences raise warnings before launch, and rules tests prove exclusion precedence is deterministic.
 
-**Acceptance evidence:** Exception queues, aging metrics, remediation playbooks, dead-letter linkage, and closure test fixtures for invalid creative approvals. The evidence should be package-local in `src/pyAppGen/pbcs/advertising_campaign_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 9. Audience overlap and saturation analysis
 
-### 9. Predictive risk scoring for Advertising Campaign Operations Runtime Parameter
+**Justification:** Separate audience segments can look correct individually while competing against each other and driving waste through overlap and frequency saturation.
 
-**Justification:** The package should warn users before advertising campaign operations work fails, breaches policy, or creates downstream cost.
+**Improvement:** Add overlap analysis that estimates shared reach across selected `audience_segment` records and flags likely cannibalization before media plans are approved.
 
-**Improvement:** Add predictive risk scoring for `advertising_campaign_operations_runtime_parameter` using domain features from owned tables, consumed events PolicyChanged, CustomerUpdated, SupplierQualified, rule outcomes, aging, anomaly signals, and historical corrections. Tie the behavior to `advertising_campaign_operations_create_ad_campaign_workflow` where applicable, and make it visible in `AdvertisingCampaignOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Planners can compare overlap matrices in the workbench, launch checks warn when overlap exceeds policy thresholds, and simulation tests show projected reach loss from duplicate targeting.
 
-**Acceptance evidence:** Feature manifests, score explanations, calibration reports, drift alerts, and tests for low/medium/high-risk scenarios. The evidence should be package-local in `src/pyAppGen/pbcs/advertising_campaign_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 10. Geo, daypart, device, and placement context targeting
 
-### 10. Counterfactual simulation for Advertising Campaign Operations Schema Extension
+**Justification:** Targeting logic needs the same depth as real buying decisions or operators will work around the PBC for the settings that matter most.
 
-**Justification:** Advanced users need to ask “what would happen if” before committing changes to live campaigns, budgets, audiences, placements, creative approvals, performance, billing, and optimization operations.
+**Improvement:** Extend targeting controls to represent geo hierarchy, daypart windows, device preferences, placement environment, language, and context suitability constraints at campaign and placement level.
 
-**Improvement:** Provide scenario simulation for `advertising_campaign_operations_schema_extension`: policy change, capacity constraint, deadline shift, price/rate change, eligibility change, disruption, and manual override outcomes. Tie the behavior to `advertising_campaign_operations_record_audience_segment_workflow` where applicable, and make it visible in `AdvertisingCampaignOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Trafficking screens expose the targeting dimensions cleanly, invalid targeting combinations are rejected at validation time, and API fixtures cover mixed-scope overrides.
 
-**Acceptance evidence:** Simulation APIs, non-mutating sandbox state, comparison reports, and workbench side-by-side scenario panels. The evidence should be package-local in `src/pyAppGen/pbcs/advertising_campaign_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 11. Frequency cap and reach governance
 
-### 11. Autonomous anomaly triage for Advertising Campaign Operations Control Assertion
+**Justification:** Aggressive delivery can damage performance and brand perception if frequency is unmanaged, especially across overlapping placements and channels.
 
-**Justification:** A world-class PBC should reduce analyst burden without hiding the reasoning behind automated triage.
+**Improvement:** Add campaign and placement level reach goals, frequency cap policies, reset windows, and conflict detection so planners can reason about exposure management before launch.
 
-**Improvement:** Implement anomaly detection for `advertising_campaign_operations_control_assertion` that identifies outliers, duplicate submissions, impossible sequences, stale dependencies, unusual amounts/counts/durations, and contradictory fields. Tie the behavior to `advertising_campaign_operations_create_ad_campaign_workflow` where applicable, and make it visible in `AdvertisingCampaignOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Reach and frequency settings appear in planning and activation views, policy violations raise pre-launch issues, and tests prove caps are enforced consistently across repeated updates.
 
-**Acceptance evidence:** Explainable anomaly cards, reviewer feedback loops, false-positive tracking, and suppression governance. The evidence should be package-local in `src/pyAppGen/pbcs/advertising_campaign_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 12. Placement trafficking readiness checklist
 
-### 12. Semantic document understanding for Advertising Campaign Operations Governed Model
+**Justification:** Many campaign failures are not strategic mistakes; they are trafficking misses such as wrong sizes, missing tags, or incomplete placement instructions.
 
-**Justification:** Document-heavy work in Advertising Campaign Operations cannot be complete if the assistant only answers questions and cannot prepare accurate governed changes.
+**Improvement:** Add a trafficking checklist for each `media_placement` covering placement IDs, ad sizes, assets attached, URLs, tracking parameters, flight dates, targeting alignment, and external delivery instructions.
 
-**Improvement:** Train the package assistant to parse domain documents and instructions for `advertising_campaign_operations_governed_model`, extract obligations, dates, parties, quantities, identifiers, and exceptions, then map them to safe draft mutations. Tie the behavior to `advertising_campaign_operations_record_audience_segment_workflow` where applicable, and make it visible in `AdvertisingCampaignOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Placements cannot move to ready state with missing checklist items, traffickers get a dedicated readiness queue, and tests cover the most common incomplete-placement failures.
 
-**Acceptance evidence:** Document extraction tests, confidence thresholds, redaction handling, source span citations, and human confirmation workflows. The evidence should be package-local in `src/pyAppGen/pbcs/advertising_campaign_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 13. Tracking tag, pixel, and UTM governance
 
-### 13. Agent-safe CRUD execution for Ad Campaign
+**Justification:** Attribution disputes usually begin with inconsistent tracking definitions rather than with reporting math.
 
-**Justification:** The PBC agent must be a first-class operator but never a hidden bypass around RBAC, rules, or owned datastore boundaries.
+**Improvement:** Create a governed layer for tags, pixels, conversion events, landing URLs, and UTM conventions so every placement knows which measurement payloads are required before activation.
 
-**Improvement:** Add a professional chatbot skill for `ad_campaign` that can create, update, correct, close, and annotate records only through policy-checked commands, approval gates, and previewed diffs. Tie the behavior to `advertising_campaign_operations_create_ad_campaign_workflow` where applicable, and make it visible in `AdvertisingCampaignOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Validation catches missing or malformed tracking settings, approved tag bundles are reusable across placements, and release evidence includes the tracking configuration attached to launch.
 
-**Acceptance evidence:** Skill manifests, permission tests, preview/confirm flows, blocked-action evidence, and audit events for every assistant mutation. The evidence should be package-local in `src/pyAppGen/pbcs/advertising_campaign_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 14. Conversion event dictionary and ownership
 
-### 14. Workbench persona coverage for Audience Segment
+**Justification:** Teams cannot compare campaign performance if “conversion” means a different action in each workflow, dashboard, or partner feed.
 
-**Justification:** A generic detail page underserves the domain; each role needs the exact controls and evidence they use daily.
+**Improvement:** Maintain a controlled event dictionary that defines billable actions, optimization events, reporting events, and source-of-truth ownership for each conversion type used by `performance_result`.
 
-**Improvement:** Design dedicated workbench panels for `audience_segment`: operator queue, supervisor approvals, analyst exceptions, auditor evidence, configuration owner, and agent-assistance review. Tie the behavior to `advertising_campaign_operations_record_audience_segment_workflow` where applicable, and make it visible in `AdvertisingCampaignOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Performance views link metrics back to named dictionary entries, duplicate event definitions are blocked, and tests prove reporting uses the correct event mapping for each campaign.
 
-**Acceptance evidence:** UI contract entries, route tests, empty/error/loading states, and permission-aware action availability. The evidence should be package-local in `src/pyAppGen/pbcs/advertising_campaign_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 15. Attribution window and model version control
 
-### 15. Cross-PBC dependency contracts for Media Placement
+**Justification:** Results change materially when attribution windows or weighting rules change, so the operating system has to preserve which model was in force at the time.
 
-**Justification:** Composable packages fail when hidden table coupling enters the domain model.
+**Improvement:** Version attribution settings by campaign and reporting period, including view-through and click-through windows, reattribution rules, and default model selection for performance reporting.
 
-**Improvement:** Represent dependencies for `media_placement` through declared APIs, consumed events PolicyChanged, CustomerUpdated, SupplierQualified, and projections rather than shared tables, with explicit freshness, ownership, and fallback behavior. Tie the behavior to `advertising_campaign_operations_create_ad_campaign_workflow` where applicable, and make it visible in `AdvertisingCampaignOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Historical reports can be regenerated with the original attribution version, model changes require approval when campaigns are active, and tests prove prior reports remain reproducible.
 
-**Acceptance evidence:** Dependency manifests, contract tests, stale dependency alerts, and no foreign-table references in generated artifacts. The evidence should be package-local in `src/pyAppGen/pbcs/advertising_campaign_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 16. Experiment design registry for creative and audience tests
 
-### 16. API completeness and versioning for Creative Asset
+**Justification:** Advertising experimentation becomes noisy when hypotheses, holdouts, and success criteria are undocumented or spread across separate tools.
 
-**Justification:** Complete domain coverage requires both command and query surfaces, not only happy-path create endpoints.
+**Improvement:** Add an experiment registry that records hypothesis, test cells, control cell, exposure split, success metric, stopping rule, and decision owner for creative, audience, and placement experiments.
 
-**Improvement:** Expand APIs beyond POST /ad-campaigns, POST /audience-segments, POST /media-placements to cover search, validation-only commands, simulation, bulk intake, exception closure, evidence export, projection reads, and idempotent corrections. Tie the behavior to `advertising_campaign_operations_record_audience_segment_workflow` where applicable, and make it visible in `AdvertisingCampaignOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Experiment cards link to the affected campaigns and assets, invalid overlapping test setups are flagged, and post-test decisions are stored with the evidence that supported them.
 
-**Acceptance evidence:** OpenAPI-style route manifests, backward-compatible version tests, deprecation metadata, and idempotency assertions. The evidence should be package-local in `src/pyAppGen/pbcs/advertising_campaign_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 17. Creative fatigue and rotation monitoring
 
-### 17. Typed emitted-event expansion for Campaign Budget
+**Justification:** Strong creative performance decays over time, and operations teams need to know when to rotate assets before results collapse.
 
-**Justification:** Consumers should understand what happened in Advertising Campaign Operations without parsing opaque payloads.
+**Improvement:** Build fatigue monitoring that looks at spend, impressions, CTR, conversion rate, and recency by `creative_asset` to recommend rotation, refresh, or retirement actions.
 
-**Improvement:** Replace generic lifecycle emissions with typed events for each meaningful `campaign_budget` transition, exception, approval, correction, simulation result, and downstream handoff. Tie the behavior to `advertising_campaign_operations_create_ad_campaign_workflow` where applicable, and make it visible in `AdvertisingCampaignOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** The workbench surfaces fatigue signals next to active placements, rotation recommendations cite the underlying trend, and tests cover assets that recover after replacement.
 
-**Acceptance evidence:** Event schema tests, event examples, compatibility checks, and emitted-event coverage in release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/advertising_campaign_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 18. Brand safety controls and adjacency policy packs
 
-### 18. Consumed-event handlers for Performance Result
+**Justification:** Brand safety is not just a publisher blacklist; it includes content adjacency, category exclusions, and escalation rules when inventory quality changes mid-flight.
 
-**Justification:** A PBC is composable only when incoming events affect its own domain state predictably and safely.
+**Improvement:** Model brand safety policies with exclusion categories, block lists, allow lists, adjacency requirements, escalation severity, and fallback buying guidance for affected placements.
 
-**Improvement:** Implement idempotent handlers for consumed events PolicyChanged, CustomerUpdated, SupplierQualified that update projections, open dependency exceptions, recalculate risk, and preserve source event lineage. Tie the behavior to `advertising_campaign_operations_record_audience_segment_workflow` where applicable, and make it visible in `AdvertisingCampaignOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Policy packs can be assigned to campaigns, unsafe inventory creates explainable exceptions, and consumed `PolicyChanged` events update affected campaign warnings without manual cleanup.
 
-**Acceptance evidence:** Duplicate-event tests, handler side-effect boundaries, dead-letter fixtures, and lineage links back to source events. The evidence should be package-local in `src/pyAppGen/pbcs/advertising_campaign_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 19. Supplier and publisher qualification response
 
-### 19. Retry and dead-letter operations for Billing Event
+**Justification:** Buying teams need operational reactions when a supply source is newly approved, downgraded, or disqualified, not just a passive record that something changed elsewhere.
 
-**Justification:** Dead letters are not just plumbing; they are domain work queues that can block campaigns, budgets, audiences, placements, creative approvals, performance, billing, and optimization.
+**Improvement:** Handle `SupplierQualified` updates by recalculating placement eligibility, flagging impacted campaigns, and routing review tasks to buyers when an in-flight or planned placement depends on that supplier.
 
-**Improvement:** Create operational tools for retrying, quarantining, explaining, and resolving dead-lettered `billing_event` events with max-attempt policy, poison-message detection, and replay safety. Tie the behavior to `advertising_campaign_operations_create_ad_campaign_workflow` where applicable, and make it visible in `AdvertisingCampaignOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Qualification changes create visible review items, impacted placements show before-and-after eligibility status, and handler tests prove duplicate supplier events remain idempotent.
 
-**Acceptance evidence:** Dead-letter workbench, retry eligibility tests, replay audit proof, and operator action logs. The evidence should be package-local in `src/pyAppGen/pbcs/advertising_campaign_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 20. Bid strategy and floor-price governance
 
-### 20. RBAC and attribute policy for Advertising Campaign Operations Policy Rule
+**Justification:** Optimization choices are part of campaign operations, and they need controlled settings for bids, floors, and pacing interactions rather than opaque partner defaults.
 
-**Justification:** High-impact domain operations need finer controls than generic RBAC grants.
+**Improvement:** Add governed settings for target bid strategy, floor price, bid caps, bid adjustments, and manual override reasoning at campaign and placement level.
 
-**Improvement:** Extend permissions for `advertising_campaign_operations_policy_rule` from coarse read/create/update/admin to action-level and attribute-aware policies based on role, tenant, jurisdiction, monetary/materiality threshold, and exception severity. Tie the behavior to `advertising_campaign_operations_record_audience_segment_workflow` where applicable, and make it visible in `AdvertisingCampaignOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Buyers can compare strategy changes over time, approval is required for high-risk bid overrides, and simulations show expected spend effects before an active campaign is changed.
 
-**Acceptance evidence:** Permission matrix docs, ABAC policy tests, denied-action UI states, and assistant skill permission checks. The evidence should be package-local in `src/pyAppGen/pbcs/advertising_campaign_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 21. Inventory reallocation and make-good management
 
-### 21. Continuous control testing for Advertising Campaign Operations Runtime Parameter
+**Justification:** When placements underdeliver or inventory disappears, operators need a structured way to reallocate spend and honor promised delivery without losing the audit trail.
 
-**Justification:** Controls should run during operations, not only during release audit or manual review.
+**Improvement:** Add make-good workflows that record underdelivery cause, replacement inventory, budget transfer, revised KPI expectation, and customer-facing explanation for affected campaigns.
 
-**Improvement:** Embed control assertions for `advertising_campaign_operations_runtime_parameter` that continuously test segregation of duties, required approvals, stale exceptions, policy drift, duplicate records, and boundary violations. Tie the behavior to `advertising_campaign_operations_create_ad_campaign_workflow` where applicable, and make it visible in `AdvertisingCampaignOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Reallocation decisions stay linked to the original placement, budget transfers remain balanced, and exception closure requires evidence that the agreed remedy was applied.
 
-**Acceptance evidence:** Control dashboards, failing-control events, test fixtures, and release evidence tied to `advertising_campaign_operations_control_assertion` records. The evidence should be package-local in `src/pyAppGen/pbcs/advertising_campaign_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 22. Budget-to-billing reconciliation
 
-### 22. Cryptographic audit proofing for Advertising Campaign Operations Schema Extension
+**Justification:** Campaign operations is incomplete if it stops at planned spend and cannot explain how booked, delivered, and billed amounts diverged.
 
-**Justification:** Better-than-world-class auditability requires proof of integrity, not merely logs stored in mutable tables.
+**Improvement:** Reconcile `campaign_budget`, `media_placement`, `performance_result`, and `billing_event` so buyers and finance users can compare approved spend, delivered value, invoiced amount, and unresolved variance.
 
-**Improvement:** Hash-chain material `advertising_campaign_operations_schema_extension` decisions, documents, emitted events, and release-evidence snapshots to make tampering visible without exposing sensitive payloads. Tie the behavior to `advertising_campaign_operations_record_audience_segment_workflow` where applicable, and make it visible in `AdvertisingCampaignOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Reconciliation views show line-item variance, unexplained billing differences open tracked exceptions, and tests prove matched and unmatched billing events are classified correctly.
 
-**Acceptance evidence:** Proof manifests, verification APIs, redacted proof exports, and audit-ledger handoff events. The evidence should be package-local in `src/pyAppGen/pbcs/advertising_campaign_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 23. Performance result normalization and source confidence
 
-### 23. Privacy, consent, and secrecy controls for Advertising Campaign Operations Control Assertion
+**Justification:** Performance feeds arrive with different grains, lateness, and trust levels, so raw ingest is not enough for operational decision-making.
 
-**Justification:** Complete domain coverage must account for protected data and restricted operational evidence.
+**Improvement:** Normalize `performance_result` by source, metric grain, reporting delay, deduplication status, and confidence score so optimization decisions can account for feed quality as well as feed value.
 
-**Improvement:** Add field-level privacy classifications for `advertising_campaign_operations_control_assertion`, consent checks, masking rules, retention schedules, legal holds, and assistant redaction policies. Tie the behavior to `advertising_campaign_operations_create_ad_campaign_workflow` where applicable, and make it visible in `AdvertisingCampaignOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Performance records show source confidence and dedupe status, stale or low-confidence data is visually separated in dashboards, and tests cover conflicting feed arrivals.
 
-**Acceptance evidence:** Retention tests, masked UI snapshots, consent-blocked mutation fixtures, and export controls. The evidence should be package-local in `src/pyAppGen/pbcs/advertising_campaign_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 24. Forecast-versus-actual planning loop
 
-### 24. Multi-tenant operating model for Advertising Campaign Operations Governed Model
+**Justification:** Teams need to compare expected delivery and spend against what is happening now, not just look backward once the campaign has already drifted.
 
-**Justification:** The PBC should scale across organizations while preserving independent policy and compliance boundaries.
+**Improvement:** Add a planning loop that compares forecast impressions, clicks, conversions, spend, and pacing to actuals by flight segment, placement, and audience slice.
 
-**Improvement:** Support tenant-specific `advertising_campaign_operations_governed_model` rules, data residency, encryption context, configuration, seed data, and release evidence without allowing cross-tenant leakage. Tie the behavior to `advertising_campaign_operations_record_audience_segment_workflow` where applicable, and make it visible in `AdvertisingCampaignOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Forecast variance charts are available in the workbench, forecast revisions are versioned, and tests prove updated forecasts do not overwrite historical plans.
 
-**Acceptance evidence:** Tenant isolation tests, tenant-scoped parameters, key-rotation evidence, and cross-tenant negative fixtures. The evidence should be package-local in `src/pyAppGen/pbcs/advertising_campaign_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 25. Pre-launch readiness gate
 
-### 25. Schema evolution and extension registry for Ad Campaign
+**Justification:** Launch quality depends on many small dependencies being complete at the same time, and a manual checklist in chat is not auditable enough.
 
-**Justification:** Domain teams will add fields; the PBC must evolve without breaking APIs, events, or workbench projections.
+**Improvement:** Introduce a pre-launch gate that checks approved budget, approved creative, valid audience, trafficking completeness, tracking readiness, supplier eligibility, and policy compliance before activation.
 
-**Improvement:** Make schema extensions for `ad_campaign` first-class with compatibility checks, migration previews, projection backfills, field ownership, and rollback metadata. Tie the behavior to `advertising_campaign_operations_create_ad_campaign_workflow` where applicable, and make it visible in `AdvertisingCampaignOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Launch attempts produce a pass or fail report with itemized blockers, the gate can be rerun without side effects, and activation is blocked until all mandatory checks pass.
 
-**Acceptance evidence:** Extension registry UI, compatibility tests, migration dry-runs, and backfill release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/advertising_campaign_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 26. In-flight operations command center
 
-### 26. Master data quality gates for Audience Segment
+**Justification:** Once campaigns go live, operators need one place to triage pacing, delivery, quality, and billing signals without hopping between unrelated screens.
 
-**Justification:** Many advertising campaign operations errors begin as bad reference data; the PBC should catch them before workflow execution.
+**Improvement:** Turn `AdvertisingCampaignOperationsWorkbench` into an in-flight command center with campaign health, pacing alerts, creative fatigue, brand safety issues, supplier changes, and unresolved reconciliation items.
 
-**Improvement:** Define reference-data contracts for `audience_segment`: canonical codes, parties, locations, classifications, calendars, units, currencies, products, assets, or service categories as relevant to the domain. Tie the behavior to `advertising_campaign_operations_record_audience_segment_workflow` where applicable, and make it visible in `AdvertisingCampaignOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Live operations panels load from purpose-built projections, alert drill-downs preserve context, and role tests verify that each persona sees the right command-center actions.
 
-**Acceptance evidence:** Reference validation fixtures, stale-code warnings, mapping tables, and dependency freshness indicators. The evidence should be package-local in `src/pyAppGen/pbcs/advertising_campaign_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 27. Exception taxonomy and remediation playbooks
 
-### 27. Bulk operations and correction workflows for Media Placement
+**Justification:** A single exception bucket hides whether the problem is budget, targeting, creative, trafficking, supplier, measurement, or billing.
 
-**Justification:** Enterprise-scale Advertising Campaign Operations users cannot operate one record at a time.
+**Improvement:** Define a campaign-specific exception taxonomy with severity, root cause family, owner role, remediation playbook, due window, and required closure evidence for each exception class.
 
-**Improvement:** Add bulk load, bulk validate, bulk approve, and bulk correction workflows for `media_placement` with partial success, row-level errors, resumability, and rollback. Tie the behavior to `advertising_campaign_operations_create_ad_campaign_workflow` where applicable, and make it visible in `AdvertisingCampaignOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Exceptions are grouped by remediation path, closure requires the evidence type defined for that class, and reports show aging by exception family instead of a single generic count.
 
-**Acceptance evidence:** CSV/API batch fixtures, resumable job state, row-level audit evidence, and assistant-generated correction suggestions. The evidence should be package-local in `src/pyAppGen/pbcs/advertising_campaign_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 28. SLA timers for approvals, launches, and fixes
 
-### 28. Lifecycle collaboration and tasking for Creative Asset
+**Justification:** Campaign operations success depends on timing, so approval and repair work needs deadline awareness tied to campaign flight risk.
 
-**Justification:** Domain collaboration should live inside the PBC boundary and remain auditable with the record it affects.
+**Improvement:** Add SLA timers for creative approval, audience approval, trafficking completion, launch readiness, pacing response, and billing reconciliation based on campaign start dates and risk level.
 
-**Improvement:** Attach tasks, comments, ownership, due dates, handoffs, and escalation threads to `creative_asset` without leaking into external shared task tables. Tie the behavior to `advertising_campaign_operations_record_audience_segment_workflow` where applicable, and make it visible in `AdvertisingCampaignOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Timers pause and resume according to state changes, overdue items are highlighted in work queues, and tests prove SLA calculations respect working calendars and campaign start times.
 
-**Acceptance evidence:** Task tables, comment audit history, notification events, escalation SLAs, and role-specific task queues. The evidence should be package-local in `src/pyAppGen/pbcs/advertising_campaign_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 29. Buyer workbench
 
-### 29. SLA and service-level governance for Campaign Budget
+**Justification:** Buyers need a working surface centered on packages, placements, rates, holds, and supplier health rather than a generic campaign detail page.
 
-**Justification:** Users need to know when campaigns, budgets, audiences, placements, creative approvals, performance, billing, and optimization is late, blocked, or at risk before customer or regulator impact.
+**Improvement:** Add a buyer-specific workbench view that prioritizes negotiating packages, hold expiries, placement readiness, supplier changes, and make-good recommendations.
 
-**Improvement:** Define SLAs for `campaign_budget` across intake, validation, approval, exception resolution, event handling, downstream projection refresh, and release-evidence generation. Tie the behavior to `advertising_campaign_operations_create_ad_campaign_workflow` where applicable, and make it visible in `AdvertisingCampaignOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Buyer routes render role-specific columns and actions, package edits remain auditable, and permissions prevent non-buyers from performing buying-only actions.
 
-**Acceptance evidence:** SLA breach events, timers, configurable calendars, workbench aging buckets, and tests for pause/resume behavior. The evidence should be package-local in `src/pyAppGen/pbcs/advertising_campaign_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 30. Creative approver workbench
 
-### 30. Operational analytics cockpit for Performance Result
+**Justification:** Approvers need fast review, side-by-side revision context, and explicit disclosure checks to keep approvals moving without guesswork.
 
-**Justification:** World-class operations require leading indicators, not only record counts.
+**Improvement:** Add a creative approval workbench with preview panels, diffing between revisions, checklist prompts, rejection reason libraries, and approval delegation controls.
 
-**Improvement:** Build analytics for `performance_result`: throughput, backlog, aging, approval latency, exception rate, risk distribution, automation acceptance, correction rate, and downstream dependency health. Tie the behavior to `advertising_campaign_operations_record_audience_segment_workflow` where applicable, and make it visible in `AdvertisingCampaignOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Approvers can compare asset versions in one screen, rejection feedback stays bound to the reviewed version, and approval latency metrics are visible by stage and team.
 
-**Acceptance evidence:** Metric definitions, projection tests, drill-through routes, export APIs, and anomaly overlays. The evidence should be package-local in `src/pyAppGen/pbcs/advertising_campaign_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 31. Audience analyst workbench
 
-### 31. Decision intelligence and recommendations for Billing Event
+**Justification:** Audience specialists need dedicated tools for freshness, overlap, suppression, and risky targeting combinations that do not belong in a generic queue.
 
-**Justification:** The PBC should help expert users decide faster while showing evidence and uncertainty.
+**Improvement:** Add an audience analyst view focused on segment freshness, overlap warnings, suppression coverage, targeting complexity, and simulated reach impact before launch.
 
-**Improvement:** Generate ranked recommendations for `billing_event` such as next best action, likely resolution, required evidence, policy adjustment, staffing/capacity response, or downstream handoff. Tie the behavior to `advertising_campaign_operations_create_ad_campaign_workflow` where applicable, and make it visible in `AdvertisingCampaignOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Analysts can approve or reject audiences with cited reasons, risky combinations are highlighted before activation, and tests confirm the view only exposes audience-governance actions.
 
-**Acceptance evidence:** Recommendation explanations, confidence intervals, feedback capture, model governance records, and rejection reasons. The evidence should be package-local in `src/pyAppGen/pbcs/advertising_campaign_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 32. Executive portfolio workbench
 
-### 32. Quality and completeness scoring for Advertising Campaign Operations Policy Rule
+**Justification:** Senior stakeholders need a portfolio view of campaign health, not row-level operating detail.
 
-**Justification:** Operators should see whether a record is truly ready, not just technically saved.
+**Improvement:** Add a portfolio workbench that rolls up active campaign spend, pacing risk, launch readiness, experiment outcomes, brand safety exposure, and unresolved billing variance across accounts or business units.
 
-**Improvement:** Score each `advertising_campaign_operations_policy_rule` record for completeness, consistency, policy readiness, dependency readiness, evidence sufficiency, and downstream composability. Tie the behavior to `advertising_campaign_operations_record_audience_segment_workflow` where applicable, and make it visible in `AdvertisingCampaignOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Portfolio metrics drill into campaign details without losing the executive filter context, rollups reconcile to underlying projections, and tests cover mixed-status campaign portfolios.
 
-**Acceptance evidence:** Scoring rules, missing-evidence lists, readiness badges, and blocking criteria in command handlers. The evidence should be package-local in `src/pyAppGen/pbcs/advertising_campaign_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 33. Agent skill for draft campaign setup from the brief
 
-### 33. End-to-end scenario library for Advertising Campaign Operations Runtime Parameter
+**Justification:** Operators should be able to turn a campaign brief into a governed first draft quickly without bypassing the domain model.
 
-**Justification:** Release evidence is stronger when every important advertising campaign operations behavior has executable examples.
+**Improvement:** Add an assistant skill in `AdvertisingCampaignOperationsAssistantPanel` that converts a structured brief into a draft campaign, initial budget shell, targeting proposal, and launch checklist for human review.
 
-**Improvement:** Create seeded scenarios for `advertising_campaign_operations_runtime_parameter`: normal flow, urgent path, exception path, corrected path, duplicate path, late event path, and audit export path. Tie the behavior to `advertising_campaign_operations_create_ad_campaign_workflow` where applicable, and make it visible in `AdvertisingCampaignOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** The skill produces a preview before writing records, rejected previews leave no partial mutations behind, and audit events show which fields were agent-proposed versus human-confirmed.
 
-**Acceptance evidence:** Scenario seed data, runtime smoke coverage, generated-app fixtures, and story-level workbench screenshots/contracts. The evidence should be package-local in `src/pyAppGen/pbcs/advertising_campaign_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 34. Agent skill for pacing diagnosis and recovery suggestions
 
-### 34. Domain ontology and terminology model for Advertising Campaign Operations Schema Extension
+**Justification:** Pacing problems are frequent and time-sensitive, making them a good fit for explainable guided assistance rather than manual spreadsheet triage.
 
-**Justification:** Precise vocabulary prevents the PBC from misclassifying specialist documents or user instructions.
+**Improvement:** Add an assistant skill that inspects pacing variance, identifies likely causes such as budget caps, supply constraints, creative fatigue, or tracking gaps, and proposes recovery actions for review.
 
-**Improvement:** Add an ontology for `advertising_campaign_operations_schema_extension` terms, synonyms, classifications, relationships, allowed values, and phrase mappings used by the assistant and UI. Tie the behavior to `advertising_campaign_operations_record_audience_segment_workflow` where applicable, and make it visible in `AdvertisingCampaignOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Suggested actions cite the data behind the recommendation, operators can accept or reject each action individually, and tests prove no direct mutation occurs without explicit confirmation.
 
-**Acceptance evidence:** Ontology files, assistant parsing tests, UI glossary, and mapping evidence for domain-specific abbreviations. The evidence should be package-local in `src/pyAppGen/pbcs/advertising_campaign_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 35. Agent skill for governed change bundles
 
-### 35. Advanced search and investigation for Advertising Campaign Operations Control Assertion
+**Justification:** Operators often need coordinated changes across budget, targeting, placements, and assets, and these should move as one reviewed bundle rather than as scattered edits.
 
-**Justification:** Investigators and operators need fast, explainable retrieval across the whole domain surface.
+**Improvement:** Add assistant support for preparing change bundles that package related campaign edits, summarize expected impact, and route the bundle through the correct approval path before execution.
 
-**Improvement:** Provide search across `advertising_campaign_operations_control_assertion` records, events, documents, exceptions, tasks, comments, and audit proofs with filters for tenant, status, risk, date, party, and dependency. Tie the behavior to `advertising_campaign_operations_create_ad_campaign_workflow` where applicable, and make it visible in `AdvertisingCampaignOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Bundle previews show affected records and approvals required, partial execution is prevented when approvals are incomplete, and the final audit trail preserves the original bundle intent.
 
-**Acceptance evidence:** Search index contracts, result provenance, permission-filtered queries, and stale-index warnings. The evidence should be package-local in `src/pyAppGen/pbcs/advertising_campaign_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 36. Event taxonomy expansion for campaign operations
 
-### 36. Reconciliation and closure controls for Advertising Campaign Operations Governed Model
+**Justification:** Generic lifecycle events do not tell downstream systems whether the meaningful change was a launch, hold release, trafficking correction, budget shift, or creative rejection.
 
-**Justification:** Closure is not complete until the PBC can prove no material domain work remains unresolved.
+**Improvement:** Expand emitted events into campaign-specific business events for planning, approval, trafficking, launch, pacing breach, supplier impact, experiment decision, billing variance, and campaign closeout milestones.
 
-**Improvement:** Add reconciliation workflows that compare `advertising_campaign_operations_governed_model` state against consumed events, external projections, expected totals/counts, approvals, and release evidence before closure. Tie the behavior to `advertising_campaign_operations_record_audience_segment_workflow` where applicable, and make it visible in `AdvertisingCampaignOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Event schemas are documented with examples, downstream projections subscribe to specific business events instead of generic updates, and contract tests prove event payload stability.
 
-**Acceptance evidence:** Reconciliation reports, variance thresholds, closure blockers, and AppGen-X closure events. The evidence should be package-local in `src/pyAppGen/pbcs/advertising_campaign_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 37. API boundary expansion for search, validate, simulate, and closeout
 
-### 37. Regulatory and policy reporting for Ad Campaign
+**Justification:** A real operational surface needs query and decision APIs, not just create endpoints.
 
-**Justification:** World-class PBCs turn operational evidence into credible reporting without spreadsheet reconstruction.
+**Improvement:** Extend the PBC API with search, validation-only, simulation, closeout, reconciliation, and evidence export endpoints while keeping command boundaries explicit between planning, activation, and reporting actions.
 
-**Improvement:** Generate domain reporting packs for `ad_campaign` covering statutory, contractual, operational, board, customer, or regulator evidence depending on rights ownership, monetization accuracy, campaign performance, creative workflow evidence, distribution controls, royalty lineage, and channel-specific analytics. Tie the behavior to `advertising_campaign_operations_create_ad_campaign_workflow` where applicable, and make it visible in `AdvertisingCampaignOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Route documentation distinguishes mutation APIs from read models, validation endpoints are side-effect free, and tests prove idempotent retries for command endpoints that accept external request IDs.
 
-**Acceptance evidence:** Report schemas, redaction rules, traceable metric sources, and approval/export audit events. The evidence should be package-local in `src/pyAppGen/pbcs/advertising_campaign_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 38. Idempotent partner ingestion and trafficking imports
 
-### 38. Carbon and resource awareness for Audience Segment
+**Justification:** Buying and trafficking workflows often replay feeds or resend the same payloads, so import paths have to be safe under repetition and partial failure.
 
-**Justification:** Sustainability evidence should be embedded in operations instead of treated as an after-the-fact report.
+**Improvement:** Add idempotent import handling for placement instructions, creative delivery confirmations, and performance feed arrivals using stable external IDs and replay-safe correction logic.
 
-**Improvement:** Where relevant, attach carbon, energy, water, travel, capacity, compute, or resource-footprint metadata to `audience_segment` decisions and batch operations. Tie the behavior to `advertising_campaign_operations_record_audience_segment_workflow` where applicable, and make it visible in `AdvertisingCampaignOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Duplicate imports do not create duplicate placements or metrics, partial failures can be retried safely, and dead-letter evidence preserves the original partner payload reference.
 
-**Acceptance evidence:** Footprint fields, scheduling parameters, exception rules, and dashboards that expose operational tradeoffs. The evidence should be package-local in `src/pyAppGen/pbcs/advertising_campaign_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 39. Event replay and projection recovery
 
-### 39. Resilience and offline behavior for Media Placement
+**Justification:** Operational history is only useful if projections and dashboards can be rebuilt after code changes or corrupted projections.
 
-**Justification:** Real operations keep moving during outages; the PBC must preserve correctness when dependencies are unavailable.
+**Improvement:** Add replay tooling for campaign events and read-model rebuild routines so workbench views can be regenerated from the durable event stream without manual database surgery.
 
-**Improvement:** Define resilience modes for `media_placement`: degraded dependency mode, offline draft capture, delayed event replay, conflict detection, and safe recovery after partial failure. Tie the behavior to `advertising_campaign_operations_create_ad_campaign_workflow` where applicable, and make it visible in `AdvertisingCampaignOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Replay tests rebuild projections to a known checksum, recovery jobs expose progress and failures, and historical campaign timelines match pre-replay snapshots.
 
-**Acceptance evidence:** Offline fixtures, replay tests, conflict queues, recovery logs, and user-visible degraded-mode warnings. The evidence should be package-local in `src/pyAppGen/pbcs/advertising_campaign_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 40. Auditable timeline across planning, buying, launch, and billing
 
-### 40. Human-in-the-loop automation for Creative Asset
+**Justification:** Users need one end-to-end narrative for each campaign that explains how the campaign moved from idea to closeout.
 
-**Justification:** Automation should accelerate campaigns, budgets, audiences, placements, creative approvals, performance, billing, and optimization while preserving accountability for high-risk decisions.
+**Improvement:** Build a consolidated timeline that stitches together brief creation, budget approvals, asset revisions, placement trafficking, launch checks, pacing incidents, supplier changes, billing events, and closeout decisions.
 
-**Improvement:** Set explicit automation boundaries for `creative_asset`: auto-approve, auto-reject, suggest-only, require-review, and block-until-evidence states with policy-based routing. Tie the behavior to `advertising_campaign_operations_record_audience_segment_workflow` where applicable, and make it visible in `AdvertisingCampaignOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Timeline views show actor, timestamp, event class, and linked evidence for each step, users can filter by phase or entity, and tests confirm timeline ordering across multiple record types.
 
-**Acceptance evidence:** Automation policy tests, reviewer queues, override reasons, and assistant action audit trails. The evidence should be package-local in `src/pyAppGen/pbcs/advertising_campaign_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 41. Continuous control testing for approval and spend discipline
 
-### 41. Package discovery and fit scoring for Campaign Budget
+**Justification:** Campaign governance should be continuously checked while work is happening rather than only after a failed launch or audit review.
 
-**Justification:** Users selecting PBCs need transparent fit reasoning, especially when domains are adjacent but not overlapping.
+**Improvement:** Add control assertions that test segregation of duties, launch without approval, spend above approved budget, missing tracking, stale audience approval, and unresolved high-severity brand safety issues.
 
-**Improvement:** Improve package metadata so composition can explain when `advertising_campaign_operations` fits a prompt, what entities it owns, what APIs/events it exposes, and what adjacent PBCs it depends on. Tie the behavior to `advertising_campaign_operations_create_ad_campaign_workflow` where applicable, and make it visible in `AdvertisingCampaignOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Control failures generate actionable exceptions, controls can be run on demand and on schedule, and release evidence includes the most recent control status for active campaigns.
 
-**Acceptance evidence:** Discovery manifests, prompt-selection tests, overlap rationale links, and composition DSL examples. The evidence should be package-local in `src/pyAppGen/pbcs/advertising_campaign_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 42. Versioned policy evidence and approval rationale
 
-### 42. Configuration deployment pipeline for Performance Result
+**Justification:** When a rule changes mid-flight, the team must be able to show which policy version approved the current state and why.
 
-**Justification:** Configuration changes can materially alter advertising campaign operations; they need the same discipline as code releases.
+**Improvement:** Capture policy version, approver rationale, and referenced evidence whenever a creative, budget, audience, or launch gate is approved so changes triggered by `PolicyChanged` remain explainable later.
 
-**Improvement:** Add configuration promotion for `performance_result` across draft, test, approved, active, deprecated, and rollback states with impact analysis before activation. Tie the behavior to `advertising_campaign_operations_record_audience_segment_workflow` where applicable, and make it visible in `AdvertisingCampaignOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Approval records expose policy version and rationale side by side, policy updates can highlight now-outdated approvals, and tests prove previously approved records retain their original evidence lineage.
 
-**Acceptance evidence:** Config diff views, approval workflows, simulation before activation, and rollback tests. The evidence should be package-local in `src/pyAppGen/pbcs/advertising_campaign_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 43. Schema extension registry for channel-specific fields
 
-### 43. Workbench command completeness for Billing Event
+**Justification:** Different channels require different operational metadata, but ad hoc extension fields quickly become ungoverned sprawl.
 
-**Justification:** A PBC does not fully surface its capabilities if users must call hidden APIs for core work.
+**Improvement:** Add a schema extension registry for channel-specific planning, trafficking, and reporting fields with ownership, validation, rollout status, and projection impact declared up front.
 
-**Improvement:** Expose every high-value operation for `billing_event` in the UI: create, validate, approve, simulate, correct, assign, export, retry, close, and audit-proof verification. Tie the behavior to `advertising_campaign_operations_create_ad_campaign_workflow` where applicable, and make it visible in `AdvertisingCampaignOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** New extension fields appear through a governed registry, incompatible changes are blocked before migration, and dry-run reports show which APIs and workbench panels a new field will affect.
 
-**Acceptance evidence:** UI action coverage tests, permission-aware disabled states, keyboard paths, and assistant handoff links. The evidence should be package-local in `src/pyAppGen/pbcs/advertising_campaign_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 44. Multi-tenant policy and workspace isolation
 
-### 44. Document packet and evidence vault for Advertising Campaign Operations Policy Rule
+**Justification:** Shared campaign operations infrastructure must preserve each tenant’s approval rules, targeting restrictions, and release evidence without leakage.
 
-**Justification:** Documents often carry the legal or operational truth behind campaigns, budgets, audiences, placements, creative approvals, performance, billing, and optimization.
+**Improvement:** Isolate tenant policy packs, approval matrices, runtime parameters, supplier eligibility views, and workbench filters so one tenant’s campaign operations settings cannot influence another tenant’s outcomes.
 
-**Improvement:** Create a governed evidence vault for `advertising_campaign_operations_policy_rule` documents, attachments, source spans, extracted fields, signatures, approvals, and retention labels. Tie the behavior to `advertising_campaign_operations_record_audience_segment_workflow` where applicable, and make it visible in `AdvertisingCampaignOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Tenant isolation tests cover reads, writes, projections, and assistant actions, cross-tenant references are rejected, and operational dashboards remain scoped to the active tenant context.
 
-**Acceptance evidence:** Evidence models, source-to-field lineage, signature validation, retention policies, and proof exports. The evidence should be package-local in `src/pyAppGen/pbcs/advertising_campaign_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 45. Consent, privacy, and sensitive-audience safeguards
 
-### 45. Data correction and amendment history for Advertising Campaign Operations Runtime Parameter
+**Justification:** Audience targeting can become a compliance risk quickly if consent state, sensitive categories, or allowed use cases are treated as optional metadata.
 
-**Justification:** World-class systems correct mistakes without rewriting history or confusing downstream consumers.
+**Improvement:** Add audience safeguards for consent status, sensitive targeting categories, retention windows, redaction in assistant prompts, and escalation when a segment’s intended use exceeds policy.
 
-**Improvement:** Support formal amendments for `advertising_campaign_operations_runtime_parameter` that preserve original values, correction reason, approving actor, effective date, downstream event impacts, and replay behavior. Tie the behavior to `advertising_campaign_operations_create_ad_campaign_workflow` where applicable, and make it visible in `AdvertisingCampaignOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** High-risk audiences require elevated review, sensitive fields are masked where appropriate, and tests prove blocked use cases cannot be activated through API, UI, or assistant paths.
 
-**Acceptance evidence:** Amendment tables, correction events, projection replay tests, and side-by-side before/after UI. The evidence should be package-local in `src/pyAppGen/pbcs/advertising_campaign_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 46. Creative asset locking and delivery provenance
 
-### 46. External participant collaboration for Advertising Campaign Operations Schema Extension
+**Justification:** Once an asset version is approved and trafficked, operators need certainty that the delivered file matches the approved file.
 
-**Justification:** Many advertising campaign operations workflows require outside parties, but they must not gain direct access to internal tables.
+**Improvement:** Lock approved creative versions, track export hashes, record delivery destinations, and preserve provenance from approved asset to trafficked placement attachment.
 
-**Improvement:** Add controlled collaboration portals or API views for external participants related to `advertising_campaign_operations_schema_extension`, limited to scoped evidence submission, status checks, comments, and dispute responses. Tie the behavior to `advertising_campaign_operations_record_audience_segment_workflow` where applicable, and make it visible in `AdvertisingCampaignOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Approved assets cannot be silently replaced, provenance views show delivered file lineage, and validation rejects placements that reference an unapproved or superseded asset export.
 
-**Acceptance evidence:** Participant role policies, scoped tokens, submission audit trails, and inbound evidence validation. The evidence should be package-local in `src/pyAppGen/pbcs/advertising_campaign_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 47. Release evidence package automation
 
-### 47. Advanced dependency freshness scoring for Advertising Campaign Operations Control Assertion
+**Justification:** Release assurance for this PBC should include operational proof, not just build output, because campaign failures often come from incorrect rules or incomplete workflows.
 
-**Justification:** A record may be valid locally but unsafe if dependency evidence is stale or incomplete.
+**Improvement:** Generate release evidence that bundles control results, route coverage, event-contract checks, workbench smoke coverage, migration status, and representative campaign lifecycle fixtures for the package.
 
-**Improvement:** Score freshness and reliability of dependencies used by `advertising_campaign_operations_control_assertion`, including consumed events PolicyChanged, CustomerUpdated, SupplierQualified, referenced projections, configuration versions, and external submissions. Tie the behavior to `advertising_campaign_operations_create_ad_campaign_workflow` where applicable, and make it visible in `AdvertisingCampaignOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** `RELEASE_EVIDENCE.md` can be regenerated from current package state, evidence bundles include campaign-specific scenarios, and release checks fail when required proof artifacts are missing.
 
-**Acceptance evidence:** Freshness indicators, blocking rules, stale-event simulations, and workbench dependency health panels. The evidence should be package-local in `src/pyAppGen/pbcs/advertising_campaign_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 48. Post-campaign wrap-up and benchmark library
 
-### 48. Model governance and explainability for Advertising Campaign Operations Governed Model
+**Justification:** Optimization should not end at campaign close; teams need structured learning from what happened to improve the next plan.
 
-**Justification:** Governed AI is mandatory for professional-grade automation in Advertising Campaign Operations.
+**Improvement:** Add a closeout workflow that records final outcomes, variance explanations, creative winners, audience insights, supplier notes, and reusable benchmarks for future planning.
 
-**Improvement:** For every predictive or agentic feature around `advertising_campaign_operations_governed_model`, record model version, prompt or ruleset version, training/evaluation evidence, confidence, explanation, and human feedback. Tie the behavior to `advertising_campaign_operations_record_audience_segment_workflow` where applicable, and make it visible in `AdvertisingCampaignOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Closed campaigns require wrap-up evidence before archival, benchmark summaries are queryable in the workbench, and tests prove historical benchmarks remain read-only once published.
 
-**Acceptance evidence:** Model cards, prompt/version manifests, feedback loops, drift tests, and audit proof for recommendations. The evidence should be package-local in `src/pyAppGen/pbcs/advertising_campaign_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 49. Counterfactual simulation for spend shifts and creative swaps
 
-### 49. High-scale partitioning and archival for Ad Campaign
+**Justification:** Operators frequently need to ask whether moving spend, changing targeting, or rotating creative will help before taking a risky mid-flight action.
 
-**Justification:** Better-than-world-class packages must remain operable after years of high-volume domain history.
+**Improvement:** Add simulation tools that compare current state against hypothetical spend reallocations, creative swaps, targeting relaxations, and supplier replacements using the package’s planning and performance history.
 
-**Improvement:** Plan scale behavior for `ad_campaign`: tenant partitioning, archival policies, cold storage, retention-aware search, projection compaction, and large-batch replay. Tie the behavior to `advertising_campaign_operations_create_ad_campaign_workflow` where applicable, and make it visible in `AdvertisingCampaignOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Simulation runs never mutate live campaign data, users can compare baseline and simulated outcomes side by side, and scenario artifacts can be attached to approval decisions.
 
-**Acceptance evidence:** Partition tests, archive/retrieve fixtures, retention enforcement, and replay benchmarks. The evidence should be package-local in `src/pyAppGen/pbcs/advertising_campaign_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 50. Cutover and rollback evidence for live campaign changes
 
-### 50. Release gate expansion for Audience Segment
+**Justification:** Mid-flight operational changes are risky, and the package should make it easy to prove what changed, when it changed, and how to revert safely.
 
-**Justification:** The PBC should not claim domain coverage unless release evidence proves the claim end to end.
+**Improvement:** Introduce explicit cutover plans for live campaign edits with pre-change snapshot, staged activation, rollback recipe, owner assignment, and post-change verification steps for critical modifications.
 
-**Improvement:** Expand release gates for `advertising_campaign_operations` so every schema, service, API, event, handler, UI, rule, parameter, agent skill, seed scenario, and improvement backlog item maps to executable evidence. Tie the behavior to `advertising_campaign_operations_record_audience_segment_workflow` where applicable, and make it visible in `AdvertisingCampaignOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Release audit checks, manifest traceability, generated-app smoke tests, and missing-capability blockers. The evidence should be package-local in `src/pyAppGen/pbcs/advertising_campaign_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** High-risk edits require a cutover record before execution, rollback plans are visible to operators and approvers, and tests prove a failed cutover can return the campaign to its prior approved state.

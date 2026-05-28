@@ -1,418 +1,413 @@
-# Agriculture Supply Chain Traceability PBC Better-Than-World-Class Improvement Backlog
+# Agriculture Supply Chain Traceability Improvement Backlog
 
-## Purpose
-
-This file identifies, justifies, and describes 50 high-impact improvements for `agri_supply_chain_traceability`. The backlog is specific to farm lots, inputs, certifications, storage, transport, recalls, provenance, and food traceability and is intended to move the PBC from release-auditable scaffolding toward complete, specialist-grade domain coverage.
+This backlog is intentionally hand-curated for the `agri_supply_chain_traceability` domain and focuses on traceability realities across farm lots, harvest batches, custody transfers, certifications, quality controls, storage, transport, recall readiness, provenance proof, sustainability claims, operator tooling, agent skills, event boundaries, and release evidence.
 
 ## Current Domain Evidence Used
 
-- Stable PBC key: `agri_supply_chain_traceability`.
-- Domain purpose: Farm lots, inputs, certifications, storage, transport, recalls, provenance, and food traceability.
-- Owned domain tables: `farm_lot`, `input_batch`, `certification`, `storage_event`, `transport_leg`, `recall_link`, `provenance_proof`, `agri_supply_chain_traceability_policy_rule`, `agri_supply_chain_traceability_runtime_parameter`, `agri_supply_chain_traceability_schema_extension`, `agri_supply_chain_traceability_control_assertion`, `agri_supply_chain_traceability_governed_model`.
-- Public APIs: `POST /farm-lots`, `POST /input-batchs`, `POST /certifications`, `POST /storage-events`, `POST /transport-legs`, `GET /agri-supply-chain-traceability-workbench`.
-- Emitted AppGen-X events: `AgriSupplyChainTraceabilityCreated`, `AgriSupplyChainTraceabilityUpdated`, `AgriSupplyChainTraceabilityApproved`, `AgriSupplyChainTraceabilityExceptionOpened`.
-- Consumed AppGen-X events: `PolicyChanged`, `AuditEventSealed`, `OperationalKpiChanged`.
-- Current standard surfaces include: `farm_lot_management`, `agri_supply_chain_traceability_workflow`, `agri_supply_chain_traceability_analytics`, `configuration_schema`, `rule_engine`, `parameter_engine`, `owned_schema_migrations_models`, `appgen_x_outbox_inbox_eventing`, `idempotent_handlers`, `retry_dead_letter_evidence`.
-- Current advanced surfaces include: `agri_supply_chain_traceability_event_sourced_operational_history`, `agri_supply_chain_traceability_multi_tenant_policy_isolation`, `agri_supply_chain_traceability_schema_evolution_resilience`, `agri_supply_chain_traceability_autonomous_anomaly_detection`, `agri_supply_chain_traceability_semantic_document_instruction_understanding`, `agri_supply_chain_traceability_predictive_risk_scoring`, `agri_supply_chain_traceability_counterfactual_scenario_simulation`, `agri_supply_chain_traceability_cryptographic_audit_proofs`.
+- PBC key from manifest: `agri_supply_chain_traceability`.
+- Current owned tables: `farm_lot`, `input_batch`, `certification`, `storage_event`, `transport_leg`, `recall_link`, `provenance_proof`, `agri_supply_chain_traceability_policy_rule`, `agri_supply_chain_traceability_runtime_parameter`, `agri_supply_chain_traceability_schema_extension`, `agri_supply_chain_traceability_control_assertion`, `agri_supply_chain_traceability_governed_model`.
+- Current public APIs: `POST /farm-lots`, `POST /input-batchs`, `POST /certifications`, `POST /storage-events`, `POST /transport-legs`, `GET /agri-supply-chain-traceability-workbench`.
+- Current emitted events: `AgriSupplyChainTraceabilityCreated`, `AgriSupplyChainTraceabilityUpdated`, `AgriSupplyChainTraceabilityApproved`, `AgriSupplyChainTraceabilityExceptionOpened`.
+- Current consumed events: `PolicyChanged`, `AuditEventSealed`, `OperationalKpiChanged`.
+- Current advanced capabilities already declared: event-sourced operational history, anomaly detection, predictive risk scoring, counterfactual simulation, cryptographic audit proofs, carbon and sustainability awareness, semantic document understanding, and governed AI agent execution.
+- Current documentation anchors: `SPECIFICATION.md` and `RELEASE_EVIDENCE.md`.
 
-## 50 High-Impact Improvements
+### 1. Canonical farm lot identity and boundary model
 
-### 1. Canonical lifecycle state model for Farm Lot
+**Justification:** Traceability breaks early when a farm lot can mean a field, a grower contract area, or a harvested pile depending on who entered the record. The package needs one canonical identity model for lot geography, crop season, ownership, and operational status.
 
-**Justification:** This closes shallow CRUD gaps by making every agriculture supply chain traceability transition explainable and testable instead of implicit in free-form status values.
+**Improvement:** Define farm lot identity around grower, site, field block, season, crop, planting window, and status. Add explicit rules for retired lots, subdivided plots, leased land, and shared irrigation zones so downstream lineage stays stable.
 
-**Improvement:** Define a complete state machine for `farm_lot` with explicit draft, validated, blocked, approved, active, suspended, corrected, closed, archived, and reopened states. Tie the behavior to `agri_supply_chain_traceability_create_farm_lot_workflow` where applicable, and make it visible in `AgriSupplyChainTraceabilityWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** A farm lot contract with required keys and examples, migration notes for legacy lot records, and tests that reject overlapping active lot identities unless the overlap is explicitly modeled.
 
-**Acceptance evidence:** State-transition tests, invalid-transition fixtures, workbench state badges, and emitted AppGen-X transition events for AgriSupplyChainTraceabilityCreated, AgriSupplyChainTraceabilityUpdated, AgriSupplyChainTraceabilityApproved. The evidence should be package-local in `src/pyAppGen/pbcs/agri_supply_chain_traceability` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 2. Harvest batch creation from farm lot reality
 
-### 2. Domain intake and normalization for Input Batch
+**Justification:** A farm lot is not the same thing as a harvest batch. The package needs harvest-batch lineage so traceability can follow real picking, cutting, threshing, and packing events rather than static field records.
 
-**Justification:** The PBC cannot reach complete domain coverage unless it handles the messy front door of farm lots, inputs, certifications, storage, transport, recalls, provenance, and food traceability, not only already-clean records.
+**Improvement:** Add a harvest batch model linked to `farm_lot` with harvest date, crew, method, quantity, unit, containerization, and first receiving point. Support multiple harvest batches per lot and partial harvests across multiple days.
 
-**Improvement:** Build a typed intake pipeline for `input_batch` that accepts structured API payloads, document-derived instructions, batch loads, and assistant-generated drafts while normalizing identifiers, dates, units, parties, and jurisdictional context. Tie the behavior to `agri_supply_chain_traceability_record_input_batch_workflow` where applicable, and make it visible in `AgriSupplyChainTraceabilityWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Example traces from one farm lot to many harvest batches, validation rules for impossible harvest dates, and tests that prevent shipment creation for harvest batches with no source lot.
 
-**Acceptance evidence:** Golden intake fixtures, rejected-record queues, field-level normalization evidence, and assistant previews before governed datastore mutation. The evidence should be package-local in `src/pyAppGen/pbcs/agri_supply_chain_traceability` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 3. Split and merge lineage across batches
 
-### 3. Specialist validation rules for Certification
+**Justification:** Agricultural traceability is mostly a split and merge problem. Grain bins, milk tanks, packhouse sort lines, and mixed pallets all break origin confidence if the lineage graph cannot represent merging and re-segmentation.
 
-**Justification:** World-class Agriculture Supply Chain Traceability requires rules that domain experts can reason about, version, test, and roll back without code edits.
+**Improvement:** Add first-class lineage operations for split, merge, rework, repack, and relabel events. Record quantitative contribution percentages so the blast radius of a contamination event can be calculated precisely.
 
-**Improvement:** Add a domain rule compiler for `certification` that supports threshold rules, eligibility rules, dependency rules, temporal windows, conflicting-instruction detection, and override justification. Tie the behavior to `agri_supply_chain_traceability_create_farm_lot_workflow` where applicable, and make it visible in `AgriSupplyChainTraceabilityWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** A lineage graph replay test covering split, merge, and repack flows, a residual percentage reconciliation check, and operator-visible lineage views that explain how a downstream batch was composed.
 
-**Acceptance evidence:** Rule simulation tests, versioned rule manifests, rule impact reports, and UI rule editors linked to `AGRI_SUPPLY_CHAIN_TRACEABILITY_DATABASE_URL, AGRI_SUPPLY_CHAIN_TRACEABILITY_EVENT_TOPIC, AGRI_SUPPLY_CHAIN_TRACEABILITY_RETRY_LIMIT`. The evidence should be package-local in `src/pyAppGen/pbcs/agri_supply_chain_traceability` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 4. Input application evidence at lot and batch level
 
-### 4. Parameter governance and tuning for Storage Event
+**Justification:** Seeds, fertilizer, crop protection chemicals, veterinary inputs, and cleaning agents often determine recall, certification, and sustainability outcomes. The package needs more than a generic `input_batch` record to prove what was applied, where, and when.
 
-**Justification:** Parameters are where operations teams tune agriculture supply chain traceability; unbounded constants would make the PBC brittle and unsafe in real deployments.
+**Improvement:** Extend input tracking to cover supplier, formulation, active ingredients, application method, target lot or batch, operator, dose, pre-harvest interval, and withholding period. Support batch-level evidence for both crop and livestock supply chains.
 
-**Improvement:** Expose bounded runtime parameters for `storage_event` covering risk thresholds, SLA windows, confidence floors, escalation cutoffs, batch sizes, retry limits, and human-confirmation requirements. Tie the behavior to `agri_supply_chain_traceability_record_input_batch_workflow` where applicable, and make it visible in `AgriSupplyChainTraceabilityWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Input application records tied to lot or harvest-batch IDs, warnings when harvest occurs inside a withholding window, and audit-ready export views showing which inputs touched which saleable batches.
 
-**Acceptance evidence:** Parameter schema validation, tenant overrides, approval history, rollback controls, and workbench diff views. The evidence should be package-local in `src/pyAppGen/pbcs/agri_supply_chain_traceability` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 5. Certification validity windows and scope coverage
 
-### 5. Deep owned schema expansion for Transport Leg
+**Justification:** Certifications fail traceability programs when their scope is vague. Operators need to know whether a certificate covered the exact grower, site, commodity, and time period attached to a shipment.
 
-**Justification:** A single payload column cannot express the full surface of farm lots, inputs, certifications, storage, transport, recalls, provenance, and food traceability or prove cross-PBC boundaries are respected.
+**Improvement:** Model `certification` scope around certificate type, issuing body, holder, covered sites, covered commodities, validity start and end dates, suspension state, and evidence documents. Add rules for expired, suspended, superseded, and partial-scope certificates.
 
-**Improvement:** Extend the owned schema around `transport_leg` with normalized child tables for line-level evidence, party roles, approvals, attachments, comments, metrics, exception reasons, and control assertions. Tie the behavior to `agri_supply_chain_traceability_create_farm_lot_workflow` where applicable, and make it visible in `AgriSupplyChainTraceabilityWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Certificate coverage checks against lot, batch, and shipment dates, negative tests for expired and out-of-scope certificates, and a workbench panel that highlights which records are covered and which are not.
 
-**Acceptance evidence:** Migrations, models, relationship tests, schema contract snapshots, and no shared-table access outside the `agri_supply_chain_traceability_` namespace. The evidence should be package-local in `src/pyAppGen/pbcs/agri_supply_chain_traceability` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 6. Chain-of-custody handoff event model
 
-### 6. Event-sourced operational history for Recall Link
+**Justification:** Chain of custody is the core promise of this package, yet the manifest surfaces focus on lots, storage, and transport. The backlog should explicitly close the gap between physical handoff events and digital lineage.
 
-**Justification:** Temporal reconstruction is essential for better-than-world-class auditability and dispute resolution in agriculture supply chain traceability.
+**Improvement:** Introduce custody transfer events with from-party, to-party, location, timestamp, seal state, quantity, packaging state, and receiving confirmation. Require custody continuity between harvest, storage, transport, processing, and dispatch.
 
-**Improvement:** Capture every material mutation of `recall_link` as immutable AppGen-X events with actor, tenant, command, policy version, idempotency key, before/after summary, and projection checkpoint. Tie the behavior to `agri_supply_chain_traceability_record_input_batch_workflow` where applicable, and make it visible in `AgriSupplyChainTraceabilityWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Tests that reject a dispatch if the previous custodian never accepted the goods, a timeline view showing every handoff, and discrepancy reports for unmatched ship/receive quantities.
 
-**Acceptance evidence:** Replay tests, projection checksums, event ordering evidence, and point-in-time workbench views. The evidence should be package-local in `src/pyAppGen/pbcs/agri_supply_chain_traceability` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 7. Storage condition telemetry and exception capture
 
-### 7. Projection and read-model strategy for Provenance Proof
+**Justification:** Storage is not a passive step for perishables, grains, seeds, dairy, or cold-chain produce. Temperature, humidity, aeration, fumigation, and dwell time directly affect quality, safety, and compliance.
 
-**Justification:** The workbench should not force users to infer domain truth from raw tables; each projection should answer a real operating question.
+**Improvement:** Extend `storage_event` to record storage zone, container, entry and exit times, target condition ranges, observed telemetry, treatment events, and exception reason codes. Support both manual readings and sensor-derived readings.
 
-**Improvement:** Create purpose-built projections for `provenance_proof`: operational queue, executive KPI rollup, exception aging, compliance evidence, agent task context, and external dependency health. Tie the behavior to `agri_supply_chain_traceability_create_farm_lot_workflow` where applicable, and make it visible in `AgriSupplyChainTraceabilityWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Storage-event examples with sensor snapshots, alerts for threshold breaches, and end-to-end traces that show which saleable batches experienced a storage exception.
 
-**Acceptance evidence:** Projection contracts, freshness SLAs, backfill tests, and visible stale-projection warnings. The evidence should be package-local in `src/pyAppGen/pbcs/agri_supply_chain_traceability` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 8. Cold-chain breach workflow
 
-### 8. Exception taxonomy and remediation for Agri Supply Chain Traceability Policy Rule
+**Justification:** Cold-chain failures are among the fastest ways to turn a traceability record into a recall. The package needs an explicit domain path for quarantine, investigation, and disposition after a temperature excursion.
 
-**Justification:** High-value PBCs win on exception throughput; generic “failed” states hide the details operators need.
+**Improvement:** Add a cold-chain breach workflow that can automatically quarantine affected batches, request QA review, record corrective action, and block release until disposition is complete. Surface time-above-threshold and severity scoring.
 
-**Improvement:** Model the full exception taxonomy for `agri_supply_chain_traceability_policy_rule`, including severity, root cause, blocking dependency, remediation owner, due date, retry eligibility, escalation path, and closure evidence. Tie the behavior to `agri_supply_chain_traceability_record_input_batch_workflow` where applicable, and make it visible in `AgriSupplyChainTraceabilityWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** A test scenario with a temperature excursion leading to automatic quarantine, an operator review screen with breach duration calculations, and release gating that stays blocked until QA disposition is recorded.
 
-**Acceptance evidence:** Exception queues, aging metrics, remediation playbooks, dead-letter linkage, and closure test fixtures for weather or traffic disruption. The evidence should be package-local in `src/pyAppGen/pbcs/agri_supply_chain_traceability` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 9. Transport leg seal integrity and vehicle hygiene evidence
 
-### 9. Predictive risk scoring for Agri Supply Chain Traceability Runtime Parameter
+**Justification:** A `transport_leg` record is too shallow if it only knows origin and destination. Agricultural traceability often depends on tamper seals, trailer cleanliness, and load compatibility.
 
-**Justification:** The package should warn users before agriculture supply chain traceability work fails, breaches policy, or creates downstream cost.
+**Improvement:** Extend `transport_leg` with vehicle identity, driver, seal numbers, pre-load sanitation check, prior load category, route plan, handoff condition notes, and delivery acceptance status. Add incompatibility rules for allergen, animal, chemical, and fresh produce loads.
 
-**Improvement:** Add predictive risk scoring for `agri_supply_chain_traceability_runtime_parameter` using domain features from owned tables, consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, rule outcomes, aging, anomaly signals, and historical corrections. Tie the behavior to `agri_supply_chain_traceability_create_farm_lot_workflow` where applicable, and make it visible in `AgriSupplyChainTraceabilityWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Transport-leg validation against incompatible prior loads, proof that seal numbers remained consistent across handoffs, and exception cards for broken or missing seal evidence.
 
-**Acceptance evidence:** Feature manifests, score explanations, calibration reports, drift alerts, and tests for low/medium/high-risk scenarios. The evidence should be package-local in `src/pyAppGen/pbcs/agri_supply_chain_traceability` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 10. Weight, count, and yield reconciliation
 
-### 10. Counterfactual simulation for Agri Supply Chain Traceability Schema Extension
+**Justification:** Traceability is weak when quantities drift without explanation. Operators need to reconcile harvested weight, stored quantity, shipped quantity, processed yield, shrinkage, and waste.
 
-**Justification:** Advanced users need to ask “what would happen if” before committing changes to live farm lots, inputs, certifications, storage, transport, recalls, provenance, and food traceability operations.
+**Improvement:** Add quantitative reconciliation logic across lot, harvest batch, storage, transport, rework, and recall flows. Support unit conversions, moisture adjustments, pack-count conversions, and documented tolerance bands by commodity.
 
-**Improvement:** Provide scenario simulation for `agri_supply_chain_traceability_schema_extension`: policy change, capacity constraint, deadline shift, price/rate change, eligibility change, disruption, and manual override outcomes. Tie the behavior to `agri_supply_chain_traceability_record_input_batch_workflow` where applicable, and make it visible in `AgriSupplyChainTraceabilityWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Commodity-specific tolerance rules, reports that show unexplained gain or loss, and tests that require a reason code when reconciliation falls outside the allowed band.
 
-**Acceptance evidence:** Simulation APIs, non-mutating sandbox state, comparison reports, and workbench side-by-side scenario panels. The evidence should be package-local in `src/pyAppGen/pbcs/agri_supply_chain_traceability` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 11. Quality sampling plan linked to traceability units
 
-### 11. Autonomous anomaly triage for Agri Supply Chain Traceability Control Assertion
+**Justification:** Quality sampling often sits outside the traceability graph, which makes it difficult to understand whether a failing sample affected one pallet, one harvest batch, or an entire farm lot.
 
-**Justification:** A world-class PBC should reduce analyst burden without hiding the reasoning behind automated triage.
+**Improvement:** Add sampling-plan entities tied to the exact traceability unit under review, including sampling method, sample size, sampler, lab destination, and disposition trigger. Support both routine and event-driven sampling.
 
-**Improvement:** Implement anomaly detection for `agri_supply_chain_traceability_control_assertion` that identifies outliers, duplicate submissions, impossible sequences, stale dependencies, unusual amounts/counts/durations, and contradictory fields. Tie the behavior to `agri_supply_chain_traceability_create_farm_lot_workflow` where applicable, and make it visible in `AgriSupplyChainTraceabilityWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Sampling records linked to lot, harvest batch, or shipment IDs, sample-chain-of-custody documentation, and tests that prevent quality release when required samples are still pending.
 
-**Acceptance evidence:** Explainable anomaly cards, reviewer feedback loops, false-positive tracking, and suppression governance. The evidence should be package-local in `src/pyAppGen/pbcs/agri_supply_chain_traceability` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 12. Laboratory result lineage and disposition rules
 
-### 12. Semantic document understanding for Agri Supply Chain Traceability Governed Model
+**Justification:** Lab results only matter if the package can connect them to the affected lots and act on them consistently. This is especially important for pesticide residue, microbiology, mycotoxins, heavy metals, and adulteration checks.
 
-**Justification:** Document-heavy work in Agriculture Supply Chain Traceability cannot be complete if the assistant only answers questions and cannot prepare accurate governed changes.
+**Improvement:** Add laboratory result entities with analyte, method, limit, result value, pass or fail interpretation, uncertainty, and source sample linkage. Drive automatic disposition proposals for quarantine, retest, downgrade, or destruction.
 
-**Improvement:** Train the package assistant to parse domain documents and instructions for `agri_supply_chain_traceability_governed_model`, extract obligations, dates, parties, quantities, identifiers, and exceptions, then map them to safe draft mutations. Tie the behavior to `agri_supply_chain_traceability_record_input_batch_workflow` where applicable, and make it visible in `AgriSupplyChainTraceabilityWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Lab-result fixtures for pass, fail, and borderline cases, analyte-specific disposition rules, and trace views that show every downstream batch touched by a failed sample.
 
-**Acceptance evidence:** Document extraction tests, confidence thresholds, redaction handling, source span citations, and human confirmation workflows. The evidence should be package-local in `src/pyAppGen/pbcs/agri_supply_chain_traceability` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 13. Contamination and hazard registry
 
-### 13. Agent-safe CRUD execution for Farm Lot
+**Justification:** Recalls need a consistent hazard vocabulary or every event becomes a free-text incident. The package needs a domain registry for biological, chemical, physical, and fraud-related hazards.
 
-**Justification:** The PBC agent must be a first-class operator but never a hidden bypass around RBAC, rules, or owned datastore boundaries.
+**Improvement:** Add a hazard registry with hazard type, regulatory significance, affected commodities, likely entry points, required actions, and severity logic. Link hazards to recalls, samples, storage exceptions, transport incidents, and supplier nonconformances.
 
-**Improvement:** Add a professional chatbot skill for `farm_lot` that can create, update, correct, close, and annotate records only through policy-checked commands, approval gates, and previewed diffs. Tie the behavior to `agri_supply_chain_traceability_create_farm_lot_workflow` where applicable, and make it visible in `AgriSupplyChainTraceabilityWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Hazard-code catalogs, incident examples that classify correctly, and recall rules that derive default actions from the selected hazard profile.
 
-**Acceptance evidence:** Skill manifests, permission tests, preview/confirm flows, blocked-action evidence, and audit events for every assistant mutation. The evidence should be package-local in `src/pyAppGen/pbcs/agri_supply_chain_traceability` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 14. Recall blast-radius engine
 
-### 14. Workbench persona coverage for Input Batch
+**Justification:** During a contamination event, operators need the smallest accurate recall set, not a manual spreadsheet exercise. The package should calculate the blast radius directly from lineage, custody, and quantity contribution data.
 
-**Justification:** A generic detail page underserves the domain; each role needs the exact controls and evidence they use daily.
+**Improvement:** Add a recall impact engine that starts from a failed sample, suspect input, supplier notification, or transport incident and computes affected lots, batches, pallets, customers, and locations. Support forward and backward tracing.
 
-**Improvement:** Design dedicated workbench panels for `input_batch`: operator queue, supervisor approvals, analyst exceptions, auditor evidence, configuration owner, and agent-assistance review. Tie the behavior to `agri_supply_chain_traceability_record_input_batch_workflow` where applicable, and make it visible in `AgriSupplyChainTraceabilityWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Simulated recall drills with computed impact sets, tests for both upstream and downstream tracing, and evidence that unaffected sibling batches remain outside the recall set.
 
-**Acceptance evidence:** UI contract entries, route tests, empty/error/loading states, and permission-aware action availability. The evidence should be package-local in `src/pyAppGen/pbcs/agri_supply_chain_traceability` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 15. Origin proof bundle and provenance pack
 
-### 15. Cross-PBC dependency contracts for Certification
+**Justification:** `provenance_proof` should be more than a document pointer. Buyers, regulators, and certification auditors need a reusable origin pack that proves geography, grower, custody, and handling history.
 
-**Justification:** Composable packages fail when hidden table coupling enters the domain model.
+**Improvement:** Build provenance bundles that combine lot identity, harvest batch history, custody transfers, key certifications, storage and transport exceptions, and supporting documents into one verifiable package. Include optional geospatial evidence and signed attestations.
 
-**Improvement:** Represent dependencies for `certification` through declared APIs, consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, and projections rather than shared tables, with explicit freshness, ownership, and fallback behavior. Tie the behavior to `agri_supply_chain_traceability_create_farm_lot_workflow` where applicable, and make it visible in `AgriSupplyChainTraceabilityWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** A generated provenance pack for a sample batch, verification that every referenced event exists in the lineage chain, and export artifacts suitable for external review.
 
-**Acceptance evidence:** Dependency manifests, contract tests, stale dependency alerts, and no foreign-table references in generated artifacts. The evidence should be package-local in `src/pyAppGen/pbcs/agri_supply_chain_traceability` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 16. Sustainability claim traceability
 
-### 16. API completeness and versioning for Storage Event
+**Justification:** Carbon, water, regenerative, and no-deforestation claims are only credible when they inherit from the same lineage graph as the physical product. Sustainability claims should not live in an isolated reporting layer.
 
-**Justification:** Complete domain coverage requires both command and query surfaces, not only happy-path create endpoints.
+**Improvement:** Attach sustainability attributes to lot, harvest, input, storage, and transport events with clear allocation logic to downstream batches. Record whether a claim is measured, estimated, inherited, or self-attested.
 
-**Improvement:** Expand APIs beyond POST /farm-lots, POST /input-batchs, POST /certifications to cover search, validation-only commands, simulation, bulk intake, exception closure, evidence export, projection reads, and idempotent corrections. Tie the behavior to `agri_supply_chain_traceability_record_input_batch_workflow` where applicable, and make it visible in `AgriSupplyChainTraceabilityWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Claim-allocation examples from farm lot to shipped batch, tests for mixed-claim merges, and a buyer-facing explanation that shows how each sustainability claim was derived.
 
-**Acceptance evidence:** OpenAPI-style route manifests, backward-compatible version tests, deprecation metadata, and idempotency assertions. The evidence should be package-local in `src/pyAppGen/pbcs/agri_supply_chain_traceability` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 17. Smallholder aggregator and collection-center model
 
-### 17. Typed emitted-event expansion for Transport Leg
+**Justification:** Many agricultural programs source through aggregators and collection centers, not only directly from large farms. Traceability breaks when the model assumes a single grower per lot and a single dispatch point.
 
-**Justification:** Consumers should understand what happened in Agriculture Supply Chain Traceability without parsing opaque payloads.
+**Improvement:** Add support for aggregator networks, village collection centers, and pooled deliveries with contributor lists, contribution weights, receiving checkpoints, and segregation flags. Distinguish pooled traceability from identity-preserved traceability.
 
-**Improvement:** Replace generic lifecycle emissions with typed events for each meaningful `transport_leg` transition, exception, approval, correction, simulation result, and downstream handoff. Tie the behavior to `agri_supply_chain_traceability_create_farm_lot_workflow` where applicable, and make it visible in `AgriSupplyChainTraceabilityWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Contributor-level lineage examples for pooled lots, rules that block identity-preserved claims on pooled batches, and receiving views that show who contributed to each pooled intake.
 
-**Acceptance evidence:** Event schema tests, event examples, compatibility checks, and emitted-event coverage in release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/agri_supply_chain_traceability` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 18. Grower attestation and seasonal compliance capture
 
-### 18. Consumed-event handlers for Recall Link
+**Justification:** Traceability programs often depend on field-level attestations such as no prohibited input use, water-source declarations, labor compliance, or harvest hygiene checks. These need structured capture, not ad hoc attachments.
 
-**Justification:** A PBC is composable only when incoming events affect its own domain state predictably and safely.
+**Improvement:** Add attestation records tied to season, lot, grower, or crew with question sets, evidence attachments, signature state, expiry rules, and reviewer outcomes. Allow attestation versioning as standards evolve.
 
-**Improvement:** Implement idempotent handlers for consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged that update projections, open dependency exceptions, recalculate risk, and preserve source event lineage. Tie the behavior to `agri_supply_chain_traceability_record_input_batch_workflow` where applicable, and make it visible in `AgriSupplyChainTraceabilityWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Structured attestation forms, tests for expired or missing attestations blocking shipment release, and audit views showing who signed and who reviewed each attestation.
 
-**Acceptance evidence:** Duplicate-event tests, handler side-effect boundaries, dead-letter fixtures, and lineage links back to source events. The evidence should be package-local in `src/pyAppGen/pbcs/agri_supply_chain_traceability` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 19. Mixed-commodity and co-product handling
 
-### 19. Retry and dead-letter operations for Provenance Proof
+**Justification:** Real facilities handle co-products, by-products, grade-outs, and mixed commodities. The package needs to represent when traceability branches into feed, waste, processing input, or downgraded sale channels.
 
-**Justification:** Dead letters are not just plumbing; they are domain work queues that can block farm lots, inputs, certifications, storage, transport, recalls, provenance, and food traceability.
+**Improvement:** Add handling rules for commodity conversion, co-product creation, grade changes, and non-food diversion. Preserve lineage links even when a batch becomes waste, animal feed, or industrial input.
 
-**Improvement:** Create operational tools for retrying, quarantining, explaining, and resolving dead-lettered `provenance_proof` events with max-attempt policy, poison-message detection, and replay safety. Tie the behavior to `agri_supply_chain_traceability_create_farm_lot_workflow` where applicable, and make it visible in `AgriSupplyChainTraceabilityWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Conversion scenarios with preserved lineage, disposition categories for downgraded outputs, and reports that show where every kilogram or unit ended up after grading or processing.
 
-**Acceptance evidence:** Dead-letter workbench, retry eligibility tests, replay audit proof, and operator action logs. The evidence should be package-local in `src/pyAppGen/pbcs/agri_supply_chain_traceability` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 20. Repack, relabel, and palletization lineage
 
-### 20. RBAC and attribute policy for Agri Supply Chain Traceability Policy Rule
+**Justification:** Consumer-facing units often change repeatedly after harvest. Repacking and relabeling can sever traceability unless the package records packaging transformations as first-class events.
 
-**Justification:** High-impact domain operations need finer controls than generic RBAC grants.
+**Improvement:** Add events for repack, relabel, pallet build, pallet break, carton substitution, and label correction. Require source-to-output quantity reconciliation and preserve all packaging identifiers used in commerce.
 
-**Improvement:** Extend permissions for `agri_supply_chain_traceability_policy_rule` from coarse read/create/update/admin to action-level and attribute-aware policies based on role, tenant, jurisdiction, monetary/materiality threshold, and exception severity. Tie the behavior to `agri_supply_chain_traceability_record_input_batch_workflow` where applicable, and make it visible in `AgriSupplyChainTraceabilityWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Pallet-level lineage screens, tests for relabel without source linkage, and ability to trace a consumer unit code back to the contributing harvest batches.
 
-**Acceptance evidence:** Permission matrix docs, ABAC policy tests, denied-action UI states, and assistant skill permission checks. The evidence should be package-local in `src/pyAppGen/pbcs/agri_supply_chain_traceability` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 21. Shrinkage, loss, and waste accounting
 
-### 21. Continuous control testing for Agri Supply Chain Traceability Runtime Parameter
+**Justification:** Agricultural product dehydrates, spoils, spills, and gets reworked. Without structured shrinkage and waste events, the lineage graph cannot explain why physical and digital stock diverged.
 
-**Justification:** Controls should run during operations, not only during release audit or manual review.
+**Improvement:** Add explicit loss, spoilage, waste, and destruction events with reason codes, measured quantity, approval requirements, and whether the loss affects recall scope or sustainability claims.
 
-**Improvement:** Embed control assertions for `agri_supply_chain_traceability_runtime_parameter` that continuously test segregation of duties, required approvals, stale exceptions, policy drift, duplicate records, and boundary violations. Tie the behavior to `agri_supply_chain_traceability_create_farm_lot_workflow` where applicable, and make it visible in `AgriSupplyChainTraceabilityWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Reconciliation reports that incorporate shrinkage, approval logs for destruction events, and tests that prevent silent quantity disappearance from active stock.
 
-**Acceptance evidence:** Control dashboards, failing-control events, test fixtures, and release evidence tied to `agri_supply_chain_traceability_control_assertion` records. The evidence should be package-local in `src/pyAppGen/pbcs/agri_supply_chain_traceability` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 22. Traceability exception taxonomy and triage queue
 
-### 22. Cryptographic audit proofing for Agri Supply Chain Traceability Schema Extension
+**Justification:** The package emits a generic exception event, but operators need a domain vocabulary for what kind of traceability problem occurred. Missing custody, failed certificate coverage, unresolved quantity gap, and contaminated storage are different operational problems.
 
-**Justification:** Better-than-world-class auditability requires proof of integrity, not merely logs stored in mutable tables.
+**Improvement:** Define exception classes, severities, owners, due-date logic, blocking impact, and remediation playbooks. Prioritize exceptions by food safety, compliance exposure, and customer-shipment risk.
 
-**Improvement:** Hash-chain material `agri_supply_chain_traceability_schema_extension` decisions, documents, emitted events, and release-evidence snapshots to make tampering visible without exposing sensitive payloads. Tie the behavior to `agri_supply_chain_traceability_record_input_batch_workflow` where applicable, and make it visible in `AgriSupplyChainTraceabilityWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Exception queues grouped by severity and class, SLA timers per exception type, and sample remediation playbooks for missing origin proof, failed lab result, and broken cold chain.
 
-**Acceptance evidence:** Proof manifests, verification APIs, redacted proof exports, and audit-ledger handoff events. The evidence should be package-local in `src/pyAppGen/pbcs/agri_supply_chain_traceability` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 23. Traceability graph explorer workbench
 
-### 23. Privacy, consent, and secrecy controls for Agri Supply Chain Traceability Control Assertion
+**Justification:** Operators need to see the graph, not infer it from row lists. A lineage-heavy domain deserves a graph-first workbench for investigation and proof assembly.
 
-**Justification:** Complete domain coverage must account for protected data and restricted operational evidence.
+**Improvement:** Add a graph explorer that can pivot from farm lot, harvest batch, storage event, transport leg, recall, or provenance proof and show upstream and downstream neighbors with event timestamps and quantities.
 
-**Improvement:** Add field-level privacy classifications for `agri_supply_chain_traceability_control_assertion`, consent checks, masking rules, retention schedules, legal holds, and assistant redaction policies. Tie the behavior to `agri_supply_chain_traceability_create_farm_lot_workflow` where applicable, and make it visible in `AgriSupplyChainTraceabilityWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Interactive graph views for forward and backward tracing, stable node and edge semantics, and screenshots or route tests proving that graph navigation works for complex split-and-merge scenarios.
 
-**Acceptance evidence:** Retention tests, masked UI snapshots, consent-blocked mutation fixtures, and export controls. The evidence should be package-local in `src/pyAppGen/pbcs/agri_supply_chain_traceability` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 24. Receiving and intake workbench
 
-### 24. Multi-tenant operating model for Agri Supply Chain Traceability Governed Model
+**Justification:** Traceability quality is won or lost at receiving. The package needs a purpose-built intake workbench for field receipts, weighbridge tickets, collection-center deliveries, and first receiving inspections.
 
-**Justification:** The PBC should scale across organizations while preserving independent policy and compliance boundaries.
+**Improvement:** Build a receiving workbench with fast lot lookup, harvest-batch intake, document capture, discrepancy handling, and immediate hold or quarantine actions. Support commodity-specific receiving checklists.
 
-**Improvement:** Support tenant-specific `agri_supply_chain_traceability_governed_model` rules, data residency, encryption context, configuration, seed data, and release evidence without allowing cross-tenant leakage. Tie the behavior to `agri_supply_chain_traceability_record_input_batch_workflow` where applicable, and make it visible in `AgriSupplyChainTraceabilityWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Intake flows for lot receipt and pooled delivery, discrepancy review queues, and permission-aware actions for receiving clerks, supervisors, and QA reviewers.
 
-**Acceptance evidence:** Tenant isolation tests, tenant-scoped parameters, key-rotation evidence, and cross-tenant negative fixtures. The evidence should be package-local in `src/pyAppGen/pbcs/agri_supply_chain_traceability` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 25. Recall command center workbench
 
-### 25. Schema evolution and extension registry for Farm Lot
+**Justification:** Recall response needs one place for impact calculation, communication status, action tracking, and evidence collection. Operators cannot coordinate a contamination event from a generic detail page.
 
-**Justification:** Domain teams will add fields; the PBC must evolve without breaking APIs, events, or workbench projections.
+**Improvement:** Add a recall workbench showing suspect trigger, affected lineage, customer and location reach, contact status, hold status, return or destruction status, and required regulator notifications. Include a drill mode and a live mode.
 
-**Improvement:** Make schema extensions for `farm_lot` first-class with compatibility checks, migration previews, projection backfills, field ownership, and rollback metadata. Tie the behavior to `agri_supply_chain_traceability_create_farm_lot_workflow` where applicable, and make it visible in `AgriSupplyChainTraceabilityWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Drill scenario outputs, communication task tracking, hold-status dashboards, and evidence bundles that can be attached to `RELEASE_EVIDENCE.md` or recall review records.
 
-**Acceptance evidence:** Extension registry UI, compatibility tests, migration dry-runs, and backfill release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/agri_supply_chain_traceability` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 26. Certification and compliance workbench
 
-### 26. Master data quality gates for Input Batch
+**Justification:** Certifications, attestations, and policy checks need a dedicated view because they cut across lots, batches, shipments, and suppliers. Compliance reviewers need a surface that explains scope gaps and expiring coverage quickly.
 
-**Justification:** Many agriculture supply chain traceability errors begin as bad reference data; the PBC should catch them before workflow execution.
+**Improvement:** Add a compliance workbench for certificate coverage, attestation status, pending renewals, blocked shipments, and policy overrides. Support filtering by grower, site, commodity, buyer program, and region.
 
-**Improvement:** Define reference-data contracts for `input_batch`: canonical codes, parties, locations, classifications, calendars, units, currencies, products, assets, or service categories as relevant to the domain. Tie the behavior to `agri_supply_chain_traceability_record_input_batch_workflow` where applicable, and make it visible in `AgriSupplyChainTraceabilityWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Coverage dashboards, renewal queues, override audit views, and scenario tests that show how an expiring certificate blocks specific batches and shipments.
 
-**Acceptance evidence:** Reference validation fixtures, stale-code warnings, mapping tables, and dependency freshness indicators. The evidence should be package-local in `src/pyAppGen/pbcs/agri_supply_chain_traceability` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 27. Agent skill for document-led intake
 
-### 27. Bulk operations and correction workflows for Certification
+**Justification:** Traceability teams spend large amounts of time transcribing grower declarations, transport manifests, lab reports, and certificates. The package already declares semantic document understanding and governed AI execution, so the backlog should turn that into a concrete operator skill.
 
-**Justification:** Enterprise-scale Agriculture Supply Chain Traceability users cannot operate one record at a time.
+**Improvement:** Add an agent skill that extracts candidate records from documents, maps them to farm lot, harvest batch, certification, storage, or transport entities, and presents a diff for operator confirmation. Require source citation for every suggested field.
 
-**Improvement:** Add bulk load, bulk validate, bulk approve, and bulk correction workflows for `certification` with partial success, row-level errors, resumability, and rollback. Tie the behavior to `agri_supply_chain_traceability_create_farm_lot_workflow` where applicable, and make it visible in `AgriSupplyChainTraceabilityWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Example agent sessions on certificates and weighbridge tickets, field-level citation links, confidence thresholds, and blocked writes when confidence or permissions are below the allowed threshold.
 
-**Acceptance evidence:** CSV/API batch fixtures, resumable job state, row-level audit evidence, and assistant-generated correction suggestions. The evidence should be package-local in `src/pyAppGen/pbcs/agri_supply_chain_traceability` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 28. Agent skill for recall investigation and evidence assembly
 
-### 28. Lifecycle collaboration and tasking for Storage Event
+**Justification:** During a contamination event, teams need fast answers grounded in the actual lineage graph. A governed investigation skill can accelerate impact assessment without bypassing domain controls.
 
-**Justification:** Domain collaboration should live inside the PBC boundary and remain auditable with the record it affects.
+**Improvement:** Add an agent skill that assembles suspect lineage, summarizes relevant storage and transport exceptions, identifies impacted customers or locations, and drafts a recall evidence pack for human review. Keep all recommendations tied to underlying records and events.
 
-**Improvement:** Attach tasks, comments, ownership, due dates, handoffs, and escalation threads to `storage_event` without leaking into external shared task tables. Tie the behavior to `agri_supply_chain_traceability_record_input_batch_workflow` where applicable, and make it visible in `AgriSupplyChainTraceabilityWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Investigation transcripts with source-linked findings, impact summaries that match the recall engine output, and approval-gated export of the assembled recall pack.
 
-**Acceptance evidence:** Task tables, comment audit history, notification events, escalation SLAs, and role-specific task queues. The evidence should be package-local in `src/pyAppGen/pbcs/agri_supply_chain_traceability` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 29. API boundary completeness and naming cleanup
 
-### 29. SLA and service-level governance for Transport Leg
+**Justification:** The current manifest exposes only a small set of create endpoints and one workbench read route, and one route name uses the awkward `input-batchs` form. A mature traceability package needs explicit command and query boundaries.
 
-**Justification:** Users need to know when farm lots, inputs, certifications, storage, transport, recalls, provenance, and food traceability is late, blocked, or at risk before customer or regulator impact.
+**Improvement:** Expand the backlog to cover validation-only commands, correction commands, search and filter reads, lineage queries, recall simulation, provenance export, and workbench projection endpoints. Clean up API naming so batch resources read consistently and clearly.
 
-**Improvement:** Define SLAs for `transport_leg` across intake, validation, approval, exception resolution, event handling, downstream projection refresh, and release-evidence generation. Tie the behavior to `agri_supply_chain_traceability_create_farm_lot_workflow` where applicable, and make it visible in `AgriSupplyChainTraceabilityWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** A route catalog that distinguishes commands from queries, compatibility rules for route evolution, and tests for idempotency, pagination, and explicit correction semantics.
 
-**Acceptance evidence:** SLA breach events, timers, configurable calendars, workbench aging buckets, and tests for pause/resume behavior. The evidence should be package-local in `src/pyAppGen/pbcs/agri_supply_chain_traceability` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 30. Event taxonomy for traceability state changes
 
-### 30. Operational analytics cockpit for Recall Link
+**Justification:** Generic created and updated events are not enough for downstream consumers that need to react differently to quarantine, release, certificate suspension, recall opening, or custody transfer. Event boundaries should encode domain meaning.
 
-**Justification:** World-class operations require leading indicators, not only record counts.
+**Improvement:** Define a richer event set for lot registered, harvest batch created, custody transferred, storage breach detected, certificate suspended, recall opened, recall narrowed, provenance pack issued, and sustainability claim revised. Keep payloads typed and versioned.
 
-**Improvement:** Build analytics for `recall_link`: throughput, backlog, aging, approval latency, exception rate, risk distribution, automation acceptance, correction rate, and downstream dependency health. Tie the behavior to `agri_supply_chain_traceability_record_input_batch_workflow` where applicable, and make it visible in `AgriSupplyChainTraceabilityWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Event contracts with examples, compatibility notes for version bumps, and replay tests that rebuild core traceability projections from the event stream.
 
-**Acceptance evidence:** Metric definitions, projection tests, drill-through routes, export APIs, and anomaly overlays. The evidence should be package-local in `src/pyAppGen/pbcs/agri_supply_chain_traceability` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 31. Idempotent command handling for physical-world retries
 
-### 31. Decision intelligence and recommendations for Provenance Proof
+**Justification:** Field devices, collection-center kiosks, and transport integrations often retry the same command after weak connectivity. The package needs strong idempotency at the boundary where physical events enter the system.
 
-**Justification:** The PBC should help expert users decide faster while showing evidence and uncertainty.
+**Improvement:** Require idempotency keys for intake, custody transfer, storage entry, storage exit, transport dispatch, transport receipt, and recall actions. Preserve the original command result so repeat submissions do not fork lineage.
 
-**Improvement:** Generate ranked recommendations for `provenance_proof` such as next best action, likely resolution, required evidence, policy adjustment, staffing/capacity response, or downstream handoff. Tie the behavior to `agri_supply_chain_traceability_create_farm_lot_workflow` where applicable, and make it visible in `AgriSupplyChainTraceabilityWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Retry tests for duplicate submissions, evidence that repeated custody or dispatch commands do not create duplicate events, and operator-visible messages that explain when an incoming command was deduplicated.
 
-**Acceptance evidence:** Recommendation explanations, confidence intervals, feedback capture, model governance records, and rejection reasons. The evidence should be package-local in `src/pyAppGen/pbcs/agri_supply_chain_traceability` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 32. Release evidence pack for traceability readiness
 
-### 32. Quality and completeness scoring for Agri Supply Chain Traceability Policy Rule
+**Justification:** The manifest already declares `RELEASE_EVIDENCE.md`, so the backlog should explicitly define what release evidence means in a traceability package. Readiness must prove the lineage chain, not only test counts.
 
-**Justification:** Operators should see whether a record is truly ready, not just technically saved.
+**Improvement:** Standardize release evidence around sample end-to-end traces, recall drill outputs, certificate coverage checks, workbench screenshots, event replay checks, and agent-skill guardrail evidence. Make it easy to compare one release to the previous release.
 
-**Improvement:** Score each `agri_supply_chain_traceability_policy_rule` record for completeness, consistency, policy readiness, dependency readiness, evidence sufficiency, and downstream composability. Tie the behavior to `agri_supply_chain_traceability_record_input_batch_workflow` where applicable, and make it visible in `AgriSupplyChainTraceabilityWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** A release checklist template, artifacts for a representative farm-lot-to-shipment trace, and signed evidence that a recall drill and provenance export succeeded on the release candidate.
 
-**Acceptance evidence:** Scoring rules, missing-evidence lists, readiness badges, and blocking criteria in command handlers. The evidence should be package-local in `src/pyAppGen/pbcs/agri_supply_chain_traceability` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 33. Policy and rule versioning with effective dating
 
-### 33. End-to-end scenario library for Agri Supply Chain Traceability Runtime Parameter
+**Justification:** Traceability rules change with seasons, customers, commodity programs, and regulations. Investigations later depend on knowing which policy version was in force when a batch moved.
 
-**Justification:** Release evidence is stronger when every important agriculture supply chain traceability behavior has executable examples.
+**Improvement:** Add effective-dated policy versions for certificate coverage, quarantine thresholds, sampling rules, origin-proof requirements, and sustainability claim logic. Preserve the applied policy version on every decision and exception.
 
-**Improvement:** Create seeded scenarios for `agri_supply_chain_traceability_runtime_parameter`: normal flow, urgent path, exception path, corrected path, duplicate path, late event path, and audit export path. Tie the behavior to `agri_supply_chain_traceability_create_farm_lot_workflow` where applicable, and make it visible in `AgriSupplyChainTraceabilityWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Time-travel checks showing how a historical record was evaluated, diff views between policy versions, and replay tests confirming that historical decisions remain explainable after policy updates.
 
-**Acceptance evidence:** Scenario seed data, runtime smoke coverage, generated-app fixtures, and story-level workbench screenshots/contracts. The evidence should be package-local in `src/pyAppGen/pbcs/agri_supply_chain_traceability` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 34. Sustainability scenario simulation
 
-### 34. Domain ontology and terminology model for Agri Supply Chain Traceability Schema Extension
+**Justification:** Sustainability claims are operational decisions, not only reporting outputs. Operators need to understand how route choices, storage delays, and input substitutions change claim quality before they commit them.
 
-**Justification:** Precise vocabulary prevents the PBC from misclassifying specialist documents or user instructions.
+**Improvement:** Extend simulation to compare carbon, water, waste, and claim-eligibility outcomes for alternative transport routes, cold-store dwell times, packaging choices, and input programs. Show whether a scenario breaks an existing buyer claim.
 
-**Improvement:** Add an ontology for `agri_supply_chain_traceability_schema_extension` terms, synonyms, classifications, relationships, allowed values, and phrase mappings used by the assistant and UI. Tie the behavior to `agri_supply_chain_traceability_record_input_batch_workflow` where applicable, and make it visible in `AgriSupplyChainTraceabilityWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Side-by-side simulation outputs, claim-eligibility warnings for losing a program qualification, and examples where one routing choice preserves a sustainability claim while another invalidates it.
 
-**Acceptance evidence:** Ontology files, assistant parsing tests, UI glossary, and mapping evidence for domain-specific abbreviations. The evidence should be package-local in `src/pyAppGen/pbcs/agri_supply_chain_traceability` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 35. Risk scoring for storage and transport exposure
 
-### 35. Advanced search and investigation for Agri Supply Chain Traceability Control Assertion
+**Justification:** Predictive risk should focus on the places where traceability problems become food safety problems. Storage and transport conditions are rich predictors of quality and contamination exposure.
 
-**Justification:** Investigators and operators need fast, explainable retrieval across the whole domain surface.
+**Improvement:** Train risk models on dwell time, route duration, seal breaks, prior load class, telemetry excursions, repeat supplier incidents, and overdue sampling. Surface risk at lot, batch, shipment, and facility levels.
 
-**Improvement:** Provide search across `agri_supply_chain_traceability_control_assertion` records, events, documents, exceptions, tasks, comments, and audit proofs with filters for tenant, status, risk, date, party, and dependency. Tie the behavior to `agri_supply_chain_traceability_create_farm_lot_workflow` where applicable, and make it visible in `AgriSupplyChainTraceabilityWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Feature manifests, score explanation cards, monitored drift metrics, and test scenarios where known high-risk combinations receive materially higher risk scores.
 
-**Acceptance evidence:** Search index contracts, result provenance, permission-filtered queries, and stale-index warnings. The evidence should be package-local in `src/pyAppGen/pbcs/agri_supply_chain_traceability` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 36. Counterfactual routing and hold-release analysis
 
-### 36. Reconciliation and closure controls for Agri Supply Chain Traceability Governed Model
+**Justification:** When a batch is at risk, operators need to compare alternatives quickly. Counterfactual analysis should answer whether rerouting, holding, or repacking would narrow risk or preserve customer commitments.
 
-**Justification:** Closure is not complete until the PBC can prove no material domain work remains unresolved.
+**Improvement:** Add a what-if tool for route changes, alternate cold stores, delayed shipment, additional sampling, partial hold, and selective recall. Show impact on lineage, customer reach, shelf-life, and sustainability claims.
 
-**Improvement:** Add reconciliation workflows that compare `agri_supply_chain_traceability_governed_model` state against consumed events, external projections, expected totals/counts, approvals, and release evidence before closure. Tie the behavior to `agri_supply_chain_traceability_record_input_batch_workflow` where applicable, and make it visible in `AgriSupplyChainTraceabilityWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Scenario comparisons with clear outcome deltas, saved simulation records, and evidence that simulations do not mutate live traceability data.
 
-**Acceptance evidence:** Reconciliation reports, variance thresholds, closure blockers, and AppGen-X closure events. The evidence should be package-local in `src/pyAppGen/pbcs/agri_supply_chain_traceability` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 37. Jurisdiction and tenant isolation for multi-program traceability
 
-### 37. Regulatory and policy reporting for Farm Lot
+**Justification:** Different buyers, regions, and operating companies may require different traceability rules for the same commodity. The package needs isolation without duplicating the entire product for each program.
 
-**Justification:** World-class PBCs turn operational evidence into credible reporting without spreadsheet reconstruction.
+**Improvement:** Support tenant and jurisdiction layers for policies, workbench defaults, certificate rules, recall thresholds, and export formats. Ensure one tenant cannot see another tenant's growers, batches, or incident evidence.
 
-**Improvement:** Generate domain reporting packs for `farm_lot` covering statutory, contractual, operational, board, customer, or regulator evidence depending on real-time movement control, capacity commitments, disruptions, asset readiness, safety windows, route constraints, and operational handoff integrity. Tie the behavior to `agri_supply_chain_traceability_create_farm_lot_workflow` where applicable, and make it visible in `AgriSupplyChainTraceabilityWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Isolation tests across tenant and region combinations, negative permission checks, and policy examples where one jurisdiction requires a stronger recall threshold than another.
 
-**Acceptance evidence:** Report schemas, redaction rules, traceable metric sources, and approval/export audit events. The evidence should be package-local in `src/pyAppGen/pbcs/agri_supply_chain_traceability` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 38. Retention, legal hold, and evidence preservation
 
-### 38. Carbon and resource awareness for Input Batch
+**Justification:** Traceability investigations often outlive normal operational retention windows. The package should preserve the right records when litigation, regulator review, or customer dispute requires a legal hold.
 
-**Justification:** Sustainability evidence should be embedded in operations instead of treated as an after-the-fact report.
+**Improvement:** Add retention policies by record class, legal-hold flags for active incidents, and preservation logic for linked lineage, documents, events, and agent-generated evidence. Make deletion policy visible and auditable.
 
-**Improvement:** Where relevant, attach carbon, energy, water, travel, capacity, compute, or resource-footprint metadata to `input_batch` decisions and batch operations. Tie the behavior to `agri_supply_chain_traceability_record_input_batch_workflow` where applicable, and make it visible in `AgriSupplyChainTraceabilityWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Retention schedules by entity type, tests that prevent deletion while legal hold is active, and audit records showing who placed and released each hold.
 
-**Acceptance evidence:** Footprint fields, scheduling parameters, exception rules, and dashboards that expose operational tradeoffs. The evidence should be package-local in `src/pyAppGen/pbcs/agri_supply_chain_traceability` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 39. Offline field and collection-center capture
 
-### 39. Resilience and offline behavior for Certification
+**Justification:** Many agricultural environments have unreliable connectivity. Traceability packages that assume always-online entry produce paper workarounds and later transcription errors.
 
-**Justification:** Real operations keep moving during outages; the PBC must preserve correctness when dependencies are unavailable.
+**Improvement:** Add offline-capable capture for harvest, receiving, custody, sampling, and storage readings with sync conflict handling and durable local queueing. Preserve original capture time and device identity when syncing later.
 
-**Improvement:** Define resilience modes for `certification`: degraded dependency mode, offline draft capture, delayed event replay, conflict detection, and safe recovery after partial failure. Tie the behavior to `agri_supply_chain_traceability_create_farm_lot_workflow` where applicable, and make it visible in `AgriSupplyChainTraceabilityWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Offline capture scenarios, conflict-resolution rules, tests for duplicate sync attempts, and evidence that delayed sync still preserves correct lineage ordering.
 
-**Acceptance evidence:** Offline fixtures, replay tests, conflict queues, recovery logs, and user-visible degraded-mode warnings. The evidence should be package-local in `src/pyAppGen/pbcs/agri_supply_chain_traceability` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 40. Scan-first mobile UX for lots, pallets, and containers
 
-### 40. Human-in-the-loop automation for Storage Event
+**Justification:** Traceability data entry should follow the movement of physical goods. Mobile scanning reduces manual entry errors during receiving, storage moves, loading, and recall verification.
 
-**Justification:** Automation should accelerate farm lots, inputs, certifications, storage, transport, recalls, provenance, and food traceability while preserving accountability for high-risk decisions.
+**Improvement:** Add scan-first flows for lot codes, pallet IDs, container IDs, seal numbers, and shipment IDs with commodity-specific shortcuts. Support scanning to confirm custody transfer, quarantine placement, and recall hold execution.
 
-**Improvement:** Set explicit automation boundaries for `storage_event`: auto-approve, auto-reject, suggest-only, require-review, and block-until-evidence states with policy-based routing. Tie the behavior to `agri_supply_chain_traceability_record_input_batch_workflow` where applicable, and make it visible in `AgriSupplyChainTraceabilityWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Mobile route tests, scanned-code validation against known entities, and user flows proving that a receiving or loading task can be completed with scan-driven interactions instead of manual search.
 
-**Acceptance evidence:** Automation policy tests, reviewer queues, override reasons, and assistant action audit trails. The evidence should be package-local in `src/pyAppGen/pbcs/agri_supply_chain_traceability` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 41. Packaging and label evidence management
 
-### 41. Package discovery and fit scoring for Transport Leg
+**Justification:** Packaging codes and labels are what downstream customers and regulators often see first. The package should keep packaging and label evidence tightly linked to provenance and recall logic.
 
-**Justification:** Users selecting PBCs need transparent fit reasoning, especially when domains are adjacent but not overlapping.
+**Improvement:** Record packaging runs, label templates, print lots, date codes, and label corrections as traceability events. Link every consumer-facing code to the originating batch set and packaging session.
 
-**Improvement:** Improve package metadata so composition can explain when `agri_supply_chain_traceability` fits a prompt, what entities it owns, what APIs/events it exposes, and what adjacent PBCs it depends on. Tie the behavior to `agri_supply_chain_traceability_create_farm_lot_workflow` where applicable, and make it visible in `AgriSupplyChainTraceabilityWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Reverse lookup from a consumer code to source batches, packaging-run trace screens, and tests that prevent label reprints from silently changing the linked source batch set.
 
-**Acceptance evidence:** Discovery manifests, prompt-selection tests, overlap rationale links, and composition DSL examples. The evidence should be package-local in `src/pyAppGen/pbcs/agri_supply_chain_traceability` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 42. Substitution, adulteration, and fraud anomaly detection
 
-### 42. Configuration deployment pipeline for Recall Link
+**Justification:** Not every traceability failure is accidental. The package should look for quantity, origin, and quality patterns that suggest substitution, dilution, or document fraud.
 
-**Justification:** Configuration changes can materially alter agriculture supply chain traceability; they need the same discipline as code releases.
+**Improvement:** Add anomaly signals for impossible origin hops, suspicious certificate reuse, quantity inflation, repeated relabeling, inconsistent grade shifts, and document-content mismatch. Prioritize high-severity signals for manual review.
 
-**Improvement:** Add configuration promotion for `recall_link` across draft, test, approved, active, deprecated, and rollback states with impact analysis before activation. Tie the behavior to `agri_supply_chain_traceability_record_input_batch_workflow` where applicable, and make it visible in `AgriSupplyChainTraceabilityWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Fraud-oriented test fixtures, anomaly cards with feature explanations, reviewer feedback capture, and suppression controls so known false positives do not flood the queue.
 
-**Acceptance evidence:** Config diff views, approval workflows, simulation before activation, and rollback tests. The evidence should be package-local in `src/pyAppGen/pbcs/agri_supply_chain_traceability` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 43. Supplier and grower corrective action tracking
 
-### 43. Workbench command completeness for Provenance Proof
+**Justification:** Traceability programs improve when incidents lead to corrective action, not only closed tickets. The package should connect nonconformances to remediation plans and follow-up evidence.
 
-**Justification:** A PBC does not fully surface its capabilities if users must call hidden APIs for core work.
+**Improvement:** Add corrective-action plans tied to hazards, failed certificates, failed samples, and recurring storage or transport incidents. Track owner, due date, verification visit, and whether future lots remain blocked pending closure.
 
-**Improvement:** Expose every high-value operation for `provenance_proof` in the UI: create, validate, approve, simulate, correct, assign, export, retry, close, and audit-proof verification. Tie the behavior to `agri_supply_chain_traceability_create_farm_lot_workflow` where applicable, and make it visible in `AgriSupplyChainTraceabilityWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Corrective-action queues, recurrence tracking for suppliers and growers, and tests showing that unresolved severe corrective actions can block new batch approval.
 
-**Acceptance evidence:** UI action coverage tests, permission-aware disabled states, keyboard paths, and assistant handoff links. The evidence should be package-local in `src/pyAppGen/pbcs/agri_supply_chain_traceability` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 44. Projection freshness and rebuild guarantees
 
-### 44. Document packet and evidence vault for Agri Supply Chain Traceability Policy Rule
+**Justification:** Workbenches will depend on projections, and stale projections undermine trust during incidents. The package should expose whether graph, recall, and compliance views are fresh enough for decision making.
 
-**Justification:** Documents often carry the legal or operational truth behind farm lots, inputs, certifications, storage, transport, recalls, provenance, and food traceability.
+**Improvement:** Add freshness timestamps, lag indicators, rebuild tooling, and projection checksums for lineage, recall, compliance, and analytics read models. Make stale projections visible rather than silently serving outdated data.
 
-**Improvement:** Create a governed evidence vault for `agri_supply_chain_traceability_policy_rule` documents, attachments, source spans, extracted fields, signatures, approvals, and retention labels. Tie the behavior to `agri_supply_chain_traceability_record_input_batch_workflow` where applicable, and make it visible in `AgriSupplyChainTraceabilityWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Projection lag monitors, rebuild runbooks, replay checksums, and tests that flag workbench views as stale when event processing falls behind defined thresholds.
 
-**Acceptance evidence:** Evidence models, source-to-field lineage, signature validation, retention policies, and proof exports. The evidence should be package-local in `src/pyAppGen/pbcs/agri_supply_chain_traceability` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 45. Controlled schema extension for commodity-specific needs
 
-### 45. Data correction and amendment history for Agri Supply Chain Traceability Runtime Parameter
+**Justification:** Agricultural traceability differs by commodity. Coffee, dairy, aquaculture, fresh produce, seed, and grain each need extra attributes, but uncontrolled schema growth would fracture the package.
 
-**Justification:** World-class systems correct mistakes without rewriting history or confusing downstream consumers.
+**Improvement:** Use `agri_supply_chain_traceability_schema_extension` as a governed extension registry for commodity-specific fields, rules, and UI fragments. Require ownership, validation rules, and migration evidence for every extension.
 
-**Improvement:** Support formal amendments for `agri_supply_chain_traceability_runtime_parameter` that preserve original values, correction reason, approving actor, effective date, downstream event impacts, and replay behavior. Tie the behavior to `agri_supply_chain_traceability_create_farm_lot_workflow` where applicable, and make it visible in `AgriSupplyChainTraceabilityWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Extension registration examples for at least two commodities, validation tests that enforce extension ownership, and release evidence showing that extensions do not break core lineage and recall flows.
 
-**Acceptance evidence:** Amendment tables, correction events, projection replay tests, and side-by-side before/after UI. The evidence should be package-local in `src/pyAppGen/pbcs/agri_supply_chain_traceability` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 46. Seed data and demo narratives that reflect the domain
 
-### 46. External participant collaboration for Agri Supply Chain Traceability Schema Extension
+**Justification:** Weak seed data hides domain gaps. Traceability packages need seeded scenarios that look like real agricultural operations, including harvest waves, storage moves, transport legs, quality incidents, and recalls.
 
-**Justification:** Many agriculture supply chain traceability workflows require outside parties, but they must not gain direct access to internal tables.
+**Improvement:** Build seed narratives for at least one perishable crop and one durable commodity with realistic lot structures, harvest batches, certifications, quality samples, storage events, transport legs, and one recall drill path. Use them in demos and regression checks.
 
-**Improvement:** Add controlled collaboration portals or API views for external participants related to `agri_supply_chain_traceability_schema_extension`, limited to scoped evidence submission, status checks, comments, and dispute responses. Tie the behavior to `agri_supply_chain_traceability_record_input_batch_workflow` where applicable, and make it visible in `AgriSupplyChainTraceabilityWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Seed datasets with documented storylines, deterministic IDs for replayable demos, and verification that each seed narrative exercises lineage, compliance, and recall features end to end.
 
-**Acceptance evidence:** Participant role policies, scoped tokens, submission audit trails, and inbound evidence validation. The evidence should be package-local in `src/pyAppGen/pbcs/agri_supply_chain_traceability` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 47. Negative-path test suite for contamination and recall
 
-### 47. Advanced dependency freshness scoring for Agri Supply Chain Traceability Control Assertion
+**Justification:** Traceability systems often test the happy path and then fail in the exact moments they are needed. The backlog should explicitly demand negative-path coverage for the hardest domain moments.
 
-**Justification:** A record may be valid locally but unsafe if dependency evidence is stale or incomplete.
+**Improvement:** Add scenario suites for failed lab results, missing custody confirmation, broken cold chain, expired certificate, conflicting origin proof, duplicate dispatch, and partial recall closure. Include buyer and regulator communication steps where relevant.
 
-**Improvement:** Score freshness and reliability of dependencies used by `agri_supply_chain_traceability_control_assertion`, including consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, referenced projections, configuration versions, and external submissions. Tie the behavior to `agri_supply_chain_traceability_create_farm_lot_workflow` where applicable, and make it visible in `AgriSupplyChainTraceabilityWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Automated scenario tests, expected hold and quarantine outputs, and evidence that each negative case creates the right exception, event, and workbench state.
 
-**Acceptance evidence:** Freshness indicators, blocking rules, stale-event simulations, and workbench dependency health panels. The evidence should be package-local in `src/pyAppGen/pbcs/agri_supply_chain_traceability` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 48. Human override governance and reason capture
 
-### 48. Model governance and explainability for Agri Supply Chain Traceability Governed Model
+**Justification:** Agricultural operations sometimes require overrides, but overrides without context destroy audit trust. The package needs strict controls around who can override what and why.
 
-**Justification:** Governed AI is mandatory for professional-grade automation in Agriculture Supply Chain Traceability.
+**Improvement:** Add override types for release under review, quantity tolerance approval, certificate waiver, delayed sampling acceptance, and manual lineage correction. Require reason codes, approver identity, expiry, and follow-up review for every override.
 
-**Improvement:** For every predictive or agentic feature around `agri_supply_chain_traceability_governed_model`, record model version, prompt or ruleset version, training/evaluation evidence, confidence, explanation, and human feedback. Tie the behavior to `agri_supply_chain_traceability_record_input_batch_workflow` where applicable, and make it visible in `AgriSupplyChainTraceabilityWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Override audit records, permission tests for high-risk overrides, expiry checks, and views that clearly distinguish normal decisions from overridden decisions.
 
-**Acceptance evidence:** Model cards, prompt/version manifests, feedback loops, drift tests, and audit proof for recommendations. The evidence should be package-local in `src/pyAppGen/pbcs/agri_supply_chain_traceability` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 49. Quality release gate before customer shipment
 
-### 49. High-scale partitioning and archival for Farm Lot
+**Justification:** Traceability value peaks at release time, when the package should decide whether product can move. Lots and batches should not ship if required lineage, quality, or compliance evidence is incomplete.
 
-**Justification:** Better-than-world-class packages must remain operable after years of high-volume domain history.
+**Improvement:** Add a pre-shipment release gate that checks lineage completeness, certificate scope, pending hazards, storage and transport exceptions, pending lab results, and unresolved corrective actions. Produce a release verdict with explainable blockers.
 
-**Improvement:** Plan scale behavior for `farm_lot`: tenant partitioning, archival policies, cold storage, retention-aware search, projection compaction, and large-batch replay. Tie the behavior to `agri_supply_chain_traceability_create_farm_lot_workflow` where applicable, and make it visible in `AgriSupplyChainTraceabilityWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Shipment-release verdict records, tests for blocked and passed releases, and operator views that show which missing evidence prevented release for a specific batch or shipment.
 
-**Acceptance evidence:** Partition tests, archive/retrieve fixtures, retention enforcement, and replay benchmarks. The evidence should be package-local in `src/pyAppGen/pbcs/agri_supply_chain_traceability` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 50. End-to-end provenance and recall release drill
 
-### 50. Release gate expansion for Input Batch
+**Justification:** The strongest proof of readiness is an end-to-end drill that starts with a farm lot and ends with both a customer-ready provenance pack and a regulator-ready recall response. This ties together the package's domain promise and its release evidence.
 
-**Justification:** The PBC should not claim domain coverage unless release evidence proves the claim end to end.
+**Improvement:** Define a repeatable release drill that covers farm lot registration, harvest batch creation, input applications, storage, transport, quality sampling, certificate validation, provenance-pack export, and a simulated contamination recall on the same lineage set. Require the drill before major releases of `agri_supply_chain_traceability`.
 
-**Improvement:** Expand release gates for `agri_supply_chain_traceability` so every schema, service, API, event, handler, UI, rule, parameter, agent skill, seed scenario, and improvement backlog item maps to executable evidence. Tie the behavior to `agri_supply_chain_traceability_record_input_batch_workflow` where applicable, and make it visible in `AgriSupplyChainTraceabilityWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Release audit checks, manifest traceability, generated-app smoke tests, and missing-capability blockers. The evidence should be package-local in `src/pyAppGen/pbcs/agri_supply_chain_traceability` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** A recorded drill run with timestamps, generated provenance and recall artifacts, event replay verification, workbench screenshots, and sign-off that the release candidate passed the traceability drill without manual database intervention.

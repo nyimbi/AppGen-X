@@ -1,8 +1,8 @@
-# Bank Payments Clearing PBC Better-Than-World-Class Improvement Backlog
+# Bank Payments Clearing PBC Manual Improvement Backlog
 
 ## Purpose
 
-This file identifies, justifies, and describes 50 high-impact improvements for `bank_payments_clearing`. The backlog is specific to ach, wire, real-time payment, card settlement, clearing files, exceptions, and bank reconciliation and is intended to move the PBC from release-auditable scaffolding toward complete, specialist-grade domain coverage.
+This strict backlog replaces scaffold-derived roadmap material for `bank_payments_clearing` with a hand-curated payments operations roadmap. The PBC owns payment instructions, clearing batches, settlement files, return items, exception cases, bank reconciliation, participant banks, governed rules, agent assistance, and release evidence without owning customer accounts, sanctions master data, fraud case management, or general ledger tables.
 
 ## Current Domain Evidence Used
 
@@ -12,407 +12,405 @@ This file identifies, justifies, and describes 50 high-impact improvements for `
 - Public APIs: `POST /payment-instructions`, `POST /clearing-batchs`, `POST /settlement-files`, `POST /return-items`, `POST /exception-cases`, `GET /bank-payments-clearing-workbench`.
 - Emitted AppGen-X events: `BankPaymentsClearingCreated`, `BankPaymentsClearingUpdated`, `BankPaymentsClearingApproved`, `BankPaymentsClearingExceptionOpened`.
 - Consumed AppGen-X events: `PolicyChanged`, `AuditEventSealed`, `OperationalKpiChanged`.
-- Current standard surfaces include: `payment_instruction_management`, `bank_payments_clearing_workflow`, `bank_payments_clearing_analytics`, `configuration_schema`, `rule_engine`, `parameter_engine`, `owned_schema_migrations_models`, `appgen_x_outbox_inbox_eventing`, `idempotent_handlers`, `retry_dead_letter_evidence`.
-- Current advanced surfaces include: `bank_payments_clearing_event_sourced_operational_history`, `bank_payments_clearing_multi_tenant_policy_isolation`, `bank_payments_clearing_schema_evolution_resilience`, `bank_payments_clearing_autonomous_anomaly_detection`, `bank_payments_clearing_semantic_document_instruction_understanding`, `bank_payments_clearing_predictive_risk_scoring`, `bank_payments_clearing_counterfactual_scenario_simulation`, `bank_payments_clearing_cryptographic_audit_proofs`.
 
 ## 50 High-Impact Improvements
 
-### 1. Canonical lifecycle state model for Payment Instruction
+### 1. Payment Instruction State Machine
 
-**Justification:** This closes shallow CRUD gaps by making every bank payments clearing transition explainable and testable instead of implicit in free-form status values.
+**Justification:** Payment instructions move through validation, screening, release, clearing, settlement, return, cancellation, repair, and reconciliation states.
 
-**Improvement:** Define a complete state machine for `payment_instruction` with explicit draft, validated, blocked, approved, active, suspended, corrected, closed, archived, and reopened states. Tie the behavior to `bank_payments_clearing_create_payment_instruction_workflow` where applicable, and make it visible in `BankPaymentsClearingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add explicit states for drafted, validated, screened, approved, released, batched, cleared, settled, returned, repaired, canceled, reversed, reconciled, and archived.
 
-**Acceptance evidence:** State-transition tests, invalid-transition fixtures, workbench state badges, and emitted AppGen-X transition events for BankPaymentsClearingCreated, BankPaymentsClearingUpdated, BankPaymentsClearingApproved. The evidence should be package-local in `src/pyAppGen/pbcs/bank_payments_clearing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must reject invalid transitions and preserve every material state change as AppGen-X evidence.
 
-### 2. Domain intake and normalization for Clearing Batch
+### 2. Payment Rail Classification
 
-**Justification:** The PBC cannot reach complete domain coverage unless it handles the messy front door of ach, wire, real-time payment, card settlement, clearing files, exceptions, and bank reconciliation, not only already-clean records.
+**Justification:** Domestic batch, same-day batch, wire, instant, card settlement, internal transfer, and cross-border rails have different cutoffs, message fields, risk, and settlement behavior.
 
-**Improvement:** Build a typed intake pipeline for `clearing_batch` that accepts structured API payloads, document-derived instructions, batch loads, and assistant-generated drafts while normalizing identifiers, dates, units, parties, and jurisdictional context. Tie the behavior to `bank_payments_clearing_record_clearing_batch_workflow` where applicable, and make it visible in `BankPaymentsClearingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add rail type, scheme profile, cutoff calendar, settlement basis, message format, value limits, supported currency, and repair rules to `payment_instruction`.
 
-**Acceptance evidence:** Golden intake fixtures, rejected-record queues, field-level normalization evidence, and assistant previews before governed datastore mutation. The evidence should be package-local in `src/pyAppGen/pbcs/bank_payments_clearing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must evaluate the same payment facts differently by rail and show the applied rail profile.
 
-### 3. Specialist validation rules for Settlement File
+### 3. Participant Bank Registry
 
-**Justification:** World-class Bank Payments Clearing requires rules that domain experts can reason about, version, test, and roll back without code edits.
+**Justification:** Routing, settlement, returns, and exception handling depend on participant bank status and capabilities.
 
-**Improvement:** Add a domain rule compiler for `settlement_file` that supports threshold rules, eligibility rules, dependency rules, temporal windows, conflicting-instruction detection, and override justification. Tie the behavior to `bank_payments_clearing_create_payment_instruction_workflow` where applicable, and make it visible in `BankPaymentsClearingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand `participant_bank` with routing identifier, settlement account projection, active windows, supported rails, return contact, cutoffs, and suspension state.
 
-**Acceptance evidence:** Rule simulation tests, versioned rule manifests, rule impact reports, and UI rule editors linked to `BANK_PAYMENTS_CLEARING_DATABASE_URL, BANK_PAYMENTS_CLEARING_EVENT_TOPIC, BANK_PAYMENTS_CLEARING_RETRY_LIMIT`. The evidence should be package-local in `src/pyAppGen/pbcs/bank_payments_clearing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must block payments to inactive or unsupported participant banks while preserving historical transactions.
 
-### 4. Parameter governance and tuning for Return Item
+### 4. Beneficiary and Originator Validation
 
-**Justification:** Parameters are where operations teams tune bank payments clearing; unbounded constants would make the PBC brittle and unsafe in real deployments.
+**Justification:** Payment quality depends on names, account identifiers, routing identifiers, address, purpose, and originator authority.
 
-**Improvement:** Expose bounded runtime parameters for `return_item` covering risk thresholds, SLA windows, confidence floors, escalation cutoffs, batch sizes, retry limits, and human-confirmation requirements. Tie the behavior to `bank_payments_clearing_record_clearing_batch_workflow` where applicable, and make it visible in `BankPaymentsClearingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add validation profiles for required parties, account format, routing checksum, purpose code, originator authorization, and beneficiary repair state.
 
-**Acceptance evidence:** Parameter schema validation, tenant overrides, approval history, rollback controls, and workbench diff views. The evidence should be package-local in `src/pyAppGen/pbcs/bank_payments_clearing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must reject malformed instructions and route repairable party-data issues to exception queues.
 
-### 5. Deep owned schema expansion for Exception Case
+### 5. Limits and Velocity Controls
 
-**Justification:** A single payload column cannot express the full surface of ach, wire, real-time payment, card settlement, clearing files, exceptions, and bank reconciliation or prove cross-PBC boundaries are respected.
+**Justification:** Payments need configurable controls by rail, participant, value, currency, originator type, and risk.
 
-**Improvement:** Extend the owned schema around `exception_case` with normalized child tables for line-level evidence, party roles, approvals, attachments, comments, metrics, exception reasons, and control assertions. Tie the behavior to `bank_payments_clearing_create_payment_instruction_workflow` where applicable, and make it visible in `BankPaymentsClearingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add limit definitions, daily/transaction caps, velocity window, approval tier, override reason, and breach exception.
 
-**Acceptance evidence:** Migrations, models, relationship tests, schema contract snapshots, and no shared-table access outside the `bank_payments_clearing_` namespace. The evidence should be package-local in `src/pyAppGen/pbcs/bank_payments_clearing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must enforce limits and require elevated approval for overrides.
 
-### 6. Event-sourced operational history for Bank Reconciliation
+### 6. Payment Screening Boundary
 
-**Justification:** Temporal reconstruction is essential for better-than-world-class auditability and dispute resolution in bank payments clearing.
+**Justification:** Sanctions, AML, and fraud systems may own screening, while clearing must store decision evidence and freshness.
 
-**Improvement:** Capture every material mutation of `bank_reconciliation` as immutable AppGen-X events with actor, tenant, command, policy version, idempotency key, before/after summary, and projection checkpoint. Tie the behavior to `bank_payments_clearing_record_clearing_batch_workflow` where applicable, and make it visible in `BankPaymentsClearingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Represent screening result, score, match reason, projection freshness, hold/release decision, and override evidence as declared dependencies.
 
-**Acceptance evidence:** Replay tests, projection checksums, event ordering evidence, and point-in-time workbench views. The evidence should be package-local in `src/pyAppGen/pbcs/bank_payments_clearing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Boundary tests must fail on direct sanctions or fraud table access and pass on declared event/API projections.
 
-### 7. Projection and read-model strategy for Participant Bank
+### 7. Clearing Batch Assembly
 
-**Justification:** The workbench should not force users to infer domain truth from raw tables; each projection should answer a real operating question.
+**Justification:** Batch rails require grouping by rail, participant, cutoff, effective date, currency, priority, and settlement window.
 
-**Improvement:** Create purpose-built projections for `participant_bank`: operational queue, executive KPI rollup, exception aging, compliance evidence, agent task context, and external dependency health. Tie the behavior to `bank_payments_clearing_create_payment_instruction_workflow` where applicable, and make it visible in `BankPaymentsClearingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand `clearing_batch` with batch profile, inclusion rules, totals, item count, hash total, cutoff, release approval, and finalization lock.
 
-**Acceptance evidence:** Projection contracts, freshness SLAs, backfill tests, and visible stale-projection warnings. The evidence should be package-local in `src/pyAppGen/pbcs/bank_payments_clearing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must assemble batches idempotently and reject additions after finalization.
 
-### 8. Exception taxonomy and remediation for Bank Payments Clearing Policy Rule
+### 8. Cutoff and Calendar Management
 
-**Justification:** High-value PBCs win on exception throughput; generic “failed” states hide the details operators need.
+**Justification:** Payment timing depends on bank holidays, rail windows, participant cutoffs, daylight saving, and emergency closures.
 
-**Improvement:** Model the full exception taxonomy for `bank_payments_clearing_policy_rule`, including severity, root cause, blocking dependency, remediation owner, due date, retry eligibility, escalation path, and closure evidence. Tie the behavior to `bank_payments_clearing_record_clearing_batch_workflow` where applicable, and make it visible in `BankPaymentsClearingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add calendars with jurisdiction, rail, participant override, cutoff time, extension approval, and missed-window behavior.
 
-**Acceptance evidence:** Exception queues, aging metrics, remediation playbooks, dead-letter linkage, and closure test fixtures for sanctions or fraud holds. The evidence should be package-local in `src/pyAppGen/pbcs/bank_payments_clearing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must calculate next eligible clearing window and explain missed-cutoff rerouting.
 
-### 9. Predictive risk scoring for Bank Payments Clearing Runtime Parameter
+### 9. Settlement File Generation
 
-**Justification:** The package should warn users before bank payments clearing work fails, breaches policy, or creates downstream cost.
+**Justification:** Settlement files require exact totals, sequence numbers, control records, encryption/signature evidence, and transmission status.
 
-**Improvement:** Add predictive risk scoring for `bank_payments_clearing_runtime_parameter` using domain features from owned tables, consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, rule outcomes, aging, anomaly signals, and historical corrections. Tie the behavior to `bank_payments_clearing_create_payment_instruction_workflow` where applicable, and make it visible in `BankPaymentsClearingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand `settlement_file` with file sequence, rail profile, control total, item hash, generated checksum, signature, transmission channel, and acknowledgement.
 
-**Acceptance evidence:** Feature manifests, score explanations, calibration reports, drift alerts, and tests for low/medium/high-risk scenarios. The evidence should be package-local in `src/pyAppGen/pbcs/bank_payments_clearing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must generate files with reproducible totals and detect altered file content.
 
-### 10. Counterfactual simulation for Bank Payments Clearing Schema Extension
+### 10. Settlement Acknowledgement Handling
 
-**Justification:** Advanced users need to ask “what would happen if” before committing changes to live ach, wire, real-time payment, card settlement, clearing files, exceptions, and bank reconciliation operations.
+**Justification:** Clearing is incomplete until acknowledgement, acceptance, rejection, or partial processing is reconciled.
 
-**Improvement:** Provide scenario simulation for `bank_payments_clearing_schema_extension`: policy change, capacity constraint, deadline shift, price/rate change, eligibility change, disruption, and manual override outcomes. Tie the behavior to `bank_payments_clearing_record_clearing_batch_workflow` where applicable, and make it visible in `BankPaymentsClearingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add acknowledgement type, received time, accepted count, rejected count, reason, linked batch, and repair/resubmit path.
 
-**Acceptance evidence:** Simulation APIs, non-mutating sandbox state, comparison reports, and workbench side-by-side scenario panels. The evidence should be package-local in `src/pyAppGen/pbcs/bank_payments_clearing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must handle accepted, rejected, duplicate acknowledgement, and partial acceptance scenarios.
 
-### 11. Autonomous anomaly triage for Bank Payments Clearing Control Assertion
+### 11. Return Item Lifecycle
 
-**Justification:** A world-class PBC should reduce analyst burden without hiding the reasoning behind automated triage.
+**Justification:** Returned payments require reason code, effective date, time limit, original instruction, customer impact, and repair/reversal options.
 
-**Improvement:** Implement anomaly detection for `bank_payments_clearing_control_assertion` that identifies outliers, duplicate submissions, impossible sequences, stale dependencies, unusual amounts/counts/durations, and contradictory fields. Tie the behavior to `bank_payments_clearing_create_payment_instruction_workflow` where applicable, and make it visible in `BankPaymentsClearingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand `return_item` with return reason, original item link, return deadline, financial impact, repair eligibility, representment state, and notification requirement.
 
-**Acceptance evidence:** Explainable anomaly cards, reviewer feedback loops, false-positive tracking, and suppression governance. The evidence should be package-local in `src/pyAppGen/pbcs/bank_payments_clearing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must process administrative, insufficient funds, unauthorized, closed account, and late return cases.
 
-### 12. Semantic document understanding for Bank Payments Clearing Governed Model
+### 12. Exception Case Taxonomy
 
-**Justification:** Document-heavy work in Bank Payments Clearing cannot be complete if the assistant only answers questions and cannot prepare accurate governed changes.
+**Justification:** Payment exceptions vary by validation, screening, liquidity, participant, file, acknowledgement, return, reconciliation, and operational outage.
 
-**Improvement:** Train the package assistant to parse domain documents and instructions for `bank_payments_clearing_governed_model`, extract obligations, dates, parties, quantities, identifiers, and exceptions, then map them to safe draft mutations. Tie the behavior to `bank_payments_clearing_record_clearing_batch_workflow` where applicable, and make it visible in `BankPaymentsClearingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand `exception_case` with type, severity, owner, deadline, financial exposure, blocked items, remediation action, and closure evidence.
 
-**Acceptance evidence:** Document extraction tests, confidence thresholds, redaction handling, source span citations, and human confirmation workflows. The evidence should be package-local in `src/pyAppGen/pbcs/bank_payments_clearing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must route each exception type to the correct queue and prevent closure without evidence.
 
-### 13. Agent-safe CRUD execution for Payment Instruction
+### 13. Repair Queue Workflow
 
-**Justification:** The PBC agent must be a first-class operator but never a hidden bypass around RBAC, rules, or owned datastore boundaries.
+**Justification:** Many payment issues can be repaired without cancellation if authorized and auditable.
 
-**Improvement:** Add a professional chatbot skill for `payment_instruction` that can create, update, correct, close, and annotate records only through policy-checked commands, approval gates, and previewed diffs. Tie the behavior to `bank_payments_clearing_create_payment_instruction_workflow` where applicable, and make it visible in `BankPaymentsClearingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add repairable fields, maker/checker approval, original value, corrected value, reason, customer notification, and rescreening requirement.
 
-**Acceptance evidence:** Skill manifests, permission tests, preview/confirm flows, blocked-action evidence, and audit events for every assistant mutation. The evidence should be package-local in `src/pyAppGen/pbcs/bank_payments_clearing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must require dual approval for material repairs and preserve original values.
 
-### 14. Workbench persona coverage for Clearing Batch
+### 14. Cancellation and Recall Handling
 
-**Justification:** A generic detail page underserves the domain; each role needs the exact controls and evidence they use daily.
+**Justification:** Payment cancellation and recall feasibility depends on rail status, cutoff, settlement stage, participant response, and legal constraints.
 
-**Improvement:** Design dedicated workbench panels for `clearing_batch`: operator queue, supervisor approvals, analyst exceptions, auditor evidence, configuration owner, and agent-assistance review. Tie the behavior to `bank_payments_clearing_record_clearing_batch_workflow` where applicable, and make it visible in `BankPaymentsClearingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add cancellation request, eligibility, deadline, recall message, participant response, final outcome, and customer communication.
 
-**Acceptance evidence:** UI contract entries, route tests, empty/error/loading states, and permission-aware action availability. The evidence should be package-local in `src/pyAppGen/pbcs/bank_payments_clearing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must distinguish cancellable, recall-only, too-late, and participant-rejected outcomes.
 
-### 15. Cross-PBC dependency contracts for Settlement File
+### 15. Liquidity and Settlement Funding Checks
 
-**Justification:** Composable packages fail when hidden table coupling enters the domain model.
+**Justification:** Released batches can fail if settlement funding is insufficient or liquidity buffers are breached.
 
-**Improvement:** Represent dependencies for `settlement_file` through declared APIs, consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, and projections rather than shared tables, with explicit freshness, ownership, and fallback behavior. Tie the behavior to `bank_payments_clearing_create_payment_instruction_workflow` where applicable, and make it visible in `BankPaymentsClearingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add liquidity projection, prefunding requirement, settlement account balance evidence, buffer threshold, and release hold.
 
-**Acceptance evidence:** Dependency manifests, contract tests, stale dependency alerts, and no foreign-table references in generated artifacts. The evidence should be package-local in `src/pyAppGen/pbcs/bank_payments_clearing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must block or warn on releases when liquidity projections are stale or below threshold.
 
-### 16. API completeness and versioning for Return Item
+### 16. Bank Reconciliation Matching
 
-**Justification:** Complete domain coverage requires both command and query surfaces, not only happy-path create endpoints.
+**Justification:** Payment clearing must reconcile instructions, batches, settlement files, acknowledgements, bank statements, fees, and returns.
 
-**Improvement:** Expand APIs beyond POST /payment-instructions, POST /clearing-batchs, POST /settlement-files to cover search, validation-only commands, simulation, bulk intake, exception closure, evidence export, projection reads, and idempotent corrections. Tie the behavior to `bank_payments_clearing_record_clearing_batch_workflow` where applicable, and make it visible in `BankPaymentsClearingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand `bank_reconciliation` with match type, matched records, tolerance, unmatched amount, aging, break reason, and resolution action.
 
-**Acceptance evidence:** OpenAPI-style route manifests, backward-compatible version tests, deprecation metadata, and idempotency assertions. The evidence should be package-local in `src/pyAppGen/pbcs/bank_payments_clearing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must match one-to-one, many-to-one, fee, return, and unmatched statement scenarios.
 
-### 17. Typed emitted-event expansion for Exception Case
+### 17. Nostro and Internal Account Boundary
 
-**Justification:** Consumers should understand what happened in Bank Payments Clearing without parsing opaque payloads.
+**Justification:** Clearing uses account balances and statements but should not own account ledgers or GL postings.
 
-**Improvement:** Replace generic lifecycle emissions with typed events for each meaningful `exception_case` transition, exception, approval, correction, simulation result, and downstream handoff. Tie the behavior to `bank_payments_clearing_create_payment_instruction_workflow` where applicable, and make it visible in `BankPaymentsClearingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Store statement and balance projection evidence with freshness, account identifier, source, and reconciliation result.
 
-**Acceptance evidence:** Event schema tests, event examples, compatibility checks, and emitted-event coverage in release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/bank_payments_clearing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Boundary tests must fail on direct ledger table writes and pass on emitted reconciliation/settlement events.
 
-### 18. Consumed-event handlers for Bank Reconciliation
+### 18. Fee and Charge Evidence
 
-**Justification:** A PBC is composable only when incoming events affect its own domain state predictably and safely.
+**Justification:** Payment fees, correspondent charges, scheme charges, and participant fees affect reconciliation and customer billing.
 
-**Improvement:** Implement idempotent handlers for consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged that update projections, open dependency exceptions, recalculate risk, and preserve source event lineage. Tie the behavior to `bank_payments_clearing_record_clearing_batch_workflow` where applicable, and make it visible in `BankPaymentsClearingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add fee type, amount, currency, payer, waiver, statement evidence, and downstream billing event.
 
-**Acceptance evidence:** Duplicate-event tests, handler side-effect boundaries, dead-letter fixtures, and lineage links back to source events. The evidence should be package-local in `src/pyAppGen/pbcs/bank_payments_clearing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must reconcile explicit and deducted fees without mutating billing tables.
 
-### 19. Retry and dead-letter operations for Participant Bank
+### 19. Operational Risk Controls
 
-**Justification:** Dead letters are not just plumbing; they are domain work queues that can block ach, wire, real-time payment, card settlement, clearing files, exceptions, and bank reconciliation.
+**Justification:** Payment operations require controls over dual approval, segregation, limits, file integrity, exception aging, and reconciliation breaks.
 
-**Improvement:** Create operational tools for retrying, quarantining, explaining, and resolving dead-lettered `participant_bank` events with max-attempt policy, poison-message detection, and replay safety. Tie the behavior to `bank_payments_clearing_create_payment_instruction_workflow` where applicable, and make it visible in `BankPaymentsClearingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add control assertions with population, threshold, failing items, owner, remediation, recurrence, and closure evidence.
 
-**Acceptance evidence:** Dead-letter workbench, retry eligibility tests, replay audit proof, and operator action logs. The evidence should be package-local in `src/pyAppGen/pbcs/bank_payments_clearing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must open control failures and require remediation proof.
 
-### 20. RBAC and attribute policy for Bank Payments Clearing Policy Rule
+### 20. Maker-Checker Authorization
 
-**Justification:** High-impact domain operations need finer controls than generic RBAC grants.
+**Justification:** High-risk payment changes require separation between creator, approver, releaser, and repairer.
 
-**Improvement:** Extend permissions for `bank_payments_clearing_policy_rule` from coarse read/create/update/admin to action-level and attribute-aware policies based on role, tenant, jurisdiction, monetary/materiality threshold, and exception severity. Tie the behavior to `bank_payments_clearing_record_clearing_batch_workflow` where applicable, and make it visible in `BankPaymentsClearingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add role constraints, approval tiers, conflict checks, delegation, and emergency override evidence.
 
-**Acceptance evidence:** Permission matrix docs, ABAC policy tests, denied-action UI states, and assistant skill permission checks. The evidence should be package-local in `src/pyAppGen/pbcs/bank_payments_clearing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must reject self-approval and unauthorized release.
 
-### 21. Continuous control testing for Bank Payments Clearing Runtime Parameter
+### 21. Payment Message Validation
 
-**Justification:** Controls should run during operations, not only during release audit or manual review.
+**Justification:** Rail messages have required fields, conditional rules, code lists, and semantic constraints.
 
-**Improvement:** Embed control assertions for `bank_payments_clearing_runtime_parameter` that continuously test segregation of duties, required approvals, stale exceptions, policy drift, duplicate records, and boundary violations. Tie the behavior to `bank_payments_clearing_create_payment_instruction_workflow` where applicable, and make it visible in `BankPaymentsClearingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add message schema profiles, field rules, conditional validation, code-list versions, and canonical-to-rail mapping evidence.
 
-**Acceptance evidence:** Control dashboards, failing-control events, test fixtures, and release evidence tied to `bank_payments_clearing_control_assertion` records. The evidence should be package-local in `src/pyAppGen/pbcs/bank_payments_clearing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must validate complete, malformed, conditionally invalid, and backward-compatible message versions.
 
-### 22. Cryptographic audit proofing for Bank Payments Clearing Schema Extension
+### 22. Duplicate Payment Prevention
 
-**Justification:** Better-than-world-class auditability requires proof of integrity, not merely logs stored in mutable tables.
+**Justification:** Duplicate release can create financial loss and customer harm.
 
-**Improvement:** Hash-chain material `bank_payments_clearing_schema_extension` decisions, documents, emitted events, and release-evidence snapshots to make tampering visible without exposing sensitive payloads. Tie the behavior to `bank_payments_clearing_record_clearing_batch_workflow` where applicable, and make it visible in `BankPaymentsClearingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add duplicate scoring across originator, beneficiary, amount, currency, value date, purpose, reference, and source idempotency key.
 
-**Acceptance evidence:** Proof manifests, verification APIs, redacted proof exports, and audit-ledger handoff events. The evidence should be package-local in `src/pyAppGen/pbcs/bank_payments_clearing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must block exact duplicates and route near duplicates to review.
 
-### 23. Privacy, consent, and secrecy controls for Bank Payments Clearing Control Assertion
+### 23. Real-Time Payment Finality
 
-**Justification:** Complete domain coverage must account for protected data and restricted operational evidence.
+**Justification:** Instant rails often have irreversible or near-final settlement semantics.
 
-**Improvement:** Add field-level privacy classifications for `bank_payments_clearing_control_assertion`, consent checks, masking rules, retention schedules, legal holds, and assistant redaction policies. Tie the behavior to `bank_payments_clearing_create_payment_instruction_workflow` where applicable, and make it visible in `BankPaymentsClearingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add finality state, timeout handling, uncertain outcome queue, participant status polling, and customer messaging.
 
-**Acceptance evidence:** Retention tests, masked UI snapshots, consent-blocked mutation fixtures, and export controls. The evidence should be package-local in `src/pyAppGen/pbcs/bank_payments_clearing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must handle success, reject, timeout-unknown, late confirmation, and duplicate retry safely.
 
-### 24. Multi-tenant operating model for Bank Payments Clearing Governed Model
+### 24. Card Settlement Batch Support
 
-**Justification:** The PBC should scale across organizations while preserving independent policy and compliance boundaries.
+**Justification:** Card settlement includes presentments, chargebacks, interchange, fees, and settlement files distinct from account-to-account rails.
 
-**Improvement:** Support tenant-specific `bank_payments_clearing_governed_model` rules, data residency, encryption context, configuration, seed data, and release evidence without allowing cross-tenant leakage. Tie the behavior to `bank_payments_clearing_record_clearing_batch_workflow` where applicable, and make it visible in `BankPaymentsClearingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add card settlement cycle, merchant batch projection, presentment totals, chargeback link, fee evidence, and settlement variance.
 
-**Acceptance evidence:** Tenant isolation tests, tenant-scoped parameters, key-rotation evidence, and cross-tenant negative fixtures. The evidence should be package-local in `src/pyAppGen/pbcs/bank_payments_clearing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must reconcile card settlement totals and route chargeback-linked variances.
 
-### 25. Schema evolution and extension registry for Payment Instruction
+### 25. Cross-Border Payment Controls
 
-**Justification:** Domain teams will add fields; the PBC must evolve without breaking APIs, events, or workbench projections.
+**Justification:** Cross-border payments require currency, correspondent routing, purpose, regulatory reporting, fees, and sanctions evidence.
 
-**Improvement:** Make schema extensions for `payment_instruction` first-class with compatibility checks, migration previews, projection backfills, field ownership, and rollback metadata. Tie the behavior to `bank_payments_clearing_create_payment_instruction_workflow` where applicable, and make it visible in `BankPaymentsClearingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add correspondent chain, FX projection, purpose code, regulatory report flag, charge bearer, and country-specific validation.
 
-**Acceptance evidence:** Extension registry UI, compatibility tests, migration dry-runs, and backfill release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/bank_payments_clearing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must evaluate cross-border instructions by jurisdiction and currency without owning FX or compliance tables.
 
-### 26. Master data quality gates for Clearing Batch
+### 26. FX Rate Boundary
 
-**Justification:** Many bank payments clearing errors begin as bad reference data; the PBC should catch them before workflow execution.
+**Justification:** Payments may need FX rates while treasury or markets systems own rates.
 
-**Improvement:** Define reference-data contracts for `clearing_batch`: canonical codes, parties, locations, classifications, calendars, units, currencies, products, assets, or service categories as relevant to the domain. Tie the behavior to `bank_payments_clearing_record_clearing_batch_workflow` where applicable, and make it visible in `BankPaymentsClearingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Store FX quote projection, rate timestamp, spread, expiry, source, and stale-rate behavior as declared dependency evidence.
 
-**Acceptance evidence:** Reference validation fixtures, stale-code warnings, mapping tables, and dependency freshness indicators. The evidence should be package-local in `src/pyAppGen/pbcs/bank_payments_clearing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must block stale FX payments and emit FX-used evidence without writing rate tables.
 
-### 27. Bulk operations and correction workflows for Settlement File
+### 27. Customer Notification Events
 
-**Justification:** Enterprise-scale Bank Payments Clearing users cannot operate one record at a time.
+**Justification:** Payment acceptance, rejection, return, repair, cancellation, and settlement need customer communication.
 
-**Improvement:** Add bulk load, bulk validate, bulk approve, and bulk correction workflows for `settlement_file` with partial success, row-level errors, resumability, and rollback. Tie the behavior to `bank_payments_clearing_create_payment_instruction_workflow` where applicable, and make it visible in `BankPaymentsClearingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Emit notification events with template, recipient projection, channel preference, deadline, and source evidence.
 
-**Acceptance evidence:** CSV/API batch fixtures, resumable job state, row-level audit evidence, and assistant-generated correction suggestions. The evidence should be package-local in `src/pyAppGen/pbcs/bank_payments_clearing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Contract tests must prove notifications are emitted through AppGen-X and no notification tables are directly modified.
 
-### 28. Lifecycle collaboration and tasking for Return Item
+### 28. Payment Operations Workbench
 
-**Justification:** Domain collaboration should live inside the PBC boundary and remain auditable with the record it affects.
+**Justification:** Operators need queues by risk and next action, not raw payment lists.
 
-**Improvement:** Attach tasks, comments, ownership, due dates, handoffs, and escalation threads to `return_item` without leaking into external shared task tables. Tie the behavior to `bank_payments_clearing_record_clearing_batch_workflow` where applicable, and make it visible in `BankPaymentsClearingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add workbench views for validation fails, screening holds, pending approvals, cutoff risk, batch release, file acknowledgements, returns, reconciliation breaks, and stale dependencies.
 
-**Acceptance evidence:** Task tables, comment audit history, notification events, escalation SLAs, and role-specific task queues. The evidence should be package-local in `src/pyAppGen/pbcs/bank_payments_clearing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** UI tests must prove each queue maps to owned data or declared projections with permission-aware actions.
 
-### 29. SLA and service-level governance for Exception Case
+### 29. Agent-Assisted Payment Investigation
 
-**Justification:** Users need to know when ach, wire, real-time payment, card settlement, clearing files, exceptions, and bank reconciliation is late, blocked, or at risk before customer or regulator impact.
+**Justification:** Payment staff need concise explanations of payment status, exceptions, returns, and reconciliation breaks.
 
-**Improvement:** Define SLAs for `exception_case` across intake, validation, approval, exception resolution, event handling, downstream projection refresh, and release-evidence generation. Tie the behavior to `bank_payments_clearing_create_payment_instruction_workflow` where applicable, and make it visible in `BankPaymentsClearingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add agent skills for payment status summary, return explanation, repair recommendation, reconciliation break analysis, and cutoff impact summary with citations.
 
-**Acceptance evidence:** SLA breach events, timers, configurable calendars, workbench aging buckets, and tests for pause/resume behavior. The evidence should be package-local in `src/pyAppGen/pbcs/bank_payments_clearing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must require evidence citations and confirmation before any payment mutation.
 
-### 30. Operational analytics cockpit for Bank Reconciliation
+### 30. Governed Agent CRUD Commands
 
-**Justification:** World-class operations require leading indicators, not only record counts.
+**Justification:** The chatbot should help operate payment records without silently moving money.
 
-**Improvement:** Build analytics for `bank_reconciliation`: throughput, backlog, aging, approval latency, exception rate, risk distribution, automation acceptance, correction rate, and downstream dependency health. Tie the behavior to `bank_payments_clearing_record_clearing_batch_workflow` where applicable, and make it visible in `BankPaymentsClearingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add command previews for approve payment, hold payment, release batch, repair instruction, open exception, close reconciliation break, and initiate recall.
 
-**Acceptance evidence:** Metric definitions, projection tests, drill-through routes, export APIs, and anomaly overlays. The evidence should be package-local in `src/pyAppGen/pbcs/bank_payments_clearing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Intent tests must require payment identity, action, evidence, preview, confirmation, authority, and audit trail.
 
-### 31. Decision intelligence and recommendations for Participant Bank
+### 31. Participant Bank Health Monitoring
 
-**Justification:** The PBC should help expert users decide faster while showing evidence and uncertainty.
+**Justification:** Participant outages, rejects, or delayed acknowledgements affect clearing risk.
 
-**Improvement:** Generate ranked recommendations for `participant_bank` such as next best action, likely resolution, required evidence, policy adjustment, staffing/capacity response, or downstream handoff. Tie the behavior to `bank_payments_clearing_create_payment_instruction_workflow` where applicable, and make it visible in `BankPaymentsClearingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add participant health metrics, acknowledgement latency, reject rate, outage state, fallback rule, and escalation owner.
 
-**Acceptance evidence:** Recommendation explanations, confidence intervals, feedback capture, model governance records, and rejection reasons. The evidence should be package-local in `src/pyAppGen/pbcs/bank_payments_clearing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must route payments according to participant status and show health reasons.
 
-### 32. Quality and completeness scoring for Bank Payments Clearing Policy Rule
+### 32. Clearing Window Forecast
 
-**Justification:** Operators should see whether a record is truly ready, not just technically saved.
+**Justification:** Operations teams need early warning of missed cutoffs, liquidity shortages, or batch congestion.
 
-**Improvement:** Score each `bank_payments_clearing_policy_rule` record for completeness, consistency, policy readiness, dependency readiness, evidence sufficiency, and downstream composability. Tie the behavior to `bank_payments_clearing_record_clearing_batch_workflow` where applicable, and make it visible in `BankPaymentsClearingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add forecast metrics from pending items, approval backlog, screening holds, participant status, liquidity, and calendar windows.
 
-**Acceptance evidence:** Scoring rules, missing-evidence lists, readiness badges, and blocking criteria in command handlers. The evidence should be package-local in `src/pyAppGen/pbcs/bank_payments_clearing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must produce explainable cutoff risk forecasts.
 
-### 33. End-to-end scenario library for Bank Payments Clearing Runtime Parameter
+### 33. Payment Volume and Risk Analytics
 
-**Justification:** Release evidence is stronger when every important bank payments clearing behavior has executable examples.
+**Justification:** Payments leaders need visibility into volume, value, exceptions, returns, rejects, SLA, and reconciliation breaks.
 
-**Improvement:** Create seeded scenarios for `bank_payments_clearing_runtime_parameter`: normal flow, urgent path, exception path, corrected path, duplicate path, late event path, and audit export path. Tie the behavior to `bank_payments_clearing_create_payment_instruction_workflow` where applicable, and make it visible in `BankPaymentsClearingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add analytics by rail, participant, currency, originator type, exception type, return reason, cutoff miss, and settlement variance.
 
-**Acceptance evidence:** Scenario seed data, runtime smoke coverage, generated-app fixtures, and story-level workbench screenshots/contracts. The evidence should be package-local in `src/pyAppGen/pbcs/bank_payments_clearing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must generate tenant-scoped metrics with source drilldowns.
 
-### 34. Domain ontology and terminology model for Bank Payments Clearing Schema Extension
+### 34. Return Reason Trend Analysis
 
-**Justification:** Precise vocabulary prevents the PBC from misclassifying specialist documents or user instructions.
+**Justification:** Repeated returns indicate data-quality, customer, participant, or fraud issues.
 
-**Improvement:** Add an ontology for `bank_payments_clearing_schema_extension` terms, synonyms, classifications, relationships, allowed values, and phrase mappings used by the assistant and UI. Tie the behavior to `bank_payments_clearing_record_clearing_batch_workflow` where applicable, and make it visible in `BankPaymentsClearingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add trend projections for return reason, originator, beneficiary bank, rail, amount band, and recurrence.
 
-**Acceptance evidence:** Ontology files, assistant parsing tests, UI glossary, and mapping evidence for domain-specific abbreviations. The evidence should be package-local in `src/pyAppGen/pbcs/bank_payments_clearing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must open prevention tasks for recurring preventable returns.
 
-### 35. Advanced search and investigation for Bank Payments Clearing Control Assertion
+### 35. Reconciliation Break Aging
 
-**Justification:** Investigators and operators need fast, explainable retrieval across the whole domain surface.
+**Justification:** Aging breaks can hide operational loss or settlement issues.
 
-**Improvement:** Provide search across `bank_payments_clearing_control_assertion` records, events, documents, exceptions, tasks, comments, and audit proofs with filters for tenant, status, risk, date, party, and dependency. Tie the behavior to `bank_payments_clearing_create_payment_instruction_workflow` where applicable, and make it visible in `BankPaymentsClearingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add aging buckets, financial exposure, owner, escalation, write-off recommendation, and closure evidence.
 
-**Acceptance evidence:** Search index contracts, result provenance, permission-filtered queries, and stale-index warnings. The evidence should be package-local in `src/pyAppGen/pbcs/bank_payments_clearing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must escalate aged high-value breaks and reject closure without match or approved write-off evidence.
 
-### 36. Reconciliation and closure controls for Bank Payments Clearing Governed Model
+### 36. Payment File Security Controls
 
-**Justification:** Closure is not complete until the PBC can prove no material domain work remains unresolved.
+**Justification:** Settlement files require confidentiality, integrity, signing, encryption, and secure transmission evidence.
 
-**Improvement:** Add reconciliation workflows that compare `bank_payments_clearing_governed_model` state against consumed events, external projections, expected totals/counts, approvals, and release evidence before closure. Tie the behavior to `bank_payments_clearing_record_clearing_batch_workflow` where applicable, and make it visible in `BankPaymentsClearingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add file encryption status, signature, key version reference, transmission endpoint, checksum, and access log evidence.
 
-**Acceptance evidence:** Reconciliation reports, variance thresholds, closure blockers, and AppGen-X closure events. The evidence should be package-local in `src/pyAppGen/pbcs/bank_payments_clearing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must block transmission when required security evidence is missing.
 
-### 37. Regulatory and policy reporting for Payment Instruction
+### 37. Cyber and Fraud Incident Boundary
 
-**Justification:** World-class PBCs turn operational evidence into credible reporting without spreadsheet reconstruction.
+**Justification:** Suspicious payment activity may open fraud or cyber cases owned elsewhere.
 
-**Improvement:** Generate domain reporting packs for `payment_instruction` covering statutory, contractual, operational, board, customer, or regulator evidence depending on monetary integrity, funds movement controls, counterparty risk, regulatory evidence, settlement finality, fraud prevention, and financial reconciliation. Tie the behavior to `bank_payments_clearing_create_payment_instruction_workflow` where applicable, and make it visible in `BankPaymentsClearingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Emit investigation events with payment evidence, risk indicators, hold state, and case reference projection.
 
-**Acceptance evidence:** Report schemas, redaction rules, traceable metric sources, and approval/export audit events. The evidence should be package-local in `src/pyAppGen/pbcs/bank_payments_clearing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Boundary tests must prove fraud/cyber tables are not directly mutated.
 
-### 38. Carbon and resource awareness for Clearing Batch
+### 38. Regulatory Reporting Triggers
 
-**Justification:** Sustainability evidence should be embedded in operations instead of treated as an after-the-fact report.
+**Justification:** Some payment activity requires operational or regulatory reporting by rail, value, country, purpose, or incident.
 
-**Improvement:** Where relevant, attach carbon, energy, water, travel, capacity, compute, or resource-footprint metadata to `clearing_batch` decisions and batch operations. Tie the behavior to `bank_payments_clearing_record_clearing_batch_workflow` where applicable, and make it visible in `BankPaymentsClearingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add report trigger, jurisdiction, report type, deadline, required fields, submission status, and correction history.
 
-**Acceptance evidence:** Footprint fields, scheduling parameters, exception rules, and dashboards that expose operational tradeoffs. The evidence should be package-local in `src/pyAppGen/pbcs/bank_payments_clearing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must create report candidates and track submission evidence.
 
-### 39. Resilience and offline behavior for Settlement File
+### 39. Exception Root Cause Analytics
 
-**Justification:** Real operations keep moving during outages; the PBC must preserve correctness when dependencies are unavailable.
+**Justification:** High exception rates should drive process fixes.
 
-**Improvement:** Define resilience modes for `settlement_file`: degraded dependency mode, offline draft capture, delayed event replay, conflict detection, and safe recovery after partial failure. Tie the behavior to `bank_payments_clearing_create_payment_instruction_workflow` where applicable, and make it visible in `BankPaymentsClearingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add root cause categories for customer data, participant outage, rail rule, screening dependency, liquidity, file error, and operator action.
 
-**Acceptance evidence:** Offline fixtures, replay tests, conflict queues, recovery logs, and user-visible degraded-mode warnings. The evidence should be package-local in `src/pyAppGen/pbcs/bank_payments_clearing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must trend root causes and open remediation tasks.
 
-### 40. Human-in-the-loop automation for Return Item
+### 40. Replay-Safe Idempotency
 
-**Justification:** Automation should accelerate ach, wire, real-time payment, card settlement, clearing files, exceptions, and bank reconciliation while preserving accountability for high-risk decisions.
+**Justification:** Payment event replay must never duplicate movement, files, returns, or notifications.
 
-**Improvement:** Set explicit automation boundaries for `return_item`: auto-approve, auto-reject, suggest-only, require-review, and block-until-evidence states with policy-based routing. Tie the behavior to `bank_payments_clearing_record_clearing_batch_workflow` where applicable, and make it visible in `BankPaymentsClearingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add idempotency keys across instruction intake, batch assembly, file generation, acknowledgement, return processing, and reconciliation.
 
-**Acceptance evidence:** Automation policy tests, reviewer queues, override reasons, and assistant action audit trails. The evidence should be package-local in `src/pyAppGen/pbcs/bank_payments_clearing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must replay duplicate events with unchanged financial outcomes.
 
-### 41. Package discovery and fit scoring for Exception Case
+### 41. Dead-Letter and Retry Operations
 
-**Justification:** Users selecting PBCs need transparent fit reasoning, especially when domains are adjacent but not overlapping.
+**Justification:** Payment files, acknowledgements, screening responses, participant updates, and reconciliation inputs can fail.
 
-**Improvement:** Improve package metadata so composition can explain when `bank_payments_clearing` fits a prompt, what entities it owns, what APIs/events it exposes, and what adjacent PBCs it depends on. Tie the behavior to `bank_payments_clearing_create_payment_instruction_workflow` where applicable, and make it visible in `BankPaymentsClearingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add dead-letter reason, risk, retry count, replay checkpoint, remediation action, and manual release gate.
 
-**Acceptance evidence:** Discovery manifests, prompt-selection tests, overlap rationale links, and composition DSL examples. The evidence should be package-local in `src/pyAppGen/pbcs/bank_payments_clearing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must replay failed events without duplicate payment effects.
 
-### 42. Configuration deployment pipeline for Bank Reconciliation
+### 42. Cryptographic Payment Evidence
 
-**Justification:** Configuration changes can materially alter bank payments clearing; they need the same discipline as code releases.
+**Justification:** Payment disputes and audits need tamper-evident proof of instruction, approval, file, acknowledgement, return, and reconciliation events.
 
-**Improvement:** Add configuration promotion for `bank_reconciliation` across draft, test, approved, active, deprecated, and rollback states with impact analysis before activation. Tie the behavior to `bank_payments_clearing_record_clearing_batch_workflow` where applicable, and make it visible in `BankPaymentsClearingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add hash chains for payment instructions, approvals, batches, settlement files, acknowledgements, returns, exceptions, and reconciliation outcomes.
 
-**Acceptance evidence:** Config diff views, approval workflows, simulation before activation, and rollback tests. The evidence should be package-local in `src/pyAppGen/pbcs/bank_payments_clearing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must verify proof chains and detect altered payloads or reordered events.
 
-### 43. Workbench command completeness for Participant Bank
+### 43. Privacy and Minimum Necessary Views
 
-**Justification:** A PBC does not fully surface its capabilities if users must call hidden APIs for core work.
+**Justification:** Payment records include sensitive account, party, and compliance evidence.
 
-**Improvement:** Expose every high-value operation for `participant_bank` in the UI: create, validate, approve, simulate, correct, assign, export, retry, close, and audit-proof verification. Tie the behavior to `bank_payments_clearing_create_payment_instruction_workflow` where applicable, and make it visible in `BankPaymentsClearingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add redaction profiles for operator, approver, investigator, auditor, participant view, and customer-service view.
 
-**Acceptance evidence:** UI action coverage tests, permission-aware disabled states, keyboard paths, and assistant handoff links. The evidence should be package-local in `src/pyAppGen/pbcs/bank_payments_clearing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Permission tests must prove sensitive party, screening, and account data are hidden when not needed.
 
-### 44. Document packet and evidence vault for Bank Payments Clearing Policy Rule
+### 44. Configuration Impact Simulation
 
-**Justification:** Documents often carry the legal or operational truth behind ach, wire, real-time payment, card settlement, clearing files, exceptions, and bank reconciliation.
+**Justification:** Changing limits, cutoffs, screening hold policies, participant status, or repair rules can disrupt payments.
 
-**Improvement:** Create a governed evidence vault for `bank_payments_clearing_policy_rule` documents, attachments, source spans, extracted fields, signatures, approvals, and retention labels. Tie the behavior to `bank_payments_clearing_record_clearing_batch_workflow` where applicable, and make it visible in `BankPaymentsClearingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add side-effect-free simulations over recent instructions, batches, exceptions, returns, and reconciliation breaks.
 
-**Acceptance evidence:** Evidence models, source-to-field lineage, signature validation, retention policies, and proof exports. The evidence should be package-local in `src/pyAppGen/pbcs/bank_payments_clearing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must produce impact reports before activating high-risk configuration.
 
-### 45. Data correction and amendment history for Bank Payments Clearing Runtime Parameter
+### 45. Seeded Payments Scenario Library
 
-**Justification:** World-class systems correct mistakes without rewriting history or confusing downstream consumers.
+**Justification:** Release audits need realistic payments stories.
 
-**Improvement:** Support formal amendments for `bank_payments_clearing_runtime_parameter` that preserve original values, correction reason, approving actor, effective date, downstream event impacts, and replay behavior. Tie the behavior to `bank_payments_clearing_create_payment_instruction_workflow` where applicable, and make it visible in `BankPaymentsClearingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add seeds for clean batch payment, wire approval, instant payment timeout, screening hold, return item, file reject, reconciliation break, recall, and stale liquidity projection.
 
-**Acceptance evidence:** Amendment tables, correction events, projection replay tests, and side-by-side before/after UI. The evidence should be package-local in `src/pyAppGen/pbcs/bank_payments_clearing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Scenario tests must load side-effect-free and create expected queues, events, and evidence packets.
 
-### 46. External participant collaboration for Bank Payments Clearing Schema Extension
+### 46. Role-Based Permission Model
 
-**Justification:** Many bank payments clearing workflows require outside parties, but they must not gain direct access to internal tables.
+**Justification:** Payment operators, approvers, release managers, investigators, reconciliation users, liquidity users, and auditors need different authority.
 
-**Improvement:** Add controlled collaboration portals or API views for external participants related to `bank_payments_clearing_schema_extension`, limited to scoped evidence submission, status checks, comments, and dispute responses. Tie the behavior to `bank_payments_clearing_record_clearing_batch_workflow` where applicable, and make it visible in `BankPaymentsClearingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add permissions for create, repair, approve, release, cancel, recall, process return, close exception, transmit file, and close reconciliation break.
 
-**Acceptance evidence:** Participant role policies, scoped tokens, submission audit trails, and inbound evidence validation. The evidence should be package-local in `src/pyAppGen/pbcs/bank_payments_clearing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Permission tests must block unauthorized commands and show disabled UI actions.
 
-### 47. Advanced dependency freshness scoring for Bank Payments Clearing Control Assertion
+### 47. Settlement Close and Finance Handoff
 
-**Justification:** A record may be valid locally but unsafe if dependency evidence is stale or incomplete.
+**Justification:** Clearing outputs feed finance and treasury but should not own accounting ledgers.
 
-**Improvement:** Score freshness and reliability of dependencies used by `bank_payments_clearing_control_assertion`, including consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, referenced projections, configuration versions, and external submissions. Tie the behavior to `bank_payments_clearing_create_payment_instruction_workflow` where applicable, and make it visible in `BankPaymentsClearingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Emit settlement, fee, return, reconciliation, and unresolved-break events with idempotency keys and evidence references.
 
-**Acceptance evidence:** Freshness indicators, blocking rules, stale-event simulations, and workbench dependency health panels. The evidence should be package-local in `src/pyAppGen/pbcs/bank_payments_clearing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Contract tests must prove finance handoff events are complete and replay-safe.
 
-### 48. Model governance and explainability for Bank Payments Clearing Governed Model
+### 48. Full Payments Release Simulation
 
-**Justification:** Governed AI is mandatory for professional-grade automation in Bank Payments Clearing.
+**Justification:** A complete PBC must prove instruction-to-reconciliation behavior end to end.
 
-**Improvement:** For every predictive or agentic feature around `bank_payments_clearing_governed_model`, record model version, prompt or ruleset version, training/evaluation evidence, confidence, explanation, and human feedback. Tie the behavior to `bank_payments_clearing_record_clearing_batch_workflow` where applicable, and make it visible in `BankPaymentsClearingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add a simulation where instructions validate, screen, approve, batch, generate settlement files, receive acknowledgements, process returns, reconcile statements, and emit finance handoff events.
 
-**Acceptance evidence:** Model cards, prompt/version manifests, feedback loops, drift tests, and audit proof for recommendations. The evidence should be package-local in `src/pyAppGen/pbcs/bank_payments_clearing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** The simulation must validate owned schema, APIs, services, AppGen-X events, handlers, workbench views, agent skills, permissions, and release evidence.
 
-### 49. High-scale partitioning and archival for Payment Instruction
+### 49. Package Overlap Guardrails
 
-**Justification:** Better-than-world-class packages must remain operable after years of high-volume domain history.
+**Justification:** This PBC must not duplicate core accounts, fraud, treasury, notification, regulatory reporting, or general ledger ownership.
 
-**Improvement:** Plan scale behavior for `payment_instruction`: tenant partitioning, archival policies, cold storage, retention-aware search, projection compaction, and large-batch replay. Tie the behavior to `bank_payments_clearing_create_payment_instruction_workflow` where applicable, and make it visible in `BankPaymentsClearingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add overlap checks and declared dependency contracts for account balances, screening, FX, liquidity, customer notifications, finance postings, and audit events.
 
-**Acceptance evidence:** Partition tests, archive/retrieve fixtures, retention enforcement, and replay benchmarks. The evidence should be package-local in `src/pyAppGen/pbcs/bank_payments_clearing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must fail on undeclared external table references and pass on declared AppGen-X dependency usage.
 
-### 50. Release gate expansion for Clearing Batch
+### 50. Composition DSL and Unified Agent Exposure
 
-**Justification:** The PBC should not claim domain coverage unless release evidence proves the claim end to end.
+**Justification:** Generated applications must expose payment clearing capabilities through DSL, UI, APIs, and the composed application agent.
 
-**Improvement:** Expand release gates for `bank_payments_clearing` so every schema, service, API, event, handler, UI, rule, parameter, agent skill, seed scenario, and improvement backlog item maps to executable evidence. Tie the behavior to `bank_payments_clearing_record_clearing_batch_workflow` where applicable, and make it visible in `BankPaymentsClearingWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Extend composition metadata for payment instructions, batches, files, returns, exceptions, reconciliations, participant banks, controls, workbench fragments, and agent skills.
 
-**Acceptance evidence:** Release audit checks, manifest traceability, generated-app smoke tests, and missing-capability blockers. The evidence should be package-local in `src/pyAppGen/pbcs/bank_payments_clearing` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** DSL tests must prove generated apps include payments models, routes, services, event contracts, UI artifacts, and assistant skills without stream-engine picker exposure.

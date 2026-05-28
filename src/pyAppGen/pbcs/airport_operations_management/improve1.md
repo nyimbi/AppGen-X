@@ -1,418 +1,266 @@
-# Airport Operations Management PBC Better-Than-World-Class Improvement Backlog
+# Airport Operations Management PBC Improvement Backlog
 
-## Purpose
-
-This file identifies, justifies, and describes 50 high-impact improvements for `airport_operations_management`. The backlog is specific to gates, stands, slots, turnaround, baggage, passenger flows, disruptions, and airport coordination and is intended to move the PBC from release-auditable scaffolding toward complete, specialist-grade domain coverage.
+This backlog is a hand-curated improvement set for `airport_operations_management`. It is grounded in the current manifest surfaces and focused on airport operations realities: gates, stands, runway and taxiway availability, turnaround control, ground handlers, baggage belts, passenger flows, deicing, disruption response, and airport operations center decision-making.
 
 ## Current Domain Evidence Used
 
-- Stable PBC key: `airport_operations_management`.
-- Domain purpose: Gates, stands, slots, turnaround, baggage, passenger flows, disruptions, and airport coordination.
-- Owned domain tables: `gate_assignment`, `stand_allocation`, `slot`, `turndown_task`, `baggage_belt`, `passenger_flow`, `airport_disruption`, `airport_operations_management_policy_rule`, `airport_operations_management_runtime_parameter`, `airport_operations_management_schema_extension`, `airport_operations_management_control_assertion`, `airport_operations_management_governed_model`.
-- Public APIs: `POST /gate-assignments`, `POST /stand-allocations`, `POST /slots`, `POST /turndown-tasks`, `POST /baggage-belts`, `GET /airport-operations-management-workbench`.
-- Emitted AppGen-X events: `AirportOperationsManagementCreated`, `AirportOperationsManagementUpdated`, `AirportOperationsManagementApproved`, `AirportOperationsManagementExceptionOpened`.
-- Consumed AppGen-X events: `PolicyChanged`, `AuditEventSealed`, `OperationalKpiChanged`.
-- Current standard surfaces include: `gate_assignment_management`, `airport_operations_management_workflow`, `airport_operations_management_analytics`, `configuration_schema`, `rule_engine`, `parameter_engine`, `owned_schema_migrations_models`, `appgen_x_outbox_inbox_eventing`, `idempotent_handlers`, `retry_dead_letter_evidence`.
-- Current advanced surfaces include: `airport_operations_management_event_sourced_operational_history`, `airport_operations_management_multi_tenant_policy_isolation`, `airport_operations_management_schema_evolution_resilience`, `airport_operations_management_autonomous_anomaly_detection`, `airport_operations_management_semantic_document_instruction_understanding`, `airport_operations_management_predictive_risk_scoring`, `airport_operations_management_counterfactual_scenario_simulation`, `airport_operations_management_cryptographic_audit_proofs`.
-
-## 50 High-Impact Improvements
-
-### 1. Canonical lifecycle state model for Gate Assignment
-
-**Justification:** This closes shallow CRUD gaps by making every airport operations management transition explainable and testable instead of implicit in free-form status values.
-
-**Improvement:** Define a complete state machine for `gate_assignment` with explicit draft, validated, blocked, approved, active, suspended, corrected, closed, archived, and reopened states. Tie the behavior to `airport_operations_management_create_gate_assignment_workflow` where applicable, and make it visible in `AirportOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** State-transition tests, invalid-transition fixtures, workbench state badges, and emitted AppGen-X transition events for AirportOperationsManagementCreated, AirportOperationsManagementUpdated, AirportOperationsManagementApproved. The evidence should be package-local in `src/pyAppGen/pbcs/airport_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 2. Domain intake and normalization for Stand Allocation
-
-**Justification:** The PBC cannot reach complete domain coverage unless it handles the messy front door of gates, stands, slots, turnaround, baggage, passenger flows, disruptions, and airport coordination, not only already-clean records.
-
-**Improvement:** Build a typed intake pipeline for `stand_allocation` that accepts structured API payloads, document-derived instructions, batch loads, and assistant-generated drafts while normalizing identifiers, dates, units, parties, and jurisdictional context. Tie the behavior to `airport_operations_management_record_stand_allocation_workflow` where applicable, and make it visible in `AirportOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Golden intake fixtures, rejected-record queues, field-level normalization evidence, and assistant previews before governed datastore mutation. The evidence should be package-local in `src/pyAppGen/pbcs/airport_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 3. Specialist validation rules for Slot
-
-**Justification:** World-class Airport Operations Management requires rules that domain experts can reason about, version, test, and roll back without code edits.
-
-**Improvement:** Add a domain rule compiler for `slot` that supports threshold rules, eligibility rules, dependency rules, temporal windows, conflicting-instruction detection, and override justification. Tie the behavior to `airport_operations_management_create_gate_assignment_workflow` where applicable, and make it visible in `AirportOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Rule simulation tests, versioned rule manifests, rule impact reports, and UI rule editors linked to `AIRPORT_OPERATIONS_MANAGEMENT_DATABASE_URL, AIRPORT_OPERATIONS_MANAGEMENT_EVENT_TOPIC, AIRPORT_OPERATIONS_MANAGEMENT_RETRY_LIMIT`. The evidence should be package-local in `src/pyAppGen/pbcs/airport_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 4. Parameter governance and tuning for Turndown Task
-
-**Justification:** Parameters are where operations teams tune airport operations management; unbounded constants would make the PBC brittle and unsafe in real deployments.
-
-**Improvement:** Expose bounded runtime parameters for `turndown_task` covering risk thresholds, SLA windows, confidence floors, escalation cutoffs, batch sizes, retry limits, and human-confirmation requirements. Tie the behavior to `airport_operations_management_record_stand_allocation_workflow` where applicable, and make it visible in `AirportOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Parameter schema validation, tenant overrides, approval history, rollback controls, and workbench diff views. The evidence should be package-local in `src/pyAppGen/pbcs/airport_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 5. Deep owned schema expansion for Baggage Belt
-
-**Justification:** A single payload column cannot express the full surface of gates, stands, slots, turnaround, baggage, passenger flows, disruptions, and airport coordination or prove cross-PBC boundaries are respected.
-
-**Improvement:** Extend the owned schema around `baggage_belt` with normalized child tables for line-level evidence, party roles, approvals, attachments, comments, metrics, exception reasons, and control assertions. Tie the behavior to `airport_operations_management_create_gate_assignment_workflow` where applicable, and make it visible in `AirportOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Migrations, models, relationship tests, schema contract snapshots, and no shared-table access outside the `airport_operations_management_` namespace. The evidence should be package-local in `src/pyAppGen/pbcs/airport_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 6. Event-sourced operational history for Passenger Flow
-
-**Justification:** Temporal reconstruction is essential for better-than-world-class auditability and dispute resolution in airport operations management.
-
-**Improvement:** Capture every material mutation of `passenger_flow` as immutable AppGen-X events with actor, tenant, command, policy version, idempotency key, before/after summary, and projection checkpoint. Tie the behavior to `airport_operations_management_record_stand_allocation_workflow` where applicable, and make it visible in `AirportOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Replay tests, projection checksums, event ordering evidence, and point-in-time workbench views. The evidence should be package-local in `src/pyAppGen/pbcs/airport_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 7. Projection and read-model strategy for Airport Disruption
-
-**Justification:** The workbench should not force users to infer domain truth from raw tables; each projection should answer a real operating question.
-
-**Improvement:** Create purpose-built projections for `airport_disruption`: operational queue, executive KPI rollup, exception aging, compliance evidence, agent task context, and external dependency health. Tie the behavior to `airport_operations_management_create_gate_assignment_workflow` where applicable, and make it visible in `AirportOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Projection contracts, freshness SLAs, backfill tests, and visible stale-projection warnings. The evidence should be package-local in `src/pyAppGen/pbcs/airport_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 8. Exception taxonomy and remediation for Airport Operations Management Policy Rule
-
-**Justification:** High-value PBCs win on exception throughput; generic “failed” states hide the details operators need.
-
-**Improvement:** Model the full exception taxonomy for `airport_operations_management_policy_rule`, including severity, root cause, blocking dependency, remediation owner, due date, retry eligibility, escalation path, and closure evidence. Tie the behavior to `airport_operations_management_record_stand_allocation_workflow` where applicable, and make it visible in `AirportOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Exception queues, aging metrics, remediation playbooks, dead-letter linkage, and closure test fixtures for weather or traffic disruption. The evidence should be package-local in `src/pyAppGen/pbcs/airport_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 9. Predictive risk scoring for Airport Operations Management Runtime Parameter
-
-**Justification:** The package should warn users before airport operations management work fails, breaches policy, or creates downstream cost.
-
-**Improvement:** Add predictive risk scoring for `airport_operations_management_runtime_parameter` using domain features from owned tables, consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, rule outcomes, aging, anomaly signals, and historical corrections. Tie the behavior to `airport_operations_management_create_gate_assignment_workflow` where applicable, and make it visible in `AirportOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Feature manifests, score explanations, calibration reports, drift alerts, and tests for low/medium/high-risk scenarios. The evidence should be package-local in `src/pyAppGen/pbcs/airport_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 10. Counterfactual simulation for Airport Operations Management Schema Extension
-
-**Justification:** Advanced users need to ask “what would happen if” before committing changes to live gates, stands, slots, turnaround, baggage, passenger flows, disruptions, and airport coordination operations.
-
-**Improvement:** Provide scenario simulation for `airport_operations_management_schema_extension`: policy change, capacity constraint, deadline shift, price/rate change, eligibility change, disruption, and manual override outcomes. Tie the behavior to `airport_operations_management_record_stand_allocation_workflow` where applicable, and make it visible in `AirportOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Simulation APIs, non-mutating sandbox state, comparison reports, and workbench side-by-side scenario panels. The evidence should be package-local in `src/pyAppGen/pbcs/airport_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 11. Autonomous anomaly triage for Airport Operations Management Control Assertion
-
-**Justification:** A world-class PBC should reduce analyst burden without hiding the reasoning behind automated triage.
-
-**Improvement:** Implement anomaly detection for `airport_operations_management_control_assertion` that identifies outliers, duplicate submissions, impossible sequences, stale dependencies, unusual amounts/counts/durations, and contradictory fields. Tie the behavior to `airport_operations_management_create_gate_assignment_workflow` where applicable, and make it visible in `AirportOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Explainable anomaly cards, reviewer feedback loops, false-positive tracking, and suppression governance. The evidence should be package-local in `src/pyAppGen/pbcs/airport_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 12. Semantic document understanding for Airport Operations Management Governed Model
-
-**Justification:** Document-heavy work in Airport Operations Management cannot be complete if the assistant only answers questions and cannot prepare accurate governed changes.
-
-**Improvement:** Train the package assistant to parse domain documents and instructions for `airport_operations_management_governed_model`, extract obligations, dates, parties, quantities, identifiers, and exceptions, then map them to safe draft mutations. Tie the behavior to `airport_operations_management_record_stand_allocation_workflow` where applicable, and make it visible in `AirportOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Document extraction tests, confidence thresholds, redaction handling, source span citations, and human confirmation workflows. The evidence should be package-local in `src/pyAppGen/pbcs/airport_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 13. Agent-safe CRUD execution for Gate Assignment
-
-**Justification:** The PBC agent must be a first-class operator but never a hidden bypass around RBAC, rules, or owned datastore boundaries.
-
-**Improvement:** Add a professional chatbot skill for `gate_assignment` that can create, update, correct, close, and annotate records only through policy-checked commands, approval gates, and previewed diffs. Tie the behavior to `airport_operations_management_create_gate_assignment_workflow` where applicable, and make it visible in `AirportOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Skill manifests, permission tests, preview/confirm flows, blocked-action evidence, and audit events for every assistant mutation. The evidence should be package-local in `src/pyAppGen/pbcs/airport_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 14. Workbench persona coverage for Stand Allocation
-
-**Justification:** A generic detail page underserves the domain; each role needs the exact controls and evidence they use daily.
-
-**Improvement:** Design dedicated workbench panels for `stand_allocation`: operator queue, supervisor approvals, analyst exceptions, auditor evidence, configuration owner, and agent-assistance review. Tie the behavior to `airport_operations_management_record_stand_allocation_workflow` where applicable, and make it visible in `AirportOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** UI contract entries, route tests, empty/error/loading states, and permission-aware action availability. The evidence should be package-local in `src/pyAppGen/pbcs/airport_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 15. Cross-PBC dependency contracts for Slot
-
-**Justification:** Composable packages fail when hidden table coupling enters the domain model.
-
-**Improvement:** Represent dependencies for `slot` through declared APIs, consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, and projections rather than shared tables, with explicit freshness, ownership, and fallback behavior. Tie the behavior to `airport_operations_management_create_gate_assignment_workflow` where applicable, and make it visible in `AirportOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Dependency manifests, contract tests, stale dependency alerts, and no foreign-table references in generated artifacts. The evidence should be package-local in `src/pyAppGen/pbcs/airport_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 16. API completeness and versioning for Turndown Task
-
-**Justification:** Complete domain coverage requires both command and query surfaces, not only happy-path create endpoints.
-
-**Improvement:** Expand APIs beyond POST /gate-assignments, POST /stand-allocations, POST /slots to cover search, validation-only commands, simulation, bulk intake, exception closure, evidence export, projection reads, and idempotent corrections. Tie the behavior to `airport_operations_management_record_stand_allocation_workflow` where applicable, and make it visible in `AirportOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** OpenAPI-style route manifests, backward-compatible version tests, deprecation metadata, and idempotency assertions. The evidence should be package-local in `src/pyAppGen/pbcs/airport_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 17. Typed emitted-event expansion for Baggage Belt
-
-**Justification:** Consumers should understand what happened in Airport Operations Management without parsing opaque payloads.
-
-**Improvement:** Replace generic lifecycle emissions with typed events for each meaningful `baggage_belt` transition, exception, approval, correction, simulation result, and downstream handoff. Tie the behavior to `airport_operations_management_create_gate_assignment_workflow` where applicable, and make it visible in `AirportOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Event schema tests, event examples, compatibility checks, and emitted-event coverage in release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/airport_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 18. Consumed-event handlers for Passenger Flow
-
-**Justification:** A PBC is composable only when incoming events affect its own domain state predictably and safely.
-
-**Improvement:** Implement idempotent handlers for consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged that update projections, open dependency exceptions, recalculate risk, and preserve source event lineage. Tie the behavior to `airport_operations_management_record_stand_allocation_workflow` where applicable, and make it visible in `AirportOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Duplicate-event tests, handler side-effect boundaries, dead-letter fixtures, and lineage links back to source events. The evidence should be package-local in `src/pyAppGen/pbcs/airport_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 19. Retry and dead-letter operations for Airport Disruption
-
-**Justification:** Dead letters are not just plumbing; they are domain work queues that can block gates, stands, slots, turnaround, baggage, passenger flows, disruptions, and airport coordination.
-
-**Improvement:** Create operational tools for retrying, quarantining, explaining, and resolving dead-lettered `airport_disruption` events with max-attempt policy, poison-message detection, and replay safety. Tie the behavior to `airport_operations_management_create_gate_assignment_workflow` where applicable, and make it visible in `AirportOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Dead-letter workbench, retry eligibility tests, replay audit proof, and operator action logs. The evidence should be package-local in `src/pyAppGen/pbcs/airport_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 20. RBAC and attribute policy for Airport Operations Management Policy Rule
-
-**Justification:** High-impact domain operations need finer controls than generic RBAC grants.
-
-**Improvement:** Extend permissions for `airport_operations_management_policy_rule` from coarse read/create/update/admin to action-level and attribute-aware policies based on role, tenant, jurisdiction, monetary/materiality threshold, and exception severity. Tie the behavior to `airport_operations_management_record_stand_allocation_workflow` where applicable, and make it visible in `AirportOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Permission matrix docs, ABAC policy tests, denied-action UI states, and assistant skill permission checks. The evidence should be package-local in `src/pyAppGen/pbcs/airport_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 21. Continuous control testing for Airport Operations Management Runtime Parameter
-
-**Justification:** Controls should run during operations, not only during release audit or manual review.
-
-**Improvement:** Embed control assertions for `airport_operations_management_runtime_parameter` that continuously test segregation of duties, required approvals, stale exceptions, policy drift, duplicate records, and boundary violations. Tie the behavior to `airport_operations_management_create_gate_assignment_workflow` where applicable, and make it visible in `AirportOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Control dashboards, failing-control events, test fixtures, and release evidence tied to `airport_operations_management_control_assertion` records. The evidence should be package-local in `src/pyAppGen/pbcs/airport_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 22. Cryptographic audit proofing for Airport Operations Management Schema Extension
-
-**Justification:** Better-than-world-class auditability requires proof of integrity, not merely logs stored in mutable tables.
-
-**Improvement:** Hash-chain material `airport_operations_management_schema_extension` decisions, documents, emitted events, and release-evidence snapshots to make tampering visible without exposing sensitive payloads. Tie the behavior to `airport_operations_management_record_stand_allocation_workflow` where applicable, and make it visible in `AirportOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Proof manifests, verification APIs, redacted proof exports, and audit-ledger handoff events. The evidence should be package-local in `src/pyAppGen/pbcs/airport_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 23. Privacy, consent, and secrecy controls for Airport Operations Management Control Assertion
-
-**Justification:** Complete domain coverage must account for protected data and restricted operational evidence.
-
-**Improvement:** Add field-level privacy classifications for `airport_operations_management_control_assertion`, consent checks, masking rules, retention schedules, legal holds, and assistant redaction policies. Tie the behavior to `airport_operations_management_create_gate_assignment_workflow` where applicable, and make it visible in `AirportOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Retention tests, masked UI snapshots, consent-blocked mutation fixtures, and export controls. The evidence should be package-local in `src/pyAppGen/pbcs/airport_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 24. Multi-tenant operating model for Airport Operations Management Governed Model
-
-**Justification:** The PBC should scale across organizations while preserving independent policy and compliance boundaries.
-
-**Improvement:** Support tenant-specific `airport_operations_management_governed_model` rules, data residency, encryption context, configuration, seed data, and release evidence without allowing cross-tenant leakage. Tie the behavior to `airport_operations_management_record_stand_allocation_workflow` where applicable, and make it visible in `AirportOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Tenant isolation tests, tenant-scoped parameters, key-rotation evidence, and cross-tenant negative fixtures. The evidence should be package-local in `src/pyAppGen/pbcs/airport_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 25. Schema evolution and extension registry for Gate Assignment
-
-**Justification:** Domain teams will add fields; the PBC must evolve without breaking APIs, events, or workbench projections.
-
-**Improvement:** Make schema extensions for `gate_assignment` first-class with compatibility checks, migration previews, projection backfills, field ownership, and rollback metadata. Tie the behavior to `airport_operations_management_create_gate_assignment_workflow` where applicable, and make it visible in `AirportOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Extension registry UI, compatibility tests, migration dry-runs, and backfill release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/airport_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 26. Master data quality gates for Stand Allocation
-
-**Justification:** Many airport operations management errors begin as bad reference data; the PBC should catch them before workflow execution.
-
-**Improvement:** Define reference-data contracts for `stand_allocation`: canonical codes, parties, locations, classifications, calendars, units, currencies, products, assets, or service categories as relevant to the domain. Tie the behavior to `airport_operations_management_record_stand_allocation_workflow` where applicable, and make it visible in `AirportOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Reference validation fixtures, stale-code warnings, mapping tables, and dependency freshness indicators. The evidence should be package-local in `src/pyAppGen/pbcs/airport_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 27. Bulk operations and correction workflows for Slot
-
-**Justification:** Enterprise-scale Airport Operations Management users cannot operate one record at a time.
-
-**Improvement:** Add bulk load, bulk validate, bulk approve, and bulk correction workflows for `slot` with partial success, row-level errors, resumability, and rollback. Tie the behavior to `airport_operations_management_create_gate_assignment_workflow` where applicable, and make it visible in `AirportOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** CSV/API batch fixtures, resumable job state, row-level audit evidence, and assistant-generated correction suggestions. The evidence should be package-local in `src/pyAppGen/pbcs/airport_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 28. Lifecycle collaboration and tasking for Turndown Task
-
-**Justification:** Domain collaboration should live inside the PBC boundary and remain auditable with the record it affects.
-
-**Improvement:** Attach tasks, comments, ownership, due dates, handoffs, and escalation threads to `turndown_task` without leaking into external shared task tables. Tie the behavior to `airport_operations_management_record_stand_allocation_workflow` where applicable, and make it visible in `AirportOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Task tables, comment audit history, notification events, escalation SLAs, and role-specific task queues. The evidence should be package-local in `src/pyAppGen/pbcs/airport_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 29. SLA and service-level governance for Baggage Belt
-
-**Justification:** Users need to know when gates, stands, slots, turnaround, baggage, passenger flows, disruptions, and airport coordination is late, blocked, or at risk before customer or regulator impact.
-
-**Improvement:** Define SLAs for `baggage_belt` across intake, validation, approval, exception resolution, event handling, downstream projection refresh, and release-evidence generation. Tie the behavior to `airport_operations_management_create_gate_assignment_workflow` where applicable, and make it visible in `AirportOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** SLA breach events, timers, configurable calendars, workbench aging buckets, and tests for pause/resume behavior. The evidence should be package-local in `src/pyAppGen/pbcs/airport_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 30. Operational analytics cockpit for Passenger Flow
-
-**Justification:** World-class operations require leading indicators, not only record counts.
-
-**Improvement:** Build analytics for `passenger_flow`: throughput, backlog, aging, approval latency, exception rate, risk distribution, automation acceptance, correction rate, and downstream dependency health. Tie the behavior to `airport_operations_management_record_stand_allocation_workflow` where applicable, and make it visible in `AirportOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Metric definitions, projection tests, drill-through routes, export APIs, and anomaly overlays. The evidence should be package-local in `src/pyAppGen/pbcs/airport_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 31. Decision intelligence and recommendations for Airport Disruption
-
-**Justification:** The PBC should help expert users decide faster while showing evidence and uncertainty.
-
-**Improvement:** Generate ranked recommendations for `airport_disruption` such as next best action, likely resolution, required evidence, policy adjustment, staffing/capacity response, or downstream handoff. Tie the behavior to `airport_operations_management_create_gate_assignment_workflow` where applicable, and make it visible in `AirportOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Recommendation explanations, confidence intervals, feedback capture, model governance records, and rejection reasons. The evidence should be package-local in `src/pyAppGen/pbcs/airport_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 32. Quality and completeness scoring for Airport Operations Management Policy Rule
-
-**Justification:** Operators should see whether a record is truly ready, not just technically saved.
-
-**Improvement:** Score each `airport_operations_management_policy_rule` record for completeness, consistency, policy readiness, dependency readiness, evidence sufficiency, and downstream composability. Tie the behavior to `airport_operations_management_record_stand_allocation_workflow` where applicable, and make it visible in `AirportOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Scoring rules, missing-evidence lists, readiness badges, and blocking criteria in command handlers. The evidence should be package-local in `src/pyAppGen/pbcs/airport_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 33. End-to-end scenario library for Airport Operations Management Runtime Parameter
-
-**Justification:** Release evidence is stronger when every important airport operations management behavior has executable examples.
-
-**Improvement:** Create seeded scenarios for `airport_operations_management_runtime_parameter`: normal flow, urgent path, exception path, corrected path, duplicate path, late event path, and audit export path. Tie the behavior to `airport_operations_management_create_gate_assignment_workflow` where applicable, and make it visible in `AirportOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Scenario seed data, runtime smoke coverage, generated-app fixtures, and story-level workbench screenshots/contracts. The evidence should be package-local in `src/pyAppGen/pbcs/airport_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 34. Domain ontology and terminology model for Airport Operations Management Schema Extension
-
-**Justification:** Precise vocabulary prevents the PBC from misclassifying specialist documents or user instructions.
-
-**Improvement:** Add an ontology for `airport_operations_management_schema_extension` terms, synonyms, classifications, relationships, allowed values, and phrase mappings used by the assistant and UI. Tie the behavior to `airport_operations_management_record_stand_allocation_workflow` where applicable, and make it visible in `AirportOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Ontology files, assistant parsing tests, UI glossary, and mapping evidence for domain-specific abbreviations. The evidence should be package-local in `src/pyAppGen/pbcs/airport_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 35. Advanced search and investigation for Airport Operations Management Control Assertion
-
-**Justification:** Investigators and operators need fast, explainable retrieval across the whole domain surface.
-
-**Improvement:** Provide search across `airport_operations_management_control_assertion` records, events, documents, exceptions, tasks, comments, and audit proofs with filters for tenant, status, risk, date, party, and dependency. Tie the behavior to `airport_operations_management_create_gate_assignment_workflow` where applicable, and make it visible in `AirportOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Search index contracts, result provenance, permission-filtered queries, and stale-index warnings. The evidence should be package-local in `src/pyAppGen/pbcs/airport_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 36. Reconciliation and closure controls for Airport Operations Management Governed Model
-
-**Justification:** Closure is not complete until the PBC can prove no material domain work remains unresolved.
-
-**Improvement:** Add reconciliation workflows that compare `airport_operations_management_governed_model` state against consumed events, external projections, expected totals/counts, approvals, and release evidence before closure. Tie the behavior to `airport_operations_management_record_stand_allocation_workflow` where applicable, and make it visible in `AirportOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Reconciliation reports, variance thresholds, closure blockers, and AppGen-X closure events. The evidence should be package-local in `src/pyAppGen/pbcs/airport_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 37. Regulatory and policy reporting for Gate Assignment
-
-**Justification:** World-class PBCs turn operational evidence into credible reporting without spreadsheet reconstruction.
-
-**Improvement:** Generate domain reporting packs for `gate_assignment` covering statutory, contractual, operational, board, customer, or regulator evidence depending on real-time movement control, capacity commitments, disruptions, asset readiness, safety windows, route constraints, and operational handoff integrity. Tie the behavior to `airport_operations_management_create_gate_assignment_workflow` where applicable, and make it visible in `AirportOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Report schemas, redaction rules, traceable metric sources, and approval/export audit events. The evidence should be package-local in `src/pyAppGen/pbcs/airport_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 38. Carbon and resource awareness for Stand Allocation
-
-**Justification:** Sustainability evidence should be embedded in operations instead of treated as an after-the-fact report.
-
-**Improvement:** Where relevant, attach carbon, energy, water, travel, capacity, compute, or resource-footprint metadata to `stand_allocation` decisions and batch operations. Tie the behavior to `airport_operations_management_record_stand_allocation_workflow` where applicable, and make it visible in `AirportOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Footprint fields, scheduling parameters, exception rules, and dashboards that expose operational tradeoffs. The evidence should be package-local in `src/pyAppGen/pbcs/airport_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 39. Resilience and offline behavior for Slot
-
-**Justification:** Real operations keep moving during outages; the PBC must preserve correctness when dependencies are unavailable.
-
-**Improvement:** Define resilience modes for `slot`: degraded dependency mode, offline draft capture, delayed event replay, conflict detection, and safe recovery after partial failure. Tie the behavior to `airport_operations_management_create_gate_assignment_workflow` where applicable, and make it visible in `AirportOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Offline fixtures, replay tests, conflict queues, recovery logs, and user-visible degraded-mode warnings. The evidence should be package-local in `src/pyAppGen/pbcs/airport_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 40. Human-in-the-loop automation for Turndown Task
-
-**Justification:** Automation should accelerate gates, stands, slots, turnaround, baggage, passenger flows, disruptions, and airport coordination while preserving accountability for high-risk decisions.
-
-**Improvement:** Set explicit automation boundaries for `turndown_task`: auto-approve, auto-reject, suggest-only, require-review, and block-until-evidence states with policy-based routing. Tie the behavior to `airport_operations_management_record_stand_allocation_workflow` where applicable, and make it visible in `AirportOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Automation policy tests, reviewer queues, override reasons, and assistant action audit trails. The evidence should be package-local in `src/pyAppGen/pbcs/airport_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 41. Package discovery and fit scoring for Baggage Belt
-
-**Justification:** Users selecting PBCs need transparent fit reasoning, especially when domains are adjacent but not overlapping.
-
-**Improvement:** Improve package metadata so composition can explain when `airport_operations_management` fits a prompt, what entities it owns, what APIs/events it exposes, and what adjacent PBCs it depends on. Tie the behavior to `airport_operations_management_create_gate_assignment_workflow` where applicable, and make it visible in `AirportOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Discovery manifests, prompt-selection tests, overlap rationale links, and composition DSL examples. The evidence should be package-local in `src/pyAppGen/pbcs/airport_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 42. Configuration deployment pipeline for Passenger Flow
-
-**Justification:** Configuration changes can materially alter airport operations management; they need the same discipline as code releases.
-
-**Improvement:** Add configuration promotion for `passenger_flow` across draft, test, approved, active, deprecated, and rollback states with impact analysis before activation. Tie the behavior to `airport_operations_management_record_stand_allocation_workflow` where applicable, and make it visible in `AirportOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Config diff views, approval workflows, simulation before activation, and rollback tests. The evidence should be package-local in `src/pyAppGen/pbcs/airport_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 43. Workbench command completeness for Airport Disruption
-
-**Justification:** A PBC does not fully surface its capabilities if users must call hidden APIs for core work.
-
-**Improvement:** Expose every high-value operation for `airport_disruption` in the UI: create, validate, approve, simulate, correct, assign, export, retry, close, and audit-proof verification. Tie the behavior to `airport_operations_management_create_gate_assignment_workflow` where applicable, and make it visible in `AirportOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** UI action coverage tests, permission-aware disabled states, keyboard paths, and assistant handoff links. The evidence should be package-local in `src/pyAppGen/pbcs/airport_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 44. Document packet and evidence vault for Airport Operations Management Policy Rule
-
-**Justification:** Documents often carry the legal or operational truth behind gates, stands, slots, turnaround, baggage, passenger flows, disruptions, and airport coordination.
-
-**Improvement:** Create a governed evidence vault for `airport_operations_management_policy_rule` documents, attachments, source spans, extracted fields, signatures, approvals, and retention labels. Tie the behavior to `airport_operations_management_record_stand_allocation_workflow` where applicable, and make it visible in `AirportOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Evidence models, source-to-field lineage, signature validation, retention policies, and proof exports. The evidence should be package-local in `src/pyAppGen/pbcs/airport_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 45. Data correction and amendment history for Airport Operations Management Runtime Parameter
-
-**Justification:** World-class systems correct mistakes without rewriting history or confusing downstream consumers.
-
-**Improvement:** Support formal amendments for `airport_operations_management_runtime_parameter` that preserve original values, correction reason, approving actor, effective date, downstream event impacts, and replay behavior. Tie the behavior to `airport_operations_management_create_gate_assignment_workflow` where applicable, and make it visible in `AirportOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Amendment tables, correction events, projection replay tests, and side-by-side before/after UI. The evidence should be package-local in `src/pyAppGen/pbcs/airport_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 46. External participant collaboration for Airport Operations Management Schema Extension
-
-**Justification:** Many airport operations management workflows require outside parties, but they must not gain direct access to internal tables.
-
-**Improvement:** Add controlled collaboration portals or API views for external participants related to `airport_operations_management_schema_extension`, limited to scoped evidence submission, status checks, comments, and dispute responses. Tie the behavior to `airport_operations_management_record_stand_allocation_workflow` where applicable, and make it visible in `AirportOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Participant role policies, scoped tokens, submission audit trails, and inbound evidence validation. The evidence should be package-local in `src/pyAppGen/pbcs/airport_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 47. Advanced dependency freshness scoring for Airport Operations Management Control Assertion
-
-**Justification:** A record may be valid locally but unsafe if dependency evidence is stale or incomplete.
-
-**Improvement:** Score freshness and reliability of dependencies used by `airport_operations_management_control_assertion`, including consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, referenced projections, configuration versions, and external submissions. Tie the behavior to `airport_operations_management_create_gate_assignment_workflow` where applicable, and make it visible in `AirportOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Freshness indicators, blocking rules, stale-event simulations, and workbench dependency health panels. The evidence should be package-local in `src/pyAppGen/pbcs/airport_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 48. Model governance and explainability for Airport Operations Management Governed Model
-
-**Justification:** Governed AI is mandatory for professional-grade automation in Airport Operations Management.
-
-**Improvement:** For every predictive or agentic feature around `airport_operations_management_governed_model`, record model version, prompt or ruleset version, training/evaluation evidence, confidence, explanation, and human feedback. Tie the behavior to `airport_operations_management_record_stand_allocation_workflow` where applicable, and make it visible in `AirportOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Model cards, prompt/version manifests, feedback loops, drift tests, and audit proof for recommendations. The evidence should be package-local in `src/pyAppGen/pbcs/airport_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 49. High-scale partitioning and archival for Gate Assignment
-
-**Justification:** Better-than-world-class packages must remain operable after years of high-volume domain history.
-
-**Improvement:** Plan scale behavior for `gate_assignment`: tenant partitioning, archival policies, cold storage, retention-aware search, projection compaction, and large-batch replay. Tie the behavior to `airport_operations_management_create_gate_assignment_workflow` where applicable, and make it visible in `AirportOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Partition tests, archive/retrieve fixtures, retention enforcement, and replay benchmarks. The evidence should be package-local in `src/pyAppGen/pbcs/airport_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 50. Release gate expansion for Stand Allocation
-
-**Justification:** The PBC should not claim domain coverage unless release evidence proves the claim end to end.
-
-**Improvement:** Expand release gates for `airport_operations_management` so every schema, service, API, event, handler, UI, rule, parameter, agent skill, seed scenario, and improvement backlog item maps to executable evidence. Tie the behavior to `airport_operations_management_record_stand_allocation_workflow` where applicable, and make it visible in `AirportOperationsManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Release audit checks, manifest traceability, generated-app smoke tests, and missing-capability blockers. The evidence should be package-local in `src/pyAppGen/pbcs/airport_operations_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+- Exact PBC key: `airport_operations_management`
+- Label: `Airport Operations Management`
+- Description: gates, stands, slots, turnaround, baggage, passenger flows, disruptions, and airport coordination
+- Owned tables: `gate_assignment`, `stand_allocation`, `slot`, `turndown_task`, `baggage_belt`, `passenger_flow`, `airport_disruption`, `airport_operations_management_policy_rule`, `airport_operations_management_runtime_parameter`, `airport_operations_management_schema_extension`, `airport_operations_management_control_assertion`, `airport_operations_management_governed_model`
+- Existing APIs: `POST /gate-assignments`, `POST /stand-allocations`, `POST /slots`, `POST /turndown-tasks`, `POST /baggage-belts`, `GET /airport-operations-management-workbench`
+- Existing workflows: `airport_operations_management_create_gate_assignment_workflow`, `airport_operations_management_record_stand_allocation_workflow`
+- Existing UI fragments: `AirportOperationsManagementWorkbench`, `AirportOperationsManagementDetail`, `AirportOperationsManagementAssistantPanel`
+- Existing emitted events: `AirportOperationsManagementCreated`, `AirportOperationsManagementUpdated`, `AirportOperationsManagementApproved`, `AirportOperationsManagementExceptionOpened`
+- Existing consumed events: `PolicyChanged`, `AuditEventSealed`, `OperationalKpiChanged`
+- Existing advanced capabilities already declared in the manifest include event-sourced operational history, predictive risk scoring, counterfactual simulation, continuous control testing, and governed AI agent execution
+
+### 1. Gate and stand compatibility matrix with operational constraints
+**Justification:** Gate assignment quality depends on more than aircraft size. Contact stand fit, wingtip clearance, jet bridge geometry, customs segregation, Schengen or non-Schengen handling, towbarless pushback compatibility, and overnight parking rules all affect whether an assignment is operationally valid.
+**Improvement:** Model a first-class compatibility matrix across `gate_assignment` and `stand_allocation` for aircraft family, wingspan code, domestic or international processing, bussing requirements, hydrant fuel access, PCA or GPU availability, and adjacent stand shadow restrictions.
+**Acceptance evidence:** Rule fixtures covering narrowbody, widebody, remote-stand, and international-arrival scenarios; rejected assignments with machine-readable reasons; workbench views that show why a stand is usable, blocked, or conditionally available.
+
+### 2. Turnaround milestone graph instead of flat task tracking
+**Justification:** A turnaround is a dependency network, not a checklist. Boarding, fuelling, catering, cabin cleaning, baggage offload, load sheet completion, and pushback readiness each block different downstream steps.
+**Improvement:** Upgrade `turndown_task` into a turnaround milestone graph with planned, estimated, actual, and predicted timestamps for on-block, first bag, fuelling complete, cleaning complete, boarding start, doors closed, and off-block.
+**Acceptance evidence:** Dependency-chain tests for short-haul and long-haul turns; critical-path highlighting in `AirportOperationsManagementWorkbench`; exception cards showing which milestone is driving estimated departure delay.
+
+### 3. Runway and taxiway availability as decision inputs for stand and gate plans
+**Justification:** Gate and stand plans become misleading when runway closures, taxiway work, reduced visibility procedures, or hot-spot restrictions are not reflected in the same operating view.
+**Improvement:** Add a runway and taxiway status model that feeds arrival sequencing, expected taxi-in or taxi-out times, preferred stand zones, and departure release risk into the `airport_operations_management` workbench.
+**Acceptance evidence:** Simulated runway closure and taxiway restriction scenarios that alter stand recommendations; visible status timeline for open, constrained, and closed surfaces; replay evidence linking a stand decision to the surface state in effect at decision time.
+
+### 4. Remote stand bussing orchestration
+**Justification:** Remote stands are only usable if bus capacity, gate lounge readiness, and dispatch timing all line up. Without that coupling, the system can claim capacity that does not exist.
+**Improvement:** Extend `stand_allocation` to account for bussing demand, bus fleet assignment windows, passenger boarding gate pairing, and minimum dispatch lead times for remote operations.
+**Acceptance evidence:** Allocation tests showing remote-stand rejection when buses are exhausted; paired gate-to-stand visual links in the workbench; release evidence for bus scheduling conflicts detected before dispatch.
+
+### 5. Multi-aircraft ramp system and swing-gate handling
+**Justification:** Many airports rely on MARS stands and swing gates that can host one widebody or multiple narrowbodies depending on adjacent occupancy. Static one-aircraft-per-stand logic leaves revenue and resilience on the table.
+**Improvement:** Support conditional split and merge behavior for MARS stands, swing gates, and dual boarding bridge layouts, including adjacency rules and turnaround overlap constraints.
+**Acceptance evidence:** Scenario tests for one-widebody versus two-narrowbody stand usage; live occupancy visualization of merge and split states; audit trail entries that show when a stand topology changed and why.
+
+### 6. Deicing queue, pad, and fluid capacity control
+**Justification:** Winter operations fail first at the edges: deicing pad saturation, Type I or Type IV fluid shortage, queue length, and holdover window expiry. Departure planning needs those facts, not separate spreadsheets.
+**Improvement:** Add deicing resources to the `airport_disruption` and turnaround model, including pad assignments, queue position, fluid inventory thresholds, holdover countdowns, and return-for-repeat-deicing workflows.
+**Acceptance evidence:** Winter-ops simulations that force deicing queue formation; alerts when predicted holdover time expires before takeoff; resource dashboards showing pad occupancy and fluid burn versus stock on hand.
+
+### 7. Apron works, stand closures, and maintenance possession management
+**Justification:** Stand availability often changes hour by hour because of pavement work, lighting defects, FOD cleanup, or equipment maintenance. A static availability flag is not credible for live allocation.
+**Improvement:** Add time-bounded stand closure windows, partial apron possession zones, and degraded-capacity states to `stand_allocation`, with effectivity times and operational notes that propagate to assignment logic.
+**Acceptance evidence:** Time-windowed tests where a stand is valid before works start and blocked after; map or list rendering of closure periods in the workbench; event history showing when capacity was reduced, restored, or overridden.
+
+### 8. Ground handler capability and roster awareness
+**Justification:** A turnaround can be technically assigned yet operationally impossible if the contracted handler lacks trained staff, required equipment, or active roster coverage for that aircraft type and service package.
+**Improvement:** Model handler capability by airline, aircraft type, service scope, shift, and ramp zone so that `turndown_task` planning reflects who can actually perform fuelling coordination, loading, cleaning, PRM service, and dispatch support.
+**Acceptance evidence:** Assignment tests that fail when a handler is out of scope or off shift; queue views grouped by handler load; operational reports showing unserved turns prevented before aircraft arrival.
+
+### 9. Baggage make-up and reclaim synchronization
+**Justification:** Belt planning is two-sided. Departure make-up belts and arrival reclaim belts compete for conveyor and pier capacity, and changes on one side can starve the other.
+**Improvement:** Deepen `baggage_belt` to model make-up position, reclaim belt allocation, early-bag storage dependency, odd-size belt routing, and belt-to-flight sequencing across arrival and departure waves.
+**Acceptance evidence:** Conflict tests for overlapping reclaim and make-up demand; belt occupancy timelines; visible reroute recommendations when a belt outage or overflow condition occurs.
+
+### 10. Passenger flow segmentation across terminal processes
+**Justification:** Passenger flow is not one queue. Originating, transfer, transit, international arrival, domestic arrival, crew, and PRM travelers consume different resources and can bottleneck different parts of the terminal.
+**Improvement:** Expand `passenger_flow` to represent check-in, bag drop, security, outbound immigration, transfer security, inbound immigration, reclaim, customs, arrivals hall, and gate holdroom populations separately.
+**Acceptance evidence:** Segment-specific throughput and dwell metrics; forecasts that highlight which process will breach capacity first; evidence that gate changes update downstream passenger routing assumptions.
+
+### 11. Holdroom saturation and boarding readiness controls
+**Justification:** Gate selection is poor if it ignores holdroom size, nearby restroom capacity, family-travel demand, or the likelihood of spillback into a concourse during a delay.
+**Improvement:** Add holdroom occupancy forecasts and boarding readiness status to gate planning so the system can avoid assigning a full long-haul departure to an undersized lounge at the same time as nearby departures.
+**Acceptance evidence:** Boarding-bank simulations with capacity warnings; workbench badges for low, medium, and critical holdroom congestion; post-event replay showing whether predicted saturation matched actual counts.
+
+### 12. PRM, unaccompanied minor, and special assistance routing
+**Justification:** Special-assistance flows are safety and service commitments, not optional annotations. Gate changes, bussing, remote stands, and late connections can all break those commitments.
+**Improvement:** Add assisted-travel indicators to `passenger_flow` and `turndown_task` so that gate and stand decisions account for wheelchair transfer time, lift availability, escort staffing, and minimum handoff windows.
+**Acceptance evidence:** Cases where remote-stand assignment is blocked for insufficient assisted-travel support; queue views of open assistance obligations; exception evidence tied to missed or delayed PRM handoffs.
+
+### 13. Aircraft towing and reposition planning
+**Justification:** Stand utilization improves only if towing moves are planned with tug availability, licensed driver coverage, push or pull route restrictions, and occupancy windows in mind.
+**Improvement:** Add tow-leg entities and route feasibility checks to `stand_allocation`, including pre-tow readiness, tug assignment, tow corridor restrictions, and post-tow stand release timing.
+**Acceptance evidence:** Towed-turn scenarios that free contact stands for later departures; alerts for impossible tow chains; workbench playback showing whether the system protected the tow path from conflicting stand use.
+
+### 14. Fuel, GPU, PCA, and hydrant service compatibility
+**Justification:** A stand may appear open but still be unsuitable if it lacks fuel hydrant access, fixed electrical power, pre-conditioned air, or safe hose routing for the assigned aircraft and turnaround duration.
+**Improvement:** Extend gate and stand rules to include hydrant service, tanker-only access, GPU and PCA availability, and equipment conflicts that affect boarding comfort, fuel timing, and engine start readiness.
+**Acceptance evidence:** Compatibility decisions exposed alongside stand recommendations; rejected assignments for missing services; turnaround timelines showing service deficiencies as direct delay causes.
+
+### 15. Cleaning, catering, water, lavatory, and waste sequencing
+**Justification:** These services compete for door access, equipment position, and ramp clearance. Modeling them independently misses the resource choreography that drives actual turn performance.
+**Improvement:** Represent service windows, mutually exclusive tasks, and service-vehicle access constraints inside `turndown_task`, with configurable sequencing rules by aircraft type and airline handling standard.
+**Acceptance evidence:** Critical-path calculations that change when one service slips; workbench swimlanes for service-provider activity; operational evidence for blocked turns caused by incompatible task overlap.
+
+### 16. Slot, TOBT, TSAT, CTOT, and A-CDM reconciliation
+**Justification:** Departure predictability depends on keeping local turnaround facts aligned with network slot constraints and collaborative decision-making milestones.
+**Improvement:** Upgrade `slot` handling to reconcile scheduled off-block, target off-block, target start-up approval, and calculated takeoff constraints, with explicit mismatch reasons and resynchronization actions.
+**Acceptance evidence:** Scenarios where a late inbound changes TOBT and cascades to TSAT or CTOT; mismatch dashboards in the workbench; release evidence showing reduced manual phone coordination during peak banks.
+
+### 17. Diversion, air return, and recovery playbooks
+**Justification:** Diversions and return-to-stand events are where airport operations systems either prove themselves or collapse into ad hoc coordination.
+**Improvement:** Add structured playbooks in `airport_disruption` for diversion acceptance, stand recovery, passenger containment, baggage intercept, crew transport, and terminal resource reassignment.
+**Acceptance evidence:** Replayable disruption timelines for diversion and air-return events; checklists completed in sequence; measured recovery time from event open to stable stand plan.
+
+### 18. Safety inspection and FOD evidence capture
+**Justification:** Stand availability decisions are only defensible if apron inspections, FOD findings, lighting defects, and stand-entry restrictions can be tied directly to the operational state.
+**Improvement:** Add safety inspection records and evidence attachments to `airport_operations_management_control_assertion`, linking each stand or ramp-zone clearance state to the inspection that justified it.
+**Acceptance evidence:** Inspection-to-stand traceability; rejected assignments when inspection validity expires; mobile-friendly evidence capture with timestamp, location, and inspector identity preserved in the audit trail.
+
+### 19. Weather, lightning, wind, and low-visibility operating states
+**Justification:** Weather disrupts different resources in different ways. Lightning stops ramp work, strong wind removes stairs or bridge usage options, and low visibility changes taxi spacing and stand preferences.
+**Improvement:** Add weather-triggered operating states that affect ground handling, deicing demand, pushback timing, remote-stand viability, and terminal processing assumptions across the workbench.
+**Acceptance evidence:** Test cases for lightning stop, strong crosswind, and LVP conditions; operational cards that explain which actions are blocked and for how long; replay evidence showing state changes during weather events.
+
+### 20. Winter readiness with deicing stock and crew visibility
+**Justification:** Knowing that deicing is required is not enough. Airports need to know whether the trained crews, trucks, pads, and fluid stocks exist to meet the demand curve.
+**Improvement:** Add winter-readiness views to `AirportOperationsManagementWorkbench` showing fluid inventory, truck availability, crew shifts, predicted deicing demand by wave, and recovery posture after overnight weather.
+**Acceptance evidence:** Pre-peak readiness snapshots; threshold alerts for low stock or insufficient crews; historical evidence comparing forecast versus actual deicing demand during a weather event.
+
+### 21. Gate change impact visualization
+**Justification:** A gate change is never just a gate change. It affects passengers already walking, airlines printing updates, baggage tug routes, PRM escorts, lounge staffing, and nearby departures.
+**Improvement:** Add an impact panel that shows immediate and downstream consequences of a proposed `gate_assignment` change before it is approved.
+**Acceptance evidence:** Decision previews with affected flights, belts, passenger counts, and service tasks; after-action evidence confirming whether the approved gate change reduced or increased disruption spread.
+
+### 22. Aircraft substitution propagation
+**Justification:** Last-minute aircraft swaps break assumptions about stand fit, fuel, boarding bridges, baggage volume, and cleaning duration. The system needs to re-evaluate everything that depended on the original aircraft.
+**Improvement:** Add substitution handling that recalculates gate compatibility, turnaround milestones, baggage capacity, and passenger process demand when the inbound or outbound aircraft type changes.
+**Acceptance evidence:** Swap scenarios for narrowbody-to-widebody and widebody-to-narrowbody substitutions; automatic reopening of dependent checks; visible before and after comparisons in the detail view.
+
+### 23. Late-inbound recovery engine for turnaround resilience
+**Justification:** Most departure delay minutes start with a late arrival. Recovery quality depends on quickly identifying which tasks can compress, which cannot, and when a gate or stand move becomes the better option.
+**Improvement:** Add recovery suggestions for `turndown_task` that estimate schedule regain from task resequencing, stand moves, bus boarding, handler reassignment, or selective service reductions approved by policy.
+**Acceptance evidence:** Recovery recommendations ranked by minutes saved and operational risk; measured comparison between suggested versus actual recovery outcomes; explicit policy blocks on unsafe compression options.
+
+### 24. Airport operations center command board
+**Justification:** Airport coordination needs one shared command view. Separate screens for stands, gates, belts, and disruptions force operators to reconstruct the situation manually.
+**Improvement:** Expand `GET /airport-operations-management-workbench` into an airport operations center board with stand occupancy, runway state, departure bank health, belt status, top disruptions, and action-needed queues.
+**Acceptance evidence:** Persona-based views for stand planner, turnaround controller, terminal duty manager, and supervisor; latency and freshness indicators on each panel; acceptance sessions with real operating scenarios.
+
+### 25. Stand and gate conflict simulation before approval
+**Justification:** Conflicts are easier to prevent than to unwind. Operators need pre-approval simulation that sees adjacency, towing dependencies, downstream baggage consequences, and passenger routing impacts.
+**Improvement:** Add non-mutating simulation around `gate_assignment` and `stand_allocation` changes so planners can test proposed reallocations without disturbing the live operational picture.
+**Acceptance evidence:** Side-by-side plan comparison for current versus proposed allocations; conflict counts with severity; evidence that simulated conflicts match actual rules enforced at approval time.
+
+### 26. Belt outage and baggage contingency routing
+**Justification:** Conveyor and reclaim failures are common high-impact events. The system should help operators preserve service and safety while minimizing passenger confusion and bag misroutes.
+**Improvement:** Add contingency routing for `baggage_belt` failures, including alternate reclaim belts, delayed-bag holding, make-up relocation, and customer-information triggers when reclaim points change.
+**Acceptance evidence:** Outage drills where bags are rerouted without orphaned records; reclaim-change notifications visible in the workbench; post-event replay showing belt outage duration and recovery actions.
+
+### 27. Arrival and departure bank heatmaps
+**Justification:** Wave pressure is easier to manage when peaks are visible. Operators need to see where gate scarcity, baggage stress, immigration crowding, and turnaround overlap will converge.
+**Improvement:** Add time-phased heatmaps for stands, gates, belts, passenger processes, and handler load across the day, with drill-through to the records driving each hotspot.
+**Acceptance evidence:** Forecast-versus-actual overlays for one operating day; hotspot drill-downs that lead to the responsible flights and resources; release evidence that planners used the heatmaps to preempt at least one conflict class.
+
+### 28. Terminal resource closure and queue redirection planning
+**Justification:** Security lane, immigration desk, check-in island, or corridor closures can invalidate otherwise sound gate and stand plans by changing where passengers can actually flow.
+**Improvement:** Expand `passenger_flow` and disruption handling to represent terminal resource outages and the redirection logic needed to keep passengers moving to the correct process points.
+**Acceptance evidence:** Queue model tests for partial terminal closures; visible reroute plans by passenger segment; evidence that gate and boarding timing recommendations change when terminal resources are constrained.
+
+### 29. Landside to airside dependency view
+**Justification:** Missed departures often start landside with bag-drop congestion, road access disruption, or check-in staffing shortfalls, not at the aircraft. The workbench should expose that chain.
+**Improvement:** Add dependency views linking landside arrival pressure, check-in throughput, bag-drop backlog, security queue length, and gate readiness so controllers can see whether a late departure is terminal-driven or stand-driven.
+**Acceptance evidence:** Cases where the primary delay driver is correctly attributed to landside pressure; cross-panel indicators in the workbench; historical reports showing recurrent weak points by process.
+
+### 30. Airline and ground-handler SLA scoreboard
+**Justification:** Airports need objective visibility into whether airlines and handlers are meeting turnaround, baggage, dispatch, and recovery obligations by station, wave, and aircraft type.
+**Improvement:** Add SLA measurement across `turndown_task`, `baggage_belt`, and disruption workflows, including on-time service starts, completion against planned windows, exception aging, and recovery responsiveness.
+**Acceptance evidence:** Scorecards by handler and airline; drill-down from SLA breach to task-level evidence; release evidence showing repeated breach patterns detected without manual spreadsheet compilation.
+
+### 31. Delay code capture with evidence and causal hierarchy
+**Justification:** Delay coding is often low quality because it happens after the fact. Reliable reporting requires evidence captured close to the event and a consistent causal model.
+**Improvement:** Add structured delay-cause capture to `airport_disruption` and turnaround records, with primary and contributing causes, supporting timestamps, and links to the tasks or resource constraints that drove the delay.
+**Acceptance evidence:** Delay records with evidentiary timestamps and linked milestones; validation rules preventing contradictory codes; reports that roll delay minutes up by root cause and contributing factor.
+
+### 32. Event boundary hardening for airport operations integrations
+**Justification:** Airport operations touches AODB, RMS, baggage systems, common-use platforms, and collaborative decision-making feeds. Boundary confusion creates duplicate updates and ownership disputes.
+**Improvement:** Define explicit command, read-model, and event boundaries for `airport_operations_management`, including which changes are authoritative locally, which are mirrored, and which must be consumed as external facts.
+**Acceptance evidence:** Event contracts that distinguish internal lifecycle events from imported status changes; idempotency tests on repeated inbound messages; architectural evidence that no shared external table is treated as owned state.
+
+### 33. API expansion for search, simulation, and recovery operations
+**Justification:** The current API set is creation-heavy. Real airport users also need search, availability checks, validation-only calls, simulation endpoints, and operational recovery commands.
+**Improvement:** Extend the public surface around `POST /gate-assignments`, `POST /stand-allocations`, `POST /slots`, `POST /turndown-tasks`, and `POST /baggage-belts` with query, simulation, conflict-check, and resolution endpoints that support live control-room work.
+**Acceptance evidence:** Route contracts for validation-only and simulation modes; example payloads for search and recovery actions; acceptance tests showing that non-mutating requests produce the same rule outcomes as mutating approvals.
+
+### 34. Idempotent inbound feed handling for operational updates
+**Justification:** Flight updates arrive repeatedly, out of order, and from multiple feeds. Without disciplined idempotency and ordering rules, controllers lose trust in the operational picture.
+**Improvement:** Strengthen inbound update handling so that repeated stand, slot, belt, and disruption messages can be safely deduplicated, sequenced, quarantined, or replayed without corrupting the domain state.
+**Acceptance evidence:** Duplicate and out-of-order message tests; dead-letter visibility for malformed updates; replay proofs that the same feed produces the same final state after reprocessing.
+
+### 35. Assistant skill for disruption brief generation
+**Justification:** During irregular operations, supervisors need fast, accurate narrative briefs for the current situation, likely next bottlenecks, and recommended containment actions.
+**Improvement:** Add a governed skill in `AirportOperationsManagementAssistantPanel` that summarizes active `airport_disruption` records, stand congestion, belt outages, weather constraints, and recovery priorities for the next operating window.
+**Acceptance evidence:** Briefs that cite the underlying records and timestamps; blocked responses when confidence is too low; reviewer feedback showing the skill is useful without inventing facts.
+
+### 36. Assistant skill for gate and stand decision rationale
+**Justification:** Operators should be able to ask why a gate or stand was chosen or rejected and get an answer tied to actual rules, resource states, and policy constraints.
+**Improvement:** Add an explanatory skill that answers allocation questions using `gate_assignment`, `stand_allocation`, rule results, runway status, passenger-flow load, and adjacent-stand constraints.
+**Acceptance evidence:** Question-and-answer cases where the assistant cites precise rule outcomes and current resource states; refusal behavior for unsupported claims; audit trail entries for all assisted decision explanations.
+
+### 37. Assistant skill for turnaround readiness checks
+**Justification:** Frontline controllers need a quick way to ask what is still blocking departure and whether an intervention is likely to help.
+**Improvement:** Add a readiness-check skill that inspects the turnaround milestone graph, handler tasks, deicing status, slot alignment, and stand readiness, then produces a concise blocker list and recommended next action.
+**Acceptance evidence:** Readiness summaries validated against live test fixtures; blocker ordering that matches the actual critical path; feedback evidence from controllers that the summaries reduce manual cross-checking.
+
+### 38. Agent guardrails for safety, authority, and escalation
+**Justification:** Airport operations assistants must never suggest unsafe ramp actions, bypass authority boundaries, or hide uncertainty when flight-critical decisions are involved.
+**Improvement:** Define agent guardrails around stand closures, PRM handling, deicing, weather holds, and safety inspections so the assistant can advise, draft, and explain, but escalates appropriately on high-risk actions.
+**Acceptance evidence:** Policy tests that block unsafe suggestions; escalation prompts for high-severity cases; release evidence showing the assistant stays within allowed decision support boundaries.
+
+### 39. Persona-specific airport operations workbench views
+**Justification:** Stand planners, terminal duty managers, baggage supervisors, and turnaround controllers need different slices of the same truth. One generic page increases cognitive load.
+**Improvement:** Refine `AirportOperationsManagementWorkbench` and `AirportOperationsManagementDetail` into role-aware views with specialized filters, alerts, and action panels for gate planning, baggage control, terminal flow, and disruption management.
+**Acceptance evidence:** Permission-aware route and panel tests; side-by-side persona demonstrations; reduced-click evidence for common tasks such as approving a stand move or reviewing belt overload risk.
+
+### 40. Mobile-first apron inspection and turnaround evidence capture
+**Justification:** Many critical observations happen on the ramp, not at a desk. Controllers need a reliable way to capture evidence from mobile devices without losing context.
+**Improvement:** Add mobile-friendly flows for safety inspections, stand condition notes, turnaround milestone confirmations, and equipment-readiness evidence tied directly to the affected airport operations records.
+**Acceptance evidence:** Mobile capture tests with offline or delayed-upload handling; time, actor, and location preserved in the audit trail; field evidence visible in desktop workbench views without manual transcription.
+
+### 41. Event-sourced operational history and replay for peak periods
+**Justification:** When an airport day goes wrong, the operations team must be able to reconstruct what was known, when it was known, and which decision followed from it.
+**Improvement:** Deepen the declared event-sourced history capability so that gate, stand, slot, belt, passenger-flow, and disruption changes can be replayed minute by minute across a peak operating window.
+**Acceptance evidence:** Deterministic replay for a disrupted day; point-in-time reconstruction of the workbench view; ability to compare the original decision with a counterfactual better decision after the fact.
+
+### 42. Predictive risk scoring for missed departure and stand conflict
+**Justification:** Risk scoring is only valuable if it predicts operational pain that controllers can still influence before it happens.
+**Improvement:** Focus predictive risk on missed off-block, stand conflict probability, baggage reclaim overload, passenger queue breach, and deicing-induced departure miss, using the declared `airport_operations_management_predictive_risk_scoring` capability.
+**Acceptance evidence:** Calibrated risk bands with outcome tracking; explanation panels that identify the top contributing operational factors; evidence that high-risk items surface early in workbench queues.
+
+### 43. Counterfactual scenario simulation for disruption containment
+**Justification:** The declared counterfactual capability should answer live airport questions such as whether towing an aircraft, switching to a remote stand, or delaying boarding would have reduced disruption spread.
+**Improvement:** Add scenario simulation for runway closure, belt outage, stand closure, aircraft swap, handler shortage, and terminal congestion, with outcome comparisons on departure performance and passenger impact.
+**Acceptance evidence:** Saved scenario runs with explicit assumptions; side-by-side comparison of actual versus simulated outcomes; evidence that simulation uses the same domain rules as live execution.
+
+### 44. Continuous control testing for approvals and overrides
+**Justification:** Airport operations depends on fast overrides, but fast overrides become unsafe unless control assertions continuously test whether the right people approved the right deviations with the right evidence.
+**Improvement:** Add continuous checks in `airport_operations_management_control_assertion` for stand override authority, expired inspection evidence, unapproved gate changes, missing disruption closure notes, and agent actions without required confirmation.
+**Acceptance evidence:** Control failures generated during test scenarios; workbench panels for open control breaches; release evidence showing controls run during operations rather than only in periodic audit exercises.
+
+### 45. Release evidence pack for airport operations readiness
+**Justification:** Airport domains require more than unit tests before release. Operators need proof that the system behaves correctly across peak, disrupted, and safety-sensitive conditions.
+**Improvement:** Expand release evidence to include scenario packs for morning bank, diversion wave, runway closure, belt outage, deicing event, PRM-heavy departure, and terminal resource failure.
+**Acceptance evidence:** `RELEASE_EVIDENCE.md` entries tied to named operational scenarios; screenshots or snapshots from the workbench; replay outputs and API traces proving the package handled each scenario end to end.
+
+### 46. Dead-letter, replay, and quarantine console for airport ops feeds
+**Justification:** Feed failures are operational events. Controllers and support engineers need a safe way to understand whether a missed update is blocking a stand release, slot refresh, or belt change.
+**Improvement:** Add a console for quarantined inbound messages, replayable handler runs, failure classification, and operator-visible impact assessment when an inbound feed stops updating airport operations state.
+**Acceptance evidence:** Drill scenarios where a broken feed is quarantined and replayed; visibility into affected flights and resources; evidence that replay cannot silently bypass current policy checks.
+
+### 47. Tenant and operator policy isolation
+**Justification:** Shared platforms may serve different airport operators, terminals, or airline communities with different stand policies, deicing rules, passenger-flow assumptions, and approval structures.
+**Improvement:** Use the declared multi-tenant policy isolation capability so that operator-specific rules, service calendars, and thresholds remain isolated while sharing the same `airport_operations_management` package footprint.
+**Acceptance evidence:** Cross-tenant negative tests for stand and rule leakage; separate policy views and parameter histories by tenant; release evidence showing one tenant can tighten controls without changing another tenant's behavior.
+
+### 48. Schema extension governance for local airport rules
+**Justification:** Every airport has local variations such as gate naming conventions, runway crossing procedures, bussing zones, and customs segregation layouts. Those differences should be extensible without breaking the core package.
+**Improvement:** Make `airport_operations_management_schema_extension` a governed path for adding local fields, rules, and views for airport-specific stand, gate, and terminal nuances while preserving compatibility with the core APIs and events.
+**Acceptance evidence:** Approved extension examples for local naming or process rules; compatibility checks for existing endpoints and event contracts; evidence that extensions appear in the workbench without forking core logic.
+
+### 49. Rule and model explainability for controllers and auditors
+**Justification:** Allocation and disruption decisions must be explainable to operations leaders, auditors, and frontline teams under time pressure. Black-box recommendations will not earn operational trust.
+**Improvement:** Add explainability surfaces for rules, predictive scores, and agent recommendations, showing which facts, thresholds, policies, and historical patterns drove each recommendation or rejection.
+**Acceptance evidence:** Decision cards that cite the source facts and policies used; explanation exports for audit review; acceptance sessions showing operators can understand and challenge automated recommendations.
+
+### 50. Go-live operational drill scorecard
+**Justification:** A package can look complete in code yet still be unready for live operations. Airports need rehearsal-based evidence that people, workflows, APIs, events, UI, and agent skills all work together.
+**Improvement:** Add a go-live drill scorecard covering stand allocation, gate change control, turnaround recovery, baggage contingency, deicing coordination, disruption command, and assistant-supported decision review.
+**Acceptance evidence:** Signed drill outcomes with pass or fail criteria, unresolved gap tracking, and release evidence that every critical airport operations path was rehearsed before production rollout.

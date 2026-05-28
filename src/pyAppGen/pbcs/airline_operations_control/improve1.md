@@ -1,418 +1,414 @@
-# Airline Operations Control PBC Better-Than-World-Class Improvement Backlog
-
-## Purpose
-
-This file identifies, justifies, and describes 50 high-impact improvements for `airline_operations_control`. The backlog is specific to fleet rotations, crew legality, disruptions, passenger reaccommodation, operational control, and recovery planning and is intended to move the PBC from release-auditable scaffolding toward complete, specialist-grade domain coverage.
+# Airline Operations Control PBC Improvement Backlog
 
 ## Current Domain Evidence Used
 
-- Stable PBC key: `airline_operations_control`.
-- Domain purpose: Fleet rotations, crew legality, disruptions, passenger reaccommodation, operational control, and recovery planning.
-- Owned domain tables: `flight_leg`, `aircraft_rotation`, `crew_pairing`, `disruption_event`, `reaccommodation_plan`, `operations_decision`, `delay_code`, `airline_operations_control_policy_rule`, `airline_operations_control_runtime_parameter`, `airline_operations_control_schema_extension`, `airline_operations_control_control_assertion`, `airline_operations_control_governed_model`.
-- Public APIs: `POST /flight-legs`, `POST /aircraft-rotations`, `POST /crew-pairings`, `POST /disruption-events`, `POST /reaccommodation-plans`, `GET /airline-operations-control-workbench`.
-- Emitted AppGen-X events: `AirlineOperationsControlCreated`, `AirlineOperationsControlUpdated`, `AirlineOperationsControlApproved`, `AirlineOperationsControlExceptionOpened`.
-- Consumed AppGen-X events: `PolicyChanged`, `AuditEventSealed`, `OperationalKpiChanged`.
-- Current standard surfaces include: `flight_leg_management`, `airline_operations_control_workflow`, `airline_operations_control_analytics`, `configuration_schema`, `rule_engine`, `parameter_engine`, `owned_schema_migrations_models`, `appgen_x_outbox_inbox_eventing`, `idempotent_handlers`, `retry_dead_letter_evidence`.
-- Current advanced surfaces include: `airline_operations_control_event_sourced_operational_history`, `airline_operations_control_multi_tenant_policy_isolation`, `airline_operations_control_schema_evolution_resilience`, `airline_operations_control_autonomous_anomaly_detection`, `airline_operations_control_semantic_document_instruction_understanding`, `airline_operations_control_predictive_risk_scoring`, `airline_operations_control_counterfactual_scenario_simulation`, `airline_operations_control_cryptographic_audit_proofs`.
+- PBC key: `airline_operations_control`.
+- Manifest label: `Airline Operations Control`.
+- Manifest description: fleet rotations, crew legality, disruptions, passenger reaccommodation, operational control, and recovery planning.
+- Owned tables named in the manifest: `flight_leg`, `aircraft_rotation`, `crew_pairing`, `disruption_event`, `reaccommodation_plan`, `operations_decision`, `delay_code`, `airline_operations_control_policy_rule`, `airline_operations_control_runtime_parameter`, `airline_operations_control_schema_extension`, `airline_operations_control_control_assertion`, `airline_operations_control_governed_model`.
+- Public routes named in the manifest: `POST /flight-legs`, `POST /aircraft-rotations`, `POST /crew-pairings`, `POST /disruption-events`, `POST /reaccommodation-plans`, `GET /airline-operations-control-workbench`.
+- Workflows named in the manifest: `airline_operations_control_create_flight_leg_workflow` and `airline_operations_control_record_aircraft_rotation_workflow`.
+- UI fragments named in the manifest: `AirlineOperationsControlWorkbench`, `AirlineOperationsControlDetail`, and `AirlineOperationsControlAssistantPanel`.
+- Docs named in the manifest: `SPECIFICATION.md` and `RELEASE_EVIDENCE.md`.
+- Current emitted events: `AirlineOperationsControlCreated`, `AirlineOperationsControlUpdated`, `AirlineOperationsControlApproved`, and `AirlineOperationsControlExceptionOpened`.
+- Current consumed events: `PolicyChanged`, `AuditEventSealed`, and `OperationalKpiChanged`.
 
-## 50 High-Impact Improvements
+### 1. Canonical flight-leg operating timeline
 
-### 1. Canonical lifecycle state model for Flight Leg
+**Justification:** OCC teams cannot explain knock-on delay risk when one flight leg has multiple competing definitions of off-block, airborne, and arrival completion.
 
-**Justification:** This closes shallow CRUD gaps by making every airline operations control transition explainable and testable instead of implicit in free-form status values.
+**Improvement:** Define one controlled `flight_leg` timeline from schedule publication through gate departure, takeoff, touchdown, on-block, and post-flight closure, with explicit handling for return-to-gate, diversion, and cancellation branches.
 
-**Improvement:** Define a complete state machine for `flight_leg` with explicit draft, validated, blocked, approved, active, suspended, corrected, closed, archived, and reopened states. Tie the behavior to `airline_operations_control_create_flight_leg_workflow` where applicable, and make it visible in `AirlineOperationsControlWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** `RELEASE_EVIDENCE.md` shows planned versus actual timeline traces for on-time, delayed, cancelled, diverted, and ferry-leg scenarios, and the workbench presents one authoritative timeline for each case.
 
-**Acceptance evidence:** State-transition tests, invalid-transition fixtures, workbench state badges, and emitted AppGen-X transition events for AirlineOperationsControlCreated, AirlineOperationsControlUpdated, AirlineOperationsControlApproved. The evidence should be package-local in `src/pyAppGen/pbcs/airline_operations_control` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 2. Tail rotation continuity graph
 
-### 2. Domain intake and normalization for Aircraft Rotation
+**Justification:** A late inbound only matters operationally when controllers can see every downstream leg, turn, and overnight dependency attached to that tail.
 
-**Justification:** The PBC cannot reach complete domain coverage unless it handles the messy front door of fleet rotations, crew legality, disruptions, passenger reaccommodation, operational control, and recovery planning, not only already-clean records.
+**Improvement:** Build a rotation graph for each aircraft in `aircraft_rotation` that exposes previous leg, next leg, maintenance stop, spare substitution, and route recovery options across the operating day.
 
-**Improvement:** Build a typed intake pipeline for `aircraft_rotation` that accepts structured API payloads, document-derived instructions, batch loads, and assistant-generated drafts while normalizing identifiers, dates, units, parties, and jurisdictional context. Tie the behavior to `airline_operations_control_record_aircraft_rotation_workflow` where applicable, and make it visible in `AirlineOperationsControlWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Controllers can open a tail and see the full day sequence, a broken turn is highlighted before it becomes a departure delay, and recovery simulations show which later legs are protected or sacrificed.
 
-**Acceptance evidence:** Golden intake fixtures, rejected-record queues, field-level normalization evidence, and assistant previews before governed datastore mutation. The evidence should be package-local in `src/pyAppGen/pbcs/airline_operations_control` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 3. Crew legality projection horizon
 
-### 3. Specialist validation rules for Crew Pairing
+**Justification:** Crew legality breaches are usually visible hours before departure, but only if the system projects duty, rest, FDP, and connection effects forward rather than evaluating legality at the last minute.
 
-**Justification:** World-class Airline Operations Control requires rules that domain experts can reason about, version, test, and roll back without code edits.
+**Improvement:** Add forward-looking legality projections for `crew_pairing` that calculate remaining duty margin, minimum rest exposure, split-duty effects, standby conversion, and deadhead consequences across the rest of the pairing.
 
-**Improvement:** Add a domain rule compiler for `crew_pairing` that supports threshold rules, eligibility rules, dependency rules, temporal windows, conflicting-instruction detection, and override justification. Tie the behavior to `airline_operations_control_create_flight_leg_workflow` where applicable, and make it visible in `AirlineOperationsControlWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** The workbench displays a legality countdown for each active pairing, projected illegal states are visible before check-in cutoff, and scenario evidence covers delays, swaps, extensions, and reserve activation.
 
-**Acceptance evidence:** Rule simulation tests, versioned rule manifests, rule impact reports, and UI rule editors linked to `AIRLINE_OPERATIONS_CONTROL_DATABASE_URL, AIRLINE_OPERATIONS_CONTROL_EVENT_TOPIC, AIRLINE_OPERATIONS_CONTROL_RETRY_LIMIT`. The evidence should be package-local in `src/pyAppGen/pbcs/airline_operations_control` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 4. Aircraft availability with maintenance constraint overlays
 
-### 4. Parameter governance and tuning for Disruption Event
+**Justification:** An aircraft is not operationally available just because it is on the ground; MEL, CDL, inspections, deferred defects, and parts waits all change what it can legally fly next.
 
-**Justification:** Parameters are where operations teams tune airline operations control; unbounded constants would make the PBC brittle and unsafe in real deployments.
+**Improvement:** Extend aircraft availability views so `aircraft_rotation` decisions account for maintenance constraints, route restrictions, dispatch limitations, cabin defects, and upcoming due tasks before assigning the next leg.
 
-**Improvement:** Expose bounded runtime parameters for `disruption_event` covering risk thresholds, SLA windows, confidence floors, escalation cutoffs, batch sizes, retry limits, and human-confirmation requirements. Tie the behavior to `airline_operations_control_record_aircraft_rotation_workflow` where applicable, and make it visible in `AirlineOperationsControlWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Tail availability cards show why an aircraft is green, amber, or blocked, and release evidence includes examples where a technical restriction prevents a naive swap.
 
-**Acceptance evidence:** Parameter schema validation, tenant overrides, approval history, rollback controls, and workbench diff views. The evidence should be package-local in `src/pyAppGen/pbcs/airline_operations_control` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 5. Slot and curfew protection controls
 
-### 5. Deep owned schema expansion for Reaccommodation Plan
+**Justification:** Departure recovery that ignores airport slots, curfews, and constrained arrivals can create a worse network outcome than the original delay.
 
-**Justification:** A single payload column cannot express the full surface of fleet rotations, crew legality, disruptions, passenger reaccommodation, operational control, and recovery planning or prove cross-PBC boundaries are respected.
+**Improvement:** Add slot-aware controls to `flight_leg` planning so controllers see coordinated slot windows, curfew exposure, night-stop consequences, and refile decisions before committing a revised departure.
 
-**Improvement:** Extend the owned schema around `reaccommodation_plan` with normalized child tables for line-level evidence, party roles, approvals, attachments, comments, metrics, exception reasons, and control assertions. Tie the behavior to `airline_operations_control_create_flight_leg_workflow` where applicable, and make it visible in `AirlineOperationsControlWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Scenario packs show constrained-airport departures, missed slot windows, curfew risk at destination, and the resulting decisions recorded with clear rationale.
 
-**Acceptance evidence:** Migrations, models, relationship tests, schema contract snapshots, and no shared-table access outside the `airline_operations_control_` namespace. The evidence should be package-local in `src/pyAppGen/pbcs/airline_operations_control` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 6. ATC, weather, and NOTAM disruption fusion
 
-### 6. Event-sourced operational history for Operations Decision
+**Justification:** Irregular ops decisions degrade when ATC restrictions, convective weather, runway closures, and NOTAM impacts arrive as separate unranked alerts.
 
-**Justification:** Temporal reconstruction is essential for better-than-world-class auditability and dispute resolution in airline operations control.
+**Improvement:** Fuse ATC, weather, and NOTAM signals into a single `disruption_event` view that scores relevance by flight leg, station, route, and timing instead of forcing controllers to correlate feeds manually.
 
-**Improvement:** Capture every material mutation of `operations_decision` as immutable AppGen-X events with actor, tenant, command, policy version, idempotency key, before/after summary, and projection checkpoint. Tie the behavior to `airline_operations_control_record_aircraft_rotation_workflow` where applicable, and make it visible in `AirlineOperationsControlWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** The OCC workbench shows one disruption card per operational issue with linked affected legs, and examples cover GDP, thunderstorm line, runway closure, and airspace restriction cases.
 
-**Acceptance evidence:** Replay tests, projection checksums, event ordering evidence, and point-in-time workbench views. The evidence should be package-local in `src/pyAppGen/pbcs/airline_operations_control` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 7. Minimum-turn feasibility engine
 
-### 7. Projection and read-model strategy for Delay Code
+**Justification:** Published schedules often assume ideal turns; OCC needs a realistic turn view that includes station capability and the current operating context.
 
-**Justification:** The workbench should not force users to infer domain truth from raw tables; each projection should answer a real operating question.
+**Improvement:** Evaluate each `flight_leg` against minimum turn requirements using aircraft type, gate position, crew change, cleaning, catering, fueling, bags, deplaning, and special-assistance passenger needs.
 
-**Improvement:** Create purpose-built projections for `delay_code`: operational queue, executive KPI rollup, exception aging, compliance evidence, agent task context, and external dependency health. Tie the behavior to `airline_operations_control_create_flight_leg_workflow` where applicable, and make it visible in `AirlineOperationsControlWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Turn-risk indicators appear before departure control decisions are finalized, and evidence demonstrates feasible, marginal, and impossible turn cases at large and outstation airports.
 
-**Acceptance evidence:** Projection contracts, freshness SLAs, backfill tests, and visible stale-projection warnings. The evidence should be package-local in `src/pyAppGen/pbcs/airline_operations_control` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 8. Fuel decision guardrails
 
-### 8. Exception taxonomy and remediation for Airline Operations Control Policy Rule
+**Justification:** Fuel choices during disruption recovery affect payload, alternate flexibility, cost, and the ability to protect the next wave of departures.
 
-**Justification:** High-value PBCs win on exception throughput; generic “failed” states hide the details operators need.
+**Improvement:** Add fuel decision support to `operations_decision` so controllers can compare standard fuel, tanker fuel, extra contingency, alternate changes, payload tradeoffs, and diversion resilience before release.
 
-**Improvement:** Model the full exception taxonomy for `airline_operations_control_policy_rule`, including severity, root cause, blocking dependency, remediation owner, due date, retry eligibility, escalation path, and closure evidence. Tie the behavior to `airline_operations_control_record_aircraft_rotation_workflow` where applicable, and make it visible in `AirlineOperationsControlWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Release evidence includes at least one weather-driven extra fuel case, one tankering tradeoff case, and one payload restriction case with the chosen rationale captured.
 
-**Acceptance evidence:** Exception queues, aging metrics, remediation playbooks, dead-letter linkage, and closure test fixtures for weather or traffic disruption. The evidence should be package-local in `src/pyAppGen/pbcs/airline_operations_control` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 9. Delay code discipline and hierarchy
 
-### 9. Predictive risk scoring for Airline Operations Control Runtime Parameter
+**Justification:** Delay codes drive root-cause analysis, cost allocation, and performance conversations, so weak coding destroys the usefulness of post-ops analytics.
 
-**Justification:** The package should warn users before airline operations control work fails, breaches policy, or creates downstream cost.
+**Improvement:** Make `delay_code` assignment controlled, hierarchical, and evidence-backed, with primary cause, contributing causes, coding ownership, and late-change justification when responsibility shifts.
 
-**Improvement:** Add predictive risk scoring for `airline_operations_control_runtime_parameter` using domain features from owned tables, consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, rule outcomes, aging, anomaly signals, and historical corrections. Tie the behavior to `airline_operations_control_create_flight_leg_workflow` where applicable, and make it visible in `AirlineOperationsControlWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** The system prevents uncoded closure, exposes code change history, and `RELEASE_EVIDENCE.md` includes examples of reactionary versus root cause coding for multi-factor delays.
 
-**Acceptance evidence:** Feature manifests, score explanations, calibration reports, drift alerts, and tests for low/medium/high-risk scenarios. The evidence should be package-local in `src/pyAppGen/pbcs/airline_operations_control` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 10. OCC workbench role views
 
-### 10. Counterfactual simulation for Airline Operations Control Schema Extension
+**Justification:** Dispatchers, controllers, crew desk, and passenger reaccommodation teams do not need the same decisions surfaced at the same moment.
 
-**Justification:** Advanced users need to ask “what would happen if” before committing changes to live fleet rotations, crew legality, disruptions, passenger reaccommodation, operational control, and recovery planning operations.
+**Improvement:** Refine `AirlineOperationsControlWorkbench` into role-specific boards for network control, station control, crew control, maintenance coordination, and customer recovery while preserving one shared operational truth.
 
-**Improvement:** Provide scenario simulation for `airline_operations_control_schema_extension`: policy change, capacity constraint, deadline shift, price/rate change, eligibility change, disruption, and manual override outcomes. Tie the behavior to `airline_operations_control_record_aircraft_rotation_workflow` where applicable, and make it visible in `AirlineOperationsControlWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Workbench screenshots show distinct role views, queue priorities differ by role, and all views reconcile to the same flight, tail, crew, and disruption facts.
 
-**Acceptance evidence:** Simulation APIs, non-mutating sandbox state, comparison reports, and workbench side-by-side scenario panels. The evidence should be package-local in `src/pyAppGen/pbcs/airline_operations_control` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 11. Dispatch release and redispatch gating
 
-### 11. Autonomous anomaly triage for Airline Operations Control Control Assertion
+**Justification:** Recovery planning remains incomplete if OCC can adjust flight legs without proving that dispatch release conditions are still satisfied.
 
-**Justification:** A world-class PBC should reduce analyst burden without hiding the reasoning behind automated triage.
+**Improvement:** Treat dispatch release and redispatch as governed `operations_decision` milestones that check fuel assumptions, alternates, weather, route restrictions, aircraft status, and crew legality before a revised plan becomes active.
 
-**Improvement:** Implement anomaly detection for `airline_operations_control_control_assertion` that identifies outliers, duplicate submissions, impossible sequences, stale dependencies, unusual amounts/counts/durations, and contradictory fields. Tie the behavior to `airline_operations_control_create_flight_leg_workflow` where applicable, and make it visible in `AirlineOperationsControlWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Decision logs show release, re-release, and hold states, and evidence includes at least one enroute redispatch trigger after a material weather or route change.
 
-**Acceptance evidence:** Explainable anomaly cards, reviewer feedback loops, false-positive tracking, and suppression governance. The evidence should be package-local in `src/pyAppGen/pbcs/airline_operations_control` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 12. Inbound dependency map for outbound protection
 
-### 12. Semantic document understanding for Airline Operations Control Governed Model
+**Justification:** Controllers need to know whether an outbound is waiting on inbound aircraft, inbound crew, inbound bags, or a passenger connection bank before choosing a delay or swap.
 
-**Justification:** Document-heavy work in Airline Operations Control cannot be complete if the assistant only answers questions and cannot prepare accurate governed changes.
+**Improvement:** Add a dependency map around `flight_leg` and `aircraft_rotation` that links inbound aircraft, carry-over crew, through passengers, and station constraints to every outbound departure.
 
-**Improvement:** Train the package assistant to parse domain documents and instructions for `airline_operations_control_governed_model`, extract obligations, dates, parties, quantities, identifiers, and exceptions, then map them to safe draft mutations. Tie the behavior to `airline_operations_control_record_aircraft_rotation_workflow` where applicable, and make it visible in `AirlineOperationsControlWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** The workbench can open a departure and show its dependency tree, and evidence covers wait-for-inbound, tail swap, crew split, and passenger-bank protection decisions.
 
-**Acceptance evidence:** Document extraction tests, confidence thresholds, redaction handling, source span citations, and human confirmation workflows. The evidence should be package-local in `src/pyAppGen/pbcs/airline_operations_control` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 13. Reaccommodation boundary rules
 
-### 13. Agent-safe CRUD execution for Flight Leg
+**Justification:** Passenger reaccommodation must respect fare, alliance, visa, special-service, and operational promise boundaries or the recovery plan creates downstream exceptions faster than it closes them.
 
-**Justification:** The PBC agent must be a first-class operator but never a hidden bypass around RBAC, rules, or owned datastore boundaries.
+**Improvement:** Define boundary rules for `reaccommodation_plan` covering protected connections, cabin entitlement, special assistance, unaccompanied minors, border constraints, overnight accommodation, and self-transfer exclusions.
 
-**Improvement:** Add a professional chatbot skill for `flight_leg` that can create, update, correct, close, and annotate records only through policy-checked commands, approval gates, and previewed diffs. Tie the behavior to `airline_operations_control_create_flight_leg_workflow` where applicable, and make it visible in `AirlineOperationsControlWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Recovery scenarios demonstrate when automatic reaccommodation is allowed, when human review is mandatory, and when a proposed plan is blocked for policy or customer-care reasons.
 
-**Acceptance evidence:** Skill manifests, permission tests, preview/confirm flows, blocked-action evidence, and audit events for every assistant mutation. The evidence should be package-local in `src/pyAppGen/pbcs/airline_operations_control` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 14. Aircraft swap simulator
 
-### 14. Workbench persona coverage for Aircraft Rotation
+**Justification:** Tail swaps are one of the most powerful recovery levers, but they create hidden consequences across maintenance, seat map, payload, and downstream timing.
 
-**Justification:** A generic detail page underserves the domain; each role needs the exact controls and evidence they use daily.
+**Improvement:** Add a simulation mode for `aircraft_rotation` that compares swap options by tail capability, seat mismatch, cabin defect exposure, maintenance positioning, and the number of protected departures.
 
-**Improvement:** Design dedicated workbench panels for `aircraft_rotation`: operator queue, supervisor approvals, analyst exceptions, auditor evidence, configuration owner, and agent-assistance review. Tie the behavior to `airline_operations_control_record_aircraft_rotation_workflow` where applicable, and make it visible in `AirlineOperationsControlWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** A controller can compare at least three swap options side by side, and the chosen option records why it outperformed the alternatives.
 
-**Acceptance evidence:** UI contract entries, route tests, empty/error/loading states, and permission-aware action availability. The evidence should be package-local in `src/pyAppGen/pbcs/airline_operations_control` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 15. Crew swap and standby activation logic
 
-### 15. Cross-PBC dependency contracts for Crew Pairing
+**Justification:** Crew recovery is slower than aircraft recovery when standby, split crew, and base rules are not surfaced quickly enough.
 
-**Justification:** Composable packages fail when hidden table coupling enters the domain model.
+**Improvement:** Extend `crew_pairing` support so OCC can evaluate reserve callout windows, airport standby, deadhead replacement, augmented crew needs, and skill-specific substitutions before a leg goes illegal.
 
-**Improvement:** Represent dependencies for `crew_pairing` through declared APIs, consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, and projections rather than shared tables, with explicit freshness, ownership, and fallback behavior. Tie the behavior to `airline_operations_control_create_flight_leg_workflow` where applicable, and make it visible in `AirlineOperationsControlWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Crew desk scenarios show projected illegality, reserve activation timing, and the impact of swaps on later sectors in the same pairing.
 
-**Acceptance evidence:** Dependency manifests, contract tests, stale dependency alerts, and no foreign-table references in generated artifacts. The evidence should be package-local in `src/pyAppGen/pbcs/airline_operations_control` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 16. Ferry, reposition, and recovery leg handling
 
-### 16. API completeness and versioning for Disruption Event
+**Justification:** A real airline control system needs to handle non-revenue positioning moves as first-class operational objects, not ad hoc notes around scheduled flying.
 
-**Justification:** Complete domain coverage requires both command and query surfaces, not only happy-path create endpoints.
+**Improvement:** Treat ferry, rescue, and reposition moves as explicit `flight_leg` variants with their own approval path, crew/fuel assumptions, airport permissions, and downstream rotation effects.
 
-**Improvement:** Expand APIs beyond POST /flight-legs, POST /aircraft-rotations, POST /crew-pairings to cover search, validation-only commands, simulation, bulk intake, exception closure, evidence export, projection reads, and idempotent corrections. Tie the behavior to `airline_operations_control_record_aircraft_rotation_workflow` where applicable, and make it visible in `AirlineOperationsControlWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Recovery cases include a cancelled passenger leg followed by a ferry leg, and the resulting rotation remains coherent in the workbench.
 
-**Acceptance evidence:** OpenAPI-style route manifests, backward-compatible version tests, deprecation metadata, and idempotency assertions. The evidence should be package-local in `src/pyAppGen/pbcs/airline_operations_control` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 17. Cancellation decision packs
 
-### 17. Typed emitted-event expansion for Reaccommodation Plan
+**Justification:** Cancelling the wrong leg can destroy an entire wave, while delaying the wrong leg can strand the tail and crew anyway.
 
-**Justification:** Consumers should understand what happened in Airline Operations Control without parsing opaque payloads.
+**Improvement:** Create a cancellation pack in `operations_decision` that compares delay, cancel, consolidate, downgrade, and ferry alternatives using passenger count, slot impact, downstream recovery value, and crew legality margin.
 
-**Improvement:** Replace generic lifecycle emissions with typed events for each meaningful `reaccommodation_plan` transition, exception, approval, correction, simulation result, and downstream handoff. Tie the behavior to `airline_operations_control_create_flight_leg_workflow` where applicable, and make it visible in `AirlineOperationsControlWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Decision packs are exportable, include the rejected options, and show which network objective the final cancellation protected.
 
-**Acceptance evidence:** Event schema tests, event examples, compatibility checks, and emitted-event coverage in release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/airline_operations_control` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 18. Diversion and return-to-origin control
 
-### 18. Consumed-event handlers for Operations Decision
+**Justification:** Diversions create immediate operational, customer, and maintenance consequences that need structured follow-through once the airborne event ends.
 
-**Justification:** A PBC is composable only when incoming events affect its own domain state predictably and safely.
+**Improvement:** Expand `disruption_event` handling so diversions and return-to-origin cases capture alternate selection, fuel status, customs implications, onward crew legality, and passenger recovery actions in one linked record.
 
-**Improvement:** Implement idempotent handlers for consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged that update projections, open dependency exceptions, recalculate risk, and preserve source event lineage. Tie the behavior to `airline_operations_control_record_aircraft_rotation_workflow` where applicable, and make it visible in `AirlineOperationsControlWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Evidence covers diversion initiation, on-ground stabilization, onward disposition, and the closure of both the airborne event and the ground recovery plan.
 
-**Acceptance evidence:** Duplicate-event tests, handler side-effect boundaries, dead-letter fixtures, and lineage links back to source events. The evidence should be package-local in `src/pyAppGen/pbcs/airline_operations_control` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 19. Payload and performance restriction handling
 
-### 19. Retry and dead-letter operations for Delay Code
+**Justification:** High temperature, short runway, contamination, and altitude constraints can turn an apparently available aircraft into a commercially unusable one.
 
-**Justification:** Dead letters are not just plumbing; they are domain work queues that can block fleet rotations, crew legality, disruptions, passenger reaccommodation, operational control, and recovery planning.
+**Improvement:** Add `flight_leg` checks for payload and performance restrictions so OCC sees seat block, bag offload, cargo cut, and reroute implications when dispatch conditions tighten.
 
-**Improvement:** Create operational tools for retrying, quarantining, explaining, and resolving dead-lettered `delay_code` events with max-attempt policy, poison-message detection, and replay safety. Tie the behavior to `airline_operations_control_create_flight_leg_workflow` where applicable, and make it visible in `AirlineOperationsControlWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Release evidence includes a hot-and-high restriction case and a contaminated-runway case with visible payload or routing decisions.
 
-**Acceptance evidence:** Dead-letter workbench, retry eligibility tests, replay audit proof, and operator action logs. The evidence should be package-local in `src/pyAppGen/pbcs/airline_operations_control` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 20. Deicing and holdover management
 
-### 20. RBAC and attribute policy for Airline Operations Control Policy Rule
+**Justification:** Winter operations fail when deicing starts are tracked without linking them to holdover limits, queue position, and takeoff readiness.
 
-**Justification:** High-impact domain operations need finer controls than generic RBAC grants.
+**Improvement:** Model deicing as a timed `disruption_event` with queue state, fluid type assumptions, holdover expiry, and restart logic when a flight misses its departure opportunity.
 
-**Improvement:** Extend permissions for `airline_operations_control_policy_rule` from coarse read/create/update/admin to action-level and attribute-aware policies based on role, tenant, jurisdiction, monetary/materiality threshold, and exception severity. Tie the behavior to `airline_operations_control_record_aircraft_rotation_workflow` where applicable, and make it visible in `AirlineOperationsControlWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Workbench examples show valid, expiring, and expired holdover situations, and the chosen controller actions are recorded with timestamps.
 
-**Acceptance evidence:** Permission matrix docs, ABAC policy tests, denied-action UI states, and assistant skill permission checks. The evidence should be package-local in `src/pyAppGen/pbcs/airline_operations_control` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 21. Route restriction and alternate compliance
 
-### 21. Continuous control testing for Airline Operations Control Runtime Parameter
+**Justification:** Long-haul and constrained routes can become unavailable because of ETOPS, military airspace closures, volcanic ash, or alternate degradation, not just airport conditions.
 
-**Justification:** Controls should run during operations, not only during release audit or manual review.
+**Improvement:** Add route and alternate compliance checks into `operations_decision` so OCC sees when the planned leg is still legal, when a reroute is required, and when the flight should not depart at all.
 
-**Improvement:** Embed control assertions for `airline_operations_control_runtime_parameter` that continuously test segregation of duties, required approvals, stale exceptions, policy drift, duplicate records, and boundary violations. Tie the behavior to `airline_operations_control_create_flight_leg_workflow` where applicable, and make it visible in `AirlineOperationsControlWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Scenario evidence covers route closure, alternate downgrade, and reroute acceptance with the exact operational reason captured.
 
-**Acceptance evidence:** Control dashboards, failing-control events, test fixtures, and release evidence tied to `airline_operations_control_control_assertion` records. The evidence should be package-local in `src/pyAppGen/pbcs/airline_operations_control` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 22. Connection protection strategy
 
-### 22. Cryptographic audit proofing for Airline Operations Control Schema Extension
+**Justification:** Waiting for connections without a network policy turns a local customer save into a system-wide departure reliability problem.
 
-**Justification:** Better-than-world-class auditability requires proof of integrity, not merely logs stored in mutable tables.
+**Improvement:** Create connection protection rules that balance protected banks, high-value itineraries, minimum connect time, crew legality, slot risk, and downstream aircraft rotation damage before a `flight_leg` is held.
 
-**Improvement:** Hash-chain material `airline_operations_control_schema_extension` decisions, documents, emitted events, and release-evidence snapshots to make tampering visible without exposing sensitive payloads. Tie the behavior to `airline_operations_control_record_aircraft_rotation_workflow` where applicable, and make it visible in `AirlineOperationsControlWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Cases show when the system recommends hold, no-hold, or selective passenger reprotection, and the outcome is visible against later network impact.
 
-**Acceptance evidence:** Proof manifests, verification APIs, redacted proof exports, and audit-ledger handoff events. The evidence should be package-local in `src/pyAppGen/pbcs/airline_operations_control` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 23. Crew rest logistics during irregular ops
 
-### 23. Privacy, consent, and secrecy controls for Airline Operations Control Control Assertion
+**Justification:** Crew legality can fail because of hotel, transport, or rest-environment issues long before it fails because of block-time arithmetic.
 
-**Justification:** Complete domain coverage must account for protected data and restricted operational evidence.
+**Improvement:** Track hotel assignment, transport status, rest start, wake-up buffer, and immigration exposure around `crew_pairing` during IROPS so later legs reflect operational reality instead of paper assumptions.
 
-**Improvement:** Add field-level privacy classifications for `airline_operations_control_control_assertion`, consent checks, masking rules, retention schedules, legal holds, and assistant redaction policies. Tie the behavior to `airline_operations_control_create_flight_leg_workflow` where applicable, and make it visible in `AirlineOperationsControlWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** A disrupted overnight case shows the crew becoming legal or illegal based on actual rest logistics rather than a manual note.
 
-**Acceptance evidence:** Retention tests, masked UI snapshots, consent-blocked mutation fixtures, and export controls. The evidence should be package-local in `src/pyAppGen/pbcs/airline_operations_control` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 24. Interline and codeshare reaccommodation boundaries
 
-### 24. Multi-tenant operating model for Airline Operations Control Governed Model
+**Justification:** Customer recovery crosses commercial boundaries quickly, and OCC needs clear limits on what can be automated versus what must be handed to a commercial or alliance desk.
 
-**Justification:** The PBC should scale across organizations while preserving independent policy and compliance boundaries.
+**Improvement:** Add `reaccommodation_plan` rules for interline, codeshare, alliance, and partner inventory cases, including what data can cross the boundary and which commitments require external confirmation.
 
-**Improvement:** Support tenant-specific `airline_operations_control_governed_model` rules, data residency, encryption context, configuration, seed data, and release evidence without allowing cross-tenant leakage. Tie the behavior to `airline_operations_control_record_aircraft_rotation_workflow` where applicable, and make it visible in `AirlineOperationsControlWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Evidence includes one own-metal recovery, one alliance recovery, and one blocked plan where the boundary forces manual escalation.
 
-**Acceptance evidence:** Tenant isolation tests, tenant-scoped parameters, key-rotation evidence, and cross-tenant negative fixtures. The evidence should be package-local in `src/pyAppGen/pbcs/airline_operations_control` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 25. Maintenance due-clock projection across rotations
 
-### 25. Schema evolution and extension registry for Flight Leg
+**Justification:** An aircraft that is legal now may become unusable after one more sector if the next check or life-limited task is not projected through the day.
 
-**Justification:** Domain teams will add fields; the PBC must evolve without breaking APIs, events, or workbench projections.
+**Improvement:** Project maintenance due clocks across `aircraft_rotation` so OCC can see whether continuing the planned sequence burns through inspection thresholds, cycle limits, or deferred-defect tolerances.
 
-**Improvement:** Make schema extensions for `flight_leg` first-class with compatibility checks, migration previews, projection backfills, field ownership, and rollback metadata. Tie the behavior to `airline_operations_control_create_flight_leg_workflow` where applicable, and make it visible in `AirlineOperationsControlWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Tail views show remaining maintenance margin by sector, and at least one recovery plan is rejected because it would breach a due clock later in the day.
 
-**Acceptance evidence:** Extension registry UI, compatibility tests, migration dry-runs, and backfill release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/airline_operations_control` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 26. Spare aircraft and standby resource inventory
 
-### 26. Master data quality gates for Aircraft Rotation
+**Justification:** Recovery options are weak when controllers cannot see the true availability of spare tails, spare crews, or maintenance-ready assets by station and time.
 
-**Justification:** Many airline operations control errors begin as bad reference data; the PBC should catch them before workflow execution.
+**Improvement:** Add a live availability inventory that brings together spare aircraft status, reserve crews, maintenance release readiness, and station capability to support fast recovery choices.
 
-**Improvement:** Define reference-data contracts for `aircraft_rotation`: canonical codes, parties, locations, classifications, calendars, units, currencies, products, assets, or service categories as relevant to the domain. Tie the behavior to `airline_operations_control_record_aircraft_rotation_workflow` where applicable, and make it visible in `AirlineOperationsControlWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** The OCC workbench shows available and unavailable resources by base and outstation, and decision evidence links chosen recovery actions back to that inventory snapshot.
 
-**Acceptance evidence:** Reference validation fixtures, stale-code warnings, mapping tables, and dependency freshness indicators. The evidence should be package-local in `src/pyAppGen/pbcs/airline_operations_control` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 27. Station-specific IROPS playbooks
 
-### 27. Bulk operations and correction workflows for Crew Pairing
+**Justification:** The same disruption should not be handled the same way at a hub, a night-stop outstation, and a slot-constrained international station.
 
-**Justification:** Enterprise-scale Airline Operations Control users cannot operate one record at a time.
+**Improvement:** Create station-aware `disruption_event` playbooks that vary by curfew, crew lodging options, maintenance coverage, customs handling, deicing capability, and passenger volume profile.
 
-**Improvement:** Add bulk load, bulk validate, bulk approve, and bulk correction workflows for `crew_pairing` with partial success, row-level errors, resumability, and rollback. Tie the behavior to `airline_operations_control_create_flight_leg_workflow` where applicable, and make it visible in `AirlineOperationsControlWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Playbooks exist for at least a hub, a spoke, and an international station, and operators can show which playbook informed a live decision.
 
-**Acceptance evidence:** CSV/API batch fixtures, resumable job state, row-level audit evidence, and assistant-generated correction suggestions. The evidence should be package-local in `src/pyAppGen/pbcs/airline_operations_control` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 28. Operations decision journal with rationale capture
 
-### 28. Lifecycle collaboration and tasking for Disruption Event
+**Justification:** High-tempo control work still needs a durable explanation of who chose what, when, and why, especially when the day is reconstructed after a severe disruption.
 
-**Justification:** Domain collaboration should live inside the PBC boundary and remain auditable with the record it affects.
+**Improvement:** Make `operations_decision` a structured journal of alternatives considered, selected action, assumptions, approvals, and expected downstream effect rather than a free-text summary field.
 
-**Improvement:** Attach tasks, comments, ownership, due dates, handoffs, and escalation threads to `disruption_event` without leaking into external shared task tables. Tie the behavior to `airline_operations_control_record_aircraft_rotation_workflow` where applicable, and make it visible in `AirlineOperationsControlWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Decision records show rejected alternatives, operator identity, timestamp lineage, and linked disruption or reaccommodation objects for each material recovery step.
 
-**Acceptance evidence:** Task tables, comment audit history, notification events, escalation SLAs, and role-specific task queues. The evidence should be package-local in `src/pyAppGen/pbcs/airline_operations_control` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 29. Delay forecast confidence bands
 
-### 29. SLA and service-level governance for Reaccommodation Plan
+**Justification:** Controllers need to know not just the latest estimate but how likely it is to hold, because unstable estimates trigger bad gate, crew, and customer decisions.
 
-**Justification:** Users need to know when fleet rotations, crew legality, disruptions, passenger reaccommodation, operational control, and recovery planning is late, blocked, or at risk before customer or regulator impact.
+**Improvement:** Add forecast confidence bands to delay predictions using inbound status, station congestion, weather uncertainty, maintenance uncertainty, and crew readiness as explicit drivers.
 
-**Improvement:** Define SLAs for `reaccommodation_plan` across intake, validation, approval, exception resolution, event handling, downstream projection refresh, and release-evidence generation. Tie the behavior to `airline_operations_control_create_flight_leg_workflow` where applicable, and make it visible in `AirlineOperationsControlWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** The workbench shows best-case, expected, and worst-case departure outlooks, and forecast quality is measured against actual outcomes in release evidence.
 
-**Acceptance evidence:** SLA breach events, timers, configurable calendars, workbench aging buckets, and tests for pause/resume behavior. The evidence should be package-local in `src/pyAppGen/pbcs/airline_operations_control` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 30. Event and API boundary contracts
 
-### 30. Operational analytics cockpit for Operations Decision
+**Justification:** `airline_operations_control` should own operational control decisions without silently absorbing airport, maintenance, crew, or customer-service responsibilities that belong elsewhere.
 
-**Justification:** World-class operations require leading indicators, not only record counts.
+**Improvement:** Define strict command, query, and event boundaries for `POST /flight-legs`, `POST /aircraft-rotations`, `POST /crew-pairings`, `POST /disruption-events`, `POST /reaccommodation-plans`, and emitted or consumed events so each integration point declares what it owns and what it does not.
 
-**Improvement:** Build analytics for `operations_decision`: throughput, backlog, aging, approval latency, exception rate, risk distribution, automation acceptance, correction rate, and downstream dependency health. Tie the behavior to `airline_operations_control_record_aircraft_rotation_workflow` where applicable, and make it visible in `AirlineOperationsControlWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** `SPECIFICATION.md` and `RELEASE_EVIDENCE.md` contain explicit boundary matrices, rejected out-of-scope payload examples, and proof that cross-domain handoffs stay visible rather than implicit.
 
-**Acceptance evidence:** Metric definitions, projection tests, drill-through routes, export APIs, and anomaly overlays. The evidence should be package-local in `src/pyAppGen/pbcs/airline_operations_control` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 31. Idempotent disruption ingestion and deduplication
 
-### 31. Decision intelligence and recommendations for Delay Code
+**Justification:** ATC and weather feeds often resend the same operational fact with small formatting differences, and duplicate disruption records erode trust quickly.
 
-**Justification:** The PBC should help expert users decide faster while showing evidence and uncertainty.
+**Improvement:** Add deduplication logic for `disruption_event` so equivalent ATC, weather, and station updates collapse into one operational issue with preserved source lineage and update history.
 
-**Improvement:** Generate ranked recommendations for `delay_code` such as next best action, likely resolution, required evidence, policy adjustment, staffing/capacity response, or downstream handoff. Tie the behavior to `airline_operations_control_create_flight_leg_workflow` where applicable, and make it visible in `AirlineOperationsControlWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Replayed feed samples do not create duplicate disruptions, source lineage remains intact, and controllers can see when a disruption card was refreshed rather than recreated.
 
-**Acceptance evidence:** Recommendation explanations, confidence intervals, feedback capture, model governance records, and rejection reasons. The evidence should be package-local in `src/pyAppGen/pbcs/airline_operations_control` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 32. Recovery scenario sandbox
 
-### 32. Quality and completeness scoring for Airline Operations Control Policy Rule
+**Justification:** OCC teams need a safe place to test alternative recovery waves without contaminating the active network picture.
 
-**Justification:** Operators should see whether a record is truly ready, not just technically saved.
+**Improvement:** Create a non-mutating sandbox around `operations_decision`, `aircraft_rotation`, and `crew_pairing` that lets controllers compare delay, cancel, swap, ferry, and reaccommodation strategies before activating one.
 
-**Improvement:** Score each `airline_operations_control_policy_rule` record for completeness, consistency, policy readiness, dependency readiness, evidence sufficiency, and downstream composability. Tie the behavior to `airline_operations_control_record_aircraft_rotation_workflow` where applicable, and make it visible in `AirlineOperationsControlWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Side-by-side scenarios can be opened from the same disruption, only one plan can be promoted, and rejected simulations remain available for later review.
 
-**Acceptance evidence:** Scoring rules, missing-evidence lists, readiness badges, and blocking criteria in command handlers. The evidence should be package-local in `src/pyAppGen/pbcs/airline_operations_control` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 33. Agent skills and approval limits
 
-### 33. End-to-end scenario library for Airline Operations Control Runtime Parameter
+**Justification:** Assistant features in the OCC should accelerate work without creating hidden autonomous decisions that operators cannot challenge.
 
-**Justification:** Release evidence is stronger when every important airline operations control behavior has executable examples.
+**Improvement:** Define allowed agent skills in `AirlineOperationsControlAssistantPanel`, such as summarizing disruption impact, drafting recovery options, ranking swaps, and preparing evidence packs, while reserving approvals and certain customer-impacting commitments for humans.
 
-**Improvement:** Create seeded scenarios for `airline_operations_control_runtime_parameter`: normal flow, urgent path, exception path, corrected path, duplicate path, late event path, and audit export path. Tie the behavior to `airline_operations_control_create_flight_leg_workflow` where applicable, and make it visible in `AirlineOperationsControlWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Assistant actions show the exact skill used, the human approver where required, and blocked examples where the assistant attempted to exceed its authority.
 
-**Acceptance evidence:** Scenario seed data, runtime smoke coverage, generated-app fixtures, and story-level workbench screenshots/contracts. The evidence should be package-local in `src/pyAppGen/pbcs/airline_operations_control` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 34. Shift handover continuity packs
 
-### 34. Domain ontology and terminology model for Airline Operations Control Schema Extension
+**Justification:** Many severe control failures happen at shift change because active assumptions and pending decisions are not handed over cleanly.
 
-**Justification:** Precise vocabulary prevents the PBC from misclassifying specialist documents or user instructions.
+**Improvement:** Generate handover packs from `operations_decision`, `disruption_event`, open legality risks, and critical rotations so the incoming OCC team inherits the active picture, not just a verbal summary.
 
-**Improvement:** Add an ontology for `airline_operations_control_schema_extension` terms, synonyms, classifications, relationships, allowed values, and phrase mappings used by the assistant and UI. Tie the behavior to `airline_operations_control_record_aircraft_rotation_workflow` where applicable, and make it visible in `AirlineOperationsControlWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Handover exports list active risks, unresolved decisions, next trigger points, and owner assignments, and release evidence shows one day-of-ops shift transition.
 
-**Acceptance evidence:** Ontology files, assistant parsing tests, UI glossary, and mapping evidence for domain-specific abbreviations. The evidence should be package-local in `src/pyAppGen/pbcs/airline_operations_control` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 35. Network heatmap and wave-risk view
 
-### 35. Advanced search and investigation for Airline Operations Control Control Assertion
+**Justification:** Local disruptions are easier to overreact to when controllers cannot see how one station issue interacts with bank structure across the network.
 
-**Justification:** Investigators and operators need fast, explainable retrieval across the whole domain surface.
+**Improvement:** Add a heatmap to `AirlineOperationsControlWorkbench` that groups risk by departure wave, fleet family, station, and tail concentration so OCC can prioritize what threatens the whole schedule.
 
-**Improvement:** Provide search across `airline_operations_control_control_assertion` records, events, documents, exceptions, tasks, comments, and audit proofs with filters for tenant, status, risk, date, party, and dependency. Tie the behavior to `airline_operations_control_create_flight_leg_workflow` where applicable, and make it visible in `AirlineOperationsControlWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** The workbench can pivot between station view and network wave view, and evidence shows one case where a small local delay is deprioritized to protect a larger bank.
 
-**Acceptance evidence:** Search index contracts, result provenance, permission-filtered queries, and stale-index warnings. The evidence should be package-local in `src/pyAppGen/pbcs/airline_operations_control` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 36. Fuel tankering versus recovery tradeoff analysis
 
-### 36. Reconciliation and closure controls for Airline Operations Control Governed Model
+**Justification:** Fuel tankering can save cost but also add weight, reduce payload, and worsen schedule recovery when conditions deteriorate.
 
-**Justification:** Closure is not complete until the PBC can prove no material domain work remains unresolved.
+**Improvement:** Add an `operations_decision` comparison that weighs tankering benefit against payload loss, extra burn, alternate flexibility, and departure recovery risk by route and day-of-ops conditions.
 
-**Improvement:** Add reconciliation workflows that compare `airline_operations_control_governed_model` state against consumed events, external projections, expected totals/counts, approvals, and release evidence before closure. Tie the behavior to `airline_operations_control_record_aircraft_rotation_workflow` where applicable, and make it visible in `AirlineOperationsControlWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Decision evidence includes one case where tankering is approved and one where it is rejected because it undermines recovery.
 
-**Acceptance evidence:** Reconciliation reports, variance thresholds, closure blockers, and AppGen-X closure events. The evidence should be package-local in `src/pyAppGen/pbcs/airline_operations_control` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 37. Delay-code-to-cost attribution
 
-### 37. Regulatory and policy reporting for Flight Leg
+**Justification:** Delay codes become strategically useful only when they explain money, not just punctuality.
 
-**Justification:** World-class PBCs turn operational evidence into credible reporting without spreadsheet reconstruction.
+**Improvement:** Link `delay_code` outcomes to crew overtime, hotel exposure, fuel burn, passenger care, missed slots, and maintenance repositioning cost so post-ops review can target the true drivers.
 
-**Improvement:** Generate domain reporting packs for `flight_leg` covering statutory, contractual, operational, board, customer, or regulator evidence depending on real-time movement control, capacity commitments, disruptions, asset readiness, safety windows, route constraints, and operational handoff integrity. Tie the behavior to `airline_operations_control_create_flight_leg_workflow` where applicable, and make it visible in `AirlineOperationsControlWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Post-ops reports show operational and financial attribution by delay code family, and a multi-cause event preserves both root cause and downstream cost effects.
 
-**Acceptance evidence:** Report schemas, redaction rules, traceable metric sources, and approval/export audit events. The evidence should be package-local in `src/pyAppGen/pbcs/airline_operations_control` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 38. Recovery prioritization policy engine
 
-### 38. Carbon and resource awareness for Aircraft Rotation
+**Justification:** Airlines recover differently depending on whether they are protecting banks, premium passengers, fleet positioning, or next-day readiness.
 
-**Justification:** Sustainability evidence should be embedded in operations instead of treated as an after-the-fact report.
+**Improvement:** Add policy controls in `airline_operations_control_policy_rule` and `airline_operations_control_runtime_parameter` that let OCC declare the current recovery objective and apply it consistently across swaps, delays, cancellations, and reaccommodation choices.
 
-**Improvement:** Where relevant, attach carbon, energy, water, travel, capacity, compute, or resource-footprint metadata to `aircraft_rotation` decisions and batch operations. Tie the behavior to `airline_operations_control_record_aircraft_rotation_workflow` where applicable, and make it visible in `AirlineOperationsControlWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Operators can switch between at least two declared recovery strategies, and identical disruptions lead to measurably different but explainable outcomes under each strategy.
 
-**Acceptance evidence:** Footprint fields, scheduling parameters, exception rules, and dashboards that expose operational tradeoffs. The evidence should be package-local in `src/pyAppGen/pbcs/airline_operations_control` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 39. Technical turnback and return-to-gate handling
 
-### 39. Resilience and offline behavior for Crew Pairing
+**Justification:** Return-to-gate events are operationally distinct from ordinary delays because they reset boarding, maintenance, crew, and passenger commitments all at once.
 
-**Justification:** Real operations keep moving during outages; the PBC must preserve correctness when dependencies are unavailable.
+**Improvement:** Model technical turnbacks as structured `disruption_event` cases with maintenance triage, reaccommodation triggers, crew-duty recalculation, and re-release gating before the flight can resume.
 
-**Improvement:** Define resilience modes for `crew_pairing`: degraded dependency mode, offline draft capture, delayed event replay, conflict detection, and safe recovery after partial failure. Tie the behavior to `airline_operations_control_create_flight_leg_workflow` where applicable, and make it visible in `AirlineOperationsControlWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Workbench evidence shows the full chain from return-to-gate through either resumed departure, aircraft swap, or cancellation closure.
 
-**Acceptance evidence:** Offline fixtures, replay tests, conflict queues, recovery logs, and user-visible degraded-mode warnings. The evidence should be package-local in `src/pyAppGen/pbcs/airline_operations_control` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 40. Airspace flow restriction and slot revision handling
 
-### 40. Human-in-the-loop automation for Disruption Event
+**Justification:** Flow programs, miles-in-trail restrictions, and revised CTOTs change the economics of holding, cancelling, and rerouting minute by minute.
 
-**Justification:** Automation should accelerate fleet rotations, crew legality, disruptions, passenger reaccommodation, operational control, and recovery planning while preserving accountability for high-risk decisions.
+**Improvement:** Add flow-restriction handling to `flight_leg` control so updated slot times, route windows, and airspace releases automatically refresh the relevant recovery options.
 
-**Improvement:** Set explicit automation boundaries for `disruption_event`: auto-approve, auto-reject, suggest-only, require-review, and block-until-evidence states with policy-based routing. Tie the behavior to `airline_operations_control_record_aircraft_rotation_workflow` where applicable, and make it visible in `AirlineOperationsControlWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** A flow-control case shows original and revised slot times, the options OCC considered, and the final decision once the restriction changed.
 
-**Acceptance evidence:** Automation policy tests, reviewer queues, override reasons, and assistant action audit trails. The evidence should be package-local in `src/pyAppGen/pbcs/airline_operations_control` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 41. Reaccommodation promise tracking
 
-### 41. Package discovery and fit scoring for Reaccommodation Plan
+**Justification:** A recovery plan is not credible if the airline cannot prove whether passengers were actually protected onto the flights or services it promised.
 
-**Justification:** Users selecting PBCs need transparent fit reasoning, especially when domains are adjacent but not overlapping.
+**Improvement:** Extend `reaccommodation_plan` so it tracks proposed option, accepted option, ticketing confirmation, uplift outcome, overnight handling, and residual exception status for affected travelers or cohorts.
 
-**Improvement:** Improve package metadata so composition can explain when `airline_operations_control` fits a prompt, what entities it owns, what APIs/events it exposes, and what adjacent PBCs it depends on. Tie the behavior to `airline_operations_control_create_flight_leg_workflow` where applicable, and make it visible in `AirlineOperationsControlWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Evidence shows promised versus delivered recovery outcomes for a cancellation event, including unresolved cases that still require manual follow-up.
 
-**Acceptance evidence:** Discovery manifests, prompt-selection tests, overlap rationale links, and composition DSL examples. The evidence should be package-local in `src/pyAppGen/pbcs/airline_operations_control` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 42. Cargo, special loads, and dangerous-goods boundaries
 
-### 42. Configuration deployment pipeline for Operations Decision
+**Justification:** Some recovery options that work for passengers fail operationally because cargo, live animals, special loads, or dangerous goods cannot move the same way.
 
-**Justification:** Configuration changes can materially alter airline operations control; they need the same discipline as code releases.
+**Improvement:** Add handling rules so `flight_leg` and `operations_decision` treat cargo and special-load constraints as hard boundaries when rerouting, downgrading aircraft, or reaccommodating mixed passenger and cargo sectors.
 
-**Improvement:** Add configuration promotion for `operations_decision` across draft, test, approved, active, deprecated, and rollback states with impact analysis before activation. Tie the behavior to `airline_operations_control_record_aircraft_rotation_workflow` where applicable, and make it visible in `AirlineOperationsControlWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Recovery scenarios include at least one blocked swap or reroute caused by load restrictions, with the boundary explained in the decision record.
 
-**Acceptance evidence:** Config diff views, approval workflows, simulation before activation, and rollback tests. The evidence should be package-local in `src/pyAppGen/pbcs/airline_operations_control` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 43. Release evidence pack for day-of-ops readiness
 
-### 43. Workbench command completeness for Delay Code
+**Justification:** The package should prove operational readiness with airline-specific evidence, not just route availability and generic happy-path screenshots.
 
-**Justification:** A PBC does not fully surface its capabilities if users must call hidden APIs for core work.
+**Improvement:** Make `RELEASE_EVIDENCE.md` show flight-leg control, rotation views, legality projections, disruption fusion, reaccommodation boundaries, delay-code governance, and OCC workbench decisions using realistic airline ops scenarios.
 
-**Improvement:** Expose every high-value operation for `delay_code` in the UI: create, validate, approve, simulate, correct, assign, export, retry, close, and audit-proof verification. Tie the behavior to `airline_operations_control_create_flight_leg_workflow` where applicable, and make it visible in `AirlineOperationsControlWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** The release pack contains named scenarios, linked screenshots or exports, and a traceable mapping from each scenario back to the operational capability it proves.
 
-**Acceptance evidence:** UI action coverage tests, permission-aware disabled states, keyboard paths, and assistant handoff links. The evidence should be package-local in `src/pyAppGen/pbcs/airline_operations_control` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 44. Manual override discipline and after-action review
 
-### 44. Document packet and evidence vault for Airline Operations Control Policy Rule
+**Justification:** Manual overrides are necessary during severe disruption, but uncontrolled overrides hide whether the system or the process needs to improve.
 
-**Justification:** Documents often carry the legal or operational truth behind fleet rotations, crew legality, disruptions, passenger reaccommodation, operational control, and recovery planning.
+**Improvement:** Require override reason, expected duration, owner, and post-event review for high-impact `operations_decision` actions such as ignoring legality warnings, relaxing a reaccommodation boundary, or accepting a marginal turn.
 
-**Improvement:** Create a governed evidence vault for `airline_operations_control_policy_rule` documents, attachments, source spans, extracted fields, signatures, approvals, and retention labels. Tie the behavior to `airline_operations_control_record_aircraft_rotation_workflow` where applicable, and make it visible in `AirlineOperationsControlWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Override logs can be filtered by type and station, expiring overrides surface in the workbench, and after-action reviews are attached to the originating decision.
 
-**Acceptance evidence:** Evidence models, source-to-field lineage, signature validation, retention policies, and proof exports. The evidence should be package-local in `src/pyAppGen/pbcs/airline_operations_control` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 45. Cross-system handoff visibility
 
-### 45. Data correction and amendment history for Airline Operations Control Runtime Parameter
+**Justification:** Airline control decisions often depend on airport, maintenance, crew, loyalty, or customer communication systems, and hidden handoffs create false confidence.
 
-**Justification:** World-class systems correct mistakes without rewriting history or confusing downstream consumers.
+**Improvement:** Record explicit handoff states whenever `airline_operations_control` emits or consumes events across adjacent domains, showing requested action, responsible external team or service, response deadline, and returned outcome.
 
-**Improvement:** Support formal amendments for `airline_operations_control_runtime_parameter` that preserve original values, correction reason, approving actor, effective date, downstream event impacts, and replay behavior. Tie the behavior to `airline_operations_control_create_flight_leg_workflow` where applicable, and make it visible in `AirlineOperationsControlWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** At least one end-to-end case traces a disruption from OCC decision through external handoff and back, with no silent status jumps in the middle.
 
-**Acceptance evidence:** Amendment tables, correction events, projection replay tests, and side-by-side before/after UI. The evidence should be package-local in `src/pyAppGen/pbcs/airline_operations_control` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 46. Flight-leg freeze windows and change arbitration
 
-### 46. External participant collaboration for Airline Operations Control Schema Extension
+**Justification:** Not every field on a near-departure flight leg should remain editable once boarding, fueling, loading, or dispatch commitments are underway.
 
-**Justification:** Many airline operations control workflows require outside parties, but they must not gain direct access to internal tables.
+**Improvement:** Introduce controlled freeze windows on `flight_leg` updates so tail changes, departure time shifts, payload adjustments, and cancellation decisions follow stricter arbitration as departure approaches.
 
-**Improvement:** Add controlled collaboration portals or API views for external participants related to `airline_operations_control_schema_extension`, limited to scoped evidence submission, status checks, comments, and dispute responses. Tie the behavior to `airline_operations_control_record_aircraft_rotation_workflow` where applicable, and make it visible in `AirlineOperationsControlWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** The system blocks unsafe late edits, allows urgent exceptions through a governed path, and captures who authorized each late change.
 
-**Acceptance evidence:** Participant role policies, scoped tokens, submission audit trails, and inbound evidence validation. The evidence should be package-local in `src/pyAppGen/pbcs/airline_operations_control` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 47. Data freshness service levels for critical feeds
 
-### 47. Advanced dependency freshness scoring for Airline Operations Control Control Assertion
+**Justification:** A controller using stale weather, crew, aircraft, or disruption data can make a perfectly reasoned but wrong decision.
 
-**Justification:** A record may be valid locally but unsafe if dependency evidence is stale or incomplete.
+**Improvement:** Show freshness SLAs on the critical data feeds that drive `flight_leg`, `aircraft_rotation`, `crew_pairing`, and `disruption_event` decisions, including last update time and the operational consequence of staleness.
 
-**Improvement:** Score freshness and reliability of dependencies used by `airline_operations_control_control_assertion`, including consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, referenced projections, configuration versions, and external submissions. Tie the behavior to `airline_operations_control_create_flight_leg_workflow` where applicable, and make it visible in `AirlineOperationsControlWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** The workbench marks stale feeds clearly, degraded recommendations are labeled as such, and scenario evidence includes one case where stale data blocks automation.
 
-**Acceptance evidence:** Freshness indicators, blocking rules, stale-event simulations, and workbench dependency health panels. The evidence should be package-local in `src/pyAppGen/pbcs/airline_operations_control` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 48. Delay-code closure quality checks
 
-### 48. Model governance and explainability for Airline Operations Control Governed Model
+**Justification:** Delay-code accuracy usually degrades at closure time, when teams are busy and tempted to choose the nearest acceptable value.
 
-**Justification:** Governed AI is mandatory for professional-grade automation in Airline Operations Control.
+**Improvement:** Add closure checks so a `delay_code` cannot be finalized without supporting operational facts, timing consistency, and confirmation that reactionary codes are not masking a deeper root cause.
 
-**Improvement:** For every predictive or agentic feature around `airline_operations_control_governed_model`, record model version, prompt or ruleset version, training/evaluation evidence, confidence, explanation, and human feedback. Tie the behavior to `airline_operations_control_record_aircraft_rotation_workflow` where applicable, and make it visible in `AirlineOperationsControlWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Closure attempts with missing evidence are rejected, code changes remain auditable, and release evidence includes corrected examples that demonstrate the guardrail.
 
-**Acceptance evidence:** Model cards, prompt/version manifests, feedback loops, drift tests, and audit proof for recommendations. The evidence should be package-local in `src/pyAppGen/pbcs/airline_operations_control` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 49. Recovery outcome scoring against plan
 
-### 49. High-scale partitioning and archival for Flight Leg
+**Justification:** OCC needs to learn whether its chosen actions actually protected the network, not just whether the immediate issue was closed.
 
-**Justification:** Better-than-world-class packages must remain operable after years of high-volume domain history.
+**Improvement:** Score completed `operations_decision` outcomes against the expected network effect, including protected departures, legality avoided, passenger disruption avoided, and cost or delay transferred elsewhere.
 
-**Improvement:** Plan scale behavior for `flight_leg`: tenant partitioning, archival policies, cold storage, retention-aware search, projection compaction, and large-batch replay. Tie the behavior to `airline_operations_control_create_flight_leg_workflow` where applicable, and make it visible in `AirlineOperationsControlWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Post-event scorecards compare expected versus actual recovery outcome and identify where decision heuristics should be tuned.
 
-**Acceptance evidence:** Partition tests, archive/retrieve fixtures, retention enforcement, and replay benchmarks. The evidence should be package-local in `src/pyAppGen/pbcs/airline_operations_control` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 50. Tabletop drills and event-replay regression library
 
-### 50. Release gate expansion for Aircraft Rotation
+**Justification:** Airline control capability is only credible if the package can repeatedly demonstrate good behavior on known bad days, not just on a clean demo schedule.
 
-**Justification:** The PBC should not claim domain coverage unless release evidence proves the claim end to end.
+**Improvement:** Build a regression library of replayable airline ops cases across weather, ATC flow, technical defects, crew illegality, missed slots, diversions, cancellations, and mass reaccommodation so `airline_operations_control` can be tested against the same severe scenarios release after release.
 
-**Improvement:** Expand release gates for `airline_operations_control` so every schema, service, API, event, handler, UI, rule, parameter, agent skill, seed scenario, and improvement backlog item maps to executable evidence. Tie the behavior to `airline_operations_control_record_aircraft_rotation_workflow` where applicable, and make it visible in `AirlineOperationsControlWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Release audit checks, manifest traceability, generated-app smoke tests, and missing-capability blockers. The evidence should be package-local in `src/pyAppGen/pbcs/airline_operations_control` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** `RELEASE_EVIDENCE.md` references named replay drills, outcomes are reproducible, and regression results show whether recovery quality improved, regressed, or remained stable.
