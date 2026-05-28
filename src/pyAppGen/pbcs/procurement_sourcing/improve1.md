@@ -2,314 +2,313 @@
 
 ## Purpose
 
-This backlog identifies 50 high-impact, high-value improvements for `procurement_sourcing`. Each item is specific to the domain surface currently declared by the PBC and is intended to move the package beyond world-class breadth toward complete specialist-grade coverage.
+This backlog identifies 50 high-impact, high-value improvements for `procurement_sourcing`. The items are specific to source-to-order operations: requisitions, approvals, budget checks, category strategy, supplier qualification, RFQs, bids, scoring, awards, contracts, purchase orders, change orders, supplier risk, compliance, savings, carbon-aware sourcing, supply exposure, event reliability, UI workbenches, and agent-assisted procurement work.
 
 ## Current Domain Evidence Used
 
-- Domain purpose: Requisitions, RFQs, contracts, purchase orders, and vendor performance.
-- Representative owned tables: `procurement_sourcing_procurement_sourcing_purchase_requisition`, `procurement_sourcing_procurement_sourcing_purchase_requisition_line`, `procurement_sourcing_procurement_sourcing_requisition_approval`, `procurement_sourcing_procurement_sourcing_category_strategy`, `procurement_sourcing_procurement_sourcing_supplier_profile`, `procurement_sourcing_procurement_sourcing_supplier_qualification`, `procurement_sourcing_procurement_sourcing_rfq`, `procurement_sourcing_procurement_sourcing_rfq_line`, `procurement_sourcing_procurement_sourcing_supplier_invitation`, `procurement_sourcing_procurement_sourcing_supplier_bid`, `procurement_sourcing_procurement_sourcing_supplier_scorecard`, `procurement_sourcing_procurement_sourcing_supplier_award`, ...
-- Representative operations/APIs: `command_procurement_requisitions`, `command_procurement_rfqs`, `command_procurement_rfqs_id_bids`, `command_procurement_awards`, `command_procurement_contracts`, `command_procurement_purchase_orders`, `query_procurement_workbench`.
-- Representative events: `PurchaseRequisitionCreated`, `PurchaseRequisitionApproved`, `RfqCreated`, `SupplierBidCaptured`, `SupplierSelected`, `VendorContractCreated`, `PurchaseOrderIssued`.
-- Representative advanced capabilities: `event_sourced_source_to_order_lifecycle`, `graph_relational_supplier_topology`, `multi_tenant_procurement_isolation`, `schema_evolution_resilient_procurement_schema`, `probabilistic_supplier_award_confidence`, `real_time_sourcing_spend_analytics`, `counterfactual_sourcing_strategy_simulation`, `temporal_price_lead_time_forecasting`, `autonomous_supplier_selection`, `semantic_procurement_document_parsing`, ...
+- Domain purpose: source-to-order execution for purchase requisitions, RFQs, supplier qualification, supplier scoring, contract awards, purchase orders, approvals, compliance, vendor performance, and supply-risk governance.
+- Owned boundary: purchase requisitions and lines, requisition approvals, budget checks, category strategies and policies, supplier profiles, identities, sites, qualifications, risk signals, preferred supplier policies, RFQs and lines, invitations, supplier bids and bid lines, bid normalization, supplier scorecards, awards, split awards, vendor contracts, clauses, compliance obligations, renewals, purchase orders and lines, change orders, tolerance checks, payment terms, material-shortage projections, vendor-performance projections, budget projections, supplier-risk projections, contract-compliance projections, access-policy projections, policy screenings, PO routes, supplier compliance proofs, audit traces, federation projections, carbon sourcing selections, award optimization, RFQ allocation, bid anomaly signals, supply exposure models, price/lead-time forecasts, strategy simulations, parsed documents, rules, parameters, configuration, inbox/outbox, and dead-letter evidence.
+- Existing command/query surface: requisition creation and approval, RFQ creation, bid capture, supplier scoring, supplier award, contract creation, PO issuance, event inbox handling, workbench, rules, parameters, schema extensions, runtime configuration, boundary checks, and release evidence.
+- Existing events and dependencies: emits `PurchaseRequisitionCreated`, `PurchaseRequisitionApproved`, `RfqCreated`, `SupplierBidCaptured`, `SupplierSelected`, `VendorContractCreated`, and `PurchaseOrderIssued`; consumes material shortage, vendor performance, budget, supplier risk, contract compliance, and access-policy events through declared APIs/projections only.
 
 ## 50 Better-Than-World-Class Improvements
 
-### 1. Deep specialist lifecycle semantics for `procurement_sourcing_procurement_sourcing_purchase_requisition`
+### 1. Requisition intake completeness gate
 
-**Justification:** This owned table is part of the Procurement and Strategic Sourcing operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Requisitions, RFQs, contracts, purchase orders, and vendor performance.
+**Justification:** Poor requisitions create downstream sourcing delays, approval rework, budget leakage, wrong supplier selection, and purchase order errors.
 
-**Improvement:** Extend `procurement_sourcing_procurement_sourcing_purchase_requisition` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `purchase_requisition`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add requisition readiness checks for legal entity, requester, category, item/service description, quantity, UOM, needed-by date, delivery location, cost center/project, budget projection, preferred supplier, contract reference, risk class, and attachment evidence. Incomplete requisitions should remain draft with actionable remediation.
 
-### 2. Deep specialist lifecycle semantics for `procurement_sourcing_procurement_sourcing_purchase_requisition_line`
+### 2. Requisition line semantic enrichment
 
-**Justification:** This owned table is part of the Procurement and Strategic Sourcing operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Requisitions, RFQs, contracts, purchase orders, and vendor performance.
+**Justification:** Free-text request lines hide category, specification, quality, compliance, and supplier constraints that determine the correct sourcing route.
 
-**Improvement:** Extend `procurement_sourcing_procurement_sourcing_purchase_requisition_line` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `purchase_requisition_lines`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Use semantic parsing and rules to classify line type, commodity/category, service scope, technical specification, substitutes, recurring spend, hazardous/restricted flags, and required evidence. Store confidence and require human correction for ambiguous lines.
 
-### 3. Deep specialist lifecycle semantics for `procurement_sourcing_procurement_sourcing_requisition_approval`
+### 3. Dynamic approval matrix
 
-**Justification:** This owned table is part of the Procurement and Strategic Sourcing operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Requisitions, RFQs, contracts, purchase orders, and vendor performance.
+**Justification:** Procurement approvals depend on spend amount, category, entity, project, supplier risk, urgency, budget, contract coverage, and restricted goods.
 
-**Improvement:** Extend `procurement_sourcing_procurement_sourcing_requisition_approval` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `approval_routing`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Implement an approval engine with threshold bands, delegation, out-of-office routing, segregation-of-duties checks, emergency overrides, escalation timers, and full approval evidence. Every approval decision should cite the active rule and projection versions used.
 
-### 4. Deep specialist lifecycle semantics for `procurement_sourcing_procurement_sourcing_category_strategy`
+### 4. Budget commitment projection governance
 
-**Justification:** This owned table is part of the Procurement and Strategic Sourcing operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Requisitions, RFQs, contracts, purchase orders, and vendor performance.
+**Justification:** Procurement decisions commit future spend before invoices arrive, so stale or weak budget checks create financial surprises.
 
-**Improvement:** Extend `procurement_sourcing_procurement_sourcing_category_strategy` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `budget_policy_check`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add budget projection freshness, commitment reservations, soft/hard budget controls, tolerance thresholds, pre-encumbrance release, and budget-change event replay. Requisitions and POs should show budget impact and residual risk before approval.
 
-### 5. Deep specialist lifecycle semantics for `procurement_sourcing_procurement_sourcing_supplier_profile`
+### 5. Category strategy operating model
 
-**Justification:** This owned table is part of the Procurement and Strategic Sourcing operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Requisitions, RFQs, contracts, purchase orders, and vendor performance.
+**Justification:** Category strategy is the bridge between policy and buying execution; without it, sourcing becomes transactional and inconsistent.
 
-**Improvement:** Extend `procurement_sourcing_procurement_sourcing_supplier_profile` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `category_reference`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add category playbooks for source method, preferred supplier policy, RFQ threshold, negotiation method, contract requirement, sustainability weighting, diversity objectives, risk appetite, market index, and renewal strategy. Requisition routing should inherit category strategy by default.
 
-### 6. Deep specialist lifecycle semantics for `procurement_sourcing_procurement_sourcing_supplier_qualification`
+### 6. Preferred supplier policy engine
 
-**Justification:** This owned table is part of the Procurement and Strategic Sourcing operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Requisitions, RFQs, contracts, purchase orders, and vendor performance.
+**Justification:** Preferred supplier use must balance price, quality, lead time, risk, contract obligations, diversity, sustainability, and operational urgency.
 
-**Improvement:** Extend `procurement_sourcing_procurement_sourcing_supplier_qualification` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `category_strategy`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Compile preferred supplier rules with eligibility, ranking, exceptions, effective dates, site coverage, contract linkage, restricted supplier checks, and override approval. Workbench explanations should show why a supplier was preferred or rejected.
 
-### 7. Deep specialist lifecycle semantics for `procurement_sourcing_procurement_sourcing_rfq`
+### 7. Supplier onboarding and qualification lifecycle
 
-**Justification:** This owned table is part of the Procurement and Strategic Sourcing operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Requisitions, RFQs, contracts, purchase orders, and vendor performance.
+**Justification:** Supplier qualification determines whether bids, contracts, and POs are valid and safe.
 
-**Improvement:** Extend `procurement_sourcing_procurement_sourcing_rfq` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `category_policy`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Model supplier lifecycle from prospect to invited, qualified, conditional, restricted, suspended, inactive, and archived. Store identity checks, tax/compliance evidence, banking readiness references, insurance, certifications, capacity, site coverage, diversity status, and renewal dates.
 
-### 8. Deep specialist lifecycle semantics for `procurement_sourcing_procurement_sourcing_rfq_line`
+### 8. Supplier identity and site verification
 
-**Justification:** This owned table is part of the Procurement and Strategic Sourcing operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Requisitions, RFQs, contracts, purchase orders, and vendor performance.
+**Justification:** Fraud, duplicate suppliers, wrong supplier sites, and stale site capabilities undermine procurement controls.
 
-**Improvement:** Extend `procurement_sourcing_procurement_sourcing_rfq_line` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `supplier_reference`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add supplier identity matching, duplicate detection, site-level address/contact/capability validation, decentralized credential support, evidence expiry, risk flags, and approval gates. PO issuance should require an eligible supplier site, not only a supplier header.
 
-### 9. Deep specialist lifecycle semantics for `procurement_sourcing_procurement_sourcing_supplier_invitation`
+### 9. Supplier risk signal fusion
 
-**Justification:** This owned table is part of the Procurement and Strategic Sourcing operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Requisitions, RFQs, contracts, purchase orders, and vendor performance.
+**Justification:** Supplier risk changes from performance, financial stress, geopolitical events, compliance breaches, shortages, and access-policy changes.
 
-**Improvement:** Extend `procurement_sourcing_procurement_sourcing_supplier_invitation` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `supplier_profiles`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Fuse declared risk projections and internal signals into a supplier risk timeline with source, severity, confidence, affected categories/sites, expiry, mitigation, and decision impact. RFQ, award, contract, and PO actions should surface current risk.
 
-### 10. Deep specialist lifecycle semantics for `procurement_sourcing_procurement_sourcing_supplier_bid`
+### 10. RFQ strategy selection
 
-**Justification:** This owned table is part of the Procurement and Strategic Sourcing operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Requisitions, RFQs, contracts, purchase orders, and vendor performance.
+**Justification:** Not all sourcing events should use the same RFQ structure; auctions, sealed bids, negotiated events, and emergency sourcing have different controls.
 
-**Improvement:** Extend `procurement_sourcing_procurement_sourcing_supplier_bid` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `supplier_sites`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add RFQ strategy selection based on category, spend, supplier market, urgency, risk, bid count, confidentiality, and negotiation intent. The system should generate the correct RFQ timeline, invitation rules, scoring model, and communication controls.
 
-### 11. Make `command_procurement_requisitions` a complete command lifecycle
+### 11. RFQ line specification governance
 
-**Justification:** High-value users need `command_procurement_requisitions` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Ambiguous line requirements cause incomparable bids, disputes, substitutions, and poor award decisions.
 
-**Improvement:** Implement `command_procurement_requisitions` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `PurchaseRequisitionCreated`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add RFQ line requirement templates for goods, services, capital equipment, subscriptions, logistics, and professional services. Require technical specs, acceptance criteria, delivery terms, service levels, alternatives, and mandatory compliance evidence where applicable.
 
-### 12. Make `command_procurement_rfqs` a complete command lifecycle
+### 12. Supplier invitation fairness controls
 
-**Justification:** High-value users need `command_procurement_rfqs` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Sourcing integrity depends on fair, defensible supplier invitation and communication.
 
-**Improvement:** Implement `command_procurement_rfqs` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `PurchaseRequisitionApproved`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add invitation eligibility, conflict-of-interest screening, incumbent challenger balance, diversity goals, restricted supplier exclusion, communication blackout windows, supplier Q&A logs, late invite handling, and invitation audit evidence.
 
-### 13. Make `command_procurement_rfqs_id_bids` a complete command lifecycle
+### 13. Bid capture and sealed-bid integrity
 
-**Justification:** High-value users need `command_procurement_rfqs_id_bids` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Bid tampering, premature visibility, late submissions, and incomplete responses damage trust and legal defensibility.
 
-**Improvement:** Implement `command_procurement_rfqs_id_bids` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `RfqCreated`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add sealed-bid vault behavior with submission timestamps, completeness checks, late-bid policy, amendment tracking, supplier acknowledgements, cryptographic hashes, and role-gated bid opening. Bid revisions should preserve full history.
 
-### 14. Make `command_procurement_awards` a complete command lifecycle
+### 14. Bid normalization workbench
 
-**Justification:** High-value users need `command_procurement_awards` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Suppliers quote different units, currencies, incoterms, lead times, freight assumptions, discounts, tiers, and alternates.
 
-**Improvement:** Implement `command_procurement_awards` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `SupplierBidCaptured`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Normalize bids to comparable landed cost, UOM, currency, tax/duty assumptions, delivery point, payment terms, volume tiers, warranty, service levels, and risk adjustments. Keep original bid values and show every transformation.
 
-### 15. Make `command_procurement_contracts` a complete command lifecycle
+### 15. Multi-factor supplier scorecard
 
-**Justification:** High-value users need `command_procurement_contracts` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Supplier selection should not collapse to price when lead time, quality, risk, capacity, sustainability, diversity, compliance, and contract fit matter.
 
-**Improvement:** Implement `command_procurement_contracts` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `SupplierSelected`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Build weighted scorecards with mandatory gates, category-specific weights, normalized metrics, confidence intervals, projection freshness, explainability, and sensitivity analysis. Scorecards should show how rank changes if weights or risk assumptions change.
 
-### 16. Make `command_procurement_purchase_orders` a complete command lifecycle
+### 16. Award recommendation with tradeoff analysis
 
-**Justification:** High-value users need `command_procurement_purchase_orders` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Procurement teams need defensible award decisions that explain value, risk, savings, compliance, and service impact.
 
-**Improvement:** Implement `command_procurement_purchase_orders` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `VendorContractCreated`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Generate award recommendations with total cost, savings baseline, supplier risk, lead-time confidence, capacity fit, contract coverage, carbon impact, diversity contribution, and compliance obligations. Require approval when recommendation differs from lowest compliant bid.
 
-### 17. Turn `query_procurement_workbench` into an expert read-model experience
+### 17. Split-award optimization
 
-**Justification:** Domain experts rely on `query_procurement_workbench` for operational decisions; a world-class read path must be explainable, filterable, temporally accurate, and safe under stale projections.
+**Justification:** Splitting awards can reduce risk, improve capacity, meet diversity targets, and preserve competition, but it adds complexity.
 
-**Improvement:** Build `query_procurement_workbench` as a dedicated query contract with projection freshness, filter validation, pagination, saved views, temporal/as-of reads, row-level permissions, traceable source records, and UI drilldowns. Add agent explanations for how the answer was produced, what events like `PurchaseOrderIssued` last changed the projection, and where uncertainty or missing data affects confidence.
+**Improvement:** Add split-award optimization for capacity, lot sizes, geography, lead time, risk diversification, price breaks, minimum commitments, and supplier development goals. Show operational consequences and contract/PO complexity before approval.
 
-### 18. Make `command_procurement_requisitions` a complete command lifecycle
+### 18. Negotiation scenario planner
 
-**Justification:** High-value users need `command_procurement_requisitions` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Negotiation outcomes improve when buyers can compare concessions, terms, volumes, and timing before engaging suppliers.
 
-**Improvement:** Implement `command_procurement_requisitions` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `PurchaseRequisitionCreated`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add negotiation scenario planning for price, rebates, payment terms, delivery windows, service levels, penalties, volume commitments, indexation, and renewal options. Link accepted terms to award and contract evidence.
 
-### 19. Make `command_procurement_rfqs` a complete command lifecycle
+### 19. Contract authoring readiness
 
-**Justification:** High-value users need `command_procurement_rfqs` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Awards do not become executable supply until contract terms, clauses, obligations, and evidence are complete.
 
-**Improvement:** Implement `command_procurement_rfqs` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `PurchaseRequisitionApproved`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add contract readiness checks for supplier, category, pricing, effective dates, renewal horizon, termination rights, service levels, delivery terms, compliance obligations, data/security clauses, insurance, and approval evidence.
 
-### 20. Make `command_procurement_rfqs_id_bids` a complete command lifecycle
+### 20. Clause library and obligation model
 
-**Justification:** High-value users need `command_procurement_rfqs_id_bids` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Contracts need structured clauses and obligations that can drive downstream monitoring instead of static documents.
 
-**Improvement:** Implement `command_procurement_rfqs_id_bids` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `RfqCreated`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Build clause templates with jurisdiction, category, risk, fallback language, required approvals, obligation extraction, owner, due date, evidence type, breach severity, and renewal impact. Obligations should feed compliance projections and workbench queues.
 
-### 21. Operationalize `event_sourced_source_to_order_lifecycle` as a governed decision system
+### 21. Contract compliance monitoring
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Procurement and Strategic Sourcing and measurably improves availability accuracy without hiding assumptions.
+**Justification:** Procurement value erodes when contracted prices, terms, service levels, and obligations are not monitored.
 
-**Improvement:** Promote `event_sourced_source_to_order_lifecycle` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `availability_accuracy`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add compliance checks for price adherence, service levels, insurance/certification expiry, volume commitments, rebates, sustainability reporting, diversity spend, and renewal milestones. Surface exceptions before PO issuance or renewal.
 
-### 22. Operationalize `graph_relational_supplier_topology` as a governed decision system
+### 22. Renewal and expiry governance
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Procurement and Strategic Sourcing and measurably improves cycle time without hiding assumptions.
+**Justification:** Missed renewals create price leakage, service interruption, unmanaged auto-renewals, and weak negotiation leverage.
 
-**Improvement:** Promote `graph_relational_supplier_topology` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `cycle_time`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add renewal horizon parameters, notice windows, termination deadlines, renewal strategy, incumbent performance review, market benchmark refresh, and sourcing recommendation. Workbench should rank renewals by risk and opportunity.
 
-### 23. Operationalize `multi_tenant_procurement_isolation` as a governed decision system
+### 23. Purchase order type coverage
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Procurement and Strategic Sourcing and measurably improves service level without hiding assumptions.
+**Justification:** Procurement requires different PO behaviors for standard, blanket, planned, emergency, service, capital, direct, indirect, and subcontracted spend.
 
-**Improvement:** Promote `multi_tenant_procurement_isolation` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `service_level`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add PO type-specific fields, rules, tolerances, approval paths, receiving/acceptance expectations, contract binding, payment terms, and AppGen-X event evidence. The UI should guide users through each PO type without generic forms.
 
-### 24. Operationalize `schema_evolution_resilient_procurement_schema` as a governed decision system
+### 24. PO line validation and tolerance controls
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Procurement and Strategic Sourcing and measurably improves exception backlog without hiding assumptions.
+**Justification:** PO errors drive receipt, invoice, and supplier disputes.
 
-**Improvement:** Promote `schema_evolution_resilient_procurement_schema` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `exception_backlog`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Validate item/service description, quantity, UOM, price, currency, tax assumptions, delivery schedule, location, contract price, supplier site, tolerance, and receiving requirements. Store rejected-line reasons and allowed override evidence.
 
-### 25. Operationalize `probabilistic_supplier_award_confidence` as a governed decision system
+### 25. Change order lifecycle
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Procurement and Strategic Sourcing and measurably improves purchase requisition created throughput without hiding assumptions.
+**Justification:** PO changes affect budget, supplier commitments, delivery, contract compliance, and downstream AP matching.
 
-**Improvement:** Promote `probabilistic_supplier_award_confidence` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `purchase_requisition_created_throughput`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add change order versioning, reason codes, delta analysis, reapproval rules, supplier acknowledgement, budget recheck, contract compliance recheck, and emitted evidence. Users should see before/after values and downstream impact.
 
-### 26. Operationalize `real_time_sourcing_spend_analytics` as a governed decision system
+### 26. Emergency procurement controls
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Procurement and Strategic Sourcing and measurably improves purchase requisition approved throughput without hiding assumptions.
+**Justification:** Urgent buying is necessary but can bypass controls, increase price, and introduce supplier risk.
 
-**Improvement:** Promote `real_time_sourcing_spend_analytics` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `purchase_requisition_approved_throughput`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add emergency sourcing mode with reason, time limit, premium tolerance, restricted supplier screening, post-facto review, mandatory remediation, and management evidence. Emergency POs should expire or require conversion to normal governance.
 
-### 27. Operationalize `counterfactual_sourcing_strategy_simulation` as a governed decision system
+### 27. Material shortage-driven sourcing
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Procurement and Strategic Sourcing and measurably improves availability accuracy without hiding assumptions.
+**Justification:** Material shortages require rapid sourcing decisions while preserving risk and budget controls.
 
-**Improvement:** Promote `counterfactual_sourcing_strategy_simulation` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `availability_accuracy`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Use `MaterialShortageDetected` projections to create sourcing demand with shortage severity, required date, substitute possibilities, production impact, supplier options, and expedited-cost scenarios. Keep inventory/manufacturing data as projections only.
 
-### 28. Operationalize `temporal_price_lead_time_forecasting` as a governed decision system
+### 28. Supplier performance feedback loop
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Procurement and Strategic Sourcing and measurably improves cycle time without hiding assumptions.
+**Justification:** Supplier selection must learn from actual delivery, quality, responsiveness, and compliance performance.
 
-**Improvement:** Promote `temporal_price_lead_time_forecasting` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `cycle_time`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Use `VendorPerformanceUpdated` projections to update scorecards, preferred supplier policy, RFQ eligibility, award confidence, and renewal strategy. Show which performance events changed a supplier decision.
 
-### 29. Operationalize `autonomous_supplier_selection` as a governed decision system
+### 29. Savings and value realization tracking
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Procurement and Strategic Sourcing and measurably improves service level without hiding assumptions.
+**Justification:** Procurement value includes hard savings, cost avoidance, rebates, working-capital benefits, risk reduction, and service improvements.
 
-**Improvement:** Promote `autonomous_supplier_selection` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `service_level`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Track baseline, negotiated price, award price, realized PO price, rebate terms, payment-term value, risk-adjusted savings, and leakage. Require methodology evidence for claimed savings.
 
-### 30. Operationalize `semantic_procurement_document_parsing` as a governed decision system
+### 30. Spend analytics convergence
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Procurement and Strategic Sourcing and measurably improves exception backlog without hiding assumptions.
+**Justification:** Buyers need real-time visibility into requisitions, RFQs, awards, contracts, and POs without separate analytical pipelines.
 
-**Improvement:** Promote `semantic_procurement_document_parsing` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `exception_backlog`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add operational spend analytics by category, supplier, entity, project, contract, PO type, risk class, carbon impact, diversity, savings, cycle time, and exception rate. Dashboards should cite source records and projection freshness.
 
-### 31. Create simulation-grade governance for `PROCUREMENT_SOURCING_DATABASE_URL` and `PROCUREMENT_SOURCING_DATABASE_URL`
+### 31. Supply exposure modeling
 
-**Justification:** Complete Procurement and Strategic Sourcing coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Procurement risk is concentrated across suppliers, categories, countries, sites, logistics lanes, and contract dependencies.
 
-**Improvement:** Add a policy cockpit where `PROCUREMENT_SOURCING_DATABASE_URL` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `PROCUREMENT_SOURCING_DATABASE_URL` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Model stochastic supply exposure with supplier concentration, site dependency, geopolitical risk, material scarcity, contract expiry, lead-time variance, and performance volatility. Provide mitigation options and confidence.
 
-### 32. Create simulation-grade governance for `PROCUREMENT_SOURCING_EVENT_TOPIC` and `PROCUREMENT_SOURCING_EVENT_TOPIC`
+### 32. Price and lead-time forecasting
 
-**Justification:** Complete Procurement and Strategic Sourcing coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Sourcing strategy and award timing improve when buyers understand probable price and lead-time movements.
 
-**Improvement:** Add a policy cockpit where `PROCUREMENT_SOURCING_EVENT_TOPIC` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `PROCUREMENT_SOURCING_EVENT_TOPIC` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add forecasts by category, supplier, commodity, region, volume band, contract term, and urgency. Show forecast confidence, feature lineage, drift, and impact on requisition routing, RFQ timing, and award strategy.
 
-### 33. Create simulation-grade governance for `PROCUREMENT_SOURCING_RETRY_LIMIT` and `PROCUREMENT_SOURCING_RETRY_LIMIT`
+### 33. Carbon-aware sourcing selection
 
-**Justification:** Complete Procurement and Strategic Sourcing coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Sourcing decisions affect freight emissions, supplier operations, packaging, regional production, and sustainability commitments.
 
-**Improvement:** Add a policy cockpit where `PROCUREMENT_SOURCING_RETRY_LIMIT` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `PROCUREMENT_SOURCING_RETRY_LIMIT` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Include carbon scoring in bid normalization and award recommendations using supplier site, delivery terms, transport projection, packaging, production method, and renewable evidence. Show cost-service-carbon tradeoffs explicitly.
 
-### 34. Create simulation-grade governance for `PROCUREMENT_SOURCING_DATABASE_URL` and `PROCUREMENT_SOURCING_DATABASE_URL`
+### 34. Supplier diversity and resilience goals
 
-**Justification:** Complete Procurement and Strategic Sourcing coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Supplier networks should support diversity, resilience, local sourcing, and strategic supplier development without tokenistic scoring.
 
-**Improvement:** Add a policy cockpit where `PROCUREMENT_SOURCING_DATABASE_URL` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `PROCUREMENT_SOURCING_DATABASE_URL` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add measurable goals, eligibility evidence, spend targets, category applicability, development programs, anti-fraud checks, and tradeoff analysis. Awards should show how they affect supplier diversity and resilience.
 
-### 35. Create simulation-grade governance for `PROCUREMENT_SOURCING_EVENT_TOPIC` and `PROCUREMENT_SOURCING_EVENT_TOPIC`
+### 35. Restricted supplier and compliance screening
 
-**Justification:** Complete Procurement and Strategic Sourcing coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Procurement must prevent buying from restricted, sanctioned, noncompliant, or policy-blocked suppliers.
 
-**Improvement:** Add a policy cockpit where `PROCUREMENT_SOURCING_EVENT_TOPIC` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `PROCUREMENT_SOURCING_EVENT_TOPIC` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add screening before RFQ invitation, bid acceptance, award, contract, and PO issuance with policy version, attributes evaluated, decision, override path, and AppGen-X audit evidence. Block high-severity violations by default.
 
-### 36. Upgrade `ProcurementSourcingWorkbench` into a full specialist command center
+### 36. Zero-knowledge supplier compliance proof
 
-**Justification:** The PBC UI must expose the complete Procurement and Strategic Sourcing surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Internal teams or external parties may need proof of supplier eligibility without exposing sensitive supplier documents.
 
-**Improvement:** Expand `ProcurementSourcingWorkbench` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Generate cryptographic compliance proofs for qualification, insurance, certification, restricted-list screening, and contract obligations. Verification APIs should prove status and timestamp while redacting confidential evidence.
 
-### 37. Upgrade `ProcurementSourcingDetail` into a full specialist command center
+### 37. Immutable procurement audit trace
 
-**Justification:** The PBC UI must expose the complete Procurement and Strategic Sourcing surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Source-to-order decisions are high-control activities requiring complete, tamper-evident reconstruction.
 
-**Improvement:** Expand `ProcurementSourcingDetail` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Hash-chain requisition, approval, RFQ, bid, scoring, award, contract, PO, change order, policy screening, event handling, and agent-preview evidence. UI timelines should show every material decision and event.
 
-### 38. Upgrade `ProcurementSourcingWorkbench` into a full specialist command center
+### 38. AppGen-X event reliability cockpit
 
-**Justification:** The PBC UI must expose the complete Procurement and Strategic Sourcing surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Procurement depends on budget, supplier risk, material shortage, compliance, and access-policy events; stale or failed projections change decisions.
 
-**Improvement:** Expand `ProcurementSourcingWorkbench` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add inbox/outbox panels for idempotency, duplicates, retries, dead letters, projection freshness, payload lineage, handler version, replay eligibility, and downstream emitted events. Decisions should warn when projections are stale.
 
-### 39. Upgrade `ProcurementSourcingDetail` into a full specialist command center
+### 39. Supplier network federation
 
-**Justification:** The PBC UI must expose the complete Procurement and Strategic Sourcing surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Enterprises coordinate with AP, inventory, manufacturing, logistics, supplier systems, and risk providers without sharing tables.
 
-**Improvement:** Expand `ProcurementSourcingDetail` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add federation projections for supplier capability, supply demand, PO route status, payment readiness, material need, performance, and compliance. Boundary tests should reject direct reads of AP, inventory, manufacturing, or supplier-system tables.
 
-### 40. Upgrade `ProcurementSourcingWorkbench` into a full specialist command center
+### 40. Sourcing strategy simulation
 
-**Justification:** The PBC UI must expose the complete Procurement and Strategic Sourcing surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Buyers should understand consequences before changing sourcing method, bid count, weightings, split-award rules, or emergency premium.
 
-**Improvement:** Expand `ProcurementSourcingWorkbench` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Simulate sourcing strategies against historical and active events, showing supplier participation, cycle time, savings, risk, service, carbon, diversity, budget, and compliance outcomes. Keep simulations side-effect-free.
 
-### 41. Prove cross-PBC federation for `POST /procurement/requisitions` and `MaterialShortageDetected`
+### 41. Mechanism-design RFQ and auction allocation
 
-**Justification:** Procurement and Strategic Sourcing must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** RFQ design affects supplier behavior, price discovery, fairness, and long-term supplier health.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /procurement/requisitions` and consumed event `MaterialShortageDetected` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Add RFQ mechanism options such as sealed bid, multi-round negotiation, reverse auction, capacity auction, and score-weighted allocation. Provide anti-collusion controls, participation safeguards, and buyer explanations.
 
-### 42. Prove cross-PBC federation for `POST /procurement/rfqs` and `VendorPerformanceUpdated`
+### 42. Bid anomaly and collusion detection
 
-**Justification:** Procurement and Strategic Sourcing must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Unusual bid patterns can indicate collusion, supplier distress, specification ambiguity, or data errors.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /procurement/rfqs` and consumed event `VendorPerformanceUpdated` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Detect bid anomalies across price, lead time, identical language, timing, IP/device metadata where available, alternates, exclusions, and historical patterns. Route high-risk events to review without automatically accusing suppliers.
 
-### 43. Prove cross-PBC federation for `POST /procurement/rfqs/{id}/bids` and `BudgetChanged`
+### 43. Procurement MLOps governance
 
-**Justification:** Procurement and Strategic Sourcing must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** ML-assisted supplier ranking, risk scoring, price forecasting, and anomaly detection influence spend and supplier fairness.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /procurement/rfqs/{id}/bids` and consumed event `BudgetChanged` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Add model registry, feature lineage, training windows, approval status, explainability, drift monitoring, fairness checks, rollback, and release evidence for every procurement model used in decisions.
 
-### 44. Prove cross-PBC federation for `POST /procurement/awards` and `SupplierRiskChanged`
+### 44. Rule and parameter simulation
 
-**Justification:** Procurement and Strategic Sourcing must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Approval thresholds, score weights, supplier risk limits, bid count, renewal horizon, and tolerance values materially alter procurement behavior.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /procurement/awards` and consumed event `SupplierRiskChanged` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Simulate rule and parameter changes against historical and active procurement work, showing approval load, cycle time, supplier eligibility, award outcomes, budget failures, compliance blocks, and dead-letter volume before activation.
 
-### 45. Temporal reconstruction and bitemporal audit for Procurement and Strategic Sourcing
+### 45. Workbench coverage for all procurement capabilities
 
-**Justification:** Regulated and operationally complex domains need to answer what was known, valid, processed, and visible at any point in time.
+**Justification:** Buyers, approvers, contract managers, and auditors need direct access to the full source-to-order surface.
 
-**Improvement:** Add transaction-time, valid-time, and processing-time fields to core records, temporal query APIs, projection rebuild tooling, and UI time travel so specialists can reconstruct decisions, reports, and automation outcomes.
+**Improvement:** Expand UI into requisition intake, approval queue, budget policy, category strategy, supplier qualification, RFQ monitor, bid normalization, scorecard, award board, contract console, renewal queue, PO console, change orders, risk cockpit, spend analytics, controls, rules, parameters, configuration, event reliability, and agent panels.
 
-### 46. Bulk operations and migration-grade controls for Procurement and Strategic Sourcing
+### 46. Agent-safe procurement document intake
 
-**Justification:** World-class deployments must handle imports, mass corrections, high-volume operating days, and cutovers without bypassing governance.
+**Justification:** The procurement chatbot should read requisitions, quotes, contracts, supplier documents, and instructions without unsafe writes.
 
-**Improvement:** Add staged bulk upload, duplicate detection, chunked validation, approval sampling, partial failure handling, retry dashboards, reconciliation summaries, and agent-generated remediation plans for large batches.
+**Improvement:** Add document intake skills that extract candidate facts, map them to owned procurement tables, validate permissions and rules, reject foreign-table mutations, and produce side-effect-free previews with confidence, risk, required confirmations, and expected AppGen-X events.
 
-### 47. Specialist edge-case playbooks for Procurement and Strategic Sourcing
+### 47. Agent-safe sourcing and award guidance
 
-**Justification:** Rare cases often carry the highest financial, legal, safety, service, or compliance risk.
+**Justification:** AI recommendations can bias supplier outcomes if they are not explainable, bounded, and reviewable.
 
-**Improvement:** Create a playbook catalog with detection rules, required evidence, escalation paths, fallback actions, owner roles, and release-audited tests for high-severity edge cases and exception queues.
+**Improvement:** Require the agent to present sourcing options, score drivers, supplier risks, conflicts, budget impact, contract implications, carbon/diversity tradeoffs, and approval requirements. The agent should not create awards or POs without explicit human confirmation.
 
-### 48. Pre-mutation simulation and blast-radius analysis for Procurement and Strategic Sourcing
+### 48. Continuous procurement control testing
 
-**Justification:** Users should understand consequences before committing irreversible, customer-visible, operationally disruptive, or financially material changes.
+**Justification:** Procurement controls should run continuously across approvals, supplier eligibility, bid integrity, contracts, POs, and event handling.
 
-**Improvement:** Add what-if simulation for every material command, showing impacted records, emitted events, dependent projections, rule outcomes, approvals, downstream PBC dependencies, and rollback limits.
+**Improvement:** Add assertions for unauthorized approvals, split approvals, restricted suppliers, insufficient bid count, missing contract linkage, expired qualification, PO tolerance breach, stale budget projection, duplicate supplier, dead-letter aging, and agent-preview bypass.
 
-### 49. Continuous control testing and operational assurance for Procurement and Strategic Sourcing
+### 49. Procurement readiness score
 
-**Justification:** Better-than-world-class PBCs prove controls continuously, not only at release or during periodic audits.
+**Justification:** Users need an evidence-backed view of whether the PBC is ready for production procurement operations.
 
-**Improvement:** Add executable control assertions, sampled evidence checks, anomaly thresholds, control-owner dashboards, breach/recovery events, and release gates that fail when domain controls lose evidence.
+**Improvement:** Compute readiness from category setup, supplier qualification, approval matrix, budget projection freshness, RFQ strategy, contract templates, PO rules, event reliability, UI coverage, control assertions, boundary proof, model governance, and agent safety.
 
-### 50. Human-in-the-loop domain agent execution for Procurement and Strategic Sourcing
+### 50. End-to-end source-to-order proof
 
-**Justification:** The PBC chatbot must help specialists perform real work while preventing unsafe autonomous mutation.
+**Justification:** A complete procurement PBC must prove the full lifecycle from demand signal to governed purchase order.
 
-**Improvement:** Add domain-specific skills, document parsing, task planning, CRUD previews, confidence/risk scoring, confirmation gates, redaction, policy explanations, and post-action evidence packets for every supported command and query.
+**Improvement:** Add an executable proof scenario covering material shortage projection, requisition creation, approval, RFQ, supplier invitation, sealed bid, bid normalization, scorecard, award, contract, PO issuance, emitted `PurchaseOrderIssued`, audit trace, UI evidence, event reliability, controls, and agent explanation.
