@@ -14,6 +14,7 @@ from pyAppGen.dsl import migration_plan_dsl
 from pyAppGen.dsl import nl_plan_dsl
 from pyAppGen.dsl import pbc_verifier_report
 from pyAppGen.dsl import release_verifier_report_dsl
+from pyAppGen.dsl import semantic_drift_audit_dsl
 from pyAppGen.dsl import semantic_model_dsl
 from pyAppGen.dsl import validate_report_dsl
 
@@ -536,3 +537,40 @@ def test_appgen_diagnostics_subcommand_emits_catalog_and_fixture_audit() -> None
     assert audit_result.returncode == 0, audit_result.stderr
     assert json.loads(catalog_result.stdout)["format"] == "appgen.diagnostic-catalog.v1"
     assert json.loads(audit_result.stdout)["format"] == "appgen.diagnostic-fixture-audit.v1"
+
+
+def test_semantic_drift_audit_proves_tooling_surfaces_share_one_model() -> None:
+    report = semantic_drift_audit_dsl(RELEASE_SAMPLE, source_name="release.appgen")
+
+    assert report["format"] == "appgen.semantic-drift-audit.v1"
+    assert report["ok"] is True
+    assert report["semantic_model_format"] == "appgen.semantic-model.v1"
+    assert {
+        "cli",
+        "lsp",
+        "studio",
+        "graph",
+        "generator_readiness",
+        "release_verifier",
+        "tests",
+    } <= set(report["surfaces"])
+    assert all(check["ok"] for check in report["checks"])
+    assert any(check["check"] == "designer_graphs_match_semantic_graphs" for check in report["checks"])
+
+
+def test_appgen_drift_subcommand_emits_json_contract(tmp_path: Path) -> None:
+    path = tmp_path / "release.appgen"
+    path.write_text(RELEASE_SAMPLE, encoding="utf-8")
+
+    result = subprocess.run(
+        [sys.executable, "-m", "pyAppGen", "drift", str(path), "--json"],
+        check=False,
+        cwd=Path(__file__).resolve().parents[1],
+        text=True,
+        capture_output=True,
+    )
+
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["format"] == "appgen.semantic-drift-audit.v1"
+    assert payload["surface_evidence"]["lsp_service"] == "appgen.lsp-service.v1"

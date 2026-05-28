@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import ast
 import difflib
+import hashlib
 import json
 import re
 import sys
@@ -602,6 +603,154 @@ def diagnostic_fixture_audit_dsl() -> dict:
     }
 
 
+def semantic_drift_audit_dsl(text: str, *, source_name: str | None = None) -> dict:
+    """Prove CLI, LSP, IDE, verifier, and tests consume one semantic model."""
+    source = text or ""
+    semantic = semantic_model_dsl(source, source_name=source_name)
+    lint = lint_report_dsl(source, source_name=source_name)
+    validate = validate_report_dsl(source, source_name=source_name)
+    lsp = lsp_service_dsl(source, source_name=source_name)
+    designer = designer_sync_report_dsl(source, source_name=source_name)
+    release = release_verifier_report_dsl(source, source_name=source_name, targets=("all",))
+    graph_reports = {
+        kind: graph_report_dsl(source, source_name=source_name, kind=kind)
+        for kind in sorted(semantic.get("graphs", {}))
+    }
+    canonical = _semantic_drift_digest(semantic)
+    checks = (
+        _drift_check(
+            "cli_validate_uses_semantic_model",
+            _semantic_drift_digest(validate.get("semantic_model", {})) == canonical,
+            "appgen validate embeds the same semantic model digest as the canonical parser output.",
+            {"surface": "CLI validate", "format": validate.get("format")},
+        ),
+        _drift_check(
+            "lsp_diagnostics_match_lint_report",
+            _diagnostic_codes(lsp["publishDiagnostics"]["source_report"]) == _diagnostic_codes(lint),
+            "LSP diagnostics are a projection of appgen.lint-report.v1.",
+            {"surface": "LSP", "format": lsp.get("format")},
+        ),
+        _drift_check(
+            "lsp_symbols_match_semantic_symbols",
+            _lsp_symbol_ids(lsp["documentSymbol"]) == _top_level_symbol_ids(semantic),
+            "LSP document symbols are projected from semantic symbols.",
+            {"surface": "LSP document symbols"},
+        ),
+        _drift_check(
+            "designer_forms_match_semantic_views",
+            _designer_view_names(designer) == tuple(semantic.get("views", {}).keys()),
+            "Studio form designer views are projected from semantic views.",
+            {"surface": "AppGen-X Studio form designer"},
+        ),
+        _drift_check(
+            "designer_database_matches_semantic_tables",
+            _designer_table_names(designer) == tuple(semantic.get("tables", {}).keys()),
+            "Studio database designer tables are projected from semantic tables.",
+            {"surface": "AppGen-X Studio database designer"},
+        ),
+        _drift_check(
+            "designer_graphs_match_semantic_graphs",
+            _semantic_drift_digest(designer["projections"]["graph_explain_panel"]["graphs"]) == _semantic_drift_digest(semantic.get("graphs", {})),
+            "Studio graph/explain panel reuses semantic graphs.",
+            {"surface": "AppGen-X Studio graph panel"},
+        ),
+        _drift_check(
+            "graph_reports_match_semantic_graphs",
+            all(report.get("graph") == semantic.get("graphs", {}).get(kind) for kind, report in graph_reports.items()),
+            "appgen graph reports emit graph projections from the semantic model.",
+            {"surface": "CLI graph", "kinds": tuple(graph_reports)},
+        ),
+        _drift_check(
+            "release_verifier_uses_semantic_model",
+            release.get("semantic_model_format") == semantic.get("format")
+            and _diagnostic_codes(release) == _diagnostic_codes(semantic),
+            "Release verifier carries semantic-model format and diagnostics without reparsing drift.",
+            {"surface": "release verifier", "format": release.get("format")},
+        ),
+        _drift_check(
+            "tests_share_canonical_fixture_contract",
+            bool(semantic.get("symbols")) and bool(semantic.get("tables")) and bool(semantic.get("graphs")),
+            "Fixture-driven tests can assert symbols, tables, and graphs from the same model.",
+            {"surface": "tests", "semantic_digest": canonical},
+        ),
+    )
+    return {
+        "format": "appgen.semantic-drift-audit.v1",
+        "ok": semantic["ok"] and all(check["ok"] for check in checks),
+        "source": source_name,
+        "semantic_model_format": semantic.get("format"),
+        "semantic_digest": canonical,
+        "surfaces": (
+            "cli",
+            "lsp",
+            "studio",
+            "graph",
+            "generator_readiness",
+            "release_verifier",
+            "tests",
+        ),
+        "checks": checks,
+        "surface_evidence": {
+            "lint_report": lint.get("format"),
+            "validate_report": validate.get("format"),
+            "lsp_service": lsp.get("format"),
+            "designer_sync": designer.get("format"),
+            "release_verifier": release.get("format"),
+            "graph_reports": tuple(report.get("format") for report in graph_reports.values()),
+        },
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }
+
+
+def _semantic_drift_digest(value: object) -> str:
+    payload = json.dumps(value, sort_keys=True, separators=(",", ":"), default=list)
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def _drift_check(check: str, ok: bool, evidence: str, detail: dict | None = None) -> dict:
+    return {
+        "check": check,
+        "ok": bool(ok),
+        "evidence": evidence,
+        "detail": detail or {},
+    }
+
+
+def _diagnostic_codes(report: dict) -> tuple[str, ...]:
+    return tuple(item.get("code") for item in report.get("diagnostics", ()))
+
+
+def _lsp_symbol_ids(document_symbols: dict) -> tuple[str, ...]:
+    ids: list[str] = []
+    for symbol in document_symbols.get("symbols", ()):
+        data = symbol.get("data", {})
+        if data.get("id"):
+            ids.append(data["id"])
+    return tuple(ids)
+
+
+def _top_level_symbol_ids(semantic: dict) -> tuple[str, ...]:
+    return tuple(
+        symbol["id"]
+        for symbol in semantic.get("symbols", {}).values()
+        if not symbol.get("parent")
+    )
+
+
+def _designer_view_names(designer: dict) -> tuple[str, ...]:
+    return tuple(
+        view.get("view")
+        for view in designer.get("projections", {}).get("form_designer", {}).get("views", ())
+    )
+
+
+def _designer_table_names(designer: dict) -> tuple[str, ...]:
+    return tuple(
+        table.get("name")
+        for table in designer.get("projections", {}).get("database_designer", {}).get("tables", ())
+    )
+
+
 def _diagnostic_fixture_for_code(code: str) -> dict | None:
     for fixture in DIAGNOSTIC_FIXTURES:
         if code in fixture["expected_codes"]:
@@ -729,6 +878,10 @@ def dsl_tooling_cli(argv: Iterable[str] | None = None) -> int:
     diagnostics_parser.add_argument("--audit-fixtures", action="store_true")
     diagnostics_parser.add_argument("--json", action="store_true")
 
+    drift_parser = subparsers.add_parser("drift")
+    drift_parser.add_argument("path")
+    drift_parser.add_argument("--json", action="store_true")
+
     args = parser.parse_args(tuple(argv or ()))
     path = Path(args.path) if hasattr(args, "path") else None
     source = path.read_text(encoding="utf-8") if path is not None else ""
@@ -831,6 +984,10 @@ def dsl_tooling_cli(argv: Iterable[str] | None = None) -> int:
         return 0 if report["ok"] else 1
     if args.command == "diagnostics":
         report = diagnostic_fixture_audit_dsl() if args.audit_fixtures else diagnostic_catalog_dsl()
+        _emit_tooling_payload(report, as_json=args.json)
+        return 0 if report["ok"] else 1
+    if args.command == "drift":
+        report = semantic_drift_audit_dsl(source, source_name=str(path))
         _emit_tooling_payload(report, as_json=args.json)
         return 0 if report["ok"] else 1
     return 2

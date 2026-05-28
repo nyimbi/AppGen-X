@@ -21,6 +21,7 @@ _TOOLING_SUBCOMMANDS = {
     "pbc",
     "designer-sync",
     "diagnostics",
+    "drift",
 }
 _legacy_click_main = main.main
 
