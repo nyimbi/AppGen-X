@@ -3150,3 +3150,12 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   tooling entrypoints, focused generation warning CLI/report tests,
   `tests/test_dsl_tooling_contracts.py -q`, tooling-audit JSON proof, scoped
   diff whitespace check, and restricted-name scan. Commit: `c6226f4b`.
+- Current format write-evidence pass makes the documented `appgen format
+  --write` behavior explicit. The format CLI JSON now reports
+  `write_requested`, `written`, and `write_path`, and
+  `appgen.tooling-audit.v1` embeds `appgen.format-write-audit.v1` proving the
+  CLI rewrites a temporary DSL file rather than only previewing formatted text.
+  Verification passed: Python compile for touched tooling entrypoints, focused
+  format-write and tooling-audit tests, `tests/test_dsl_tooling_contracts.py
+  -q`, tooling-audit JSON proof, scoped diff whitespace check, and
+  restricted-name scan. Commit: `c8fec8dd`.
