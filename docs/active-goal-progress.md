@@ -3180,3 +3180,13 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   help/audit tests, `tests/test_dsl_tooling_contracts.py -q`, tooling-audit
   JSON proof, scoped diff whitespace check, and restricted-name scan. Commit:
   `b5596989`.
+- Current CLI configuration-error pass closes a path-handling gap in the
+  documented exit-code contract. Tooling subcommands now validate declared
+  input paths before reading files, preserve `appgen lint` directory support,
+  and report missing user-supplied DSL inputs as argparse configuration errors
+  with exit code `2` instead of internal tool errors. `appgen.tooling-audit.v1`
+  embeds `appgen.missing-input-exit-audit.v1` proving the missing-input
+  boundary returns code `2` with no traceback output. Verification passed:
+  Python compile for touched tooling entrypoints, focused CLI/audit tests,
+  `tests/test_dsl_tooling_contracts.py -q`, tooling-audit JSON proof, scoped
+  diff whitespace check, and restricted-name scan. Commit: `b497a0dd`.
