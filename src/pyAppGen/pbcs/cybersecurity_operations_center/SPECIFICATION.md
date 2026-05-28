@@ -1,110 +1,246 @@
-# Cybersecurity Operations Center PBC
+# Cybersecurity Operations Center Specification
 
 ## Purpose
 
-The `cybersecurity_operations_center` PBC is a packaged business capability for Security alerts, incidents, assets, threat intelligence, playbooks, containment, and response evidence. It owns schema, migrations, models, services, API contracts, AppGen-X event contracts, handlers, UI fragments, AI agent skills, configuration, rules, parameters, seed data, package metadata, tests, and release evidence. It composes with other AppGen-X PBCs only through declared APIs, AppGen-X events, or package-local projections.
+`cybersecurity_operations_center` is a self-contained AppGen PBC for operating a SOC queue around alerts, incidents, threat intel, playbooks, containment, and evidence. The package owns its schema, runtime logic, AppGen-X events, UI/workbench metadata, assistant planning, tests, and release evidence.
 
-## Stable Identity
+## Ownership Boundary
 
-- PBC key: `cybersecurity_operations_center`.
-- Mesh: `platform`.
-- Package directory: `src/pyAppGen/pbcs/cybersecurity_operations_center`.
-- Runtime entrypoint: `cybersecurity_operations_center_runtime_capabilities()`.
-- UI entrypoint: `cybersecurity_operations_center_ui_contract()`.
-- Source registration entrypoint: `implementation_contract()`.
-- Allowed database backends: PostgreSQL, MySQL, and MariaDB.
-- Eventing standard: fixed AppGen-X outbox/inbox event contract.
-- User-facing stream-engine selector: forbidden and hidden.
+This package writes only to these owned tables:
 
-## Owned Datastore Boundary
+- `cybersecurity_operations_center_security_alert`
+- `cybersecurity_operations_center_security_incident`
+- `cybersecurity_operations_center_asset_exposure`
+- `cybersecurity_operations_center_threat_intel`
+- `cybersecurity_operations_center_playbook_run`
+- `cybersecurity_operations_center_containment_action`
+- `cybersecurity_operations_center_response_evidence`
+- `cybersecurity_operations_center_cybersecurity_operations_center_policy_rule`
+- `cybersecurity_operations_center_cybersecurity_operations_center_runtime_parameter`
+- `cybersecurity_operations_center_cybersecurity_operations_center_schema_extension`
+- `cybersecurity_operations_center_cybersecurity_operations_center_control_assertion`
+- `cybersecurity_operations_center_cybersecurity_operations_center_governed_model`
+- `cybersecurity_operations_center_appgen_outbox_event`
+- `cybersecurity_operations_center_appgen_inbox_event`
+- `cybersecurity_operations_center_appgen_dead_letter_event`
 
-- `cybersecurity_operations_center_security_alert`: owns security alert lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `cybersecurity_operations_center_security_incident`: owns security incident lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `cybersecurity_operations_center_asset_exposure`: owns asset exposure lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `cybersecurity_operations_center_threat_intel`: owns threat intel lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `cybersecurity_operations_center_playbook_run`: owns playbook run lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `cybersecurity_operations_center_containment_action`: owns containment action lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `cybersecurity_operations_center_response_evidence`: owns response evidence lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `cybersecurity_operations_center_cybersecurity_operations_center_policy_rule`: owns cybersecurity operations center policy rule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `cybersecurity_operations_center_cybersecurity_operations_center_runtime_parameter`: owns cybersecurity operations center runtime parameter lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `cybersecurity_operations_center_cybersecurity_operations_center_schema_extension`: owns cybersecurity operations center schema extension lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `cybersecurity_operations_center_cybersecurity_operations_center_control_assertion`: owns cybersecurity operations center control assertion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `cybersecurity_operations_center_cybersecurity_operations_center_governed_model`: owns cybersecurity operations center governed model lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+No foreign table writes are allowed. Cross-PBC interaction is limited to declared APIs or AppGen-X consumed events.
 
-Runtime AppGen-X event tables are `cybersecurity_operations_center_appgen_outbox_event`, `cybersecurity_operations_center_appgen_inbox_event`, and `cybersecurity_operations_center_appgen_dead_letter_event`. The PBC does not mutate foreign tables. Dependencies are represented by consumed events ('PolicyChanged', 'AuditEventSealed', 'OperationalKpiChanged') and API contracts ('POST /security-alerts', 'POST /security-incidents', 'POST /asset-exposures', 'POST /threat-intels', 'POST /playbook-runs', 'GET /cybersecurity-operations-center-workbench').
+## Core Commands
 
-## Executable Domain Operations
+- `command_security_alert`
+  - accepts first-class detection context
+  - supports validation-only usage
+  - applies deduplication/correlation
+  - records lineage and emits AppGen-X outbox events
+- `transition_alert`
+  - enforces the allowed state machine:
+    - `new`
+    - `deduplicated`
+    - `enriched`
+    - `triaged`
+    - `escalated`
+    - `suppressed`
+    - `contained`
+    - `closed`
+    - `reopened`
+- `enrich_security_alert`
+  - adds structured enrichment facts and provenance
+- `suppress_security_alert`
+  - stores suppression owner, scope, reason, and review timing
+- `record_security_incident`
+  - previews and enforces incident promotion thresholds
+  - writes explainable severity factors and role ownership
+- `review_asset_exposure`
+  - projects open alerts/incidents and containment linkage for an asset
+- `approve_threat_intel`
+  - separates observed fact, assessed relationship, campaign context, and analyst inference
+- `simulate_playbook_run`
+  - models stage checkpoints and human breakpoints
+- `create_containment_action`
+  - enforces no-approval, supervisor-approval, and exception-approval paths
+- `record_response_evidence`
+  - captures checksum, source, storage reference, redaction state, admissibility notes, and chain-of-custody history
+- `create_control_assertion`
+  - records control-test outcomes and exception evidence
+- `record_governed_model`
+  - records bounded assistant/AI model usage and guardrails
 
-- `create_security_alert`: validates policy, writes owned `cybersecurity_operations_center_security_alert` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `record_security_incident`: validates policy, writes owned `cybersecurity_operations_center_security_incident` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `review_asset_exposure`: validates policy, writes owned `cybersecurity_operations_center_asset_exposure` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `approve_threat_intel`: validates policy, writes owned `cybersecurity_operations_center_threat_intel` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `simulate_playbook_run`: validates policy, writes owned `cybersecurity_operations_center_playbook_run` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `create_containment_action`: validates policy, writes owned `cybersecurity_operations_center_containment_action` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `record_response_evidence`: validates policy, writes owned `cybersecurity_operations_center_response_evidence` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `review_cybersecurity_operations_center_policy_rule`: validates policy, writes owned `cybersecurity_operations_center_cybersecurity_operations_center_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `approve_cybersecurity_operations_center_runtime_parameter`: validates policy, writes owned `cybersecurity_operations_center_cybersecurity_operations_center_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `simulate_cybersecurity_operations_center_schema_extension`: validates policy, writes owned `cybersecurity_operations_center_cybersecurity_operations_center_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `create_cybersecurity_operations_center_control_assertion`: validates policy, writes owned `cybersecurity_operations_center_cybersecurity_operations_center_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `record_cybersecurity_operations_center_governed_model`: validates policy, writes owned `cybersecurity_operations_center_cybersecurity_operations_center_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_cybersecurity_operations_center_13`: validates policy, writes owned `cybersecurity_operations_center_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_cybersecurity_operations_center_14`: validates policy, writes owned `cybersecurity_operations_center_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_cybersecurity_operations_center_15`: validates policy, writes owned `cybersecurity_operations_center_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_cybersecurity_operations_center_16`: validates policy, writes owned `cybersecurity_operations_center_security_alert` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_cybersecurity_operations_center_17`: validates policy, writes owned `cybersecurity_operations_center_security_incident` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_cybersecurity_operations_center_18`: validates policy, writes owned `cybersecurity_operations_center_asset_exposure` records, emits AppGen-X events, and returns side-effect-free evidence.
+## Queries and Projections
 
-Every command is deterministic and side-effect-free in package tests. Each command returns target owned tables, emitted event evidence, idempotency keys, rule decisions, parameter reads, permissions, and audit hashes.
+- `query_workbench`
+  - triage lanes: urgent, backlog, watchlist, suppressed
+  - incident cards
+  - supervisor lane
+  - evidence-review lane
+  - workbench metrics
+- `build_case_detail`
+  - timeline
+  - evidence list
+  - containment actions
+  - relationship graph
+  - AppGen-X lineage
+- `generate_handoff_packet`
+  - open questions
+  - pending approvals
+  - pending evidence
+  - cited source records
+- `run_advanced_assessment`
+  - explainable backlog risk
+  - queue pressure and anomaly cards
 
-## Standard Table-Stakes Capabilities
+## API Contract
 
-The package covers lifecycle intake, identity and classification, validation, approvals, exception handling, audit evidence, role-aware workbenches, assistant-guided task execution, configuration, rule compilation, bounded parameters, seed data, RBAC, route dispatch, typed events, idempotent handlers, retry, and dead-letter triage. It includes PostgreSQL, MySQL, and MariaDB backend allowlists and never exposes stream-engine pickers.
+- `POST /security-alerts`
+- `POST /security-alerts/triage`
+- `POST /security-alerts/enrich`
+- `POST /security-alerts/suppress`
+- `POST /security-incidents`
+- `POST /security-incidents/promote`
+- `POST /asset-exposures`
+- `POST /threat-intels`
+- `POST /playbook-runs`
+- `POST /containment-actions`
+- `POST /response-evidence`
+- `GET /cybersecurity-operations-center-workbench`
+- `GET /cybersecurity-operations-center/case-detail`
 
-## Advanced Capabilities
+## Event Contract
 
-- Event-sourced operational history for Cybersecurity Operations Center domain records.
-- Multi-tenant policy isolation with owned table boundaries.
-- Schema evolution resilience through package-local schema extensions.
-- Autonomous anomaly detection and specialist exception triage.
-- Semantic document and instruction understanding for professional intake.
-- Predictive risk scoring and confidence-ranked recommendations.
-- Counterfactual scenario simulation for policy and operational choices.
-- Cryptographic audit proofs for high-value records and decisions.
-- Continuous control testing over domain lifecycle events.
-- Carbon and sustainability awareness where operational decisions affect footprint.
-- Cross-PBC event federation through AppGen-X only.
-- Governed AI agent execution with human confirmation for mutations.
+Emitted:
 
-## Rules, Parameters, and Configuration
+- `CybersecurityOperationsCenterCreated`
+- `CybersecurityOperationsCenterUpdated`
+- `CybersecurityOperationsCenterApproved`
+- `CybersecurityOperationsCenterExceptionOpened`
 
-Rules are first-class artifacts: ('security_alert_policy', 'security_incident_policy', 'asset_exposure_policy', 'threat_intel_policy', 'playbook_run_policy', 'containment_action_policy'). Parameters are bounded artifacts: ('quality_score_floor', 'materiality_threshold', 'approval_sla_hours', 'risk_threshold', 'forecast_horizon_days', 'workbench_limit'). Configuration includes database backend, event topic, retry limit, default policy, workbench limits, confirmation requirements for agent writes, and tenant isolation options.
+Consumed:
 
-## Public APIs and Services
+- `PolicyChanged`
+- `AuditEventSealed`
+- `OperationalKpiChanged`
 
-APIs are ('POST /security-alerts', 'POST /security-incidents', 'POST /asset-exposures', 'POST /threat-intels', 'POST /playbook-runs', 'GET /cybersecurity-operations-center-workbench'). Services preserve idempotency keys, permission names, owned table scopes, route metadata, and event mappings. Services write only to `cybersecurity_operations_center_` tables and package-local event tables.
+Consumed events are idempotent. Unsupported events go to the owned dead-letter table with retry metadata.
 
-## Events and Handlers
+## UI / Workbench Contract
 
-Emitted events: ('CybersecurityOperationsCenterCreated', 'CybersecurityOperationsCenterUpdated', 'CybersecurityOperationsCenterApproved', 'CybersecurityOperationsCenterExceptionOpened'). Consumed events: ('PolicyChanged', 'AuditEventSealed', 'OperationalKpiChanged'). Handlers require event IDs, ignore duplicates, record AppGen-X inbox entries, and write dead-letter evidence for unknown or exhausted events.
+Fragments:
 
-## UI, Workbench, and Agent Skills
+- `CybersecurityOperationsCenterWorkbench`
+- `CybersecurityOperationsCenterDetail`
+- `CybersecurityOperationsCenterAssistantPanel`
 
-Workbench views include ('security alert board', 'security incident board', 'asset exposure board', 'threat intel board', 'playbook run board', 'containment action board', 'response evidence board'). The UI exposes operational queues, detail panels, rule editors, parameter editors, assistant panels, exception triage, analytics, and release evidence. The agent contributes `cybersecurity_operations_center_skills`, parses documents and instructions, produces governed CRUD previews, validates owned table boundaries, requires human confirmation for writes, and participates in the composed single application assistant.
+Forms:
 
-## Release Evidence and Tests
+- alert intake
+- incident promotion
+- evidence capture
+- containment approval
 
-Release readiness proves schema, migrations, models, service contracts, route contracts, AppGen-X eventing, idempotent handlers, retry/dead-letter evidence, UI surfaces, RBAC, configuration, rules, parameters, seed data, package metadata, side-effect-free registration, domain-depth operations, agent integration, and generation smoke readiness. Focused package tests cover schema/service/release evidence, event contracts, package metadata, route contracts, governance hooks, and idempotent handlers.
+Wizards:
+
+- alert triage
+- incident promotion
+- playbook run
+- shift handoff
+
+Controls:
+
+- severity lane filter
+- confidence slider
+- event lineage panel
+- relationship graph toggle
+
+## Assistant Contract
+
+The assistant can:
+
+- draft triage summaries
+- identify missing evidence
+- propose threat-intel enrichment previews
+- generate shift handoff packets
+- parse documents into mutation previews
+- build owned-table-only CRUD plans
+
+The assistant cannot mutate foreign tables and requires human confirmation for mutating operations.
+
+## Release Gates
+
+This package maps its local evidence to:
+
+- `pbc_source_artifact_contract`
+- `pbc_implementation_release_audit`
+- `pbc_generation_smoke_audit`
+
+## Implementation Contract and Traceability Appendix
+
+The `cybersecurity_operations_center` PBC is a side-effect-free registerable package with a stable `pbc` key, a package-local manifest, package discovery metadata, and registration plans that describe the catalog patch without mutating the catalog. Self-registration must remain side-effect-free: loading the package, building discovery evidence, or validating registration cannot open network connections, write shared state, or mutate another PBC.
+
+The owned schema is generated from the package-local model contract and migration artifacts. The schema, migration, and model layer cover security alert, security incident, asset exposure, threat intelligence, playbook run, containment action, response evidence, policy rule, runtime parameter, schema extension, control assertion, governed model, and AppGen-X outbox, inbox, and dead-letter event tables. The PBC never writes foreign or shared tables; any outside context arrives through declared APIs, events, or projections.
+
+The service and API route surface exposes command and query methods for alert intake, triage transition, enrichment, suppression, incident promotion, asset exposure review, threat-intel approval, playbook execution, containment approval, response evidence custody, case detail, workbench queries, handoff packets, runtime configuration, rule compilation, parameter changes, and event intake. Each mutating command has an owned datastore plus AppGen-X outbox boundary; each query is read-only.
+
+The event contract uses AppGen-X outbox, inbox, retry, idempotency, and dead-letter semantics. The ordinary generated application must not expose stream-engine selection. Unsupported events are retried according to package policy and then recorded in `cybersecurity_operations_center_appgen_dead_letter_event`.
+
+The UI and workbench must surface professional SOC operations rather than only record lists. It includes forms for security alert intake, incident promotion, evidence capture, containment approval, asset exposure review, and threat-intel review. It includes wizards for alert triage, staged incident promotion, playbook execution, containment approval, shift handoff, and release evidence review. It includes controls for severity lanes, confidence thresholds, relationship graph inspection, evidence custody, SLA timers, lineage, and RBAC permission-gated actions.
+
+Rules, parameters, and configuration are first-class. Configuration includes `CYBERSECURITY_OPERATIONS_CENTER_DATABASE_URL`, `CYBERSECURITY_OPERATIONS_CENTER_EVENT_TOPIC`, `CYBERSECURITY_OPERATIONS_CENTER_RETRY_LIMIT`, and `CYBERSECURITY_OPERATIONS_CENTER_DEFAULT_POLICY`. Runtime parameters include alert confidence thresholds, severity escalation windows, containment approval requirements, handoff packet depth, and workbench limits. Rules govern deduplication, incident promotion, evidence sufficiency, containment approval, suppression, and event replay.
+
+The assistant exposes skills for task guidance, document instruction intake, governed datastore CRUD mutation previews, alert triage summaries, missing evidence identification, threat-intel enrichment previews, containment recommendation explanation, and shift handoff drafting. Assistant mutations require human confirmation, cite source records, use owned tables only, and preserve AppGen-X event evidence.
+
+The PBC supports standard and advanced SOC capabilities. Standard capabilities include `security_alert_management`, `cybersecurity_operations_center_workflow`, `cybersecurity_operations_center_analytics`, `configuration_schema`, `rule_engine`, `parameter_engine`, `owned_schema_migrations_models`, `appgen_x_outbox_inbox_eventing`, `idempotent_handlers`, `retry_dead_letter_evidence`, `permissions`, `seed_data`, `workbench`, `agentic_document_instruction_intake`, `governed_datastore_crud`, `ai_agent_task_assistance`, `configuration_workbench`, and `continuous_release_assurance`. Advanced capabilities include `cybersecurity_operations_center_event_sourced_operational_history`, `cybersecurity_operations_center_multi_tenant_policy_isolation`, `cybersecurity_operations_center_schema_evolution_resilience`, `cybersecurity_operations_center_autonomous_anomaly_detection`, `cybersecurity_operations_center_semantic_document_instruction_understanding`, `cybersecurity_operations_center_predictive_risk_scoring`, `cybersecurity_operations_center_counterfactual_scenario_simulation`, `cybersecurity_operations_center_cryptographic_audit_proofs`, `cybersecurity_operations_center_continuous_control_testing`, `cybersecurity_operations_center_carbon_and_sustainability_awareness`, `cybersecurity_operations_center_cross_pbc_event_federation`, and `cybersecurity_operations_center_governed_ai_agent_execution`.
+
+Release evidence includes generated schema, migration, models, services, routes, events, handlers, UI, RBAC permissions, configuration, seed data, assistant skills, idempotent retry/dead-letter handling, package registration metadata, tests, and smoke audits. The package must validate under PostgreSQL, MySQL, and MariaDB as the only ordinary datastore backends.
 
 ## Manifest Traceability Appendix
 
-- tables: security_alert, security_incident, asset_exposure, threat_intel, playbook_run, containment_action, response_evidence, cybersecurity_operations_center_policy_rule, cybersecurity_operations_center_runtime_parameter, cybersecurity_operations_center_schema_extension, cybersecurity_operations_center_control_assertion, cybersecurity_operations_center_governed_model
-- operations: create_security_alert, record_security_incident, review_asset_exposure, approve_threat_intel, simulate_playbook_run, create_containment_action, record_response_evidence, review_cybersecurity_operations_center_policy_rule, approve_cybersecurity_operations_center_runtime_parameter, simulate_cybersecurity_operations_center_schema_extension, create_cybersecurity_operations_center_control_assertion, record_cybersecurity_operations_center_governed_model, operate_cybersecurity_operations_center_13, operate_cybersecurity_operations_center_14, operate_cybersecurity_operations_center_15, operate_cybersecurity_operations_center_16, operate_cybersecurity_operations_center_17, operate_cybersecurity_operations_center_18
-- emits: CybersecurityOperationsCenterCreated, CybersecurityOperationsCenterUpdated, CybersecurityOperationsCenterApproved, CybersecurityOperationsCenterExceptionOpened
-- consumes: PolicyChanged, AuditEventSealed, OperationalKpiChanged
-- rules: security_alert_policy, security_incident_policy, asset_exposure_policy, threat_intel_policy, playbook_run_policy, containment_action_policy
-- parameters: quality_score_floor, materiality_threshold, approval_sla_hours, risk_threshold, forecast_horizon_days, workbench_limit
-- ui_fragments: CybersecurityOperationsCenterWorkbench, CybersecurityOperationsCenterDetail, CybersecurityOperationsCenterAssistantPanel
-- permissions: cybersecurity_operations_center.read, cybersecurity_operations_center.create, cybersecurity_operations_center.update, cybersecurity_operations_center.approve, cybersecurity_operations_center.admin
-- configuration: CYBERSECURITY_OPERATIONS_CENTER_DATABASE_URL, CYBERSECURITY_OPERATIONS_CENTER_EVENT_TOPIC, CYBERSECURITY_OPERATIONS_CENTER_RETRY_LIMIT, CYBERSECURITY_OPERATIONS_CENTER_DEFAULT_POLICY
-- standard_features: security_alert_management, cybersecurity_operations_center_workflow, cybersecurity_operations_center_analytics, configuration_schema, rule_engine, parameter_engine, owned_schema_migrations_models, appgen_x_outbox_inbox_eventing, idempotent_handlers, retry_dead_letter_evidence, permissions, seed_data, workbench, agentic_document_instruction_intake, governed_datastore_crud, ai_agent_task_assistance, configuration_workbench, continuous_release_assurance
-- advanced_capabilities: cybersecurity_operations_center_event_sourced_operational_history, cybersecurity_operations_center_multi_tenant_policy_isolation, cybersecurity_operations_center_schema_evolution_resilience, cybersecurity_operations_center_autonomous_anomaly_detection, cybersecurity_operations_center_semantic_document_instruction_understanding, cybersecurity_operations_center_predictive_risk_scoring, cybersecurity_operations_center_counterfactual_scenario_simulation, cybersecurity_operations_center_cryptographic_audit_proofs, cybersecurity_operations_center_continuous_control_testing, cybersecurity_operations_center_carbon_and_sustainability_awareness, cybersecurity_operations_center_cross_pbc_event_federation, cybersecurity_operations_center_governed_ai_agent_execution
+Permissions:
+
+- `cybersecurity_operations_center.read`
+- `cybersecurity_operations_center.create`
+- `cybersecurity_operations_center.update`
+- `cybersecurity_operations_center.approve`
+- `cybersecurity_operations_center.admin`
+
+Configuration:
+
+- `CYBERSECURITY_OPERATIONS_CENTER_DATABASE_URL`
+- `CYBERSECURITY_OPERATIONS_CENTER_EVENT_TOPIC`
+- `CYBERSECURITY_OPERATIONS_CENTER_RETRY_LIMIT`
+- `CYBERSECURITY_OPERATIONS_CENTER_DEFAULT_POLICY`
+
+Standard features:
+
+- `security_alert_management`
+- `cybersecurity_operations_center_workflow`
+- `cybersecurity_operations_center_analytics`
+- `configuration_schema`
+- `rule_engine`
+- `parameter_engine`
+- `owned_schema_migrations_models`
+- `appgen_x_outbox_inbox_eventing`
+- `idempotent_handlers`
+- `retry_dead_letter_evidence`
+- `permissions`
+- `seed_data`
+- `workbench`
+- `agentic_document_instruction_intake`
+- `governed_datastore_crud`
+- `ai_agent_task_assistance`
+- `configuration_workbench`
+- `continuous_release_assurance`
+
+Advanced capabilities:
+
+- `cybersecurity_operations_center_event_sourced_operational_history`
+- `cybersecurity_operations_center_multi_tenant_policy_isolation`
+- `cybersecurity_operations_center_schema_evolution_resilience`
+- `cybersecurity_operations_center_autonomous_anomaly_detection`
+- `cybersecurity_operations_center_semantic_document_instruction_understanding`
+- `cybersecurity_operations_center_predictive_risk_scoring`
+- `cybersecurity_operations_center_counterfactual_scenario_simulation`
+- `cybersecurity_operations_center_cryptographic_audit_proofs`
+- `cybersecurity_operations_center_continuous_control_testing`
+- `cybersecurity_operations_center_carbon_and_sustainability_awareness`
+- `cybersecurity_operations_center_cross_pbc_event_federation`
+- `cybersecurity_operations_center_governed_ai_agent_execution`
