@@ -1,15 +1,43 @@
-PBC_KEY = 'cybersecurity_operations_center'
-PERMISSIONS = ('cybersecurity_operations_center.read',
- 'cybersecurity_operations_center.create',
- 'cybersecurity_operations_center.update',
- 'cybersecurity_operations_center.approve',
- 'cybersecurity_operations_center.admin')
+"""Permission model for the cybersecurity_operations_center PBC."""
 
-def permission_manifest():
-    return {'ok': True, 'pbc': PBC_KEY, 'permissions': PERMISSIONS, 'roles': ('operator','approver','auditor'), 'side_effects': ()}
+from __future__ import annotations
 
-def authorize(permission, actor=None):
-    return {'ok': permission in PERMISSIONS or permission == f'{PBC_KEY}.operate', 'permission': permission, 'actor': dict(actor or {}), 'side_effects': ()}
+from typing import Any
 
-def smoke_test():
-    return {'ok': permission_manifest()['ok'] and authorize(PERMISSIONS[0])['ok'], 'side_effects': ()}
+from .models import PERMISSIONS
+
+PBC_KEY = "cybersecurity_operations_center"
+ROLE_PERMISSIONS = {
+    "operator": {
+        "cybersecurity_operations_center.read",
+        "cybersecurity_operations_center.create",
+        "cybersecurity_operations_center.update",
+    },
+    "approver": {
+        "cybersecurity_operations_center.read",
+        "cybersecurity_operations_center.update",
+        "cybersecurity_operations_center.approve",
+    },
+    "auditor": {"cybersecurity_operations_center.read"},
+    "admin": set(PERMISSIONS),
+}
+
+
+def permission_manifest() -> dict[str, Any]:
+    return {"ok": True, "pbc": PBC_KEY, "permissions": PERMISSIONS, "roles": tuple(ROLE_PERMISSIONS), "side_effects": ()}
+
+
+def authorize(permission: str, actor: dict[str, Any] | None = None) -> dict[str, Any]:
+    actor = dict(actor or {})
+    role = actor.get("role", "operator")
+    allowed = permission in ROLE_PERMISSIONS.get(role, set()) or permission == f"{PBC_KEY}.operate"
+    return {"ok": allowed, "permission": permission, "actor": actor, "side_effects": ()}
+
+
+def smoke_test() -> dict[str, Any]:
+    return {
+        "ok": permission_manifest()["ok"]
+        and authorize(PERMISSIONS[0], {"role": "operator"})["ok"]
+        and authorize("cybersecurity_operations_center.approve", {"role": "operator"})["ok"] is False,
+        "side_effects": (),
+    }
