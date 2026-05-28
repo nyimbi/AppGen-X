@@ -1,40 +1,62 @@
 """Executable seed-data contract for the dom PBC."""
 
-PBC_KEY = 'dom'
-SEED_DATA = ({'table': 'dom_sales_order', 'rows': ({'code': 'DOM-001', 'status': 'active'},)}, {'table': 'dom_order_line', 'rows': ({'code': 'DOM-002', 'status': 'active'},)})
+from __future__ import annotations
+
+
+PBC_KEY = "dom"
+SEED_DATA = (
+    {
+        "table": "dom_sales_order",
+        "rows": (
+            {"code": "DOM-ORDER-DEMO", "status": "draft", "channel": "web"},
+        ),
+    },
+    {
+        "table": "dom_order_hold",
+        "rows": (
+            {"code": "DOM-HOLD-FRAUD", "status": "open", "hold_type": "fraud_review"},
+        ),
+    },
+    {
+        "table": "dom_fulfillment_plan",
+        "rows": (
+            {"code": "DOM-PLAN-STANDARD", "status": "planned", "node_id": "node_east"},
+        ),
+    },
+)
 
 
 def seed_plan():
     """Return deterministic seed rows without applying them."""
-    tables = tuple(dict.fromkeys(item['table'] for item in SEED_DATA))
+    tables = tuple(dict.fromkeys(item["table"] for item in SEED_DATA))
     return {
-        'ok': bool(SEED_DATA),
-        'pbc': PBC_KEY,
-        'tables': tables,
-        'rows': SEED_DATA,
-        'side_effects': (),
+        "ok": bool(SEED_DATA),
+        "pbc": PBC_KEY,
+        "tables": tables,
+        "rows": SEED_DATA,
+        "side_effects": (),
     }
 
 
 def validate_seed_data():
     """Validate seed ownership and minimum row shape."""
     invalid_tables = tuple(
-        item['table'] for item in SEED_DATA if not item.get('table', '').startswith(f'{PBC_KEY}_')
+        item["table"] for item in SEED_DATA if not item.get("table", "").startswith(f"{PBC_KEY}_")
     )
     invalid_rows = tuple(
         row
         for item in SEED_DATA
-        for row in item.get('rows', ())
-        if not row.get('code') or not row.get('status')
+        for row in item.get("rows", ())
+        if not row.get("code") or not row.get("status")
     )
     plan = seed_plan()
     return {
-        'ok': plan['ok'] and not invalid_tables and not invalid_rows,
-        'pbc': PBC_KEY,
-        'plan': plan,
-        'invalid_tables': invalid_tables,
-        'invalid_rows': invalid_rows,
-        'side_effects': (),
+        "ok": plan["ok"] and not invalid_tables and not invalid_rows,
+        "pbc": PBC_KEY,
+        "plan": plan,
+        "invalid_tables": invalid_tables,
+        "invalid_rows": invalid_rows,
+        "side_effects": (),
     }
 
 

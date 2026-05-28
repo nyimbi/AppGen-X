@@ -31,6 +31,52 @@ DOM_UI_FRAGMENT_KEYS = (
     "DomConfigurationPanel",
 )
 
+DOM_FORM_KEYS = {
+    "order_capture_form": {
+        "title": "Order Capture",
+        "fields": ("order_id", "customer_id", "channel", "destination", "service_level", "currency", "lines"),
+        "submit_action": "capture_order",
+    },
+    "hold_release_form": {
+        "title": "Hold Release",
+        "fields": ("order_id", "hold_id", "released_by", "note"),
+        "submit_action": "release_hold",
+    },
+    "cancellation_form": {
+        "title": "Cancellation Request",
+        "fields": ("order_id", "reason", "actor"),
+        "submit_action": "request_cancellation",
+    },
+    "substitution_form": {
+        "title": "Substitution Proposal",
+        "fields": ("order_id", "line_id", "substitute_item_id", "reason"),
+        "submit_action": "apply_substitution",
+    },
+}
+
+DOM_WIZARD_KEYS = {
+    "order_intake_wizard": {
+        "steps": ("capture", "tax", "fraud", "verify", "price"),
+        "completion_action": "price_order",
+    },
+    "fulfillment_wizard": {
+        "steps": ("allocation", "plan", "route", "ship"),
+        "completion_action": "confirm_order_shipped",
+    },
+    "exception_resolution_wizard": {
+        "steps": ("triage", "hold_or_release", "reroute_or_backorder", "close"),
+        "completion_action": "record_exception",
+    },
+}
+
+DOM_CONTROL_KEYS = {
+    "release_hold": {"permission": "dom.plan", "action": "release_hold"},
+    "request_cancellation": {"permission": "dom.cancel", "action": "request_cancellation"},
+    "apply_substitution": {"permission": "dom.plan", "action": "apply_substitution"},
+    "create_backorder": {"permission": "dom.plan", "action": "create_backorder"},
+    "receive_event": {"permission": "dom.event", "action": "receive_event"},
+}
+
 
 def dom_ui_contract() -> dict:
     return {
@@ -39,6 +85,9 @@ def dom_ui_contract() -> dict:
         "pbc": "dom",
         "implementation_directory": "src/pyAppGen/pbcs/dom",
         "fragments": DOM_UI_FRAGMENT_KEYS,
+        "forms": DOM_FORM_KEYS,
+        "wizards": DOM_WIZARD_KEYS,
+        "controls": DOM_CONTROL_KEYS,
         "routes": (
             "/workbench/pbcs/dom",
             "/workbench/pbcs/dom/orders",
@@ -64,31 +113,31 @@ def dom_ui_contract() -> dict:
             {
                 "key": "order_intake",
                 "fragment": "OrderCaptureConsole",
-                "binds_to": ("sales_order", "order_line", "customer_projection", "tax_projection"),
-                "commands": ("capture_order", "upsert_customer_projection", "apply_tax_projection", "screen_fraud"),
+                "binds_to": ("sales_order", "order_line", "order_channel_context", "order_promise"),
+                "commands": ("capture_order", "apply_tax_projection", "screen_fraud", "verify_order"),
             },
             {
                 "key": "verification",
                 "fragment": "OrderVerificationBoard",
-                "binds_to": ("fraud_screen", "policy_rule", "order_status", "outbox"),
-                "commands": ("verify_order", "price_order", "screen_order_policy", "generate_order_verification_proof"),
+                "binds_to": ("fraud_screen", "policy_rule", "order_status", "order_hold"),
+                "commands": ("verify_order", "price_order", "release_hold", "generate_order_verification_proof"),
             },
             {
                 "key": "fulfillment",
                 "fragment": "FulfillmentPlanBoard",
-                "binds_to": ("inventory_allocation", "fulfillment_plan", "shipment_projection", "route_selection"),
-                "commands": ("apply_inventory_allocation", "create_fulfillment_plan", "confirm_order_shipped", "route_fulfillment"),
+                "binds_to": ("inventory_allocation_projection", "fulfillment_plan", "split_shipment", "shipment_projection"),
+                "commands": ("apply_inventory_allocation", "create_fulfillment_plan", "route_fulfillment", "confirm_order_shipped"),
             },
             {
                 "key": "exception_control",
                 "fragment": "OrderExceptionConsole",
-                "binds_to": ("risk_score", "exception_resolution", "control_test", "dead_letter"),
-                "commands": ("score_order_risk", "recommend_exception_resolution", "run_control_tests"),
+                "binds_to": ("order_exception", "backorder", "substitution", "cancellation_request"),
+                "commands": ("record_exception", "create_backorder", "apply_substitution", "request_cancellation"),
             },
             {
                 "key": "governance",
                 "fragment": "DomRuleStudio",
-                "binds_to": ("rule", "parameter", "configuration"),
+                "binds_to": ("policy_rule", "dom_parameter", "dom_configuration"),
                 "commands": ("register_rule", "set_parameter", "configure_runtime"),
             },
         ),
@@ -101,8 +150,12 @@ def dom_ui_contract() -> dict:
             "price_order": "dom.price",
             "apply_inventory_allocation": "dom.allocate",
             "create_fulfillment_plan": "dom.plan",
-            "confirm_order_shipped": "dom.ship",
             "route_fulfillment": "dom.plan",
+            "release_hold": "dom.plan",
+            "create_backorder": "dom.plan",
+            "apply_substitution": "dom.plan",
+            "confirm_order_shipped": "dom.ship",
+            "request_cancellation": "dom.cancel",
             "receive_event": "dom.event",
             "screen_order_policy": "dom.audit",
             "generate_order_verification_proof": "dom.audit",
@@ -177,14 +230,38 @@ def dom_render_workbench(
     contract = dom_ui_contract()
     permissions = set(principal_permissions)
     visible_actions = tuple(action for action, required in contract["action_permissions"].items() if required in permissions)
-    orders = tuple(order for order in state["orders"].values() if order["tenant"] == tenant)
-    fraud_reviews = tuple(screen for screen in state["fraud"].values() if screen["tenant"] == tenant and screen["decision"] == "review")
-    plans = tuple(plan for plan in state["fulfillment_plans"].values() if plan["tenant"] == tenant)
+    orders = tuple(order for order in state.get("orders", {}).values() if order["tenant"] == tenant)
+    fraud_reviews = tuple(screen for screen in state.get("fraud", {}).values() if screen["tenant"] == tenant and screen["decision"] == "review")
+    plans = tuple(plan for plan in state.get("fulfillment_plans", {}).values() if plan["tenant"] == tenant)
+    holds = tuple(
+        hold
+        for hold in state.get("holds", {}).values()
+        if state.get("orders", {}).get(hold["order_id"], {}).get("tenant") == tenant and hold["status"] == "open"
+    )
+    exceptions = tuple(
+        item
+        for item in state.get("exceptions", {}).values()
+        if state.get("orders", {}).get(item["order_id"], {}).get("tenant") == tenant and item["status"] == "open"
+    )
+    backorders = tuple(
+        item
+        for item in state.get("backorders", {}).values()
+        if state.get("orders", {}).get(item["order_id"], {}).get("tenant") == tenant
+    )
+    cancellations = tuple(
+        item
+        for item in state.get("cancellations", {}).values()
+        if state.get("orders", {}).get(item["order_id"], {}).get("tenant") == tenant
+    )
     cards = (
         {"key": "orders", "value": len(orders), "fragment": "OrderCaptureConsole"},
         {"key": "open_orders", "value": len(tuple(order for order in orders if order["status"] not in {"shipped", "cancelled"})), "fragment": "OrderValidationQueue"},
+        {"key": "held_orders", "value": len(holds), "fragment": "FraudScreeningQueue"},
+        {"key": "exceptions", "value": len(exceptions), "fragment": "OrderExceptionConsole"},
+        {"key": "backorders", "value": len(backorders), "fragment": "BackorderSubstitutionConsole"},
+        {"key": "cancellations", "value": len(cancellations), "fragment": "CancellationControlPanel"},
         {"key": "shipped_orders", "value": len(tuple(order for order in orders if order["status"] == "shipped")), "fragment": "ShipmentProjectionTimeline"},
-        {"key": "order_total", "value": round(sum(order["total"] for order in orders), 2), "fragment": "PricingSummaryPanel"},
+        {"key": "order_total", "value": round(sum(order.get("total", 0) for order in orders), 2), "fragment": "PricingSummaryPanel"},
         {"key": "fraud_reviews", "value": len(fraud_reviews), "fragment": "FraudScreeningQueue"},
         {"key": "fulfillment_plans", "value": len(plans), "fragment": "FulfillmentPlanBoard"},
         {"key": "rules", "value": len(state.get("rules", {})), "fragment": "DomRuleStudio"},
@@ -196,6 +273,15 @@ def dom_render_workbench(
         "route": "/workbench/pbcs/dom",
         "fragments": contract["fragments"],
         "cards": cards,
+        "queues": {
+            "holds": holds,
+            "exceptions": exceptions,
+            "backorders": backorders,
+            "cancellations": cancellations,
+        },
+        "forms": contract["forms"],
+        "wizards": contract["wizards"],
+        "controls": contract["controls"],
         "visible_actions": visible_actions,
         "locked_actions": tuple(action for action in contract["action_permissions"] if action not in visible_actions),
         "configuration_bound": bool(state.get("configuration", {}).get("ok")),
@@ -215,6 +301,7 @@ def dom_render_workbench(
         },
     }
 
+
 class _AppGenSmokeState(dict):
     """Tolerant empty state for side-effect-free workbench smoke rendering."""
 
@@ -226,16 +313,41 @@ class _AppGenSmokeState(dict):
 
 def _appgen_smoke_state():
     """Return a deterministic state envelope understood by PBC workbench renderers."""
-    return _AppGenSmokeState({
-        "configuration": _AppGenSmokeState({"ok": True}),
-        "rules": _AppGenSmokeState(),
-        "parameters": _AppGenSmokeState(),
-        "outbox": (),
-        "inbox": (),
-        "dead_letter": (),
-        "dead_letters": (),
-        "events": (),
-    })
+    return _AppGenSmokeState(
+        {
+            "configuration": _AppGenSmokeState(
+                {
+                    "ok": True,
+                    "event_contract": "AppGen-X",
+                    "event_topic": DOM_REQUIRED_EVENT_TOPIC,
+                    "stream_engine_picker_visible": False,
+                }
+            ),
+            "rules": _AppGenSmokeState({"rule_web": {"status": "active"}}),
+            "parameters": _AppGenSmokeState({"fraud_threshold": 0.7}),
+            "orders": _AppGenSmokeState(
+                {
+                    "order_100": {
+                        "tenant": "smoke",
+                        "order_id": "order_100",
+                        "status": "captured",
+                        "total": 120.0,
+                    }
+                }
+            ),
+            "fraud": _AppGenSmokeState(),
+            "fulfillment_plans": _AppGenSmokeState(),
+            "holds": _AppGenSmokeState(),
+            "exceptions": _AppGenSmokeState(),
+            "backorders": _AppGenSmokeState(),
+            "cancellations": _AppGenSmokeState(),
+            "outbox": (),
+            "inbox": (),
+            "dead_letter": (),
+            "dead_letters": (),
+            "events": (),
+        }
+    )
 
 
 def smoke_test():
@@ -271,6 +383,9 @@ def smoke_test():
         and bool(cards)
         and bool(contract.get("action_permissions"))
         and bool(configuration_editor)
+        and bool(contract.get("forms"))
+        and bool(contract.get("wizards"))
+        and bool(contract.get("controls"))
         and configuration_editor.get("stream_engine_picker_visible", configuration_editor.get("user_facing_stream_engine_picker", False)) is False
         and bool(contract.get("parameter_editor"))
         and bool(rule_editor)
@@ -278,7 +393,13 @@ def smoke_test():
         and ("outbox_status" in event_surfaces or "contract" in event_surfaces)
         and binding_evidence.get("shared_table_access") is not True
         and not binding_evidence.get("shared_tables", ()),
-        "manifest": {"fragments": contract.get("fragments", ()), "routes": contract.get("routes", ())},
+        "manifest": {
+            "fragments": contract.get("fragments", ()),
+            "routes": contract.get("routes", ()),
+            "forms": tuple(contract.get("forms", {})),
+            "wizards": tuple(contract.get("wizards", {})),
+            "controls": tuple(contract.get("controls", {})),
+        },
         "contract": contract,
         "governance": governance,
         "rendered": rendered,
