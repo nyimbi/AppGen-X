@@ -530,6 +530,18 @@ appgen graph app.appgen --kind workflow --format json
 appgen graph app.appgen --kind pbc --format dot
 ```
 
+### `appgen graph-suite`
+
+```console
+appgen graph-suite app.appgen --json
+```
+
+Emits `appgen.graph-suite-report.v1` release evidence for every required graph
+kind and renders each graph as JSON, Mermaid, and DOT. This command is the
+preferred CI and IDE health check because it proves that graph previews,
+documentation diagrams, release evidence, and downstream graph tooling all use
+the same semantic model.
+
 Supported graph kinds:
 
 - `er`

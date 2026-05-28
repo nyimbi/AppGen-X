@@ -13,6 +13,7 @@ _TOOLING_SUBCOMMANDS = {
     "validate",
     "generate",
     "graph",
+    "graph-suite",
     "explain",
     "migration-plan",
     "nl-plan",

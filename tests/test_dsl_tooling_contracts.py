@@ -9,6 +9,7 @@ from pyAppGen.dsl import diagnostic_catalog_dsl
 from pyAppGen.dsl import diagnostic_fixture_audit_dsl
 from pyAppGen.dsl import doctor_report_dsl
 from pyAppGen.dsl import graph_report_dsl
+from pyAppGen.dsl import graph_suite_report_dsl
 from pyAppGen.dsl import generate_report_dsl
 from pyAppGen.dsl import lint_report_dsl
 from pyAppGen.dsl import lsp_service_dsl
@@ -164,6 +165,28 @@ def test_format_validate_and_graph_reports_follow_tooling_contracts() -> None:
     assert graph["graph"]["edges"][0]["from"] == "Invoice"
 
 
+def test_graph_suite_report_covers_required_kinds_and_formats() -> None:
+    report = graph_suite_report_dsl(RELEASE_SAMPLE, source_name="release.appgen")
+
+    assert report["format"] == "appgen.graph-suite-report.v1"
+    assert report["ok"] is True
+    assert set(report["graph_reports"]) == {
+        "er",
+        "lookup",
+        "workflow",
+        "handler",
+        "pbc",
+        "security",
+        "agent",
+        "deployment",
+        "package",
+    }
+    assert all(set(outputs) == {"json", "mermaid", "dot"} for outputs in report["renderings"].values())
+    assert report["renderings"]["er"]["json"].startswith("{")
+    assert report["renderings"]["workflow"]["mermaid"].startswith("graph TD")
+    assert report["renderings"]["deployment"]["dot"].startswith("digraph appgen")
+
+
 def test_appgen_lint_subcommand_emits_json_contract(tmp_path: Path) -> None:
     path = tmp_path / "finance.appgen"
     path.write_text(TOOLING_SAMPLE, encoding="utf-8")
@@ -180,6 +203,25 @@ def test_appgen_lint_subcommand_emits_json_contract(tmp_path: Path) -> None:
     payload = json.loads(result.stdout)
     assert payload["format"] == "appgen.lint-report.v1"
     assert payload["ok"] is True
+
+
+def test_appgen_graph_suite_subcommand_emits_json_contract(tmp_path: Path) -> None:
+    path = tmp_path / "release.appgen"
+    path.write_text(RELEASE_SAMPLE, encoding="utf-8")
+
+    result = subprocess.run(
+        [sys.executable, "-m", "pyAppGen", "graph-suite", str(path), "--json"],
+        check=False,
+        cwd=Path(__file__).resolve().parents[1],
+        text=True,
+        capture_output=True,
+    )
+
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["format"] == "appgen.graph-suite-report.v1"
+    assert payload["formats"] == ["json", "mermaid", "dot"]
+    assert payload["renderings"]["package"]["dot"].startswith("digraph appgen")
 
 
 def test_migration_plan_detects_add_drop_type_and_backfill_changes() -> None:

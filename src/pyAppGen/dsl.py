@@ -52,6 +52,20 @@ from appgenLexer import appgenLexer  # type: ignore  # noqa: E402
 from appgenParser import appgenParser  # type: ignore  # noqa: E402
 
 
+REQUIRED_GRAPH_KINDS = (
+    "er",
+    "lookup",
+    "workflow",
+    "handler",
+    "pbc",
+    "security",
+    "agent",
+    "deployment",
+    "package",
+)
+GRAPH_TEXT_FORMATS = ("json", "mermaid", "dot")
+
+
 class AppGenSyntaxError(ValueError):
     """Raised when AppGen DSL parsing fails."""
 
@@ -829,6 +843,10 @@ def dsl_tooling_cli(argv: Iterable[str] | None = None) -> int:
     graph_parser.add_argument("--kind", default="er")
     graph_parser.add_argument("--format", default="json", choices=("json", "mermaid", "dot"))
 
+    graph_suite_parser = subparsers.add_parser("graph-suite")
+    graph_suite_parser.add_argument("path")
+    graph_suite_parser.add_argument("--json", action="store_true")
+
     explain_parser = subparsers.add_parser("explain")
     explain_parser.add_argument("path")
     explain_group = explain_parser.add_mutually_exclusive_group(required=True)
@@ -929,6 +947,10 @@ def dsl_tooling_cli(argv: Iterable[str] | None = None) -> int:
             _emit_tooling_payload(report, as_json=True)
         else:
             print(_graph_as_text(report.get("graph", {}), args.format))
+        return 0 if report["ok"] else 1
+    if args.command == "graph-suite":
+        report = graph_suite_report_dsl(source, source_name=str(path))
+        _emit_tooling_payload(report, as_json=args.json)
         return 0 if report["ok"] else 1
     if args.command == "explain":
         report = explain_report_dsl(
@@ -1317,6 +1339,65 @@ def graph_report_dsl(text: str, *, source_name: str | None = None, kind: str = "
         "ok": model["ok"],
         "graph": graphs[kind],
         "diagnostics": model["diagnostics"],
+    }
+
+
+def graph_suite_report_dsl(text: str, *, source_name: str | None = None) -> dict:
+    """Return release evidence for every required semantic graph and format."""
+    model = semantic_model_dsl(text, source_name=source_name)
+    graphs = model.get("graphs", {})
+    missing_kinds = tuple(kind for kind in REQUIRED_GRAPH_KINDS if kind not in graphs)
+    graph_reports = {
+        kind: graph_report_dsl(text, source_name=source_name, kind=kind)
+        for kind in REQUIRED_GRAPH_KINDS
+        if kind in graphs
+    }
+    renderings = {
+        kind: {
+            output_format: _graph_as_text(report.get("graph", {}), output_format)
+            for output_format in GRAPH_TEXT_FORMATS
+        }
+        for kind, report in graph_reports.items()
+    }
+    rendering_gaps = tuple(
+        {
+            "kind": kind,
+            "format": output_format,
+        }
+        for kind, outputs in renderings.items()
+        for output_format, rendered in outputs.items()
+        if not rendered.strip()
+    )
+    checks = (
+        _release_check(
+            "all_required_graph_kinds",
+            not missing_kinds,
+            detail={"required": REQUIRED_GRAPH_KINDS, "missing": missing_kinds},
+        ),
+        _release_check(
+            "json_mermaid_dot_renderings",
+            not rendering_gaps
+            and all(set(outputs) == set(GRAPH_TEXT_FORMATS) for outputs in renderings.values()),
+            detail={"formats": GRAPH_TEXT_FORMATS, "gaps": rendering_gaps},
+        ),
+        _release_check(
+            "graphs_share_semantic_model",
+            all(report.get("graph") == graphs.get(kind) for kind, report in graph_reports.items()),
+            detail={"semantic_model_format": model.get("format")},
+        ),
+    )
+    return {
+        "format": "appgen.graph-suite-report.v1",
+        "source": source_name,
+        "ok": model["ok"] and all(check["ok"] for check in checks),
+        "semantic_model_format": model.get("format"),
+        "required_kinds": REQUIRED_GRAPH_KINDS,
+        "formats": GRAPH_TEXT_FORMATS,
+        "graph_reports": graph_reports,
+        "renderings": renderings,
+        "diagnostics": model["diagnostics"],
+        "checks": checks,
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }
 
 
