@@ -3276,7 +3276,7 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   attribution. Verification passed: Python compile for touched tooling
   entrypoints, direct directory-lint CLI audit helper probe, focused directory
   lint tests (`2 passed`), scoped diff whitespace check, and restricted-name
-  scan outside archive, Git internals, and active PBC paths. Commit: pending.
+  scan outside archive, Git internals, and active PBC paths. Commit: `4c262bdc`.
 - Current parallel PBC implementation pass delivered executable code for six
   PBCs rather than plan-only artifacts: `actuarial_pricing_reserving`,
   `advertising_campaign_operations`, `agri_supply_chain_traceability`,
