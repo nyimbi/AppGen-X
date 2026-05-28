@@ -1,17 +1,75 @@
-from .domain_depth import domain_capability_surface_contract, DOMAIN_OPERATIONS, DOMAIN_RULES, DOMAIN_PARAMETERS, DOMAIN_ADVANCED_CAPABILITIES, DOMAIN_OWNED_TABLES, DOMAIN_EDGE_CASES
-PBC_KEY = 'banking_core_accounts'
+from .runtime import (
+    BANKING_CORE_ACCOUNTS_CONTROLS,
+    BANKING_CORE_ACCOUNTS_FORMS,
+    BANKING_CORE_ACCOUNTS_WIZARDS,
+    banking_core_accounts_build_app_surface,
+    banking_core_accounts_build_control_surface,
+    banking_core_accounts_build_workbench_view,
+)
+
+PBC_KEY = "banking_core_accounts"
+
 
 def banking_core_accounts_ui_contract():
-    surface = domain_capability_surface_contract()
-    return {'ok': True, 'pbc': PBC_KEY, 'fragments': ('BankingCoreAccountsWorkbench', 'BankingCoreAccountsDetail', 'BankingCoreAccountsAssistantPanel'), 'configuration_editor': True, 'stream_engine_picker_visible': False, 'action_permissions': ('banking_core_accounts.read',
- 'banking_core_accounts.create',
- 'banking_core_accounts.update',
- 'banking_core_accounts.approve',
- 'banking_core_accounts.admin'), 'full_capability_surface': {'operation_actions': DOMAIN_OPERATIONS, 'rule_editors': DOMAIN_RULES, 'parameter_editors': DOMAIN_PARAMETERS, 'advanced_panels': DOMAIN_ADVANCED_CAPABILITIES, 'table_browsers': DOMAIN_OWNED_TABLES, 'edge_case_queues': DOMAIN_EDGE_CASES, 'agent_tools': tuple(f'{PBC_KEY}_skills.{op}' for op in DOMAIN_OPERATIONS), 'navigation_sections': ('overview','operations','edge_case_triage','advanced_intelligence','release_evidence'), 'coverage': surface['coverage']}, 'side_effects': ()}
+    app_surface = banking_core_accounts_build_app_surface()
+    control_surface = banking_core_accounts_build_control_surface()
+    return {
+        "ok": True,
+        "pbc": PBC_KEY,
+        "fragments": (
+            "BankingCoreAccountsWorkbench",
+            "BankingCoreAccountsDetail",
+            "BankingCoreAccountsAssistantPanel",
+        ),
+        "configuration_editor": True,
+        "stream_engine_picker_visible": False,
+        "action_permissions": (
+            "banking_core_accounts.read",
+            "banking_core_accounts.create",
+            "banking_core_accounts.update",
+            "banking_core_accounts.approve",
+            "banking_core_accounts.admin",
+        ),
+        "forms": BANKING_CORE_ACCOUNTS_FORMS,
+        "wizards": BANKING_CORE_ACCOUNTS_WIZARDS,
+        "controls": BANKING_CORE_ACCOUNTS_CONTROLS,
+        "full_capability_surface": {
+            "operation_actions": ("open_deposit_account", "transition_deposit_account"),
+            "rule_editors": ("deposit_account_policy",),
+            "parameter_editors": ("workbench_limit", "approval_sla_hours"),
+            "advanced_panels": ("lifecycle_state_machine", "control_assertions"),
+            "table_browsers": app_surface["tables"],
+            "edge_case_queues": ("maker_checker_failures", "invalid_transition_attempts"),
+            "navigation_sections": (
+                "overview",
+                "forms",
+                "wizards",
+                "controls",
+                "workbench",
+                "release_evidence",
+            ),
+            "coverage": {
+                "event_contract": "AppGen-X",
+                "stream_engine_picker_visible": False,
+                "shared_table_access": False,
+                "single_pbc_app": True,
+            },
+        },
+        "control_surface": control_surface,
+        "side_effects": (),
+    }
 
-def banking_core_accounts_render_workbench():
-    ui = banking_core_accounts_ui_contract(); full = ui['full_capability_surface']
-    return {'ok': True, 'pbc': PBC_KEY, 'route': f'/workbench/pbcs/{PBC_KEY}', 'operation_actions': full['operation_actions'], 'table_browsers': full['table_browsers'], 'side_effects': ()}
+
+def banking_core_accounts_render_workbench(state=None, tenant="default"):
+    return banking_core_accounts_build_workbench_view(state=state, tenant=tenant)
+
 
 def smoke_test():
-    return {'ok': banking_core_accounts_ui_contract()['ok'] and banking_core_accounts_render_workbench()['ok'], 'side_effects': ()}
+    contract = banking_core_accounts_ui_contract()
+    workbench = banking_core_accounts_render_workbench()
+    return {
+        "ok": contract["ok"]
+        and workbench["ok"]
+        and contract["full_capability_surface"]["coverage"]["single_pbc_app"],
+        "side_effects": (),
+    }

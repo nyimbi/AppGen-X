@@ -1,110 +1,57 @@
-# Capital Projects Delivery PBC
+# Capital Projects Delivery PBC Specification
 
-## Purpose
+## Scope
 
-The `capital_projects_delivery` PBC is a packaged business capability for Megaproject governance, EPC packages, permits, progress, commissioning, risk, and capital delivery controls. It owns schema, migrations, models, services, API contracts, AppGen-X event contracts, handlers, UI fragments, AI agent skills, configuration, rules, parameters, seed data, package metadata, tests, and release evidence. It composes with other AppGen-X PBCs only through declared APIs, AppGen-X events, or package-local projections.
+`capital_projects_delivery` is a standalone PBC for capital project governance, engineering-procurement-construction package management, permit milestone control, physical progress measurement, commissioning systems, project risk, turnover packages, stage-gate approvals, and delivery workbench operations. A generated application that includes only this PBC must be able to run the domain: it needs database-backed forms, lifecycle wizards, controls, service commands, API routes, AppGen-X eventing, an agent assistant, RBAC permission enforcement, seed data, configuration, and release evidence.
 
-## Stable Identity
+The standard capability surface covers capital_project_management, capital_projects_delivery_workflow, capital_projects_delivery_analytics, configuration_schema, rule_engine, parameter_engine, owned_schema_migrations_models, appgen_x_outbox_inbox_eventing, idempotent_handlers, retry_dead_letter_evidence, permissions, seed_data, workbench, agentic_document_instruction_intake, governed_datastore_crud, ai_agent_task_assistance, configuration_workbench, and continuous_release_assurance. Advanced capabilities include event-sourced operational history, multi-tenant policy isolation, schema evolution resilience, autonomous anomaly detection, semantic document instruction understanding, predictive risk scoring, counterfactual scenario simulation, cryptographic audit proofs, continuous control testing, carbon and sustainability awareness, cross-PBC event federation, and governed AI agent execution.
 
-- PBC key: `capital_projects_delivery`.
-- Mesh: `opsmfg`.
-- Package directory: `src/pyAppGen/pbcs/capital_projects_delivery`.
-- Runtime entrypoint: `capital_projects_delivery_runtime_capabilities()`.
-- UI entrypoint: `capital_projects_delivery_ui_contract()`.
-- Source registration entrypoint: `implementation_contract()`.
-- Allowed database backends: PostgreSQL, MySQL, and MariaDB.
-- Eventing standard: fixed AppGen-X outbox/inbox event contract.
-- User-facing stream-engine selector: forbidden and hidden.
+## Owned Boundary And Datastore
 
-## Owned Datastore Boundary
+The PBC owns the capital_project, epc_package, permit_milestone, progress_measurement, commissioning_system, project_risk, turnover_package, capital_projects_delivery_policy_rule, capital_projects_delivery_runtime_parameter, capital_projects_delivery_schema_extension, capital_projects_delivery_control_assertion, and capital_projects_delivery_governed_model tables. No shared foreign table is required for core operation. Integration with portfolio, finance, procurement, assets, or workforce PBCs happens through API calls, consumed events, emitted events, or projections. The schema, migration, and model artifacts must be portable across PostgreSQL, MySQL, and MariaDB.
 
-- `capital_projects_delivery_capital_project`: owns capital project lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `capital_projects_delivery_epc_package`: owns epc package lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `capital_projects_delivery_permit_milestone`: owns permit milestone lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `capital_projects_delivery_progress_measurement`: owns progress measurement lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `capital_projects_delivery_commissioning_system`: owns commissioning system lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `capital_projects_delivery_project_risk`: owns project risk lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `capital_projects_delivery_turnover_package`: owns turnover package lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `capital_projects_delivery_capital_projects_delivery_policy_rule`: owns capital projects delivery policy rule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `capital_projects_delivery_capital_projects_delivery_runtime_parameter`: owns capital projects delivery runtime parameter lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `capital_projects_delivery_capital_projects_delivery_schema_extension`: owns capital projects delivery schema extension lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `capital_projects_delivery_capital_projects_delivery_control_assertion`: owns capital projects delivery control assertion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `capital_projects_delivery_capital_projects_delivery_governed_model`: owns capital projects delivery governed model lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+The owned model captures project identity, authorization, baseline dates, budget envelope references, delivery stage, EPC package scope, permit authority, percent complete, earned progress, commissioning boundary, risk exposure, turnover readiness, policy rule evaluation, configuration parameters, schema extensions, control assertions, and governed AI model metadata.
 
-Runtime AppGen-X event tables are `capital_projects_delivery_appgen_outbox_event`, `capital_projects_delivery_appgen_inbox_event`, and `capital_projects_delivery_appgen_dead_letter_event`. The PBC does not mutate foreign tables. Dependencies are represented by consumed events ('PolicyChanged', 'AuditEventSealed', 'OperationalKpiChanged') and API contracts ('POST /capital-projects', 'POST /epc-packages', 'POST /permit-milestones', 'POST /progress-measurements', 'POST /commissioning-systems', 'GET /capital-projects-delivery-workbench').
+## Workflows And Commands
 
-## Executable Domain Operations
+The create-capital-project workflow captures project charter, sponsor, site, phase, approval class, target dates, budget reference, and risk category. The gate checklist wizard records required deliverables and evidence for concept, definition, execution, commissioning, turnover, and closeout. Gate approval commands verify checklist completion, RBAC authority, maker-checker separation, policy rules, risk conditions, permit status, and commissioning readiness before changing lifecycle state. Rejection and rollback commands preserve event-sourced history and require reason codes.
 
-- `create_capital_project`: validates policy, writes owned `capital_projects_delivery_capital_project` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `record_epc_package`: validates policy, writes owned `capital_projects_delivery_epc_package` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `review_permit_milestone`: validates policy, writes owned `capital_projects_delivery_permit_milestone` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `approve_progress_measurement`: validates policy, writes owned `capital_projects_delivery_progress_measurement` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `simulate_commissioning_system`: validates policy, writes owned `capital_projects_delivery_commissioning_system` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `create_project_risk`: validates policy, writes owned `capital_projects_delivery_project_risk` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `record_turnover_package`: validates policy, writes owned `capital_projects_delivery_turnover_package` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `review_capital_projects_delivery_policy_rule`: validates policy, writes owned `capital_projects_delivery_capital_projects_delivery_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `approve_capital_projects_delivery_runtime_parameter`: validates policy, writes owned `capital_projects_delivery_capital_projects_delivery_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `simulate_capital_projects_delivery_schema_extension`: validates policy, writes owned `capital_projects_delivery_capital_projects_delivery_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `create_capital_projects_delivery_control_assertion`: validates policy, writes owned `capital_projects_delivery_capital_projects_delivery_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `record_capital_projects_delivery_governed_model`: validates policy, writes owned `capital_projects_delivery_capital_projects_delivery_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_capital_projects_delivery_13`: validates policy, writes owned `capital_projects_delivery_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_capital_projects_delivery_14`: validates policy, writes owned `capital_projects_delivery_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_capital_projects_delivery_15`: validates policy, writes owned `capital_projects_delivery_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_capital_projects_delivery_16`: validates policy, writes owned `capital_projects_delivery_capital_project` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_capital_projects_delivery_17`: validates policy, writes owned `capital_projects_delivery_epc_package` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_capital_projects_delivery_18`: validates policy, writes owned `capital_projects_delivery_permit_milestone` records, emits AppGen-X events, and returns side-effect-free evidence.
+EPC package workflows create package scope, contractor reference, planned dates, procurement readiness, interface risks, and acceptance criteria. Permit milestone workflows track authority, application, review, approval, expiry, and blocking status. Progress measurement commands record physical quantities, earned value references, percent complete, exceptions, and evidence attachments. Commissioning system commands track subsystem boundaries, test packs, punch items, energization status, and turnover packages. Query operations serve project detail, stage-gate readiness, permit constraints, progress exceptions, commissioning readiness, risk heatmaps, and the workbench queue.
 
-Every command is deterministic and side-effect-free in package tests. Each command returns target owned tables, emitted event evidence, idempotency keys, rule decisions, parameter reads, permissions, and audit hashes.
+## UI, Controls, And Agent
 
-## Standard Table-Stakes Capabilities
+The UI includes CapitalProjectsDeliveryWorkbench, CapitalProjectsDeliveryDetail, and CapitalProjectsDeliveryAssistantPanel. Forms cover project creation, EPC package setup, permit milestone update, progress measurement, commissioning system readiness, project risk entry, turnover package creation, policy rule editing, and parameter update. Wizards cover capital project gate approval, lifecycle transition review, commissioning readiness, and turnover acceptance. Controls verify required deliverables, schedule slippage, risk exposure, permit blockers, progress evidence, commissioning punch items, rule compliance, approval authority, RBAC permission, duplicate idempotency keys, and owned-table boundary protection.
 
-The package covers lifecycle intake, identity and classification, validation, approvals, exception handling, audit evidence, role-aware workbenches, assistant-guided task execution, configuration, rule compilation, bounded parameters, seed data, RBAC, route dispatch, typed events, idempotent handlers, retry, and dead-letter triage. It includes PostgreSQL, MySQL, and MariaDB backend allowlists and never exposes stream-engine pickers.
+The PBC agent, assistant, and chatbot expose skills for project intake, document instruction parsing, checklist generation, CRUD datastore mutation, risk explanation, gate readiness guidance, and workbench triage. The assistant can read a project charter, engineering package note, permit correspondence, progress report, or commissioning checklist, build a side-effect-free mutation plan, explain rule and parameter impacts, and execute approved service commands. In a composed app, these skills integrate into the single application agent rather than a separate disconnected bot.
 
-## Advanced Capabilities
+## Events, Handlers, And Resilience
 
-- Event-sourced operational history for Capital Projects Delivery domain records.
-- Multi-tenant policy isolation with owned table boundaries.
-- Schema evolution resilience through package-local schema extensions.
-- Autonomous anomaly detection and specialist exception triage.
-- Semantic document and instruction understanding for professional intake.
-- Predictive risk scoring and confidence-ranked recommendations.
-- Counterfactual scenario simulation for policy and operational choices.
-- Cryptographic audit proofs for high-value records and decisions.
-- Continuous control testing over domain lifecycle events.
-- Carbon and sustainability awareness where operational decisions affect footprint.
-- Cross-PBC event federation through AppGen-X only.
-- Governed AI agent execution with human confirmation for mutations.
+Ordinary eventing uses the AppGen-X contract only. The package emits CapitalProjectsDeliveryCreated, CapitalProjectsDeliveryUpdated, CapitalProjectsDeliveryApproved, and CapitalProjectsDeliveryExceptionOpened. It consumes PolicyChanged, AuditEventSealed, and OperationalKpiChanged. Outbox events are written inside the same service transaction as owned table changes. Inbox handlers process consumed events with idempotency_key checks, retry policy evidence, and dead-letter routing for malformed or unrecoverable payloads. There is no stream-engine picker in user-facing configuration.
 
-## Rules, Parameters, and Configuration
+## Rules, Parameters, And Configuration
 
-Rules are first-class artifacts: ('capital_project_policy', 'epc_package_policy', 'permit_milestone_policy', 'progress_measurement_policy', 'commissioning_system_policy', 'project_risk_policy'). Parameters are bounded artifacts: ('quality_score_floor', 'materiality_threshold', 'approval_sla_hours', 'risk_threshold', 'forecast_horizon_days', 'workbench_limit'). Configuration includes database backend, event topic, retry limit, default policy, workbench limits, confirmation requirements for agent writes, and tenant isolation options.
+Rules evaluate gate deliverable completeness, minimum approval authority, permit blocking status, risk thresholds, commissioning acceptance, turnover evidence, and assistant mutation policy. Parameters define retry limit, default policy, stage gate thresholds, risk appetite, required review quorum, and stale evidence limits. Configuration is surfaced through CAPITAL_PROJECTS_DELIVERY_DATABASE_URL, CAPITAL_PROJECTS_DELIVERY_EVENT_TOPIC, CAPITAL_PROJECTS_DELIVERY_RETRY_LIMIT, and CAPITAL_PROJECTS_DELIVERY_DEFAULT_POLICY.
 
-## Public APIs and Services
+## Registration And Release
 
-APIs are ('POST /capital-projects', 'POST /epc-packages', 'POST /permit-milestones', 'POST /progress-measurements', 'POST /commissioning-systems', 'GET /capital-projects-delivery-workbench'). Services preserve idempotency keys, permission names, owned table scopes, route metadata, and event mappings. Services write only to `capital_projects_delivery_` tables and package-local event tables.
-
-## Events and Handlers
-
-Emitted events: ('CapitalProjectsDeliveryCreated', 'CapitalProjectsDeliveryUpdated', 'CapitalProjectsDeliveryApproved', 'CapitalProjectsDeliveryExceptionOpened'). Consumed events: ('PolicyChanged', 'AuditEventSealed', 'OperationalKpiChanged'). Handlers require event IDs, ignore duplicates, record AppGen-X inbox entries, and write dead-letter evidence for unknown or exhausted events.
-
-## UI, Workbench, and Agent Skills
-
-Workbench views include ('capital project board', 'epc package board', 'permit milestone board', 'progress measurement board', 'commissioning system board', 'project risk board', 'turnover package board'). The UI exposes operational queues, detail panels, rule editors, parameter editors, assistant panels, exception triage, analytics, and release evidence. The agent contributes `capital_projects_delivery_skills`, parses documents and instructions, produces governed CRUD previews, validates owned table boundaries, requires human confirmation for writes, and participates in the composed single application assistant.
-
-## Release Evidence and Tests
-
-Release readiness proves schema, migrations, models, service contracts, route contracts, AppGen-X eventing, idempotent handlers, retry/dead-letter evidence, UI surfaces, RBAC, configuration, rules, parameters, seed data, package metadata, side-effect-free registration, domain-depth operations, agent integration, and generation smoke readiness. Focused package tests cover schema/service/release evidence, event contracts, package metadata, route contracts, governance hooks, and idempotent handlers.
+Package registration, discovery, metadata validation, and composition planning are side-effect-free. Release evidence must prove migration, schema, model, services, API routes, events, handlers, UI, workbench, permission/RBAC, configuration, seed data, agent skills, tests, and generation smoke behavior. A one-PBC app is releasable only if it can create and approve a capital project, record EPC and permit work, measure progress, review commissioning, and show actionable controls without any external package.
 
 ## Manifest Traceability Appendix
 
-- tables: capital_project, epc_package, permit_milestone, progress_measurement, commissioning_system, project_risk, turnover_package, capital_projects_delivery_policy_rule, capital_projects_delivery_runtime_parameter, capital_projects_delivery_schema_extension, capital_projects_delivery_control_assertion, capital_projects_delivery_governed_model
-- operations: create_capital_project, record_epc_package, review_permit_milestone, approve_progress_measurement, simulate_commissioning_system, create_project_risk, record_turnover_package, review_capital_projects_delivery_policy_rule, approve_capital_projects_delivery_runtime_parameter, simulate_capital_projects_delivery_schema_extension, create_capital_projects_delivery_control_assertion, record_capital_projects_delivery_governed_model, operate_capital_projects_delivery_13, operate_capital_projects_delivery_14, operate_capital_projects_delivery_15, operate_capital_projects_delivery_16, operate_capital_projects_delivery_17, operate_capital_projects_delivery_18
-- emits: CapitalProjectsDeliveryCreated, CapitalProjectsDeliveryUpdated, CapitalProjectsDeliveryApproved, CapitalProjectsDeliveryExceptionOpened
-- consumes: PolicyChanged, AuditEventSealed, OperationalKpiChanged
-- rules: capital_project_policy, epc_package_policy, permit_milestone_policy, progress_measurement_policy, commissioning_system_policy, project_risk_policy
-- parameters: quality_score_floor, materiality_threshold, approval_sla_hours, risk_threshold, forecast_horizon_days, workbench_limit
-- ui_fragments: CapitalProjectsDeliveryWorkbench, CapitalProjectsDeliveryDetail, CapitalProjectsDeliveryAssistantPanel
-- permissions: capital_projects_delivery.read, capital_projects_delivery.create, capital_projects_delivery.update, capital_projects_delivery.approve, capital_projects_delivery.admin
-- configuration: CAPITAL_PROJECTS_DELIVERY_DATABASE_URL, CAPITAL_PROJECTS_DELIVERY_EVENT_TOPIC, CAPITAL_PROJECTS_DELIVERY_RETRY_LIMIT, CAPITAL_PROJECTS_DELIVERY_DEFAULT_POLICY
-- standard_features: capital_project_management, capital_projects_delivery_workflow, capital_projects_delivery_analytics, configuration_schema, rule_engine, parameter_engine, owned_schema_migrations_models, appgen_x_outbox_inbox_eventing, idempotent_handlers, retry_dead_letter_evidence, permissions, seed_data, workbench, agentic_document_instruction_intake, governed_datastore_crud, ai_agent_task_assistance, configuration_workbench, continuous_release_assurance
-- advanced_capabilities: capital_projects_delivery_event_sourced_operational_history, capital_projects_delivery_multi_tenant_policy_isolation, capital_projects_delivery_schema_evolution_resilience, capital_projects_delivery_autonomous_anomaly_detection, capital_projects_delivery_semantic_document_instruction_understanding, capital_projects_delivery_predictive_risk_scoring, capital_projects_delivery_counterfactual_scenario_simulation, capital_projects_delivery_cryptographic_audit_proofs, capital_projects_delivery_continuous_control_testing, capital_projects_delivery_carbon_and_sustainability_awareness, capital_projects_delivery_cross_pbc_event_federation, capital_projects_delivery_governed_ai_agent_execution
+Tables: capital_project, epc_package, permit_milestone, progress_measurement, commissioning_system, project_risk, turnover_package, capital_projects_delivery_policy_rule, capital_projects_delivery_runtime_parameter, capital_projects_delivery_schema_extension, capital_projects_delivery_control_assertion, capital_projects_delivery_governed_model.
+
+APIs: POST /capital-projects, POST /epc-packages, POST /permit-milestones, POST /progress-measurements, POST /commissioning-systems, GET /capital-projects-delivery-workbench.
+
+Emits: CapitalProjectsDeliveryCreated, CapitalProjectsDeliveryUpdated, CapitalProjectsDeliveryApproved, CapitalProjectsDeliveryExceptionOpened.
+
+Consumes: PolicyChanged, AuditEventSealed, OperationalKpiChanged.
+
+UI fragments: CapitalProjectsDeliveryWorkbench, CapitalProjectsDeliveryDetail, CapitalProjectsDeliveryAssistantPanel.
+
+Permissions: capital_projects_delivery.read, capital_projects_delivery.create, capital_projects_delivery.update, capital_projects_delivery.approve, capital_projects_delivery.admin.
+
+Configuration: CAPITAL_PROJECTS_DELIVERY_DATABASE_URL, CAPITAL_PROJECTS_DELIVERY_EVENT_TOPIC, CAPITAL_PROJECTS_DELIVERY_RETRY_LIMIT, CAPITAL_PROJECTS_DELIVERY_DEFAULT_POLICY.
+
+Standard features: capital_project_management, capital_projects_delivery_workflow, capital_projects_delivery_analytics, configuration_schema, rule_engine, parameter_engine, owned_schema_migrations_models, appgen_x_outbox_inbox_eventing, idempotent_handlers, retry_dead_letter_evidence, permissions, seed_data, workbench, agentic_document_instruction_intake, governed_datastore_crud, ai_agent_task_assistance, configuration_workbench, continuous_release_assurance.
+
+Advanced capabilities: capital_projects_delivery_event_sourced_operational_history, capital_projects_delivery_multi_tenant_policy_isolation, capital_projects_delivery_schema_evolution_resilience, capital_projects_delivery_autonomous_anomaly_detection, capital_projects_delivery_semantic_document_instruction_understanding, capital_projects_delivery_predictive_risk_scoring, capital_projects_delivery_counterfactual_scenario_simulation, capital_projects_delivery_cryptographic_audit_proofs, capital_projects_delivery_continuous_control_testing, capital_projects_delivery_carbon_and_sustainability_awareness, capital_projects_delivery_cross_pbc_event_federation, capital_projects_delivery_governed_ai_agent_execution.

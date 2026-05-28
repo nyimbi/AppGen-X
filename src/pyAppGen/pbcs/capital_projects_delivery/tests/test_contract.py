@@ -8,6 +8,8 @@ from pyAppGen.pbcs.capital_projects_delivery.services import service_operation_c
 from pyAppGen.pbcs.capital_projects_delivery.routes import api_route_contracts, validate_api_route_contracts
 from pyAppGen.pbcs.capital_projects_delivery.config import governance_smoke_test
 from pyAppGen.pbcs.capital_projects_delivery.agent import agent_skill_manifest, chatbot_interface_contract, document_instruction_plan, datastore_crud_plan
+from pyAppGen.pbcs.capital_projects_delivery.runtime import capital_projects_delivery_build_single_pbc_app_contract, capital_projects_delivery_build_forms_contract, capital_projects_delivery_build_wizards_contract, capital_projects_delivery_build_controls_contract
+from pyAppGen.pbcs.capital_projects_delivery.models import database_backed_model_manifest
 
 
 def test_generated_schema_service_and_release_evidence():
@@ -20,6 +22,7 @@ def test_generated_schema_service_and_release_evidence():
 
 def test_manifest_and_event_contract():
     assert implementation_contract()['pbc'] == 'capital_projects_delivery'
+    assert implementation_contract()['single_pbc_app_contract']['ok'] is True
     assert event_contract_manifest()['ok'] is True
     assert validate_event_contract()['ok'] is True
 
@@ -44,6 +47,19 @@ def test_service_and_route_surface_are_executable():
     assert api_route_contracts()['ok'] is True
     assert validate_api_route_contracts()['ok'] is True
     assert service_operation_contracts()['operation_contract']
+
+
+def test_single_pbc_app_surface_is_database_backed_and_form_driven():
+    app = capital_projects_delivery_build_single_pbc_app_contract()
+    assert app['ok'] is True
+    assert app['database_backed'] is True
+    assert len(app['forms']) >= 3
+    assert len(app['wizards']) >= 2
+    assert len(app['controls']) >= 4
+    assert database_backed_model_manifest()['database_backed'] is True
+    assert capital_projects_delivery_build_forms_contract()['ok'] is True
+    assert capital_projects_delivery_build_wizards_contract()['ok'] is True
+    assert capital_projects_delivery_build_controls_contract()['ok'] is True
 
 
 def test_configuration_permissions_and_seed_hooks_are_executable():

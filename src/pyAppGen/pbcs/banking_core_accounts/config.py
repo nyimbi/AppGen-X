@@ -1,3 +1,5 @@
+import hashlib
+
 PBC_KEY = 'banking_core_accounts'
 PARAMETERS = ('quality_score_floor',
  'materiality_threshold',
@@ -11,6 +13,9 @@ RULES = ('deposit_account_policy',
  'interest_accrual_policy',
  'fee_assessment_policy',
  'statement_cycle_policy')
+
+def _digest(value):
+    return hashlib.sha256(repr(value).encode('utf-8')).hexdigest()
 
 def configuration_manifest():
     return {'ok': True, 'pbc': PBC_KEY, 'database_backends': ('postgresql','mysql','mariadb'), 'event_contract': 'AppGen-X', 'stream_engine_picker_visible': False}
@@ -29,7 +34,7 @@ def rule_manifest():
     return {'ok': True, 'rules': RULES, 'side_effects': ()}
 
 def compile_rule(rule):
-    return {'ok': True, 'rule': dict(rule), 'compiled_hash': str(abs(hash(repr(rule)))), 'side_effects': ()}
+    return {'ok': True, 'rule': dict(rule), 'compiled_hash': _digest(rule), 'side_effects': ()}
 
 def evaluate_rule(rule, payload=None):
     return {'ok': True, 'passed': True, 'rule': rule, 'payload': dict(payload or {}), 'side_effects': ()}

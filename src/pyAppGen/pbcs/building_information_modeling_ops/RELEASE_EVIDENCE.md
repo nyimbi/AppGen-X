@@ -1,12 +1,24 @@
 # Release Evidence - Building Information Modeling Operations
 
-Package directory: `pbcs/building_information_modeling_ops`.
+This package now ships release evidence for the implemented federation-governance slice at `src/pyAppGen/pbcs/building_information_modeling_ops`.
 
-This PBC includes owned schema, migration DDL, models, services, routes, events, handlers, UI workbench surfaces, agent skills, permissions, configuration, seed data, package metadata, side-effect-free registration, and focused package tests.
+## Evidence Produced
 
-## Evidence
+- Database-backed owned schema and model metadata for the PBC-owned BIM tables.
+- AppGen-X-only event contract with owned outbox, inbox, and dead-letter tables.
+- Forms for coordinate baselines, model package registration, and federation assembly.
+- Wizards for federation setup and release readiness.
+- Controls for coordinate alignment, issue-purpose publish gates, approval lineage, and owned-table boundary enforcement.
+- Workbench views for federation operations, blocked package triage, and release evidence review.
+- Release evidence bundles that include contributor checksums, approval states, coordinate basis, and lineage hash.
 
-- Release Evidence: schema, service, route, event, handler, UI, agent, and governance contracts are materialized.
-- Owned datastore boundary: every owned table starts with `building_information_modeling_ops_` and cross-PBC collaboration uses AppGen-X events or declared APIs.
-- Event contract: AppGen-X outbox/inbox with retry and dead-letter evidence.
-- Package tests: `tests/test_contract.py` validates schema/service/release, event contracts, side-effect-free registration, routes, governance, and idempotent handlers.
+## Validation Summary
+
+- Package-local tests pass: `13/13`.
+- Package compile pass succeeds.
+- Single-PBC app smoke confirms:
+  - `usable_as_one_pbc_app = True`
+  - `forms = 3`
+  - `wizards = 2`
+  - `controls = 4`
+  - `smoke_ok = True`

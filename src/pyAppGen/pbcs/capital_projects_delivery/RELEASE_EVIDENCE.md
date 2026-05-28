@@ -2,11 +2,26 @@
 
 Package directory: `pbcs/capital_projects_delivery`.
 
-This PBC includes owned schema, migration DDL, models, services, routes, events, handlers, UI workbench surfaces, agent skills, permissions, configuration, seed data, package metadata, side-effect-free registration, and focused package tests.
+## Scope Proven
 
-## Evidence
+This package now proves a usable single-PBC capital project delivery app slice
+with:
 
-- Release Evidence: schema, service, route, event, handler, UI, agent, and governance contracts are materialized.
-- Owned datastore boundary: every owned table starts with `capital_projects_delivery_` and cross-PBC collaboration uses AppGen-X events or declared APIs.
-- Event contract: AppGen-X outbox/inbox with retry and dead-letter evidence.
-- Package tests: `tests/test_contract.py` validates schema/service/release, event contracts, side-effect-free registration, routes, governance, and idempotent handlers.
+- owned database-backed tables, migrations, and model contracts,
+- AppGen-X-only outbox/inbox/dead-letter eventing,
+- executable lifecycle gate creation, checklist, approval, and rollback logic,
+- forms, wizards, controls, workbench views, services, routes, and agent help,
+- release checks for lifecycle controls and single-PBC usability.
+
+## Evidence Summary
+
+- Lifecycle gates: invalid forward transitions raise
+  `CapitalProjectsDeliveryExceptionOpened`; valid approvals emit
+  `CapitalProjectsDeliveryApproved` with gate context.
+- Boundary safety: all writes remain inside `capital_projects_delivery_*` owned
+  tables; `shared_table_access` is `False`.
+- App shell usability: the package exposes database, forms, wizards, controls,
+  workbench, services, and agent-help contracts through
+  `capital_projects_delivery_build_single_pbc_app_contract()`.
+- Validation: package-local executable tests and smoke checks passed; exact
+  commands and results are recorded in `implementation-status.md`.

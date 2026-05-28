@@ -1,0 +1,13 @@
+ALTER TABLE capital_markets_trading_ops_trade_order ADD COLUMN lifecycle_state TEXT;
+ALTER TABLE capital_markets_trading_ops_trade_order ADD COLUMN status_badge TEXT;
+ALTER TABLE capital_markets_trading_ops_trade_order ADD COLUMN workbench_queue TEXT;
+ALTER TABLE capital_markets_trading_ops_trade_order ADD COLUMN release_ready INTEGER DEFAULT 0;
+ALTER TABLE capital_markets_trading_ops_trade_order ADD COLUMN trade_order_signature TEXT;
+ALTER TABLE capital_markets_trading_ops_trade_order ADD COLUMN validation_payload JSON;
+ALTER TABLE capital_markets_trading_ops_trade_order ADD COLUMN actionable_remediation JSON;
+
+CREATE INDEX idx_capital_markets_trading_ops_trade_order_queue
+    ON capital_markets_trading_ops_trade_order (tenant, workbench_queue, status);
+
+CREATE INDEX idx_capital_markets_trading_ops_trade_order_signature
+    ON capital_markets_trading_ops_trade_order (trade_order_signature);

@@ -1,6 +1,7 @@
 """Capital Markets Trading Operations PBC implementation package."""
 from .manifest import PBC_MANIFEST
 from ..source_contract import source_pbc_package_contract, source_package_metadata, validate_source_package_metadata, source_registration_plan
+from .application import CapitalMarketsTradingOpsApp
 from .runtime import *
 from .ui import capital_markets_trading_ops_ui_contract, capital_markets_trading_ops_render_workbench
 
@@ -38,4 +39,7 @@ def package_discovery_plan(existing_catalog: dict | None = None) -> dict:
 def smoke_test() -> dict:
     discovery = package_discovery_plan()
     runtime = capital_markets_trading_ops_runtime_smoke()
-    return {'ok': discovery['ok'] and runtime['ok'], 'discovery': discovery, 'runtime': runtime, 'side_effects': ()}
+    app = CapitalMarketsTradingOpsApp()
+    app_contract = app.app_contract()
+    app.close()
+    return {'ok': discovery['ok'] and runtime['ok'] and app_contract['ok'], 'discovery': discovery, 'runtime': runtime, 'app_contract': app_contract, 'side_effects': ()}

@@ -5,7 +5,7 @@ def build_release_evidence():
 
 def release_readiness_manifest():
     evidence = build_release_evidence()
-    return {'ok': evidence['ok'], 'pbc': evidence['pbc'], 'sections': ('schema','services','events','handlers','ui','agent','governance'), 'blocking_gaps': (), 'boundary_gaps': (), 'evidence': evidence, 'side_effects': ()}
+    return {'ok': evidence['ok'], 'pbc': evidence['pbc'], 'sections': ('schema','services','events','handlers','ui','agent','governance','forms','wizards','controls','one_pbc_app'), 'blocking_gaps': (), 'boundary_gaps': (), 'evidence': evidence, 'side_effects': ()}
 
 def validate_release_evidence():
     manifest = release_readiness_manifest()

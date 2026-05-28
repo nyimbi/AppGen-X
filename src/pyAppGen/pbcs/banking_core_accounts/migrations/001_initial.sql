@@ -1,4 +1,4 @@
-CREATE TABLE banking_core_accounts_deposit_account (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
+CREATE TABLE banking_core_accounts_deposit_account (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, account_number TEXT NOT NULL, customer_id TEXT NOT NULL, product_code TEXT NOT NULL, currency TEXT NOT NULL, lifecycle_state TEXT NOT NULL, maker_checker_required BOOLEAN NOT NULL, last_transition_reason TEXT, payload JSON, created_at TEXT, updated_at TEXT);
 CREATE TABLE banking_core_accounts_account_balance (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
 CREATE TABLE banking_core_accounts_account_hold (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
 CREATE TABLE banking_core_accounts_interest_accrual (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);

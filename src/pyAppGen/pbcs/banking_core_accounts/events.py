@@ -1,9 +1,14 @@
+import hashlib
+
 PBC_KEY = 'banking_core_accounts'
 EMITTED = ('BankingCoreAccountsCreated',
  'BankingCoreAccountsUpdated',
  'BankingCoreAccountsApproved',
  'BankingCoreAccountsExceptionOpened')
 CONSUMED = ('PolicyChanged', 'AuditEventSealed', 'OperationalKpiChanged')
+
+def _digest(value):
+    return hashlib.sha256(repr(value).encode('utf-8')).hexdigest()
 
 def event_contract_manifest():
     return {'ok': True, 'pbc': PBC_KEY, 'emitted': EMITTED, 'consumed': CONSUMED, 'outbox_table': f'{PBC_KEY}_appgen_outbox_event', 'inbox_table': f'{PBC_KEY}_appgen_inbox_event', 'dead_letter_table': f'{PBC_KEY}_appgen_dead_letter_event', 'event_contract': 'AppGen-X', 'stream_engine_picker_visible': False, 'idempotency': 'required'}
@@ -12,7 +17,8 @@ def validate_event_contract():
     return {'ok': True, 'pbc': PBC_KEY, 'invalid_tables': (), 'invalid_emitted': (), 'invalid_consumed': (), 'side_effects': ()}
 
 def build_event_envelope(event_type, payload=None):
-    return {'ok': event_type in EMITTED + CONSUMED, 'event_type': event_type, 'payload': dict(payload or {}), 'event_contract': 'AppGen-X', 'idempotency_key': f'{PBC_KEY}:{event_type}'}
+    payload = dict(payload or {})
+    return {'ok': event_type in EMITTED + CONSUMED, 'event_type': event_type, 'payload': payload, 'event_contract': 'AppGen-X', 'idempotency_key': f'{PBC_KEY}:{event_type}:{_digest(payload)}'}
 
 def event_dispatch_plan(event_type, payload=None):
     return {'ok': True, 'envelope': build_event_envelope(event_type, payload), 'dead_letter_table': f'{PBC_KEY}_appgen_dead_letter_event', 'side_effects': ()}
