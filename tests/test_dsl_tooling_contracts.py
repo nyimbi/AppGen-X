@@ -1160,12 +1160,37 @@ def test_lsp_code_actions_cover_pbc_and_agent_quick_fixes_on_parseable_sources()
       tools: write
     }
     """
+    pbc_contract_source = """
+    app BadPbcContract { targets: web }
+    table Thing { id: int pk }
+    view ThingForm for Thing { Main: id }
+    composition Suite {
+      include pbc gl_core version 1.0.0
+      include pbc ap_automation version 1.0.0
+      connect ap_automation domain_event MissingEvent -> gl_core domain_event MissingCommand
+    }
+    """
 
     pbc_actions = {action["data"]["id"] for action in lsp_service_dsl(pbc_source, source_name="pbc.appgen")["codeAction"]["actions"]}
     agent_actions = {action["data"]["id"] for action in lsp_service_dsl(agent_source, source_name="agent.appgen")["codeAction"]["actions"]}
+    pbc_event_contract = apply_lsp_code_action_dsl(
+        pbc_contract_source,
+        source_name="pbc.appgen",
+        action_id="create_event_contract",
+    )
+    agent_permission = apply_lsp_code_action_dsl(
+        agent_source,
+        source_name="agent.appgen",
+        action_id="add_missing_permission_for_agent_skill",
+    )
 
     assert {"create_event_contract", "register_or_import_pbc_manifest"} <= pbc_actions
     assert "add_missing_permission_for_agent_skill" in agent_actions
+    assert pbc_event_contract["ok"] is True
+    assert "event MissingEvent" in pbc_event_contract["patched_source"]
+    assert "event MissingCommand" in pbc_event_contract["patched_source"]
+    assert agent_permission["ok"] is True
+    assert "GeneratedResource: write" in agent_permission["patched_source"]
 
 
 def test_lsp_code_actions_add_package_and_smoke_test_for_valid_sources() -> None:

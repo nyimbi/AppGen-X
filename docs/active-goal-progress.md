@@ -3308,4 +3308,15 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   the natural-language planner section. Verification passed: Python compile for
   touched tooling entrypoints, focused NL/audit tests,
   `tests/test_dsl_tooling_contracts.py -q`, tooling-audit JSON proof, scoped
-  diff whitespace check, and restricted-name scan. Commit: pending.
+  diff whitespace check, and restricted-name scan. Commit: `6bdc6271`.
+- Current LSP code-action application pass closes required quick-fix evidence
+  gaps in `docs/tooling.md`. The language service now offers and applies
+  `add_relationship_for_lookup_path` for unresolved database-backed lookup
+  bindings, inserts edits at the actual block closing brace so one-line blocks
+  remain parseable, and treats local event contracts as valid composition
+  repair contracts. Focused tests prove application for missing operations,
+  lookup directives, lookup relationships, event-contract creation, and
+  missing agent permissions. Verification passed: Python compile for touched
+  tooling entrypoints, focused LSP/code-action tests (`3 passed`), scoped diff
+  whitespace check, and restricted-name scan outside archive, Git internals,
+  and active PBC paths. Commit: pending.

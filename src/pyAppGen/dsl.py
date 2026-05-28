@@ -4773,9 +4773,10 @@ def _lsp_required_actions_for_diagnostic(source: str, diagnostic: dict, *, sourc
         if pbc:
             actions.append(_lsp_append_action(source, source_name, diagnostic, "register_or_import_pbc_manifest", f"Declare PBC {pbc}", f"\npbc {pbc} {{\n  label: \"{pbc}\"\n  datastore: postgresql\n}}\n"))
     if code == "AGX0902":
-        contract = _missing_contract_name(message)
-        if contract:
-            actions.append(_lsp_append_action(source, source_name, diagnostic, "create_event_contract", f"Create event contract {contract}", f"\nevent {contract} {{\n  topic: pbc.events\n}}\n"))
+        contracts = _missing_contract_names(message)
+        if contracts:
+            new_text = "\n" + "\n\n".join(f"event {contract} {{\n  topic: pbc.events\n}}" for contract in contracts) + "\n"
+            actions.append(_lsp_append_action(source, source_name, diagnostic, "create_event_contract", f"Create event contract {contracts[0]}", new_text))
     if code == "AGX1002":
         agent = _agent_name_from_message(message)
         if agent:
@@ -4910,8 +4911,16 @@ def _handler_target_from_message(message: str) -> str | None:
 
 
 def _missing_contract_name(message: str) -> str | None:
-    match = re.search(r"Unknown cross-PBC contract: .*?(?:event|domain_event|command|api)\s+([A-Za-z_][A-Za-z0-9_]*)", message)
-    return match.group(1) if match else None
+    contracts = _missing_contract_names(message)
+    return contracts[0] if contracts else None
+
+
+def _missing_contract_names(message: str) -> tuple[str, ...]:
+    match = re.search(r"Unknown cross-PBC contract: .*", message)
+    if not match:
+        return ()
+    names = re.findall(r"(?:event|domain_event|command|api)\s+([A-Za-z_][A-Za-z0-9_]*)", match.group(0))
+    return tuple(dict.fromkeys(names))
 
 
 def _agent_name_from_message(message: str) -> str | None:
@@ -10022,6 +10031,7 @@ def _tooling_policy_diagnostics(
     field_map = {table.name: _field_names(table) for table in schema.tables}
     handler_targets = _handler_target_names(schema)
     pbc_catalog = _pbc_catalog_by_key()
+    local_contracts = _local_contract_names_by_kind(schema)
     errors: list[str] = []
     warnings: list[str] = []
 
@@ -10064,7 +10074,7 @@ def _tooling_policy_diagnostics(
             if str(connection.get("from_kind") or "").endswith("table") or str(connection.get("to_kind") or "").endswith("table"):
                 errors.append(f"Private PBC table access: {block.name}.{raw_connection}")
                 continue
-            if not _pbc_connection_contract_resolves(connection, pbc_catalog):
+            if not _pbc_connection_contract_resolves(connection, pbc_catalog) and not _local_connection_contract_resolves(connection, local_contracts):
                 errors.append(f"Unknown cross-PBC contract: {block.name}.{raw_connection}")
 
     for agent in schema.agents:
@@ -10193,6 +10203,32 @@ def _pbc_connection_contract_resolves(connection: dict, catalog: dict[str, dict]
             if contract not in api_names and contract not in api_tokens:
                 return False
         if kind not in {"api", "command", "event", "emits", "consumes"}:
+            return False
+    return True
+
+
+def _local_contract_names_by_kind(schema: AppSchema) -> dict[str, set[str]]:
+    contracts: dict[str, set[str]] = {"api": set(), "command": set(), "event": set(), "emits": set(), "consumes": set()}
+    for contract in _enterprise_contracts(schema):
+        kind = contract.kind.lower()
+        contracts.setdefault(kind, set()).add(contract.name)
+        if kind == "event":
+            contracts["emits"].add(contract.name)
+            contracts["consumes"].add(contract.name)
+            contracts["command"].add(contract.name)
+        if kind == "api":
+            contracts["command"].add(contract.name)
+    return contracts
+
+
+def _local_connection_contract_resolves(connection: dict, contracts: dict[str, set[str]]) -> bool:
+    for side in ("from", "to"):
+        kind = str(connection.get(f"{side}_kind") or "")
+        contract = str(connection.get(f"{side}_contract") or "")
+        if not kind or not contract:
+            return False
+        normalized_kind = "event" if kind == "domain_event" else kind
+        if contract not in contracts.get(normalized_kind, set()):
             return False
     return True
 
