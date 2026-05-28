@@ -2,314 +2,314 @@
 
 ## Purpose
 
-This backlog identifies 50 high-impact, high-value improvements for `grant_fund_accounting`. Each item is specific to the domain surface currently declared by the PBC and is intended to move the package beyond world-class breadth toward complete specialist-grade coverage.
+This backlog identifies 50 high-impact, high-value improvements for `grant_fund_accounting`. Each item is specific to grant awards, fund restrictions, grant budgets, allowable costs, cost transactions, allocations, drawdowns, receipts, match requirements, match contributions, funder reporting, milestones, compliance evidence, closeout, grant exceptions, funder-ready controls, agent assistance, and AppGen-X event reliability.
 
 ## Current Domain Evidence Used
 
-- Domain purpose: Owns grant awards, fund restrictions, budgets, allowable costs, draws, match requirements, reporting milestones, compliance evidence, and funder-ready accounting controls.
-- Representative owned tables: `grant_fund_accounting_grant_award`, `grant_fund_accounting_grant_fund`, `grant_fund_accounting_fund_restriction`, `grant_fund_accounting_grant_budget`, `grant_fund_accounting_grant_budget_line`, `grant_fund_accounting_allowable_cost_rule`, `grant_fund_accounting_grant_cost_transaction`, `grant_fund_accounting_cost_allocation`, `grant_fund_accounting_drawdown_request`, `grant_fund_accounting_drawdown_receipt`, `grant_fund_accounting_match_requirement`, `grant_fund_accounting_match_contribution`, ...
-- Representative operations/APIs: `create_grant_award`, `define_fund_restriction`, `open_grant_budget`, `capture_budget_line`, `register_allowable_cost_rule`, `record_grant_cost`, `run_cost_allocation`, `prepare_drawdown_request`, `record_drawdown_receipt`, `track_match_requirement`, `record_match_contribution`, `build_funder_report`, ...
-- Representative events: `GrantAwardCreated`, `GrantBudgetApproved`, `GrantCostRecorded`, `DrawdownRequested`, `FunderReportSubmitted`, `GrantExceptionOpened`.
-- Representative advanced capabilities: `restriction-aware cost validation`, `drawdown cash simulation`, `semantic award document extraction`, `continuous funder compliance testing`, `cryptographic evidence packet`, `multi-funder portfolio forecasting`.
+- Domain purpose: grant awards, fund restrictions, budgets, allowable costs, draws, match requirements, reporting milestones, compliance evidence, and funder-ready accounting controls.
+- Owned operational surface: grant awards, grant funds, fund restrictions, grant budgets, budget lines, allowable cost rules, cost transactions, cost allocations, drawdown requests, drawdown receipts, match requirements, match contributions, funder reports, reporting milestones, compliance evidence, grant closeouts, exception cases, policy rules, runtime parameters, schema extensions, control assertions, governed models, and AppGen-X runtime event tables.
+- Declared operations: grant award creation, fund restriction definition, grant budget opening, budget line capture, allowable cost rule registration, grant cost recording, cost allocation, drawdown request preparation, drawdown receipt recording, match requirement tracking, match contribution recording, funder report building, reporting milestone tracking, compliance evidence attachment, grant closeout, exception resolution, grant rule compilation, and funding shortfall simulation.
+- Declared events and integrations: emits `GrantAwardCreated`, `GrantBudgetApproved`, `GrantCostRecorded`, `DrawdownRequested`, `FunderReportSubmitted`, and `GrantExceptionOpened`; consumes `JournalPosted`, `PaymentExecuted`, `PolicyChanged`, and `AuditProofGenerated`; catalog traceability also includes expense, payment, restriction, reimbursement, compliance, and audit events.
+- Advanced capability evidence: restriction-aware cost validation, drawdown cash simulation, semantic award document extraction, continuous funder compliance testing, cryptographic evidence packets, multi-funder portfolio forecasting, event-sourced operational history, multi-tenant policy isolation, anomaly detection, predictive risk scoring, scenario simulation, continuous control testing, cross-PBC event federation, and governed agent execution.
 
 ## 50 Better-Than-World-Class Improvements
 
-### 1. Deep specialist lifecycle semantics for `grant_fund_accounting_grant_award`
+### 1. Grant award intake gate
 
-**Justification:** This owned table is part of the Grant and Fund Accounting operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns grant awards, fund restrictions, budgets, allowable costs, draws, match requirements, reporting milestones, compliance evidence, and funder-ready accounting controls.
+**Justification:** Award setup errors can cascade into unallowable costs, missed reports, failed draws, match shortfalls, and funder findings.
 
-**Improvement:** Extend `grant_fund_accounting_grant_award` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `grant_award_management`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add an award intake gate validating funder, award number, period of performance, funding amount, assistance listing, restrictions, budget categories, reporting schedule, match terms, indirect cost rules, closeout terms, and source-document evidence before activation.
 
-### 2. Deep specialist lifecycle semantics for `grant_fund_accounting_grant_fund`
+### 2. Semantic award document extraction
 
-**Justification:** This owned table is part of the Grant and Fund Accounting operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns grant awards, fund restrictions, budgets, allowable costs, draws, match requirements, reporting milestones, compliance evidence, and funder-ready accounting controls.
+**Justification:** Grant requirements are embedded in award letters, notices, contracts, amendments, terms, and funder guidance.
 
-**Improvement:** Extend `grant_fund_accounting_grant_fund` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `grant_fund_accounting_workflow`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Let the agent extract restrictions, budgets, allowable costs, reporting milestones, match obligations, draw rules, indirect cost terms, procurement clauses, and closeout requirements with source citations and confidence before humans approve owned records.
 
-### 3. Deep specialist lifecycle semantics for `grant_fund_accounting_fund_restriction`
+### 3. Award lifecycle state machine
 
-**Justification:** This owned table is part of the Grant and Fund Accounting operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns grant awards, fund restrictions, budgets, allowable costs, draws, match requirements, reporting milestones, compliance evidence, and funder-ready accounting controls.
+**Justification:** Awards move through pre-award, awarded, active, amended, suspended, closeout, closed, terminated, and archived states with different spending and reporting rules.
 
-**Improvement:** Extend `grant_fund_accounting_fund_restriction` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `grant_fund_accounting_analytics`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Implement strict lifecycle transitions with required evidence, spending effects, drawdown eligibility, reporting obligations, closeout tasks, and audit proof. Block cost recording where award status forbids activity.
 
-### 4. Deep specialist lifecycle semantics for `grant_fund_accounting_grant_budget`
+### 4. Award amendment governance
 
-**Justification:** This owned table is part of the Grant and Fund Accounting operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns grant awards, fund restrictions, budgets, allowable costs, draws, match requirements, reporting milestones, compliance evidence, and funder-ready accounting controls.
+**Justification:** Amendments can change funding, period, restrictions, match, reporting, budget lines, and closeout obligations.
 
-**Improvement:** Extend `grant_fund_accounting_grant_budget` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `configuration_schema`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add amendment versioning with changed terms, effective date, impacted budgets, affected costs, drawdown changes, reporting schedule updates, and approval evidence. Show before/after compliance impact.
 
-### 5. Deep specialist lifecycle semantics for `grant_fund_accounting_grant_budget_line`
+### 5. Fund restriction taxonomy
 
-**Justification:** This owned table is part of the Grant and Fund Accounting operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns grant awards, fund restrictions, budgets, allowable costs, draws, match requirements, reporting milestones, compliance evidence, and funder-ready accounting controls.
+**Justification:** Restrictions can be time-based, purpose-based, program-based, geography-based, donor-imposed, statutory, matching, or reporting-driven.
 
-**Improvement:** Extend `grant_fund_accounting_grant_budget_line` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `rule_engine`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Model restriction type, source clause, effective period, affected funds/budgets/costs, release criteria, and reporting treatment. Cost validation should reference explicit restriction records rather than generic policy flags.
 
-### 6. Deep specialist lifecycle semantics for `grant_fund_accounting_allowable_cost_rule`
+### 6. Restriction-aware cost validation
 
-**Justification:** This owned table is part of the Grant and Fund Accounting operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns grant awards, fund restrictions, budgets, allowable costs, draws, match requirements, reporting milestones, compliance evidence, and funder-ready accounting controls.
+**Justification:** Costs may be generally valid but unallowable for a specific fund, period, program, or award condition.
 
-**Improvement:** Extend `grant_fund_accounting_allowable_cost_rule` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `parameter_engine`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Validate costs against award period, budget category, fund restriction, allowable cost rule, procurement requirement, match eligibility, prior approval, indirect cost rule, and remaining budget. Store all pass/fail reasons and required remediation.
 
-### 7. Deep specialist lifecycle semantics for `grant_fund_accounting_grant_cost_transaction`
+### 7. Grant fund lifecycle controls
 
-**Justification:** This owned table is part of the Grant and Fund Accounting operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns grant awards, fund restrictions, budgets, allowable costs, draws, match requirements, reporting milestones, compliance evidence, and funder-ready accounting controls.
+**Justification:** Grant funds require controlled creation, funding, obligation, spend, draw, release, transfer, and closeout treatment.
 
-**Improvement:** Extend `grant_fund_accounting_grant_cost_transaction` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `owned_schema_migrations_models`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add fund states with award link, restriction scope, available balance, obligated balance, spent balance, drawn balance, matched balance, and closeout readiness. Provide fund balance rollforwards and audit traces.
 
-### 8. Deep specialist lifecycle semantics for `grant_fund_accounting_cost_allocation`
+### 8. Grant budget versioning
 
-**Justification:** This owned table is part of the Grant and Fund Accounting operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns grant awards, fund restrictions, budgets, allowable costs, draws, match requirements, reporting milestones, compliance evidence, and funder-ready accounting controls.
+**Justification:** Grant budgets often change through amendments, rebudgeting authority, funder approvals, and internal revisions.
 
-**Improvement:** Extend `grant_fund_accounting_cost_allocation` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `appgen_x_outbox_inbox_eventing`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Version grant budgets with approved amounts, categories, effective dates, funder approval requirement, rebudget thresholds, prior version comparison, and locked periods. Every cost should reference the active budget version evaluated.
 
-### 9. Deep specialist lifecycle semantics for `grant_fund_accounting_drawdown_request`
+### 9. Budget line burn-rate analytics
 
-**Justification:** This owned table is part of the Grant and Fund Accounting operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns grant awards, fund restrictions, budgets, allowable costs, draws, match requirements, reporting milestones, compliance evidence, and funder-ready accounting controls.
+**Justification:** Under-spend, over-spend, and end-of-award spending spikes are common grant risks.
 
-**Improvement:** Extend `grant_fund_accounting_drawdown_request` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `idempotent_handlers`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Track burn rate by budget line, category, fund, period, and award with projected exhaustion, underspend risk, overspend risk, and recommended rebudget or draw actions. Surface warnings before violations occur.
 
-### 10. Deep specialist lifecycle semantics for `grant_fund_accounting_drawdown_receipt`
+### 10. Allowable cost rule compiler
 
-**Justification:** This owned table is part of the Grant and Fund Accounting operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns grant awards, fund restrictions, budgets, allowable costs, draws, match requirements, reporting milestones, compliance evidence, and funder-ready accounting controls.
+**Justification:** Allowability rules are nuanced across funder, program, cost category, period, procurement, prior approval, and documentation.
 
-**Improvement:** Extend `grant_fund_accounting_drawdown_receipt` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `retry_dead_letter_evidence`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Compile allowable cost policies from structured configuration and award documents into executable rules with examples, ambiguity flags, clause citations, test cases, and approval workflow.
 
-### 11. Make `create_grant_award` a complete command lifecycle
+### 11. Cost transaction evidence model
 
-**Justification:** High-value users need `create_grant_award` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Grant costs need source journal, payment, expense, payroll, procurement, vendor, period, and support-document evidence.
 
-**Improvement:** Implement `create_grant_award` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `GrantAwardCreated`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Store cost transactions with source projection, cost category, incurred date, paid date, accounting period, documentation status, allowability result, budget impact, draw eligibility, and audit evidence.
 
-### 12. Make `define_fund_restriction` a complete command lifecycle
+### 12. Journal and payment reconciliation
 
-**Justification:** High-value users need `define_fund_restriction` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Grant ledgers must reconcile journal postings, payments, draw receipts, reimbursements, and reported costs.
 
-**Improvement:** Implement `define_fund_restriction` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `GrantBudgetApproved`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Reconcile consumed `JournalPosted` and `PaymentExecuted` events to owned cost transactions, drawdown receipts, and fund balances with duplicate detection, late-posting flags, and unmatched item queues.
 
-### 13. Make `open_grant_budget` a complete command lifecycle
+### 13. Cost transfer governance
 
-**Justification:** High-value users need `open_grant_budget` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Moving costs between grants is high risk and often subject to timing, documentation, and approval restrictions.
 
-**Improvement:** Implement `open_grant_budget` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `GrantCostRecorded`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add cost transfer requests with original grant, target grant, reason, timing, evidence, allowability check, budget impact, approver, and audit trail. Flag late or frequent transfers for review.
 
-### 14. Make `capture_budget_line` a complete command lifecycle
+### 14. Cost allocation rule versioning
 
-**Justification:** High-value users need `capture_budget_line` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Shared costs require defensible allocation bases, periods, and approvals.
 
-**Improvement:** Implement `capture_budget_line` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `DrawdownRequested`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Version allocation rules with source pool, target awards, allocation basis, excluded costs, effective period, documentation, and approval. Allocation runs should store input pool, basis values, output lines, and reconciliation.
 
-### 15. Make `register_allowable_cost_rule` a complete command lifecycle
+### 15. Allocation run traceability
 
-**Justification:** High-value users need `register_allowable_cost_rule` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Funders may challenge allocated costs unless the basis and calculations are transparent.
 
-**Improvement:** Implement `register_allowable_cost_rule` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `FunderReportSubmitted`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Store allocation traces showing source costs, basis metrics, target percentages, rounding, residuals, excluded awards, and resulting grant cost transactions. Provide exportable calculation evidence.
 
-### 16. Make `record_grant_cost` a complete command lifecycle
+### 16. Drawdown readiness gate
 
-**Justification:** High-value users need `record_grant_cost` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Drawdowns should only request reimbursable, allowable, documented, paid or eligible costs according to funder rules.
 
-**Improvement:** Implement `record_grant_cost` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `GrantExceptionOpened`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add readiness checks for cost allowability, payment status, documentation, budget availability, prior draw status, match status, funder limits, reporting currency, and cash timing before a draw request can be submitted.
 
-### 17. Make `run_cost_allocation` a complete command lifecycle
+### 17. Drawdown cash simulation
 
-**Justification:** High-value users need `run_cost_allocation` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Organizations need to forecast cash needs and funder reimbursement timing.
 
-**Improvement:** Implement `run_cost_allocation` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `GrantAwardCreated`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Simulate drawdown timing using eligible costs, payment schedules, funder processing days, advance/reimbursement method, holdbacks, pending exceptions, and cash balance assumptions. Show cash shortfall risk and recommended draw timing.
 
-### 18. Make `prepare_drawdown_request` a complete command lifecycle
+### 18. Drawdown receipt reconciliation
 
-**Justification:** High-value users need `prepare_drawdown_request` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Received cash may differ from requested draws due to funder adjustments, partial approvals, timing, or rejected costs.
 
-**Improvement:** Implement `prepare_drawdown_request` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `GrantBudgetApproved`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Reconcile drawdown receipts to requests by amount, date, funder reference, rejected lines, pending lines, and cash account projection. Create exception cases for unmatched or short-paid receipts.
 
-### 19. Make `record_drawdown_receipt` a complete command lifecycle
+### 19. Match requirement schedule
 
-**Justification:** High-value users need `record_drawdown_receipt` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Match obligations often vary by award period, category, source, cash/in-kind type, and percentage.
 
-**Improvement:** Implement `record_drawdown_receipt` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `GrantCostRecorded`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Model match requirements with schedule, basis, source restrictions, eligible contribution types, valuation rules, due dates, and shortfall thresholds. Track progress and forecast shortfalls.
 
-### 20. Make `track_match_requirement` a complete command lifecycle
+### 20. Match contribution evidence
 
-**Justification:** High-value users need `track_match_requirement` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Match contributions must be documented, eligible, valued correctly, and not double-counted.
 
-**Improvement:** Implement `track_match_requirement` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `DrawdownRequested`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Store contribution source, cash/in-kind type, valuation method, donor/source, documentation, eligibility, award linkage, date, and double-count checks. Provide contribution-level audit evidence.
 
-### 21. Operationalize `restriction-aware cost validation` as a governed decision system
+### 21. In-kind contribution valuation controls
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Grant and Fund Accounting and measurably improves grant fund accounting risk score without hiding assumptions.
+**Justification:** In-kind services, donated goods, facilities, and volunteer time require defensible valuation.
 
-**Improvement:** Promote `restriction-aware cost validation` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `grant_fund_accounting_risk_score`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add valuation methods, rate sources, market evidence, approver, donor restrictions, and documentation requirements for in-kind contributions. Flag unsupported valuations and expired rate evidence.
 
-### 22. Operationalize `drawdown cash simulation` as a governed decision system
+### 22. Funder reporting calendar
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Grant and Fund Accounting and measurably improves grant fund accounting workbench metric without hiding assumptions.
+**Justification:** Missing financial, programmatic, draw, compliance, or closeout reports can jeopardize funding.
 
-**Improvement:** Promote `drawdown cash simulation` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `grant_fund_accounting_workbench_metric`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Create a milestone calendar with report type, due date, submission window, owner, data cutoff, dependencies, required attachments, funder portal status, and escalation rules.
 
-### 23. Operationalize `semantic award document extraction` as a governed decision system
+### 23. Funder report builder
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Grant and Fund Accounting and measurably improves grant fund accounting risk score without hiding assumptions.
+**Justification:** Funder reports must tie costs, budgets, draws, match, restrictions, compliance, and narrative evidence together.
 
-**Improvement:** Promote `semantic award document extraction` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `grant_fund_accounting_risk_score`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Build reports from owned costs, budgets, drawdowns, match, compliance evidence, and milestones with reconciliations, variance explanations, attachments, approval workflow, and submitted version proof.
 
-### 24. Operationalize `continuous funder compliance testing` as a governed decision system
+### 24. Report-to-ledger reconciliation
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Grant and Fund Accounting and measurably improves grant fund accounting workbench metric without hiding assumptions.
+**Justification:** Reported costs must reconcile to grant cost transactions, fund balances, and drawdown history.
 
-**Improvement:** Promote `continuous funder compliance testing` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `grant_fund_accounting_workbench_metric`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add reconciliation between report lines, cost transactions, budget categories, draw requests, and receipts. Block submission where report totals do not match approved ledger evidence or explainable adjustments.
 
-### 25. Operationalize `cryptographic evidence packet` as a governed decision system
+### 25. Compliance evidence room
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Grant and Fund Accounting and measurably improves grant fund accounting risk score without hiding assumptions.
+**Justification:** Grant compliance requires organized evidence for eligibility, procurement, reporting, controls, audits, and closeout.
 
-**Improvement:** Promote `cryptographic evidence packet` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `grant_fund_accounting_risk_score`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add evidence packets with document type, award link, cost link, restriction link, report link, retention period, source, reviewer, redaction state, and cryptographic proof. UI should show missing evidence by obligation.
 
-### 26. Operationalize `multi-funder portfolio forecasting` as a governed decision system
+### 26. Continuous funder compliance testing
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Grant and Fund Accounting and measurably improves grant fund accounting workbench metric without hiding assumptions.
+**Justification:** Waiting for audits to find compliance gaps is too late.
 
-**Improvement:** Promote `multi-funder portfolio forecasting` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `grant_fund_accounting_workbench_metric`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Run controls for unallowable costs, late reports, expired evidence, match shortfalls, budget overages, draw mismatches, procurement gaps, cost transfer timing, and closeout readiness. Store assertion results and remediation tasks.
 
-### 27. Operationalize `restriction-aware cost validation` as a governed decision system
+### 27. Procurement and subaward compliance hooks
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Grant and Fund Accounting and measurably improves grant fund accounting risk score without hiding assumptions.
+**Justification:** Grant costs often require procurement method, vendor eligibility, competition, subrecipient monitoring, or debarment evidence.
 
-**Improvement:** Promote `restriction-aware cost validation` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `grant_fund_accounting_risk_score`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add compliance fields for procurement method, required quotes, sole-source justification, vendor eligibility, subaward status, monitoring requirements, and evidence links through declared projections.
 
-### 28. Operationalize `drawdown cash simulation` as a governed decision system
+### 28. Indirect cost rate governance
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Grant and Fund Accounting and measurably improves grant fund accounting workbench metric without hiding assumptions.
+**Justification:** Indirect cost recovery depends on negotiated rates, base definitions, exclusions, caps, and effective periods.
 
-**Improvement:** Promote `drawdown cash simulation` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `grant_fund_accounting_workbench_metric`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Model indirect cost rates with base, rate, effective dates, exclusions, funder caps, approval evidence, and calculation trace. Validate indirect cost lines and draw eligibility against the active rate.
 
-### 29. Operationalize `semantic award document extraction` as a governed decision system
+### 29. Program income tracking
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Grant and Fund Accounting and measurably improves grant fund accounting risk score without hiding assumptions.
+**Justification:** Program income may need to be deducted, added, cost-shared, or reported depending on award terms.
 
-**Improvement:** Promote `semantic award document extraction` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `grant_fund_accounting_risk_score`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add program income records with source, period, award link, treatment method, restriction, budget impact, report inclusion, and audit evidence. Include income in draw and report readiness checks.
 
-### 30. Operationalize `continuous funder compliance testing` as a governed decision system
+### 30. Fund balance rollforward
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Grant and Fund Accounting and measurably improves grant fund accounting workbench metric without hiding assumptions.
+**Justification:** Funders and auditors need beginning balance, awards, costs, draws, match, transfers, adjustments, and ending balance.
 
-**Improvement:** Promote `continuous funder compliance testing` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `grant_fund_accounting_workbench_metric`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Generate rollforwards by award, fund, restriction, budget category, and period with drilldowns to transactions and reports. Reconcile rollforward totals to draw and report evidence.
 
-### 31. Create simulation-grade governance for `allowable_cost_policy` and `drawdown_lead_days`
+### 31. Multi-funder portfolio forecasting
 
-**Justification:** Complete Grant and Fund Accounting coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Organizations manage overlapping awards with different periods, restrictions, and cash timing.
 
-**Improvement:** Add a policy cockpit where `allowable_cost_policy` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `drawdown_lead_days` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Forecast portfolio funding, spend, draw cash, match exposure, report workload, closeout workload, and shortfall risk by funder, program, award, and period. Show confidence and assumptions.
 
-### 32. Create simulation-grade governance for `drawdown_policy` and `match_warning_threshold`
+### 32. Funding shortfall simulation
 
-**Justification:** Complete Grant and Fund Accounting coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Shortfalls can arise from delayed draws, unallowable costs, match gaps, award underspend, or funder withholding.
 
-**Improvement:** Add a policy cockpit where `drawdown_policy` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `match_warning_threshold` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Simulate shortfall scenarios with draw delays, rejected costs, match gaps, budget changes, and spending pace. Recommend mitigation through rebudget, cost transfer, bridge funding, or funder communication.
 
-### 33. Create simulation-grade governance for `match_requirement_policy` and `reporting_warning_days`
+### 33. Grant exception case workflow
 
-**Justification:** Complete Grant and Fund Accounting coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Grant exceptions such as unallowable cost, late report, missing evidence, match shortfall, or draw rejection need structured resolution.
 
-**Improvement:** Add a policy cockpit where `match_requirement_policy` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `reporting_warning_days` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add exception cases with type, severity, award, fund, cost/report link, owner, due date, required evidence, financial exposure, resolution action, and closure proof.
 
-### 34. Create simulation-grade governance for `reporting_deadline_policy` and `cost_materiality_threshold`
+### 34. Closeout readiness checklist
 
-**Justification:** Complete Grant and Fund Accounting coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Grant closeout requires final costs, draws, reports, match, property, equipment, program income, evidence retention, and funder acceptance.
 
-**Improvement:** Add a policy cockpit where `reporting_deadline_policy` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `cost_materiality_threshold` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add a closeout checklist with required milestones, final reconciliation, unliquidated obligations, match completion, report submissions, draw receipts, property disposition, evidence packet, and approval.
 
-### 35. Create simulation-grade governance for `fund_restriction_policy` and `retention_years`
+### 35. Closeout adjustment governance
 
-**Justification:** Complete Grant and Fund Accounting coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Late costs, refunds, draw corrections, and funder adjustments after closeout can affect reports and balances.
 
-**Improvement:** Add a policy cockpit where `fund_restriction_policy` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `retention_years` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add post-closeout adjustment workflows with approval, materiality, funder notification, report amendment, draw correction, and audit trail. Block casual edits to closed awards.
 
-### 36. Upgrade `grant accounting workbench` into a full specialist command center
+### 36. Retention and audit readiness
 
-**Justification:** The PBC UI must expose the complete Grant and Fund Accounting surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Grant evidence has retention rules that may vary by funder, award, litigation, audit status, and closeout date.
 
-**Improvement:** Expand `grant accounting workbench` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add retention schedules, legal hold, audit hold, destruction eligibility, evidence completeness, and export packages. Surface evidence nearing retention review and block premature deletion.
 
-### 37. Upgrade `fund restriction ledger` into a full specialist command center
+### 37. Cryptographic evidence packet
 
-**Justification:** The PBC UI must expose the complete Grant and Fund Accounting surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Funder-ready evidence should be tamper-evident across awards, budgets, costs, draws, match, reports, and closeout.
 
-**Improvement:** Expand `fund restriction ledger` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Generate cryptographic packets with hash-chain proofs, redacted payload fingerprints, source event hashes, report versions, and verifier exports for auditors and funders.
 
-### 38. Upgrade `budget control board` into a full specialist command center
+### 38. Grant policy impact analysis
 
-**Justification:** The PBC UI must expose the complete Grant and Fund Accounting surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Policy changes can affect allowability, draw timing, match, reporting, and closeout controls.
 
-**Improvement:** Expand `budget control board` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Simulate policy changes against active awards and recent costs to identify affected transactions, reports, draw requests, exception cases, and required remediation.
 
-### 39. Upgrade `drawdown console` into a full specialist command center
+### 39. Predictive grant risk scoring
 
-**Justification:** The PBC UI must expose the complete Grant and Fund Accounting surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Grant managers need early warning for awards likely to miss reports, overspend, underspend, violate restrictions, or fail match.
 
-**Improvement:** Expand `drawdown console` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Score awards using burn rate, reporting workload, match progress, draw delays, exception history, evidence completeness, staff workload, and funder behavior. Show drivers and recommended actions.
 
-### 40. Upgrade `match tracker` into a full specialist command center
+### 40. Grant anomaly detection
 
-**Justification:** The PBC UI must expose the complete Grant and Fund Accounting surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Unusual costs, draws, allocations, match contributions, budget changes, or report adjustments may indicate compliance or data issues.
 
-**Improvement:** Expand `match tracker` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Detect anomalies by award, fund, cost category, vendor, period, draw request, match source, allocation basis, and report line. Route high-risk anomalies to exception cases.
 
-### 41. Prove cross-PBC federation for `POST /grant-awards` and `JournalPosted`
+### 41. AppGen-X event reliability proof
 
-**Justification:** Grant and Fund Accounting must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Grant accounting depends on journal, payment, policy, expense, and audit events; lost or duplicated events can misstate fund balances.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /grant-awards` and consumed event `JournalPosted` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Harden event descriptors with schema versions, idempotency keys, ordering assumptions, retry envelopes, dead-letter taxonomy, replay eligibility, and handler evidence. Include duplicate journal and late payment scenarios.
 
-### 42. Prove cross-PBC federation for `POST /fund-restrictions` and `PaymentExecuted`
+### 42. Cross-PBC boundary proof
 
-**Justification:** Grant and Fund Accounting must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Grant accounting needs journal, payment, expense, procurement, audit, and finance context without direct foreign-table access.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /fund-restrictions` and consumed event `PaymentExecuted` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Generate a boundary proof enumerating every declared API, projection, consumed event, cached field, staleness policy, and retention rule. Release audits should fail undeclared ledger, payment, expense, or procurement table access.
 
-### 43. Prove cross-PBC federation for `POST /grant-budgets` and `PolicyChanged`
+### 43. Agent-assisted award setup
 
-**Justification:** Grant and Fund Accounting must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Award setup is document-heavy and error-prone, making it a strong fit for governed AI assistance.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /grant-budgets` and consumed event `PolicyChanged` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Let the agent parse award packages, propose restrictions, budgets, reports, match, draw rules, and compliance tasks, then present a side-effect-free setup plan with citations and confidence for approval.
 
-### 44. Prove cross-PBC federation for `POST /reimbursement-claims` and `AuditProofGenerated`
+### 44. Agent-assisted cost allowability review
 
-**Justification:** Grant and Fund Accounting must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Accountants need fast explanations of why a cost is allowable, questionable, or disallowed.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /reimbursement-claims` and consumed event `AuditProofGenerated` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Let the agent analyze cost evidence, award terms, budget category, period, restriction, procurement evidence, and match rules. It should recommend remediation without approving or recording costs without confirmation.
 
-### 45. Temporal reconstruction and bitemporal audit for Grant and Fund Accounting
+### 45. Grant accounting workbench cockpit
 
-**Justification:** Regulated and operationally complex domains need to answer what was known, valid, processed, and visible at any point in time.
+**Justification:** Grant managers need a live surface for award status, budgets, restrictions, costs, draws, match, reports, exceptions, controls, and closeout.
 
-**Improvement:** Add transaction-time, valid-time, and processing-time fields to core records, temporal query APIs, projection rebuild tooling, and UI time travel so specialists can reconstruct decisions, reports, and automation outcomes.
+**Improvement:** Build cockpit panels with award health, burn rate, draw readiness, match progress, report deadlines, evidence gaps, exception queues, dead letters, and control assertions. Every action should map to permissioned service commands.
 
-### 46. Bulk operations and migration-grade controls for Grant and Fund Accounting
+### 46. UI capability surface proof
 
-**Justification:** World-class deployments must handle imports, mass corrections, high-volume operating days, and cutovers without bypassing governance.
+**Justification:** A complete Grant and Fund Accounting PBC must expose all domain capabilities through dedicated UI surfaces.
 
-**Improvement:** Add staged bulk upload, duplicate detection, chunked validation, approval sampling, partial failure handling, retry dashboards, reconciliation summaries, and agent-generated remediation plans for large batches.
+**Improvement:** Add release checks proving UI coverage for awards, funds, restrictions, budgets, allowable rules, costs, allocations, drawdowns, receipts, match, reports, milestones, compliance evidence, closeout, exceptions, policies, parameters, controls, models, events, and agent tools.
 
-### 47. Specialist edge-case playbooks for Grant and Fund Accounting
+### 47. Grant control testing library
 
-**Justification:** Rare cases often carry the highest financial, legal, safety, service, or compliance risk.
+**Justification:** Grant accounting needs repeatable controls over allowability, budget, draws, match, reports, closeout, and evidence retention.
 
-**Improvement:** Create a playbook catalog with detection rules, required evidence, escalation paths, fallback actions, owner roles, and release-audited tests for high-severity edge cases and exception queues.
+**Improvement:** Ship controls for costs outside period, budget overages, missing evidence, draw before payment, duplicate draws, match shortfall, late reports, unresolved exceptions, and closed-award edits. Store owners, cadence, results, and remediation.
 
-### 48. Pre-mutation simulation and blast-radius analysis for Grant and Fund Accounting
+### 48. Grant resilience drills
 
-**Justification:** Users should understand consequences before committing irreversible, customer-visible, operationally disruptive, or financially material changes.
+**Justification:** Grant operations must recover from event backlogs, bad policy releases, draw rejections, report deadline surges, and evidence store outages.
 
-**Improvement:** Add what-if simulation for every material command, showing impacted records, emitted events, dependent projections, rule outcomes, approvals, downstream PBC dependencies, and rollback limits.
+**Improvement:** Add drills for duplicate journal replay, payment delay, draw rejection batch, policy rollback, report rebuild, evidence packet recovery, and dead-letter surge. Store recovery time, affected awards, and financial exposure.
 
-### 49. Continuous control testing and operational assurance for Grant and Fund Accounting
+### 49. Grant readiness score
 
-**Justification:** Better-than-world-class PBCs prove controls continuously, not only at release or during periodic audits.
+**Justification:** Operators need a concise signal showing whether the PBC is production-ready for funder-facing grant accounting.
 
-**Improvement:** Add executable control assertions, sampled evidence checks, anomaly thresholds, control-owner dashboards, breach/recovery events, and release gates that fail when domain controls lose evidence.
+**Improvement:** Compute readiness from award setup completeness, restriction coverage, budget controls, allowability rules, draw readiness, match progress, reporting calendar, evidence completeness, event health, UI coverage, boundary proof, and agent safety.
 
-### 50. Human-in-the-loop domain agent execution for Grant and Fund Accounting
+### 50. End-to-end grant release proof
 
-**Justification:** The PBC chatbot must help specialists perform real work while preventing unsafe autonomous mutation.
+**Justification:** A world-class Grant and Fund Accounting PBC needs one evidence package proving that awards can flow from setup through costs, draws, reports, compliance, and closeout safely.
 
-**Improvement:** Add domain-specific skills, document parsing, task planning, CRUD previews, confidence/risk scoring, confirmation gates, redaction, policy explanations, and post-action evidence packets for every supported command and query.
+**Improvement:** Create an end-to-end proof exercising award document intake, award creation, fund restriction, budget approval, allowable cost rule, cost recording, allocation, drawdown request, receipt reconciliation, match tracking, report building, compliance evidence, closeout, exception resolution, policy compilation, UI coverage, AppGen-X eventing, boundary verification, and agent-safe CRUD planning.
