@@ -4,6 +4,7 @@ import sys
 from pathlib import Path
 
 from pyAppGen.dsl import format_report_dsl
+from pyAppGen.dsl import designer_visual_edit_matrix_dsl
 from pyAppGen.dsl import designer_sync_report_dsl
 from pyAppGen.dsl import diagnostic_catalog_dsl
 from pyAppGen.dsl import diagnostic_fixture_audit_dsl
@@ -1804,6 +1805,24 @@ def test_designer_sync_visual_edits_apply_real_dsl_mutations_and_diff_previews()
     assert pbc["visual_edit"]["accepted"] is True
     assert "  include pbc ap_automation version 1.0.0" in pbc["visual_edit"]["patched_source"]
     assert "pbc_composition_designer" in pbc["visual_edit"]["changed_surfaces"]
+
+
+def test_designer_visual_edit_matrix_covers_required_studio_edit_paths() -> None:
+    matrix = designer_visual_edit_matrix_dsl(TOOLING_SAMPLE, source_name="finance.appgen")
+    case_ids = {case["id"] for case in matrix["cases"]}
+
+    assert matrix["format"] == "appgen.designer-visual-edit-matrix.v1"
+    assert matrix["ok"] is True
+    assert {
+        "database_designer_add_field",
+        "form_designer_add_component",
+        "workflow_designer_add_transition",
+        "pbc_composition_designer_add_include",
+        "package_designer_add_package",
+        "deployment_designer_add_unit",
+        "form_designer_reject_invalid_binding",
+    } <= case_ids
+    assert matrix["blocking_gaps"] == ()
 
 
 def test_appgen_designer_sync_subcommand_emits_json_contract(tmp_path: Path) -> None:

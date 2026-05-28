@@ -839,6 +839,12 @@ patched DSL before the Studio accepts the visual operation.
 `--edit-json` must be a JSON object; malformed edit payloads are CLI
 configuration errors and return exit code `2` before any designer mutation is
 accepted.
+Designer edit coverage is executable through
+`appgen.designer-visual-edit-matrix.v1`. The matrix proves database field
+edits, form component placement, workflow transitions, PBC composition
+includes, package creation, deployment-unit creation, and invalid form binding
+rejection all pass through the same linted DSL patch and projection refresh
+path before acceptance.
 
 The package-level Studio now exposes `appgen.studio-semantic-service.v1` as the
 shared web IDE bridge. That contract composes `appgen.lsp-service.v1`,

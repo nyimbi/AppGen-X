@@ -1983,6 +1983,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             "type": "string",
         },
     )
+    designer_visual_edit_matrix = designer_visual_edit_matrix_dsl(source, source_name="tooling-audit.appgen")
     migration_reports = _tooling_audit_migration_reports()
     migration_detected = tuple(
         sorted(
@@ -2154,10 +2155,16 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             designer["ok"]
             and designer["semantic_model_format"] == "appgen.semantic-model.v1"
             and designer["visual_edit"]["round_trip_ok"]
+            and designer_visual_edit_matrix["ok"]
             and designer_sync_cli["ok"],
             "Studio designer projections and visual edits round-trip through linted DSL patches.",
             "docs/tooling.md#ide-integration",
-            {"format": designer.get("format"), "surfaces": designer.get("surfaces"), "cli": designer_sync_cli},
+            {
+                "format": designer.get("format"),
+                "surfaces": designer.get("surfaces"),
+                "visual_edit_matrix": designer_visual_edit_matrix,
+                "cli": designer_sync_cli,
+            },
         ),
         _tooling_audit_check(
             "vscode_extension_surface",
@@ -4803,9 +4810,153 @@ def designer_sync_report_dsl(
         "surfaces": tuple(projections.keys()),
         "projections": projections,
         "visual_edit": edit_result,
+        "visual_edit_matrix": designer_visual_edit_matrix_dsl(source, source_name=source_name)
+        if visual_edit is None
+        else None,
         "checks": checks,
         "blocking_gaps": tuple(check["check"] for check in checks if not check["ok"]),
     }
+
+
+def designer_visual_edit_matrix_dsl(text: str, *, source_name: str | None = None) -> dict:
+    """Prove every required Studio visual-edit path round-trips through DSL."""
+    source = text or ""
+    semantic = semantic_model_dsl(source, source_name=source_name)
+    table_name = "Invoice" if "Invoice" in semantic.get("tables", {}) else next(iter(semantic.get("tables", {}) or {"GeneratedRecord": {}}))
+    view_name, binding = _designer_matrix_view_binding(semantic)
+    flow_name = "SubmitInvoice" if "SubmitInvoice" in semantic.get("flows", {}) else next(iter(semantic.get("flows", {}) or {"GeneratedFlow": {}}))
+    composition_name = "FinanceSuite" if "FinanceSuite" in semantic.get("composition", {}) else next(iter(semantic.get("composition", {}) or {"AppComposition": {}}))
+    app_target = next(iter(semantic.get("app", {}).get("targets", ()) or ("web",)))
+    deployment_target = flow_name if flow_name != "GeneratedFlow" else table_name
+    case_specs = (
+        (
+            "database_designer_add_field",
+            {"kind": "add_field", "table": table_name, "field": "due_date", "type": "date", "required": True},
+            True,
+            "database_designer",
+            "due_date",
+            (),
+        ),
+        (
+            "form_designer_add_component",
+            {
+                "kind": "add_component",
+                "view": view_name,
+                "binding": binding,
+                "component": "Lookup",
+                "x": 1,
+                "y": 2,
+                "w": 4,
+                "h": 1,
+            },
+            True,
+            "form_designer",
+            f"@ {binding} Lookup 1 2 4 1",
+            (),
+        ),
+        (
+            "workflow_designer_add_transition",
+            {"kind": "add_flow_transition", "flow": flow_name, "from": "posted", "to": "archived"},
+            True,
+            "workflow_designer",
+            "posted -> archived",
+            (),
+        ),
+        (
+            "pbc_composition_designer_add_include",
+            {
+                "kind": "add_pbc_include",
+                "composition": composition_name,
+                "pbc": "ap_automation",
+                "version": "1.0.0",
+            },
+            True,
+            "pbc_composition_designer",
+            "include pbc ap_automation version 1.0.0",
+            (),
+        ),
+        (
+            "package_designer_add_package",
+            {"kind": "add_package", "name": f"{_pascal_case(app_target)}Release", "target": app_target},
+            True,
+            "package_deployment_designer",
+            f"package {_pascal_case(app_target)}Release",
+            (),
+        ),
+        (
+            "deployment_designer_add_unit",
+            {
+                "kind": "add_deployment_unit",
+                "deployment": "Production",
+                "target": deployment_target,
+                "pattern": "worker",
+            },
+            True,
+            "package_deployment_designer",
+            f"unit {deployment_target} as worker",
+            (),
+        ),
+        (
+            "form_designer_reject_invalid_binding",
+            {
+                "kind": "add_component",
+                "view": view_name,
+                "binding": "missing.field",
+                "component": "Lookup",
+                "x": 1,
+                "y": 2,
+                "w": 4,
+                "h": 1,
+            },
+            False,
+            "form_designer",
+            "missing.field",
+            ("AGX0402",),
+        ),
+    )
+    cases = []
+    for case_id, edit, should_accept, required_surface, expected_text, expected_codes in case_specs:
+        result = _designer_visual_edit_result(source, edit, source_name=source_name)
+        codes = tuple(item.get("code") for item in result.get("diagnostics", ()))
+        ok = (
+            result["accepted"] is should_accept
+            and (not should_accept or result["round_trip_ok"])
+            and required_surface in result.get("changed_surfaces", ())
+            and expected_text in result.get("patched_source", "")
+            and set(expected_codes) <= set(codes)
+        )
+        cases.append(
+            {
+                "id": case_id,
+                "ok": ok,
+                "operation": edit["kind"],
+                "accepted": result["accepted"],
+                "round_trip_ok": result["round_trip_ok"],
+                "required_surface": required_surface,
+                "changed_surfaces": result.get("changed_surfaces", ()),
+                "expected_text": expected_text,
+                "expected_diagnostic_codes": expected_codes,
+                "diagnostic_codes": codes,
+            }
+        )
+    return {
+        "format": "appgen.designer-visual-edit-matrix.v1",
+        "ok": all(case["ok"] for case in cases),
+        "cases": tuple(cases),
+        "required_operations": tuple(dict.fromkeys(case[1]["kind"] for case in case_specs)),
+        "required_cases": tuple(case[0] for case in case_specs),
+        "blocking_gaps": tuple(case["id"] for case in cases if not case["ok"]),
+    }
+
+
+def _designer_matrix_view_binding(semantic: dict) -> tuple[str, str]:
+    views = semantic.get("views", {})
+    for view_name, view in views.items():
+        bindings = _valid_bindings_for_table(semantic, view.get("table"))
+        if bindings:
+            preferred = "customer.name" if "customer.name" in bindings else bindings[0]
+            return view_name, preferred
+    return "GeneratedForm", "name"
 
 
 def _designer_component_palette(semantic: dict) -> dict:
