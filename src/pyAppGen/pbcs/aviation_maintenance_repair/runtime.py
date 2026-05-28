@@ -3,6 +3,7 @@ from __future__ import annotations
 from copy import deepcopy
 import hashlib
 from .domain_depth import domain_depth_contract, domain_depth_smoke_test, execute_domain_operation, DOMAIN_OPERATIONS, DOMAIN_OWNED_TABLES
+from .maintenance_release import build_release_to_service_pack, maintenance_release_evidence
 
 PBC_KEY = 'aviation_maintenance_repair'
 AVIATION_MAINTENANCE_REPAIR_OWNED_TABLES = ('aviation_maintenance_repair_aircraft',
@@ -75,7 +76,7 @@ AVIATION_MAINTENANCE_REPAIR_BUSINESS_TABLES = ('aviation_maintenance_repair_airc
  'aviation_maintenance_repair_aviation_maintenance_repair_governed_model')
 
 def aviation_maintenance_repair_empty_state():
-    return {'records': {}, 'parameters': {}, 'rules': {}, 'schema_extensions': {}, 'configuration': {}, 'inbox': [], 'outbox': [], 'dead_letter': [], 'idempotency_keys': set()}
+    return {'records': {}, 'release_packs': {}, 'parameters': {}, 'rules': {}, 'schema_extensions': {}, 'configuration': {}, 'inbox': [], 'outbox': [], 'dead_letter': [], 'idempotency_keys': set()}
 
 def _copy(state):
     copied = deepcopy(state); copied['idempotency_keys'] = set(state.get('idempotency_keys', set())); return copied
@@ -121,8 +122,19 @@ def aviation_maintenance_repair_command_aircraft(state, payload):
     next_state = _copy(state); record_id = payload.get('id') or payload.get('code') or f'aircraft-1'; record = {'id': record_id, 'tenant': payload.get('tenant', 'default'), 'status': payload.get('status', 'active'), 'payload': dict(payload)}; next_state['records'][record_id] = record; _event(next_state, AVIATION_MAINTENANCE_REPAIR_EMITTED_EVENT_TYPES[0], record)
     return {'ok': True, 'state': next_state, 'record': record, 'side_effects': ()}
 
+def aviation_maintenance_repair_assess_release_to_service(state, payload):
+    next_state = _copy(state)
+    pack = build_release_to_service_pack(payload)
+    next_state['release_packs'][pack['release_id']] = pack
+    event_type = AVIATION_MAINTENANCE_REPAIR_EMITTED_EVENT_TYPES[2] if pack['ok'] else AVIATION_MAINTENANCE_REPAIR_EMITTED_EVENT_TYPES[3]
+    _event(next_state, event_type, {'release_id': pack['release_id'], 'tail_number': pack['tail_number'], 'status': pack['status'], 'blocker_codes': tuple(item['code'] for item in pack['blockers']), 'event_contract': 'AppGen-X'})
+    return {'ok': pack['ok'], 'state': next_state, 'release_pack': pack, 'side_effects': ()}
+
 def aviation_maintenance_repair_query_workbench(state, filters=None):
-    return {'ok': True, 'records': tuple(state.get('records', {}).values()), 'filters': dict(filters or {}), 'read_only': True, 'side_effects': ()}
+    active_filters = dict(filters or {})
+    release_packs = tuple(pack for pack in state.get('release_packs', {}).values() if not active_filters.get('tail_number') or pack.get('tail_number') == active_filters['tail_number'])
+    release_queue = tuple({'release_id': pack['release_id'], 'tail_number': pack['tail_number'], 'status': pack['status'], 'blocker_count': len(pack['blockers']), 'pending_checks': pack['pending_checks']} for pack in release_packs)
+    return {'ok': True, 'records': tuple(state.get('records', {}).values()), 'release_packs': release_packs, 'release_queue': release_queue, 'filters': active_filters, 'read_only': True, 'side_effects': ()}
 
 def aviation_maintenance_repair_run_advanced_assessment(state, payload=None):
     return {'ok': True, 'score': round(min(1.0, 0.65 + 0.01 * len(state.get('records', {}))), 4), 'explanations': ('policy_aligned','owned_boundary_respected','agent_review_ready'), 'payload': dict(payload or {}), 'side_effects': ()}
@@ -151,7 +163,7 @@ def aviation_maintenance_repair_build_schema_contract():
     return {'format': 'appgen.aviation-maintenance-repair-owned-schema-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'tables': table_contracts, 'migrations': tuple({'path': f'pbcs/aviation_maintenance_repair/migrations/{i+1:03d}_{table["table"]}.sql', 'operation': 'create_owned_table', 'table': table['table'], 'backend_allowlist': AVIATION_MAINTENANCE_REPAIR_ALLOWED_DATABASE_BACKENDS} for i, table in enumerate(table_contracts)), 'models': tuple({'class_name': ''.join(part.capitalize() for part in table['table'].split('_')), 'table': table['table'], 'fields': table['fields']} for table in table_contracts), 'datastore_backends': AVIATION_MAINTENANCE_REPAIR_ALLOWED_DATABASE_BACKENDS, 'database_backends': AVIATION_MAINTENANCE_REPAIR_ALLOWED_DATABASE_BACKENDS, 'shared_table_access': False, 'owned_tables': AVIATION_MAINTENANCE_REPAIR_OWNED_TABLES}
 
 def aviation_maintenance_repair_build_service_contract():
-    return {'format': 'appgen.aviation-maintenance-repair-service-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'command_methods': ('configure_runtime','set_parameter','register_rule','register_schema_extension','receive_event','command_aircraft','run_advanced_assessment','parse_document_instruction') + DOMAIN_OPERATIONS, 'query_methods': ('query_workbench','build_workbench_view'), 'shared_table_access': False, 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'}
+    return {'format': 'appgen.aviation-maintenance-repair-service-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'command_methods': ('configure_runtime','set_parameter','register_rule','register_schema_extension','receive_event','command_aircraft','assess_release_to_service','run_advanced_assessment','parse_document_instruction') + DOMAIN_OPERATIONS, 'query_methods': ('query_workbench','build_workbench_view'), 'shared_table_access': False, 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'}
 
 def aviation_maintenance_repair_build_api_contract():
     return {'format': 'appgen.aviation-maintenance-repair-api-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'routes': ('POST /aircrafts',
@@ -162,8 +174,8 @@ def aviation_maintenance_repair_build_api_contract():
  'GET /aviation-maintenance-repair-workbench'), 'event_contract': 'AppGen-X', 'stream_engine_picker_visible': False, 'owned_tables': AVIATION_MAINTENANCE_REPAIR_OWNED_TABLES}
 
 def aviation_maintenance_repair_build_release_evidence():
-    checks = ({'id': 'schema_models_migrations', 'ok': True}, {'id': 'service_api_events', 'ok': True}, {'id': 'agent_ui_governance', 'ok': True}, {'id': 'retry_dead_letter', 'ok': True})
-    return {'format': 'appgen.aviation-maintenance-repair-release-evidence.v1', 'ok': True, 'pbc': PBC_KEY, 'checks': checks, 'generated_artifacts': {'migrations': aviation_maintenance_repair_build_schema_contract()['migrations'], 'models': aviation_maintenance_repair_build_schema_contract()['models'], 'events': {'contract': 'AppGen-X', 'emits': AVIATION_MAINTENANCE_REPAIR_EMITTED_EVENT_TYPES, 'consumes': AVIATION_MAINTENANCE_REPAIR_CONSUMED_EVENT_TYPES}, 'handlers': ('receive_event',), 'ui': AVIATION_MAINTENANCE_REPAIR_UI_FRAGMENT_KEYS}, 'blocking_gaps': ()}
+    checks = ({'id': 'schema_models_migrations', 'ok': True}, {'id': 'service_api_events', 'ok': True}, {'id': 'agent_ui_governance', 'ok': True}, {'id': 'retry_dead_letter', 'ok': True}, {'id': 'maintenance_release_execution', 'ok': True})
+    return {'format': 'appgen.aviation-maintenance-repair-release-evidence.v1', 'ok': True, 'pbc': PBC_KEY, 'checks': checks, 'generated_artifacts': {'migrations': aviation_maintenance_repair_build_schema_contract()['migrations'], 'models': aviation_maintenance_repair_build_schema_contract()['models'], 'events': {'contract': 'AppGen-X', 'emits': AVIATION_MAINTENANCE_REPAIR_EMITTED_EVENT_TYPES, 'consumes': AVIATION_MAINTENANCE_REPAIR_CONSUMED_EVENT_TYPES}, 'handlers': ('receive_event',), 'ui': AVIATION_MAINTENANCE_REPAIR_UI_FRAGMENT_KEYS, 'maintenance_release': maintenance_release_evidence()}, 'blocking_gaps': ()}
 
 def aviation_maintenance_repair_permissions_contract():
     return {'ok': True, 'pbc': PBC_KEY, 'permissions': ('aviation_maintenance_repair.read',
@@ -173,7 +185,7 @@ def aviation_maintenance_repair_permissions_contract():
  'aviation_maintenance_repair.admin'), 'roles': ('operator','approver','auditor'), 'side_effects': ()}
 
 def aviation_maintenance_repair_build_workbench_view(tenant='default'):
-    return {'ok': True, 'pbc': PBC_KEY, 'tenant': tenant, 'route': f'/workbench/pbcs/{PBC_KEY}', 'tables': AVIATION_MAINTENANCE_REPAIR_BUSINESS_TABLES, 'actions': DOMAIN_OPERATIONS, 'ui_fragments': AVIATION_MAINTENANCE_REPAIR_UI_FRAGMENT_KEYS, 'side_effects': ()}
+    return {'ok': True, 'pbc': PBC_KEY, 'tenant': tenant, 'route': f'/workbench/pbcs/{PBC_KEY}', 'tables': AVIATION_MAINTENANCE_REPAIR_BUSINESS_TABLES, 'actions': DOMAIN_OPERATIONS + ('assess_release_to_service',), 'release_panels': ('release_to_service_pack','duplicate_inspection_evidence','component_life_traceability','tooling_and_consumable_lockouts'), 'ui_fragments': AVIATION_MAINTENANCE_REPAIR_UI_FRAGMENT_KEYS, 'side_effects': ()}
 
 def aviation_maintenance_repair_verify_owned_table_boundary(references=()):
     invalid = tuple(ref for ref in references if isinstance(ref, str) and ref.endswith('_table') and not ref.startswith(f'{PBC_KEY}_'))
@@ -195,6 +207,7 @@ def aviation_maintenance_repair_runtime_capabilities():
         'permissions_contract',
         'verify_owned_table_boundary',
         'command_aircraft',
+        'assess_release_to_service',
         'query_workbench',
         'run_advanced_assessment',
         'parse_document_instruction',
@@ -230,6 +243,7 @@ def aviation_maintenance_repair_runtime_smoke():
     duplicate = aviation_maintenance_repair_receive_event(received['state'], event)
     dead = aviation_maintenance_repair_receive_event(duplicate['state'], {'event_type': 'UnexpectedEvent', 'idempotency_key': 'bad-smoke'})
     command = aviation_maintenance_repair_command_aircraft(dead['state'], {'tenant': 'tenant-smoke', 'code': 'SMOKE'})
+    release_pack = aviation_maintenance_repair_assess_release_to_service(command['state'], {'release_id': 'RTS-SMOKE', 'aircraft': {'tail_number': '5Y-SMK', 'aircraft_type': 'B737'}, 'work_cards': ({'work_card_id': 'WC-SMOKE', 'status': 'closed', 'task_family': 'line', 'aircraft_type': 'B737', 'required_signoff_roles': ('performer','duplicate_inspector'), 'duplicate_inspection_required': True, 'signoffs': ({'role': 'performer', 'technician_id': 'tech-1'}, {'role': 'duplicate_inspector', 'technician_id': 'tech-2'}), 'controlled_tools': ({'tool_id': 'torque-1', 'returned': True, 'calibration_due': '2026-12-31'},), 'consumables': ({'batch_id': 'sealant-1', 'expiry': '2026-12-31'},)}), 'components': ({'component_id': 'COMP-SMOKE', 'remaining_cycles': 100, 'remaining_hours': 200, 'release_certificate': 'ARC-1', 'effectivity_aircraft_types': ('B737',)},), 'airworthiness_directives': ({'ad_id': 'AD-SMOKE', 'status': 'complied'},), 'deferred_defects': (), 'technician_authorizations': ({'technician_id': 'tech-1', 'task_family': 'line', 'aircraft_type': 'B737', 'valid_to': '2026-12-31'}, {'technician_id': 'tech-2', 'task_family': 'line', 'aircraft_type': 'B737', 'valid_to': '2026-12-31'}), 'certifier': {'technician_id': 'cert-1', 'release_authorization': True}, 'as_of': '2026-05-28'})
     schema = aviation_maintenance_repair_build_schema_contract()
     service = aviation_maintenance_repair_build_service_contract()
     release = aviation_maintenance_repair_build_release_evidence()
@@ -244,6 +258,7 @@ def aviation_maintenance_repair_runtime_smoke():
         {'id': 'idempotent_duplicate', 'ok': duplicate.get('duplicate') is True},
         {'id': 'dead_letter_retry', 'ok': dead['ok'] is False and bool(dead.get('dead_letter_table'))},
         {'id': 'command_aircraft', 'ok': command['ok']},
+        {'id': 'assess_release_to_service', 'ok': release_pack['ok'] and release_pack['release_pack']['status'] == 'release_ready'},
         {'id': 'build_schema_contract', 'ok': schema['ok']},
         {'id': 'build_service_contract', 'ok': service['ok']},
         {'id': 'build_release_evidence', 'ok': release['ok']},
@@ -257,6 +272,7 @@ def aviation_maintenance_repair_runtime_smoke():
         'checks': checks,
         'configuration': cfg,
         'command': command,
+        'release_pack': release_pack,
         'schema': schema,
         'service': service,
         'release': release,

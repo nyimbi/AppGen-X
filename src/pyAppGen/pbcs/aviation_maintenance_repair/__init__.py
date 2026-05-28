@@ -3,6 +3,12 @@ from .manifest import PBC_MANIFEST
 from ..source_contract import source_pbc_package_contract, source_package_metadata, validate_source_package_metadata, source_registration_plan
 from .runtime import *
 from .ui import aviation_maintenance_repair_ui_contract, aviation_maintenance_repair_render_workbench
+from .maintenance_release import (
+    build_release_to_service_pack,
+    evaluate_component_installation,
+    evaluate_work_card_closeout,
+    maintenance_release_evidence,
+)
 
 PBC_KEY = 'aviation_maintenance_repair'
 
