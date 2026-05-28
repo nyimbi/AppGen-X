@@ -1042,6 +1042,22 @@ def test_lsp_code_action_apply_patches_missing_operation_and_lookup_directive(tm
     assert "lookup missing_name (customer.missing_name)" in lookup["patched_source"]
     assert lookup["applied_edits"]
 
+    missing_relationship = """
+    app MissingLookupRelationship { targets: web }
+    table Customer { id: int pk; name: string }
+    table Invoice { id: int pk }
+    view InvoiceForm for Invoice { Main: customer.name }
+    """
+    relationship = apply_lsp_code_action_dsl(
+        missing_relationship,
+        source_name="relationship.appgen",
+        action_id="add_relationship_for_lookup_path",
+    )
+
+    assert relationship["changed"] is True
+    assert "customer_id: int -> Customer.id" in relationship["patched_source"]
+    assert relationship["lint"]["ok"] is True
+
     source_path = tmp_path / "bad.appgen"
     source_path.write_text(missing_operation, encoding="utf-8")
     result = subprocess.run(
@@ -1108,6 +1124,18 @@ def test_lsp_code_actions_cover_required_tooling_quick_fixes() -> None:
         "replace_typo_with_nearest_symbol",
         "replace_secret_literal_with_env",
     } <= action_ids
+
+    missing_relationship_source = """
+    app BadRelationship { targets: web }
+    table Customer { id: int pk; name: string }
+    table Invoice { id: int pk }
+    view InvoiceForm for Invoice { Main: customer.name }
+    """
+    relationship_action_ids = {
+        action["data"]["id"]
+        for action in lsp_service_dsl(missing_relationship_source, source_name="relationship.appgen")["codeAction"]["actions"]
+    }
+    assert "add_relationship_for_lookup_path" in relationship_action_ids
 
 
 def test_lsp_code_actions_cover_pbc_and_agent_quick_fixes_on_parseable_sources() -> None:

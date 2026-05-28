@@ -4738,6 +4738,24 @@ def _lsp_required_actions_for_diagnostic(source: str, diagnostic: dict, *, sourc
         table, field = _missing_field_target(message, source)
         if table and field and "." not in field:
             actions.append(_lsp_insert_in_block_action(source, source_name, diagnostic, "create_missing_field", f"Create field {table}.{field}", "table", table, f"  {field}: string\n"))
+    if code == "AGX0402":
+        table, binding = _view_lookup_binding_from_message(message, source)
+        if table and binding and "." in binding:
+            alias = binding.split(".", 1)[0]
+            target_table = _pascal_case(alias)
+            if _source_declares_block(source, "table", target_table):
+                actions.append(
+                    _lsp_insert_in_block_action(
+                        source,
+                        source_name,
+                        diagnostic,
+                        "add_relationship_for_lookup_path",
+                        f"Add relationship for {binding}",
+                        "table",
+                        table,
+                        f"  {alias}_id: int -> {target_table}.id\n",
+                    )
+                )
     if code == "AGX0303":
         view, binding = _view_binding_from_message(message)
         table = _view_table_for_view(source, view)
@@ -4798,10 +4816,17 @@ def _lsp_append_action(source: str, source_name: str | None, diagnostic: dict | 
 
 
 def _lsp_insert_in_block_action(source: str, source_name: str | None, diagnostic: dict | None, action_id: str, title: str, kind: str, name: str, new_text: str) -> dict:
-    line = _closing_line_for_block(source, kind, name)
-    if line is None:
+    insert_index = _closing_index_for_block(source, kind, name)
+    if insert_index is None:
         return _lsp_append_action(source, source_name, diagnostic, action_id, title, f"\n{kind} {name} {{\n{new_text}}}\n")
-    return _lsp_edit_action(source_name, diagnostic, action_id, title, ({"range": {"start": {"line": line, "character": 0}, "end": {"line": line, "character": 0}}, "newText": new_text},))
+    inserted = new_text if insert_index > 0 and source[insert_index - 1] in "\n\r" else f"\n{new_text}"
+    return _lsp_edit_action(
+        source_name,
+        diagnostic,
+        action_id,
+        title,
+        ({"range": _source_range(source, insert_index, insert_index), "newText": inserted},),
+    )
 
 
 def _lsp_replace_action(
@@ -4864,6 +4889,21 @@ def _view_binding_from_message(message: str) -> tuple[str | None, str | None]:
     return (match.group(1), match.group(2)) if match else (None, None)
 
 
+def _view_lookup_binding_from_message(message: str, source: str) -> tuple[str | None, str | None]:
+    match = re.search(
+        r"Unknown (?:view|component) field: ([A-Za-z_][A-Za-z0-9_]*)\.([A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)+)",
+        message,
+    )
+    if not match:
+        return None, None
+    view, binding = match.groups()
+    return _view_table_for_view(source, view), binding
+
+
+def _source_declares_block(source: str, kind: str, name: str) -> bool:
+    return bool(re.search(rf"\b{re.escape(kind)}\s+{re.escape(name)}\b", source or ""))
+
+
 def _handler_target_from_message(message: str) -> str | None:
     match = re.search(r"Unknown handler target:\s+[A-Za-z_][A-Za-z0-9_]*\.([A-Za-z_][A-Za-z0-9_]*)", message)
     return match.group(1) if match else _diagnostic_token(message)
@@ -4896,6 +4936,11 @@ def _rule_table_from_message(message: str, source: str) -> str | None:
 
 
 def _closing_line_for_block(source: str, kind: str, name: str) -> int | None:
+    index = _closing_index_for_block(source, kind, name)
+    return source.count("\n", 0, index) if index is not None else None
+
+
+def _closing_index_for_block(source: str, kind: str, name: str) -> int | None:
     pattern = re.compile(rf"\b{kind}\s+{re.escape(name)}\b[^\{{]*\{{")
     match = pattern.search(source)
     if not match:
@@ -4907,7 +4952,7 @@ def _closing_line_for_block(source: str, kind: str, name: str) -> int | None:
         elif source[index] == "}":
             depth -= 1
             if depth == 0:
-                return source.count("\n", 0, index)
+                return index
     return None
 
 
