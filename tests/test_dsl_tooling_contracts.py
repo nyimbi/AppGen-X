@@ -25,6 +25,7 @@ from pyAppGen.dsl import release_verifier_report_dsl
 from pyAppGen.dsl import semantic_drift_audit_dsl
 from pyAppGen.dsl import semantic_model_dsl
 from pyAppGen.dsl import validate_report_dsl
+from pyAppGen.dsl import completion_coverage_dsl
 
 
 TOOLING_SAMPLE = """
@@ -702,7 +703,47 @@ def test_lsp_service_uses_shared_semantic_model_for_core_editor_features() -> No
     assert report["formatting"]["format"] == "appgen.lsp-formatting.v1"
     assert report["rename"]["ok"] is True
     assert "PostInvoice" in report["rename"]["workspace_edit"]["changes"]["finance.appgen"][0]["newText"]
-    assert any(symbol["name"] == "Invoice" for symbol in report["workspaceSymbol"]["symbols"])
+
+
+def test_lsp_completion_coverage_proves_required_context_sources() -> None:
+    source = """
+    app CompletionDemo { targets: web, mobile, desktop }
+    table Customer { id: int pk; name: string }
+    table Invoice {
+      id: int pk
+      customer_id: int -> Customer.id
+      lookup customer_name (customer.name)
+    }
+    view InvoiceForm for Invoice {
+      Main: customer.name
+      @ customer.name Lookup 0 0 6 1
+      on Save -> SubmitInvoice
+    }
+    flow SubmitInvoice { draft -> reviewed; reviewed -> posted }
+    operation ReverseInvoice { posted -> reversed }
+    component CustomerLookup { on Select -> SubmitInvoice }
+    composition Suite { include pbc gl_core version 1.0.0 }
+    package MobileRelease { target: mobile; smoke: launch }
+    deploy Production { unit SubmitInvoice as worker; health SubmitInvoice "/health" }
+    llm LocalModel { provider: ollama; mode: local }
+    agent Builder { provider: LocalModel; tools: write, schema }
+    """
+
+    coverage = completion_coverage_dsl(source, source_name="completion.appgen")
+    service = lsp_service_dsl(source, source_name="completion.appgen")
+
+    assert coverage["format"] == "appgen.completion-coverage.v1"
+    assert coverage["missing"] == ()
+    assert service["completionCoverage"]["missing"] == ()
+    assert set(coverage["required"]) <= set(coverage["detected"])
+    assert "SubmitInvoice" in coverage["labels_by_source"]["operation_targets"]
+    assert "customer.name" in coverage["labels_by_source"]["lookup_paths"]
+    assert "Lookup" in coverage["labels_by_source"]["components"]
+    assert "gl_core" in coverage["labels_by_source"]["pbc_keys"]
+    assert "mobile" in coverage["labels_by_source"]["package_targets"]
+    assert "LocalModel" in coverage["labels_by_source"]["llm_providers"]
+    assert "write" in coverage["labels_by_source"]["agent_skills"]
+    assert any(symbol["name"] == "Invoice" for symbol in service["workspaceSymbol"]["symbols"])
 
 
 def test_lsp_rename_blocks_destructive_migration_impact() -> None:
@@ -1568,6 +1609,7 @@ def test_doctor_report_checks_parser_catalog_generator_and_ide_hooks() -> None:
         "template_writers",
         "generator_backends",
         "lsp_semantic_service",
+        "lsp_completion_coverage",
         "studio_semantic_service",
     } <= {check["check"] for check in report["checks"]}
 

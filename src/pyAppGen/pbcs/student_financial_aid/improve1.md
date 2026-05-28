@@ -1,418 +1,416 @@
-# Student Financial Aid PBC Better-Than-World-Class Improvement Backlog
+# Student Financial Aid PBC Manual Improvement Backlog
 
 ## Purpose
 
-This file identifies, justifies, and describes 50 high-impact improvements for `student_financial_aid`. The backlog is specific to aid eligibility, awards, verification, disbursement, satisfactory progress, compliance, and student funding and is intended to move the PBC from release-auditable scaffolding toward complete, specialist-grade domain coverage.
+This hand-crafted backlog replaces generic roadmap text for `student_financial_aid` with student-aid-specific improvements for aid applications, eligibility, award packaging, verification, disbursement, satisfactory academic progress, compliance, student communications, workbench operations, and governed agent assistance.
 
 ## Current Domain Evidence Used
 
 - Stable PBC key: `student_financial_aid`.
-- Domain purpose: Aid eligibility, awards, verification, disbursement, satisfactory progress, compliance, and student funding.
-- Owned domain tables: `aid_application`, `eligibility_review`, `award_package`, `verification_item`, `disbursement`, `sap_status`, `aid_compliance`, `student_financial_aid_policy_rule`, `student_financial_aid_runtime_parameter`, `student_financial_aid_schema_extension`, `student_financial_aid_control_assertion`, `student_financial_aid_governed_model`.
-- Public APIs: `POST /aid-applications`, `POST /eligibility-reviews`, `POST /award-packages`, `POST /verification-items`, `POST /disbursements`, `GET /student-financial-aid-workbench`.
-- Emitted AppGen-X events: `StudentFinancialAidCreated`, `StudentFinancialAidUpdated`, `StudentFinancialAidApproved`, `StudentFinancialAidExceptionOpened`.
-- Consumed AppGen-X events: `PolicyChanged`, `AuditEventSealed`, `OperationalKpiChanged`.
-- Current standard surfaces include: `aid_application_management`, `student_financial_aid_workflow`, `student_financial_aid_analytics`, `configuration_schema`, `rule_engine`, `parameter_engine`, `owned_schema_migrations_models`, `appgen_x_outbox_inbox_eventing`, `idempotent_handlers`, `retry_dead_letter_evidence`.
-- Current advanced surfaces include: `student_financial_aid_event_sourced_operational_history`, `student_financial_aid_multi_tenant_policy_isolation`, `student_financial_aid_schema_evolution_resilience`, `student_financial_aid_autonomous_anomaly_detection`, `student_financial_aid_semantic_document_instruction_understanding`, `student_financial_aid_predictive_risk_scoring`, `student_financial_aid_counterfactual_scenario_simulation`, `student_financial_aid_cryptographic_audit_proofs`.
+- Domain purpose: aid eligibility, awards, verification, disbursement, satisfactory progress, compliance, and student funding.
+- Owned records include `aid_application`, `eligibility_review`, `award_package`, `verification_item`, `disbursement`, `sap_status`, `aid_compliance`, policy rules, runtime parameters, schema extensions, control assertions, and governed models.
+- Public APIs include `POST /aid-applications`, `POST /eligibility-reviews`, `POST /award-packages`, `POST /verification-items`, `POST /disbursements`, and `GET /student-financial-aid-workbench`.
+- Workbench surfaces include `StudentFinancialAidWorkbench`, `StudentFinancialAidDetail`, and `StudentFinancialAidAssistantPanel`.
+- AppGen-X events include `StudentFinancialAidCreated`, `StudentFinancialAidUpdated`, `StudentFinancialAidApproved`, and `StudentFinancialAidExceptionOpened`.
 
 ## 50 High-Impact Improvements
 
-### 1. Canonical lifecycle state model for Aid Application
+### 1. Aid application lifecycle state machine
 
-**Justification:** This closes shallow CRUD gaps by making every student financial aid transition explainable and testable instead of implicit in free-form status values.
+**Justification:** Student aid applications move through draft, submitted, matched, verified, packaged, revised, cancelled, archived, and appeal states.
 
-**Improvement:** Define a complete state machine for `aid_application` with explicit draft, validated, blocked, approved, active, suspended, corrected, closed, archived, and reopened states. Tie the behavior to `student_financial_aid_create_aid_application_workflow` where applicable, and make it visible in `StudentFinancialAidWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add explicit states for `aid_application` with transition reasons, required evidence, owner, allowed commands, and AppGen-X event emission.
 
-**Acceptance evidence:** State-transition tests, invalid-transition fixtures, workbench state badges, and emitted AppGen-X transition events for StudentFinancialAidCreated, StudentFinancialAidUpdated, StudentFinancialAidApproved. The evidence should be package-local in `src/pyAppGen/pbcs/student_financial_aid` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must reject invalid transitions and show next allowed actions in `StudentFinancialAidWorkbench`.
 
-### 2. Domain intake and normalization for Eligibility Review
+### 2. Applicant identity and enrollment boundary
 
-**Justification:** The PBC cannot reach complete domain coverage unless it handles the messy front door of aid eligibility, awards, verification, disbursement, satisfactory progress, compliance, and student funding, not only already-clean records.
+**Justification:** Aid eligibility depends on student identity, program, enrollment, residency, and dependency status without owning student lifecycle records.
 
-**Improvement:** Build a typed intake pipeline for `eligibility_review` that accepts structured API payloads, document-derived instructions, batch loads, and assistant-generated drafts while normalizing identifiers, dates, units, parties, and jurisdictional context. Tie the behavior to `student_financial_aid_record_eligibility_review_workflow` where applicable, and make it visible in `StudentFinancialAidWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Store student, program, residency, enrollment, and dependency projections with freshness and source evidence from declared dependencies.
 
-**Acceptance evidence:** Golden intake fixtures, rejected-record queues, field-level normalization evidence, and assistant previews before governed datastore mutation. The evidence should be package-local in `src/pyAppGen/pbcs/student_financial_aid` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Boundary tests must prove student records are projection inputs and no external student table is mutated.
 
-### 3. Specialist validation rules for Award Package
+### 3. Application year and period controls
 
-**Justification:** World-class Student Financial Aid requires rules that domain experts can reason about, version, test, and roll back without code edits.
+**Justification:** Aid rules and award limits differ by academic year, term, payment period, census date, and enrollment intensity.
 
-**Improvement:** Add a domain rule compiler for `award_package` that supports threshold rules, eligibility rules, dependency rules, temporal windows, conflicting-instruction detection, and override justification. Tie the behavior to `student_financial_aid_create_aid_application_workflow` where applicable, and make it visible in `StudentFinancialAidWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add year, term, payment period, census date, enrollment intensity, and rule-version evidence to each aid application and award.
 
-**Acceptance evidence:** Rule simulation tests, versioned rule manifests, rule impact reports, and UI rule editors linked to `STUDENT_FINANCIAL_AID_DATABASE_URL, STUDENT_FINANCIAL_AID_EVENT_TOPIC, STUDENT_FINANCIAL_AID_RETRY_LIMIT`. The evidence should be package-local in `src/pyAppGen/pbcs/student_financial_aid` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must apply different rules by year and payment period.
 
-### 4. Parameter governance and tuning for Verification Item
+### 4. Dependency and household review
 
-**Justification:** Parameters are where operations teams tune student financial aid; unbounded constants would make the PBC brittle and unsafe in real deployments.
+**Justification:** Dependency status, household size, family members in college, and special circumstances affect aid calculations.
 
-**Improvement:** Expose bounded runtime parameters for `verification_item` covering risk thresholds, SLA windows, confidence floors, escalation cutoffs, batch sizes, retry limits, and human-confirmation requirements. Tie the behavior to `student_financial_aid_record_eligibility_review_workflow` where applicable, and make it visible in `StudentFinancialAidWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add dependency review records with household facts, source documents, override status, reviewer, and rationale.
 
-**Acceptance evidence:** Parameter schema validation, tenant overrides, approval history, rollback controls, and workbench diff views. The evidence should be package-local in `src/pyAppGen/pbcs/student_financial_aid` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must block packaging when required dependency evidence is incomplete.
 
-### 5. Deep owned schema expansion for Disbursement
+### 5. Cost of attendance budget model
 
-**Justification:** A single payload column cannot express the full surface of aid eligibility, awards, verification, disbursement, satisfactory progress, compliance, and student funding or prove cross-PBC boundaries are respected.
+**Justification:** Award packaging requires tuition, fees, housing, food, books, transportation, personal, dependent care, and program-specific costs.
 
-**Improvement:** Extend the owned schema around `disbursement` with normalized child tables for line-level evidence, party roles, approvals, attachments, comments, metrics, exception reasons, and control assertions. Tie the behavior to `student_financial_aid_create_aid_application_workflow` where applicable, and make it visible in `StudentFinancialAidWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add budget components by student category, program, residency, housing status, enrollment intensity, and approved professional judgment adjustments.
 
-**Acceptance evidence:** Migrations, models, relationship tests, schema contract snapshots, and no shared-table access outside the `student_financial_aid_` namespace. The evidence should be package-local in `src/pyAppGen/pbcs/student_financial_aid` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must calculate cost budgets and preserve adjustment evidence.
 
-### 6. Event-sourced operational history for Academic Progress Status
+### 6. Need and eligibility calculation trace
 
-**Justification:** Temporal reconstruction is essential for better-than-world-class auditability and dispute resolution in student financial aid.
+**Justification:** Students and auditors need to understand how need, resources, and eligibility were calculated.
 
-**Improvement:** Capture every material mutation of `sap_status` as immutable AppGen-X events with actor, tenant, command, policy version, idempotency key, before/after summary, and projection checkpoint. Tie the behavior to `student_financial_aid_record_eligibility_review_workflow` where applicable, and make it visible in `StudentFinancialAidWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand `eligibility_review` with contribution inputs, budget, other resources, need, unmet need, aid limits, and calculation version.
 
-**Acceptance evidence:** Replay tests, projection checksums, event ordering evidence, and point-in-time workbench views. The evidence should be package-local in `src/pyAppGen/pbcs/student_financial_aid` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must reconstruct eligibility calculations from owned records and projections.
 
-### 7. Projection and read-model strategy for Aid Compliance
+### 7. Award packaging rules
 
-**Justification:** The workbench should not force users to infer domain truth from raw tables; each projection should answer a real operating question.
+**Justification:** Grants, scholarships, work-study, subsidized loans, unsubsidized loans, institutional funds, and private aid need ordered packaging logic.
 
-**Improvement:** Create purpose-built projections for `aid_compliance`: operational queue, executive KPI rollup, exception aging, compliance evidence, agent task context, and external dependency health. Tie the behavior to `student_financial_aid_create_aid_application_workflow` where applicable, and make it visible in `StudentFinancialAidWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add packaging rules with fund priority, eligibility conditions, annual limits, aggregate limits, unmet-need handling, and overaward prevention.
 
-**Acceptance evidence:** Projection contracts, freshness SLAs, backfill tests, and visible stale-projection warnings. The evidence should be package-local in `src/pyAppGen/pbcs/student_financial_aid` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must produce deterministic packages and cite rule versions.
 
-### 8. Exception taxonomy and remediation for Student Financial Aid Policy Rule
+### 8. Fund source capacity tracking
 
-**Justification:** High-value PBCs win on exception throughput; generic “failed” states hide the details operators need.
+**Justification:** Institutional and program funds can run out and require reservation, waitlist, or reallocation controls.
 
-**Improvement:** Model the full exception taxonomy for `student_financial_aid_policy_rule`, including severity, root cause, blocking dependency, remediation owner, due date, retry eligibility, escalation path, and closure evidence. Tie the behavior to `student_financial_aid_record_eligibility_review_workflow` where applicable, and make it visible in `StudentFinancialAidWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add fund capacity projections, reservation status, waitlist rules, release conditions, and allocation audit evidence.
 
-**Acceptance evidence:** Exception queues, aging metrics, remediation playbooks, dead-letter linkage, and closure test fixtures for records retention holds. The evidence should be package-local in `src/pyAppGen/pbcs/student_financial_aid` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must prevent awards that exceed available fund capacity.
 
-### 9. Predictive risk scoring for Student Financial Aid Runtime Parameter
+### 9. Scholarship and external resource coordination
 
-**Justification:** The package should warn users before student financial aid work fails, breaches policy, or creates downstream cost.
+**Justification:** External scholarships and employer benefits can reduce need or require award revision.
 
-**Improvement:** Add predictive risk scoring for `student_financial_aid_runtime_parameter` using domain features from owned tables, consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, rule outcomes, aging, anomaly signals, and historical corrections. Tie the behavior to `student_financial_aid_create_aid_application_workflow` where applicable, and make it visible in `StudentFinancialAidWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Store external resource projections, source, amount, term, restrictions, confirmation status, and award-impact calculation.
 
-**Acceptance evidence:** Feature manifests, score explanations, calibration reports, drift alerts, and tests for low/medium/high-risk scenarios. The evidence should be package-local in `src/pyAppGen/pbcs/student_financial_aid` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must revise award packages when confirmed resources create an overaward.
 
-### 10. Counterfactual simulation for Student Financial Aid Schema Extension
+### 10. Verification selection and tracking
 
-**Justification:** Advanced users need to ask “what would happen if” before committing changes to live aid eligibility, awards, verification, disbursement, satisfactory progress, compliance, and student funding operations.
+**Justification:** Selected students require specific documents, deadlines, corrections, and reviewer actions.
 
-**Improvement:** Provide scenario simulation for `student_financial_aid_schema_extension`: policy change, capacity constraint, deadline shift, price/rate change, eligibility change, disruption, and manual override outcomes. Tie the behavior to `student_financial_aid_record_eligibility_review_workflow` where applicable, and make it visible in `StudentFinancialAidWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand `verification_item` with selection reason, required document, status, due date, reviewer, discrepancy, and correction outcome.
 
-**Acceptance evidence:** Simulation APIs, non-mutating sandbox state, comparison reports, and workbench side-by-side scenario panels. The evidence should be package-local in `src/pyAppGen/pbcs/student_financial_aid` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must block disbursement while mandatory verification items remain unresolved.
 
-### 11. Autonomous anomaly triage for Student Financial Aid Control Assertion
+### 11. Document intake and extraction
 
-**Justification:** A world-class PBC should reduce analyst burden without hiding the reasoning behind automated triage.
+**Justification:** Tax records, identity documents, dependency forms, appeals, and statements arrive as documents.
 
-**Improvement:** Implement anomaly detection for `student_financial_aid_control_assertion` that identifies outliers, duplicate submissions, impossible sequences, stale dependencies, unusual amounts/counts/durations, and contradictory fields. Tie the behavior to `student_financial_aid_create_aid_application_workflow` where applicable, and make it visible in `StudentFinancialAidWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add assistant-assisted extraction with source page, extracted fields, confidence, discrepancy flags, and reviewer approval.
 
-**Acceptance evidence:** Explainable anomaly cards, reviewer feedback loops, false-positive tracking, and suppression governance. The evidence should be package-local in `src/pyAppGen/pbcs/student_financial_aid` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must require confirmation before document-derived facts update aid records.
 
-### 12. Semantic document understanding for Student Financial Aid Governed Model
+### 12. Conflicting information workflow
 
-**Justification:** Document-heavy work in Student Financial Aid cannot be complete if the assistant only answers questions and cannot prepare accurate governed changes.
+**Justification:** Offices must resolve conflicting income, identity, enrollment, citizenship, or academic facts before disbursing aid.
 
-**Improvement:** Train the package assistant to parse domain documents and instructions for `student_financial_aid_governed_model`, extract obligations, dates, parties, quantities, identifiers, and exceptions, then map them to safe draft mutations. Tie the behavior to `student_financial_aid_record_eligibility_review_workflow` where applicable, and make it visible in `StudentFinancialAidWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add conflict records with fact type, sources, severity, resolution owner, required correction, and closure evidence.
 
-**Acceptance evidence:** Document extraction tests, confidence thresholds, redaction handling, source span citations, and human confirmation workflows. The evidence should be package-local in `src/pyAppGen/pbcs/student_financial_aid` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must block packaging or disbursement for unresolved high-severity conflicts.
 
-### 13. Agent-safe CRUD execution for Aid Application
+### 13. Professional judgment decisions
 
-**Justification:** The PBC agent must be a first-class operator but never a hidden bypass around RBAC, rules, or owned datastore boundaries.
+**Justification:** Special circumstances can alter income, dependency, cost, or resource assumptions.
 
-**Improvement:** Add a professional chatbot skill for `aid_application` that can create, update, correct, close, and annotate records only through policy-checked commands, approval gates, and previewed diffs. Tie the behavior to `student_financial_aid_create_aid_application_workflow` where applicable, and make it visible in `StudentFinancialAidWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add professional judgment cases with request reason, documents, adjusted field, reviewer authority, approval, and audit note.
 
-**Acceptance evidence:** Skill manifests, permission tests, preview/confirm flows, blocked-action evidence, and audit events for every assistant mutation. The evidence should be package-local in `src/pyAppGen/pbcs/student_financial_aid` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must preserve original and adjusted values with rationale.
 
-### 14. Workbench persona coverage for Eligibility Review
+### 14. Dependency override workflow
 
-**Justification:** A generic detail page underserves the domain; each role needs the exact controls and evidence they use daily.
+**Justification:** Dependency override decisions require careful evidence, approval, renewal handling, and student communication.
 
-**Improvement:** Design dedicated workbench panels for `eligibility_review`: operator queue, supervisor approvals, analyst exceptions, auditor evidence, configuration owner, and agent-assistance review. Tie the behavior to `student_financial_aid_record_eligibility_review_workflow` where applicable, and make it visible in `StudentFinancialAidWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add override type, evidence checklist, reviewer, effective year, renewal requirement, denial reason, and notice.
 
-**Acceptance evidence:** UI contract entries, route tests, empty/error/loading states, and permission-aware action availability. The evidence should be package-local in `src/pyAppGen/pbcs/student_financial_aid` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must require elevated approval and generate decision evidence.
 
-### 15. Cross-PBC dependency contracts for Award Package
+### 15. Satisfactory academic progress evaluation
 
-**Justification:** Composable packages fail when hidden table coupling enters the domain model.
+**Justification:** Aid eligibility depends on GPA, pace, maximum timeframe, probation, appeal, and academic plan compliance.
 
-**Improvement:** Represent dependencies for `award_package` through declared APIs, consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, and projections rather than shared tables, with explicit freshness, ownership, and fallback behavior. Tie the behavior to `student_financial_aid_create_aid_application_workflow` where applicable, and make it visible in `StudentFinancialAidWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand `sap_status` with evaluation period, GPA result, pace result, timeframe result, appeal status, plan terms, and next review date.
 
-**Acceptance evidence:** Dependency manifests, contract tests, stale dependency alerts, and no foreign-table references in generated artifacts. The evidence should be package-local in `src/pyAppGen/pbcs/student_financial_aid` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must calculate pass, warning, probation, suspension, and plan-compliance outcomes.
 
-### 16. API completeness and versioning for Verification Item
+### 16. Academic progress appeal handling
 
-**Justification:** Complete domain coverage requires both command and query surfaces, not only happy-path create endpoints.
+**Justification:** Students may appeal loss of aid due to academic progress issues.
 
-**Improvement:** Expand APIs beyond POST /aid-applications, POST /eligibility-reviews, POST /award-packages to cover search, validation-only commands, simulation, bulk intake, exception closure, evidence export, projection reads, and idempotent corrections. Tie the behavior to `student_financial_aid_record_eligibility_review_workflow` where applicable, and make it visible in `StudentFinancialAidWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add appeal records with reason, documentation, academic plan, committee decision, conditions, notice, and expiration.
 
-**Acceptance evidence:** OpenAPI-style route manifests, backward-compatible version tests, deprecation metadata, and idempotency assertions. The evidence should be package-local in `src/pyAppGen/pbcs/student_financial_aid` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must reinstate eligibility only after approved appeal or plan status.
 
-### 17. Typed emitted-event expansion for Disbursement
+### 17. Award acceptance and decline flow
 
-**Justification:** Consumers should understand what happened in Student Financial Aid without parsing opaque payloads.
+**Justification:** Students may accept, reduce, decline, or later reinstate awards under specific rules.
 
-**Improvement:** Replace generic lifecycle emissions with typed events for each meaningful `disbursement` transition, exception, approval, correction, simulation result, and downstream handoff. Tie the behavior to `student_financial_aid_create_aid_application_workflow` where applicable, and make it visible in `StudentFinancialAidWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add award response records with award line, response, amount, date, channel, counseling requirement, and revision impact.
 
-**Acceptance evidence:** Event schema tests, event examples, compatibility checks, and emitted-event coverage in release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/student_financial_aid` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must update award package state from student responses.
 
-### 18. Consumed-event handlers for Academic Progress Status
+### 18. Loan counseling and promissory-note boundary
 
-**Justification:** A PBC is composable only when incoming events affect its own domain state predictably and safely.
+**Justification:** Loan disbursement may require counseling and signed promissory evidence from external systems.
 
-**Improvement:** Implement idempotent handlers for consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged that update projections, open dependency exceptions, recalculate risk, and preserve source event lineage. Tie the behavior to `student_financial_aid_record_eligibility_review_workflow` where applicable, and make it visible in `StudentFinancialAidWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Store loan requirement projections with completion status, expiration, source, and freshness before disbursement release.
 
-**Acceptance evidence:** Duplicate-event tests, handler side-effect boundaries, dead-letter fixtures, and lineage links back to source events. The evidence should be package-local in `src/pyAppGen/pbcs/student_financial_aid` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Boundary tests must prove external loan requirement systems are not mutated.
 
-### 19. Retry and dead-letter operations for Aid Compliance
+### 19. Disbursement eligibility checklist
 
-**Justification:** Dead letters are not just plumbing; they are domain work queues that can block aid eligibility, awards, verification, disbursement, satisfactory progress, compliance, and student funding.
+**Justification:** Disbursement must check enrollment, verification, academic progress, holds, acceptance, fund availability, and payment period.
 
-**Improvement:** Create operational tools for retrying, quarantining, explaining, and resolving dead-lettered `aid_compliance` events with max-attempt policy, poison-message detection, and replay safety. Tie the behavior to `student_financial_aid_create_aid_application_workflow` where applicable, and make it visible in `StudentFinancialAidWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand `disbursement` with prerequisite checklist, blocker reasons, release date, amount, payment period, and approval evidence.
 
-**Acceptance evidence:** Dead-letter workbench, retry eligibility tests, replay audit proof, and operator action logs. The evidence should be package-local in `src/pyAppGen/pbcs/student_financial_aid` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must block disbursement when any configured prerequisite fails.
 
-### 20. RBAC and attribute policy for Student Financial Aid Policy Rule
+### 20. Disbursement scheduling and split rules
 
-**Justification:** High-impact domain operations need finer controls than generic RBAC grants.
+**Justification:** Aid is often split by term, module, payment period, or late-start enrollment.
 
-**Improvement:** Extend permissions for `student_financial_aid_policy_rule` from coarse read/create/update/admin to action-level and attribute-aware policies based on role, tenant, jurisdiction, monetary/materiality threshold, and exception severity. Tie the behavior to `student_financial_aid_record_eligibility_review_workflow` where applicable, and make it visible in `StudentFinancialAidWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add schedule rules with split basis, earliest release date, census recalculation, late disbursement handling, and cancellation rules.
 
-**Acceptance evidence:** Permission matrix docs, ABAC policy tests, denied-action UI states, and assistant skill permission checks. The evidence should be package-local in `src/pyAppGen/pbcs/student_financial_aid` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must calculate disbursement schedules for full-year, term-only, and late-start cases.
 
-### 21. Continuous control testing for Student Financial Aid Runtime Parameter
+### 21. Return-of-funds calculation
 
-**Justification:** Controls should run during operations, not only during release audit or manual review.
+**Justification:** Withdrawals or nonattendance can require returning funds based on attendance, aid earned, and disbursed amounts.
 
-**Improvement:** Embed control assertions for `student_financial_aid_runtime_parameter` that continuously test segregation of duties, required approvals, stale exceptions, policy drift, duplicate records, and boundary violations. Tie the behavior to `student_financial_aid_create_aid_application_workflow` where applicable, and make it visible in `StudentFinancialAidWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add return calculation records with withdrawal date, attendance projection, aid earned, unearned amount, institutional share, and student notification.
 
-**Acceptance evidence:** Control dashboards, failing-control events, test fixtures, and release evidence tied to `student_financial_aid_control_assertion` records. The evidence should be package-local in `src/pyAppGen/pbcs/student_financial_aid` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must calculate return amounts and create adjustment events.
 
-### 22. Cryptographic audit proofing for Student Financial Aid Schema Extension
+### 22. Enrollment change recalculation
 
-**Justification:** Better-than-world-class auditability requires proof of integrity, not merely logs stored in mutable tables.
+**Justification:** Dropping classes, adding modules, or changing program load can alter eligibility and disbursements.
 
-**Improvement:** Hash-chain material `student_financial_aid_schema_extension` decisions, documents, emitted events, and release-evidence snapshots to make tampering visible without exposing sensitive payloads. Tie the behavior to `student_financial_aid_record_eligibility_review_workflow` where applicable, and make it visible in `StudentFinancialAidWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Consume enrollment-change events and add recalculation cases with affected awards, revised amounts, notices, and approval.
 
-**Acceptance evidence:** Proof manifests, verification APIs, redacted proof exports, and audit-ledger handoff events. The evidence should be package-local in `src/pyAppGen/pbcs/student_financial_aid` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must revise awards after declared enrollment projection changes.
 
-### 23. Privacy, consent, and secrecy controls for Student Financial Aid Control Assertion
+### 23. Overaward and overpayment resolution
 
-**Justification:** Complete domain coverage must account for protected data and restricted operational evidence.
+**Justification:** Aid can exceed need, cost, annual limits, or eligibility after new information arrives.
 
-**Improvement:** Add field-level privacy classifications for `student_financial_aid_control_assertion`, consent checks, masking rules, retention schedules, legal holds, and assistant redaction policies. Tie the behavior to `student_financial_aid_create_aid_application_workflow` where applicable, and make it visible in `StudentFinancialAidWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add overaward cases with source, affected awards, adjustment plan, refund/repayment boundary, notice, and closure evidence.
 
-**Acceptance evidence:** Retention tests, masked UI snapshots, consent-blocked mutation fixtures, and export controls. The evidence should be package-local in `src/pyAppGen/pbcs/student_financial_aid` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must detect overawards and block further disbursement until resolved.
 
-### 24. Multi-tenant operating model for Student Financial Aid Governed Model
+### 24. Compliance calendar
 
-**Justification:** The PBC should scale across organizations while preserving independent policy and compliance boundaries.
+**Justification:** Aid operations must meet deadlines for verification, reporting, notices, reconciliation, and closeout.
 
-**Improvement:** Support tenant-specific `student_financial_aid_governed_model` rules, data residency, encryption context, configuration, seed data, and release evidence without allowing cross-tenant leakage. Tie the behavior to `student_financial_aid_record_eligibility_review_workflow` where applicable, and make it visible in `StudentFinancialAidWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add compliance obligations with due dates, owner, rule source, status, evidence, escalation, and exception handling.
 
-**Acceptance evidence:** Tenant isolation tests, tenant-scoped parameters, key-rotation evidence, and cross-tenant negative fixtures. The evidence should be package-local in `src/pyAppGen/pbcs/student_financial_aid` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must open exceptions for overdue obligations.
 
-### 25. Schema evolution and extension registry for Aid Application
+### 25. Program eligibility controls
 
-**Justification:** Domain teams will add fields; the PBC must evolve without breaking APIs, events, or workbench projections.
+**Justification:** Some programs, credentials, locations, or delivery modes may not be aid eligible.
 
-**Improvement:** Make schema extensions for `aid_application` first-class with compatibility checks, migration previews, projection backfills, field ownership, and rollback metadata. Tie the behavior to `student_financial_aid_create_aid_application_workflow` where applicable, and make it visible in `StudentFinancialAidWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Store program eligibility projections with effective dates, credential status, modality, location, and restriction reason.
 
-**Acceptance evidence:** Extension registry UI, compatibility tests, migration dry-runs, and backfill release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/student_financial_aid` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must reject aid packaging for ineligible program projections.
 
-### 26. Master data quality gates for Eligibility Review
+### 26. Citizenship and residency requirement workflow
 
-**Justification:** Many student financial aid errors begin as bad reference data; the PBC should catch them before workflow execution.
+**Justification:** Aid eligibility may require citizenship, residency, immigration, or domicile evidence.
 
-**Improvement:** Define reference-data contracts for `eligibility_review`: canonical codes, parties, locations, classifications, calendars, units, currencies, products, assets, or service categories as relevant to the domain. Tie the behavior to `student_financial_aid_record_eligibility_review_workflow` where applicable, and make it visible in `StudentFinancialAidWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add requirement checks with status projection, required documents, discrepancy reason, reviewer, and notice.
 
-**Acceptance evidence:** Reference validation fixtures, stale-code warnings, mapping tables, and dependency freshness indicators. The evidence should be package-local in `src/pyAppGen/pbcs/student_financial_aid` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must block eligible status until required citizenship or residency evidence is resolved.
 
-### 27. Bulk operations and correction workflows for Award Package
+### 27. Consortium and study-abroad handling
 
-**Justification:** Enterprise-scale Student Financial Aid users cannot operate one record at a time.
+**Justification:** Aid for consortium agreements and study abroad requires special cost, enrollment, and disbursement evidence.
 
-**Improvement:** Add bulk load, bulk validate, bulk approve, and bulk correction workflows for `award_package` with partial success, row-level errors, resumability, and rollback. Tie the behavior to `student_financial_aid_create_aid_application_workflow` where applicable, and make it visible in `StudentFinancialAidWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add consortium records with host institution, credits, costs, agreement documents, attendance confirmation, and award adjustments.
 
-**Acceptance evidence:** CSV/API batch fixtures, resumable job state, row-level audit evidence, and assistant-generated correction suggestions. The evidence should be package-local in `src/pyAppGen/pbcs/student_financial_aid` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must calculate packages using approved consortium cost and enrollment evidence.
 
-### 28. Lifecycle collaboration and tasking for Verification Item
+### 28. Graduate, professional, and special-program packaging
 
-**Justification:** Domain collaboration should live inside the PBC boundary and remain auditable with the record it affects.
+**Justification:** Aid limits and fund types differ for undergraduate, graduate, professional, certificate, and non-degree students.
 
-**Improvement:** Attach tasks, comments, ownership, due dates, handoffs, and escalation threads to `verification_item` without leaking into external shared task tables. Tie the behavior to `student_financial_aid_record_eligibility_review_workflow` where applicable, and make it visible in `StudentFinancialAidWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add student-level packaging profiles with eligible funds, limits, budget rules, and required checks.
 
-**Acceptance evidence:** Task tables, comment audit history, notification events, escalation SLAs, and role-specific task queues. The evidence should be package-local in `src/pyAppGen/pbcs/student_financial_aid` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must produce different packages by student level and program type.
 
-### 29. SLA and service-level governance for Disbursement
+### 29. Aggregate limit monitoring
 
-**Justification:** Users need to know when aid eligibility, awards, verification, disbursement, satisfactory progress, compliance, and student funding is late, blocked, or at risk before customer or regulator impact.
+**Justification:** Lifetime and annual limits prevent certain awards even when current-year need exists.
 
-**Improvement:** Define SLAs for `disbursement` across intake, validation, approval, exception resolution, event handling, downstream projection refresh, and release-evidence generation. Tie the behavior to `student_financial_aid_create_aid_application_workflow` where applicable, and make it visible in `StudentFinancialAidWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Store aggregate usage projections with source, fund type, remaining eligibility, freshness, and override constraints.
 
-**Acceptance evidence:** SLA breach events, timers, configurable calendars, workbench aging buckets, and tests for pause/resume behavior. The evidence should be package-local in `src/pyAppGen/pbcs/student_financial_aid` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must reject awards that exceed annual or aggregate limits.
 
-### 30. Operational analytics cockpit for Academic Progress Status
+### 30. Aid communications timeline
 
-**Justification:** World-class operations require leading indicators, not only record counts.
+**Justification:** Students need clear communication about missing documents, awards, revisions, deadlines, and disbursements.
 
-**Improvement:** Build analytics for `sap_status`: throughput, backlog, aging, approval latency, exception rate, risk distribution, automation acceptance, correction rate, and downstream dependency health. Tie the behavior to `student_financial_aid_record_eligibility_review_workflow` where applicable, and make it visible in `StudentFinancialAidWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add communications with template, language, channel, trigger, delivery evidence, student response, and suppression reason.
 
-**Acceptance evidence:** Metric definitions, projection tests, drill-through routes, export APIs, and anomaly overlays. The evidence should be package-local in `src/pyAppGen/pbcs/student_financial_aid` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** UI tests must show communication timeline and unresolved student actions.
 
-### 31. Decision intelligence and recommendations for Aid Compliance
+### 31. Student portal action model
 
-**Justification:** The PBC should help expert users decide faster while showing evidence and uncertainty.
+**Justification:** Students should see actionable tasks instead of office-only queues.
 
-**Improvement:** Generate ranked recommendations for `aid_compliance` such as next best action, likely resolution, required evidence, policy adjustment, staffing/capacity response, or downstream handoff. Tie the behavior to `student_financial_aid_create_aid_application_workflow` where applicable, and make it visible in `StudentFinancialAidWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add portal tasks for documents, accept/decline awards, appeals, counseling, dependency review, and acknowledgements.
 
-**Acceptance evidence:** Recommendation explanations, confidence intervals, feedback capture, model governance records, and rejection reasons. The evidence should be package-local in `src/pyAppGen/pbcs/student_financial_aid` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must expose portal-ready tasks without raw datastore access.
 
-### 32. Quality and completeness scoring for Student Financial Aid Policy Rule
+### 32. Advisor workbench queues
 
-**Justification:** Operators should see whether a record is truly ready, not just technically saved.
+**Justification:** Financial aid staff need role-specific queues for verification, packaging, appeals, conflicts, disbursement blockers, and compliance.
 
-**Improvement:** Score each `student_financial_aid_policy_rule` record for completeness, consistency, policy readiness, dependency readiness, evidence sufficiency, and downstream composability. Tie the behavior to `student_financial_aid_record_eligibility_review_workflow` where applicable, and make it visible in `StudentFinancialAidWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add saved workbench queues with ownership, SLA, severity, student population, and next action.
 
-**Acceptance evidence:** Scoring rules, missing-evidence lists, readiness badges, and blocking criteria in command handlers. The evidence should be package-local in `src/pyAppGen/pbcs/student_financial_aid` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** UI tests must show actionable queues with counts and drilldowns.
 
-### 33. End-to-end scenario library for Student Financial Aid Runtime Parameter
+### 33. Award revision audit trail
 
-**Justification:** Release evidence is stronger when every important student financial aid behavior has executable examples.
+**Justification:** Award changes can affect student decisions and compliance, so revisions need clear rationale.
 
-**Improvement:** Create seeded scenarios for `student_financial_aid_runtime_parameter`: normal flow, urgent path, exception path, corrected path, duplicate path, late event path, and audit export path. Tie the behavior to `student_financial_aid_create_aid_application_workflow` where applicable, and make it visible in `StudentFinancialAidWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add revision records with before/after award lines, reason, source event, reviewer, student notice, and effective date.
 
-**Acceptance evidence:** Scenario seed data, runtime smoke coverage, generated-app fixtures, and story-level workbench screenshots/contracts. The evidence should be package-local in `src/pyAppGen/pbcs/student_financial_aid` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must reconstruct award history across revisions.
 
-### 34. Domain ontology and terminology model for Student Financial Aid Schema Extension
+### 34. Fund reconciliation boundary
 
-**Justification:** Precise vocabulary prevents the PBC from misclassifying specialist documents or user instructions.
+**Justification:** Aid offices need reconciliation with finance and student accounts but should not own ledger or receivable tables.
 
-**Improvement:** Add an ontology for `student_financial_aid_schema_extension` terms, synonyms, classifications, relationships, allowed values, and phrase mappings used by the assistant and UI. Tie the behavior to `student_financial_aid_record_eligibility_review_workflow` where applicable, and make it visible in `StudentFinancialAidWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Store finance and account projections for disbursed, posted, returned, and outstanding amounts with freshness.
 
-**Acceptance evidence:** Ontology files, assistant parsing tests, UI glossary, and mapping evidence for domain-specific abbreviations. The evidence should be package-local in `src/pyAppGen/pbcs/student_financial_aid` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Boundary tests must show reconciliation uses projections and does not mutate finance tables.
 
-### 35. Advanced search and investigation for Student Financial Aid Control Assertion
+### 35. Exception taxonomy
 
-**Justification:** Investigators and operators need fast, explainable retrieval across the whole domain surface.
+**Justification:** Application, eligibility, verification, award, disbursement, progress, and compliance exceptions need different owners.
 
-**Improvement:** Provide search across `student_financial_aid_control_assertion` records, events, documents, exceptions, tasks, comments, and audit proofs with filters for tenant, status, risk, date, party, and dependency. Tie the behavior to `student_financial_aid_create_aid_application_workflow` where applicable, and make it visible in `StudentFinancialAidWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add exception categories, severity, blocked action, owner, due date, escalation, closure evidence, and reopen reason.
 
-**Acceptance evidence:** Search index contracts, result provenance, permission-filtered queries, and stale-index warnings. The evidence should be package-local in `src/pyAppGen/pbcs/student_financial_aid` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must route exception types to correct workbench queues.
 
-### 36. Reconciliation and closure controls for Student Financial Aid Governed Model
+### 36. Aid rule and parameter workbench
 
-**Justification:** Closure is not complete until the PBC can prove no material domain work remains unresolved.
+**Justification:** Aid rules change by year, fund, program, student category, deadline, and institutional policy.
 
-**Improvement:** Add reconciliation workflows that compare `student_financial_aid_governed_model` state against consumed events, external projections, expected totals/counts, approvals, and release evidence before closure. Tie the behavior to `student_financial_aid_record_eligibility_review_workflow` where applicable, and make it visible in `StudentFinancialAidWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add governed editors for packaging priorities, verification deadlines, progress thresholds, disbursement blockers, and appeal rules.
 
-**Acceptance evidence:** Reconciliation reports, variance thresholds, closure blockers, and AppGen-X closure events. The evidence should be package-local in `src/pyAppGen/pbcs/student_financial_aid` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must validate parameter bounds, approval history, rollback, and runtime effect.
 
-### 37. Regulatory and policy reporting for Aid Application
+### 37. Agent-assisted student guidance
 
-**Justification:** World-class PBCs turn operational evidence into credible reporting without spreadsheet reconstruction.
+**Justification:** Students need understandable explanations of aid status, missing items, awards, and next steps.
 
-**Improvement:** Generate domain reporting packs for `aid_application` covering statutory, contractual, operational, board, customer, or regulator evidence depending on public accountability, eligibility rules, due process, protected records, transparent case history, equitable service delivery, and statutory reporting. Tie the behavior to `student_financial_aid_create_aid_application_workflow` where applicable, and make it visible in `StudentFinancialAidWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add assistant skills that summarize status, explain blockers, draft student messages, and cite source evidence.
 
-**Acceptance evidence:** Report schemas, redaction rules, traceable metric sources, and approval/export audit events. The evidence should be package-local in `src/pyAppGen/pbcs/student_financial_aid` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must verify assistant responses use current owned records and projections.
 
-### 38. Carbon and resource awareness for Eligibility Review
+### 38. Agent-assisted document review
 
-**Justification:** Sustainability evidence should be embedded in operations instead of treated as an after-the-fact report.
+**Justification:** Staff handle high document volumes and need help triaging forms and discrepancies.
 
-**Improvement:** Where relevant, attach carbon, energy, water, travel, capacity, compute, or resource-footprint metadata to `eligibility_review` decisions and batch operations. Tie the behavior to `student_financial_aid_record_eligibility_review_workflow` where applicable, and make it visible in `StudentFinancialAidWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add assistant classification for document type, missing signatures, mismatched values, expiration, and required follow-up.
 
-**Acceptance evidence:** Footprint fields, scheduling parameters, exception rules, and dashboards that expose operational tradeoffs. The evidence should be package-local in `src/pyAppGen/pbcs/student_financial_aid` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must require reviewer approval before accepted extraction mutates records.
 
-### 39. Resilience and offline behavior for Award Package
+### 39. Agent safety restrictions
 
-**Justification:** Real operations keep moving during outages; the PBC must preserve correctness when dependencies are unavailable.
+**Justification:** AI must not silently approve aid, release disbursements, deny appeals, or alter award amounts.
 
-**Improvement:** Define resilience modes for `award_package`: degraded dependency mode, offline draft capture, delayed event replay, conflict detection, and safe recovery after partial failure. Tie the behavior to `student_financial_aid_create_aid_application_workflow` where applicable, and make it visible in `StudentFinancialAidWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Require high-impact agent proposals to include command, affected records, financial impact, evidence, confidence, and approval role.
 
-**Acceptance evidence:** Offline fixtures, replay tests, conflict queues, recovery logs, and user-visible degraded-mode warnings. The evidence should be package-local in `src/pyAppGen/pbcs/student_financial_aid` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must block high-impact agent writes without explicit human approval.
 
-### 40. Human-in-the-loop automation for Verification Item
+### 40. Fraud and anomaly referral boundary
 
-**Justification:** Automation should accelerate aid eligibility, awards, verification, disbursement, satisfactory progress, compliance, and student funding while preserving accountability for high-risk decisions.
+**Justification:** Suspicious identity, document, or pattern findings require referral but the aid PBC should not own investigation casework.
 
-**Improvement:** Set explicit automation boundaries for `verification_item`: auto-approve, auto-reject, suggest-only, require-review, and block-until-evidence states with policy-based routing. Tie the behavior to `student_financial_aid_record_eligibility_review_workflow` where applicable, and make it visible in `StudentFinancialAidWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add anomaly flags, referral event payloads, hold status, source evidence, and resolution projection from declared dependencies.
 
-**Acceptance evidence:** Automation policy tests, reviewer queues, override reasons, and assistant action audit trails. The evidence should be package-local in `src/pyAppGen/pbcs/student_financial_aid` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Boundary tests must show investigation outcomes arrive through declared events or APIs.
 
-### 41. Package discovery and fit scoring for Disbursement
+### 41. Equity and access analytics
 
-**Justification:** Users selecting PBCs need transparent fit reasoning, especially when domains are adjacent but not overlapping.
+**Justification:** Aid operations must monitor access, unmet need, verification burden, appeal outcomes, and disbursement delays across populations.
 
-**Improvement:** Improve package metadata so composition can explain when `student_financial_aid` fits a prompt, what entities it owns, what APIs/events it exposes, and what adjacent PBCs it depends on. Tie the behavior to `student_financial_aid_create_aid_application_workflow` where applicable, and make it visible in `StudentFinancialAidWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add analytics for unmet need, completion time, document burden, appeal approval, disbursement delay, and population segment.
 
-**Acceptance evidence:** Discovery manifests, prompt-selection tests, overlap rationale links, and composition DSL examples. The evidence should be package-local in `src/pyAppGen/pbcs/student_financial_aid` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** UI tests must expose metrics with drilldowns and privacy-safe aggregation.
 
-### 42. Configuration deployment pipeline for Academic Progress Status
+### 42. Privacy and consent controls
 
-**Justification:** Configuration changes can materially alter student financial aid; they need the same discipline as code releases.
+**Justification:** Aid records contain sensitive financial, identity, family, and academic information.
 
-**Improvement:** Add configuration promotion for `sap_status` across draft, test, approved, active, deprecated, and rollback states with impact analysis before activation. Tie the behavior to `student_financial_aid_record_eligibility_review_workflow` where applicable, and make it visible in `StudentFinancialAidWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add consent, authorized-party, redaction, role-based field visibility, and audit controls for student aid records.
 
-**Acceptance evidence:** Config diff views, approval workflows, simulation before activation, and rollback tests. The evidence should be package-local in `src/pyAppGen/pbcs/student_financial_aid` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Permission tests must prevent unauthorized viewing of sensitive fields.
 
-### 43. Workbench command completeness for Aid Compliance
+### 43. Point-in-time aid reconstruction
 
-**Justification:** A PBC does not fully surface its capabilities if users must call hidden APIs for core work.
+**Justification:** Appeals, audits, and disputes require knowing what the office knew at a specific time.
 
-**Improvement:** Expose every high-value operation for `aid_compliance` in the UI: create, validate, approve, simulate, correct, assign, export, retry, close, and audit-proof verification. Tie the behavior to `student_financial_aid_create_aid_application_workflow` where applicable, and make it visible in `StudentFinancialAidWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add event replay for application status, eligibility, verification, awards, disbursements, and progress status.
 
-**Acceptance evidence:** UI action coverage tests, permission-aware disabled states, keyboard paths, and assistant handoff links. The evidence should be package-local in `src/pyAppGen/pbcs/student_financial_aid` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must reproduce historical snapshots from owned events.
 
-### 44. Document packet and evidence vault for Student Financial Aid Policy Rule
+### 44. Cryptographic aid evidence packet
 
-**Justification:** Documents often carry the legal or operational truth behind aid eligibility, awards, verification, disbursement, satisfactory progress, compliance, and student funding.
+**Justification:** Students, auditors, and sponsors may challenge award and disbursement decisions.
 
-**Improvement:** Create a governed evidence vault for `student_financial_aid_policy_rule` documents, attachments, source spans, extracted fields, signatures, approvals, and retention labels. Tie the behavior to `student_financial_aid_record_eligibility_review_workflow` where applicable, and make it visible in `StudentFinancialAidWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add hash-linked evidence packets for eligibility, award package, verification, disbursement, appeal, and return calculations.
 
-**Acceptance evidence:** Evidence models, source-to-field lineage, signature validation, retention policies, and proof exports. The evidence should be package-local in `src/pyAppGen/pbcs/student_financial_aid` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must detect altered packet contents and verify packet generation from owned records.
 
-### 45. Data correction and amendment history for Student Financial Aid Runtime Parameter
+### 45. Predictive risk scoring
 
-**Justification:** World-class systems correct mistakes without rewriting history or confusing downstream consumers.
+**Justification:** Staff should identify students at risk of missing deadlines, losing eligibility, or facing disbursement delays.
 
-**Improvement:** Support formal amendments for `student_financial_aid_runtime_parameter` that preserve original values, correction reason, approving actor, effective date, downstream event impacts, and replay behavior. Tie the behavior to `student_financial_aid_create_aid_application_workflow` where applicable, and make it visible in `StudentFinancialAidWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add risk scores with factors for missing items, progress status, enrollment changes, document age, and prior revisions.
 
-**Acceptance evidence:** Amendment tables, correction events, projection replay tests, and side-by-side before/after UI. The evidence should be package-local in `src/pyAppGen/pbcs/student_financial_aid` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must calculate scores and show factor explanations in the workbench.
 
-### 46. External participant collaboration for Student Financial Aid Schema Extension
+### 46. Multi-campus and program isolation
 
-**Justification:** Many student financial aid workflows require outside parties, but they must not gain direct access to internal tables.
+**Justification:** Institutions may run separate campuses, calendars, programs, and fund rules under one composed app.
 
-**Improvement:** Add controlled collaboration portals or API views for external participants related to `student_financial_aid_schema_extension`, limited to scoped evidence submission, status checks, comments, and dispute responses. Tie the behavior to `student_financial_aid_record_eligibility_review_workflow` where applicable, and make it visible in `StudentFinancialAidWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add campus and program scoping to applications, rules, budgets, funds, queues, permissions, and reports.
 
-**Acceptance evidence:** Participant role policies, scoped tokens, submission audit trails, and inbound evidence validation. The evidence should be package-local in `src/pyAppGen/pbcs/student_financial_aid` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must prevent cross-campus data leakage and rule mixing.
 
-### 47. Advanced dependency freshness scoring for Student Financial Aid Control Assertion
+### 47. Release smoke scenarios
 
-**Justification:** A record may be valid locally but unsafe if dependency evidence is stale or incomplete.
+**Justification:** Generated apps need evidence that realistic student aid workflows execute after composition.
 
-**Improvement:** Score freshness and reliability of dependencies used by `student_financial_aid_control_assertion`, including consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, referenced projections, configuration versions, and external submissions. Tie the behavior to `student_financial_aid_create_aid_application_workflow` where applicable, and make it visible in `StudentFinancialAidWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add smoke scenarios for application intake, verification, packaging, appeal, disbursement, enrollment change, and return calculation.
 
-**Acceptance evidence:** Freshness indicators, blocking rules, stale-event simulations, and workbench dependency health panels. The evidence should be package-local in `src/pyAppGen/pbcs/student_financial_aid` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Release evidence must show owned records, AppGen-X events, UI artifacts, and boundary checks for every scenario.
 
-### 48. Model governance and explainability for Student Financial Aid Governed Model
+### 48. Cross-PBC boundary proof
 
-**Justification:** Governed AI is mandatory for professional-grade automation in Student Financial Aid.
+**Justification:** Student aid touches student lifecycle, finance, documents, identity, compliance, and communications without owning them.
 
-**Improvement:** For every predictive or agentic feature around `student_financial_aid_governed_model`, record model version, prompt or ruleset version, training/evaluation evidence, confidence, explanation, and human feedback. Tie the behavior to `student_financial_aid_record_eligibility_review_workflow` where applicable, and make it visible in `StudentFinancialAidWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add automated proof that generated models, services, routes, handlers, projections, and agent commands use only owned tables plus declared APIs/events.
 
-**Acceptance evidence:** Model cards, prompt/version manifests, feedback loops, drift tests, and audit proof for recommendations. The evidence should be package-local in `src/pyAppGen/pbcs/student_financial_aid` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must fail on undeclared table references and pass for declared projection or event dependency references.
 
-### 49. High-scale partitioning and archival for Aid Application
+### 49. Sponsor and scholarship reporting
 
-**Justification:** Better-than-world-class packages must remain operable after years of high-volume domain history.
+**Justification:** Sponsors require reports on awarded, accepted, disbursed, returned, and outstanding funds.
 
-**Improvement:** Plan scale behavior for `aid_application`: tenant partitioning, archival policies, cold storage, retention-aware search, projection compaction, and large-batch replay. Tie the behavior to `student_financial_aid_create_aid_application_workflow` where applicable, and make it visible in `StudentFinancialAidWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add reporting packages with sponsor projection, report period, included awards, adjustments, disbursements, certification, and delivery evidence.
 
-**Acceptance evidence:** Partition tests, archive/retrieve fixtures, retention enforcement, and replay benchmarks. The evidence should be package-local in `src/pyAppGen/pbcs/student_financial_aid` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must generate sponsor reports from owned records and projections.
 
-### 50. Release gate expansion for Eligibility Review
+### 50. Financial aid command center
 
-**Justification:** The PBC should not claim domain coverage unless release evidence proves the claim end to end.
+**Justification:** Aid teams need one surface for student status, missing items, award package, disbursement blockers, appeals, compliance, and assistant support.
 
-**Improvement:** Expand release gates for `student_financial_aid` so every schema, service, API, event, handler, UI, rule, parameter, agent skill, seed scenario, and improvement backlog item maps to executable evidence. Tie the behavior to `student_financial_aid_record_eligibility_review_workflow` where applicable, and make it visible in `StudentFinancialAidWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add command center with student summary, timeline, tasks, award view, blockers, communications, risk score, and assistant panel.
 
-**Acceptance evidence:** Release audit checks, manifest traceability, generated-app smoke tests, and missing-capability blockers. The evidence should be package-local in `src/pyAppGen/pbcs/student_financial_aid` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** UI tests must expose complete aid context and governed actions without raw datastore access.

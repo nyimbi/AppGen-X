@@ -702,6 +702,13 @@ Completions should be context-aware:
 - deploy body: declared units, target kinds, health/check/resource snippets;
 - agent body: LLM names, operation targets, permission subjects.
 
+Completion coverage is executable through `appgen.completion-coverage.v1`.
+The language service includes this report as `completionCoverage`, and
+`appgen doctor --json` checks `lsp_completion_coverage` against a fixture that
+exercises keywords, snippets, table names, fields, lookup paths, components,
+handler events, operation targets, flow states, PBC keys and contracts, package
+targets, deployment units, LLM providers, and agent skills.
+
 ### Code Actions
 
 Required code actions:

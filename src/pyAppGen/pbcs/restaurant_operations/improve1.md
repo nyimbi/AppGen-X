@@ -1,418 +1,361 @@
-# Restaurant Operations PBC Better-Than-World-Class Improvement Backlog
-
-## Purpose
-
-This file identifies, justifies, and describes 50 high-impact improvements for `restaurant_operations`. The backlog is specific to menus, recipes, kitchen production, reservations, food cost, labor, waste, and service execution and is intended to move the PBC from release-auditable scaffolding toward complete, specialist-grade domain coverage.
+# Restaurant Operations Improvement Backlog
 
 ## Current Domain Evidence Used
 
-- Stable PBC key: `restaurant_operations`.
-- Domain purpose: Menus, recipes, kitchen production, reservations, food cost, labor, waste, and service execution.
-- Owned domain tables: `menu_item`, `recipe`, `kitchen_ticket`, `reservation`, `inventory_prep`, `food_waste`, `labor_shift`, `restaurant_operations_policy_rule`, `restaurant_operations_runtime_parameter`, `restaurant_operations_schema_extension`, `restaurant_operations_control_assertion`, `restaurant_operations_governed_model`.
-- Public APIs: `POST /menu-items`, `POST /recipes`, `POST /kitchen-tickets`, `POST /reservations`, `POST /inventory-preps`, `GET /restaurant-operations-workbench`.
-- Emitted AppGen-X events: `RestaurantOperationsCreated`, `RestaurantOperationsUpdated`, `RestaurantOperationsApproved`, `RestaurantOperationsExceptionOpened`.
-- Consumed AppGen-X events: `PolicyChanged`, `AuditEventSealed`, `OperationalKpiChanged`.
-- Current standard surfaces include: `menu_item_management`, `restaurant_operations_workflow`, `restaurant_operations_analytics`, `configuration_schema`, `rule_engine`, `parameter_engine`, `owned_schema_migrations_models`, `appgen_x_outbox_inbox_eventing`, `idempotent_handlers`, `retry_dead_letter_evidence`.
-- Current advanced surfaces include: `restaurant_operations_event_sourced_operational_history`, `restaurant_operations_multi_tenant_policy_isolation`, `restaurant_operations_schema_evolution_resilience`, `restaurant_operations_autonomous_anomaly_detection`, `restaurant_operations_semantic_document_instruction_understanding`, `restaurant_operations_predictive_risk_scoring`, `restaurant_operations_counterfactual_scenario_simulation`, `restaurant_operations_cryptographic_audit_proofs`.
+- PBC key: `restaurant_operations`
+- Manifest description: menus, recipes, kitchen production, reservations, food cost, labor, waste, and service execution
+- Current owned tables: `menu_item`, `recipe`, `kitchen_ticket`, `reservation`, `inventory_prep`, `food_waste`, `labor_shift`
+- Current APIs: `POST /menu-items`, `POST /recipes`, `POST /kitchen-tickets`, `POST /reservations`, `POST /inventory-preps`, `GET /restaurant-operations-workbench`
+- Current UI fragments: `RestaurantOperationsWorkbench`, `RestaurantOperationsDetail`, `RestaurantOperationsAssistantPanel`
+- Current emitted events: `RestaurantOperationsCreated`, `RestaurantOperationsUpdated`, `RestaurantOperationsApproved`, `RestaurantOperationsExceptionOpened`
+- Current consumed events: `PolicyChanged`, `AuditEventSealed`, `OperationalKpiChanged`
 
-## 50 High-Impact Improvements
+### 1. Menu lifecycle by store and daypart
+**Justification:** Restaurants do not operate one global menu. Breakfast, lunch, dinner, late night, holiday, and site-specific availability must be explicit or operators will hide critical business rules in notes and workarounds.
 
-### 1. Canonical lifecycle state model for Menu Item
+**Improvement:** Add a canonical menu lifecycle that separates concept approval from store rollout. A menu item should carry draft, test kitchen, approved, scheduled, active, suspended, and retired states with effective windows by site, channel, and daypart.
 
-**Justification:** This closes shallow CRUD gaps by making every restaurant operations transition explainable and testable instead of implicit in free-form status values.
+**Acceptance evidence:** Store and daypart activation tests, a workbench timeline that shows future activations, and release evidence proving scheduled menu changes publish without editing recipe history.
 
-**Improvement:** Define a complete state machine for `menu_item` with explicit draft, validated, blocked, approved, active, suspended, corrected, closed, archived, and reopened states. Tie the behavior to `restaurant_operations_create_menu_item_workflow` where applicable, and make it visible in `RestaurantOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+### 2. Menu version sets and rollback
+**Justification:** Operators need to roll a whole menu set forward or backward when pricing, supplier availability, or promotion plans change close to service.
 
-**Acceptance evidence:** State-transition tests, invalid-transition fixtures, workbench state badges, and emitted AppGen-X transition events for RestaurantOperationsCreated, RestaurantOperationsUpdated, RestaurantOperationsApproved. The evidence should be package-local in `src/pyAppGen/pbcs/restaurant_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Improvement:** Introduce menu version sets that group items, prices, modifier rules, and availability into one reversible deployment unit per site or brand. Support preview and atomic rollback for a failed rollout.
 
-### 2. Domain intake and normalization for Recipe
+**Acceptance evidence:** Version-set diff views, rollback integration tests, and evidence that an aborted deployment restores the prior active menu without orphaning kitchen or reservation references.
 
-**Justification:** The PBC cannot reach complete domain coverage unless it handles the messy front door of menus, recipes, kitchen production, reservations, food cost, labor, waste, and service execution, not only already-clean records.
+### 3. Modifier group modeling
+**Justification:** Restaurant orders break down when modifier logic is shallow. Required sides, optional add-ons, substitutions, half-and-half choices, and nested preparation instructions all affect kitchen execution and check accuracy.
 
-**Improvement:** Build a typed intake pipeline for `recipe` that accepts structured API payloads, document-derived instructions, batch loads, and assistant-generated drafts while normalizing identifiers, dates, units, parties, and jurisdictional context. Tie the behavior to `restaurant_operations_record_recipe_workflow` where applicable, and make it visible in `RestaurantOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Model modifier groups with min and max selection rules, nesting, default values, price deltas, allergen implications, and channel-specific visibility. Keep the kitchen-facing instruction separate from the guest-facing label.
 
-**Acceptance evidence:** Golden intake fixtures, rejected-record queues, field-level normalization evidence, and assistant previews before governed datastore mutation. The evidence should be package-local in `src/pyAppGen/pbcs/restaurant_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Contract tests for required and nested modifiers, UI validation for over-selection, and kitchen ticket evidence showing clean modifier rendering with no free-text ambiguity.
 
-### 3. Specialist validation rules for Kitchen Ticket
+### 4. Allergen and dietary labeling on menus
+**Justification:** Menu data is unsafe if dietary claims are only descriptive text. Guests and staff need structured allergen, vegan, halal, gluten-free, and spicy metadata that follows the item through ordering and preparation.
 
-**Justification:** World-class Restaurant Operations requires rules that domain experts can reason about, version, test, and roll back without code edits.
+**Improvement:** Attach structured dietary flags, allergen declarations, and caution notes to menu items and modifiers. Track whether the claim is recipe-derived, manually attested, or blocked because of cross-contact risk.
 
-**Improvement:** Add a domain rule compiler for `kitchen_ticket` that supports threshold rules, eligibility rules, dependency rules, temporal windows, conflicting-instruction detection, and override justification. Tie the behavior to `restaurant_operations_create_menu_item_workflow` where applicable, and make it visible in `RestaurantOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Validation tests for missing allergen declarations, workbench badges for dietary claims, and audit evidence showing who approved or changed each guest-facing label.
 
-**Acceptance evidence:** Rule simulation tests, versioned rule manifests, rule impact reports, and UI rule editors linked to `RESTAURANT_OPERATIONS_DATABASE_URL, RESTAURANT_OPERATIONS_EVENT_TOPIC, RESTAURANT_OPERATIONS_RETRY_LIMIT`. The evidence should be package-local in `src/pyAppGen/pbcs/restaurant_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 5. Recipe versioning and yield control
+**Justification:** A menu item is not operationally real unless its recipe version, yield, and portion assumptions are stable enough to drive prep, depletion, and food cost.
 
-### 4. Parameter governance and tuning for Reservation
+**Improvement:** Add recipe versioning with effective dates, target yield, portion size, unit conversions, prep method notes, and store overrides. Lock historical orders and waste records to the exact recipe version used at service time.
 
-**Justification:** Parameters are where operations teams tune restaurant operations; unbounded constants would make the PBC brittle and unsafe in real deployments.
+**Acceptance evidence:** Recipe version history tests, yield recalculation fixtures, and release evidence proving historical tickets remain reproducible after a recipe amendment.
 
-**Improvement:** Expose bounded runtime parameters for `reservation` covering risk thresholds, SLA windows, confidence floors, escalation cutoffs, batch sizes, retry limits, and human-confirmation requirements. Tie the behavior to `restaurant_operations_record_recipe_workflow` where applicable, and make it visible in `RestaurantOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+### 6. Recipe-to-menu binding rules
+**Justification:** One menu item may depend on multiple recipes or prep components, and one recipe may support multiple menu items. That relationship needs explicit governance or substitutions and food cost will drift.
 
-**Acceptance evidence:** Parameter schema validation, tenant overrides, approval history, rollback controls, and workbench diff views. The evidence should be package-local in `src/pyAppGen/pbcs/restaurant_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Improvement:** Support recipe bundles and optional prep components per menu item, including plating-only items, shared sauces, and seasonal garnishes. Enforce validation so an active menu item cannot point to incomplete or expired recipe dependencies.
 
-### 5. Deep owned schema expansion for Inventory Prep
+**Acceptance evidence:** Referential integrity tests between `menu_item` and `recipe`, dependency warnings in the workbench, and scenario evidence for activating a menu item with one missing prep component.
 
-**Justification:** A single payload column cannot express the full surface of menus, recipes, kitchen production, reservations, food cost, labor, waste, and service execution or prove cross-PBC boundaries are respected.
+### 7. Prep list generation from forecast and reservations
+**Justification:** Prep should reflect expected covers and order mix, not yesterday's intuition. Reservations, walk-in patterns, and delivery surges must feed prep decisions before service begins.
 
-**Improvement:** Extend the owned schema around `inventory_prep` with normalized child tables for line-level evidence, party roles, approvals, attachments, comments, metrics, exception reasons, and control assertions. Tie the behavior to `restaurant_operations_create_menu_item_workflow` where applicable, and make it visible in `RestaurantOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Generate prep recommendations from reservation covers, historical mix, channel weighting, and current menu availability. Separate suggested prep from approved prep so operators can tune batches before committing.
 
-**Acceptance evidence:** Migrations, models, relationship tests, schema contract snapshots, and no shared-table access outside the `restaurant_operations_` namespace. The evidence should be package-local in `src/pyAppGen/pbcs/restaurant_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Prep suggestion traces, scenario tests for quiet and peak periods, and UI evidence showing how reservation changes revise recommended prep quantities.
 
-### 6. Event-sourced operational history for Food Waste
+### 8. Batch prep traceability and hold times
+**Justification:** Prep batches are where food safety, waste, and throughput meet. The system must know when a batch was made, by whom, how much remains, and when it must be discarded.
 
-**Justification:** Temporal reconstruction is essential for better-than-world-class auditability and dispute resolution in restaurant operations.
+**Improvement:** Extend `inventory_prep` to capture batch identifier, production time, expiration time, holding method, station assignment, and discard reason. Make prep batches first-class dependencies for kitchen tickets and waste events.
 
-**Improvement:** Capture every material mutation of `food_waste` as immutable AppGen-X events with actor, tenant, command, policy version, idempotency key, before/after summary, and projection checkpoint. Tie the behavior to `restaurant_operations_record_recipe_workflow` where applicable, and make it visible in `RestaurantOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Batch traceability tests, hold-time countdowns in the UI, and evidence that an expired batch blocks new ticket allocation until replaced or formally overridden.
 
-**Acceptance evidence:** Replay tests, projection checksums, event ordering evidence, and point-in-time workbench views. The evidence should be package-local in `src/pyAppGen/pbcs/restaurant_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 9. Mise en place readiness checks
+**Justification:** Service quality degrades before the first order if stations are missing prep, tools, labels, or allergen controls. Pre-service readiness is operational data, not a paper checklist.
 
-### 7. Projection and read-model strategy for Labor Shift
+**Improvement:** Add station readiness workflows that confirm required prep, utensils, labels, and sanitizer status before a shift or daypart opens. Allow site-specific readiness templates by concept and menu complexity.
 
-**Justification:** The workbench should not force users to infer domain truth from raw tables; each projection should answer a real operating question.
+**Acceptance evidence:** Ready-not-ready checklists, blocked service-opening scenarios, and release evidence showing that missing prep or missing labels creates visible exceptions in the workbench.
 
-**Improvement:** Create purpose-built projections for `labor_shift`: operational queue, executive KPI rollup, exception aging, compliance evidence, agent task context, and external dependency health. Tie the behavior to `restaurant_operations_create_menu_item_workflow` where applicable, and make it visible in `RestaurantOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+### 10. Kitchen display ticket state machine
+**Justification:** Kitchen display logic is central to restaurant operations. Print-and-pray tickets cannot handle coursing, expo coordination, and delivery timing at scale.
 
-**Acceptance evidence:** Projection contracts, freshness SLAs, backfill tests, and visible stale-projection warnings. The evidence should be package-local in `src/pyAppGen/pbcs/restaurant_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Improvement:** Give `kitchen_ticket` explicit states such as queued, acknowledged, firing, held, plated, expo-ready, handed-off, recalled, and closed. Preserve timestamps and actor identity for each transition.
 
-### 8. Exception taxonomy and remediation for Restaurant Operations Policy Rule
+**Acceptance evidence:** KDS state-transition tests, event traces for out-of-order transitions, and screenshots showing the current state model on kitchen display views.
 
-**Justification:** High-value PBCs win on exception throughput; generic “failed” states hide the details operators need.
+### 11. Course pacing and fire timing
+**Justification:** Restaurants need to pace appetizers, entrees, desserts, and delivery prep differently. Without explicit fire rules, the system cannot support real table service or coordinated handoff.
 
-**Improvement:** Model the full exception taxonomy for `restaurant_operations_policy_rule`, including severity, root cause, blocking dependency, remediation owner, due date, retry eligibility, escalation path, and closure evidence. Tie the behavior to `restaurant_operations_record_recipe_workflow` where applicable, and make it visible in `RestaurantOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add course groups, fire offsets, hold instructions, and synchronizing rules so tickets can be paced by seat, table, or fulfillment promise. Include expo overrides with mandatory reason capture.
 
-**Acceptance evidence:** Exception queues, aging metrics, remediation playbooks, dead-letter linkage, and closure test fixtures for yield variance. The evidence should be package-local in `src/pyAppGen/pbcs/restaurant_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Multi-course order scenarios, timing variance analytics, and workbench evidence that a delayed appetizer changes downstream fire recommendations instead of silently drifting.
 
-### 9. Predictive risk scoring for Restaurant Operations Runtime Parameter
+### 12. Expo and pass management
+**Justification:** The pass is where kitchen completion becomes service execution. Missing expo controls lead to cold food, wrong table delivery, and poor accountability.
 
-**Justification:** The package should warn users before restaurant operations work fails, breaches policy, or creates downstream cost.
+**Improvement:** Add an expo board that verifies plate completeness, modifier fulfillment, allergen markings, and handoff destination before a ticket can leave the line. Support re-fire and return-to-line workflows.
 
-**Improvement:** Add predictive risk scoring for `restaurant_operations_runtime_parameter` using domain features from owned tables, consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, rule outcomes, aging, anomaly signals, and historical corrections. Tie the behavior to `restaurant_operations_create_menu_item_workflow` where applicable, and make it visible in `RestaurantOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Expo confirmation events, rejection and refire scenarios, and UI evidence that incomplete plates cannot be marked handed-off without an override trail.
 
-**Acceptance evidence:** Feature manifests, score explanations, calibration reports, drift alerts, and tests for low/medium/high-risk scenarios. The evidence should be package-local in `src/pyAppGen/pbcs/restaurant_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 13. Table map and service ownership
+**Justification:** Dining room operations depend on table state, section ownership, and turnover progress. Reservations alone do not capture live table service reality.
 
-### 10. Counterfactual simulation for Restaurant Operations Schema Extension
+**Improvement:** Add a table map model with table status, party size, service phase, assigned server, and turn timers. Link open tickets and reservations to the active table occupancy record rather than relying on free text.
 
-**Justification:** Advanced users need to ask “what would happen if” before committing changes to live menus, recipes, kitchen production, reservations, food cost, labor, waste, and service execution operations.
+**Acceptance evidence:** Table-state transitions, server assignment tests, and screenshots showing occupied, cleaning, ready, and seated states mapped to active orders.
 
-**Improvement:** Provide scenario simulation for `restaurant_operations_schema_extension`: policy change, capacity constraint, deadline shift, price/rate change, eligibility change, disruption, and manual override outcomes. Tie the behavior to `restaurant_operations_record_recipe_workflow` where applicable, and make it visible in `RestaurantOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+### 14. Reservation pacing against real table inventory
+**Justification:** Overbooking and underutilization both come from treating reservations as abstract rows instead of promises against finite tables, turn times, and service constraints.
 
-**Acceptance evidence:** Simulation APIs, non-mutating sandbox state, comparison reports, and workbench side-by-side scenario panels. The evidence should be package-local in `src/pyAppGen/pbcs/restaurant_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Improvement:** Extend `reservation` logic to allocate against actual table inventory, combinable tables, accessibility constraints, and configurable turn assumptions by daypart and party size.
 
-### 11. Autonomous anomaly triage for Restaurant Operations Control Assertion
+**Acceptance evidence:** Reservation pacing simulations, no-double-booking tests, and workbench evidence that a blocked reservation explains whether the limit is tables, turn time, or staff capacity.
 
-**Justification:** A world-class PBC should reduce analyst burden without hiding the reasoning behind automated triage.
+### 15. Waitlist and walk-in management
+**Justification:** Walk-ins compete with reservations for the same dining room capacity. A serious restaurant operations backlog must cover quoted wait, party sequencing, and table reassignment rules.
 
-**Improvement:** Implement anomaly detection for `restaurant_operations_control_assertion` that identifies outliers, duplicate submissions, impossible sequences, stale dependencies, unusual amounts/counts/durations, and contradictory fields. Tie the behavior to `restaurant_operations_create_menu_item_workflow` where applicable, and make it visible in `RestaurantOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add waitlist records with quoted time, actual seat time, party preferences, text-ready state, and escalation when quoted waits are repeatedly missed. Allow staff to convert a walk-in to a seated table without re-entering guest details.
 
-**Acceptance evidence:** Explainable anomaly cards, reviewer feedback loops, false-positive tracking, and suppression governance. The evidence should be package-local in `src/pyAppGen/pbcs/restaurant_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Waitlist queue tests, quote-accuracy metrics, and UI evidence showing party promotion from waitlist to seated state with full audit history.
 
-### 12. Semantic document understanding for Restaurant Operations Governed Model
+### 16. Unified order lifecycle across channels
+**Justification:** Dine-in, takeout, curbside, and delivery orders differ operationally but should still share a canonical order lifecycle for reporting, kitchen execution, and exception handling.
 
-**Justification:** Document-heavy work in Restaurant Operations cannot be complete if the assistant only answers questions and cannot prepare accurate governed changes.
+**Improvement:** Define a unified order state model that covers intake, acceptance, firing, ready, packed, handed-off, delivered, canceled, refunded, and reconciled states while keeping channel-specific steps explicit.
 
-**Improvement:** Train the package assistant to parse domain documents and instructions for `restaurant_operations_governed_model`, extract obligations, dates, parties, quantities, identifiers, and exceptions, then map them to safe draft mutations. Tie the behavior to `restaurant_operations_record_recipe_workflow` where applicable, and make it visible in `RestaurantOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Channel-by-channel state diagrams, integration tests for dine-in and off-premise flows, and evidence that canceled orders stop downstream prep and waste attribution correctly.
 
-**Acceptance evidence:** Document extraction tests, confidence thresholds, redaction handling, source span citations, and human confirmation workflows. The evidence should be package-local in `src/pyAppGen/pbcs/restaurant_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 17. Modifier propagation to kitchen execution
+**Justification:** Modifier detail often degrades between ordering and the line. If the kitchen sees flattened or ambiguous instructions, the platform is not truly restaurant-grade.
 
-### 13. Agent-safe CRUD execution for Menu Item
+**Improvement:** Preserve modifier semantics end to end so the guest UI, server UI, KDS, expo board, and waste analytics all understand the difference between "no onion," "sauce on side," and "substitute gluten-free bun."
 
-**Justification:** The PBC agent must be a first-class operator but never a hidden bypass around RBAC, rules, or owned datastore boundaries.
+**Acceptance evidence:** End-to-end modifier fixtures, kitchen display rendering snapshots, and tests that confirm price changes, allergens, and prep instructions all stay aligned.
 
-**Improvement:** Add a professional chatbot skill for `menu_item` that can create, update, correct, close, and annotate records only through policy-checked commands, approval gates, and previewed diffs. Tie the behavior to `restaurant_operations_create_menu_item_workflow` where applicable, and make it visible in `RestaurantOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+### 18. 86 logic and substitution rules
+**Justification:** Item outages happen constantly. Operators need structured 86 behavior that protects guest expectations, kitchen load, and delivery marketplace accuracy.
 
-**Acceptance evidence:** Skill manifests, permission tests, preview/confirm flows, blocked-action evidence, and audit events for every assistant mutation. The evidence should be package-local in `src/pyAppGen/pbcs/restaurant_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Improvement:** Add 86 states for menu items, modifiers, and prep components with scope by site, channel, and time window. Support approved substitutions and guest-facing messaging when only part of an item is unavailable.
 
-### 14. Workbench persona coverage for Recipe
+**Acceptance evidence:** 86 activation tests, substitute suggestion scenarios, and evidence that third-party channels and the in-house UI reflect the same outage within the same release window.
 
-**Justification:** A generic detail page underserves the domain; each role needs the exact controls and evidence they use daily.
+### 19. Inventory boundary ownership
+**Justification:** Restaurant operations must know ingredient availability, but it should not own full inventory valuation or procurement. The boundary needs to be explicit to avoid duplicate stock truth.
 
-**Improvement:** Design dedicated workbench panels for `recipe`: operator queue, supervisor approvals, analyst exceptions, auditor evidence, configuration owner, and agent-assistance review. Tie the behavior to `restaurant_operations_record_recipe_workflow` where applicable, and make it visible in `RestaurantOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Treat on-hand ingredient position as consumed evidence from an inventory-adjacent PBC while `restaurant_operations` owns prep intent, kitchen demand, and service impact. Store only the minimum operational snapshot needed for decisions and trace the source system for the canonical quantity.
 
-**Acceptance evidence:** UI contract entries, route tests, empty/error/loading states, and permission-aware action availability. The evidence should be package-local in `src/pyAppGen/pbcs/restaurant_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Boundary documentation, contract tests proving no direct inventory writes, and event traces showing stock snapshots are consumed rather than mutated locally.
 
-### 15. Cross-PBC dependency contracts for Kitchen Ticket
+### 20. Depletion requests from recipe and prep usage
+**Justification:** Orders and prep must create demand against ingredients, but restaurant operations should emit consumption intent instead of silently adjusting inventory tables.
 
-**Justification:** Composable packages fail when hidden table coupling enters the domain model.
+**Improvement:** Emit structured depletion and reservation events from recipe usage, prep batches, waste, and voided food. Distinguish theoretical usage from confirmed usage and correction events so adjacent inventory services can reconcile cleanly.
 
-**Improvement:** Represent dependencies for `kitchen_ticket` through declared APIs, consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, and projections rather than shared tables, with explicit freshness, ownership, and fallback behavior. Tie the behavior to `restaurant_operations_create_menu_item_workflow` where applicable, and make it visible in `RestaurantOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Event schema examples, replay tests for corrected depletion, and evidence that voided tickets reverse demand with explicit causal linkage.
 
-**Acceptance evidence:** Dependency manifests, contract tests, stale dependency alerts, and no foreign-table references in generated artifacts. The evidence should be package-local in `src/pyAppGen/pbcs/restaurant_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 21. Food safety temperature monitoring
+**Justification:** Safe service requires continuous attention to hot hold, cold hold, cooking, and cooling thresholds. Free-text notes are not acceptable evidence for food safety controls.
 
-### 16. API completeness and versioning for Reservation
+**Improvement:** Add temperature check records linked to prep batches, stations, and equipment zones. Support manual entry, device ingestion, threshold breaches, and immediate operational actions such as discard, reheat, or manager review.
 
-**Justification:** Complete domain coverage requires both command and query surfaces, not only happy-path create endpoints.
+**Acceptance evidence:** Threshold-breach scenarios, line-check audit trails, and UI alerts showing open food safety exceptions with required disposition.
 
-**Improvement:** Expand APIs beyond POST /menu-items, POST /recipes, POST /kitchen-tickets to cover search, validation-only commands, simulation, bulk intake, exception closure, evidence export, projection reads, and idempotent corrections. Tie the behavior to `restaurant_operations_record_recipe_workflow` where applicable, and make it visible in `RestaurantOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+### 22. Allergen cross-contact handling
+**Justification:** Ingredient declarations alone are insufficient when the actual risk comes from shared fryers, cutting boards, glove changes, or mislabeled prep bins.
 
-**Acceptance evidence:** OpenAPI-style route manifests, backward-compatible version tests, deprecation metadata, and idempotency assertions. The evidence should be package-local in `src/pyAppGen/pbcs/restaurant_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Improvement:** Model cross-contact controls at recipe, station, and ticket level, including required tool changes, dedicated prep zones, and manager confirmation for high-risk tickets. Let the system block unsafe routing to a station that cannot meet the request.
 
-### 17. Typed emitted-event expansion for Inventory Prep
+**Acceptance evidence:** Cross-contact routing tests, blocked-assignment evidence, and ticket-level audit history that shows how an allergen-sensitive order was handled.
 
-**Justification:** Consumers should understand what happened in Restaurant Operations without parsing opaque payloads.
+### 23. Cooling, reheating, and discard workflows
+**Justification:** Prep safety is not just about initial cook. Restaurants need evidence around cooling curves, reheating limits, and discard enforcement for reheated or expired product.
 
-**Improvement:** Replace generic lifecycle emissions with typed events for each meaningful `inventory_prep` transition, exception, approval, correction, simulation result, and downstream handoff. Tie the behavior to `restaurant_operations_create_menu_item_workflow` where applicable, and make it visible in `RestaurantOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Track cooling start and end, reheating attempts, maximum reuse counts, and mandatory discard states for prep batches. Surface overdue cooling and reheating violations in the manager workbench.
 
-**Acceptance evidence:** Event schema tests, event examples, compatibility checks, and emitted-event coverage in release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/restaurant_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Safety lifecycle tests for a prep batch, overdue countdowns, and release evidence showing that unsafe batches cannot be assigned to new tickets.
 
-### 18. Consumed-event handlers for Food Waste
+### 24. Waste taxonomy and root cause capture
+**Justification:** Waste data is useless if every loss is logged as a generic discard. Restaurants need to separate overproduction, spoilage, line error, guest return, dropped plate, and expired hold.
 
-**Justification:** A PBC is composable only when incoming events affect its own domain state predictably and safely.
+**Improvement:** Expand `food_waste` with a controlled reason taxonomy, station, shift, menu item or prep batch linkage, and responsible phase such as prep, cook, expo, or service. Support both quantity and estimated cost impact.
 
-**Improvement:** Implement idempotent handlers for consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged that update projections, open dependency exceptions, recalculate risk, and preserve source event lineage. Tie the behavior to `restaurant_operations_record_recipe_workflow` where applicable, and make it visible in `RestaurantOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Waste reason validation tests, analytics by cause and station, and evidence that the UI prevents uncategorized waste closure.
 
-**Acceptance evidence:** Duplicate-event tests, handler side-effect boundaries, dead-letter fixtures, and lineage links back to source events. The evidence should be package-local in `src/pyAppGen/pbcs/restaurant_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 25. Theoretical versus actual yield analytics
+**Justification:** Recipe engineering depends on understanding where cost and portion drift occur. The system should expose when theoretical yield and actual output diverge materially.
 
-### 19. Retry and dead-letter operations for Labor Shift
+**Improvement:** Compare recipe target yield, approved prep quantity, sold quantity, and recorded waste to highlight overportioning, trim loss, and mis-prep. Allow managers to investigate by item, station, shift, and recipe version.
 
-**Justification:** Dead letters are not just plumbing; they are domain work queues that can block menus, recipes, kitchen production, reservations, food cost, labor, waste, and service execution.
+**Acceptance evidence:** Yield variance dashboards, drift alerts, and seeded scenarios proving the system can distinguish waste from portion inflation.
 
-**Improvement:** Create operational tools for retrying, quarantining, explaining, and resolving dead-lettered `labor_shift` events with max-attempt policy, poison-message detection, and replay safety. Tie the behavior to `restaurant_operations_create_menu_item_workflow` where applicable, and make it visible in `RestaurantOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+### 26. Comp and void governance
+**Justification:** Comps and voids are both guest-service tools and abuse vectors. They must be operationally fast while remaining tightly governed.
 
-**Acceptance evidence:** Dead-letter workbench, retry eligibility tests, replay audit proof, and operator action logs. The evidence should be package-local in `src/pyAppGen/pbcs/restaurant_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Improvement:** Create separate workflows for pre-fire void, post-fire void, manager comp, and hospitality comp with reason codes, approval thresholds, and attachment of service-recovery context. Keep check impact and kitchen impact distinct.
 
-### 20. RBAC and attribute policy for Restaurant Operations Policy Rule
+**Acceptance evidence:** Approval-path tests by amount and role, comp and void audit reports, and evidence that post-fire voids can still trigger waste or remake workflows.
 
-**Justification:** High-impact domain operations need finer controls than generic RBAC grants.
+### 27. Distinguishing discount, comp, and waste
+**Justification:** Restaurants often blend commercial decisions and operational losses. That destroys margin analysis and can hide control failures.
 
-**Improvement:** Extend permissions for `restaurant_operations_policy_rule` from coarse read/create/update/admin to action-level and attribute-aware policies based on role, tenant, jurisdiction, monetary/materiality threshold, and exception severity. Tie the behavior to `restaurant_operations_record_recipe_workflow` where applicable, and make it visible in `RestaurantOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Enforce separate ledgers and event types for promotional discounts, service-recovery comps, order voids, and physical waste. Each path should preserve its own approval logic, root cause, and reporting destination.
 
-**Acceptance evidence:** Permission matrix docs, ABAC policy tests, denied-action UI states, and assistant skill permission checks. The evidence should be package-local in `src/pyAppGen/pbcs/restaurant_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Reporting snapshots that keep categories separate, reconciliation tests across the four paths, and evidence that the UI prevents a manager from using a comp code to hide spoiled food.
 
-### 21. Continuous control testing for Restaurant Operations Runtime Parameter
+### 28. Delivery channel menu publishing
+**Justification:** Off-premise demand fails when third-party channels drift from the in-house menu. Restaurants need explicit publication state and timing controls per channel.
 
-**Justification:** Controls should run during operations, not only during release audit or manual review.
+**Improvement:** Add delivery-channel publication status, mapped item identifiers, mapped modifier availability, lead times, pickup windows, and site-specific throttles. Support preview before a menu sync is released.
 
-**Improvement:** Embed control assertions for `restaurant_operations_runtime_parameter` that continuously test segregation of duties, required approvals, stale exceptions, policy drift, duplicate records, and boundary violations. Tie the behavior to `restaurant_operations_create_menu_item_workflow` where applicable, and make it visible in `RestaurantOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Channel mapping tests, publication diff views, and evidence that an unpublished or failed sync is visible in the workbench before service begins.
 
-**Acceptance evidence:** Control dashboards, failing-control events, test fixtures, and release evidence tied to `restaurant_operations_control_assertion` records. The evidence should be package-local in `src/pyAppGen/pbcs/restaurant_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 29. Delivery order ingestion and outage handling
+**Justification:** Channel orders arrive through brittle integrations. The restaurant side needs clean recovery when a marketplace retries, delays, or duplicates an order.
 
-### 22. Cryptographic audit proofing for Restaurant Operations Schema Extension
+**Improvement:** Add idempotent intake for delivery orders with marketplace identifier, promised time, handoff type, and failure recovery path. Support duplicate detection, late accept decisions, and graceful fallback during integration outages.
 
-**Justification:** Better-than-world-class auditability requires proof of integrity, not merely logs stored in mutable tables.
+**Acceptance evidence:** Duplicate-order fixtures, delayed-ingestion scenarios, and event traces proving a recovered marketplace order does not create a second kitchen ticket.
 
-**Improvement:** Hash-chain material `restaurant_operations_schema_extension` decisions, documents, emitted events, and release-evidence snapshots to make tampering visible without exposing sensitive payloads. Tie the behavior to `restaurant_operations_record_recipe_workflow` where applicable, and make it visible in `RestaurantOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+### 30. Labor boundary ownership
+**Justification:** Restaurant operations depends on staffing, but it should not own payroll, tax, or full HR records. The labor boundary must be as clear as the inventory boundary.
 
-**Acceptance evidence:** Proof manifests, verification APIs, redacted proof exports, and audit-ledger handoff events. The evidence should be package-local in `src/pyAppGen/pbcs/restaurant_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Improvement:** Treat `labor_shift` as an operational staffing surface with demand, assignment, and service impact data while consuming official worker, schedule, and payroll truth from a labor-adjacent domain. Keep labor cost assumptions explicit and local only where needed for service decisions.
 
-### 23. Privacy, consent, and secrecy controls for Restaurant Operations Control Assertion
+**Acceptance evidence:** Boundary tests showing no payroll mutation, dependency contracts for staffing feeds, and workbench evidence that missing labor data raises a dependency exception instead of creating local shadow records.
 
-**Justification:** Complete domain coverage must account for protected data and restricted operational evidence.
+### 31. Staffing demand from reservations and order mix
+**Justification:** Labor should respond to expected covers, prep load, and delivery volume rather than only fixed schedules. Restaurants need forward-looking demand signals inside the PBC.
 
-**Improvement:** Add field-level privacy classifications for `restaurant_operations_control_assertion`, consent checks, masking rules, retention schedules, legal holds, and assistant redaction policies. Tie the behavior to `restaurant_operations_create_menu_item_workflow` where applicable, and make it visible in `RestaurantOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Generate staffing pressure indicators from reservations, forecasted order mix, prep intensity, and channel mix. Separate front-of-house, line, expo, and prep demand so managers can see where the pinch point is.
 
-**Acceptance evidence:** Retention tests, masked UI snapshots, consent-blocked mutation fixtures, and export controls. The evidence should be package-local in `src/pyAppGen/pbcs/restaurant_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Demand forecast traces, side-by-side staffing pressure views, and scenario evidence for a reservation spike, delivery surge, and large-party seating event.
 
-### 24. Multi-tenant operating model for Restaurant Operations Governed Model
+### 32. Station assignment and skill coverage
+**Justification:** Not every worker can cover every station, and service quality collapses when the system ignores station skill requirements or break coverage.
 
-**Justification:** The PBC should scale across organizations while preserving independent policy and compliance boundaries.
+**Improvement:** Model station skills, certifications, and temporary assignment changes inside operational labor views. Highlight uncovered stations, break overlap risk, and high-risk setups such as the same person covering expo and allergy-sensitive fry station.
 
-**Improvement:** Support tenant-specific `restaurant_operations_governed_model` rules, data residency, encryption context, configuration, seed data, and release evidence without allowing cross-tenant leakage. Tie the behavior to `restaurant_operations_record_recipe_workflow` where applicable, and make it visible in `RestaurantOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Skill-coverage tests, uncovered-station alerts, and UI evidence showing which station assignment risk is blocking an opening checklist or service plan.
 
-**Acceptance evidence:** Tenant isolation tests, tenant-scoped parameters, key-rotation evidence, and cross-tenant negative fixtures. The evidence should be package-local in `src/pyAppGen/pbcs/restaurant_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 33. Table service recovery workflow
+**Justification:** Front-of-house recovery is a major operational domain. Late food, wrong modifiers, cold plates, and missed birthday requests all need structured handling tied to the original order.
 
-### 25. Schema evolution and extension registry for Menu Item
+**Improvement:** Add guest issue records linked to table, seat, order line, and server action. Support remake, comp request, manager visit, priority refire, and promised follow-up with timestamps and resolution evidence.
 
-**Justification:** Domain teams will add fields; the PBC must evolve without breaking APIs, events, or workbench projections.
+**Acceptance evidence:** Service recovery scenarios, linked comp and refire events, and workbench evidence that unresolved guest issues stay visible until formally closed.
 
-**Improvement:** Make schema extensions for `menu_item` first-class with compatibility checks, migration previews, projection backfills, field ownership, and rollback metadata. Tie the behavior to `restaurant_operations_create_menu_item_workflow` where applicable, and make it visible in `RestaurantOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+### 34. Seat-level ordering and shared-item logic
+**Justification:** Real tables include shared appetizers, split checks, and seat-specific modifiers. Without seat-level structure, the kitchen and service staff cannot reliably coordinate.
 
-**Acceptance evidence:** Extension registry UI, compatibility tests, migration dry-runs, and backfill release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/restaurant_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Improvement:** Add seat assignment, shareable item flags, split responsibility, and guest note routing so line items can be prepared and delivered accurately while still rolling up to the right check and table context.
 
-### 26. Master data quality gates for Recipe
+**Acceptance evidence:** Multi-seat order fixtures, shared-item kitchen rendering tests, and UI evidence showing seat-specific delivery without duplicating the item on the expo board.
 
-**Justification:** Many restaurant operations errors begin as bad reference data; the PBC should catch them before workflow execution.
+### 35. Server and handheld UI flow
+**Justification:** Table service depends on a fast and mistake-resistant UI. Servers need guided entry that minimizes modifier misses, wrong seat assignment, and delayed fire timing.
 
-**Improvement:** Define reference-data contracts for `recipe`: canonical codes, parties, locations, classifications, calendars, units, currencies, products, assets, or service categories as relevant to the domain. Tie the behavior to `restaurant_operations_record_recipe_workflow` where applicable, and make it visible in `RestaurantOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Rework the front-of-house UI around service flow: seat the table, start order, add modifiers, course items, hold fire, request guest note review, and send in one obvious sequence. Make high-risk actions such as void after fire require explicit escalation.
 
-**Acceptance evidence:** Reference validation fixtures, stale-code warnings, mapping tables, and dependency freshness indicators. The evidence should be package-local in `src/pyAppGen/pbcs/restaurant_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** UI interaction tests, keyboard and handheld acceptance paths, and screenshots demonstrating that service-critical actions are available without navigating away from the active table.
 
-### 27. Bulk operations and correction workflows for Kitchen Ticket
+### 36. Kitchen display and expo UI flow
+**Justification:** Kitchen display usability is part of the domain model. If cooks and expo cannot interpret the board instantly, the underlying data design has failed.
 
-**Justification:** Enterprise-scale Restaurant Operations users cannot operate one record at a time.
+**Improvement:** Design role-specific KDS views for grill, pantry, expo, and pack stations with lane grouping, urgent badges, modifier prominence, allergen markers, and promised-time countdowns. Keep view logic driven by structured ticket state and station routing.
 
-**Improvement:** Add bulk load, bulk validate, bulk approve, and bulk correction workflows for `kitchen_ticket` with partial success, row-level errors, resumability, and rollback. Tie the behavior to `restaurant_operations_create_menu_item_workflow` where applicable, and make it visible in `RestaurantOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Role-based UI contracts, screenshot evidence for each station view, and usability checks that show critical modifier and timing data stays visible under peak load.
 
-**Acceptance evidence:** CSV/API batch fixtures, resumable job state, row-level audit evidence, and assistant-generated correction suggestions. The evidence should be package-local in `src/pyAppGen/pbcs/restaurant_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 37. Manager workbench for operational exceptions
+**Justification:** Managers need one place to see reservations, kitchen backlog, food safety issues, comps, staffing gaps, and delivery delays together. Fragmented dashboards weaken operational control.
 
-### 28. Lifecycle collaboration and tasking for Reservation
+**Improvement:** Turn `GET /restaurant-operations-workbench` into an exception-first cockpit with widgets for dining room pacing, KDS backlog, expiring prep, open guest recoveries, waste spikes, and blocked delivery channels.
 
-**Justification:** Domain collaboration should live inside the PBC boundary and remain auditable with the record it affects.
+**Acceptance evidence:** Workbench route tests, widget contract snapshots, and evidence that each high-severity exception links directly to the underlying operational record and remediation action.
 
-**Improvement:** Attach tasks, comments, ownership, due dates, handoffs, and escalation threads to `reservation` without leaking into external shared task tables. Tie the behavior to `restaurant_operations_record_recipe_workflow` where applicable, and make it visible in `RestaurantOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+### 38. Agent skill for menu engineering
+**Justification:** Restaurant teams need guided help when creating or updating menu items, but agent assistance must stay within policy and avoid inventing operational facts.
 
-**Acceptance evidence:** Task tables, comment audit history, notification events, escalation SLAs, and role-specific task queues. The evidence should be package-local in `src/pyAppGen/pbcs/restaurant_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Improvement:** Add an assistant skill that drafts menu items, daypart assignments, modifier sets, and rollout plans from a manager prompt, then shows a governed preview before any mutation. Require citations to existing menu and recipe data where possible.
 
-### 29. SLA and service-level governance for Inventory Prep
+**Acceptance evidence:** Skill prompt fixtures, permission-checked preview flows, and audit evidence that the assistant cannot activate a menu change without the same approvals as a human user.
 
-**Justification:** Users need to know when menus, recipes, kitchen production, reservations, food cost, labor, waste, and service execution is late, blocked, or at risk before customer or regulator impact.
+### 39. Agent skill for prep, waste, and 86 coaching
+**Justification:** Managers need help interpreting prep pressure and waste patterns quickly during service, not generic analytics after the shift ends.
 
-**Improvement:** Define SLAs for `inventory_prep` across intake, validation, approval, exception resolution, event handling, downstream projection refresh, and release-evidence generation. Tie the behavior to `restaurant_operations_create_menu_item_workflow` where applicable, and make it visible in `RestaurantOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add an assistant skill that explains likely prep shortfalls, recommends controlled 86 actions, identifies waste root causes, and suggests batch-size changes based on reservation, order, and waste evidence.
 
-**Acceptance evidence:** SLA breach events, timers, configurable calendars, workbench aging buckets, and tests for pause/resume behavior. The evidence should be package-local in `src/pyAppGen/pbcs/restaurant_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Explainability traces for recommendations, accepted and rejected suggestion logs, and tests proving the assistant stays suggestion-only when the configured policy forbids autonomous changes.
 
-### 30. Operational analytics cockpit for Food Waste
+### 40. Agent skill for reservation and table optimization
+**Justification:** Reservation teams need fast what-if reasoning around table combinations, no-shows, pacing, and walk-in insertion. This is a high-value assistant use case if it stays grounded in actual table inventory.
 
-**Justification:** World-class operations require leading indicators, not only record counts.
+**Improvement:** Add an assistant skill that proposes seating plans, quote adjustments, and reseating actions using live table status, turn assumptions, and reservation priority rules. Surface the exact constraints behind each suggestion.
 
-**Improvement:** Build analytics for `food_waste`: throughput, backlog, aging, approval latency, exception rate, risk distribution, automation acceptance, correction rate, and downstream dependency health. Tie the behavior to `restaurant_operations_record_recipe_workflow` where applicable, and make it visible in `RestaurantOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Simulation fixtures for no-show and walk-in pressure, side-by-side assistant recommendations, and audit trails showing accepted suggestions changed only the intended reservation or table records.
 
-**Acceptance evidence:** Metric definitions, projection tests, drill-through routes, export APIs, and anomaly overlays. The evidence should be package-local in `src/pyAppGen/pbcs/restaurant_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 41. Domain event taxonomy for service operations
+**Justification:** The current generic events are too broad for serious operational replay, analytics, and integration. Restaurant operations needs typed events that describe what actually happened.
 
-### 31. Decision intelligence and recommendations for Labor Shift
+**Improvement:** Define typed events for menu activation, recipe revision, prep batch started, prep batch expired, reservation seated, table turned, ticket fired, item refired, order packed, comp approved, and waste recorded. Keep causal links between related events.
 
-**Justification:** The PBC should help expert users decide faster while showing evidence and uncertainty.
+**Acceptance evidence:** Event catalog documentation, schema tests, and replay evidence showing projections rebuild correctly from typed service events alone.
 
-**Improvement:** Generate ranked recommendations for `labor_shift` such as next best action, likely resolution, required evidence, policy adjustment, staffing/capacity response, or downstream handoff. Tie the behavior to `restaurant_operations_create_menu_item_workflow` where applicable, and make it visible in `RestaurantOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+### 42. Event ingestion and dependency health
+**Justification:** The PBC already consumes `PolicyChanged`, `AuditEventSealed`, and `OperationalKpiChanged`, but the operational effect of those events should be visible and testable.
 
-**Acceptance evidence:** Recommendation explanations, confidence intervals, feedback capture, model governance records, and rejection reasons. The evidence should be package-local in `src/pyAppGen/pbcs/restaurant_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Improvement:** Build idempotent handlers that update policy readiness, audit proof state, and KPI-driven alerts without mutating unrelated domain records. Surface dependency freshness and last-processed offsets in the workbench.
 
-### 32. Quality and completeness scoring for Restaurant Operations Policy Rule
+**Acceptance evidence:** Duplicate-event tests, handler health dashboards, and evidence that a stale dependency raises an actionable exception instead of silently aging out.
 
-**Justification:** Operators should see whether a record is truly ready, not just technically saved.
+### 43. Permissions by role, site, and action
+**Justification:** Restaurant control failures often come from overbroad permissions. A cashier, server, chef, sous chef, and general manager should not share the same action surface.
 
-**Improvement:** Score each `restaurant_operations_policy_rule` record for completeness, consistency, policy readiness, dependency readiness, evidence sufficiency, and downstream composability. Tie the behavior to `restaurant_operations_record_recipe_workflow` where applicable, and make it visible in `RestaurantOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand permission checks to action level by site, station, and monetary or safety threshold. Make high-risk actions such as post-fire voids, allergy overrides, and manual ticket state correction require stronger approval paths.
 
-**Acceptance evidence:** Scoring rules, missing-evidence lists, readiness badges, and blocking criteria in command handlers. The evidence should be package-local in `src/pyAppGen/pbcs/restaurant_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Permission matrix tests, denied-action UI states, and release evidence showing role-specific access for service, kitchen, and management personas.
 
-### 33. End-to-end scenario library for Restaurant Operations Runtime Parameter
+### 44. Offline and degraded-mode operations
+**Justification:** Restaurants still have to serve guests when the network or one integration fails. The backlog should cover degraded operation instead of assuming perfect connectivity.
 
-**Justification:** Release evidence is stronger when every important restaurant operations behavior has executable examples.
+**Improvement:** Add offline-safe capture for table service actions, queued kitchen updates, deferred delivery acknowledgments, and clear reconciliation once connectivity returns. Mark degraded records visibly so staff know what still needs sync or review.
 
-**Improvement:** Create seeded scenarios for `restaurant_operations_runtime_parameter`: normal flow, urgent path, exception path, corrected path, duplicate path, late event path, and audit export path. Tie the behavior to `restaurant_operations_create_menu_item_workflow` where applicable, and make it visible in `RestaurantOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Offline recovery scenarios, conflict-resolution traces, and UI evidence that staff can distinguish unsynced changes from fully confirmed operational state.
 
-**Acceptance evidence:** Scenario seed data, runtime smoke coverage, generated-app fixtures, and story-level workbench screenshots/contracts. The evidence should be package-local in `src/pyAppGen/pbcs/restaurant_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 45. Multi-location concept governance
+**Justification:** Chain restaurants need local variation without losing brand control. One site may run brunch, another may not; one city may require different allergen text or service flow.
 
-### 34. Domain ontology and terminology model for Restaurant Operations Schema Extension
+**Improvement:** Support hierarchical configuration for brand, concept, region, and site covering menu rollout, reservation rules, prep templates, KDS routing, and food safety checklists. Keep inheritance and override reasoning explicit.
 
-**Justification:** Precise vocabulary prevents the PBC from misclassifying specialist documents or user instructions.
+**Acceptance evidence:** Multi-site override tests, inheritance diff views, and evidence that local changes do not leak across tenants or unrelated sites.
 
-**Improvement:** Add an ontology for `restaurant_operations_schema_extension` terms, synonyms, classifications, relationships, allowed values, and phrase mappings used by the assistant and UI. Tie the behavior to `restaurant_operations_record_recipe_workflow` where applicable, and make it visible in `RestaurantOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+### 46. Release evidence for rush and edge-case scenarios
+**Justification:** Release confidence in restaurant operations comes from realistic service scenarios, not just CRUD tests. Peak periods and operational edge cases reveal the real defects.
 
-**Acceptance evidence:** Ontology files, assistant parsing tests, UI glossary, and mapping evidence for domain-specific abbreviations. The evidence should be package-local in `src/pyAppGen/pbcs/restaurant_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Improvement:** Build executable release scenarios for lunch rush, modifier-heavy large party, reservation no-show wave, third-party delivery burst, 86 event, food safety discard, and post-fire comp. Tie each scenario to the exact APIs, UI flows, and events exercised.
 
-### 35. Advanced search and investigation for Restaurant Operations Control Assertion
+**Acceptance evidence:** Scenario manifests, smoke test outputs, and a release evidence index that shows pass or fail for each high-risk restaurant operation.
 
-**Justification:** Investigators and operators need fast, explainable retrieval across the whole domain surface.
+### 47. Delivery SLA and handoff proof
+**Justification:** Off-premise service quality depends on the handoff boundary from kitchen to courier. Without evidence of promised versus actual ready times, channel disputes are hard to resolve.
 
-**Improvement:** Provide search across `restaurant_operations_control_assertion` records, events, documents, exceptions, tasks, comments, and audit proofs with filters for tenant, status, risk, date, party, and dependency. Tie the behavior to `restaurant_operations_create_menu_item_workflow` where applicable, and make it visible in `RestaurantOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Track ready time, packed time, courier arrival, courier handoff, and late reason codes for delivery orders. Separate restaurant-caused delay from courier-caused delay for analytics and dispute support.
 
-**Acceptance evidence:** Search index contracts, result provenance, permission-filtered queries, and stale-index warnings. The evidence should be package-local in `src/pyAppGen/pbcs/restaurant_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** SLA metrics by channel, handoff timestamp tests, and evidence exports that support a late-order investigation without querying external systems directly.
 
-### 36. Reconciliation and closure controls for Restaurant Operations Governed Model
+### 48. Cross-PBC boundary documentation and contracts
+**Justification:** The package touches adjacent domains such as inventory, labor, audit, and policy. Those seams need hard contracts or the implementation will drift toward hidden coupling.
 
-**Justification:** Closure is not complete until the PBC can prove no material domain work remains unresolved.
+**Improvement:** Document and test every cross-PBC contract used by restaurant operations, especially stock snapshots, staffing signals, policy updates, and sealed audit evidence. Keep local ownership limited to restaurant decision state and operational execution.
 
-**Improvement:** Add reconciliation workflows that compare `restaurant_operations_governed_model` state against consumed events, external projections, expected totals/counts, approvals, and release evidence before closure. Tie the behavior to `restaurant_operations_record_recipe_workflow` where applicable, and make it visible in `RestaurantOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Contract test suite results, boundary diagrams, and release evidence showing no shared-table dependency outside the package's owned schema.
 
-**Acceptance evidence:** Reconciliation reports, variance thresholds, closure blockers, and AppGen-X closure events. The evidence should be package-local in `src/pyAppGen/pbcs/restaurant_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 49. Operational KPI definitions and explainability
+**Justification:** Restaurants need metrics they can act on in the moment. Throughput, turn time, ticket time, quote accuracy, waste, and comp rate all need stable definitions or teams will argue about the numbers.
 
-### 37. Regulatory and policy reporting for Menu Item
+**Improvement:** Define canonical KPIs for dining room, kitchen, off-premise, safety, waste, and labor pressure with calculation windows, exclusions, and drill-through paths back to raw operational records and events.
 
-**Justification:** World-class PBCs turn operational evidence into credible reporting without spreadsheet reconstruction.
+**Acceptance evidence:** KPI definition catalog, projection validation tests, and workbench drill-through evidence that explains exactly why a metric moved.
 
-**Improvement:** Generate domain reporting packs for `menu_item` covering statutory, contractual, operational, board, customer, or regulator evidence depending on production traceability, safety permits, batch genealogy, field conditions, quality evidence, environmental constraints, and asset-intensive operations. Tie the behavior to `restaurant_operations_create_menu_item_workflow` where applicable, and make it visible in `RestaurantOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+### 50. Release gate traceability to every operational surface
+**Justification:** The backlog is only useful if release evidence proves the package now covers the restaurant domain end to end. Menus, recipes, prep, reservations, table service, KDS, orders, modifiers, boundaries, safety, waste, comps, delivery, UI, agent skills, and events must all be tied to executable proof.
 
-**Acceptance evidence:** Report schemas, redaction rules, traceable metric sources, and approval/export audit events. The evidence should be package-local in `src/pyAppGen/pbcs/restaurant_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Improvement:** Build a release gate matrix that maps every major restaurant operations surface to schema, API, event, UI, assistant skill, scenario, and audit evidence. Block release when any critical surface lacks evidence or has stale evidence.
 
-### 38. Carbon and resource awareness for Recipe
-
-**Justification:** Sustainability evidence should be embedded in operations instead of treated as an after-the-fact report.
-
-**Improvement:** Where relevant, attach carbon, energy, water, travel, capacity, compute, or resource-footprint metadata to `recipe` decisions and batch operations. Tie the behavior to `restaurant_operations_record_recipe_workflow` where applicable, and make it visible in `RestaurantOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Footprint fields, scheduling parameters, exception rules, and dashboards that expose operational tradeoffs. The evidence should be package-local in `src/pyAppGen/pbcs/restaurant_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 39. Resilience and offline behavior for Kitchen Ticket
-
-**Justification:** Real operations keep moving during outages; the PBC must preserve correctness when dependencies are unavailable.
-
-**Improvement:** Define resilience modes for `kitchen_ticket`: degraded dependency mode, offline draft capture, delayed event replay, conflict detection, and safe recovery after partial failure. Tie the behavior to `restaurant_operations_create_menu_item_workflow` where applicable, and make it visible in `RestaurantOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Offline fixtures, replay tests, conflict queues, recovery logs, and user-visible degraded-mode warnings. The evidence should be package-local in `src/pyAppGen/pbcs/restaurant_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 40. Human-in-the-loop automation for Reservation
-
-**Justification:** Automation should accelerate menus, recipes, kitchen production, reservations, food cost, labor, waste, and service execution while preserving accountability for high-risk decisions.
-
-**Improvement:** Set explicit automation boundaries for `reservation`: auto-approve, auto-reject, suggest-only, require-review, and block-until-evidence states with policy-based routing. Tie the behavior to `restaurant_operations_record_recipe_workflow` where applicable, and make it visible in `RestaurantOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Automation policy tests, reviewer queues, override reasons, and assistant action audit trails. The evidence should be package-local in `src/pyAppGen/pbcs/restaurant_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 41. Package discovery and fit scoring for Inventory Prep
-
-**Justification:** Users selecting PBCs need transparent fit reasoning, especially when domains are adjacent but not overlapping.
-
-**Improvement:** Improve package metadata so composition can explain when `restaurant_operations` fits a prompt, what entities it owns, what APIs/events it exposes, and what adjacent PBCs it depends on. Tie the behavior to `restaurant_operations_create_menu_item_workflow` where applicable, and make it visible in `RestaurantOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Discovery manifests, prompt-selection tests, overlap rationale links, and composition DSL examples. The evidence should be package-local in `src/pyAppGen/pbcs/restaurant_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 42. Configuration deployment pipeline for Food Waste
-
-**Justification:** Configuration changes can materially alter restaurant operations; they need the same discipline as code releases.
-
-**Improvement:** Add configuration promotion for `food_waste` across draft, test, approved, active, deprecated, and rollback states with impact analysis before activation. Tie the behavior to `restaurant_operations_record_recipe_workflow` where applicable, and make it visible in `RestaurantOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Config diff views, approval workflows, simulation before activation, and rollback tests. The evidence should be package-local in `src/pyAppGen/pbcs/restaurant_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 43. Workbench command completeness for Labor Shift
-
-**Justification:** A PBC does not fully surface its capabilities if users must call hidden APIs for core work.
-
-**Improvement:** Expose every high-value operation for `labor_shift` in the UI: create, validate, approve, simulate, correct, assign, export, retry, close, and audit-proof verification. Tie the behavior to `restaurant_operations_create_menu_item_workflow` where applicable, and make it visible in `RestaurantOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** UI action coverage tests, permission-aware disabled states, keyboard paths, and assistant handoff links. The evidence should be package-local in `src/pyAppGen/pbcs/restaurant_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 44. Document packet and evidence vault for Restaurant Operations Policy Rule
-
-**Justification:** Documents often carry the legal or operational truth behind menus, recipes, kitchen production, reservations, food cost, labor, waste, and service execution.
-
-**Improvement:** Create a governed evidence vault for `restaurant_operations_policy_rule` documents, attachments, source spans, extracted fields, signatures, approvals, and retention labels. Tie the behavior to `restaurant_operations_record_recipe_workflow` where applicable, and make it visible in `RestaurantOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Evidence models, source-to-field lineage, signature validation, retention policies, and proof exports. The evidence should be package-local in `src/pyAppGen/pbcs/restaurant_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 45. Data correction and amendment history for Restaurant Operations Runtime Parameter
-
-**Justification:** World-class systems correct mistakes without rewriting history or confusing downstream consumers.
-
-**Improvement:** Support formal amendments for `restaurant_operations_runtime_parameter` that preserve original values, correction reason, approving actor, effective date, downstream event impacts, and replay behavior. Tie the behavior to `restaurant_operations_create_menu_item_workflow` where applicable, and make it visible in `RestaurantOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Amendment tables, correction events, projection replay tests, and side-by-side before/after UI. The evidence should be package-local in `src/pyAppGen/pbcs/restaurant_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 46. External participant collaboration for Restaurant Operations Schema Extension
-
-**Justification:** Many restaurant operations workflows require outside parties, but they must not gain direct access to internal tables.
-
-**Improvement:** Add controlled collaboration portals or API views for external participants related to `restaurant_operations_schema_extension`, limited to scoped evidence submission, status checks, comments, and dispute responses. Tie the behavior to `restaurant_operations_record_recipe_workflow` where applicable, and make it visible in `RestaurantOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Participant role policies, scoped tokens, submission audit trails, and inbound evidence validation. The evidence should be package-local in `src/pyAppGen/pbcs/restaurant_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 47. Advanced dependency freshness scoring for Restaurant Operations Control Assertion
-
-**Justification:** A record may be valid locally but unsafe if dependency evidence is stale or incomplete.
-
-**Improvement:** Score freshness and reliability of dependencies used by `restaurant_operations_control_assertion`, including consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, referenced projections, configuration versions, and external submissions. Tie the behavior to `restaurant_operations_create_menu_item_workflow` where applicable, and make it visible in `RestaurantOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Freshness indicators, blocking rules, stale-event simulations, and workbench dependency health panels. The evidence should be package-local in `src/pyAppGen/pbcs/restaurant_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 48. Model governance and explainability for Restaurant Operations Governed Model
-
-**Justification:** Governed AI is mandatory for professional-grade automation in Restaurant Operations.
-
-**Improvement:** For every predictive or agentic feature around `restaurant_operations_governed_model`, record model version, prompt or ruleset version, training/evaluation evidence, confidence, explanation, and human feedback. Tie the behavior to `restaurant_operations_record_recipe_workflow` where applicable, and make it visible in `RestaurantOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Model cards, prompt/version manifests, feedback loops, drift tests, and audit proof for recommendations. The evidence should be package-local in `src/pyAppGen/pbcs/restaurant_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 49. High-scale partitioning and archival for Menu Item
-
-**Justification:** Better-than-world-class packages must remain operable after years of high-volume domain history.
-
-**Improvement:** Plan scale behavior for `menu_item`: tenant partitioning, archival policies, cold storage, retention-aware search, projection compaction, and large-batch replay. Tie the behavior to `restaurant_operations_create_menu_item_workflow` where applicable, and make it visible in `RestaurantOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Partition tests, archive/retrieve fixtures, retention enforcement, and replay benchmarks. The evidence should be package-local in `src/pyAppGen/pbcs/restaurant_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 50. Release gate expansion for Recipe
-
-**Justification:** The PBC should not claim domain coverage unless release evidence proves the claim end to end.
-
-**Improvement:** Expand release gates for `restaurant_operations` so every schema, service, API, event, handler, UI, rule, parameter, agent skill, seed scenario, and improvement backlog item maps to executable evidence. Tie the behavior to `restaurant_operations_record_recipe_workflow` where applicable, and make it visible in `RestaurantOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Release audit checks, manifest traceability, generated-app smoke tests, and missing-capability blockers. The evidence should be package-local in `src/pyAppGen/pbcs/restaurant_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** A traceability matrix in `RELEASE_EVIDENCE.md`, automated checks that fail on missing coverage, and final validation that the package can demonstrate end-to-end evidence for each major restaurant operations workflow.

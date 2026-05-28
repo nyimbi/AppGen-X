@@ -1,418 +1,262 @@
-# Renewables Asset Operations PBC Better-Than-World-Class Improvement Backlog
-
-## Purpose
-
-This file identifies, justifies, and describes 50 high-impact improvements for `renewables_asset_operations`. The backlog is specific to solar and wind assets, generation, curtailment, maintenance, ppas, availability, and renewable performance and is intended to move the PBC from release-auditable scaffolding toward complete, specialist-grade domain coverage.
+# Renewables Asset Operations Improvement Backlog
 
 ## Current Domain Evidence Used
 
-- Stable PBC key: `renewables_asset_operations`.
-- Domain purpose: Solar and wind assets, generation, curtailment, maintenance, PPAs, availability, and renewable performance.
-- Owned domain tables: `renewable_asset`, `generation_reading`, `curtailment_event`, `availability_record`, `ppa_obligation`, `maintenance_work`, `performance_ratio`, `renewables_asset_operations_policy_rule`, `renewables_asset_operations_runtime_parameter`, `renewables_asset_operations_schema_extension`, `renewables_asset_operations_control_assertion`, `renewables_asset_operations_governed_model`.
-- Public APIs: `POST /renewable-assets`, `POST /generation-readings`, `POST /curtailment-events`, `POST /availability-records`, `POST /ppa-obligations`, `GET /renewables-asset-operations-workbench`.
-- Emitted AppGen-X events: `RenewablesAssetOperationsCreated`, `RenewablesAssetOperationsUpdated`, `RenewablesAssetOperationsApproved`, `RenewablesAssetOperationsExceptionOpened`.
-- Consumed AppGen-X events: `PolicyChanged`, `AuditEventSealed`, `OperationalKpiChanged`.
-- Current standard surfaces include: `renewable_asset_management`, `renewables_asset_operations_workflow`, `renewables_asset_operations_analytics`, `configuration_schema`, `rule_engine`, `parameter_engine`, `owned_schema_migrations_models`, `appgen_x_outbox_inbox_eventing`, `idempotent_handlers`, `retry_dead_letter_evidence`.
-- Current advanced surfaces include: `renewables_asset_operations_event_sourced_operational_history`, `renewables_asset_operations_multi_tenant_policy_isolation`, `renewables_asset_operations_schema_evolution_resilience`, `renewables_asset_operations_autonomous_anomaly_detection`, `renewables_asset_operations_semantic_document_instruction_understanding`, `renewables_asset_operations_predictive_risk_scoring`, `renewables_asset_operations_counterfactual_scenario_simulation`, `renewables_asset_operations_cryptographic_audit_proofs`.
-
-## 50 High-Impact Improvements
-
-### 1. Canonical lifecycle state model for Renewable Asset
-
-**Justification:** This closes shallow CRUD gaps by making every renewables asset operations transition explainable and testable instead of implicit in free-form status values.
-
-**Improvement:** Define a complete state machine for `renewable_asset` with explicit draft, validated, blocked, approved, active, suspended, corrected, closed, archived, and reopened states. Tie the behavior to `renewables_asset_operations_create_renewable_asset_workflow` where applicable, and make it visible in `RenewablesAssetOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** State-transition tests, invalid-transition fixtures, workbench state badges, and emitted AppGen-X transition events for RenewablesAssetOperationsCreated, RenewablesAssetOperationsUpdated, RenewablesAssetOperationsApproved. The evidence should be package-local in `src/pyAppGen/pbcs/renewables_asset_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 2. Domain intake and normalization for Generation Reading
-
-**Justification:** The PBC cannot reach complete domain coverage unless it handles the messy front door of solar and wind assets, generation, curtailment, maintenance, ppas, availability, and renewable performance, not only already-clean records.
-
-**Improvement:** Build a typed intake pipeline for `generation_reading` that accepts structured API payloads, document-derived instructions, batch loads, and assistant-generated drafts while normalizing identifiers, dates, units, parties, and jurisdictional context. Tie the behavior to `renewables_asset_operations_record_generation_reading_workflow` where applicable, and make it visible in `RenewablesAssetOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Golden intake fixtures, rejected-record queues, field-level normalization evidence, and assistant previews before governed datastore mutation. The evidence should be package-local in `src/pyAppGen/pbcs/renewables_asset_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 3. Specialist validation rules for Curtailment Event
-
-**Justification:** World-class Renewables Asset Operations requires rules that domain experts can reason about, version, test, and roll back without code edits.
-
-**Improvement:** Add a domain rule compiler for `curtailment_event` that supports threshold rules, eligibility rules, dependency rules, temporal windows, conflicting-instruction detection, and override justification. Tie the behavior to `renewables_asset_operations_create_renewable_asset_workflow` where applicable, and make it visible in `RenewablesAssetOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Rule simulation tests, versioned rule manifests, rule impact reports, and UI rule editors linked to `RENEWABLES_ASSET_OPERATIONS_DATABASE_URL, RENEWABLES_ASSET_OPERATIONS_EVENT_TOPIC, RENEWABLES_ASSET_OPERATIONS_RETRY_LIMIT`. The evidence should be package-local in `src/pyAppGen/pbcs/renewables_asset_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 4. Parameter governance and tuning for Availability Record
-
-**Justification:** Parameters are where operations teams tune renewables asset operations; unbounded constants would make the PBC brittle and unsafe in real deployments.
-
-**Improvement:** Expose bounded runtime parameters for `availability_record` covering risk thresholds, SLA windows, confidence floors, escalation cutoffs, batch sizes, retry limits, and human-confirmation requirements. Tie the behavior to `renewables_asset_operations_record_generation_reading_workflow` where applicable, and make it visible in `RenewablesAssetOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Parameter schema validation, tenant overrides, approval history, rollback controls, and workbench diff views. The evidence should be package-local in `src/pyAppGen/pbcs/renewables_asset_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 5. Deep owned schema expansion for Ppa Obligation
-
-**Justification:** A single payload column cannot express the full surface of solar and wind assets, generation, curtailment, maintenance, ppas, availability, and renewable performance or prove cross-PBC boundaries are respected.
-
-**Improvement:** Extend the owned schema around `ppa_obligation` with normalized child tables for line-level evidence, party roles, approvals, attachments, comments, metrics, exception reasons, and control assertions. Tie the behavior to `renewables_asset_operations_create_renewable_asset_workflow` where applicable, and make it visible in `RenewablesAssetOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Migrations, models, relationship tests, schema contract snapshots, and no shared-table access outside the `renewables_asset_operations_` namespace. The evidence should be package-local in `src/pyAppGen/pbcs/renewables_asset_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 6. Event-sourced operational history for Maintenance Work
-
-**Justification:** Temporal reconstruction is essential for better-than-world-class auditability and dispute resolution in renewables asset operations.
-
-**Improvement:** Capture every material mutation of `maintenance_work` as immutable AppGen-X events with actor, tenant, command, policy version, idempotency key, before/after summary, and projection checkpoint. Tie the behavior to `renewables_asset_operations_record_generation_reading_workflow` where applicable, and make it visible in `RenewablesAssetOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Replay tests, projection checksums, event ordering evidence, and point-in-time workbench views. The evidence should be package-local in `src/pyAppGen/pbcs/renewables_asset_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 7. Projection and read-model strategy for Performance Ratio
-
-**Justification:** The workbench should not force users to infer domain truth from raw tables; each projection should answer a real operating question.
-
-**Improvement:** Create purpose-built projections for `performance_ratio`: operational queue, executive KPI rollup, exception aging, compliance evidence, agent task context, and external dependency health. Tie the behavior to `renewables_asset_operations_create_renewable_asset_workflow` where applicable, and make it visible in `RenewablesAssetOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Projection contracts, freshness SLAs, backfill tests, and visible stale-projection warnings. The evidence should be package-local in `src/pyAppGen/pbcs/renewables_asset_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 8. Exception taxonomy and remediation for Renewables Asset Operations Policy Rule
-
-**Justification:** High-value PBCs win on exception throughput; generic “failed” states hide the details operators need.
-
-**Improvement:** Model the full exception taxonomy for `renewables_asset_operations_policy_rule`, including severity, root cause, blocking dependency, remediation owner, due date, retry eligibility, escalation path, and closure evidence. Tie the behavior to `renewables_asset_operations_record_generation_reading_workflow` where applicable, and make it visible in `RenewablesAssetOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Exception queues, aging metrics, remediation playbooks, dead-letter linkage, and closure test fixtures for crew safety lockouts. The evidence should be package-local in `src/pyAppGen/pbcs/renewables_asset_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 9. Predictive risk scoring for Renewables Asset Operations Runtime Parameter
-
-**Justification:** The package should warn users before renewables asset operations work fails, breaches policy, or creates downstream cost.
-
-**Improvement:** Add predictive risk scoring for `renewables_asset_operations_runtime_parameter` using domain features from owned tables, consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, rule outcomes, aging, anomaly signals, and historical corrections. Tie the behavior to `renewables_asset_operations_create_renewable_asset_workflow` where applicable, and make it visible in `RenewablesAssetOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Feature manifests, score explanations, calibration reports, drift alerts, and tests for low/medium/high-risk scenarios. The evidence should be package-local in `src/pyAppGen/pbcs/renewables_asset_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 10. Counterfactual simulation for Renewables Asset Operations Schema Extension
-
-**Justification:** Advanced users need to ask “what would happen if” before committing changes to live solar and wind assets, generation, curtailment, maintenance, ppas, availability, and renewable performance operations.
-
-**Improvement:** Provide scenario simulation for `renewables_asset_operations_schema_extension`: policy change, capacity constraint, deadline shift, price/rate change, eligibility change, disruption, and manual override outcomes. Tie the behavior to `renewables_asset_operations_record_generation_reading_workflow` where applicable, and make it visible in `RenewablesAssetOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Simulation APIs, non-mutating sandbox state, comparison reports, and workbench side-by-side scenario panels. The evidence should be package-local in `src/pyAppGen/pbcs/renewables_asset_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 11. Autonomous anomaly triage for Renewables Asset Operations Control Assertion
-
-**Justification:** A world-class PBC should reduce analyst burden without hiding the reasoning behind automated triage.
-
-**Improvement:** Implement anomaly detection for `renewables_asset_operations_control_assertion` that identifies outliers, duplicate submissions, impossible sequences, stale dependencies, unusual amounts/counts/durations, and contradictory fields. Tie the behavior to `renewables_asset_operations_create_renewable_asset_workflow` where applicable, and make it visible in `RenewablesAssetOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Explainable anomaly cards, reviewer feedback loops, false-positive tracking, and suppression governance. The evidence should be package-local in `src/pyAppGen/pbcs/renewables_asset_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 12. Semantic document understanding for Renewables Asset Operations Governed Model
-
-**Justification:** Document-heavy work in Renewables Asset Operations cannot be complete if the assistant only answers questions and cannot prepare accurate governed changes.
-
-**Improvement:** Train the package assistant to parse domain documents and instructions for `renewables_asset_operations_governed_model`, extract obligations, dates, parties, quantities, identifiers, and exceptions, then map them to safe draft mutations. Tie the behavior to `renewables_asset_operations_record_generation_reading_workflow` where applicable, and make it visible in `RenewablesAssetOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Document extraction tests, confidence thresholds, redaction handling, source span citations, and human confirmation workflows. The evidence should be package-local in `src/pyAppGen/pbcs/renewables_asset_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 13. Agent-safe CRUD execution for Renewable Asset
-
-**Justification:** The PBC agent must be a first-class operator but never a hidden bypass around RBAC, rules, or owned datastore boundaries.
-
-**Improvement:** Add a professional chatbot skill for `renewable_asset` that can create, update, correct, close, and annotate records only through policy-checked commands, approval gates, and previewed diffs. Tie the behavior to `renewables_asset_operations_create_renewable_asset_workflow` where applicable, and make it visible in `RenewablesAssetOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Skill manifests, permission tests, preview/confirm flows, blocked-action evidence, and audit events for every assistant mutation. The evidence should be package-local in `src/pyAppGen/pbcs/renewables_asset_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 14. Workbench persona coverage for Generation Reading
-
-**Justification:** A generic detail page underserves the domain; each role needs the exact controls and evidence they use daily.
-
-**Improvement:** Design dedicated workbench panels for `generation_reading`: operator queue, supervisor approvals, analyst exceptions, auditor evidence, configuration owner, and agent-assistance review. Tie the behavior to `renewables_asset_operations_record_generation_reading_workflow` where applicable, and make it visible in `RenewablesAssetOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** UI contract entries, route tests, empty/error/loading states, and permission-aware action availability. The evidence should be package-local in `src/pyAppGen/pbcs/renewables_asset_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 15. Cross-PBC dependency contracts for Curtailment Event
-
-**Justification:** Composable packages fail when hidden table coupling enters the domain model.
-
-**Improvement:** Represent dependencies for `curtailment_event` through declared APIs, consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, and projections rather than shared tables, with explicit freshness, ownership, and fallback behavior. Tie the behavior to `renewables_asset_operations_create_renewable_asset_workflow` where applicable, and make it visible in `RenewablesAssetOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Dependency manifests, contract tests, stale dependency alerts, and no foreign-table references in generated artifacts. The evidence should be package-local in `src/pyAppGen/pbcs/renewables_asset_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 16. API completeness and versioning for Availability Record
-
-**Justification:** Complete domain coverage requires both command and query surfaces, not only happy-path create endpoints.
-
-**Improvement:** Expand APIs beyond POST /renewable-assets, POST /generation-readings, POST /curtailment-events to cover search, validation-only commands, simulation, bulk intake, exception closure, evidence export, projection reads, and idempotent corrections. Tie the behavior to `renewables_asset_operations_record_generation_reading_workflow` where applicable, and make it visible in `RenewablesAssetOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** OpenAPI-style route manifests, backward-compatible version tests, deprecation metadata, and idempotency assertions. The evidence should be package-local in `src/pyAppGen/pbcs/renewables_asset_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 17. Typed emitted-event expansion for Ppa Obligation
-
-**Justification:** Consumers should understand what happened in Renewables Asset Operations without parsing opaque payloads.
-
-**Improvement:** Replace generic lifecycle emissions with typed events for each meaningful `ppa_obligation` transition, exception, approval, correction, simulation result, and downstream handoff. Tie the behavior to `renewables_asset_operations_create_renewable_asset_workflow` where applicable, and make it visible in `RenewablesAssetOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Event schema tests, event examples, compatibility checks, and emitted-event coverage in release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/renewables_asset_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 18. Consumed-event handlers for Maintenance Work
-
-**Justification:** A PBC is composable only when incoming events affect its own domain state predictably and safely.
-
-**Improvement:** Implement idempotent handlers for consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged that update projections, open dependency exceptions, recalculate risk, and preserve source event lineage. Tie the behavior to `renewables_asset_operations_record_generation_reading_workflow` where applicable, and make it visible in `RenewablesAssetOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Duplicate-event tests, handler side-effect boundaries, dead-letter fixtures, and lineage links back to source events. The evidence should be package-local in `src/pyAppGen/pbcs/renewables_asset_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 19. Retry and dead-letter operations for Performance Ratio
-
-**Justification:** Dead letters are not just plumbing; they are domain work queues that can block solar and wind assets, generation, curtailment, maintenance, ppas, availability, and renewable performance.
-
-**Improvement:** Create operational tools for retrying, quarantining, explaining, and resolving dead-lettered `performance_ratio` events with max-attempt policy, poison-message detection, and replay safety. Tie the behavior to `renewables_asset_operations_create_renewable_asset_workflow` where applicable, and make it visible in `RenewablesAssetOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Dead-letter workbench, retry eligibility tests, replay audit proof, and operator action logs. The evidence should be package-local in `src/pyAppGen/pbcs/renewables_asset_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 20. RBAC and attribute policy for Renewables Asset Operations Policy Rule
-
-**Justification:** High-impact domain operations need finer controls than generic RBAC grants.
-
-**Improvement:** Extend permissions for `renewables_asset_operations_policy_rule` from coarse read/create/update/admin to action-level and attribute-aware policies based on role, tenant, jurisdiction, monetary/materiality threshold, and exception severity. Tie the behavior to `renewables_asset_operations_record_generation_reading_workflow` where applicable, and make it visible in `RenewablesAssetOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Permission matrix docs, ABAC policy tests, denied-action UI states, and assistant skill permission checks. The evidence should be package-local in `src/pyAppGen/pbcs/renewables_asset_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 21. Continuous control testing for Renewables Asset Operations Runtime Parameter
-
-**Justification:** Controls should run during operations, not only during release audit or manual review.
-
-**Improvement:** Embed control assertions for `renewables_asset_operations_runtime_parameter` that continuously test segregation of duties, required approvals, stale exceptions, policy drift, duplicate records, and boundary violations. Tie the behavior to `renewables_asset_operations_create_renewable_asset_workflow` where applicable, and make it visible in `RenewablesAssetOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Control dashboards, failing-control events, test fixtures, and release evidence tied to `renewables_asset_operations_control_assertion` records. The evidence should be package-local in `src/pyAppGen/pbcs/renewables_asset_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 22. Cryptographic audit proofing for Renewables Asset Operations Schema Extension
-
-**Justification:** Better-than-world-class auditability requires proof of integrity, not merely logs stored in mutable tables.
-
-**Improvement:** Hash-chain material `renewables_asset_operations_schema_extension` decisions, documents, emitted events, and release-evidence snapshots to make tampering visible without exposing sensitive payloads. Tie the behavior to `renewables_asset_operations_record_generation_reading_workflow` where applicable, and make it visible in `RenewablesAssetOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Proof manifests, verification APIs, redacted proof exports, and audit-ledger handoff events. The evidence should be package-local in `src/pyAppGen/pbcs/renewables_asset_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 23. Privacy, consent, and secrecy controls for Renewables Asset Operations Control Assertion
-
-**Justification:** Complete domain coverage must account for protected data and restricted operational evidence.
-
-**Improvement:** Add field-level privacy classifications for `renewables_asset_operations_control_assertion`, consent checks, masking rules, retention schedules, legal holds, and assistant redaction policies. Tie the behavior to `renewables_asset_operations_create_renewable_asset_workflow` where applicable, and make it visible in `RenewablesAssetOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Retention tests, masked UI snapshots, consent-blocked mutation fixtures, and export controls. The evidence should be package-local in `src/pyAppGen/pbcs/renewables_asset_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 24. Multi-tenant operating model for Renewables Asset Operations Governed Model
-
-**Justification:** The PBC should scale across organizations while preserving independent policy and compliance boundaries.
-
-**Improvement:** Support tenant-specific `renewables_asset_operations_governed_model` rules, data residency, encryption context, configuration, seed data, and release evidence without allowing cross-tenant leakage. Tie the behavior to `renewables_asset_operations_record_generation_reading_workflow` where applicable, and make it visible in `RenewablesAssetOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Tenant isolation tests, tenant-scoped parameters, key-rotation evidence, and cross-tenant negative fixtures. The evidence should be package-local in `src/pyAppGen/pbcs/renewables_asset_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 25. Schema evolution and extension registry for Renewable Asset
-
-**Justification:** Domain teams will add fields; the PBC must evolve without breaking APIs, events, or workbench projections.
-
-**Improvement:** Make schema extensions for `renewable_asset` first-class with compatibility checks, migration previews, projection backfills, field ownership, and rollback metadata. Tie the behavior to `renewables_asset_operations_create_renewable_asset_workflow` where applicable, and make it visible in `RenewablesAssetOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Extension registry UI, compatibility tests, migration dry-runs, and backfill release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/renewables_asset_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 26. Master data quality gates for Generation Reading
-
-**Justification:** Many renewables asset operations errors begin as bad reference data; the PBC should catch them before workflow execution.
-
-**Improvement:** Define reference-data contracts for `generation_reading`: canonical codes, parties, locations, classifications, calendars, units, currencies, products, assets, or service categories as relevant to the domain. Tie the behavior to `renewables_asset_operations_record_generation_reading_workflow` where applicable, and make it visible in `RenewablesAssetOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Reference validation fixtures, stale-code warnings, mapping tables, and dependency freshness indicators. The evidence should be package-local in `src/pyAppGen/pbcs/renewables_asset_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 27. Bulk operations and correction workflows for Curtailment Event
-
-**Justification:** Enterprise-scale Renewables Asset Operations users cannot operate one record at a time.
-
-**Improvement:** Add bulk load, bulk validate, bulk approve, and bulk correction workflows for `curtailment_event` with partial success, row-level errors, resumability, and rollback. Tie the behavior to `renewables_asset_operations_create_renewable_asset_workflow` where applicable, and make it visible in `RenewablesAssetOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** CSV/API batch fixtures, resumable job state, row-level audit evidence, and assistant-generated correction suggestions. The evidence should be package-local in `src/pyAppGen/pbcs/renewables_asset_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 28. Lifecycle collaboration and tasking for Availability Record
-
-**Justification:** Domain collaboration should live inside the PBC boundary and remain auditable with the record it affects.
-
-**Improvement:** Attach tasks, comments, ownership, due dates, handoffs, and escalation threads to `availability_record` without leaking into external shared task tables. Tie the behavior to `renewables_asset_operations_record_generation_reading_workflow` where applicable, and make it visible in `RenewablesAssetOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Task tables, comment audit history, notification events, escalation SLAs, and role-specific task queues. The evidence should be package-local in `src/pyAppGen/pbcs/renewables_asset_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 29. SLA and service-level governance for Ppa Obligation
-
-**Justification:** Users need to know when solar and wind assets, generation, curtailment, maintenance, ppas, availability, and renewable performance is late, blocked, or at risk before customer or regulator impact.
-
-**Improvement:** Define SLAs for `ppa_obligation` across intake, validation, approval, exception resolution, event handling, downstream projection refresh, and release-evidence generation. Tie the behavior to `renewables_asset_operations_create_renewable_asset_workflow` where applicable, and make it visible in `RenewablesAssetOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** SLA breach events, timers, configurable calendars, workbench aging buckets, and tests for pause/resume behavior. The evidence should be package-local in `src/pyAppGen/pbcs/renewables_asset_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 30. Operational analytics cockpit for Maintenance Work
-
-**Justification:** World-class operations require leading indicators, not only record counts.
-
-**Improvement:** Build analytics for `maintenance_work`: throughput, backlog, aging, approval latency, exception rate, risk distribution, automation acceptance, correction rate, and downstream dependency health. Tie the behavior to `renewables_asset_operations_record_generation_reading_workflow` where applicable, and make it visible in `RenewablesAssetOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Metric definitions, projection tests, drill-through routes, export APIs, and anomaly overlays. The evidence should be package-local in `src/pyAppGen/pbcs/renewables_asset_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 31. Decision intelligence and recommendations for Performance Ratio
-
-**Justification:** The PBC should help expert users decide faster while showing evidence and uncertainty.
-
-**Improvement:** Generate ranked recommendations for `performance_ratio` such as next best action, likely resolution, required evidence, policy adjustment, staffing/capacity response, or downstream handoff. Tie the behavior to `renewables_asset_operations_create_renewable_asset_workflow` where applicable, and make it visible in `RenewablesAssetOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Recommendation explanations, confidence intervals, feedback capture, model governance records, and rejection reasons. The evidence should be package-local in `src/pyAppGen/pbcs/renewables_asset_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 32. Quality and completeness scoring for Renewables Asset Operations Policy Rule
-
-**Justification:** Operators should see whether a record is truly ready, not just technically saved.
-
-**Improvement:** Score each `renewables_asset_operations_policy_rule` record for completeness, consistency, policy readiness, dependency readiness, evidence sufficiency, and downstream composability. Tie the behavior to `renewables_asset_operations_record_generation_reading_workflow` where applicable, and make it visible in `RenewablesAssetOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Scoring rules, missing-evidence lists, readiness badges, and blocking criteria in command handlers. The evidence should be package-local in `src/pyAppGen/pbcs/renewables_asset_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 33. End-to-end scenario library for Renewables Asset Operations Runtime Parameter
-
-**Justification:** Release evidence is stronger when every important renewables asset operations behavior has executable examples.
-
-**Improvement:** Create seeded scenarios for `renewables_asset_operations_runtime_parameter`: normal flow, urgent path, exception path, corrected path, duplicate path, late event path, and audit export path. Tie the behavior to `renewables_asset_operations_create_renewable_asset_workflow` where applicable, and make it visible in `RenewablesAssetOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Scenario seed data, runtime smoke coverage, generated-app fixtures, and story-level workbench screenshots/contracts. The evidence should be package-local in `src/pyAppGen/pbcs/renewables_asset_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 34. Domain ontology and terminology model for Renewables Asset Operations Schema Extension
-
-**Justification:** Precise vocabulary prevents the PBC from misclassifying specialist documents or user instructions.
-
-**Improvement:** Add an ontology for `renewables_asset_operations_schema_extension` terms, synonyms, classifications, relationships, allowed values, and phrase mappings used by the assistant and UI. Tie the behavior to `renewables_asset_operations_record_generation_reading_workflow` where applicable, and make it visible in `RenewablesAssetOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Ontology files, assistant parsing tests, UI glossary, and mapping evidence for domain-specific abbreviations. The evidence should be package-local in `src/pyAppGen/pbcs/renewables_asset_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 35. Advanced search and investigation for Renewables Asset Operations Control Assertion
-
-**Justification:** Investigators and operators need fast, explainable retrieval across the whole domain surface.
-
-**Improvement:** Provide search across `renewables_asset_operations_control_assertion` records, events, documents, exceptions, tasks, comments, and audit proofs with filters for tenant, status, risk, date, party, and dependency. Tie the behavior to `renewables_asset_operations_create_renewable_asset_workflow` where applicable, and make it visible in `RenewablesAssetOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Search index contracts, result provenance, permission-filtered queries, and stale-index warnings. The evidence should be package-local in `src/pyAppGen/pbcs/renewables_asset_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 36. Reconciliation and closure controls for Renewables Asset Operations Governed Model
-
-**Justification:** Closure is not complete until the PBC can prove no material domain work remains unresolved.
-
-**Improvement:** Add reconciliation workflows that compare `renewables_asset_operations_governed_model` state against consumed events, external projections, expected totals/counts, approvals, and release evidence before closure. Tie the behavior to `renewables_asset_operations_record_generation_reading_workflow` where applicable, and make it visible in `RenewablesAssetOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Reconciliation reports, variance thresholds, closure blockers, and AppGen-X closure events. The evidence should be package-local in `src/pyAppGen/pbcs/renewables_asset_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 37. Regulatory and policy reporting for Renewable Asset
-
-**Justification:** World-class PBCs turn operational evidence into credible reporting without spreadsheet reconstruction.
-
-**Improvement:** Generate domain reporting packs for `renewable_asset` covering statutory, contractual, operational, board, customer, or regulator evidence depending on network reliability, safety switching, metered usage accuracy, outage restoration, asset constraints, emissions awareness, and regulated service obligations. Tie the behavior to `renewables_asset_operations_create_renewable_asset_workflow` where applicable, and make it visible in `RenewablesAssetOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Report schemas, redaction rules, traceable metric sources, and approval/export audit events. The evidence should be package-local in `src/pyAppGen/pbcs/renewables_asset_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 38. Carbon and resource awareness for Generation Reading
-
-**Justification:** Sustainability evidence should be embedded in operations instead of treated as an after-the-fact report.
-
-**Improvement:** Where relevant, attach carbon, energy, water, travel, capacity, compute, or resource-footprint metadata to `generation_reading` decisions and batch operations. Tie the behavior to `renewables_asset_operations_record_generation_reading_workflow` where applicable, and make it visible in `RenewablesAssetOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Footprint fields, scheduling parameters, exception rules, and dashboards that expose operational tradeoffs. The evidence should be package-local in `src/pyAppGen/pbcs/renewables_asset_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 39. Resilience and offline behavior for Curtailment Event
-
-**Justification:** Real operations keep moving during outages; the PBC must preserve correctness when dependencies are unavailable.
-
-**Improvement:** Define resilience modes for `curtailment_event`: degraded dependency mode, offline draft capture, delayed event replay, conflict detection, and safe recovery after partial failure. Tie the behavior to `renewables_asset_operations_create_renewable_asset_workflow` where applicable, and make it visible in `RenewablesAssetOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Offline fixtures, replay tests, conflict queues, recovery logs, and user-visible degraded-mode warnings. The evidence should be package-local in `src/pyAppGen/pbcs/renewables_asset_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 40. Human-in-the-loop automation for Availability Record
-
-**Justification:** Automation should accelerate solar and wind assets, generation, curtailment, maintenance, ppas, availability, and renewable performance while preserving accountability for high-risk decisions.
-
-**Improvement:** Set explicit automation boundaries for `availability_record`: auto-approve, auto-reject, suggest-only, require-review, and block-until-evidence states with policy-based routing. Tie the behavior to `renewables_asset_operations_record_generation_reading_workflow` where applicable, and make it visible in `RenewablesAssetOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Automation policy tests, reviewer queues, override reasons, and assistant action audit trails. The evidence should be package-local in `src/pyAppGen/pbcs/renewables_asset_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 41. Package discovery and fit scoring for Ppa Obligation
-
-**Justification:** Users selecting PBCs need transparent fit reasoning, especially when domains are adjacent but not overlapping.
-
-**Improvement:** Improve package metadata so composition can explain when `renewables_asset_operations` fits a prompt, what entities it owns, what APIs/events it exposes, and what adjacent PBCs it depends on. Tie the behavior to `renewables_asset_operations_create_renewable_asset_workflow` where applicable, and make it visible in `RenewablesAssetOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Discovery manifests, prompt-selection tests, overlap rationale links, and composition DSL examples. The evidence should be package-local in `src/pyAppGen/pbcs/renewables_asset_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 42. Configuration deployment pipeline for Maintenance Work
-
-**Justification:** Configuration changes can materially alter renewables asset operations; they need the same discipline as code releases.
-
-**Improvement:** Add configuration promotion for `maintenance_work` across draft, test, approved, active, deprecated, and rollback states with impact analysis before activation. Tie the behavior to `renewables_asset_operations_record_generation_reading_workflow` where applicable, and make it visible in `RenewablesAssetOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Config diff views, approval workflows, simulation before activation, and rollback tests. The evidence should be package-local in `src/pyAppGen/pbcs/renewables_asset_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 43. Workbench command completeness for Performance Ratio
-
-**Justification:** A PBC does not fully surface its capabilities if users must call hidden APIs for core work.
-
-**Improvement:** Expose every high-value operation for `performance_ratio` in the UI: create, validate, approve, simulate, correct, assign, export, retry, close, and audit-proof verification. Tie the behavior to `renewables_asset_operations_create_renewable_asset_workflow` where applicable, and make it visible in `RenewablesAssetOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** UI action coverage tests, permission-aware disabled states, keyboard paths, and assistant handoff links. The evidence should be package-local in `src/pyAppGen/pbcs/renewables_asset_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 44. Document packet and evidence vault for Renewables Asset Operations Policy Rule
-
-**Justification:** Documents often carry the legal or operational truth behind solar and wind assets, generation, curtailment, maintenance, ppas, availability, and renewable performance.
-
-**Improvement:** Create a governed evidence vault for `renewables_asset_operations_policy_rule` documents, attachments, source spans, extracted fields, signatures, approvals, and retention labels. Tie the behavior to `renewables_asset_operations_record_generation_reading_workflow` where applicable, and make it visible in `RenewablesAssetOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Evidence models, source-to-field lineage, signature validation, retention policies, and proof exports. The evidence should be package-local in `src/pyAppGen/pbcs/renewables_asset_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 45. Data correction and amendment history for Renewables Asset Operations Runtime Parameter
-
-**Justification:** World-class systems correct mistakes without rewriting history or confusing downstream consumers.
-
-**Improvement:** Support formal amendments for `renewables_asset_operations_runtime_parameter` that preserve original values, correction reason, approving actor, effective date, downstream event impacts, and replay behavior. Tie the behavior to `renewables_asset_operations_create_renewable_asset_workflow` where applicable, and make it visible in `RenewablesAssetOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Amendment tables, correction events, projection replay tests, and side-by-side before/after UI. The evidence should be package-local in `src/pyAppGen/pbcs/renewables_asset_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 46. External participant collaboration for Renewables Asset Operations Schema Extension
-
-**Justification:** Many renewables asset operations workflows require outside parties, but they must not gain direct access to internal tables.
-
-**Improvement:** Add controlled collaboration portals or API views for external participants related to `renewables_asset_operations_schema_extension`, limited to scoped evidence submission, status checks, comments, and dispute responses. Tie the behavior to `renewables_asset_operations_record_generation_reading_workflow` where applicable, and make it visible in `RenewablesAssetOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Participant role policies, scoped tokens, submission audit trails, and inbound evidence validation. The evidence should be package-local in `src/pyAppGen/pbcs/renewables_asset_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 47. Advanced dependency freshness scoring for Renewables Asset Operations Control Assertion
-
-**Justification:** A record may be valid locally but unsafe if dependency evidence is stale or incomplete.
-
-**Improvement:** Score freshness and reliability of dependencies used by `renewables_asset_operations_control_assertion`, including consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, referenced projections, configuration versions, and external submissions. Tie the behavior to `renewables_asset_operations_create_renewable_asset_workflow` where applicable, and make it visible in `RenewablesAssetOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Freshness indicators, blocking rules, stale-event simulations, and workbench dependency health panels. The evidence should be package-local in `src/pyAppGen/pbcs/renewables_asset_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 48. Model governance and explainability for Renewables Asset Operations Governed Model
-
-**Justification:** Governed AI is mandatory for professional-grade automation in Renewables Asset Operations.
-
-**Improvement:** For every predictive or agentic feature around `renewables_asset_operations_governed_model`, record model version, prompt or ruleset version, training/evaluation evidence, confidence, explanation, and human feedback. Tie the behavior to `renewables_asset_operations_record_generation_reading_workflow` where applicable, and make it visible in `RenewablesAssetOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Model cards, prompt/version manifests, feedback loops, drift tests, and audit proof for recommendations. The evidence should be package-local in `src/pyAppGen/pbcs/renewables_asset_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 49. High-scale partitioning and archival for Renewable Asset
-
-**Justification:** Better-than-world-class packages must remain operable after years of high-volume domain history.
-
-**Improvement:** Plan scale behavior for `renewable_asset`: tenant partitioning, archival policies, cold storage, retention-aware search, projection compaction, and large-batch replay. Tie the behavior to `renewables_asset_operations_create_renewable_asset_workflow` where applicable, and make it visible in `RenewablesAssetOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Partition tests, archive/retrieve fixtures, retention enforcement, and replay benchmarks. The evidence should be package-local in `src/pyAppGen/pbcs/renewables_asset_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
-
-### 50. Release gate expansion for Generation Reading
-
-**Justification:** The PBC should not claim domain coverage unless release evidence proves the claim end to end.
-
-**Improvement:** Expand release gates for `renewables_asset_operations` so every schema, service, API, event, handler, UI, rule, parameter, agent skill, seed scenario, and improvement backlog item maps to executable evidence. Tie the behavior to `renewables_asset_operations_record_generation_reading_workflow` where applicable, and make it visible in `RenewablesAssetOperationsWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Release audit checks, manifest traceability, generated-app smoke tests, and missing-capability blockers. The evidence should be package-local in `src/pyAppGen/pbcs/renewables_asset_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+- PBC key in code and contracts: `renewables_asset_operations`.
+- Manifest description: solar and wind assets, generation, curtailment, maintenance, PPAs, availability, and renewable performance.
+- Current owned tables include `renewable_asset`, `generation_reading`, `curtailment_event`, `availability_record`, `ppa_obligation`, `maintenance_work`, and `performance_ratio`.
+- Current operations include `create_renewable_asset`, `record_generation_reading`, `review_curtailment_event`, `approve_availability_record`, `simulate_ppa_obligation`, `create_maintenance_work`, and `record_performance_ratio`.
+- Current UI fragments are `RenewablesAssetOperationsWorkbench`, `RenewablesAssetOperationsDetail`, and `RenewablesAssetOperationsAssistantPanel`.
+- Current emitted events are `RenewablesAssetOperationsCreated`, `RenewablesAssetOperationsUpdated`, `RenewablesAssetOperationsApproved`, and `RenewablesAssetOperationsExceptionOpened`; consumed events are `PolicyChanged`, `AuditEventSealed`, and `OperationalKpiChanged`.
+- Current agent surface exposes guided read/create/update skills with mutation preview and human confirmation.
+- Current release evidence contract expects package proof across schema, services, events, handlers, UI, agent, and governance.
+
+### 1. Asset hierarchy and technology-specific master data
+**Justification:** A renewables operations model is weak if `renewable_asset` stops at a flat asset record and cannot distinguish a site, substation, feeder, inverter block, turbine, battery rack, meter, or weather station.
+**Improvement:** Expand the backlog around a canonical asset hierarchy with technology type, OEM, model, serial number, commissioning date, nameplate capacity, site ownership, grid node, and parent-child relationships so solar, wind, and storage equipment can be operated as a fleet rather than as undifferentiated rows.
+**Acceptance evidence:** Schema design notes showing parent-child asset linkage, sample site trees for solar, wind, and storage, and workbench mock states that filter KPIs by site, block, turbine, or battery unit.
+
+### 2. Site-level availability model
+**Justification:** Availability disputes usually start with ambiguity about whether the denominator is plant-level, unit-level, contractual, technical, or grid-adjusted.
+**Improvement:** Define separate availability views for technical availability, contractual availability, grid-adjusted availability, and energy-based availability, each with explicit inclusion and exclusion rules for outages, derates, curtailment, force majeure, and planned work.
+**Acceptance evidence:** Example calculations for a solar site, a wind site, and a storage site; comparison tables that show why each denominator differs; and approval evidence for the chosen formulas.
+
+### 3. SCADA telemetry boundary and source-of-truth policy
+**Justification:** The package already handles `generation_reading`, but it does not yet make the boundary between field telemetry, historian corrections, and governed operational records explicit.
+**Improvement:** Add a backlog item for a SCADA telemetry boundary policy that states which signals may be ingested directly, which must stay in upstream historians, what rollups belong in this PBC, and how late-arriving corrections or meter true-ups revise previously approved records.
+**Acceptance evidence:** A written boundary matrix for SCADA, meters, weather feeds, and manual uploads; sample lineage from raw tag to governed reading; and replay scenarios for corrected telemetry.
+
+### 4. Solar inverter block performance accounting
+**Justification:** Solar underperformance is rarely actionable unless the system can isolate losses to inverter blocks, DC strings, clipping, soiling, temperature, and communications failure.
+**Improvement:** Prioritize an improvement track for inverter-block analytics that compares expected AC output against irradiance-adjusted opportunity, flags clipping versus outage behavior, and links each loss bucket to work orders, cleaning plans, or engineering review.
+**Acceptance evidence:** Example inverter-block scorecards, a loss waterfall for a poor-performing day, and traceable links from anomalies to maintenance or inspection actions.
+
+### 5. Wind turbine performance loss classification
+**Justification:** Wind performance issues look different from solar issues; yaw misalignment, curtailment, icing, high-wind cut-out, and blade condition need their own vocabulary and evidence model.
+**Improvement:** Create a turbine-focused backlog stream with turbine availability states, performance-loss categories, fault code normalization, nacelle and gearbox inspection references, and wake-aware comparisons among neighboring turbines.
+**Acceptance evidence:** Sample turbine fault mappings, a power-curve deviation report, and exception records that distinguish turbine fault loss from curtailment or low-resource loss.
+
+### 6. Battery storage state-of-energy and cycling operations
+**Justification:** Storage assets cannot be treated as a side note in a renewables package because state of charge, availability, degradation, and dispatch compliance affect both operations and settlement.
+**Improvement:** Add explicit storage backlog items for state-of-energy snapshots, charge and discharge dispatch instructions, augmentation events, cycle counting, degradation thresholds, and inverter-versus-cell fault isolation.
+**Acceptance evidence:** Example storage operating timeline, cycle-count evidence for warranty claims, and test scenarios covering dispatch non-compliance, cell faults, and augmentation changes.
+
+### 7. Meter hierarchy and revenue-grade reconciliation
+**Justification:** Operations teams need to reconcile SCADA estimates, inverter totals, turbine counters, and revenue-grade meters before curtailment, availability, and PPA numbers can be trusted.
+**Improvement:** Add a reconciliation backlog that models check meters, plant meters, point-of-interconnect meters, and sub-meter rollups, with tolerances and approval steps for manual adjustments or settlement corrections.
+**Acceptance evidence:** Reconciliation reports showing SCADA versus revenue meter differences, tolerance breach alerts, and audit trails for approved corrections.
+
+### 8. Curtailment taxonomy
+**Justification:** `curtailment_event` is only valuable if the cause codes separate grid instruction, market dispatch, transmission congestion, local protection trips, environmental constraints, and internal derates.
+**Improvement:** Replace the generic curtailment queue with a taxonomy that records initiator, instruction source, start and end times, MW requested, MW delivered, recoverability, compensation status, and supporting instruction evidence.
+**Acceptance evidence:** Standard cause-code list, sample curtailment event packs with attached dispatch evidence, and reports separating compensated from uncompensated curtailment.
+
+### 9. Availability denominator and exclusion governance
+**Justification:** Teams routinely re-open monthly availability packs because exclusions for force majeure, third-party outage, curtailment, and planned work were not governed consistently.
+**Improvement:** Add a dedicated backlog item for exclusion governance with reason codes, attachment requirements, approver roles, re-open rules, and period lock controls once a monthly pack is signed off.
+**Acceptance evidence:** Approval matrix for exclusions, locked-period behavior examples, and side-by-side monthly packs before and after an approved exclusion change.
+
+### 10. PPA obligation calendar and settlement traceability
+**Justification:** `ppa_obligation` should do more than store obligations; it should operationalize milestone dates, guaranteed availability thresholds, reporting deadlines, and settlement dependencies.
+**Improvement:** Build a PPA obligation calendar view that tracks contract milestones, availability and energy guarantees, notice periods, LD trigger conditions, settlement evidence due dates, and required attachments for each contract year or month.
+**Acceptance evidence:** Contract-to-calendar mapping examples, settlement checklist output for one reporting period, and exception records for missed or at-risk PPA milestones.
+
+### 11. Warranty claim trigger tracking
+**Justification:** Repeated inverter, turbine, transformer, or battery failures lose value if they are not assembled into warranty-ready evidence while the data is still fresh.
+**Improvement:** Add a warranty backlog stream that tracks start dates, warranty terms, response obligations, fault recurrence counts, outage duration thresholds, OEM notification deadlines, and evidence bundles for claim preparation.
+**Acceptance evidence:** Example warranty trigger dashboard, claim evidence checklist, and linked history showing repeated component failures crossing a claim threshold.
+
+### 12. Work order planning by asset criticality
+**Justification:** `maintenance_work` becomes administrative noise if the package cannot distinguish a cosmetic task from a task that threatens megawatt availability or safety.
+**Improvement:** Add criticality scoring to work orders based on asset role, MW at risk, fault persistence, spares availability, weather window, and crew access constraints so the backlog reflects operational impact rather than first-come-first-served order.
+**Acceptance evidence:** Priority scoring examples, planner queue states for high-risk and low-risk work, and evidence that high-impact work rises ahead of cosmetic tasks.
+
+### 13. Site inspection program
+**Justification:** Inspections are a core renewable operations activity and need first-class support rather than being hidden inside free-text notes.
+**Improvement:** Create inspection templates for solar field walks, turbine base inspections, battery container inspections, substation rounds, and perimeter checks, with photo capture, defect classification, geo-stamps, and follow-on action creation.
+**Acceptance evidence:** Template library examples, completed inspection packets with photos and defect tags, and linked follow-up actions or work orders created from findings.
+
+### 14. Vegetation management program
+**Justification:** Vegetation growth degrades solar production, increases fire risk, and affects access roads, yet it is often invisible in generic maintenance models.
+**Improvement:** Add vegetation backlog items for growth surveys, mowing cycles, herbicide controls where allowed, row access constraints, hotspot zones, and production-loss attribution when vegetation shading becomes material.
+**Acceptance evidence:** Site map overlays for vegetation zones, scheduled and completed treatment evidence, and examples linking shading-related losses to vegetation findings.
+
+### 15. Module cleaning strategy
+**Justification:** Cleaning decisions should be based on expected energy recovery and site conditions, not on ad hoc requests.
+**Improvement:** Add a solar cleaning backlog with soiling indicators, water availability constraints, cleaning crew windows, expected recovery estimates, and post-cleaning verification against control strings or irradiance-normalized performance.
+**Acceptance evidence:** Pre-clean versus post-clean evidence packs, cleaning recommendation rules, and examples where cleaning was deferred because predicted recovery did not justify the cost or water use.
+
+### 16. Weather and resource normalization
+**Justification:** Operators need to separate true equipment underperformance from low irradiance, weak wind resource, ambient temperature effects, and storm conditions.
+**Improvement:** Introduce a normalization backlog that uses irradiance, wind speed, ambient temperature, and site weather quality flags to translate raw output into expected-versus-actual comparisons by site and by asset class.
+**Acceptance evidence:** Daily normalized performance examples, missing-weather-data fallback rules, and analytics showing how normalization changes the diagnosis of a low-output period.
+
+### 17. Alarm rationalization and incident correlation
+**Justification:** Alarm floods from inverters, turbines, BMS devices, and substations create noise unless multiple alerts are collapsed into one operational incident.
+**Improvement:** Add an incident-correlation backlog that groups repeated alarms by asset, time window, fault family, and production impact, then opens a single actionable case instead of dozens of duplicate exceptions.
+**Acceptance evidence:** Before-and-after alarm volumes for a fault storm, grouping rules, and operator evidence that one incident can contain many related alarm events without losing traceability.
+
+### 18. Transformer, substation, and interconnect asset coverage
+**Justification:** Renewable plants fail commercially even when generation equipment is healthy if step-up transformers, collection systems, relays, or interconnect gear are not represented in the operating model.
+**Improvement:** Extend the backlog to include main transformers, breakers, relays, collectors, feeders, protection systems, and point-of-interconnect equipment, with outage classes and maintenance dependencies specific to grid-facing assets.
+**Acceptance evidence:** Asset catalog examples for interconnect equipment, outage scenarios that affect availability without turbine or inverter faults, and maintenance plans for transformer or relay work.
+
+### 19. Grid outage and dispatch instruction handling
+**Justification:** The package must distinguish internal outages from external dispatch limits, otherwise availability, curtailment, and settlement metrics will be wrong.
+**Improvement:** Add explicit handling for grid outages, switching instructions, dispatch caps, restart permissions, and restoration notices, including the exact evidence required to support operational and contractual classifications.
+**Acceptance evidence:** Sample grid-instruction event packets, classification rules for outage versus curtailment versus derate, and monthly reports proving the chosen classification path.
+
+### 20. Spare parts and long-lead component readiness
+**Justification:** Many renewable outages stay open because no one can tie the work queue to spare availability, repair lead time, or OEM exchange programs.
+**Improvement:** Add a backlog item linking work orders to critical spares, repair depots, cannibalization decisions, long-lead risks, and temporary operating restrictions while parts are in transit.
+**Acceptance evidence:** Planner views showing spares constraints, evidence for long-lead risk flags, and examples where outage forecasts change because a replacement part is unavailable.
+
+### 21. Crew safety permit-to-work controls
+**Justification:** Renewable operations software is incomplete if it schedules field work without proving that isolation plans, permits, and safety approvals are in place.
+**Improvement:** Add permit-to-work controls that require job hazard analysis, switching approval, access authorization, confined-space or high-voltage flags where applicable, and explicit start and end ownership before field execution starts.
+**Acceptance evidence:** Permit workflow examples, blocked work-order scenarios due to missing safety approvals, and approval logs with named accountable roles.
+
+### 22. Lockout, tagout, and remote reset governance
+**Justification:** Remote restart convenience can conflict with field safety when crews are on site and equipment states are changing quickly.
+**Improvement:** Add backlog support for lockout and tagout status, remote reset restrictions, field presence indicators, and dual-confirmation rules for restoring equipment after maintenance or fault investigation.
+**Acceptance evidence:** Safety interlock scenarios, blocked remote reset evidence while a crew is signed on site, and audit records for each restored asset.
+
+### 23. Contractor management and competency evidence
+**Justification:** Renewable sites frequently rely on OEM technicians and third-party crews whose access and work quality depend on verified competence and scope.
+**Improvement:** Add contractor records, training expiry dates, authorized task classes, site induction evidence, and rules that prevent assignment of specialized work orders to crews without valid competencies.
+**Acceptance evidence:** Sample contractor qualification cards, assignment denials for expired training, and reports showing work performed by internal versus contracted teams.
+
+### 24. Drone, thermography, and borescope inspection ingestion
+**Justification:** Visual and thermal evidence is central to identifying string faults, blade issues, hot connectors, battery hotspots, and substation defects.
+**Improvement:** Add a backlog path for ingesting drone imagery, IR scans, borescope findings, and structured defect tags, with links back to sites, assets, inspection routes, and generated follow-up work.
+**Acceptance evidence:** Example inspection imports, annotated defect records, and evidence chains connecting an image finding to a verified corrective action.
+
+### 25. Event model expansion for operational history
+**Justification:** The current four emitted events are too coarse to describe renewable operations in a way that supports replay, audits, and downstream consumers.
+**Improvement:** Expand the event backlog with typed operational events such as telemetry reconciled, curtailment classified, availability pack locked, work order released, inspection completed, warranty claim prepared, and safety hold applied or cleared.
+**Acceptance evidence:** Proposed event catalog, example event payloads with idempotency keys, and release evidence showing which downstream projections consume each new event type.
+
+### 26. Idempotent telemetry and work event ingestion
+**Justification:** High-frequency telemetry, repeated dispatch messages, and field retries will create duplicates unless ingestion rules are explicit.
+**Improvement:** Add backlog coverage for idempotency keys based on site, asset, interval, source system, and event version so resubmitted readings, work updates, and dispatch messages do not create phantom activity.
+**Acceptance evidence:** Duplicate-ingest scenarios with stable outcomes, rejection or merge rules for colliding messages, and dead-letter handling for malformed or ambiguous replays.
+
+### 27. Data quality scorecards for sites and fleets
+**Justification:** Operations teams need to know whether the data set is trustworthy before they argue about performance or contract exposure.
+**Improvement:** Add scorecards for telemetry completeness, meter reconciliation success, inspection timeliness, open exception age, work-order closure quality, and attachment completeness at site and fleet level.
+**Acceptance evidence:** Mock scorecards by site, threshold policies for red or amber status, and examples where a report is blocked because evidence quality is below the agreed floor.
+
+### 28. Performance ratio and expected-versus-actual analytics
+**Justification:** `performance_ratio` needs to drive diagnosis, not just sit as a periodic metric table.
+**Improvement:** Add analytics that separate weather-driven deviation, outage loss, curtailment loss, clipping loss, soiling loss, and unexplained residual loss for solar and hybrid sites, with transparent formulas and time-bucket selection.
+**Acceptance evidence:** Performance ratio drill-downs, formula documentation, and an example month where residual loss becomes a prioritized investigation.
+
+### 29. Wind power curve and yaw-misalignment analytics
+**Justification:** Wind plants need turbine-specific health insight that standard fleet KPIs do not provide.
+**Improvement:** Add backlog work for power-curve comparison, yaw error detection, turbulence impact context, icing suspicion, and underperforming-turbine ranking against peer groups and site wind conditions.
+**Acceptance evidence:** Example turbine peer reports, yaw-misalignment detection output, and linked corrective actions such as inspection, calibration, or component replacement.
+
+### 30. Storage round-trip efficiency and dispatch compliance
+**Justification:** Storage value depends on dispatch performance and efficiency, not just uptime.
+**Improvement:** Add storage-specific analytics for charge acceptance, discharge delivery, auxiliary consumption, round-trip efficiency, availability by market commitment window, and missed dispatch explanation codes.
+**Acceptance evidence:** Dispatch compliance reports, efficiency trend charts, and scenario evidence where a battery is technically available but commercially unavailable because dispatch constraints were violated.
+
+### 31. Root-cause analysis workflow for underperformance
+**Justification:** Operators need a repeatable path from a low-output alert to a defensible cause statement and action list.
+**Improvement:** Add an RCA workflow that walks from anomaly detection through evidence gathering, candidate causes, exclusion of alternatives, owner assignment, corrective action, and verification of recovery.
+**Acceptance evidence:** Completed RCA examples for solar, wind, and storage issues, cause-code libraries, and closure evidence proving that output recovered after the chosen action.
+
+### 32. Counterfactual simulation for curtailment recovery
+**Justification:** Curtailment disputes and planning decisions need a way to estimate what could have been generated or delivered absent an external limitation.
+**Improvement:** Add simulation capabilities that estimate recoverable energy or availability under alternative dispatch limits, earlier restoration, different maintenance timing, or changed battery dispatch strategy.
+**Acceptance evidence:** Side-by-side scenario outputs, assumption registers for each simulation, and sample evidence used in a curtailment compensation or planning discussion.
+
+### 33. Seasonal maintenance planning
+**Justification:** Renewable fleets are exposed to seasonal constraints such as rainy-season access, high-wind crane restrictions, and summer soiling or wildfire periods.
+**Improvement:** Add seasonal planning logic for outage windows, vegetation cycles, blade campaigns, cleaning campaigns, transformer maintenance, and battery HVAC checks based on site conditions and resource seasons.
+**Acceptance evidence:** Annual maintenance calendar examples, conflict detection between planned work and peak generation periods, and evidence that seasonal constraints change work prioritization.
+
+### 34. Environmental and sustainability evidence
+**Justification:** The manifest mentions carbon and sustainability awareness, but operations evidence should connect that idea to practical records.
+**Improvement:** Add backlog items for spill incidents, waste handling from modules or blades, water usage for cleaning, vegetation and habitat constraints, and greenhouse-gas impact records tied to outages or replacement activities.
+**Acceptance evidence:** Example environmental evidence packs, permit-linked tasks, and reports showing operational actions with environmental consequence tracking.
+
+### 35. Warranty-versus-O&M responsibility splits
+**Justification:** Teams lose time when an issue is known but no one can tell whether the remedy belongs to OEM warranty, LTSA coverage, local O&M scope, or owner-funded capex.
+**Improvement:** Add responsibility logic that tags each failure or performance issue with the likely commercial owner, supporting clauses, notification deadlines, and required evidence to move the claim or internal action forward.
+**Acceptance evidence:** Responsibility decision trees, sample cases routed to OEM versus local O&M, and evidence bundles showing why the package chose the assigned path.
+
+### 36. Financial loss and liquidated damages exposure
+**Justification:** Operations priorities should reflect commercial exposure, not only engineering severity.
+**Improvement:** Add backlog support for lost-energy estimates, expected settlement impact, PPA LD exposure, warranty recovery value, spare-cost risk, and outage cost scenarios so planners can weigh engineering and commercial urgency together.
+**Acceptance evidence:** Example exposure calculations, monthly risk summaries by site, and traceable links from an outage or curtailment event to estimated financial consequence.
+
+### 37. Geospatial workbench and site map UX
+**Justification:** `RenewablesAssetOperationsWorkbench` will stay shallow if operators cannot see events, inspections, and faults in site geography.
+**Improvement:** Add a geospatial UI backlog with map layers for arrays, turbines, roads, substations, fences, vegetation zones, cleaning routes, and active incidents, plus rapid filtering by severity and work status.
+**Acceptance evidence:** Map-view mockups, interaction flows for clicking from a map pin to the detail view, and loading-state designs for large sites with many assets.
+
+### 38. Shift handover and control room timeline UX
+**Justification:** Renewable control rooms rely on clean shift handovers that summarize events, open holds, pending dispatch instructions, and work-in-progress.
+**Improvement:** Add a timeline-focused workbench view that assembles the last shift’s alarms, curtailment events, grid instructions, approvals, work releases, and unresolved risks into a structured handover pack.
+**Acceptance evidence:** Shift handover prototypes, one-click export examples, and evidence that operators can acknowledge and carry forward unresolved items without losing history.
+
+### 39. Mobile field UI for offline inspections
+**Justification:** Site teams often work with poor connectivity and still need to capture inspections, photos, and closeout evidence in the field.
+**Improvement:** Add a mobile backlog for offline-capable inspection and work-order flows with cached asset context, deferred sync, camera capture, barcode or QR scan support, and conflict handling when two users sync overlapping edits.
+**Acceptance evidence:** Offline-to-online sync scenarios, mobile wireframes for inspection completion, and conflict-resolution examples for competing updates to the same work item.
+
+### 40. Assistant skills for operators and planners
+**Justification:** The current guided read/create/update skills are a base layer, but renewable operations need richer domain-specific assistant behaviors.
+**Improvement:** Add agent skills for diagnosing underperformance, drafting curtailment classifications, assembling availability packs, preparing warranty packets, suggesting spare usage, and summarizing open safety constraints, all with governed preview and human confirmation.
+**Acceptance evidence:** Skill catalog entries, prompt-and-preview examples, blocked mutation cases when required evidence is missing, and audit traces for accepted assistant actions.
+
+### 41. Document understanding for OEM manuals, PPAs, and warranties
+**Justification:** Operational decisions frequently depend on clauses buried in OEM manuals, service contracts, PPAs, and warranty schedules.
+**Improvement:** Add a document-understanding backlog that extracts maintenance intervals, response obligations, guarantee definitions, cure periods, and notice requirements from controlled documents into suggested but reviewable operational records.
+**Acceptance evidence:** Source-span citations from sample documents, extraction accuracy checks, and approval workflows that turn extracted obligations into governed tasks or calendar entries.
+
+### 42. Cross-PBC event federation for grid, market, and weather context
+**Justification:** Renewable operations depend on outside context, but the package must consume that context through events and contracts rather than hidden shared tables.
+**Improvement:** Add a federation backlog for weather alerts, market dispatch notices, external policy changes, and audit seals so site operations, availability accounting, and settlement evidence react to external signals with explicit lineage.
+**Acceptance evidence:** Event-to-action mapping, contract tests for incoming event versions, and example traces showing one upstream event changing a downstream workbench state.
+
+### 43. Release evidence tied to operational scenarios
+**Justification:** `RELEASE_EVIDENCE.md` should prove that real renewable workflows work, not just that package modules exist.
+**Improvement:** Add scenario-based release evidence for a solar inverter outage, a wind turbine fault, a storage dispatch miss, a curtailment classification, a monthly availability close, and a warranty trigger, each spanning schema, services, events, UI, agent, and governance.
+**Acceptance evidence:** Named scenario evidence packs, screenshots or structured outputs for each stage, and a release checklist that fails if any scenario loses lineage or approval proof.
+
+### 44. Continuous control testing for approvals and evidence
+**Justification:** The package should continuously prove that high-risk actions still respect approval and evidence rules after changes.
+**Improvement:** Add controls that automatically test separation of duties, required attachments for exclusions, approval before period lock, safety hold enforcement, and event-lineage completeness for key workflows.
+**Acceptance evidence:** Automated control outputs, failing-control examples with clear remediation guidance, and release-readiness summaries that list passed and failed controls by domain area.
+
+### 45. Multi-tenant fleet segmentation
+**Justification:** Fleet operators may run portfolios for multiple owners, geographies, and contracts, and renewable operating rules often differ materially between them.
+**Improvement:** Add multi-tenant backlog items for owner-specific PPA models, site calendars, safety procedures, document libraries, naming conventions, and approval chains without leaking data across tenants.
+**Acceptance evidence:** Tenant-isolation scenarios, tenant-specific workbench views, and negative tests proving that one tenant cannot see another tenant’s asset, event, or evidence package.
+
+### 46. Schema extensions for OEM-specific attributes
+**Justification:** Renewable plants carry OEM-specific details such as inverter firmware families, turbine retrofit kits, battery chemistry variants, and transformer protection settings that should not force brittle schema rewrites each time.
+**Improvement:** Add a governed extension model for OEM-specific fields with typed definitions, compatibility checks, UI rendering rules, and event version notes so specialized attributes stay queryable without collapsing the core schema.
+**Acceptance evidence:** Extension registration examples, backward-compatibility checks for projections and APIs, and proof that extended fields remain tenant-scoped and auditable.
+
+### 47. Bulk correction tooling for telemetry gaps
+**Justification:** Missing intervals, frozen tags, and backfilled historian data are common and need governed bulk correction rather than manual row edits.
+**Improvement:** Add bulk correction workflows for interval gaps, duplicate intervals, bad units, daylight-saving discontinuities, and meter true-ups, with simulation before apply and explicit reason capture for each correction batch.
+**Acceptance evidence:** Batch preview outputs, apply-versus-rollback examples, and corrected monthly datasets showing old and new values with reason codes and approver identity.
+
+### 48. Exception queues for open operational risks
+**Justification:** A renewable operations backlog needs purpose-built exception queues, not one undifferentiated list of problems.
+**Improvement:** Add separate triage queues for telemetry quality, asset underperformance, curtailment evidence gaps, availability exclusion disputes, overdue work orders, safety holds, and pending warranty notifications, each with SLA and owner rules.
+**Acceptance evidence:** Queue definitions, age-bucket reports, and operator views showing how a record moves from open risk to closed evidence without leaving the package.
+
+### 49. Test fixtures mirroring solar, wind, and storage realities
+**Justification:** Package verification is shallow if fixtures only cover abstract create-and-update flows.
+**Improvement:** Add backlog guidance for realistic fixtures: string-level solar loss days, turbine fault storms, battery dispatch schedules, revenue meter corrections, vegetation-related shading, and substation outages that affect availability without local equipment faults.
+**Acceptance evidence:** Fixture catalog proposals, scenario matrices covering happy path and edge cases, and release evidence showing those fixtures are used in contract, handler, UI, and agent verification.
+
+### 50. Production readiness dashboard and go-live exit criteria
+**Justification:** The package needs a hard operational definition of “ready” that combines domain coverage, controls, data quality, and release evidence.
+**Improvement:** Add a production-readiness dashboard that tracks telemetry integrity, workbench coverage, event health, open critical exceptions, safety control pass rate, contract scenario coverage, and named go-live exit gates for solar, wind, and storage operations.
+**Acceptance evidence:** Go-live checklist with measurable thresholds, dashboard examples for green and blocked states, and release sign-off evidence tied back to package-local operational scenarios.

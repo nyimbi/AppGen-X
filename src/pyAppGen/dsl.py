@@ -80,6 +80,23 @@ REQUIRED_MIGRATION_DETECTIONS = (
     "pbc_ownership_transfer",
     "data_backfill_requirement",
 )
+REQUIRED_COMPLETION_SOURCES = (
+    "top_level_keywords",
+    "block_snippets",
+    "table_names",
+    "field_names",
+    "lookup_paths",
+    "components",
+    "handler_events",
+    "operation_targets",
+    "flow_states",
+    "pbc_keys",
+    "pbc_contracts",
+    "package_targets",
+    "deployment_units",
+    "llm_providers",
+    "agent_skills",
+)
 
 
 class AppGenSyntaxError(ValueError):
@@ -348,6 +365,7 @@ def dsl_completion_items(prefix: str = "", *, source: str | None = None) -> tupl
     items.extend(_dsl_snippets())
     if source:
         outline = dsl_outline(source)
+        schema = _completion_schema(source)
         for table in outline.get("tables", ()):
             table_name = table["name"]
             items.append({"label": table_name, "insert": table_name, "kind": "table"})
@@ -367,12 +385,68 @@ def dsl_completion_items(prefix: str = "", *, source: str | None = None) -> tupl
                         "kind": "reference",
                     }
                 )
+        if schema is not None:
+            table_map = {table.name: table for table in schema.tables}
+            field_map = {
+                table.name: {field.name: field for field in table.columns}
+                for table in schema.tables
+            }
+            for table in schema.tables:
+                for path, detail in _semantic_lookup_paths(table, table_map, field_map).items():
+                    if detail.get("valid"):
+                        items.append({"label": path, "insert": path, "kind": "lookup_path", "detail": table.name})
+                for directive in table.directives:
+                    if directive.verb.lower() == "lookup":
+                        for value in directive.values:
+                            items.append({"label": value, "insert": value, "kind": "lookup_path", "detail": table.name})
+            for component_name in sorted(_known_component_names(schema)):
+                items.append({"label": component_name, "insert": component_name, "kind": "component"})
+            for event_name in ("Click", "Change", "Open", "Save", "Submit", "Select", "Run"):
+                items.append({"label": event_name, "insert": event_name, "kind": "handler_event"})
+            for target_name in sorted(_handler_target_names(schema)):
+                items.append({"label": target_name, "insert": target_name, "kind": "handler_target"})
+            for flow in schema.flows:
+                for transition in flow.steps:
+                    items.append({"label": transition.source, "insert": transition.source, "kind": "flow_state", "detail": flow.name})
+                    items.append({"label": transition.target, "insert": transition.target, "kind": "flow_state", "detail": flow.name})
+                for directive in flow.directives:
+                    for value in directive.values:
+                        if re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", value):
+                            items.append({"label": value, "insert": value, "kind": "flow_state", "detail": flow.name})
+            catalog = _pbc_catalog_by_key()
+            for key, pbc in sorted(catalog.items()):
+                items.append({"label": key, "insert": key, "kind": "pbc", "detail": pbc.get("label", "PBC catalog entry")})
+                for api in pbc.get("apis", ())[:8]:
+                    items.append({"label": api, "insert": api, "kind": "pbc_contract", "detail": key})
+                for event_name in tuple(pbc.get("emits", ()))[:8] + tuple(pbc.get("consumes", ()))[:8]:
+                    items.append({"label": event_name, "insert": event_name, "kind": "pbc_contract", "detail": key})
+            for target in ("web", "mobile", "desktop", "pbc", "deployment"):
+                items.append({"label": target, "insert": target, "kind": "package_target"})
+            for block in schema.platform_blocks:
+                if block.kind == "operation":
+                    items.append({"label": block.name, "insert": block.name, "kind": "deployment_unit"})
+            for deploy in (block for block in schema.platform_blocks if block.kind == "deploy"):
+                for unit in deploy.deployment_units:
+                    items.append({"label": unit.target, "insert": unit.target, "kind": "deployment_unit", "detail": deploy.name})
+            for agent in schema.agents:
+                for tool in agent.tools:
+                    items.append({"label": tool, "insert": tool, "kind": "agent_skill", "detail": agent.name})
         for provider_name in outline.get("llms", ()):
             items.append({"label": provider_name, "insert": provider_name, "kind": "llm"})
+        if schema is not None:
+            for provider in schema.llm_providers:
+                items.append({"label": provider.name, "insert": provider.name, "kind": "llm"})
     deduped = tuple({(item["kind"], item["label"]): item for item in items}.values())
     if not needle:
         return deduped
     return tuple(item for item in deduped if item["label"].lower().startswith(needle))
+
+
+def _completion_schema(source: str) -> AppSchema | None:
+    try:
+        return schema_from_dsl(source)
+    except Exception:
+        return None
 
 
 def dsl_language_service(
@@ -1559,6 +1633,12 @@ def doctor_report_dsl() -> dict:
             {"report_format": "appgen.lsp-capabilities.v1"},
         ),
         _doctor_check(
+            "lsp_completion_coverage",
+            completion_coverage_dsl(_completion_coverage_sample(), source_name="completion-doctor.appgen")["missing"] == (),
+            "Language-server completion sources cover the required docs/tooling.md contexts.",
+            {"report_format": "appgen.completion-coverage.v1"},
+        ),
+        _doctor_check(
             "studio_semantic_service",
             designer_sync_report_dsl(_doctor_sample_dsl(), source_name="doctor.appgen")["semantic_model_format"] == "appgen.semantic-model.v1",
             "Studio designer service is bound to the shared semantic model.",
@@ -1600,6 +1680,66 @@ def _doctor_import_check(check: str, module: str) -> dict:
     except Exception as exc:  # pragma: no cover - environment-dependent
         return _doctor_check(check, False, f"Cannot import {module}: {exc}", {"module": module})
     return _doctor_check(check, True, f"Imported {module}.", {"module": module})
+
+
+def _completion_coverage_sample() -> str:
+    return """
+app CompletionDemo { targets: web, mobile, desktop }
+
+table Customer {
+  id: int pk
+  name: string
+}
+
+table Invoice {
+  id: int pk
+  customer_id: int -> Customer.id
+  lookup customer_name (customer.name)
+}
+
+view InvoiceForm for Invoice {
+  Main: customer.name
+  @ customer.name Lookup 0 0 6 1
+  on Save -> SubmitInvoice
+}
+
+flow SubmitInvoice {
+  draft -> reviewed
+  reviewed -> posted
+}
+
+operation ReverseInvoice {
+  posted -> reversed
+}
+
+component CustomerLookup {
+  on Select -> SubmitInvoice
+}
+
+composition CompletionSuite {
+  include pbc gl_core version 1.0.0
+}
+
+package CompletionMobile {
+  target: mobile
+  smoke: launch
+}
+
+deploy Production {
+  unit SubmitInvoice as worker
+  health SubmitInvoice "/health"
+}
+
+llm LocalModel {
+  provider: ollama
+  mode: local
+}
+
+agent CompletionAssistant {
+  provider: LocalModel
+  tools: write, schema
+}
+"""
 
 
 def _doctor_template_writers_available() -> bool:
@@ -1996,6 +2136,7 @@ def lsp_service_dsl(
         "semantic_model_format": semantic["format"],
         "publishDiagnostics": lsp_diagnostics_dsl(source, source_name=source_name),
         "completion": lsp_completion_dsl(source, source_name=source_name, position=active_position, prefix=prefix),
+        "completionCoverage": completion_coverage_dsl(source, source_name=source_name),
         "hover": lsp_hover_dsl(source, source_name=source_name, position=active_position),
         "definition": lsp_definition_dsl(source, source_name=source_name, position=active_position),
         "references": lsp_references_dsl(source, source_name=source_name, position=active_position),
@@ -2309,6 +2450,55 @@ def lsp_completion_dsl(
         "isIncomplete": False,
         "items": deduped,
     }
+
+
+def completion_coverage_dsl(text: str, *, source_name: str | None = None) -> dict:
+    """Return required completion-source coverage for docs/tooling.md LSP claims."""
+    source = text or ""
+    completion = lsp_completion_dsl(source, source_name=source_name)
+    detected = set()
+    labels_by_source: dict[str, list[str]] = {key: [] for key in REQUIRED_COMPLETION_SOURCES}
+    for item in completion.get("items", ()):
+        kind = item.get("data", {}).get("kind") or item.get("detail")
+        label = str(item.get("label") or "")
+        source_key = _completion_source_for_kind(str(kind or ""))
+        if source_key:
+            detected.add(source_key)
+            labels_by_source.setdefault(source_key, []).append(label)
+    return {
+        "format": "appgen.completion-coverage.v1",
+        "source": source_name,
+        "required": REQUIRED_COMPLETION_SOURCES,
+        "detected": tuple(item for item in REQUIRED_COMPLETION_SOURCES if item in detected),
+        "missing": tuple(item for item in REQUIRED_COMPLETION_SOURCES if item not in detected),
+        "labels_by_source": {
+            key: tuple(dict.fromkeys(value))
+            for key, value in labels_by_source.items()
+            if value
+        },
+    }
+
+
+def _completion_source_for_kind(kind: str) -> str | None:
+    return {
+        "keyword": "top_level_keywords",
+        "snippet": "block_snippets",
+        "table": "table_names",
+        "field": "field_names",
+        "reference": "field_names",
+        "lookup_path": "lookup_paths",
+        "component": "components",
+        "handler_event": "handler_events",
+        "handler_target": "operation_targets",
+        "flow": "operation_targets",
+        "flow_state": "flow_states",
+        "pbc": "pbc_keys",
+        "pbc_contract": "pbc_contracts",
+        "package_target": "package_targets",
+        "deployment_unit": "deployment_units",
+        "llm": "llm_providers",
+        "agent_skill": "agent_skills",
+    }.get(kind)
 
 
 def lsp_hover_dsl(text: str, *, source_name: str | None = None, position: dict | None = None) -> dict:

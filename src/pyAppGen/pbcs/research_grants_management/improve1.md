@@ -1,418 +1,413 @@
-# Research Grants Management PBC Better-Than-World-Class Improvement Backlog
-
-## Purpose
-
-This file identifies, justifies, and describes 50 high-impact improvements for `research_grants_management`. The backlog is specific to research proposals, awards, budgets, compliance, milestones, subawards, effort, and sponsor reporting and is intended to move the PBC from release-auditable scaffolding toward complete, specialist-grade domain coverage.
+# Research Grants Management Improvement Backlog
 
 ## Current Domain Evidence Used
 
-- Stable PBC key: `research_grants_management`.
-- Domain purpose: Research proposals, awards, budgets, compliance, milestones, subawards, effort, and sponsor reporting.
-- Owned domain tables: `grant_proposal`, `research_award`, `sponsor_budget`, `compliance_requirement`, `subaward`, `milestone_report`, `effort_certification`, `research_grants_management_policy_rule`, `research_grants_management_runtime_parameter`, `research_grants_management_schema_extension`, `research_grants_management_control_assertion`, `research_grants_management_governed_model`.
-- Public APIs: `POST /grant-proposals`, `POST /research-awards`, `POST /sponsor-budgets`, `POST /compliance-requirements`, `POST /subawards`, `GET /research-grants-management-workbench`.
-- Emitted AppGen-X events: `ResearchGrantsManagementCreated`, `ResearchGrantsManagementUpdated`, `ResearchGrantsManagementApproved`, `ResearchGrantsManagementExceptionOpened`.
-- Consumed AppGen-X events: `PolicyChanged`, `AuditEventSealed`, `OperationalKpiChanged`.
-- Current standard surfaces include: `grant_proposal_management`, `research_grants_management_workflow`, `research_grants_management_analytics`, `configuration_schema`, `rule_engine`, `parameter_engine`, `owned_schema_migrations_models`, `appgen_x_outbox_inbox_eventing`, `idempotent_handlers`, `retry_dead_letter_evidence`.
-- Current advanced surfaces include: `research_grants_management_event_sourced_operational_history`, `research_grants_management_multi_tenant_policy_isolation`, `research_grants_management_schema_evolution_resilience`, `research_grants_management_autonomous_anomaly_detection`, `research_grants_management_semantic_document_instruction_understanding`, `research_grants_management_predictive_risk_scoring`, `research_grants_management_counterfactual_scenario_simulation`, `research_grants_management_cryptographic_audit_proofs`.
+- Manifest key: `research_grants_management`.
+- Manifest description: research proposals, awards, budgets, compliance, milestones, subawards, effort, and sponsor reporting.
+- Owned tables already declared: `grant_proposal`, `research_award`, `sponsor_budget`, `compliance_requirement`, `subaward`, `milestone_report`, `effort_certification`, `research_grants_management_policy_rule`, `research_grants_management_runtime_parameter`, `research_grants_management_schema_extension`, `research_grants_management_control_assertion`, and `research_grants_management_governed_model`.
+- Current APIs already declared: `POST /grant-proposals`, `POST /research-awards`, `POST /sponsor-budgets`, `POST /compliance-requirements`, `POST /subawards`, and `GET /research-grants-management-workbench`.
+- Current workflows already declared: `research_grants_management_create_grant_proposal_workflow` and `research_grants_management_record_research_award_workflow`.
+- Current UI fragments already declared: `ResearchGrantsManagementWorkbench`, `ResearchGrantsManagementDetail`, and `ResearchGrantsManagementAssistantPanel`.
+- Current emitted events already declared: `ResearchGrantsManagementCreated`, `ResearchGrantsManagementUpdated`, `ResearchGrantsManagementApproved`, and `ResearchGrantsManagementExceptionOpened`.
+- Current consumed events already declared: `PolicyChanged`, `AuditEventSealed`, and `OperationalKpiChanged`.
+- Current evidence documents already declared: `SPECIFICATION.md` and `RELEASE_EVIDENCE.md`.
 
-## 50 High-Impact Improvements
+### 1. Funding opportunity source registry
 
-### 1. Canonical lifecycle state model for Grant Proposal
+**Justification:** Proposal quality starts before `grant_proposal` creation. The PBC has proposal and award endpoints, but it does not yet show a first-class place for sponsor announcement version, program code, cycle, or archived opportunity terms that drive the rest of the lifecycle.
 
-**Justification:** This closes shallow CRUD gaps by making every research grants management transition explainable and testable instead of implicit in free-form status values.
+**Improvement:** Add an owned funding opportunity registry that stores sponsor program identifier, notice version, internal routing deadline, sponsor deadline, sponsor type, anticipated award type, cost-share expectation, and archived source files. Require proposal creation to reference either a registered opportunity or a justified manual entry path.
 
-**Improvement:** Define a complete state machine for `grant_proposal` with explicit draft, validated, blocked, approved, active, suspended, corrected, closed, archived, and reopened states. Tie the behavior to `research_grants_management_create_grant_proposal_workflow` where applicable, and make it visible in `ResearchGrantsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Schema and API contract for opportunity records, workbench screens that create a proposal from an opportunity, fixtures covering federal, foundation, and industry-style opportunities, and release evidence showing historical opportunity versions remain traceable after sponsor notice updates.
 
-**Acceptance evidence:** State-transition tests, invalid-transition fixtures, workbench state badges, and emitted AppGen-X transition events for ResearchGrantsManagementCreated, ResearchGrantsManagementUpdated, ResearchGrantsManagementApproved. The evidence should be package-local in `src/pyAppGen/pbcs/research_grants_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 2. Opportunity eligibility and institutional fit rules
 
-### 2. Domain intake and normalization for Research Award
+**Justification:** Opportunity intake is incomplete if the system cannot tell whether the institution, principal investigator, or collaborator set is actually eligible. Early disqualification saves proposal effort and reduces avoidable routing noise.
 
-**Justification:** The PBC cannot reach complete domain coverage unless it handles the messy front door of research proposals, awards, budgets, compliance, milestones, subawards, effort, and sponsor reporting, not only already-clean records.
+**Improvement:** Add rules that evaluate sponsor eligibility language against investigator status, organization type, career stage, institutional location, cost-share availability, and limited submission constraints. Record a structured pass, conditional pass, or blocked result before a proposal can enter formal routing.
 
-**Improvement:** Build a typed intake pipeline for `research_award` that accepts structured API payloads, document-derived instructions, batch loads, and assistant-generated drafts while normalizing identifiers, dates, units, parties, and jurisdictional context. Tie the behavior to `research_grants_management_record_research_award_workflow` where applicable, and make it visible in `ResearchGrantsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Eligibility rule fixtures for common sponsor scenarios, blocked proposal creation tests, operator override capture with justification, and detail-page evidence showing which specific rule or announcement clause caused the result.
 
-**Acceptance evidence:** Golden intake fixtures, rejected-record queues, field-level normalization evidence, and assistant previews before governed datastore mutation. The evidence should be package-local in `src/pyAppGen/pbcs/research_grants_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 3. Limited-submission nomination workflow
 
-### 3. Specialist validation rules for Sponsor Budget
+**Justification:** Limited submission opportunities require internal competition before proposal work begins. Treating them like ordinary opportunities causes duplicate effort and governance failures.
 
-**Justification:** World-class Research Grants Management requires rules that domain experts can reason about, version, test, and roll back without code edits.
+**Improvement:** Add a nomination workflow that tracks internal call publication, nominee packets, review committee decisions, alternates, and final institutional slot allocation. Prevent more sponsor-bound proposals than the opportunity allows unless an authorized exception is captured.
 
-**Improvement:** Add a domain rule compiler for `sponsor_budget` that supports threshold rules, eligibility rules, dependency rules, temporal windows, conflicting-instruction detection, and override justification. Tie the behavior to `research_grants_management_create_grant_proposal_workflow` where applicable, and make it visible in `ResearchGrantsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Workflow tests for nomination open, review, selection, and rejection states, UI evidence for ranking nominees, enforcement of sponsor slot limits, and emitted exception events when a proposal attempts to bypass the internal nomination process.
 
-**Acceptance evidence:** Rule simulation tests, versioned rule manifests, rule impact reports, and UI rule editors linked to `RESEARCH_GRANTS_MANAGEMENT_DATABASE_URL, RESEARCH_GRANTS_MANAGEMENT_EVENT_TOPIC, RESEARCH_GRANTS_MANAGEMENT_RETRY_LIMIT`. The evidence should be package-local in `src/pyAppGen/pbcs/research_grants_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 4. Opportunity deadline calendar and routing cutoffs
 
-### 4. Parameter governance and tuning for Compliance Requirement
+**Justification:** Research administration misses deadlines because sponsor due dates and internal approvals are often managed outside the award system. The PBC needs its own domain calendar logic for proposal readiness.
 
-**Justification:** Parameters are where operations teams tune research grants management; unbounded constants would make the PBC brittle and unsafe in real deployments.
+**Improvement:** Add deadline objects for sponsor submission, institutional routing, compliance review, budget finalization, collaborator packet receipt, and narrative freeze. Display countdowns and dependency-aware warnings in `ResearchGrantsManagementWorkbench`.
 
-**Improvement:** Expose bounded runtime parameters for `compliance_requirement` covering risk thresholds, SLA windows, confidence floors, escalation cutoffs, batch sizes, retry limits, and human-confirmation requirements. Tie the behavior to `research_grants_management_record_research_award_workflow` where applicable, and make it visible in `ResearchGrantsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Calendar projection tests, workbench snapshots with aging buckets, reminder event generation for upcoming cutoffs, and release evidence showing deadline recalculation when sponsor dates change or institutional holidays shift.
 
-**Acceptance evidence:** Parameter schema validation, tenant overrides, approval history, rollback controls, and workbench diff views. The evidence should be package-local in `src/pyAppGen/pbcs/research_grants_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 5. Proposal assembly workspace and section status
 
-### 5. Deep owned schema expansion for Subaward
+**Justification:** A proposal is not a single blob. Operators need a structured view of narrative sections, attachments, approvals, and unresolved gaps before it becomes a sponsor-bound package.
 
-**Justification:** A single payload column cannot express the full surface of research proposals, awards, budgets, compliance, milestones, subawards, effort, and sponsor reporting or prove cross-PBC boundaries are respected.
+**Improvement:** Extend `grant_proposal` with typed sections for abstract, aims, narrative, budget justification, biosketches, facilities, letters, data plans, and sponsor forms. Track each section as missing, draft, under review, approved, or blocked with owner and due date metadata.
 
-**Improvement:** Extend the owned schema around `subaward` with normalized child tables for line-level evidence, party roles, approvals, attachments, comments, metrics, exception reasons, and control assertions. Tie the behavior to `research_grants_management_create_grant_proposal_workflow` where applicable, and make it visible in `ResearchGrantsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Proposal section state transitions, UI evidence for incomplete package detection, attachment integrity checks, and test fixtures proving submission cannot proceed while required sections remain missing or blocked.
 
-**Acceptance evidence:** Migrations, models, relationship tests, schema contract snapshots, and no shared-table access outside the `research_grants_management_` namespace. The evidence should be package-local in `src/pyAppGen/pbcs/research_grants_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 6. Proposal compliance matrix before submission
 
-### 6. Event-sourced operational history for Milestone Report
+**Justification:** Proposal routing is only defensible if every sponsor and institutional requirement has an explicit disposition. Free-text notes do not support audit-ready release evidence.
 
-**Justification:** Temporal reconstruction is essential for better-than-world-class auditability and dispute resolution in research grants management.
+**Improvement:** Generate a compliance matrix from the funding opportunity, proposal type, participating units, and compliance profile. Include checks for page limits, formatting, mandatory attachments, human subjects language, animal use language, data sharing statements, and collaborator certifications.
 
-**Improvement:** Capture every material mutation of `milestone_report` as immutable AppGen-X events with actor, tenant, command, policy version, idempotency key, before/after summary, and projection checkpoint. Tie the behavior to `research_grants_management_record_research_award_workflow` where applicable, and make it visible in `ResearchGrantsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Matrix generation tests, exported matrix evidence for a routed proposal, UI badges for satisfied versus unresolved checks, and package-level release evidence showing who cleared each compliance item and when.
 
-**Acceptance evidence:** Replay tests, projection checksums, event ordering evidence, and point-in-time workbench views. The evidence should be package-local in `src/pyAppGen/pbcs/research_grants_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 7. Budget template versioning by sponsor mechanism
 
-### 7. Projection and read-model strategy for Effort Certification
+**Justification:** Budgeting rules differ across sponsor types, award mechanisms, and institutional policy periods. A single static budget template will produce recurring errors.
 
-**Justification:** The workbench should not force users to infer domain truth from raw tables; each projection should answer a real operating question.
+**Improvement:** Version `sponsor_budget` templates by sponsor, mechanism, budget period structure, currency, and institutional policy era. Preserve effective dates so previously submitted and awarded budgets remain reproducible.
 
-**Improvement:** Create purpose-built projections for `effort_certification`: operational queue, executive KPI rollup, exception aging, compliance evidence, agent task context, and external dependency health. Tie the behavior to `research_grants_management_create_grant_proposal_workflow` where applicable, and make it visible in `ResearchGrantsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Template version registry tests, historical proposal replay showing unchanged totals under the original rule set, UI evidence for template selection at proposal creation, and release evidence that records which template version drove a submitted budget.
 
-**Acceptance evidence:** Projection contracts, freshness SLAs, backfill tests, and visible stale-projection warnings. The evidence should be package-local in `src/pyAppGen/pbcs/research_grants_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 8. Budget line-item allowability and justification rules
 
-### 8. Exception taxonomy and remediation for Research Grants Management Policy Rule
+**Justification:** Research grants budgets fail when the system cannot distinguish allowable, conditionally allowable, and prohibited costs. Manual review alone does not scale across volume and sponsor variety.
 
-**Justification:** High-value PBCs win on exception throughput; generic “failed” states hide the details operators need.
+**Improvement:** Add line-item rules for personnel, fringe, travel, equipment, supplies, participant support, subawards, tuition, publication costs, patient care, and other direct costs. Require an explanation trail when a line is flagged as sponsor-restricted, institutionally sensitive, or requires prior approval.
 
-**Improvement:** Model the full exception taxonomy for `research_grants_management_policy_rule`, including severity, root cause, blocking dependency, remediation owner, due date, retry eligibility, escalation path, and closure evidence. Tie the behavior to `research_grants_management_record_research_award_workflow` where applicable, and make it visible in `ResearchGrantsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Budget validation fixtures by cost category, rule explanations visible in the UI, blocking behavior for prohibited costs, and release evidence showing which budget lines were auto-cleared versus manually justified.
 
-**Acceptance evidence:** Exception queues, aging metrics, remediation playbooks, dead-letter linkage, and closure test fixtures for weather or traffic disruption. The evidence should be package-local in `src/pyAppGen/pbcs/research_grants_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 9. Cost share and matching commitment controls
 
-### 9. Predictive risk scoring for Research Grants Management Runtime Parameter
+**Justification:** Cost share obligations create long-tail reporting and audit exposure. They must be explicit at proposal stage and carried forward into award execution.
 
-**Justification:** The package should warn users before research grants management work fails, breaches policy, or creates downstream cost.
+**Improvement:** Add structured cost-share commitments with source account, responsible unit, approval chain, timing expectations, and whether the commitment is mandatory, voluntary committed, or prohibited. Propagate accepted commitments from proposal to award without rekeying.
 
-**Improvement:** Add predictive risk scoring for `research_grants_management_runtime_parameter` using domain features from owned tables, consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, rule outcomes, aging, anomaly signals, and historical corrections. Tie the behavior to `research_grants_management_create_grant_proposal_workflow` where applicable, and make it visible in `ResearchGrantsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Proposal-to-award carryforward tests, approvals captured from the responsible unit, blocked routing when mandatory cost share lacks backing, and evidence exports that reconcile committed versus delivered match amounts.
 
-**Acceptance evidence:** Feature manifests, score explanations, calibration reports, drift alerts, and tests for low/medium/high-risk scenarios. The evidence should be package-local in `src/pyAppGen/pbcs/research_grants_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 10. Indirect cost and waiver governance
 
-### 10. Counterfactual simulation for Research Grants Management Schema Extension
+**Justification:** Facilities and administrative rates drive both pricing and internal policy risk. The PBC needs explicit handling for negotiated rates, de minimis cases, and waiver approvals.
 
-**Justification:** Advanced users need to ask “what would happen if” before committing changes to live research proposals, awards, budgets, compliance, milestones, subawards, effort, and sponsor reporting operations.
+**Improvement:** Add an indirect cost engine that calculates rate base, exclusions, period splits, off-campus treatment, training grant treatment, and approved waivers. Require a waiver record with approver, reason code, effective period, and sponsor citation when a non-standard rate is used.
 
-**Improvement:** Provide scenario simulation for `research_grants_management_schema_extension`: policy change, capacity constraint, deadline shift, price/rate change, eligibility change, disruption, and manual override outcomes. Tie the behavior to `research_grants_management_record_research_award_workflow` where applicable, and make it visible in `ResearchGrantsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Rate calculation tests across common bases, waiver approval fixtures, UI evidence for rate-base explanation, and release evidence showing how the final indirect cost result was derived for each budget period.
 
-**Acceptance evidence:** Simulation APIs, non-mutating sandbox state, comparison reports, and workbench side-by-side scenario panels. The evidence should be package-local in `src/pyAppGen/pbcs/research_grants_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 11. IRB and ethics boundary classifier
 
-### 11. Autonomous anomaly triage for Research Grants Management Control Assertion
+**Justification:** The PBC should govern award readiness without pretending to own protocol review systems. A clear IRB and ethics boundary keeps responsibility precise and prevents false compliance signals.
 
-**Justification:** A world-class PBC should reduce analyst burden without hiding the reasoning behind automated triage.
+**Improvement:** Add classification logic in `compliance_requirement` that marks whether a proposal or award implicates IRB, exempt determination, ethics committee review, or no ethics review. Store the dependency, due date, and gating effect without storing full protocol adjudication data owned elsewhere.
 
-**Improvement:** Implement anomaly detection for `research_grants_management_control_assertion` that identifies outliers, duplicate submissions, impossible sequences, stale dependencies, unusual amounts/counts/durations, and contradictory fields. Tie the behavior to `research_grants_management_create_grant_proposal_workflow` where applicable, and make it visible in `ResearchGrantsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Boundary tests showing the PBC tracks status dependencies rather than external committee decisions, workbench evidence separating "ethics dependency pending" from "award setup allowed," and release evidence documenting the boundary contract.
 
-**Acceptance evidence:** Explainable anomaly cards, reviewer feedback loops, false-positive tracking, and suppression governance. The evidence should be package-local in `src/pyAppGen/pbcs/research_grants_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 12. Protocol and approval status boundary integration
 
-### 12. Semantic document understanding for Research Grants Management Governed Model
+**Justification:** Operators still need current protocol status even when the approval system lives outside this PBC. Manual status re-entry creates stale readiness decisions.
 
-**Justification:** Document-heavy work in Research Grants Management cannot be complete if the assistant only answers questions and cannot prepare accurate governed changes.
+**Improvement:** Consume external approval status updates into `compliance_requirement` as read-only boundary facts with source system, status timestamp, expiration date, and exception notes. Make downstream actions depend on these facts rather than ad hoc user statements.
 
-**Improvement:** Train the package assistant to parse domain documents and instructions for `research_grants_management_governed_model`, extract obligations, dates, parties, quantities, identifiers, and exceptions, then map them to safe draft mutations. Tie the behavior to `research_grants_management_record_research_award_workflow` where applicable, and make it visible in `ResearchGrantsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Inbound event or API-sync fixtures, stale-status warnings when a source has not refreshed, blocked award setup tests when required approvals are expired, and audit evidence showing the last synchronized status source.
 
-**Acceptance evidence:** Document extraction tests, confidence thresholds, redaction handling, source span citations, and human confirmation workflows. The evidence should be package-local in `src/pyAppGen/pbcs/research_grants_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 13. Conflict of interest and key person disclosure gating
 
-### 13. Agent-safe CRUD execution for Grant Proposal
+**Justification:** Proposal and award execution both depend on current disclosure status for named investigators. The PBC needs a direct domain link between personnel assignments and disclosure readiness.
 
-**Justification:** The PBC agent must be a first-class operator but never a hidden bypass around RBAC, rules, or owned datastore boundaries.
+**Improvement:** Add key person roster support that checks disclosure completion, training status, and sponsor-specific key person requirements before proposal submission and award activation. Keep the roster versioned so changes after submission remain auditable.
 
-**Improvement:** Add a professional chatbot skill for `grant_proposal` that can create, update, correct, close, and annotate records only through policy-checked commands, approval gates, and previewed diffs. Tie the behavior to `research_grants_management_create_grant_proposal_workflow` where applicable, and make it visible in `ResearchGrantsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Roster change history, blocked-routing tests for expired disclosure, UI warnings on incomplete key person packets, and release evidence showing who was named at submission, award setup, and amendment time.
 
-**Acceptance evidence:** Skill manifests, permission tests, preview/confirm flows, blocked-action evidence, and audit events for every assistant mutation. The evidence should be package-local in `src/pyAppGen/pbcs/research_grants_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 14. Export control and restricted research screening
 
-### 14. Workbench persona coverage for Research Award
+**Justification:** Research awards can create export control, sanctions, or publication restriction issues that should be surfaced before acceptance. These controls belong inside domain intake, not as post hoc email threads.
 
-**Justification:** A generic detail page underserves the domain; each role needs the exact controls and evidence they use daily.
+**Improvement:** Add restricted research screening for sponsor clauses, foreign participation, controlled technology, publication restrictions, and shipping obligations. Route flagged records to specialized review while preserving the original sponsor language that triggered the flag.
 
-**Improvement:** Design dedicated workbench panels for `research_award`: operator queue, supervisor approvals, analyst exceptions, auditor evidence, configuration owner, and agent-assistance review. Tie the behavior to `research_grants_management_record_research_award_workflow` where applicable, and make it visible in `ResearchGrantsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Screening fixtures with clause-based flags, routed exception queues, detail-page evidence of the exact triggering language, and release evidence showing resolution before award activation when a restriction applies.
 
-**Acceptance evidence:** UI contract entries, route tests, empty/error/loading states, and permission-aware action availability. The evidence should be package-local in `src/pyAppGen/pbcs/research_grants_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 15. Sponsor-specific compliance schedule generation
 
-### 15. Cross-PBC dependency contracts for Sponsor Budget
+**Justification:** Compliance is not a static checklist. Many awards generate recurring obligations tied to dates, milestones, carryforward thresholds, or participant enrollment.
 
-**Justification:** Composable packages fail when hidden table coupling enters the domain model.
+**Improvement:** Generate recurring and one-time `compliance_requirement` records from sponsor terms, award type, protocol dependencies, and institutional policy. Include due date calculation rules, escalation windows, and owner assignment.
 
-**Improvement:** Represent dependencies for `sponsor_budget` through declared APIs, consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, and projections rather than shared tables, with explicit freshness, ownership, and fallback behavior. Tie the behavior to `research_grants_management_create_grant_proposal_workflow` where applicable, and make it visible in `ResearchGrantsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Schedule generation tests for annual, quarterly, milestone-driven, and one-time obligations, workbench views that show upcoming deadlines, and release evidence that a newly accepted award creates the expected compliance calendar automatically.
 
-**Acceptance evidence:** Dependency manifests, contract tests, stale dependency alerts, and no foreign-table references in generated artifacts. The evidence should be package-local in `src/pyAppGen/pbcs/research_grants_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 16. Award notice extraction and negotiation redlines
 
-### 16. API completeness and versioning for Compliance Requirement
+**Justification:** Award negotiation depends on the exact terms in the sponsor notice or agreement. The PBC needs to retain both the extracted facts and the unresolved redlines.
 
-**Justification:** Complete domain coverage requires both command and query surfaces, not only happy-path create endpoints.
+**Improvement:** Extend `research_award` intake to capture award amount, project period, obligated amount, options, reporting schedule, publication constraints, data rights, indemnification concerns, governing law concerns, and unresolved negotiation issues. Link extracted terms directly to uploaded notice pages or clauses.
 
-**Improvement:** Expand APIs beyond POST /grant-proposals, POST /research-awards, POST /sponsor-budgets to cover search, validation-only commands, simulation, bulk intake, exception closure, evidence export, projection reads, and idempotent corrections. Tie the behavior to `research_grants_management_record_research_award_workflow` where applicable, and make it visible in `ResearchGrantsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Structured extraction fixtures from multiple notice formats, unresolved-redline queues, UI evidence that links terms back to source snippets, and release evidence showing final accepted terms versus initial notice language.
 
-**Acceptance evidence:** OpenAPI-style route manifests, backward-compatible version tests, deprecation metadata, and idempotency assertions. The evidence should be package-local in `src/pyAppGen/pbcs/research_grants_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 17. Award setup readiness checklist
 
-### 17. Typed emitted-event expansion for Subaward
+**Justification:** Award acceptance is not the same as operational readiness. Spending, effort, subawards, compliance, and sponsor contacts must be complete before the award should go live.
 
-**Justification:** Consumers should understand what happened in Research Grants Management without parsing opaque payloads.
+**Improvement:** Add a readiness checklist to `research_award` covering account setup, budget activation, compliance dependencies, effort allocations, subaward readiness, deliverable schedule, contact roles, and amendment inheritance. Prevent transition to active execution until gating items are complete or explicitly excepted.
 
-**Improvement:** Replace generic lifecycle emissions with typed events for each meaningful `subaward` transition, exception, approval, correction, simulation result, and downstream handoff. Tie the behavior to `research_grants_management_create_grant_proposal_workflow` where applicable, and make it visible in `ResearchGrantsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Checklist completion tests, blocked activation fixtures, workbench readiness score display, and release evidence showing who cleared each readiness gate before the award moved to active.
 
-**Acceptance evidence:** Event schema tests, event examples, compatibility checks, and emitted-event coverage in release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/research_grants_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 18. Amendment and modification version chain
 
-### 18. Consumed-event handlers for Milestone Report
+**Justification:** Awards evolve through supplements, carryforwards, rebudgets, extensions, and term changes. A single mutable award record hides what changed and why.
 
-**Justification:** A PBC is composable only when incoming events affect its own domain state predictably and safely.
+**Improvement:** Add a versioned amendment model linked to `research_award` that records type, sponsor document, effective date, changed terms, financial impact, compliance impact, and downstream tasks. Preserve a full amendment chain instead of overwriting the award baseline.
 
-**Improvement:** Implement idempotent handlers for consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged that update projections, open dependency exceptions, recalculate risk, and preserve source event lineage. Tie the behavior to `research_grants_management_record_research_award_workflow` where applicable, and make it visible in `ResearchGrantsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Amendment sequence tests, UI timeline evidence for superseded versus active terms, replayable event history for amended awards, and release evidence proving the current award state can be reconstructed from the chain.
 
-**Acceptance evidence:** Duplicate-event tests, handler side-effect boundaries, dead-letter fixtures, and lineage links back to source events. The evidence should be package-local in `src/pyAppGen/pbcs/research_grants_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 19. Pre-award spending and at-risk cost controls
 
-### 19. Retry and dead-letter operations for Effort Certification
+**Justification:** Institutions often allow spending before the final award arrives, but those transactions carry real financial exposure. The PBC should treat them as governed exceptions, not informal notes.
 
-**Justification:** Dead letters are not just plumbing; they are domain work queues that can block research proposals, awards, budgets, compliance, milestones, subawards, effort, and sponsor reporting.
+**Improvement:** Add pre-award spending requests with justification, anticipated sponsor terms, allowable cost window, responsible approvers, and conversion logic if the final award differs from the expectation. Tie approved requests to subsequent award setup and close them automatically when the final award is recorded.
 
-**Improvement:** Create operational tools for retrying, quarantining, explaining, and resolving dead-lettered `effort_certification` events with max-attempt policy, poison-message detection, and replay safety. Tie the behavior to `research_grants_management_create_grant_proposal_workflow` where applicable, and make it visible in `ResearchGrantsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Exception approval fixtures, blocked spending tests for expired windows, conversion tests when the award arrives, and release evidence that every pre-award exception resolves to either an award, reversal, or documented loss decision.
 
-**Acceptance evidence:** Dead-letter workbench, retry eligibility tests, replay audit proof, and operator action logs. The evidence should be package-local in `src/pyAppGen/pbcs/research_grants_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 20. Rebudgeting and prior approval detector
 
-### 20. RBAC and attribute policy for Research Grants Management Policy Rule
+**Justification:** Budget drift is common during execution, and sponsors differ on when rebudgeting is allowed without prior approval. The PBC needs proactive detection before noncompliant spending occurs.
 
-**Justification:** High-impact domain operations need finer controls than generic RBAC grants.
+**Improvement:** Compare actual and planned budget movement against sponsor and institutional thresholds for category transfers, scope changes, participant support movement, and salary cap effects. Route detected prior-approval cases into an amendment workflow instead of letting them remain informal.
 
-**Improvement:** Extend permissions for `research_grants_management_policy_rule` from coarse read/create/update/admin to action-level and attribute-aware policies based on role, tenant, jurisdiction, monetary/materiality threshold, and exception severity. Tie the behavior to `research_grants_management_record_research_award_workflow` where applicable, and make it visible in `ResearchGrantsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Threshold rule tests, blocked rebudget scenarios, operator-facing explanation of the triggering threshold, and release evidence that prior-approval-required changes cannot be finalized without the related amendment record.
 
-**Acceptance evidence:** Permission matrix docs, ABAC policy tests, denied-action UI states, and assistant skill permission checks. The evidence should be package-local in `src/pyAppGen/pbcs/research_grants_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 21. No-cost extension workflow
 
-### 21. Continuous control testing for Research Grants Management Runtime Parameter
+**Justification:** No-cost extensions are one of the most common award changes and often require sponsor narrative, unobligated balance analysis, and compliance checks. They deserve a dedicated path rather than a generic amendment note.
 
-**Justification:** Controls should run during operations, not only during release audit or manual review.
+**Improvement:** Add a workflow that gathers unobligated balance, scientific justification, revised end date, remaining deliverables, sponsor notice timing, and updated compliance dependencies. Carry approved extensions into reporting schedules, effort windows, and closeout logic.
 
-**Improvement:** Embed control assertions for `research_grants_management_runtime_parameter` that continuously test segregation of duties, required approvals, stale exceptions, policy drift, duplicate records, and boundary violations. Tie the behavior to `research_grants_management_create_grant_proposal_workflow` where applicable, and make it visible in `ResearchGrantsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** End-date extension tests, sponsor notice packet generation, updated schedule projections, and release evidence that deliverable due dates and closeout windows reflow correctly after an extension.
 
-**Acceptance evidence:** Control dashboards, failing-control events, test fixtures, and release evidence tied to `research_grants_management_control_assertion` records. The evidence should be package-local in `src/pyAppGen/pbcs/research_grants_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 22. Subaward entity profile and risk tiering
 
-### 22. Cryptographic audit proofing for Research Grants Management Schema Extension
+**Justification:** `subaward` handling is incomplete without persistent subrecipient profile data. Institutions need risk-based monitoring informed by organization history and documentation quality.
 
-**Justification:** Better-than-world-class auditability requires proof of integrity, not merely logs stored in mutable tables.
+**Improvement:** Add an owned subrecipient profile with legal name history, identifier set, contact roles, audit status, monitoring tier, foreign status, indemnification concerns, and document expiration dates. Use the profile to set initial review depth and monitoring cadence.
 
-**Improvement:** Hash-chain material `research_grants_management_schema_extension` decisions, documents, emitted events, and release-evidence snapshots to make tampering visible without exposing sensitive payloads. Tie the behavior to `research_grants_management_record_research_award_workflow` where applicable, and make it visible in `ResearchGrantsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Profile lifecycle tests, risk-tier assignment fixtures, workbench views showing subrecipient status, and release evidence demonstrating that a high-risk profile produces additional review tasks before subaward issuance.
 
-**Acceptance evidence:** Proof manifests, verification APIs, redacted proof exports, and audit-ledger handoff events. The evidence should be package-local in `src/pyAppGen/pbcs/research_grants_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 23. Subaward scope, budget, and reconciliation controls
 
-### 23. Privacy, consent, and secrecy controls for Research Grants Management Control Assertion
+**Justification:** A subaward is not complete if the scope of work, budget, and prime award terms are misaligned. Mismatch at issuance creates downstream invoice and deliverable disputes.
 
-**Justification:** Complete domain coverage must account for protected data and restricted operational evidence.
+**Improvement:** Add reconciliation checks that compare subaward scope dates, budget categories, indirect cost treatment, reporting dates, and compliance terms against the prime `research_award`. Block issuance when a prime-to-sub mismatch remains unresolved.
 
-**Improvement:** Add field-level privacy classifications for `research_grants_management_control_assertion`, consent checks, masking rules, retention schedules, legal holds, and assistant redaction policies. Tie the behavior to `research_grants_management_create_grant_proposal_workflow` where applicable, and make it visible in `ResearchGrantsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Prime-to-sub comparison tests, blocked issuance scenarios, UI evidence of specific mismatches, and release evidence proving the executed subaward package matches the active award and amendment chain.
 
-**Acceptance evidence:** Retention tests, masked UI snapshots, consent-blocked mutation fixtures, and export controls. The evidence should be package-local in `src/pyAppGen/pbcs/research_grants_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 24. Subrecipient monitoring cadence and evidence
 
-### 24. Multi-tenant operating model for Research Grants Management Governed Model
+**Justification:** Monitoring obligations continue after issuance. The PBC needs to track invoice review, technical progress, audit follow-up, and corrective actions over the subaward lifetime.
 
-**Justification:** The PBC should scale across organizations while preserving independent policy and compliance boundaries.
+**Improvement:** Generate monitoring tasks from subrecipient risk tier, invoice pattern, audit results, and sponsor terms. Store monitoring outcomes, overdue actions, and escalations as part of the `subaward` record family.
 
-**Improvement:** Support tenant-specific `research_grants_management_governed_model` rules, data residency, encryption context, configuration, seed data, and release evidence without allowing cross-tenant leakage. Tie the behavior to `research_grants_management_record_research_award_workflow` where applicable, and make it visible in `ResearchGrantsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Monitoring schedule tests, overdue escalation events, workbench queues for monitoring tasks, and release evidence that a high-risk subrecipient produces more frequent review checkpoints than a low-risk one.
 
-**Acceptance evidence:** Tenant isolation tests, tenant-scoped parameters, key-rotation evidence, and cross-tenant negative fixtures. The evidence should be package-local in `src/pyAppGen/pbcs/research_grants_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 25. Deliverable dependency graph
 
-### 25. Schema evolution and extension registry for Grant Proposal
+**Justification:** `milestone_report` should represent more than isolated due dates. Deliverables often depend on protocol approval, recruitment, subcontract milestones, or earlier sponsor submissions.
 
-**Justification:** Domain teams will add fields; the PBC must evolve without breaking APIs, events, or workbench projections.
+**Improvement:** Add a dependency graph for technical, financial, and administrative deliverables with predecessor tasks, gating conditions, contingency paths, and owner roles. Surface blocked-versus-ready deliverables in the workbench and detail pages.
 
-**Improvement:** Make schema extensions for `grant_proposal` first-class with compatibility checks, migration previews, projection backfills, field ownership, and rollback metadata. Tie the behavior to `research_grants_management_create_grant_proposal_workflow` where applicable, and make it visible in `ResearchGrantsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Dependency graph fixtures, blocked deliverable tests, UI evidence for critical path display, and release evidence showing late upstream tasks automatically reforecast downstream sponsor obligations.
 
-**Acceptance evidence:** Extension registry UI, compatibility tests, migration dry-runs, and backfill release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/research_grants_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 26. Technical progress reporting pack
 
-### 26. Master data quality gates for Research Award
+**Justification:** Sponsor progress reports often require a repeatable package of accomplishments, deviations, publications, personnel updates, and future work. Operators need a structured assembly path rather than ad hoc document collection.
 
-**Justification:** Many research grants management errors begin as bad reference data; the PBC should catch them before workflow execution.
+**Improvement:** Extend `milestone_report` to assemble technical report packets from award metadata, proposal commitments, deliverable status, publications, participant enrollment, and amendment context. Support draft, review, sponsor-submitted, and sponsor-accepted states.
 
-**Improvement:** Define reference-data contracts for `research_award`: canonical codes, parties, locations, classifications, calendars, units, currencies, products, assets, or service categories as relevant to the domain. Tie the behavior to `research_grants_management_record_research_award_workflow` where applicable, and make it visible in `ResearchGrantsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Technical packet generation tests, state transition evidence for draft to submitted, UI evidence of unresolved content gaps, and release evidence including a complete technical report scenario with source traceability.
 
-**Acceptance evidence:** Reference validation fixtures, stale-code warnings, mapping tables, and dependency freshness indicators. The evidence should be package-local in `src/pyAppGen/pbcs/research_grants_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 27. Financial sponsor reporting pack
 
-### 27. Bulk operations and correction workflows for Sponsor Budget
+**Justification:** Sponsor financial reporting depends on the same award facts as spending controls, but it has its own timing, format, and reconciliation requirements. It should not be implicit in generic accounting exports.
 
-**Justification:** Enterprise-scale Research Grants Management users cannot operate one record at a time.
+**Improvement:** Add reporting views that calculate reportable expenditures, commitments, cost share, program income, and unobligated balance by sponsor reporting period. Preserve sponsor-specific reporting basis and line mapping as governed configuration.
 
-**Improvement:** Add bulk load, bulk validate, bulk approve, and bulk correction workflows for `sponsor_budget` with partial success, row-level errors, resumability, and rollback. Tie the behavior to `research_grants_management_create_grant_proposal_workflow` where applicable, and make it visible in `ResearchGrantsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Period-close report fixtures, reconciliation tests against award and budget totals, UI evidence showing basis and mapping used, and release evidence that a report package can be reproduced after an amendment or late adjustment.
 
-**Acceptance evidence:** CSV/API batch fixtures, resumable job state, row-level audit evidence, and assistant-generated correction suggestions. The evidence should be package-local in `src/pyAppGen/pbcs/research_grants_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 28. Effort reporting boundary and certification windows
 
-### 28. Lifecycle collaboration and tasking for Compliance Requirement
+**Justification:** `effort_certification` belongs in this PBC only to the extent that award commitments, distribution readiness, and certification status affect research award governance. Payroll ownership and payroll edits stay outside the boundary.
 
-**Justification:** Domain collaboration should live inside the PBC boundary and remain auditable with the record it affects.
+**Improvement:** Add effort commitment snapshots, certification periods, named certifiers, exception flags, and certification status tracking tied to active awards and key personnel. Make the boundary explicit: this PBC records award-side obligations and certification results, not payroll source transactions.
 
-**Improvement:** Attach tasks, comments, ownership, due dates, handoffs, and escalation threads to `compliance_requirement` without leaking into external shared task tables. Tie the behavior to `research_grants_management_record_research_award_workflow` where applicable, and make it visible in `ResearchGrantsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Boundary documentation in release evidence, certification period tests, workbench warnings for overdue certification, and fixtures proving award activation and closeout logic respond to certification status without mutating external payroll records.
 
-**Acceptance evidence:** Task tables, comment audit history, notification events, escalation SLAs, and role-specific task queues. The evidence should be package-local in `src/pyAppGen/pbcs/research_grants_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 29. Payroll-to-award reconciliation exceptions
 
-### 29. SLA and service-level governance for Subaward
+**Justification:** Even with a clean effort boundary, the PBC still needs to detect when labor charged or distributed against an award conflicts with commitments. Otherwise effort risk stays hidden until audit or certification failure.
 
-**Justification:** Users need to know when research proposals, awards, budgets, compliance, milestones, subawards, effort, and sponsor reporting is late, blocked, or at risk before customer or regulator impact.
+**Improvement:** Add exception records that compare inbound labor summaries to planned effort, salary cap rules, and certification windows. Route discrepancies into investigator and administrator queues with required resolution reason codes.
 
-**Improvement:** Define SLAs for `subaward` across intake, validation, approval, exception resolution, event handling, downstream projection refresh, and release-evidence generation. Tie the behavior to `research_grants_management_create_grant_proposal_workflow` where applicable, and make it visible in `ResearchGrantsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Reconciliation exception fixtures, queue views with aging, tests for salary-cap and over-commitment cases, and release evidence showing how an exception is opened, resolved, and reflected in award risk indicators.
 
-**Acceptance evidence:** SLA breach events, timers, configurable calendars, workbench aging buckets, and tests for pause/resume behavior. The evidence should be package-local in `src/pyAppGen/pbcs/research_grants_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 30. Cost transfer review and late-justification controls
 
-### 30. Operational analytics cockpit for Milestone Report
+**Justification:** Cost transfers are high-scrutiny events in sponsored research. The PBC should require the documentation trail that explains why the cost was moved and why it was not charged correctly the first time.
 
-**Justification:** World-class operations require leading indicators, not only record counts.
+**Improvement:** Add a cost transfer object linked to `research_award` and `sponsor_budget` that records transfer date, original charge context, corrected destination, justification narrative, lateness reason, and approvals. Apply stricter routing when the transfer exceeds institutional timeliness thresholds.
 
-**Improvement:** Build analytics for `milestone_report`: throughput, backlog, aging, approval latency, exception rate, risk distribution, automation acceptance, correction rate, and downstream dependency health. Tie the behavior to `research_grants_management_record_research_award_workflow` where applicable, and make it visible in `ResearchGrantsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Late-transfer rule tests, approval chain fixtures, workbench evidence of pending and approved transfers, and release evidence showing that every late transfer carries justification and approver traceability.
 
-**Acceptance evidence:** Metric definitions, projection tests, drill-through routes, export APIs, and anomaly overlays. The evidence should be package-local in `src/pyAppGen/pbcs/research_grants_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 31. Participant support and stipend restrictions
 
-### 31. Decision intelligence and recommendations for Effort Certification
+**Justification:** Participant support, stipends, and trainee-related costs often carry sponsor restrictions that differ from ordinary travel or supplies. These distinctions must be enforced at budget and execution time.
 
-**Justification:** The PBC should help expert users decide faster while showing evidence and uncertainty.
+**Improvement:** Add budget and amendment rules that preserve restricted categories, prevent unauthorized rebudgeting, and tag awards that require participant support monitoring. Surface these restrictions in proposal review, budget change requests, and sponsor reporting.
 
-**Improvement:** Generate ranked recommendations for `effort_certification` such as next best action, likely resolution, required evidence, policy adjustment, staffing/capacity response, or downstream handoff. Tie the behavior to `research_grants_management_create_grant_proposal_workflow` where applicable, and make it visible in `ResearchGrantsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Restricted-category fixtures, blocked rebudget tests, UI evidence for sponsor-restricted categories, and release evidence demonstrating that participant support balances remain separately traceable from proposal through closeout.
 
-**Acceptance evidence:** Recommendation explanations, confidence intervals, feedback capture, model governance records, and rejection reasons. The evidence should be package-local in `src/pyAppGen/pbcs/research_grants_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 32. Equipment, capital, and fabrication approval boundary
 
-### 32. Quality and completeness scoring for Research Grants Management Policy Rule
+**Justification:** Capital-like purchases often trigger sponsor prior approval, institutional tagging, or fabrication tracking requirements. The PBC should know the grant-facing obligations even if procurement systems own the downstream purchase record.
 
-**Justification:** Operators should see whether a record is truly ready, not just technically saved.
+**Improvement:** Add a compliance and budget rule set for equipment, capitalized items, and fabrication plans that records required sponsor approval, justification, location, and award linkage. Keep the boundary explicit by storing approval obligations and outcomes, not the full procurement transaction lifecycle.
 
-**Improvement:** Score each `research_grants_management_policy_rule` record for completeness, consistency, policy readiness, dependency readiness, evidence sufficiency, and downstream composability. Tie the behavior to `research_grants_management_record_research_award_workflow` where applicable, and make it visible in `ResearchGrantsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Approval requirement fixtures, blocked budget and rebudget scenarios, UI evidence separating grant approval from downstream purchasing, and release evidence documenting the boundary and the linked approval record.
 
-**Acceptance evidence:** Scoring rules, missing-evidence lists, readiness badges, and blocking criteria in command handlers. The evidence should be package-local in `src/pyAppGen/pbcs/research_grants_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 33. Human subjects adverse event and protocol deviation linkage
 
-### 33. End-to-end scenario library for Research Grants Management Runtime Parameter
+**Justification:** Human subjects awards can encounter deviations or adverse events that materially affect deliverables, reporting, or continued funding. The award system must react without pretending to adjudicate the event itself.
 
-**Justification:** Release evidence is stronger when every important research grants management behavior has executable examples.
+**Improvement:** Add read-only compliance flags and escalation tasks for protocol deviations, suspensions, or adverse event impacts that affect award execution or sponsor reporting. Link the flag to the relevant award, deliverable, or milestone without storing sensitive case detail beyond what the award office needs.
 
-**Improvement:** Create seeded scenarios for `research_grants_management_runtime_parameter`: normal flow, urgent path, exception path, corrected path, duplicate path, late event path, and audit export path. Tie the behavior to `research_grants_management_create_grant_proposal_workflow` where applicable, and make it visible in `ResearchGrantsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Escalation fixtures, blocked deliverable or continuation scenarios, UI evidence of impacted awards, and release evidence showing how a compliance event changed reporting obligations and internal review queues.
 
-**Acceptance evidence:** Scenario seed data, runtime smoke coverage, generated-app fixtures, and story-level workbench screenshots/contracts. The evidence should be package-local in `src/pyAppGen/pbcs/research_grants_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 34. Data use, biosafety, and controlled data obligations
 
-### 34. Domain ontology and terminology model for Research Grants Management Schema Extension
+**Justification:** Many research awards carry obligations beyond IRB, including data use terms, biosafety review, controlled data access, and repository submission rules. These need structured representation in `compliance_requirement`.
 
-**Justification:** Precise vocabulary prevents the PBC from misclassifying specialist documents or user instructions.
+**Improvement:** Add obligation templates for biosafety approvals, data use agreement dependencies, controlled data handling, repository deposits, and training prerequisites. Track due dates, responsible roles, and whether the obligation gates spending, data access, publication, or closeout.
 
-**Improvement:** Add an ontology for `research_grants_management_schema_extension` terms, synonyms, classifications, relationships, allowed values, and phrase mappings used by the assistant and UI. Tie the behavior to `research_grants_management_record_research_award_workflow` where applicable, and make it visible in `ResearchGrantsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Obligation generation fixtures, UI evidence for obligation type and gating effect, tests showing different gating behavior by obligation, and release evidence that an award’s compliance schedule reflects all active obligations.
 
-**Acceptance evidence:** Ontology files, assistant parsing tests, UI glossary, and mapping evidence for domain-specific abbreviations. The evidence should be package-local in `src/pyAppGen/pbcs/research_grants_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 35. Milestone and amendment timeline UI
 
-### 35. Advanced search and investigation for Research Grants Management Control Assertion
+**Justification:** Award operators need a single visual timeline to understand proposal submission, award acceptance, amendments, deliverables, compliance deadlines, and closeout. The current declared UI fragments do not yet show that domain storyline.
 
-**Justification:** Investigators and operators need fast, explainable retrieval across the whole domain surface.
+**Improvement:** Add a timeline view in `ResearchGrantsManagementDetail` that layers proposal events, award versions, amendment effective dates, deliverables, subaward milestones, and compliance due dates. Support zooming from portfolio view to individual record chronology.
 
-**Improvement:** Provide search across `research_grants_management_control_assertion` records, events, documents, exceptions, tasks, comments, and audit proofs with filters for tenant, status, risk, date, party, and dependency. Tie the behavior to `research_grants_management_create_grant_proposal_workflow` where applicable, and make it visible in `ResearchGrantsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** UI screenshots or snapshots for portfolio and record timelines, event ordering tests, timeline drill-through behavior, and release evidence showing the same amended award before and after a no-cost extension.
 
-**Acceptance evidence:** Search index contracts, result provenance, permission-filtered queries, and stale-index warnings. The evidence should be package-local in `src/pyAppGen/pbcs/research_grants_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 36. PI, departmental administrator, and central office workbench views
 
-### 36. Reconciliation and closure controls for Research Grants Management Governed Model
+**Justification:** Principal investigators, departmental administrators, and central research offices do not work the same queue. A single undifferentiated workbench hides the actions each role must take.
 
-**Justification:** Closure is not complete until the PBC can prove no material domain work remains unresolved.
+**Improvement:** Add role-specific queue presets and page layouts in `ResearchGrantsManagementWorkbench` for investigators, department research administrators, and central sponsored programs staff. Each view should prioritize the records, warnings, and actions that matter to that role.
 
-**Improvement:** Add reconciliation workflows that compare `research_grants_management_governed_model` state against consumed events, external projections, expected totals/counts, approvals, and release evidence before closure. Tie the behavior to `research_grants_management_record_research_award_workflow` where applicable, and make it visible in `ResearchGrantsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Permission-aware UI snapshots, queue composition tests by role, route-level access checks using the declared permissions, and release evidence showing the same record as seen by each role with different actions exposed.
 
-**Acceptance evidence:** Reconciliation reports, variance thresholds, closure blockers, and AppGen-X closure events. The evidence should be package-local in `src/pyAppGen/pbcs/research_grants_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 37. Calendar, alert, and aging UI
 
-### 37. Regulatory and policy reporting for Grant Proposal
+**Justification:** Grants operations lives on dates. Operators need deadline awareness without leaving the PBC for spreadsheets or inbox searches.
 
-**Justification:** World-class PBCs turn operational evidence into credible reporting without spreadsheet reconstruction.
+**Improvement:** Add calendar, alert, and aging panels that surface proposal deadlines, deliverable due dates, compliance expirations, subaward monitoring tasks, certification windows, and closeout milestones. Support saved filters for sponsor, unit, investigator, and risk tier.
 
-**Improvement:** Generate domain reporting packs for `grant_proposal` covering statutory, contractual, operational, board, customer, or regulator evidence depending on real-time movement control, capacity commitments, disruptions, asset readiness, safety windows, route constraints, and operational handoff integrity. Tie the behavior to `research_grants_management_create_grant_proposal_workflow` where applicable, and make it visible in `ResearchGrantsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** UI evidence for calendar and aging panels, alert generation tests, saved-filter behavior, and release evidence showing a portfolio with upcoming deadlines, overdue tasks, and role-specific alerts.
 
-**Acceptance evidence:** Report schemas, redaction rules, traceable metric sources, and approval/export audit events. The evidence should be package-local in `src/pyAppGen/pbcs/research_grants_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 38. Assistant skill for funding opportunity triage
 
-### 38. Carbon and resource awareness for Research Award
+**Justification:** The declared assistant panel is most useful when it performs bounded domain work. Opportunity triage is a high-value, low-autonomy task that fits governed assistance well.
 
-**Justification:** Sustainability evidence should be embedded in operations instead of treated as an after-the-fact report.
+**Improvement:** Add an assistant skill that summarizes a funding announcement, extracts eligibility and deadline facts, highlights unusual terms, and proposes an opportunity record draft for human review. Keep the final registration step explicitly user-approved.
 
-**Improvement:** Where relevant, attach carbon, energy, water, travel, capacity, compute, or resource-footprint metadata to `research_award` decisions and batch operations. Tie the behavior to `research_grants_management_record_research_award_workflow` where applicable, and make it visible in `ResearchGrantsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Prompt-contract fixtures, draft-versus-approved state evidence, UI evidence in `ResearchGrantsManagementAssistantPanel`, and release evidence showing assistant output side by side with the accepted opportunity record.
 
-**Acceptance evidence:** Footprint fields, scheduling parameters, exception rules, and dashboards that expose operational tradeoffs. The evidence should be package-local in `src/pyAppGen/pbcs/research_grants_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 39. Assistant skill for proposal compliance review
 
-### 39. Resilience and offline behavior for Sponsor Budget
+**Justification:** Compliance review often requires comparing many attachments and sponsor rules quickly. A guided assistant can accelerate review if every suggestion is traceable.
 
-**Justification:** Real operations keep moving during outages; the PBC must preserve correctness when dependencies are unavailable.
+**Improvement:** Add an assistant skill that inspects proposal sections and attachments, maps them to the proposal compliance matrix, and proposes missing-item findings with clause references. Require users to accept, reject, or edit each finding before it changes official status.
 
-**Improvement:** Define resilience modes for `sponsor_budget`: degraded dependency mode, offline draft capture, delayed event replay, conflict detection, and safe recovery after partial failure. Tie the behavior to `research_grants_management_create_grant_proposal_workflow` where applicable, and make it visible in `ResearchGrantsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Clause-linked assistant review fixtures, human disposition audit trail, UI evidence for accepted and rejected findings, and release evidence that shows assistant suggestions did not become official without user action.
 
-**Acceptance evidence:** Offline fixtures, replay tests, conflict queues, recovery logs, and user-visible degraded-mode warnings. The evidence should be package-local in `src/pyAppGen/pbcs/research_grants_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 40. Assistant skill for budget drafting and rebudget simulation
 
-### 40. Human-in-the-loop automation for Compliance Requirement
+**Justification:** Budget assembly and rebudget planning benefit from guided calculations and scenario comparison. This is useful only if the assistant is constrained by sponsor and institutional rules already held in the PBC.
 
-**Justification:** Automation should accelerate research proposals, awards, budgets, compliance, milestones, subawards, effort, and sponsor reporting while preserving accountability for high-risk decisions.
+**Improvement:** Add an assistant skill that drafts budget periods, estimates fringe and indirect cost, explains flagged categories, and simulates rebudget options against prior-approval rules. Keep all results as drafts until a user commits them to `sponsor_budget`.
 
-**Improvement:** Set explicit automation boundaries for `compliance_requirement`: auto-approve, auto-reject, suggest-only, require-review, and block-until-evidence states with policy-based routing. Tie the behavior to `research_grants_management_record_research_award_workflow` where applicable, and make it visible in `ResearchGrantsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Draft budget generation fixtures, scenario comparison outputs, UI evidence showing draft status and rule explanations, and release evidence that accepted budget drafts preserve the assistant’s underlying assumptions.
 
-**Acceptance evidence:** Automation policy tests, reviewer queues, override reasons, and assistant action audit trails. The evidence should be package-local in `src/pyAppGen/pbcs/research_grants_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 41. Assistant skill for award and amendment summarization
 
-### 41. Package discovery and fit scoring for Subaward
+**Justification:** Award notices and amendments are dense, and central offices need quick summaries before they route work. Summaries must preserve links back to the authoritative source.
 
-**Justification:** Users selecting PBCs need transparent fit reasoning, especially when domains are adjacent but not overlapping.
+**Improvement:** Add an assistant skill that produces structured summaries of award notices and amendments, including money, period, reporting obligations, subaward implications, and risky clauses. Anchor every extracted fact to a source snippet or uploaded page reference.
 
-**Improvement:** Improve package metadata so composition can explain when `research_grants_management` fits a prompt, what entities it owns, what APIs/events it exposes, and what adjacent PBCs it depends on. Tie the behavior to `research_grants_management_create_grant_proposal_workflow` where applicable, and make it visible in `ResearchGrantsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Summarization fixtures across notice formats, UI evidence for snippet-linked facts, accepted-summary audit trails, and release evidence proving that a summary can be regenerated from the same source document and version.
 
-**Acceptance evidence:** Discovery manifests, prompt-selection tests, overlap rationale links, and composition DSL examples. The evidence should be package-local in `src/pyAppGen/pbcs/research_grants_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 42. Event taxonomy for the grant lifecycle
 
-### 42. Configuration deployment pipeline for Milestone Report
+**Justification:** The current emitted event set is too coarse for proposal, award, amendment, reporting, compliance, and closeout orchestration. Consumers need domain-specific events to build reliable downstream reactions.
 
-**Justification:** Configuration changes can materially alter research grants management; they need the same discipline as code releases.
+**Improvement:** Expand the event catalog with lifecycle events such as opportunity registered, proposal routed, budget validated, compliance obligation created, award activated, amendment recorded, subaward issued, milestone submitted, effort certification overdue, sponsor report filed, and closeout completed. Keep event names stable and explicitly versioned.
 
-**Improvement:** Add configuration promotion for `milestone_report` across draft, test, approved, active, deprecated, and rollback states with impact analysis before activation. Tie the behavior to `research_grants_management_record_research_award_workflow` where applicable, and make it visible in `ResearchGrantsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Event catalog documentation, payload contract tests, outbox entries for representative scenarios, and release evidence demonstrating an end-to-end lifecycle with the expected event sequence and version markers.
 
-**Acceptance evidence:** Config diff views, approval workflows, simulation before activation, and rollback tests. The evidence should be package-local in `src/pyAppGen/pbcs/research_grants_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 43. Outbox idempotency and replay evidence for domain events
 
-### 43. Workbench command completeness for Effort Certification
+**Justification:** Richer events only help if they remain safe under retries, duplicate delivery, and projection rebuilds. Research operations cannot tolerate double-issued tasks or phantom sponsor filings.
 
-**Justification:** A PBC does not fully surface its capabilities if users must call hidden APIs for core work.
+**Improvement:** Tighten idempotency around proposal, award, subaward, report, and closeout events using deterministic keys, replay-safe handlers, and projection rebuild procedures. Capture replay evidence as a standard part of release validation.
 
-**Improvement:** Expose every high-value operation for `effort_certification` in the UI: create, validate, approve, simulate, correct, assign, export, retry, close, and audit-proof verification. Tie the behavior to `research_grants_management_create_grant_proposal_workflow` where applicable, and make it visible in `ResearchGrantsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Duplicate delivery tests, projection rebuild fixtures, replay logs tied to `AuditEventSealed`, and release evidence showing that repeated event delivery does not create duplicate domain actions.
 
-**Acceptance evidence:** UI action coverage tests, permission-aware disabled states, keyboard paths, and assistant handoff links. The evidence should be package-local in `src/pyAppGen/pbcs/research_grants_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 44. Risk scoring with explainable domain drivers
 
-### 44. Document packet and evidence vault for Research Grants Management Policy Rule
+**Justification:** The manifest already declares risk analytics and predictive capabilities, but risk scores are only useful if operators can see the grant-specific reasons behind them. Black-box warnings do not support accountable intervention.
 
-**Justification:** Documents often carry the legal or operational truth behind research proposals, awards, budgets, compliance, milestones, subawards, effort, and sponsor reporting.
+**Improvement:** Add explainable drivers for proposal risk, award execution risk, subaward risk, reporting risk, and closeout risk using overdue obligations, amendment churn, budget volatility, subrecipient issues, unresolved compliance flags, and certification lateness. Show driver history so operators can see why risk changed over time.
 
-**Improvement:** Create a governed evidence vault for `research_grants_management_policy_rule` documents, attachments, source spans, extracted fields, signatures, approvals, and retention labels. Tie the behavior to `research_grants_management_record_research_award_workflow` where applicable, and make it visible in `ResearchGrantsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Risk calculation fixtures, driver explanation UI evidence, trend history tests, and release evidence with one scenario per risk category showing the score and its contributing factors.
 
-**Acceptance evidence:** Evidence models, source-to-field lineage, signature validation, retention policies, and proof exports. The evidence should be package-local in `src/pyAppGen/pbcs/research_grants_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 45. Sponsor communication and correspondence ledger
 
-### 45. Data correction and amendment history for Research Grants Management Runtime Parameter
+**Justification:** Many critical grant decisions are made through sponsor correspondence, not just formal notices. The PBC needs a governed record of those communications when they affect proposal, award, or reporting decisions.
 
-**Justification:** World-class systems correct mistakes without rewriting history or confusing downstream consumers.
+**Improvement:** Add a correspondence ledger linked to opportunity, proposal, award, amendment, subaward, and report records. Capture date, sender role, recipient role, topic, commitment made, attached files, and whether the message changed deadlines, budget treatment, or reporting obligations.
 
-**Improvement:** Support formal amendments for `research_grants_management_runtime_parameter` that preserve original values, correction reason, approving actor, effective date, downstream event impacts, and replay behavior. Tie the behavior to `research_grants_management_create_grant_proposal_workflow` where applicable, and make it visible in `ResearchGrantsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Correspondence record fixtures, UI evidence showing communication history in context, tests that a correspondence-triggered deadline change updates the related task schedule, and release evidence for an award whose amendment path depended on sponsor email guidance.
 
-**Acceptance evidence:** Amendment tables, correction events, projection replay tests, and side-by-side before/after UI. The evidence should be package-local in `src/pyAppGen/pbcs/research_grants_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 46. Closeout readiness score
 
-### 46. External participant collaboration for Research Grants Management Schema Extension
+**Justification:** Closeout fails when unresolved deliverables, subawards, financial reports, invention statements, or effort certifications are discovered too late. Operators need an explicit readiness measure well before the end date.
 
-**Justification:** Many research grants management workflows require outside parties, but they must not gain direct access to internal tables.
+**Improvement:** Add a closeout readiness score that considers final deliverable status, subaward final invoice status, final technical report status, financial reconciliation, invention or patent obligations, certification completion, and record retention flags. Surface the score beginning well before the project end date.
 
-**Improvement:** Add controlled collaboration portals or API views for external participants related to `research_grants_management_schema_extension`, limited to scoped evidence submission, status checks, comments, and dispute responses. Tie the behavior to `research_grants_management_record_research_award_workflow` where applicable, and make it visible in `ResearchGrantsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Score calculation tests, workbench closeout queue snapshots, scenario fixtures showing readiness improving as tasks close, and release evidence with a near-expiration award that moves from not ready to ready.
 
-**Acceptance evidence:** Participant role policies, scoped tokens, submission audit trails, and inbound evidence validation. The evidence should be package-local in `src/pyAppGen/pbcs/research_grants_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 47. Final technical, financial, and invention closeout pack
 
-### 47. Advanced dependency freshness scoring for Research Grants Management Control Assertion
+**Justification:** Closeout requires a coordinated packet, not isolated final actions. The PBC should assemble the evidence package that proves the award is ready to close.
 
-**Justification:** A record may be valid locally but unsafe if dependency evidence is stale or incomplete.
+**Improvement:** Add a closeout pack that gathers final technical report, final financial report, subaward confirmations, equipment disposition notes, invention or patent reporting status, and sponsor correspondence affecting final deliverables. Track each item as draft, under review, submitted, accepted, or waived.
 
-**Improvement:** Score freshness and reliability of dependencies used by `research_grants_management_control_assertion`, including consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, referenced projections, configuration versions, and external submissions. Tie the behavior to `research_grants_management_create_grant_proposal_workflow` where applicable, and make it visible in `ResearchGrantsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Closeout pack assembly tests, UI evidence of item status, sponsor-submitted versus sponsor-accepted state transitions, and release evidence containing a complete closeout scenario with every required artifact linked.
 
-**Acceptance evidence:** Freshness indicators, blocking rules, stale-event simulations, and workbench dependency health panels. The evidence should be package-local in `src/pyAppGen/pbcs/research_grants_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 48. Retention, audit package, and record freeze
 
-### 48. Model governance and explainability for Research Grants Management Governed Model
+**Justification:** Closed awards still face audits, records requests, and sponsor inquiries. The PBC needs a defensible package and a freeze model that prevents quiet post-closeout mutation.
 
-**Justification:** Governed AI is mandatory for professional-grade automation in Research Grants Management.
+**Improvement:** Add post-closeout record retention rules, a generated audit package manifest, and a freeze state that permits only controlled corrective amendments with explicit audit trace. Include all core artifacts: proposal, award, amendments, reports, subaward evidence, compliance history, and correspondence ledger entries.
 
-**Improvement:** For every predictive or agentic feature around `research_grants_management_governed_model`, record model version, prompt or ruleset version, training/evaluation evidence, confidence, explanation, and human feedback. Tie the behavior to `research_grants_management_record_research_award_workflow` where applicable, and make it visible in `ResearchGrantsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** Freeze-state mutation tests, audit package manifest exports, corrective-amendment fixtures, and release evidence showing that a closed award can be exported and verified without reopening unrestricted editing.
 
-**Acceptance evidence:** Model cards, prompt/version manifests, feedback loops, drift tests, and audit proof for recommendations. The evidence should be package-local in `src/pyAppGen/pbcs/research_grants_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 49. Release evidence scenarios and domain fixtures
 
-### 49. High-scale partitioning and archival for Grant Proposal
+**Justification:** The manifest already declares `RELEASE_EVIDENCE.md`, but the domain needs evidence that reflects real grant lifecycles rather than generic CRUD checks. Release proof must show the PBC understands research administration.
 
-**Justification:** Better-than-world-class packages must remain operable after years of high-volume domain history.
+**Improvement:** Define release evidence scenarios covering opportunity intake, limited submission, proposal routing, budget validation, ethics dependency gating, award setup, amendment handling, subaward issuance, sponsor reporting, effort boundary behavior, and closeout. Back each scenario with stable fixtures and expected events.
 
-**Improvement:** Plan scale behavior for `grant_proposal`: tenant partitioning, archival policies, cold storage, retention-aware search, projection compaction, and large-batch replay. Tie the behavior to `research_grants_management_create_grant_proposal_workflow` where applicable, and make it visible in `ResearchGrantsManagementWorkbench` so operators do not need hidden scripts or raw table access.
+**Acceptance evidence:** A scenario index in `RELEASE_EVIDENCE.md`, reproducible fixtures, event-sequence assertions, UI snapshots for critical points, and a release checklist proving every declared scenario passed on the target version.
 
-**Acceptance evidence:** Partition tests, archive/retrieve fixtures, retention enforcement, and replay benchmarks. The evidence should be package-local in `src/pyAppGen/pbcs/research_grants_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+### 50. Go-live acceptance gates and operating runbooks
 
-### 50. Release gate expansion for Research Award
+**Justification:** A domain-deep backlog still needs a hard operational finish line. The PBC should not ship to active grant administration without explicit proof that proposal, award, reporting, and closeout flows are supportable.
 
-**Justification:** The PBC should not claim domain coverage unless release evidence proves the claim end to end.
+**Improvement:** Add go-live gates for permissions, data migration quality, event replay safety, assistant guardrails, reporting accuracy, closeout readiness behavior, and operator training. Pair the gates with runbooks for deadline misses, sponsor amendment surges, subrecipient monitoring escalation, and release rollback.
 
-**Improvement:** Expand release gates for `research_grants_management` so every schema, service, API, event, handler, UI, rule, parameter, agent skill, seed scenario, and improvement backlog item maps to executable evidence. Tie the behavior to `research_grants_management_record_research_award_workflow` where applicable, and make it visible in `ResearchGrantsManagementWorkbench` so operators do not need hidden scripts or raw table access.
-
-**Acceptance evidence:** Release audit checks, manifest traceability, generated-app smoke tests, and missing-capability blockers. The evidence should be package-local in `src/pyAppGen/pbcs/research_grants_management` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Go-live checklist results, operator runbook documents, rehearsal evidence for high-risk scenarios, and a signed release evidence section showing the package can support production use for the declared `research_grants_management` scope.
