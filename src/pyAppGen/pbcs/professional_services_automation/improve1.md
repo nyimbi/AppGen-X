@@ -2,314 +2,314 @@
 
 ## Purpose
 
-This backlog identifies 50 high-impact, high-value improvements for `professional_services_automation`. Each item is specific to the domain surface currently declared by the PBC and is intended to move the package beyond world-class breadth toward complete specialist-grade coverage.
+This backlog identifies 50 high-impact, high-value improvements for `professional_services_automation`. Each improvement is specific to professional services engagement governance, statements of work, staffing, skills, time and expense control, milestones, deliverables, billing readiness, utilization, margin, delivery risk, client acceptance, and services operations so the PBC can move toward complete specialist-grade domain coverage.
 
 ## Current Domain Evidence Used
 
-- Domain purpose: Owns services engagements, statements of work, staffing, skills, time, milestones, delivery risks, project financials, billing readiness, utilization, and margin controls.
-- Representative owned tables: `professional_services_automation_engagement`, `professional_services_automation_statement_of_work`, `professional_services_automation_engagement_role`, `professional_services_automation_consultant_skill_profile`, `professional_services_automation_staffing_request`, `professional_services_automation_staffing_assignment`, `professional_services_automation_time_entry`, `professional_services_automation_expense_link`, `professional_services_automation_milestone`, `professional_services_automation_deliverable`, `professional_services_automation_billing_schedule`, `professional_services_automation_billing_readiness_check`, ...
-- Representative operations/APIs: `create_engagement`, `register_statement_of_work`, `define_engagement_role`, `record_skill_profile`, `open_staffing_request`, `assign_staff`, `capture_time_entry`, `link_expense`, `track_milestone`, `submit_deliverable`, `create_billing_schedule`, `run_billing_readiness`, ...
-- Representative events: `EngagementCreated`, `StaffingAssigned`, `TimeEntryCaptured`, `MilestoneCompleted`, `BillingReady`, `DeliveryRiskChanged`.
-- Representative advanced capabilities: `skills-based staffing optimization`, `margin leakage prediction`, `semantic statement-of-work extraction`, `billing readiness controls`, `delivery-risk simulation`, `consultant utilization forecasting`.
+- Domain scope: services engagements, statements of work, engagement roles, consultant skill profiles, staffing requests and assignments, time entries, expense links, milestones, deliverables, billing schedules, billing readiness checks, utilization snapshots, margin forecasts, delivery risks, client acceptance, engagement exceptions, policies, parameters, controls, governed models, and AI-assisted services operations.
+- Owned operational surface: `engagement`, `statement_of_work`, `engagement_role`, `consultant_skill_profile`, `staffing_request`, `staffing_assignment`, `time_entry`, `expense_link`, `milestone`, `deliverable`, `billing_schedule`, `billing_readiness_check`, `utilization_snapshot`, `margin_forecast`, `delivery_risk`, `client_acceptance`, `engagement_exception_case`, `psa_policy_rule`, `psa_runtime_parameter`, `psa_schema_extension`, `psa_control_assertion`, and `psa_governed_model`.
+- Declared operations: create engagements, register SOWs, define roles, record skill profiles, open staffing requests, assign staff, capture time, link expenses, track milestones, submit deliverables, create billing schedules, run billing readiness, calculate utilization, forecast margin, score delivery risk, record client acceptance, resolve exceptions, compile rules, and simulate margin leakage.
+- Declared integrations: consumed `EmployeeCreated`, `ExpenseApproved`, `InvoiceIssued`, and `PolicyChanged` events plus emitted `EngagementCreated`, `StaffingAssigned`, `TimeEntryCaptured`, `MilestoneCompleted`, `BillingReady`, and `DeliveryRiskChanged`.
+- Declared advanced posture: skills-based staffing optimization, margin leakage prediction, semantic SOW extraction, billing readiness controls, delivery-risk simulation, consultant utilization forecasting, AppGen-X eventing, owned boundaries, workbenches, agent skills, rules, parameters, release evidence, and runtime smoke checks.
 
 ## 50 Better-Than-World-Class Improvements
 
-### 1. Deep specialist lifecycle semantics for `professional_services_automation_engagement`
+### 1. Engagement lifecycle state machine
 
-**Justification:** This owned table is part of the Professional Services Automation operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns services engagements, statements of work, staffing, skills, time, milestones, delivery risks, project financials, billing readiness, utilization, and margin controls.
+**Justification:** Services engagements move through prospect handoff, contracting, mobilization, active delivery, change control, acceptance, billing, closure, pause, dispute, and cancellation states that require explicit controls.
 
-**Improvement:** Extend `professional_services_automation_engagement` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `client_engagement_management`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add a governed engagement lifecycle state machine with allowed transitions, role permissions, required SOW evidence, staffing readiness, billing checks, risk gates, emitted events, and closure criteria. The workbench should show state aging, blocked transitions, and agent-generated remediation steps.
 
-### 2. Deep specialist lifecycle semantics for `professional_services_automation_statement_of_work`
+### 2. Engagement classification and delivery archetypes
 
-**Justification:** This owned table is part of the Professional Services Automation operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns services engagements, statements of work, staffing, skills, time, milestones, delivery risks, project financials, billing readiness, utilization, and margin controls.
+**Justification:** Fixed-price implementation, time-and-materials advisory, managed service, retainer, audit, training, support, and outcome-based engagements have different delivery, billing, risk, and margin behavior.
 
-**Improvement:** Extend `professional_services_automation_statement_of_work` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `professional_services_automation_workflow`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add engagement archetypes with required fields, delivery governance, milestone templates, staffing rules, billing methods, risk indicators, acceptance evidence, and margin controls. Rules should prevent applying unsuitable policies across incompatible service models.
 
-### 3. Deep specialist lifecycle semantics for `professional_services_automation_engagement_role`
+### 3. Statement-of-work semantic extraction
 
-**Justification:** This owned table is part of the Professional Services Automation operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns services engagements, statements of work, staffing, skills, time, milestones, delivery risks, project financials, billing readiness, utilization, and margin controls.
+**Justification:** SOWs contain scope, deliverables, assumptions, exclusions, milestones, rates, acceptance criteria, obligations, and penalties that must become governed operational records.
 
-**Improvement:** Extend `professional_services_automation_engagement_role` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `professional_services_automation_analytics`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Build semantic SOW ingestion that extracts structured roles, deliverables, milestones, billing terms, acceptance gates, constraints, dependencies, assumptions, exclusions, change-control clauses, and risk terms with source citations. The agent must preview proposed records and require confirmation before CRUD mutations.
 
-### 4. Deep specialist lifecycle semantics for `professional_services_automation_consultant_skill_profile`
+### 4. SOW obligation and assumption ledger
 
-**Justification:** This owned table is part of the Professional Services Automation operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns services engagements, statements of work, staffing, skills, time, milestones, delivery risks, project financials, billing readiness, utilization, and margin controls.
+**Justification:** Delivery failures and disputes often arise from misunderstood assumptions, exclusions, dependencies, client responsibilities, and acceptance obligations.
 
-**Improvement:** Extend `professional_services_automation_consultant_skill_profile` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `configuration_schema`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Extend `statement_of_work` with obligation and assumption ledgers that track owner, due date, evidence source, confidence, dependency, status, risk impact, billing impact, and change-control linkage. UI should surface obligations at risk before they become exceptions.
 
-### 5. Deep specialist lifecycle semantics for `professional_services_automation_staffing_request`
+### 5. Scope boundary and change-control enforcement
 
-**Justification:** This owned table is part of the Professional Services Automation operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns services engagements, statements of work, staffing, skills, time, milestones, delivery risks, project financials, billing readiness, utilization, and margin controls.
+**Justification:** Services margin leakage is frequently caused by unapproved scope expansion and informal client requests.
 
-**Improvement:** Extend `professional_services_automation_staffing_request` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `rule_engine`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add scope boundary checks that compare deliverables, time entries, expenses, and requested tasks to SOW scope and approved change requests. Out-of-scope work should trigger exception cases, change recommendations, and billing-impact projections before work proceeds.
 
-### 6. Deep specialist lifecycle semantics for `professional_services_automation_staffing_assignment`
+### 6. Engagement role architecture
 
-**Justification:** This owned table is part of the Professional Services Automation operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns services engagements, statements of work, staffing, skills, time, milestones, delivery risks, project financials, billing readiness, utilization, and margin controls.
+**Justification:** Delivery teams require clear roles, seniority, billability, responsibilities, staffing ratios, location constraints, and substitution rules.
 
-**Improvement:** Extend `professional_services_automation_staffing_assignment` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `parameter_engine`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Expand `engagement_role` with role family, level, required skills, billable status, rate card, allocation range, responsibility matrix, location/time-zone constraints, substitution rules, and approval requirements. Staffing requests should derive directly from approved role architecture.
 
-### 7. Deep specialist lifecycle semantics for `professional_services_automation_time_entry`
+### 7. Consultant skill graph and proficiency evidence
 
-**Justification:** This owned table is part of the Professional Services Automation operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns services engagements, statements of work, staffing, skills, time, milestones, delivery risks, project financials, billing readiness, utilization, and margin controls.
+**Justification:** Skill matching requires more than keywords; it needs proficiency, recency, certification, domain context, language, delivery history, and evidence quality.
 
-**Improvement:** Extend `professional_services_automation_time_entry` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `owned_schema_migrations_models`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Extend `consultant_skill_profile` into a skill graph with proficiency levels, evidence sources, certification expiry, recent use, industry experience, tool competency, language, location, and peer/client validation. Staffing optimization should weight recency and proof, not just declared skills.
 
-### 8. Deep specialist lifecycle semantics for `professional_services_automation_expense_link`
+### 8. Skills gap and training recommendation engine
 
-**Justification:** This owned table is part of the Professional Services Automation operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns services engagements, statements of work, staffing, skills, time, milestones, delivery risks, project financials, billing readiness, utilization, and margin controls.
+**Justification:** Staffing shortages can be mitigated through targeted upskilling, shadowing, certification, or bench development before demand peaks.
 
-**Improvement:** Extend `professional_services_automation_expense_link` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `appgen_x_outbox_inbox_eventing`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add gap analysis between forecasted engagement demand and consultant skill supply, then recommend training, certification, hiring, subcontracting, or staffing changes. The workbench should show skill shortage horizons and utilization impact.
 
-### 9. Deep specialist lifecycle semantics for `professional_services_automation_milestone`
+### 9. Staffing request quality scoring
 
-**Justification:** This owned table is part of the Professional Services Automation operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns services engagements, statements of work, staffing, skills, time, milestones, delivery risks, project financials, billing readiness, utilization, and margin controls.
+**Justification:** Vague staffing requests lead to poor matches, delays, expensive substitutes, and client dissatisfaction.
 
-**Improvement:** Extend `professional_services_automation_milestone` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `idempotent_handlers`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add readiness scoring for staffing requests covering role clarity, skill detail, start/end dates, allocation, location, travel, rate constraints, client restrictions, security clearance, and approval status. Low-readiness requests should route to remediation before optimization.
 
-### 10. Deep specialist lifecycle semantics for `professional_services_automation_deliverable`
+### 10. Constraint-based staffing optimization
 
-**Justification:** This owned table is part of the Professional Services Automation operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Owns services engagements, statements of work, staffing, skills, time, milestones, delivery risks, project financials, billing readiness, utilization, and margin controls.
+**Justification:** Professional services staffing must balance skill fit, availability, utilization, margin, travel, client continuity, career development, fairness, and delivery risk.
 
-**Improvement:** Extend `professional_services_automation_deliverable` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `retry_dead_letter_evidence`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Extend `staffing_assignment` with optimization evidence, candidate rank, constraint satisfaction, tradeoff explanation, rejected candidate reasons, and fairness checks. UI should show why the selected consultant is better than alternatives and what constraints were binding.
 
-### 11. Make `create_engagement` a complete command lifecycle
+### 11. Bench, availability, and utilization forecasting
 
-**Justification:** High-value users need `create_engagement` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Services firms need forward visibility into bench risk, overutilization, underutilization, and upcoming demand by skill and region.
 
-**Improvement:** Implement `create_engagement` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `EngagementCreated`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Expand `utilization_snapshot` with forecast buckets, billable/nonbillable split, committed demand, probable demand, bench exposure, burnout risk, and capacity confidence. Forecasts should use declared employee and engagement projections without foreign table writes.
 
-### 12. Make `register_statement_of_work` a complete command lifecycle
+### 12. Resource contention and soft-booking workflow
 
-**Justification:** High-value users need `register_statement_of_work` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Consultants are often tentatively held for multiple opportunities, creating hidden conflicts and last-minute staffing failures.
 
-**Improvement:** Implement `register_statement_of_work` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `StaffingAssigned`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add soft bookings, hold expiry, probability-weighted demand, conflict resolution, release rules, and escalation paths. Staffing boards should show double-booking risk, revenue at stake, and recommended hold decisions.
 
-### 13. Make `define_engagement_role` a complete command lifecycle
+### 13. Partner and subcontractor staffing governance
 
-**Justification:** High-value users need `define_engagement_role` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** External specialists add capacity but introduce contractual, margin, compliance, quality, and access risks.
 
-**Improvement:** Implement `define_engagement_role` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `TimeEntryCaptured`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add staffing assignment types for internal, partner, subcontractor, and independent specialist roles with compliance checks, onboarding evidence, rate terms, confidentiality controls, deliverable ownership, and approval workflows.
 
-### 14. Make `record_skill_profile` a complete command lifecycle
+### 14. Rate card and billing-role governance
 
-**Justification:** High-value users need `record_skill_profile` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Margin and billing accuracy depend on mapping people, roles, rate cards, discounts, currencies, and effective dates correctly.
 
-**Improvement:** Implement `record_skill_profile` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `MilestoneCompleted`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add rate card projections, role-rate validation, effective-dated billing roles, discount approvals, currency handling, and exception routing. Time and billing readiness should explain any mismatch between staffed role, performed role, and billed role.
 
-### 15. Make `open_staffing_request` a complete command lifecycle
+### 15. Time entry policy intelligence
 
-**Justification:** High-value users need `open_staffing_request` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Time capture drives billing, margin, utilization, payroll handoffs, and delivery analytics, so late or invalid time creates cascading failures.
 
-**Improvement:** Implement `open_staffing_request` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `BillingReady`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Extend `time_entry` with policy classification, billability reason, task/work-package link, SOW scope link, submission SLA, approval route, correction history, and anomaly score. The agent should guide consultants to compliant time narratives without fabricating work.
 
-### 16. Make `assign_staff` a complete command lifecycle
+### 16. Time narrative quality and defensibility
 
-**Justification:** High-value users need `assign_staff` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Client disputes often turn on vague time narratives that do not prove value delivered or match contractual language.
 
-**Improvement:** Implement `assign_staff` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `DeliveryRiskChanged`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add narrative scoring against engagement scope, deliverable context, client-facing language rules, prohibited content, and billing defensibility. UI should suggest clearer narratives while preserving user confirmation and audit history.
 
-### 17. Make `capture_time_entry` a complete command lifecycle
+### 17. Expense allowability and pass-through control
 
-**Justification:** High-value users need `capture_time_entry` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Expenses must comply with client policy, SOW terms, travel policy, receipt rules, tax treatment, and billability constraints.
 
-**Improvement:** Implement `capture_time_entry` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `EngagementCreated`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Extend `expense_link` with allowability checks, SOW reimbursement terms, receipt evidence, client approval need, markup policy, tax treatment, and billing readiness impact. Approved expense events should be linked through declared AppGen-X contracts.
 
-### 18. Make `link_expense` a complete command lifecycle
+### 18. Milestone dependency and critical path tracking
 
-**Justification:** High-value users need `link_expense` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Milestone delays drive revenue slippage, client dissatisfaction, resource conflicts, and downstream acceptance issues.
 
-**Improvement:** Implement `link_expense` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `StaffingAssigned`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Extend `milestone` with dependencies, critical path status, acceptance requirements, forecast completion date, delay reason, revenue impact, and escalation owner. Milestone views should show blocked value and recommended interventions.
 
-### 19. Make `track_milestone` a complete command lifecycle
+### 19. Deliverable quality gate framework
 
-**Justification:** High-value users need `track_milestone` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Deliverables need acceptance criteria, review evidence, defect handling, revision history, and client signoff, not merely submission timestamps.
 
-**Improvement:** Implement `track_milestone` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `TimeEntryCaptured`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Expand `deliverable` with quality gates, reviewer roles, acceptance criteria, evidence attachments, defect logs, rework cycles, version history, client comments, and final approval proofs. Delivery and billing workflows should consume deliverable readiness.
 
-### 20. Make `submit_deliverable` a complete command lifecycle
+### 20. Client acceptance workflow depth
 
-**Justification:** High-value users need `submit_deliverable` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Client acceptance is a formal commercial and delivery control that affects revenue recognition, billing, disputes, and references.
 
-**Improvement:** Implement `submit_deliverable` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `MilestoneCompleted`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Extend `client_acceptance` with acceptance type, approver authority, acceptance criteria met, waiver terms, rejection reasons, partial acceptance, dispute window, evidence package, and downstream billing effect. Events should distinguish accepted, conditionally accepted, rejected, and disputed outcomes.
 
-### 21. Operationalize `skills-based staffing optimization` as a governed decision system
+### 21. Billing schedule contract alignment
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Professional Services Automation and measurably improves professional services automation risk score without hiding assumptions.
+**Justification:** Billing schedules must match SOW terms, milestones, time-and-materials rules, retainers, expenses, acceptance events, and invoice constraints.
 
-**Improvement:** Promote `skills-based staffing optimization` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `professional_services_automation_risk_score`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add billing schedule validation against SOW clauses, milestone status, accepted deliverables, approved time, approved expenses, rate cards, caps, retainers, and billing cutoff dates. Billing readiness should produce a detailed checklist and explain blockers.
 
-### 22. Operationalize `margin leakage prediction` as a governed decision system
+### 22. Billing readiness control cockpit
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Professional Services Automation and measurably improves professional services automation workbench metric without hiding assumptions.
+**Justification:** Revenue leakage occurs when ready-to-bill work is blocked by missing approvals, disputed time, incomplete milestones, or client acceptance gaps.
 
-**Improvement:** Promote `margin leakage prediction` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `professional_services_automation_workbench_metric`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Expand `billing_readiness_check` with blocker taxonomy, revenue amount, aging, owner, required evidence, remediation action, expected billing date, and invoice handoff status. The workbench should prioritize blocked revenue by materiality and age.
 
-### 23. Operationalize `semantic statement-of-work extraction` as a governed decision system
+### 23. Revenue leakage and write-off prevention
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Professional Services Automation and measurably improves professional services automation risk score without hiding assumptions.
+**Justification:** Services organizations lose margin through unbilled time, write-offs, discount leakage, missed expenses, and delayed billing.
 
-**Improvement:** Promote `semantic statement-of-work extraction` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `professional_services_automation_risk_score`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add leakage detection across time, expenses, billing schedules, rate cards, SOW caps, approvals, and client disputes. Margin forecasts should separate preventable leakage, approved concessions, unbillable investment, and unavoidable loss.
 
-### 24. Operationalize `billing readiness controls` as a governed decision system
+### 24. Margin forecast decomposition
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Professional Services Automation and measurably improves professional services automation workbench metric without hiding assumptions.
+**Justification:** Engagement margin changes because of staffing mix, utilization, rates, discounts, travel, rework, delays, scope creep, write-offs, and billing timing.
 
-**Improvement:** Promote `billing readiness controls` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `professional_services_automation_workbench_metric`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Extend `margin_forecast` with component decomposition, baseline comparison, variance drivers, confidence, sensitivity, and recommended mitigation. UI should provide waterfall explanations and scenario comparisons.
 
-### 25. Operationalize `delivery-risk simulation` as a governed decision system
+### 25. Fixed-price burn and earned value controls
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Professional Services Automation and measurably improves professional services automation risk score without hiding assumptions.
+**Justification:** Fixed-price engagements require tight monitoring of burn, completion percentage, remaining effort, rework, acceptance risk, and margin erosion.
 
-**Improvement:** Promote `delivery-risk simulation` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `professional_services_automation_risk_score`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add fixed-price controls that compute earned value, estimate-to-complete, estimate-at-completion, burn-to-budget, delivery confidence, and margin-at-completion. Trigger exceptions when delivery progress and cost burn diverge materially.
 
-### 26. Operationalize `consultant utilization forecasting` as a governed decision system
+### 26. Retainer and managed-service consumption tracking
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Professional Services Automation and measurably improves professional services automation workbench metric without hiding assumptions.
+**Justification:** Retainers and managed services require entitlement tracking, rollover rules, service levels, overage billing, and consumption forecasts.
 
-**Improvement:** Promote `consultant utilization forecasting` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `professional_services_automation_workbench_metric`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add retainer balances, included service scope, consumption units, rollover expiry, overage thresholds, SLA performance, and renewal risk. Billing schedules should account for entitlement depletion and excess usage.
 
-### 27. Operationalize `skills-based staffing optimization` as a governed decision system
+### 27. Delivery risk early warning system
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Professional Services Automation and measurably improves professional services automation risk score without hiding assumptions.
+**Justification:** Delivery risk should be detected before missed milestones, client dissatisfaction, write-offs, or team burnout occur.
 
-**Improvement:** Promote `skills-based staffing optimization` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `professional_services_automation_risk_score`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Extend `delivery_risk` with leading indicators from staffing gaps, milestone slippage, late time, scope exceptions, client acceptance friction, low utilization, margin erosion, and unresolved obligations. Risk scores should include explanation, confidence, owner, and mitigation plan.
 
-### 28. Operationalize `margin leakage prediction` as a governed decision system
+### 28. Client health and sentiment integration
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Professional Services Automation and measurably improves professional services automation workbench metric without hiding assumptions.
+**Justification:** Engagement success depends on client satisfaction, responsiveness, executive support, adoption, and dispute risk.
 
-**Improvement:** Promote `margin leakage prediction` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `professional_services_automation_workbench_metric`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add client health signals through declared customer/service projections, with sentiment, responsiveness, escalation history, acceptance cycle time, stakeholder engagement, and churn/renewal risk. The PBC must maintain boundaries by storing only PSA-owned projections and evidence links.
 
-### 29. Operationalize `semantic statement-of-work extraction` as a governed decision system
+### 29. Delivery issue and exception case management
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Professional Services Automation and measurably improves professional services automation risk score without hiding assumptions.
+**Justification:** Staffing failures, scope disputes, unpaid invoices, late acceptance, quality defects, and risk breaches require structured lifecycle handling.
 
-**Improvement:** Promote `semantic statement-of-work extraction` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `professional_services_automation_risk_score`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Expand `engagement_exception_case` with exception type, impacted engagement, materiality, owner, due date, root cause, mitigation, client communication, financial exposure, recurrence marker, and closure proof. UI queues should prioritize by margin and client impact.
 
-### 30. Operationalize `billing readiness controls` as a governed decision system
+### 30. Change-order recommendation engine
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Professional Services Automation and measurably improves professional services automation workbench metric without hiding assumptions.
+**Justification:** Out-of-scope work should become formal change orders before it becomes margin leakage or client conflict.
 
-**Improvement:** Promote `billing readiness controls` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `professional_services_automation_workbench_metric`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add change-order recommendations based on time narratives, deliverable revisions, extra milestones, scope-boundary checks, and client requests. The agent should draft change-order rationale, estimated effort, timeline impact, billing effect, and approval workflow.
 
-### 31. Create simulation-grade governance for `staffing_policy` and `target_utilization_percent`
+### 31. Engagement financial close checklist
 
-**Justification:** Complete Professional Services Automation coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Engagement closure requires final time, expenses, billing, acceptance, write-offs, revenue recognition handoff, and lessons learned.
 
-**Improvement:** Add a policy cockpit where `staffing_policy` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `target_utilization_percent` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add a close checklist with required reconciliations, outstanding blockers, final margin, unbilled work, open expenses, accepted deliverables, disputes, and archival proof. Closure commands should reject incomplete financial close for material engagements.
 
-### 32. Create simulation-grade governance for `time_entry_policy` and `minimum_margin_percent`
+### 32. Project-to-cash handoff evidence
 
-**Justification:** Complete Professional Services Automation coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Billing and revenue teams need reliable evidence from PSA without direct access to PSA internals or manual reconciliation.
 
-**Improvement:** Add a policy cockpit where `time_entry_policy` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `minimum_margin_percent` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Define typed AppGen-X events and API payloads for billing-ready milestones, accepted deliverables, approved time, reimbursable expenses, write-offs, and margin updates. Include schema compatibility tests and consumer documentation generated from the PBC.
 
-### 33. Create simulation-grade governance for `billing_readiness_policy` and `time_submission_sla_hours`
+### 33. Utilization fairness and burnout guardrails
 
-**Justification:** Complete Professional Services Automation coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Maximizing utilization without fairness and fatigue controls damages quality, retention, and long-term delivery capacity.
 
-**Improvement:** Add a policy cockpit where `billing_readiness_policy` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `time_submission_sla_hours` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add utilization guardrails for sustained overutilization, travel intensity, weekend work, context switching, bench stagnation, and inequitable assignments. Staffing optimization should surface fairness and burnout tradeoffs alongside margin and availability.
 
-### 34. Create simulation-grade governance for `margin_threshold_policy` and `billing_cutoff_days`
+### 34. Career development-aware staffing
 
-**Justification:** Complete Professional Services Automation coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** World-class services firms use staffing to grow capability, retain talent, and build future delivery capacity.
 
-**Improvement:** Add a policy cockpit where `margin_threshold_policy` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `billing_cutoff_days` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add career goals, target skills, promotion readiness, mentorship needs, and development assignments to staffing optimization. Recommendations should balance client fit, utilization, margin, and consultant growth with transparent tradeoffs.
 
-### 35. Create simulation-grade governance for `milestone_acceptance_policy` and `risk_threshold`
+### 35. Delivery playbook and methodology mapping
 
-**Justification:** Complete Professional Services Automation coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Different engagement types require repeatable delivery methods, stage templates, quality gates, and artifact expectations.
 
-**Improvement:** Add a policy cockpit where `milestone_acceptance_policy` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `risk_threshold` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add methodology templates that generate milestones, deliverables, quality gates, staffing patterns, risk checks, and acceptance criteria by engagement archetype. Deviations should be recorded with rationale and approval.
 
-### 36. Upgrade `engagement workbench` into a full specialist command center
+### 36. Knowledge reuse and reusable asset tracking
 
-**Justification:** The PBC UI must expose the complete Professional Services Automation surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Services profitability improves when teams reuse accelerators, templates, scripts, frameworks, and proven deliverables instead of reinventing work.
 
-**Improvement:** Expand `engagement workbench` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add reusable asset recommendations linked to engagement type, industry, technology, deliverable, and risk. Track asset use, quality feedback, time saved, and margin effect while keeping artifact storage within declared content or knowledge projections.
 
-### 37. Upgrade `staffing board` into a full specialist command center
+### 37. Delivery retrospective and learning loop
 
-**Justification:** The PBC UI must expose the complete Professional Services Automation surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** PSA should learn from completed engagements to improve estimates, staffing, pricing, risk detection, and playbooks.
 
-**Improvement:** Expand `staffing board` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add retrospective records for planned versus actual scope, effort, margin, milestones, client acceptance, risks, staffing fit, and lessons. Feed anonymized learning into governed models and score future SOW assumptions accordingly.
 
-### 38. Upgrade `time and expense console` into a full specialist command center
+### 38. Proposal-to-delivery continuity
 
-**Justification:** The PBC UI must expose the complete Professional Services Automation surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Sales promises, pricing assumptions, solution designs, and staffing commitments often get lost between proposal and delivery.
 
-**Improvement:** Expand `time and expense console` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add handoff evidence linking approved contract/SOW projections to engagement setup, staffing plans, milestone templates, rate assumptions, and delivery risks. The agent should flag mismatches between sold scope and delivery plan before kickoff.
 
-### 39. Upgrade `milestone tracker` into a full specialist command center
+### 39. Engagement kickoff readiness
 
-**Justification:** The PBC UI must expose the complete Professional Services Automation surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Failed kickoffs create avoidable delays and trust issues before delivery begins.
 
-**Improvement:** Expand `milestone tracker` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add kickoff readiness checks for signed SOW, client sponsor, delivery team, role assignments, access, governance cadence, communication plan, tooling, security requirements, milestones, acceptance criteria, and billing setup. Engagements should not move to active delivery until critical readiness items pass or are waived.
 
-### 40. Upgrade `billing readiness queue` into a full specialist command center
+### 40. Services demand forecasting
 
-**Justification:** The PBC UI must expose the complete Professional Services Automation surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Staffing and utilization planning require forward-looking demand by skill, region, role, industry, probability, and timing.
 
-**Improvement:** Expand `billing readiness queue` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add services demand forecasts from engagements, soft bookings, SOW pipeline projections, renewal likelihood, and historical seasonality. Forecasts should drive staffing risk, bench planning, hiring, partner capacity, and margin scenarios.
 
-### 41. Prove cross-PBC federation for `POST /engagements` and `EmployeeCreated`
+### 41. Delivery-risk simulation
 
-**Justification:** Professional Services Automation must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Leaders need to test how staffing delays, scope growth, client delays, travel restrictions, or budget cuts affect delivery outcomes.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /engagements` and consumed event `EmployeeCreated` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Add side-effect-free simulations that alter staffing, milestone dates, scope assumptions, rates, acceptance delay, and expense patterns. Simulations should return margin, utilization, billing, risk, and client impact before any operational change is committed.
 
-### 42. Prove cross-PBC federation for `POST /statements-of-work` and `ExpenseApproved`
+### 42. Governed model evidence for PSA predictions
 
-**Justification:** Professional Services Automation must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Margin, utilization, staffing, and delivery-risk models affect commercial decisions and must be explainable, monitored, and auditable.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /statements-of-work` and consumed event `ExpenseApproved` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Extend `psa_governed_model` with model purpose, feature set, training period, evaluation metrics, drift checks, bias/fairness checks, approval status, challenger models, and rollback plan. UI should show model confidence and limits wherever predictions are used.
 
-### 43. Prove cross-PBC federation for `POST /staffing` and `InvoiceIssued`
+### 43. PSA control assertion automation
 
-**Justification:** Professional Services Automation must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Services operations need continuous controls over staffing approvals, time submission, billing readiness, margin thresholds, milestone acceptance, and policy compliance.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /staffing` and consumed event `InvoiceIssued` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Expand `psa_control_assertion` with control objective, test population, evidence source, failure details, owner, remediation, and next test date. Release audits should prove every material PSA process has at least one executable control assertion.
 
-### 44. Prove cross-PBC federation for `POST /billing-milestones` and `PolicyChanged`
+### 44. Cross-PBC boundary proof harness
 
-**Justification:** Professional Services Automation must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** PSA depends on employees, expenses, invoices, contracts, customers, and finance context but must not share or mutate foreign tables.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /billing-milestones` and consumed event `PolicyChanged` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Add boundary tests that scan generated models, services, routes, DSL output, workbench descriptors, and agent skills for unauthorized table references. Evidence should list every external dependency, contract type, and PSA capability consuming it.
 
-### 45. Temporal reconstruction and bitemporal audit for Professional Services Automation
+### 45. Dead-letter and replay operations for PSA events
 
-**Justification:** Regulated and operationally complex domains need to answer what was known, valid, processed, and visible at any point in time.
+**Justification:** Failed employee, expense, invoice, or policy events can break staffing, billing, utilization, and compliance calculations.
 
-**Improvement:** Add transaction-time, valid-time, and processing-time fields to core records, temporal query APIs, projection rebuild tooling, and UI time travel so specialists can reconstruct decisions, reports, and automation outcomes.
+**Improvement:** Add a dead-letter operations console with event failure taxonomy, retry readiness, replay simulation, duplicate detection, PSA impact analysis, and safe replay commands. Every replay should record inbox/outbox evidence and affected engagement objects.
 
-### 46. Bulk operations and migration-grade controls for Professional Services Automation
+### 46. Carbon-aware services delivery planning
 
-**Justification:** World-class deployments must handle imports, mass corrections, high-volume operating days, and cutovers without bypassing governance.
+**Justification:** Travel, staffing location, remote delivery, and resource assignment choices materially affect emissions and client sustainability commitments.
 
-**Improvement:** Add staged bulk upload, duplicate detection, chunked validation, approval sampling, partial failure handling, retry dashboards, reconciliation summaries, and agent-generated remediation plans for large batches.
+**Improvement:** Add carbon impact estimates to staffing recommendations, travel-heavy milestones, delivery scenarios, and margin forecasts. Planners should compare service quality, cost, margin, client preference, and emissions before final assignment.
 
-### 47. Specialist edge-case playbooks for Professional Services Automation
+### 47. PSA agent command skills
 
-**Justification:** Rare cases often carry the highest financial, legal, safety, service, or compliance risk.
+**Justification:** The PBC agent should execute professional services tasks safely, not only answer help questions.
 
-**Improvement:** Create a playbook catalog with detection rules, required evidence, escalation paths, fallback actions, owner roles, and release-audited tests for high-severity edge cases and exception queues.
+**Improvement:** Define first-class agent skills for SOW extraction, engagement setup, staffing recommendation, time-entry review, billing readiness triage, margin analysis, risk mitigation, change-order drafting, and close checklist execution. Each skill should use typed previews, RBAC checks, human confirmation, and audit evidence.
 
-### 48. Pre-mutation simulation and blast-radius analysis for Professional Services Automation
+### 48. Role-specific PSA workbenches
 
-**Justification:** Users should understand consequences before committing irreversible, customer-visible, operationally disruptive, or financially material changes.
+**Justification:** Delivery managers, resource managers, consultants, finance users, partners, executives, and auditors need different surfaces over the same controlled PSA state.
 
-**Improvement:** Add what-if simulation for every material command, showing impacted records, emitted events, dependent projections, rule outcomes, approvals, downstream PBC dependencies, and rollback limits.
+**Improvement:** Expand UI fragments into engagement command center, staffing board, consultant time workspace, billing readiness queue, margin cockpit, utilization planner, delivery risk console, client acceptance board, partner staffing view, and audit evidence room. Each view should expose relevant actions and agent skills.
 
-### 49. Continuous control testing and operational assurance for Professional Services Automation
+### 49. Executive services operations cockpit
 
-**Justification:** Better-than-world-class PBCs prove controls continuously, not only at release or during periodic audits.
+**Justification:** Leaders need a single view of revenue readiness, utilization, margin risk, delivery risk, staffing gaps, client health, and exceptions.
 
-**Improvement:** Add executable control assertions, sampled evidence checks, anomaly thresholds, control-owner dashboards, breach/recovery events, and release gates that fail when domain controls lose evidence.
+**Improvement:** Build an executive cockpit combining pipeline-to-capacity view, active engagement health, utilization forecasts, margin waterfalls, billing blockers, staffing shortages, delivery risks, and exception aging. The cockpit should allow drill-down to evidence and side-effect-free scenario planning.
 
-### 50. Human-in-the-loop domain agent execution for Professional Services Automation
+### 50. End-to-end PSA release evidence matrix
 
-**Justification:** The PBC chatbot must help specialists perform real work while preventing unsafe autonomous mutation.
+**Justification:** A world-class PSA PBC must prove every claimed capability has schema, service, API, event, handler, UI, agent, rule, parameter, test, and boundary evidence.
 
-**Improvement:** Add domain-specific skills, document parsing, task planning, CRUD previews, confidence/risk scoring, confirmation gates, redaction, policy explanations, and post-action evidence packets for every supported command and query.
+**Improvement:** Add a release evidence matrix mapping every Professional Services Automation capability to owned tables, commands, routes, AppGen-X event contracts, idempotent handlers, workbench panels, agent skills, permissions, smoke tests, and cross-PBC boundary checks. Release audits should fail whenever any PSA capability lacks executable proof.
