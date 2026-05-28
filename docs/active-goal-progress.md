@@ -2997,3 +2997,12 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   `tests/test_dsl_tooling_contracts.py -q`, focused DSL platform/CLI regression
   tests, scoped diff whitespace check, and restricted-name scan. Commit:
   `fc7230f0`.
+- Current multi-file LSP pass makes open-workspace symbol behavior executable.
+  The stdio server now resolves definitions, references, completions, and
+  workspace symbols by scanning each open DSL document independently instead of
+  concatenating buffers, which keeps editor features usable when applications
+  are split across multiple `.appgen` files. Verification passed: Python
+  compile for touched CLI/parser modules,
+  `tests/test_dsl_tooling_contracts.py -q`, focused DSL platform/CLI regression
+  tests, scoped diff whitespace check, and restricted-name scan. Commit:
+  `ecf54000`.
