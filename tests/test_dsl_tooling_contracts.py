@@ -721,6 +721,59 @@ def test_release_verifier_report_covers_package_pbc_and_deployment_evidence() ->
     assert report["evidence_bundle"]["format"] == "appgen.release-evidence-bundle.v1"
 
 
+def test_package_report_writes_release_evidence_bundle_when_output_dir_is_given(tmp_path: Path) -> None:
+    output_dir = tmp_path / "dist"
+    report = release_verifier_report_dsl(
+        RELEASE_SAMPLE,
+        source_name="release.appgen",
+        targets=("mobile", "desktop"),
+        output_dir=str(output_dir),
+    )
+    evidence_path = output_dir / "appgen-release-evidence.json"
+    payload = json.loads(evidence_path.read_text(encoding="utf-8"))
+
+    assert report["format"] == "appgen.release-verifier-report.v1"
+    assert report["ok"] is True
+    assert evidence_path.exists()
+    assert report["written_artifacts"][0]["path"] == str(evidence_path)
+    assert payload["format"] == "appgen.release-evidence-file.v1"
+    assert payload["evidence_bundle"]["format"] == "appgen.release-evidence-bundle.v1"
+    assert set(payload["reports"]) == {"mobile", "desktop"}
+
+
+def test_appgen_package_subcommand_materializes_release_evidence(tmp_path: Path) -> None:
+    source_path = tmp_path / "release.appgen"
+    output_dir = tmp_path / "dist"
+    source_path.write_text(RELEASE_SAMPLE, encoding="utf-8")
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pyAppGen",
+            "package",
+            str(source_path),
+            "--target",
+            "mobile",
+            "--out",
+            str(output_dir),
+            "--json",
+        ],
+        check=False,
+        cwd=Path(__file__).resolve().parents[1],
+        text=True,
+        capture_output=True,
+    )
+
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    evidence_path = output_dir / "appgen-release-evidence.json"
+    assert payload["format"] == "appgen.release-verifier-report.v1"
+    assert payload["targets"] == ["mobile"]
+    assert evidence_path.exists()
+    assert json.loads(evidence_path.read_text(encoding="utf-8"))["reports"]["mobile"]["format"] == "appgen.mobile-verifier.v1"
+
+
 def test_release_verifier_reports_blocking_gaps_for_missing_mobile_package_metadata() -> None:
     report = release_verifier_report_dsl(TOOLING_SAMPLE, source_name="finance.appgen", targets=("mobile",))
 

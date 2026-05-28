@@ -2862,6 +2862,22 @@ def release_verifier_report_dsl(
         }
         for key, report in selected_reports.items()
     )
+    evidence_bundle = {
+        "format": "appgen.release-evidence-bundle.v1",
+        "source": source_name,
+        "artifacts": tuple(f"{key}:{report['format']}" for key, report in selected_reports.items()),
+        "requires_generation": any(
+            gap in {"app_build_not_observed", "smoke_tests_not_declared", "smoke_launch_not_declared"}
+            for report in selected_reports.values()
+            for gap in report.get("blocking_gaps", ())
+        ),
+    }
+    written_artifacts = _write_release_evidence_bundle(
+        output_dir,
+        evidence_bundle=evidence_bundle,
+        selected_reports=selected_reports,
+        checks=checks,
+    )
     return {
         "format": "appgen.release-verifier-report.v1",
         "ok": semantic["ok"] and all(check["ok"] for check in checks),
@@ -2872,17 +2888,31 @@ def release_verifier_report_dsl(
         "checks": checks,
         "reports": selected_reports,
         "diagnostics": semantic["diagnostics"],
-        "evidence_bundle": {
-            "format": "appgen.release-evidence-bundle.v1",
-            "source": source_name,
-            "artifacts": tuple(f"{key}:{report['format']}" for key, report in selected_reports.items()),
-            "requires_generation": any(
-                gap in {"app_build_not_observed", "smoke_tests_not_declared", "smoke_launch_not_declared"}
-                for report in selected_reports.values()
-                for gap in report.get("blocking_gaps", ())
-            ),
-        },
+        "evidence_bundle": evidence_bundle,
+        "written_artifacts": written_artifacts,
     }
+
+
+def _write_release_evidence_bundle(
+    output_dir: str | None,
+    *,
+    evidence_bundle: dict,
+    selected_reports: dict,
+    checks: tuple[dict, ...],
+) -> tuple[dict, ...]:
+    if not output_dir:
+        return ()
+    output_path = Path(output_dir)
+    output_path.mkdir(parents=True, exist_ok=True)
+    evidence_path = output_path / "appgen-release-evidence.json"
+    payload = {
+        "format": "appgen.release-evidence-file.v1",
+        "evidence_bundle": evidence_bundle,
+        "checks": checks,
+        "reports": selected_reports,
+    }
+    evidence_path.write_text(json.dumps(payload, indent=2, sort_keys=True, default=list), encoding="utf-8")
+    return ({"path": str(evidence_path), "kind": "release_evidence", "bytes": evidence_path.stat().st_size},)
 
 
 def web_verifier_report_dsl(
