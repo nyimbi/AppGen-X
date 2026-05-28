@@ -1,418 +1,416 @@
-# Water and Wastewater Operations PBC Better-Than-World-Class Improvement Backlog
+# Water and Wastewater Operations PBC Manual Improvement Backlog
 
 ## Purpose
 
-This file identifies, justifies, and describes 50 high-impact improvements for `water_wastewater_operations`. The backlog is specific to treatment plants, water quality, permits, assets, service interruptions, field work, and compliance reporting and is intended to move the PBC from release-auditable scaffolding toward complete, specialist-grade domain coverage.
+This hand-crafted backlog replaces generic roadmap text for `water_wastewater_operations` with water and wastewater specific improvements for treatment plants, quality samples, permit limits, pump assets, service interruptions, field work orders, compliance sampling, regulatory reporting, workbench operations, and governed agent assistance.
 
 ## Current Domain Evidence Used
 
 - Stable PBC key: `water_wastewater_operations`.
-- Domain purpose: Treatment plants, water quality, permits, assets, service interruptions, field work, and compliance reporting.
-- Owned domain tables: `treatment_plant`, `water_quality_sample`, `permit_limit`, `pump_asset`, `service_interruption`, `field_work_order`, `compliance_sample`, `water_wastewater_operations_policy_rule`, `water_wastewater_operations_runtime_parameter`, `water_wastewater_operations_schema_extension`, `water_wastewater_operations_control_assertion`, `water_wastewater_operations_governed_model`.
-- Public APIs: `POST /treatment-plants`, `POST /water-quality-samples`, `POST /permit-limits`, `POST /pump-assets`, `POST /service-interruptions`, `GET /water-wastewater-operations-workbench`.
-- Emitted AppGen-X events: `WaterWastewaterOperationsCreated`, `WaterWastewaterOperationsUpdated`, `WaterWastewaterOperationsApproved`, `WaterWastewaterOperationsExceptionOpened`.
-- Consumed AppGen-X events: `PolicyChanged`, `AuditEventSealed`, `OperationalKpiChanged`.
-- Current standard surfaces include: `treatment_plant_management`, `water_wastewater_operations_workflow`, `water_wastewater_operations_analytics`, `configuration_schema`, `rule_engine`, `parameter_engine`, `owned_schema_migrations_models`, `appgen_x_outbox_inbox_eventing`, `idempotent_handlers`, `retry_dead_letter_evidence`.
-- Current advanced surfaces include: `water_wastewater_operations_event_sourced_operational_history`, `water_wastewater_operations_multi_tenant_policy_isolation`, `water_wastewater_operations_schema_evolution_resilience`, `water_wastewater_operations_autonomous_anomaly_detection`, `water_wastewater_operations_semantic_document_instruction_understanding`, `water_wastewater_operations_predictive_risk_scoring`, `water_wastewater_operations_counterfactual_scenario_simulation`, `water_wastewater_operations_cryptographic_audit_proofs`.
+- Domain purpose: treatment plants, water quality, permits, assets, service interruptions, field work, and compliance reporting.
+- Owned records include `treatment_plant`, `water_quality_sample`, `permit_limit`, `pump_asset`, `service_interruption`, `field_work_order`, `compliance_sample`, policy rules, runtime parameters, schema extensions, control assertions, and governed models.
+- Public APIs include `POST /treatment-plants`, `POST /water-quality-samples`, `POST /permit-limits`, `POST /pump-assets`, `POST /service-interruptions`, and `GET /water-wastewater-operations-workbench`.
+- Workbench surfaces include `WaterWastewaterOperationsWorkbench`, `WaterWastewaterOperationsDetail`, and `WaterWastewaterOperationsAssistantPanel`.
+- AppGen-X events include `WaterWastewaterOperationsCreated`, `WaterWastewaterOperationsUpdated`, `WaterWastewaterOperationsApproved`, and `WaterWastewaterOperationsExceptionOpened`.
 
 ## 50 High-Impact Improvements
 
-### 1. Canonical lifecycle state model for Treatment Plant
+### 1. Treatment plant operating state model
 
-**Justification:** This closes shallow CRUD gaps by making every water and wastewater operations transition explainable and testable instead of implicit in free-form status values.
+**Justification:** Plants operate through normal, constrained, bypass, maintenance, emergency, shutdown, startup, and violation-risk states.
 
-**Improvement:** Define a complete state machine for `treatment_plant` with explicit draft, validated, blocked, approved, active, suspended, corrected, closed, archived, and reopened states. Tie the behavior to `water_wastewater_operations_create_treatment_plant_workflow` where applicable, and make it visible in `WaterWastewaterOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add explicit `treatment_plant` states with operating mode, capacity, operator shift, required checks, transition reason, and event emission.
 
-**Acceptance evidence:** State-transition tests, invalid-transition fixtures, workbench state badges, and emitted AppGen-X transition events for WaterWastewaterOperationsCreated, WaterWastewaterOperationsUpdated, WaterWastewaterOperationsApproved. The evidence should be package-local in `src/pyAppGen/pbcs/water_wastewater_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must reject invalid state transitions and show plant state in `WaterWastewaterOperationsWorkbench`.
 
-### 2. Domain intake and normalization for Water Quality Sample
+### 2. Process train configuration
 
-**Justification:** The PBC cannot reach complete domain coverage unless it handles the messy front door of treatment plants, water quality, permits, assets, service interruptions, field work, and compliance reporting, not only already-clean records.
+**Justification:** Treatment performance depends on intake, clarification, filtration, disinfection, sludge handling, aeration, digestion, and effluent stages.
 
-**Improvement:** Build a typed intake pipeline for `water_quality_sample` that accepts structured API payloads, document-derived instructions, batch loads, and assistant-generated drafts while normalizing identifiers, dates, units, parties, and jurisdictional context. Tie the behavior to `water_wastewater_operations_record_water_quality_sample_workflow` where applicable, and make it visible in `WaterWastewaterOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add process train records with units, status, capacity, bypass possibility, criticality, and active configuration by plant.
 
-**Acceptance evidence:** Golden intake fixtures, rejected-record queues, field-level normalization evidence, and assistant previews before governed datastore mutation. The evidence should be package-local in `src/pyAppGen/pbcs/water_wastewater_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must link samples and permit performance to active process trains.
 
-### 3. Specialist validation rules for Permit Limit
+### 3. Source water and influent tracking
 
-**Justification:** World-class Water and Wastewater Operations requires rules that domain experts can reason about, version, test, and roll back without code edits.
+**Justification:** Raw water or influent quality drives treatment decisions and compliance risk.
 
-**Improvement:** Add a domain rule compiler for `permit_limit` that supports threshold rules, eligibility rules, dependency rules, temporal windows, conflicting-instruction detection, and override justification. Tie the behavior to `water_wastewater_operations_create_treatment_plant_workflow` where applicable, and make it visible in `WaterWastewaterOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add source/influent observations for turbidity, flow, pH, temperature, conductivity, rainfall, industrial load, and anomaly notes.
 
-**Acceptance evidence:** Rule simulation tests, versioned rule manifests, rule impact reports, and UI rule editors linked to `WATER_WASTEWATER_OPERATIONS_DATABASE_URL, WATER_WASTEWATER_OPERATIONS_EVENT_TOPIC, WATER_WASTEWATER_OPERATIONS_RETRY_LIMIT`. The evidence should be package-local in `src/pyAppGen/pbcs/water_wastewater_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must flag abnormal influent conditions and create operator review tasks.
 
-### 4. Parameter governance and tuning for Pump Asset
+### 4. Water quality sample chain of custody
 
-**Justification:** Parameters are where operations teams tune water and wastewater operations; unbounded constants would make the PBC brittle and unsafe in real deployments.
+**Justification:** Compliance and public health decisions rely on defensible sample identity, collection, preservation, transport, and analysis.
 
-**Improvement:** Expose bounded runtime parameters for `pump_asset` covering risk thresholds, SLA windows, confidence floors, escalation cutoffs, batch sizes, retry limits, and human-confirmation requirements. Tie the behavior to `water_wastewater_operations_record_water_quality_sample_workflow` where applicable, and make it visible in `WaterWastewaterOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand `water_quality_sample` with sample point, collector, method, preservation, collection time, custody transfers, lab projection, and status.
 
-**Acceptance evidence:** Parameter schema validation, tenant overrides, approval history, rollback controls, and workbench diff views. The evidence should be package-local in `src/pyAppGen/pbcs/water_wastewater_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must reject result approval when custody or preservation evidence is incomplete.
 
-### 5. Deep owned schema expansion for Service Interruption
+### 5. Sampling plan scheduler
 
-**Justification:** A single payload column cannot express the full surface of treatment plants, water quality, permits, assets, service interruptions, field work, and compliance reporting or prove cross-PBC boundaries are respected.
+**Justification:** Utilities must meet recurring sampling obligations by site, parameter, period, method, and population served.
 
-**Improvement:** Extend the owned schema around `service_interruption` with normalized child tables for line-level evidence, party roles, approvals, attachments, comments, metrics, exception reasons, and control assertions. Tie the behavior to `water_wastewater_operations_create_treatment_plant_workflow` where applicable, and make it visible in `WaterWastewaterOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add sampling plans with frequency, required parameters, locations, seasonality, due windows, alternates, and missed-sample exceptions.
 
-**Acceptance evidence:** Migrations, models, relationship tests, schema contract snapshots, and no shared-table access outside the `water_wastewater_operations_` namespace. The evidence should be package-local in `src/pyAppGen/pbcs/water_wastewater_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must generate due samples and open overdue exceptions.
 
-### 6. Event-sourced operational history for Field Work Order
+### 6. Compliance sample distinction
 
-**Justification:** Temporal reconstruction is essential for better-than-world-class auditability and dispute resolution in water and wastewater operations.
+**Justification:** Operational samples and regulatory compliance samples have different rules, approval, and reporting duties.
 
-**Improvement:** Capture every material mutation of `field_work_order` as immutable AppGen-X events with actor, tenant, command, policy version, idempotency key, before/after summary, and projection checkpoint. Tie the behavior to `water_wastewater_operations_record_water_quality_sample_workflow` where applicable, and make it visible in `WaterWastewaterOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand `compliance_sample` with regulatory purpose, permit link, reportability, approval status, resample requirement, and certification.
 
-**Acceptance evidence:** Replay tests, projection checksums, event ordering evidence, and point-in-time workbench views. The evidence should be package-local in `src/pyAppGen/pbcs/water_wastewater_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must separate operational sample dashboards from compliance reporting packages.
 
-### 7. Projection and read-model strategy for Compliance Sample
+### 7. Permit limit library
 
-**Justification:** The workbench should not force users to infer domain truth from raw tables; each projection should answer a real operating question.
+**Justification:** Permit limits vary by plant, outfall, parameter, averaging period, flow condition, and effective date.
 
-**Improvement:** Create purpose-built projections for `compliance_sample`: operational queue, executive KPI rollup, exception aging, compliance evidence, agent task context, and external dependency health. Tie the behavior to `water_wastewater_operations_create_treatment_plant_workflow` where applicable, and make it visible in `WaterWastewaterOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand `permit_limit` with limit type, units, parameter, sample point, averaging basis, season, effective window, and exceedance rule.
 
-**Acceptance evidence:** Projection contracts, freshness SLAs, backfill tests, and visible stale-projection warnings. The evidence should be package-local in `src/pyAppGen/pbcs/water_wastewater_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must evaluate samples against the correct active permit limit.
 
-### 8. Exception taxonomy and remediation for Water Wastewater Operations Policy Rule
+### 8. Exceedance and violation workflow
 
-**Justification:** High-value PBCs win on exception throughput; generic “failed” states hide the details operators need.
+**Justification:** Limit exceedances need timely notice, investigation, corrective action, resampling, and regulatory evidence.
 
-**Improvement:** Model the full exception taxonomy for `water_wastewater_operations_policy_rule`, including severity, root cause, blocking dependency, remediation owner, due date, retry eligibility, escalation path, and closure evidence. Tie the behavior to `water_wastewater_operations_record_water_quality_sample_workflow` where applicable, and make it visible in `WaterWastewaterOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add exceedance cases with sample, permit limit, severity, notification deadline, root cause, corrective action, and closure evidence.
 
-**Acceptance evidence:** Exception queues, aging metrics, remediation playbooks, dead-letter linkage, and closure test fixtures for crew safety lockouts. The evidence should be package-local in `src/pyAppGen/pbcs/water_wastewater_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must open violation workflows and block closure without required notice evidence.
 
-### 9. Predictive risk scoring for Water Wastewater Operations Runtime Parameter
+### 9. Disinfection residual management
 
-**Justification:** The package should warn users before water and wastewater operations work fails, breaches policy, or creates downstream cost.
+**Justification:** Residual levels protect public health but must stay within operational and regulatory bounds.
 
-**Improvement:** Add predictive risk scoring for `water_wastewater_operations_runtime_parameter` using domain features from owned tables, consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, rule outcomes, aging, anomaly signals, and historical corrections. Tie the behavior to `water_wastewater_operations_create_treatment_plant_workflow` where applicable, and make it visible in `WaterWastewaterOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add residual observations, target bands, analyzer projection, manual confirmation, dosing action, and low/high residual alerts.
 
-**Acceptance evidence:** Feature manifests, score explanations, calibration reports, drift alerts, and tests for low/medium/high-risk scenarios. The evidence should be package-local in `src/pyAppGen/pbcs/water_wastewater_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must create alerts for residual breaches and tie actions to operator evidence.
 
-### 10. Counterfactual simulation for Water Wastewater Operations Schema Extension
+### 10. Boil water advisory workflow
 
-**Justification:** Advanced users need to ask “what would happen if” before committing changes to live treatment plants, water quality, permits, assets, service interruptions, field work, and compliance reporting operations.
+**Justification:** Pressure loss, contamination risk, or microbiological findings can require public advisories and rescission evidence.
 
-**Improvement:** Provide scenario simulation for `water_wastewater_operations_schema_extension`: policy change, capacity constraint, deadline shift, price/rate change, eligibility change, disruption, and manual override outcomes. Tie the behavior to `water_wastewater_operations_record_water_quality_sample_workflow` where applicable, and make it visible in `WaterWastewaterOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add advisory records with affected area projection, trigger, public notice, sample requirements, rescission criteria, and communications.
 
-**Acceptance evidence:** Simulation APIs, non-mutating sandbox state, comparison reports, and workbench side-by-side scenario panels. The evidence should be package-local in `src/pyAppGen/pbcs/water_wastewater_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must prevent advisory closure until resample and notice criteria are met.
 
-### 11. Autonomous anomaly triage for Water Wastewater Operations Control Assertion
+### 11. Service interruption lifecycle
 
-**Justification:** A world-class PBC should reduce analyst burden without hiding the reasoning behind automated triage.
+**Justification:** Water main breaks, sewer blockages, pressure loss, planned shutdowns, and treatment constraints affect customers and compliance.
 
-**Improvement:** Implement anomaly detection for `water_wastewater_operations_control_assertion` that identifies outliers, duplicate submissions, impossible sequences, stale dependencies, unusual amounts/counts/durations, and contradictory fields. Tie the behavior to `water_wastewater_operations_create_treatment_plant_workflow` where applicable, and make it visible in `WaterWastewaterOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand `service_interruption` with type, start, affected area, customer impact, cause, crew assignment projection, advisory status, and restoration.
 
-**Acceptance evidence:** Explainable anomaly cards, reviewer feedback loops, false-positive tracking, and suppression governance. The evidence should be package-local in `src/pyAppGen/pbcs/water_wastewater_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must track planned and unplanned interruptions through verification and closure.
 
-### 12. Semantic document understanding for Water Wastewater Operations Governed Model
+### 12. Pressure zone impact model
 
-**Justification:** Document-heavy work in Water and Wastewater Operations cannot be complete if the assistant only answers questions and cannot prepare accurate governed changes.
+**Justification:** Water interruptions and pressure events depend on zones, valves, pumps, tanks, and elevation.
 
-**Improvement:** Train the package assistant to parse domain documents and instructions for `water_wastewater_operations_governed_model`, extract obligations, dates, parties, quantities, identifiers, and exceptions, then map them to safe draft mutations. Tie the behavior to `water_wastewater_operations_record_water_quality_sample_workflow` where applicable, and make it visible in `WaterWastewaterOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Store pressure zone projections with affected service area, critical customers, valves, tanks, and hydraulic freshness.
 
-**Acceptance evidence:** Document extraction tests, confidence thresholds, redaction handling, source span citations, and human confirmation workflows. The evidence should be package-local in `src/pyAppGen/pbcs/water_wastewater_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Boundary tests must prove hydraulic and GIS data are projections and no external network table is mutated.
 
-### 13. Agent-safe CRUD execution for Treatment Plant
+### 13. Pump asset lifecycle
 
-**Justification:** The PBC agent must be a first-class operator but never a hidden bypass around RBAC, rules, or owned datastore boundaries.
+**Justification:** Pumps fail, degrade, cavitate, trip, run inefficiently, and require preventive maintenance.
 
-**Improvement:** Add a professional chatbot skill for `treatment_plant` that can create, update, correct, close, and annotate records only through policy-checked commands, approval gates, and previewed diffs. Tie the behavior to `water_wastewater_operations_create_treatment_plant_workflow` where applicable, and make it visible in `WaterWastewaterOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand `pump_asset` with operating status, duty/standby role, flow, head, runtime, starts, vibration projection, maintenance status, and criticality.
 
-**Acceptance evidence:** Skill manifests, permission tests, preview/confirm flows, blocked-action evidence, and audit events for every assistant mutation. The evidence should be package-local in `src/pyAppGen/pbcs/water_wastewater_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must flag pump assets with abnormal runtime or unavailable standby status.
 
-### 14. Workbench persona coverage for Water Quality Sample
+### 14. Lift station monitoring
 
-**Justification:** A generic detail page underserves the domain; each role needs the exact controls and evidence they use daily.
+**Justification:** Wastewater lift station failures can cause overflows and environmental harm.
 
-**Improvement:** Design dedicated workbench panels for `water_quality_sample`: operator queue, supervisor approvals, analyst exceptions, auditor evidence, configuration owner, and agent-assistance review. Tie the behavior to `water_wastewater_operations_record_water_quality_sample_workflow` where applicable, and make it visible in `WaterWastewaterOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add lift station operating records with wet well level, pump status, alarms, generator status, overflow risk, and response actions.
 
-**Acceptance evidence:** UI contract entries, route tests, empty/error/loading states, and permission-aware action availability. The evidence should be package-local in `src/pyAppGen/pbcs/water_wastewater_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must open emergency work when overflow risk thresholds are crossed.
 
-### 15. Cross-PBC dependency contracts for Permit Limit
+### 15. Sewer overflow event handling
 
-**Justification:** Composable packages fail when hidden table coupling enters the domain model.
+**Justification:** Sanitary or combined sewer overflows require immediate response, sampling, public notice, and regulatory reporting.
 
-**Improvement:** Represent dependencies for `permit_limit` through declared APIs, consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, and projections rather than shared tables, with explicit freshness, ownership, and fallback behavior. Tie the behavior to `water_wastewater_operations_create_treatment_plant_workflow` where applicable, and make it visible in `WaterWastewaterOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add overflow records with location, estimated volume, receiving water, cause, start/stop, cleanup, sampling, and notice evidence.
 
-**Acceptance evidence:** Dependency manifests, contract tests, stale dependency alerts, and no foreign-table references in generated artifacts. The evidence should be package-local in `src/pyAppGen/pbcs/water_wastewater_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must generate reporting tasks and preserve volume estimate assumptions.
 
-### 16. API completeness and versioning for Pump Asset
+### 16. Field work order specialization
 
-**Justification:** Complete domain coverage requires both command and query surfaces, not only happy-path create endpoints.
+**Justification:** Water and wastewater field work includes valve operations, hydrants, leaks, blockages, meter assists, sampling, and repairs.
 
-**Improvement:** Expand APIs beyond POST /treatment-plants, POST /water-quality-samples, POST /permit-limits to cover search, validation-only commands, simulation, bulk intake, exception closure, evidence export, projection reads, and idempotent corrections. Tie the behavior to `water_wastewater_operations_record_water_quality_sample_workflow` where applicable, and make it visible in `WaterWastewaterOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Expand `field_work_order` with work type, asset projection, safety controls, crew projection, materials projection, traffic control, and completion evidence.
 
-**Acceptance evidence:** OpenAPI-style route manifests, backward-compatible version tests, deprecation metadata, and idempotency assertions. The evidence should be package-local in `src/pyAppGen/pbcs/water_wastewater_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must route work by asset type and required skill without mutating crew or inventory tables.
 
-### 17. Typed emitted-event expansion for Service Interruption
+### 17. Valve operation and isolation evidence
 
-**Justification:** Consumers should understand what happened in Water and Wastewater Operations without parsing opaque payloads.
+**Justification:** Main breaks and planned shutdowns require documented valve closures, affected customers, and reopening checks.
 
-**Improvement:** Replace generic lifecycle emissions with typed events for each meaningful `service_interruption` transition, exception, approval, correction, simulation result, and downstream handoff. Tie the behavior to `water_wastewater_operations_create_treatment_plant_workflow` where applicable, and make it visible in `WaterWastewaterOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add valve operation records with valve projection, action, sequence, operator, time, impact, and verification.
 
-**Acceptance evidence:** Event schema tests, event examples, compatibility checks, and emitted-event coverage in release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/water_wastewater_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must reconstruct isolation plans and customer impact from valve operations.
 
-### 18. Consumed-event handlers for Field Work Order
+### 18. Hydrant inspection and flushing
 
-**Justification:** A PBC is composable only when incoming events affect its own domain state predictably and safely.
+**Justification:** Hydrants support fire flow, flushing, water quality, and maintenance programs.
 
-**Improvement:** Implement idempotent handlers for consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged that update projections, open dependency exceptions, recalculate risk, and preserve source event lineage. Tie the behavior to `water_wastewater_operations_record_water_quality_sample_workflow` where applicable, and make it visible in `WaterWastewaterOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add hydrant inspection records with flow, pressure, condition, accessibility, flushing volume, discoloration notes, and repair need.
 
-**Acceptance evidence:** Duplicate-event tests, handler side-effect boundaries, dead-letter fixtures, and lineage links back to source events. The evidence should be package-local in `src/pyAppGen/pbcs/water_wastewater_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must create follow-up work for failed hydrant checks.
 
-### 19. Retry and dead-letter operations for Compliance Sample
+### 19. Main break response
 
-**Justification:** Dead letters are not just plumbing; they are domain work queues that can block treatment plants, water quality, permits, assets, service interruptions, field work, and compliance reporting.
+**Justification:** Main breaks require leak confirmation, isolation, repair, flushing, sampling, restoration, and customer communication.
 
-**Improvement:** Create operational tools for retrying, quarantining, explaining, and resolving dead-lettered `compliance_sample` events with max-attempt policy, poison-message detection, and replay safety. Tie the behavior to `water_wastewater_operations_create_treatment_plant_workflow` where applicable, and make it visible in `WaterWastewaterOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add main break cases with pipe projection, break type, leak severity, affected zone, repair action, flushing, samples, and closure.
 
-**Acceptance evidence:** Dead-letter workbench, retry eligibility tests, replay audit proof, and operator action logs. The evidence should be package-local in `src/pyAppGen/pbcs/water_wastewater_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must block closure before restoration and post-repair sample evidence.
 
-### 20. RBAC and attribute policy for Water Wastewater Operations Policy Rule
+### 20. Wastewater blockage and backup workflow
 
-**Justification:** High-impact domain operations need finer controls than generic RBAC grants.
+**Justification:** Blockages and backups need urgent response, cause classification, cleanup, claim handoff, and prevention.
 
-**Improvement:** Extend permissions for `water_wastewater_operations_policy_rule` from coarse read/create/update/admin to action-level and attribute-aware policies based on role, tenant, jurisdiction, monetary/materiality threshold, and exception severity. Tie the behavior to `water_wastewater_operations_record_water_quality_sample_workflow` where applicable, and make it visible in `WaterWastewaterOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add blockage cases with location, pipe projection, cause, affected customers, cleanup status, CCTV projection, and corrective action.
 
-**Acceptance evidence:** Permission matrix docs, ABAC policy tests, denied-action UI states, and assistant skill permission checks. The evidence should be package-local in `src/pyAppGen/pbcs/water_wastewater_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must route severe backups and emit claim handoff events without owning claims tables.
 
-### 21. Continuous control testing for Water Wastewater Operations Runtime Parameter
+### 21. CCTV and inspection boundary
 
-**Justification:** Controls should run during operations, not only during release audit or manual review.
+**Justification:** Pipe inspection results guide work but may come from specialized inspection systems.
 
-**Improvement:** Embed control assertions for `water_wastewater_operations_runtime_parameter` that continuously test segregation of duties, required approvals, stale exceptions, policy drift, duplicate records, and boundary violations. Tie the behavior to `water_wastewater_operations_create_treatment_plant_workflow` where applicable, and make it visible in `WaterWastewaterOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Store CCTV projections with defect codes, severity, segment, inspection date, media reference, and freshness.
 
-**Acceptance evidence:** Control dashboards, failing-control events, test fixtures, and release evidence tied to `water_wastewater_operations_control_assertion` records. The evidence should be package-local in `src/pyAppGen/pbcs/water_wastewater_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Boundary tests must prove inspection data is projected and not mutated.
 
-### 22. Cryptographic audit proofing for Water Wastewater Operations Schema Extension
+### 22. Chemical dosing control evidence
 
-**Justification:** Better-than-world-class auditability requires proof of integrity, not merely logs stored in mutable tables.
+**Justification:** Treatment chemicals affect compliance, safety, costs, and public health.
 
-**Improvement:** Hash-chain material `water_wastewater_operations_schema_extension` decisions, documents, emitted events, and release-evidence snapshots to make tampering visible without exposing sensitive payloads. Tie the behavior to `water_wastewater_operations_record_water_quality_sample_workflow` where applicable, and make it visible in `WaterWastewaterOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add dosing events with chemical type, dose, target parameter, operator, feed equipment, inventory projection, and adjustment reason.
 
-**Acceptance evidence:** Proof manifests, verification APIs, redacted proof exports, and audit-ledger handoff events. The evidence should be package-local in `src/pyAppGen/pbcs/water_wastewater_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must tie dosing changes to sample trends or operating conditions.
 
-### 23. Privacy, consent, and secrecy controls for Water Wastewater Operations Control Assertion
+### 23. Sludge and biosolids handling
 
-**Justification:** Complete domain coverage must account for protected data and restricted operational evidence.
+**Justification:** Wastewater operations require sludge volume, treatment, hauling, disposal, land application, and compliance evidence.
 
-**Improvement:** Add field-level privacy classifications for `water_wastewater_operations_control_assertion`, consent checks, masking rules, retention schedules, legal holds, and assistant redaction policies. Tie the behavior to `water_wastewater_operations_create_treatment_plant_workflow` where applicable, and make it visible in `WaterWastewaterOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add biosolids records with volume, solids content, treatment class, hauling ticket, destination, pathogen/vector evidence, and certification.
 
-**Acceptance evidence:** Retention tests, masked UI snapshots, consent-blocked mutation fixtures, and export controls. The evidence should be package-local in `src/pyAppGen/pbcs/water_wastewater_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must generate biosolids compliance packages.
 
-### 24. Multi-tenant operating model for Water Wastewater Operations Governed Model
+### 24. Industrial discharge monitoring
 
-**Justification:** The PBC should scale across organizations while preserving independent policy and compliance boundaries.
+**Justification:** Industrial dischargers can affect treatment performance, permit compliance, and pretreatment enforcement.
 
-**Improvement:** Support tenant-specific `water_wastewater_operations_governed_model` rules, data residency, encryption context, configuration, seed data, and release evidence without allowing cross-tenant leakage. Tie the behavior to `water_wastewater_operations_record_water_quality_sample_workflow` where applicable, and make it visible in `WaterWastewaterOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Store industrial discharge projections, sample results, discharge limits, exceedance, notice, and enforcement handoff.
 
-**Acceptance evidence:** Tenant isolation tests, tenant-scoped parameters, key-rotation evidence, and cross-tenant negative fixtures. The evidence should be package-local in `src/pyAppGen/pbcs/water_wastewater_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must flag industrial discharge impacts without owning industrial customer tables.
 
-### 25. Schema evolution and extension registry for Treatment Plant
+### 25. Storm and inflow response
 
-**Justification:** Domain teams will add fields; the PBC must evolve without breaking APIs, events, or workbench projections.
+**Justification:** Wet weather can drive infiltration, inflow, overflows, turbidity, and treatment constraints.
 
-**Improvement:** Make schema extensions for `treatment_plant` first-class with compatibility checks, migration previews, projection backfills, field ownership, and rollback metadata. Tie the behavior to `water_wastewater_operations_create_treatment_plant_workflow` where applicable, and make it visible in `WaterWastewaterOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add storm response mode with rainfall projection, flow changes, plant constraints, lift station risk, and staffing actions.
 
-**Acceptance evidence:** Extension registry UI, compatibility tests, migration dry-runs, and backfill release evidence. The evidence should be package-local in `src/pyAppGen/pbcs/water_wastewater_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must apply storm-specific thresholds and workbench queues.
 
-### 26. Master data quality gates for Water Quality Sample
+### 26. Tank and reservoir operations
 
-**Justification:** Many water and wastewater operations errors begin as bad reference data; the PBC should catch them before workflow execution.
+**Justification:** Storage levels affect pressure, fire flow, water age, and service continuity.
 
-**Improvement:** Define reference-data contracts for `water_quality_sample`: canonical codes, parties, locations, classifications, calendars, units, currencies, products, assets, or service categories as relevant to the domain. Tie the behavior to `water_wastewater_operations_record_water_quality_sample_workflow` where applicable, and make it visible in `WaterWastewaterOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add storage asset projections with level, turnover, low/high thresholds, isolation status, and water quality watch.
 
-**Acceptance evidence:** Reference validation fixtures, stale-code warnings, mapping tables, and dependency freshness indicators. The evidence should be package-local in `src/pyAppGen/pbcs/water_wastewater_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must create alerts for storage level and water-age risk.
 
-### 27. Bulk operations and correction workflows for Permit Limit
+### 27. Water loss and non-revenue water signals
 
-**Justification:** Enterprise-scale Water and Wastewater Operations users cannot operate one record at a time.
+**Justification:** Leaks, meter errors, theft, and operational flushing affect water loss.
 
-**Improvement:** Add bulk load, bulk validate, bulk approve, and bulk correction workflows for `permit_limit` with partial success, row-level errors, resumability, and rollback. Tie the behavior to `water_wastewater_operations_create_treatment_plant_workflow` where applicable, and make it visible in `WaterWastewaterOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add water loss analytics using production, district meter projection, service interruption, flushing, and repair events.
 
-**Acceptance evidence:** CSV/API batch fixtures, resumable job state, row-level audit evidence, and assistant-generated correction suggestions. The evidence should be package-local in `src/pyAppGen/pbcs/water_wastewater_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must calculate district loss indicators and open investigation tasks.
 
-### 28. Lifecycle collaboration and tasking for Pump Asset
+### 28. Energy and process efficiency
 
-**Justification:** Domain collaboration should live inside the PBC boundary and remain auditable with the record it affects.
+**Justification:** Pumping and treatment consume significant energy, and operators need efficiency insight.
 
-**Improvement:** Attach tasks, comments, ownership, due dates, handoffs, and escalation threads to `pump_asset` without leaking into external shared task tables. Tie the behavior to `water_wastewater_operations_record_water_quality_sample_workflow` where applicable, and make it visible in `WaterWastewaterOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add energy projections by plant, pump, process train, flow, and operating mode with efficiency metrics.
 
-**Acceptance evidence:** Task tables, comment audit history, notification events, escalation SLAs, and role-specific task queues. The evidence should be package-local in `src/pyAppGen/pbcs/water_wastewater_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must calculate energy intensity and expose assumptions.
 
-### 29. SLA and service-level governance for Service Interruption
+### 29. Regulatory reporting package
 
-**Justification:** Users need to know when treatment plants, water quality, permits, assets, service interruptions, field work, and compliance reporting is late, blocked, or at risk before customer or regulator impact.
+**Justification:** Utilities submit discharge monitoring, drinking water, overflow, biosolids, and sampling reports.
 
-**Improvement:** Define SLAs for `service_interruption` across intake, validation, approval, exception resolution, event handling, downstream projection refresh, and release-evidence generation. Tie the behavior to `water_wastewater_operations_create_treatment_plant_workflow` where applicable, and make it visible in `WaterWastewaterOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add report packages with period, permit, included samples, exceedances, operator certification, attachments, and submission evidence.
 
-**Acceptance evidence:** SLA breach events, timers, configurable calendars, workbench aging buckets, and tests for pause/resume behavior. The evidence should be package-local in `src/pyAppGen/pbcs/water_wastewater_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must generate regulator-ready packages from owned records and projections.
 
-### 30. Operational analytics cockpit for Field Work Order
+### 30. Operator logbook
 
-**Justification:** World-class operations require leading indicators, not only record counts.
+**Justification:** Shift logs record observations, process changes, alarms, incidents, and handoffs.
 
-**Improvement:** Build analytics for `field_work_order`: throughput, backlog, aging, approval latency, exception rate, risk distribution, automation acceptance, correction rate, and downstream dependency health. Tie the behavior to `water_wastewater_operations_record_water_quality_sample_workflow` where applicable, and make it visible in `WaterWastewaterOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add operator log entries with shift, plant, process area, observation, action, linked sample/work order, and handoff status.
 
-**Acceptance evidence:** Metric definitions, projection tests, drill-through routes, export APIs, and anomaly overlays. The evidence should be package-local in `src/pyAppGen/pbcs/water_wastewater_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must show log continuity and unresolved handoff items.
 
-### 31. Decision intelligence and recommendations for Compliance Sample
+### 31. Alarm and telemetry boundary
 
-**Justification:** The PBC should help expert users decide faster while showing evidence and uncertainty.
+**Justification:** Operators need telemetry and alarms but should not own SCADA historian data.
 
-**Improvement:** Generate ranked recommendations for `compliance_sample` such as next best action, likely resolution, required evidence, policy adjustment, staffing/capacity response, or downstream handoff. Tie the behavior to `water_wastewater_operations_create_treatment_plant_workflow` where applicable, and make it visible in `WaterWastewaterOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Store telemetry projections with tag, timestamp, value, quality, alarm state, and freshness for operational decisions.
 
-**Acceptance evidence:** Recommendation explanations, confidence intervals, feedback capture, model governance records, and rejection reasons. The evidence should be package-local in `src/pyAppGen/pbcs/water_wastewater_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Boundary tests must prove telemetry is projected and raw historian tables are not mutated.
 
-### 32. Quality and completeness scoring for Water Wastewater Operations Policy Rule
+### 32. Workbench plant command board
 
-**Justification:** Operators should see whether a record is truly ready, not just technically saved.
+**Justification:** Operators need one surface for plant status, samples, permits, alarms, pumps, interruptions, work orders, and reports.
 
-**Improvement:** Score each `water_wastewater_operations_policy_rule` record for completeness, consistency, policy readiness, dependency readiness, evidence sufficiency, and downstream composability. Tie the behavior to `water_wastewater_operations_record_water_quality_sample_workflow` where applicable, and make it visible in `WaterWastewaterOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add command-board views with process state, due samples, permit risk, active interruptions, pump alarms, and compliance tasks.
 
-**Acceptance evidence:** Scoring rules, missing-evidence lists, readiness badges, and blocking criteria in command handlers. The evidence should be package-local in `src/pyAppGen/pbcs/water_wastewater_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** UI tests must expose plant command sections and drilldowns.
 
-### 33. End-to-end scenario library for Water Wastewater Operations Runtime Parameter
+### 33. Field crew mobile packet
 
-**Justification:** Release evidence is stronger when every important water and wastewater operations behavior has executable examples.
+**Justification:** Crews need asset location, safety, work steps, photos, traffic controls, materials, and restoration checks.
 
-**Improvement:** Create seeded scenarios for `water_wastewater_operations_runtime_parameter`: normal flow, urgent path, exception path, corrected path, duplicate path, late event path, and audit export path. Tie the behavior to `water_wastewater_operations_create_treatment_plant_workflow` where applicable, and make it visible in `WaterWastewaterOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add mobile work packets with map projection, checklist, safety controls, evidence capture, and completion validation.
 
-**Acceptance evidence:** Scenario seed data, runtime smoke coverage, generated-app fixtures, and story-level workbench screenshots/contracts. The evidence should be package-local in `src/pyAppGen/pbcs/water_wastewater_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must render field packets from owned work orders and projections.
 
-### 34. Domain ontology and terminology model for Water Wastewater Operations Schema Extension
+### 34. Rule and parameter workbench
 
-**Justification:** Precise vocabulary prevents the PBC from misclassifying specialist documents or user instructions.
+**Justification:** Water operations tune permit limits, sample schedules, advisory triggers, overflow thresholds, and reporting rules.
 
-**Improvement:** Add an ontology for `water_wastewater_operations_schema_extension` terms, synonyms, classifications, relationships, allowed values, and phrase mappings used by the assistant and UI. Tie the behavior to `water_wastewater_operations_record_water_quality_sample_workflow` where applicable, and make it visible in `WaterWastewaterOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add governed editors for sampling frequency, permit thresholds, advisory rules, storm mode, and work-order priorities.
 
-**Acceptance evidence:** Ontology files, assistant parsing tests, UI glossary, and mapping evidence for domain-specific abbreviations. The evidence should be package-local in `src/pyAppGen/pbcs/water_wastewater_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must validate parameter bounds, approval history, rollback, and runtime effect.
 
-### 35. Advanced search and investigation for Water Wastewater Operations Control Assertion
+### 35. Agent-assisted sample interpretation
 
-**Justification:** Investigators and operators need fast, explainable retrieval across the whole domain surface.
+**Justification:** Operators need help understanding sample trends, exceedance risk, and required follow-up.
 
-**Improvement:** Provide search across `water_wastewater_operations_control_assertion` records, events, documents, exceptions, tasks, comments, and audit proofs with filters for tenant, status, risk, date, party, and dependency. Tie the behavior to `water_wastewater_operations_create_treatment_plant_workflow` where applicable, and make it visible in `WaterWastewaterOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add assistant skills that summarize sample results, compare limits, identify anomalies, and propose next actions.
 
-**Acceptance evidence:** Search index contracts, result provenance, permission-filtered queries, and stale-index warnings. The evidence should be package-local in `src/pyAppGen/pbcs/water_wastewater_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must verify assistant output cites sample and permit evidence.
 
-### 36. Reconciliation and closure controls for Water Wastewater Operations Governed Model
+### 36. Agent-assisted incident narration
 
-**Justification:** Closure is not complete until the PBC can prove no material domain work remains unresolved.
+**Justification:** Service interruptions and overflows need concise, accurate narratives for supervisors and regulators.
 
-**Improvement:** Add reconciliation workflows that compare `water_wastewater_operations_governed_model` state against consumed events, external projections, expected totals/counts, approvals, and release evidence before closure. Tie the behavior to `water_wastewater_operations_record_water_quality_sample_workflow` where applicable, and make it visible in `WaterWastewaterOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add assistant generation for incident timelines, cause summaries, public notices, and report drafts from owned evidence.
 
-**Acceptance evidence:** Reconciliation reports, variance thresholds, closure blockers, and AppGen-X closure events. The evidence should be package-local in `src/pyAppGen/pbcs/water_wastewater_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must require human approval before report submission or public advisory text is finalized.
 
-### 37. Regulatory and policy reporting for Treatment Plant
+### 37. Agent safety restrictions
 
-**Justification:** World-class PBCs turn operational evidence into credible reporting without spreadsheet reconstruction.
+**Justification:** AI must not silently certify samples, close violations, rescind advisories, or alter permit evidence.
 
-**Improvement:** Generate domain reporting packs for `treatment_plant` covering statutory, contractual, operational, board, customer, or regulator evidence depending on network reliability, safety switching, metered usage accuracy, outage restoration, asset constraints, emissions awareness, and regulated service obligations. Tie the behavior to `water_wastewater_operations_create_treatment_plant_workflow` where applicable, and make it visible in `WaterWastewaterOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Require agent proposals to declare command, affected records, public health impact, regulatory impact, evidence, confidence, and approval role.
 
-**Acceptance evidence:** Report schemas, redaction rules, traceable metric sources, and approval/export audit events. The evidence should be package-local in `src/pyAppGen/pbcs/water_wastewater_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must block high-impact agent writes without explicit approval.
 
-### 38. Carbon and resource awareness for Water Quality Sample
+### 38. AppGen-X event specialization
 
-**Justification:** Sustainability evidence should be embedded in operations instead of treated as an after-the-fact report.
+**Justification:** Water operations compose with field service, asset management, customer communications, compliance, inventory, and billing through events.
 
-**Improvement:** Where relevant, attach carbon, energy, water, travel, capacity, compute, or resource-footprint metadata to `water_quality_sample` decisions and batch operations. Tie the behavior to `water_wastewater_operations_record_water_quality_sample_workflow` where applicable, and make it visible in `WaterWastewaterOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Define typed events for sample collected, limit exceeded, pump alarmed, interruption opened, advisory issued, work completed, and report certified.
 
-**Acceptance evidence:** Footprint fields, scheduling parameters, exception rules, and dashboards that expose operational tradeoffs. The evidence should be package-local in `src/pyAppGen/pbcs/water_wastewater_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Event tests must verify idempotency keys, retry behavior, dead-letter evidence, and declared dependency usage.
 
-### 39. Resilience and offline behavior for Permit Limit
+### 39. Point-in-time compliance reconstruction
 
-**Justification:** Real operations keep moving during outages; the PBC must preserve correctness when dependencies are unavailable.
+**Justification:** Audits require reconstructing sample status, permit limits, plant state, and reports as of a point in time.
 
-**Improvement:** Define resilience modes for `permit_limit`: degraded dependency mode, offline draft capture, delayed event replay, conflict detection, and safe recovery after partial failure. Tie the behavior to `water_wastewater_operations_create_treatment_plant_workflow` where applicable, and make it visible in `WaterWastewaterOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add event replay for samples, permit limits, plant state, interruptions, work orders, and report packages.
 
-**Acceptance evidence:** Offline fixtures, replay tests, conflict queues, recovery logs, and user-visible degraded-mode warnings. The evidence should be package-local in `src/pyAppGen/pbcs/water_wastewater_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must reproduce historical compliance snapshots from owned events.
 
-### 40. Human-in-the-loop automation for Pump Asset
+### 40. Cryptographic compliance evidence packet
 
-**Justification:** Automation should accelerate treatment plants, water quality, permits, assets, service interruptions, field work, and compliance reporting while preserving accountability for high-risk decisions.
+**Justification:** Public health, environmental, and regulatory disputes need tamper-evident evidence.
 
-**Improvement:** Set explicit automation boundaries for `pump_asset`: auto-approve, auto-reject, suggest-only, require-review, and block-until-evidence states with policy-based routing. Tie the behavior to `water_wastewater_operations_record_water_quality_sample_workflow` where applicable, and make it visible in `WaterWastewaterOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add hash-linked packets for sample chain of custody, exceedance cases, advisories, overflow events, and regulatory reports.
 
-**Acceptance evidence:** Automation policy tests, reviewer queues, override reasons, and assistant action audit trails. The evidence should be package-local in `src/pyAppGen/pbcs/water_wastewater_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must detect altered packet contents and verify packet generation from owned records.
 
-### 41. Package discovery and fit scoring for Service Interruption
+### 41. Asset criticality and resilience scoring
 
-**Justification:** Users selecting PBCs need transparent fit reasoning, especially when domains are adjacent but not overlapping.
+**Justification:** Pump, plant, and network issues should be prioritized by service impact, compliance risk, and redundancy.
 
-**Improvement:** Improve package metadata so composition can explain when `water_wastewater_operations` fits a prompt, what entities it owns, what APIs/events it exposes, and what adjacent PBCs it depends on. Tie the behavior to `water_wastewater_operations_create_treatment_plant_workflow` where applicable, and make it visible in `WaterWastewaterOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add criticality scores using asset projection, customer impact, permit risk, redundancy, and historical failures.
 
-**Acceptance evidence:** Discovery manifests, prompt-selection tests, overlap rationale links, and composition DSL examples. The evidence should be package-local in `src/pyAppGen/pbcs/water_wastewater_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must calculate criticality and use it in work order priority.
 
-### 42. Configuration deployment pipeline for Field Work Order
+### 42. Preventive maintenance coordination
 
-**Justification:** Configuration changes can materially alter water and wastewater operations; they need the same discipline as code releases.
+**Justification:** Preventive maintenance reduces pump failures, permit risk, and service interruptions.
 
-**Improvement:** Add configuration promotion for `field_work_order` across draft, test, approved, active, deprecated, and rollback states with impact analysis before activation. Tie the behavior to `water_wastewater_operations_record_water_quality_sample_workflow` where applicable, and make it visible in `WaterWastewaterOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Store maintenance projections, due status, skipped maintenance, and operational risk from declared asset dependencies.
 
-**Acceptance evidence:** Config diff views, approval workflows, simulation before activation, and rollback tests. The evidence should be package-local in `src/pyAppGen/pbcs/water_wastewater_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Boundary tests must prove maintenance data is projected and not mutated.
 
-### 43. Workbench command completeness for Compliance Sample
+### 43. Public notification and communication timeline
 
-**Justification:** A PBC does not fully surface its capabilities if users must call hidden APIs for core work.
+**Justification:** Advisories, interruptions, flushing, pressure changes, and overflows require clear communications.
 
-**Improvement:** Expose every high-value operation for `compliance_sample` in the UI: create, validate, approve, simulate, correct, assign, export, retry, close, and audit-proof verification. Tie the behavior to `water_wastewater_operations_create_treatment_plant_workflow` where applicable, and make it visible in `WaterWastewaterOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add notification records with audience, channel, template, delivery evidence, revision, and rescission criteria.
 
-**Acceptance evidence:** UI action coverage tests, permission-aware disabled states, keyboard paths, and assistant handoff links. The evidence should be package-local in `src/pyAppGen/pbcs/water_wastewater_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must create notices for configured triggers and prevent duplicate sends.
 
-### 44. Document packet and evidence vault for Water Wastewater Operations Policy Rule
+### 44. Laboratory result reconciliation
 
-**Justification:** Documents often carry the legal or operational truth behind treatment plants, water quality, permits, assets, service interruptions, field work, and compliance reporting.
+**Justification:** Lab results must match sample identity, method, parameter, holding time, and reporting limits.
 
-**Improvement:** Create a governed evidence vault for `water_wastewater_operations_policy_rule` documents, attachments, source spans, extracted fields, signatures, approvals, and retention labels. Tie the behavior to `water_wastewater_operations_record_water_quality_sample_workflow` where applicable, and make it visible in `WaterWastewaterOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add lab result reconciliation with method validation, holding-time check, qualifier, detection limit, and discrepancy queue.
 
-**Acceptance evidence:** Evidence models, source-to-field lineage, signature validation, retention policies, and proof exports. The evidence should be package-local in `src/pyAppGen/pbcs/water_wastewater_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must reject invalid or mismatched lab results.
 
-### 45. Data correction and amendment history for Water Wastewater Operations Runtime Parameter
+### 45. Environmental impact analytics
 
-**Justification:** World-class systems correct mistakes without rewriting history or confusing downstream consumers.
+**Justification:** Utilities need insight into overflows, treatment efficiency, energy intensity, chemical use, and receiving-water impacts.
 
-**Improvement:** Support formal amendments for `water_wastewater_operations_runtime_parameter` that preserve original values, correction reason, approving actor, effective date, downstream event impacts, and replay behavior. Tie the behavior to `water_wastewater_operations_create_treatment_plant_workflow` where applicable, and make it visible in `WaterWastewaterOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add analytics by plant, permit, receiving water, process train, weather event, and period.
 
-**Acceptance evidence:** Amendment tables, correction events, projection replay tests, and side-by-side before/after UI. The evidence should be package-local in `src/pyAppGen/pbcs/water_wastewater_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** UI tests must expose environmental metrics and supporting evidence.
 
-### 46. External participant collaboration for Water Wastewater Operations Schema Extension
+### 46. Emergency response mode
 
-**Justification:** Many water and wastewater operations workflows require outside parties, but they must not gain direct access to internal tables.
+**Justification:** Contamination, major main breaks, floods, cyber incidents, and plant failures require emergency operations.
 
-**Improvement:** Add controlled collaboration portals or API views for external participants related to `water_wastewater_operations_schema_extension`, limited to scoped evidence submission, status checks, comments, and dispute responses. Tie the behavior to `water_wastewater_operations_record_water_quality_sample_workflow` where applicable, and make it visible in `WaterWastewaterOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add emergency mode with incident command, staffing, public notices, critical customers, mutual aid, and executive briefing.
 
-**Acceptance evidence:** Participant role policies, scoped tokens, submission audit trails, and inbound evidence validation. The evidence should be package-local in `src/pyAppGen/pbcs/water_wastewater_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must apply emergency rules and command-center views.
 
-### 47. Advanced dependency freshness scoring for Water Wastewater Operations Control Assertion
+### 47. Release smoke scenarios
 
-**Justification:** A record may be valid locally but unsafe if dependency evidence is stale or incomplete.
+**Justification:** Generated apps need evidence that realistic water operations execute after composition.
 
-**Improvement:** Score freshness and reliability of dependencies used by `water_wastewater_operations_control_assertion`, including consumed events PolicyChanged, AuditEventSealed, OperationalKpiChanged, referenced projections, configuration versions, and external submissions. Tie the behavior to `water_wastewater_operations_create_treatment_plant_workflow` where applicable, and make it visible in `WaterWastewaterOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add smoke scenarios for sample collection, permit exceedance, pump alarm, service interruption, field work, advisory, and compliance report.
 
-**Acceptance evidence:** Freshness indicators, blocking rules, stale-event simulations, and workbench dependency health panels. The evidence should be package-local in `src/pyAppGen/pbcs/water_wastewater_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Release evidence must show owned records, AppGen-X events, UI artifacts, and boundary checks for every scenario.
 
-### 48. Model governance and explainability for Water Wastewater Operations Governed Model
+### 48. Cross-PBC boundary proof
 
-**Justification:** Governed AI is mandatory for professional-grade automation in Water and Wastewater Operations.
+**Justification:** Water operations touch GIS, SCADA, field crews, inventory, customer communications, asset management, and billing without owning them.
 
-**Improvement:** For every predictive or agentic feature around `water_wastewater_operations_governed_model`, record model version, prompt or ruleset version, training/evaluation evidence, confidence, explanation, and human feedback. Tie the behavior to `water_wastewater_operations_record_water_quality_sample_workflow` where applicable, and make it visible in `WaterWastewaterOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add automated proof that generated models, services, routes, handlers, projections, and agent commands use only owned tables plus declared APIs/events.
 
-**Acceptance evidence:** Model cards, prompt/version manifests, feedback loops, drift tests, and audit proof for recommendations. The evidence should be package-local in `src/pyAppGen/pbcs/water_wastewater_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must fail on undeclared table references and pass for declared projection or event dependency references.
 
-### 49. High-scale partitioning and archival for Treatment Plant
+### 49. Daily operator briefing
 
-**Justification:** Better-than-world-class packages must remain operable after years of high-volume domain history.
+**Justification:** Operators need concise status for plants, samples, permits, alarms, interruptions, work, and compliance risk.
 
-**Improvement:** Plan scale behavior for `treatment_plant`: tenant partitioning, archival policies, cold storage, retention-aware search, projection compaction, and large-batch replay. Tie the behavior to `water_wastewater_operations_create_treatment_plant_workflow` where applicable, and make it visible in `WaterWastewaterOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add briefing generator with due tasks, active risks, samples, pump issues, interruptions, and regulatory deadlines.
 
-**Acceptance evidence:** Partition tests, archive/retrieve fixtures, retention enforcement, and replay benchmarks. The evidence should be package-local in `src/pyAppGen/pbcs/water_wastewater_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** Tests must generate a briefing from owned records and projections.
 
-### 50. Release gate expansion for Water Quality Sample
+### 50. Water operations command center
 
-**Justification:** The PBC should not claim domain coverage unless release evidence proves the claim end to end.
+**Justification:** Users need one operational surface for treatment, samples, limits, pumps, interruptions, work orders, compliance, and agent support.
 
-**Improvement:** Expand release gates for `water_wastewater_operations` so every schema, service, API, event, handler, UI, rule, parameter, agent skill, seed scenario, and improvement backlog item maps to executable evidence. Tie the behavior to `water_wastewater_operations_record_water_quality_sample_workflow` where applicable, and make it visible in `WaterWastewaterOperationsWorkbench` so operators do not need hidden scripts or raw table access.
+**Improvement:** Add command center with plant status, sample calendar, permit risk, pump alerts, interruption map, report queue, and assistant panel.
 
-**Acceptance evidence:** Release audit checks, manifest traceability, generated-app smoke tests, and missing-capability blockers. The evidence should be package-local in `src/pyAppGen/pbcs/water_wastewater_operations` and should preserve PostgreSQL, MySQL, and MariaDB backend compatibility.
+**Acceptance evidence:** UI tests must expose command center context and governed actions without raw datastore access.
