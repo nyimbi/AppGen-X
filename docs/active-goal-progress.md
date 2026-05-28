@@ -3113,3 +3113,13 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   application. Verification passed: Python compile for touched DSL modules,
   focused code-action apply tests, `tests/test_dsl_tooling_contracts.py -q`,
   scoped diff whitespace check, and restricted-name scan. Commit: `7b1b62b3`.
+- Current tooling audit pass makes the whole `docs/tooling.md` implementation
+  surface executable as one release gate. `appgen.tooling-audit.v1` now
+  composes shared semantic model, diagnostic fixture, linter, formatter,
+  validation/generation, graph/explain, LSP, quick-fix application, visual
+  designer round-trip, VS Code extension, Studio semantic-service, migration
+  coverage, natural-language planner, package/release verifier, PBC catalog,
+  parser-golden, drift, and doctor evidence into `appgen tooling-audit`.
+  Verification passed: Python compile for touched tooling entrypoints, focused
+  tooling-audit contract test, `tests/test_dsl_tooling_contracts.py -q`,
+  scoped diff whitespace check, and restricted-name scan. Commit: `b11d46e0`.
