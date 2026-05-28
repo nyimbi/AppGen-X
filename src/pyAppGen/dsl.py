@@ -198,7 +198,7 @@ def lint_dsl(
     if re.search(r"\bref\b", source):
         warnings.append("Prefer arrow references, for example author_id: int -> Author.id.")
     if re.search(r"api_key\s*:\s*['\"]", source):
-        warnings.append("Use an environment variable name for api_key, not a literal secret.")
+        errors.append("Use an environment variable name for api_key, not a literal secret.")
     if _uses_authoring_aliases(source):
         warnings.append("Use canonical DSL words in committed source: table, view, and flow.")
     if _uses_modifier_aliases(source):
@@ -1135,13 +1135,38 @@ def _run_diagnostic_fixture(fixture: dict) -> dict:
     observed = tuple(dict.fromkeys(item["code"] for item in diagnostics))
     expected = tuple(fixture["expected_codes"])
     missing = tuple(code for code in expected if code not in observed)
+    expected_diagnostics = tuple(item for item in diagnostics if item["code"] in expected)
+    shape_gaps = tuple(
+        {
+            "code": item.get("code"),
+            "missing": tuple(
+                key
+                for key in ("range", "related_locations", "fixes", "docs_url")
+                if key not in item or item.get(key) in (None, "")
+            ),
+        }
+        for item in expected_diagnostics
+        if any(key not in item or item.get(key) in (None, "") for key in ("range", "related_locations", "fixes", "docs_url"))
+    )
+    expected_severities = {spec["code"]: spec["severity"] for spec in DIAGNOSTIC_SPECS}
+    severity_gaps = tuple(
+        {
+            "code": item.get("code"),
+            "expected": expected_severities.get(item.get("code")),
+            "actual": item.get("severity"),
+        }
+        for item in expected_diagnostics
+        if expected_severities.get(item.get("code")) and item.get("severity") != expected_severities.get(item.get("code"))
+    )
     return {
         "name": fixture["name"],
         "runner": runner,
         "expected_codes": expected,
         "observed_codes": observed,
-        "ok": not missing,
+        "ok": not missing and not shape_gaps and not severity_gaps,
         "missing_codes": missing,
+        "shape_gaps": shape_gaps,
+        "severity_gaps": severity_gaps,
         "report_format": report.get("format"),
     }
 
@@ -7251,7 +7276,8 @@ def _declared_group_names(source: str) -> tuple[str, ...]:
 
 def _semantic_range(line: int | None, column: int | None, token: str) -> dict | None:
     if line is None or column is None:
-        return None
+        line = 1
+        column = 0
     return {
         "start": {"line": line, "character": column},
         "end": {"line": line, "character": column + len(token)},
@@ -8880,18 +8906,28 @@ def _diagnostic_code(message: str) -> str:
 def _diagnostic_token(message: str) -> str | None:
     for pattern in (
         r"Unknown app targets: ([^.]+)\.",
+        r"Invalid runtime picker field: app\.([A-Za-z_][A-Za-z0-9_]*)",
         r"Unknown field type: [^.]+\.([A-Za-z_][A-Za-z0-9_]*)",
+        r"Unknown derived-field reference: [^.]+ uses ([A-Za-z_][A-Za-z0-9_]*)",
         r"Multi-hop lookup chain breaks: [^.]+\.([A-Za-z_][A-Za-z0-9_.]*)",
         r"Unresolved lookup path: [^.]+\.([A-Za-z_][A-Za-z0-9_.]*)",
         r"Unknown view table: [^.]+ for ([A-Za-z_][A-Za-z0-9_]*)",
         r"Unknown view field: [^.]+\.([A-Za-z_][A-Za-z0-9_]*)",
         r"Unknown component field: [^.]+\.([A-Za-z_][A-Za-z0-9_]*)",
         r"Unknown visual component: [^.]+\.([A-Za-z_][A-Za-z0-9_]*)",
+        r"Unknown handler target: [^.]+\.([A-Za-z_][A-Za-z0-9_]*)",
+        r"Unknown rule field: [^.]+\.([A-Za-z_][A-Za-z0-9_]*)",
         r"Flow strict state is undeclared: [^.]+\.([A-Za-z_][A-Za-z0-9_]*)",
         r"Human task has no assignee: [^.]+\.([A-Za-z_][A-Za-z0-9_]*)",
+        r"Unknown role resource: [^.]+\.([A-Za-z_][A-Za-z0-9_]*)",
+        r"Unknown deployment unit target: [^.]+\.([A-Za-z_][A-Za-z0-9_]*)",
+        r"Unknown package target: [^.]+\.([A-Za-z_][A-Za-z0-9_]*)",
         r"Unknown PBC catalog entry: [^.]+\.([A-Za-z_][A-Za-z0-9_]*)",
+        r"Unknown cross-PBC contract: .*?\b([A-Za-z_][A-Za-z0-9_]*)\s*->",
+        r"Private PBC table access: .*?\b([A-Za-z_][A-Za-z0-9_]*)\s*->",
         r"Unknown agent provider: [^.]+\.([A-Za-z_][A-Za-z0-9_]*)",
         r"Unknown agent skill target: [^.]+\.([A-Za-z_][A-Za-z0-9_]*)",
+        r"Agent write-capable skill has no permission: [^.]+\.([A-Za-z_][A-Za-z0-9_]*)",
         r"Unknown (?:relation|reference) target table: ([A-Za-z_][A-Za-z0-9_]*)",
         r"Unknown (?:relation|reference) target field: [^.]+\.([A-Za-z_][A-Za-z0-9_]*)",
         r"Duplicate [^:]+ declaration: ([A-Za-z_][A-Za-z0-9_]*)",
@@ -8899,6 +8935,12 @@ def _diagnostic_token(message: str) -> str | None:
         match = re.search(pattern, message)
         if match:
             return match.group(1).split(",", 1)[0].strip()
+    if "api_key" in message:
+        return "api_key"
+    if "single =" in message:
+        return "="
+    if "Unbalanced braces" in message:
+        return "{"
     return None
 
 

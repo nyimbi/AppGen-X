@@ -3343,4 +3343,14 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   removed while the DSL remains lintable. Verification passed: Python compile
   for touched tooling entrypoints, focused LSP/audit tests (`2 passed`), scoped
   diff whitespace check, and restricted-name scan outside archive, Git
-  internals, and active PBC paths. Commit: this commit.
+  internals, and active PBC paths. Commit: `7316de10`.
+- Current diagnostic-contract hardening pass closes a `docs/tooling.md`
+  evidence gap around machine-readable diagnostic shape. Required diagnostic
+  golden fixtures now fail unless every expected diagnostic has `range`,
+  `related_locations`, `fixes`, and `docs_url`, and unless the observed
+  severity matches the documented required severity. Secret literal diagnostics
+  now report as `AGX0702` errors and all diagnostics receive a stable source
+  range, with more precise token lookup for common semantic diagnostics.
+  Verification passed: Python compile for touched tooling entrypoints, focused
+  diagnostic/LSP/tooling tests (`3 passed`), full `appgen tooling-audit --json`
+  with `16/16` checks and no blocking gaps. Commit: pending.

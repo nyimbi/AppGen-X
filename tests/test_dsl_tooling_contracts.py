@@ -2020,6 +2020,8 @@ def test_diagnostic_catalog_and_fixture_audit_cover_required_agx_codes() -> None
     assert catalog["ok"] is True
     assert audit["ok"] is True
     assert set(catalog["required_codes"]) <= set(audit["covered_codes"])
+    assert all(not fixture["shape_gaps"] for fixture in audit["fixtures"])
+    assert all(not fixture["severity_gaps"] for fixture in audit["fixtures"])
     assert {
         "AGX0201",
         "AGX0304",
