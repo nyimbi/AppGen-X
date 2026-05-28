@@ -2140,6 +2140,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
         graph_suite_cli = _tooling_audit_graph_suite_cli(Path(tmp), source)
         explain_cli = _tooling_audit_explain_cli_formats(Path(tmp), source)
         migration_cli = _tooling_audit_migration_cli(Path(tmp))
+        nl_plan_cli = _tooling_audit_nl_plan_cli(Path(tmp), source)
         test_strategy_cli = _tooling_audit_test_strategy_cli(Path(tmp), source)
         generation = generate_report_dsl(
             source,
@@ -2354,10 +2355,16 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and nl_plan["dsl_patch"]
             and nl_plan["lint"]["ok"]
             and nl_plan["migration_preview"]["format"] == "appgen.migration-plan.v1"
-            and nl_plan_contract["ok"],
-            "Natural-language change planning produces a bounded DSL patch, lint result, migration preview, tests, and token-budget notes.",
+            and nl_plan_contract["ok"]
+            and nl_plan_cli["ok"],
+            "Natural-language change planning and appgen nl-plan CLI produce bounded DSL patches, lint results, migration previews, tests, and token-budget notes.",
             "docs/tooling.md#natural-language-change-planner",
-            {"format": nl_plan.get("format"), "intent": nl_plan.get("intent"), "contract": nl_plan_contract},
+            {
+                "format": nl_plan.get("format"),
+                "intent": nl_plan.get("intent"),
+                "contract": nl_plan_contract,
+                "cli": nl_plan_cli,
+            },
         ),
         _tooling_audit_check(
             "package_and_release_verifiers",
@@ -3344,6 +3351,67 @@ table Invoice {
         "ok": all(case["ok"] for case in cases),
         "allowed_backends": SUPPORTED_DATABASE_BACKENDS,
         "cases": tuple(cases),
+    }
+
+
+def _tooling_audit_nl_plan_cli(tmp: Path, source: str) -> dict:
+    source_path = tmp / "nl-plan-cli.appgen"
+    source_path.write_text(source, encoding="utf-8")
+
+    def run_json(argv: tuple[str, ...]) -> tuple[int, dict]:
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            exit_code = dsl_tooling_cli(argv)
+        try:
+            payload = json.loads(output.getvalue())
+        except json.JSONDecodeError:
+            payload = {}
+        return exit_code, payload
+
+    accepted_exit, accepted_payload = run_json(
+        (
+            "nl-plan",
+            str(source_path),
+            "--prompt",
+            "Add credit memos to accounts receivable",
+            "--json",
+        )
+    )
+    rejected_exit, rejected_payload = run_json(
+        (
+            "nl-plan",
+            str(source_path),
+            "--prompt",
+            "Replace the runtime with hand-written generated code outside the DSL",
+            "--json",
+        )
+    )
+    rejected_codes = tuple(item.get("code") for item in rejected_payload.get("diagnostics", ()))
+    return {
+        "format": "appgen.nl-plan-cli-audit.v1",
+        "ok": accepted_exit == 0
+        and accepted_payload.get("format") == "appgen.nl-plan.v1"
+        and accepted_payload.get("ok") is True
+        and bool(accepted_payload.get("dsl_patch"))
+        and accepted_payload.get("lint", {}).get("format") == "appgen.lint-report.v1"
+        and accepted_payload.get("lint", {}).get("ok") is True
+        and accepted_payload.get("migration_preview", {}).get("format") == "appgen.migration-plan.v1"
+        and bool(accepted_payload.get("test_plan"))
+        and bool(accepted_payload.get("token_budget_notes"))
+        and rejected_exit == 1
+        and rejected_payload.get("format") == "appgen.nl-plan.v1"
+        and rejected_payload.get("ok") is False
+        and rejected_payload.get("dsl_patch") == ""
+        and "AGX1201" in rejected_codes,
+        "accepted_exit_code": accepted_exit,
+        "rejected_exit_code": rejected_exit,
+        "accepted_payload_format": accepted_payload.get("format"),
+        "accepted_patch_bytes": len(accepted_payload.get("dsl_patch", "")),
+        "accepted_test_count": len(accepted_payload.get("test_plan", ())),
+        "accepted_token_budget_notes": len(accepted_payload.get("token_budget_notes", ())),
+        "migration_format": accepted_payload.get("migration_preview", {}).get("format"),
+        "rejected_payload_format": rejected_payload.get("format"),
+        "rejected_diagnostic_codes": rejected_codes,
     }
 
 

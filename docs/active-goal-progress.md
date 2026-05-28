@@ -3287,6 +3287,16 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   focused graph-suite report/CLI tests (`2 passed`), scoped diff whitespace
   check, and restricted-name scan outside archive, Git internals, and active
   PBC paths. Commit: `ec3927b6`.
+- Current natural-language planner CLI audit pass closes the gap between
+  helper-level NL planner evidence and the documented `appgen nl-plan
+  app.appgen --prompt ... --json` command contract. `appgen.tooling-audit.v1`
+  now embeds `appgen.nl-plan-cli-audit.v1`, which runs accepted and rejected
+  prompts through the CLI and proves bounded DSL patches, lint reports,
+  migration previews, test plans, token-budget notes, and `AGX1201` rejection
+  for out-of-DSL requests. Verification passed: Python compile for touched
+  tooling entrypoints, direct NL planner CLI audit helper probe, focused NL
+  planner tests (`3 passed`), scoped diff whitespace check, and restricted-name
+  scan outside archive, Git internals, and active PBC paths. Commit: pending.
 - Current parallel PBC implementation pass delivered executable code for six
   PBCs rather than plan-only artifacts: `actuarial_pricing_reserving`,
   `advertising_campaign_operations`, `agri_supply_chain_traceability`,
