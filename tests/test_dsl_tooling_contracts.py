@@ -259,6 +259,33 @@ def test_lint_report_strict_mode_promotes_unknown_components_to_errors() -> None
     assert any(item["code"] == "AGX0404" and item["severity"] == "error" for item in strict["diagnostics"])
 
 
+def test_lint_report_uses_component_catalog_to_register_visual_components() -> None:
+    source = """
+    app CatalogDemo { targets: web }
+    table Customer { id: int pk; name: string }
+    view CustomerForm for Customer {
+      Main: name
+      @ name CustomGauge 0 0 4 1
+    }
+    """
+
+    strict = lint_report_dsl(source, source_name="catalog.appgen", strict=True)
+    cataloged = lint_report_dsl(
+        source,
+        source_name="catalog.appgen",
+        strict=True,
+        component_catalog=("CustomGauge",),
+        component_catalog_source="components.json",
+    )
+
+    assert strict["ok"] is False
+    assert any(item["code"] == "AGX0404" for item in strict["diagnostics"])
+    assert cataloged["ok"] is True
+    assert not any(item["code"] == "AGX0404" for item in cataloged["diagnostics"])
+    assert cataloged["component_catalog"]["source"] == "components.json"
+    assert cataloged["component_catalog"]["components"] == ("CustomGauge",)
+
+
 def test_appgen_lint_subcommand_accepts_directory_input(tmp_path: Path) -> None:
     source_dir = tmp_path / "appgen"
     source_dir.mkdir()
@@ -307,6 +334,51 @@ view CustomerForm for Customer {
     assert payload["strict"] is True
     assert payload["severity_counts"]["error"] == 1
     assert any(item["code"] == "AGX0404" and item["severity"] == "error" for item in payload["diagnostics"])
+
+
+def test_appgen_lint_subcommand_applies_component_catalog(tmp_path: Path) -> None:
+    source_path = tmp_path / "catalog.appgen"
+    catalog_path = tmp_path / "components.json"
+    source_path.write_text(
+        """
+app CatalogDemo { targets: web }
+table Customer { id: int pk; name: string }
+view CustomerForm for Customer {
+  Main: name
+  @ name CustomGauge 0 0 4 1
+}
+""",
+        encoding="utf-8",
+    )
+    catalog_path.write_text(
+        json.dumps({"components": [{"name": "CustomGauge", "icon": "gauge"}]}),
+        encoding="utf-8",
+    )
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pyAppGen",
+            "lint",
+            str(source_path),
+            "--strict",
+            "--catalog",
+            str(catalog_path),
+            "--json",
+        ],
+        check=False,
+        cwd=Path(__file__).resolve().parents[1],
+        text=True,
+        capture_output=True,
+    )
+
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["strict"] is True
+    assert payload["component_catalog"]["source"] == str(catalog_path)
+    assert payload["component_catalog"]["components"] == ["CustomGauge"]
+    assert not any(item["code"] == "AGX0404" for item in payload["diagnostics"])
 
 
 def test_format_validate_and_graph_reports_follow_tooling_contracts() -> None:

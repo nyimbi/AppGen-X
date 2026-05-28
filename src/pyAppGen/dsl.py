@@ -174,7 +174,12 @@ def format_dsl_file(path: str | Path, *, organize: bool = False) -> dict:
     return result
 
 
-def lint_dsl(text: str, *, source_name: str | None = None) -> dict:
+def lint_dsl(
+    text: str,
+    *,
+    source_name: str | None = None,
+    component_catalog: Iterable[str] | None = None,
+) -> dict:
     """Return syntax, semantic, and style feedback for AppGen DSL source."""
     source = text or ""
     errors: list[str] = []
@@ -210,7 +215,7 @@ def lint_dsl(text: str, *, source_name: str | None = None) -> dict:
             suggestions.extend(_semantic_suggestions(source, errors))
 
     if schema is not None:
-        policy_errors, policy_warnings = _tooling_policy_diagnostics(schema)
+        policy_errors, policy_warnings = _tooling_policy_diagnostics(schema, component_catalog=component_catalog)
         errors.extend(policy_errors)
         warnings.extend(policy_warnings)
         if not schema.tables:
@@ -688,10 +693,18 @@ def semantic_model_dsl_file(path: str | Path) -> dict:
     return semantic_model_dsl(path.read_text(encoding="utf-8"), source_name=str(path))
 
 
-def lint_report_dsl(text: str, *, source_name: str | None = None, strict: bool = False) -> dict:
+def lint_report_dsl(
+    text: str,
+    *,
+    source_name: str | None = None,
+    strict: bool = False,
+    component_catalog: Iterable[str] | None = None,
+    component_catalog_source: str | None = None,
+) -> dict:
     """Return the docs/tooling.md appgen.lint-report.v1 contract."""
     source = text or ""
-    legacy = lint_dsl(source, source_name=source_name)
+    component_catalog_names = tuple(dict.fromkeys(component_catalog or ()))
+    legacy = lint_dsl(source, source_name=source_name, component_catalog=component_catalog_names)
     diagnostics = tuple(
         _strict_lint_diagnostic(_spec_diagnostic_from_legacy(source, item), strict=strict)
         for item in legacy["diagnostics"]
@@ -711,12 +724,24 @@ def lint_report_dsl(text: str, *, source_name: str | None = None, strict: bool =
         "fixes_available": any(item.get("fixes") for item in diagnostics),
         "semantic_model_available": legacy["ok"],
         "strict": strict,
+        "component_catalog": {
+            "source": component_catalog_source,
+            "components": component_catalog_names,
+            "count": len(component_catalog_names),
+        },
         "legacy_report": legacy,
     }
 
 
-def lint_report_dsl_sources(sources: dict[str, str], *, strict: bool = False) -> dict:
+def lint_report_dsl_sources(
+    sources: dict[str, str],
+    *,
+    strict: bool = False,
+    component_catalog: Iterable[str] | None = None,
+    component_catalog_source: str | None = None,
+) -> dict:
     """Aggregate linter output for a multi-file AppGen-X source set."""
+    component_catalog_names = tuple(dict.fromkeys(component_catalog or ()))
     if not sources:
         diagnostic = _spec_diagnostic("", "AGX0001", "error", "No .appgen files found in directory input.")
         return {
@@ -728,11 +753,22 @@ def lint_report_dsl_sources(sources: dict[str, str], *, strict: bool = False) ->
             "fixes_available": False,
             "semantic_model_available": False,
             "strict": strict,
+            "component_catalog": {
+                "source": component_catalog_source,
+                "components": component_catalog_names,
+                "count": len(component_catalog_names),
+            },
             "source_mode": "directory",
             "file_reports": (),
         }
     reports = tuple(
-        lint_report_dsl(source, source_name=name, strict=strict)
+        lint_report_dsl(
+            source,
+            source_name=name,
+            strict=strict,
+            component_catalog=component_catalog_names,
+            component_catalog_source=component_catalog_source,
+        )
         for name, source in sorted(sources.items())
     )
     diagnostics = tuple(
@@ -755,26 +791,89 @@ def lint_report_dsl_sources(sources: dict[str, str], *, strict: bool = False) ->
         "fixes_available": any(report["fixes_available"] for report in reports),
         "semantic_model_available": all(report["semantic_model_available"] for report in reports),
         "strict": strict,
+        "component_catalog": {
+            "source": component_catalog_source,
+            "components": component_catalog_names,
+            "count": len(component_catalog_names),
+        },
         "source_mode": "directory" if len(reports) != 1 else "multi-source",
         "file_reports": reports,
     }
 
 
-def lint_report_dsl_file(path: str | Path, *, strict: bool = False) -> dict:
+def lint_report_dsl_file(
+    path: str | Path,
+    *,
+    strict: bool = False,
+    component_catalog: Iterable[str] | None = None,
+    component_catalog_source: str | None = None,
+) -> dict:
     path = Path(path)
-    return lint_report_dsl(path.read_text(encoding="utf-8"), source_name=str(path), strict=strict)
+    return lint_report_dsl(
+        path.read_text(encoding="utf-8"),
+        source_name=str(path),
+        strict=strict,
+        component_catalog=component_catalog,
+        component_catalog_source=component_catalog_source,
+    )
 
 
-def lint_report_dsl_path(path: str | Path, *, strict: bool = False) -> dict:
+def lint_report_dsl_path(
+    path: str | Path,
+    *,
+    strict: bool = False,
+    catalog_path: str | Path | None = None,
+) -> dict:
     path = Path(path)
+    component_catalog = _load_component_catalog(catalog_path) if catalog_path else ()
+    component_catalog_source = str(catalog_path) if catalog_path else None
     if path.is_dir():
         sources = {
             str(item): item.read_text(encoding="utf-8")
             for item in sorted(path.rglob("*.appgen"))
             if item.is_file()
         }
-        return lint_report_dsl_sources(sources, strict=strict)
-    return lint_report_dsl_file(path, strict=strict)
+        return lint_report_dsl_sources(
+            sources,
+            strict=strict,
+            component_catalog=component_catalog,
+            component_catalog_source=component_catalog_source,
+        )
+    return lint_report_dsl_file(
+        path,
+        strict=strict,
+        component_catalog=component_catalog,
+        component_catalog_source=component_catalog_source,
+    )
+
+
+def _load_component_catalog(catalog_path: str | Path | None) -> tuple[str, ...]:
+    if not catalog_path:
+        return ()
+    path = Path(catalog_path)
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    return tuple(sorted(_component_names_from_catalog(payload)))
+
+
+def _component_names_from_catalog(payload: object) -> set[str]:
+    names: set[str] = set()
+    if isinstance(payload, str):
+        if payload.strip():
+            names.add(payload.strip())
+        return names
+    if isinstance(payload, list):
+        for item in payload:
+            names.update(_component_names_from_catalog(item))
+        return names
+    if isinstance(payload, dict):
+        for key in ("name", "component", "type"):
+            value = payload.get(key)
+            if isinstance(value, str) and value.strip():
+                names.add(value.strip())
+        for key in ("components", "component_catalog", "registered_components", "items"):
+            if key in payload:
+                names.update(_component_names_from_catalog(payload[key]))
+    return names
 
 
 def diagnostic_catalog_dsl() -> dict:
@@ -1184,7 +1283,17 @@ def dsl_tooling_cli(argv: Iterable[str] | None = None) -> int:
     source = "" if path is None or path.is_dir() else path.read_text(encoding="utf-8")
 
     if args.command == "lint":
-        report = lint_report_dsl_path(path, strict=args.strict) if path is not None else lint_report_dsl(source, strict=args.strict)
+        component_catalog = _load_component_catalog(args.catalog) if args.catalog else ()
+        report = (
+            lint_report_dsl_path(path, strict=args.strict, catalog_path=args.catalog)
+            if path is not None
+            else lint_report_dsl(
+                source,
+                strict=args.strict,
+                component_catalog=component_catalog,
+                component_catalog_source=args.catalog,
+            )
+        )
         _emit_tooling_payload(report, as_json=args.json)
         return 0 if report["ok"] else 1
     if args.command == "format":
@@ -1749,6 +1858,13 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
     semantic = semantic_model_dsl(source, source_name="tooling-audit.appgen")
     lint = lint_report_dsl(source, source_name="tooling-audit.appgen")
     strict_lint = lint_report_dsl(source, source_name="tooling-audit.appgen", strict=True)
+    catalog_lint = lint_report_dsl(
+        _tooling_audit_component_catalog_sample(),
+        source_name="catalog.appgen",
+        strict=True,
+        component_catalog=("CustomGauge",),
+        component_catalog_source="inline-audit-catalog",
+    )
     formatted = format_report_dsl(source, source_name="tooling-audit.appgen")
     validation = validate_report_dsl(source, source_name="tooling-audit.appgen", targets=("web", "mobile", "desktop"))
     graphs = graph_suite_report_dsl(source, source_name="tooling-audit.appgen")
@@ -1834,10 +1950,17 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
         ),
         _tooling_audit_check(
             "lint_directory_and_strict_profiles",
-            lint["ok"] and strict_lint["ok"] and lint_report_dsl_sources({"a.appgen": source, "b.appgen": _doctor_sample_dsl()})["ok"],
-            "Linter accepts files/source sets and supports strict profile reporting.",
+            lint["ok"]
+            and strict_lint["ok"]
+            and catalog_lint["ok"]
+            and lint_report_dsl_sources({"a.appgen": source, "b.appgen": _doctor_sample_dsl()})["ok"],
+            "Linter accepts files/source sets, strict profile reporting, and registered component catalogs.",
             "docs/tooling.md#linter-specification",
-            {"format": lint.get("format"), "strict": strict_lint.get("strict")},
+            {
+                "format": lint.get("format"),
+                "strict": strict_lint.get("strict"),
+                "catalog": catalog_lint.get("component_catalog"),
+            },
         ),
         _tooling_audit_check(
             "formatter_idempotent",
@@ -2473,6 +2596,22 @@ deploy Production {
   health ReverseInvoice "/health"
   resource ReverseInvoice cpu 1
   env ReverseInvoice DATABASE_URL
+}
+"""
+
+
+def _tooling_audit_component_catalog_sample() -> str:
+    return """
+app CatalogAudit { targets: web }
+
+table Customer {
+  id: int pk
+  name: string
+}
+
+view CustomerForm for Customer {
+  Main: name
+  @ name CustomGauge 0 0 4 1
 }
 """
 
@@ -8848,7 +8987,11 @@ def _preparse_tooling_errors(source: str) -> tuple[str, ...]:
     return tuple(errors)
 
 
-def _tooling_policy_diagnostics(schema: AppSchema) -> tuple[tuple[str, ...], tuple[str, ...]]:
+def _tooling_policy_diagnostics(
+    schema: AppSchema,
+    *,
+    component_catalog: Iterable[str] | None = None,
+) -> tuple[tuple[str, ...], tuple[str, ...]]:
     table_map = {table.name: table for table in schema.tables}
     field_map = {table.name: _field_names(table) for table in schema.tables}
     handler_targets = _handler_target_names(schema)
@@ -8858,7 +9001,7 @@ def _tooling_policy_diagnostics(schema: AppSchema) -> tuple[tuple[str, ...], tup
 
     for view in schema.views:
         for component in view.components:
-            if component.component not in _known_component_names(schema):
+            if component.component not in _known_component_names(schema, component_catalog=component_catalog):
                 warnings.append(f"Unknown visual component: {view.name}.{component.component}")
             if component.x < 0 or component.y < 0 or component.w <= 0 or component.h <= 0:
                 errors.append(f"Invalid component placement: {view.name}.{component.field}")
@@ -8970,7 +9113,11 @@ def _lookup_starts_with_relationship(
     return _reference_for_lookup_part(table_map[table_name], first) is not None
 
 
-def _known_component_names(schema: AppSchema) -> set[str]:
+def _known_component_names(
+    schema: AppSchema,
+    *,
+    component_catalog: Iterable[str] | None = None,
+) -> set[str]:
     names = {
         "Button",
         "Checkbox",
@@ -8992,6 +9139,7 @@ def _known_component_names(schema: AppSchema) -> set[str]:
         "TreeView",
     }
     names.update(contract.name for contract in schema.component_contracts)
+    names.update(str(component).strip() for component in (component_catalog or ()) if str(component).strip())
     return names
 
 
