@@ -1298,7 +1298,10 @@ def _dsl_tooling_cli_impl(argv: Iterable[str] | None = None) -> int:
 
     args = parser.parse_args(tuple(argv or ()))
     _validate_tooling_cli_paths(parser, args)
-    path = Path(args.path) if hasattr(args, "path") else None
+    if args.command == "lsp" and args.stdio:
+        return lsp_stdio_server()
+    path_value = getattr(args, "path", None)
+    path = Path(path_value) if path_value else None
     source = "" if path is None or path.is_dir() else path.read_text(encoding="utf-8")
 
     if args.command == "lint":
@@ -1390,8 +1393,6 @@ def _dsl_tooling_cli_impl(argv: Iterable[str] | None = None) -> int:
         _emit_tooling_payload(report, as_json=args.json)
         return 0 if report["ok"] else 1
     if args.command == "lsp":
-        if args.stdio:
-            return lsp_stdio_server()
         if args.apply_code_action:
             report = apply_lsp_code_action_dsl(
                 source,
@@ -2027,6 +2028,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
     vscode = _tooling_audit_vscode_extension(root)
     studio = _tooling_audit_studio_semantic_service(source)
     lsp_rpc = _tooling_audit_lsp_json_rpc(source, broken_handler_source=broken_handler_source)
+    lsp_stdio = _tooling_audit_lsp_stdio_transport(source)
     cli_help_surface = _tooling_audit_cli_help_surface(root)
     package_artifact_names = tuple(Path(item["path"]).name for item in package.get("written_artifacts", ()))
 
@@ -2113,10 +2115,16 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and lsp["capabilities"]["source_of_truth"] == "appgen.semantic-model.v1"
             and lsp["completionCoverage"]["missing"] == ()
             and lsp["formatting"]["format"] == "appgen.lsp-formatting.v1"
-            and lsp_rpc["ok"],
+            and lsp_rpc["ok"]
+            and lsp_stdio["ok"],
             "Language server exposes and serves diagnostics, completion, hover, definitions, references, symbols, rename, code actions, and formatting from JSON-RPC.",
             "docs/tooling.md#language-server-specification",
-            {"format": lsp.get("format"), "coverage": lsp.get("completionCoverage", {}).get("format"), "rpc": lsp_rpc},
+            {
+                "format": lsp.get("format"),
+                "coverage": lsp.get("completionCoverage", {}).get("format"),
+                "rpc": lsp_rpc,
+                "stdio": lsp_stdio,
+            },
         ),
         _tooling_audit_check(
             "lsp_quick_fix_application",
@@ -2522,6 +2530,43 @@ def _tooling_lsp_position(source: str, token: str) -> dict:
     previous_newline = source.rfind("\n", 0, index)
     character = index if previous_newline < 0 else index - previous_newline - 1
     return {"line": line, "character": character}
+
+
+def _tooling_audit_lsp_stdio_transport(source: str) -> dict:
+    uri = "memory://stdio-tooling-audit.appgen"
+    input_stream = io.BytesIO()
+    output_stream = io.BytesIO()
+    for message in (
+        {"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}},
+        {
+            "jsonrpc": "2.0",
+            "method": "textDocument/didOpen",
+            "params": {"textDocument": {"uri": uri, "languageId": "appgen", "version": 1, "text": source}},
+        },
+        {"jsonrpc": "2.0", "id": 2, "method": "shutdown"},
+        {"jsonrpc": "2.0", "method": "exit"},
+    ):
+        _lsp_write_rpc_message(input_stream, message)
+    input_stream.seek(0)
+    exit_code = lsp_stdio_server(input_stream=input_stream, output_stream=output_stream)
+    output_stream.seek(0)
+    responses: list[dict] = []
+    while True:
+        response = _lsp_read_rpc_message(output_stream)
+        if response is None:
+            break
+        responses.append(response)
+    return {
+        "format": "appgen.lsp-stdio-transport-audit.v1",
+        "ok": exit_code == 0
+        and any(response.get("id") == 1 and "capabilities" in response.get("result", {}) for response in responses)
+        and any(response.get("method") == "textDocument/publishDiagnostics" for response in responses)
+        and any(response.get("id") == 2 and response.get("result") is None for response in responses),
+        "exit_code": exit_code,
+        "response_count": len(responses),
+        "methods": tuple(response.get("method") for response in responses if response.get("method")),
+        "ids": tuple(response.get("id") for response in responses if "id" in response),
+    }
 
 
 def _tooling_audit_format_write(tmp: Path) -> dict:

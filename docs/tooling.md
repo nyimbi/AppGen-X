@@ -708,6 +708,10 @@ active document for identifier validation and migration safety, then returns a
 workspace edit that updates the matching identifier across every open DSL
 document.
 
+The executable tooling audit includes `appgen.lsp-stdio-transport-audit.v1`,
+which sends real `Content-Length` JSON-RPC frames through the stdio transport
+and verifies initialize, diagnostics publication, shutdown, and exit handling.
+
 ### Capabilities
 
 | LSP Feature | Required Behavior |

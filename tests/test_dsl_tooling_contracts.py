@@ -129,6 +129,31 @@ def _position_of(source: str, token: str) -> dict:
     return {"line": line, "character": character}
 
 
+def _rpc_frame(message: dict) -> bytes:
+    body = json.dumps(message, separators=(",", ":")).encode("utf-8")
+    return f"Content-Length: {len(body)}\r\n\r\n".encode("ascii") + body
+
+
+def _read_rpc_frames(payload: bytes) -> tuple[dict, ...]:
+    offset = 0
+    messages = []
+    separator = b"\r\n\r\n"
+    while offset < len(payload):
+        header_end = payload.find(separator, offset)
+        if header_end < 0:
+            break
+        headers = payload[offset:header_end].decode("ascii")
+        length = 0
+        for line in headers.split("\r\n"):
+            if line.lower().startswith("content-length:"):
+                length = int(line.split(":", 1)[1].strip())
+        body_start = header_end + len(separator)
+        body_end = body_start + length
+        messages.append(json.loads(payload[body_start:body_end].decode("utf-8")))
+        offset = body_end
+    return tuple(messages)
+
+
 def test_semantic_model_exposes_spec_contract_for_tables_views_flows_and_pbcs() -> None:
     model = semantic_model_dsl(TOOLING_SAMPLE, source_name="finance.appgen")
 
@@ -1174,6 +1199,44 @@ def test_lsp_json_rpc_server_handles_editor_lifecycle_from_shared_semantics() ->
     assert shutdown_responses[0]["result"] is None
     assert exit_responses == ()
     assert should_exit_after_exit is True
+
+
+def test_appgen_lsp_stdio_subcommand_speaks_json_rpc_frames() -> None:
+    uri = "memory://stdio-finance.appgen"
+    payload = b"".join(
+        (
+            _rpc_frame({"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}}),
+            _rpc_frame(
+                {
+                    "jsonrpc": "2.0",
+                    "method": "textDocument/didOpen",
+                    "params": {
+                        "textDocument": {
+                            "uri": uri,
+                            "languageId": "appgen",
+                            "version": 1,
+                            "text": TOOLING_SAMPLE,
+                        }
+                    },
+                }
+            ),
+            _rpc_frame({"jsonrpc": "2.0", "id": 2, "method": "shutdown"}),
+            _rpc_frame({"jsonrpc": "2.0", "method": "exit"}),
+        )
+    )
+    result = subprocess.run(
+        [sys.executable, "-m", "pyAppGen", "lsp", "--stdio"],
+        input=payload,
+        check=False,
+        cwd=Path(__file__).resolve().parents[1],
+        capture_output=True,
+    )
+    responses = _read_rpc_frames(result.stdout)
+
+    assert result.returncode == 0, result.stderr.decode("utf-8", errors="replace")
+    assert any(response.get("id") == 1 and response["result"]["capabilities"]["completionProvider"] for response in responses)
+    assert any(response.get("method") == "textDocument/publishDiagnostics" for response in responses)
+    assert any(response.get("id") == 2 and response.get("result") is None for response in responses)
 
 
 def test_lsp_json_rpc_server_serves_code_actions_formatting_and_did_change() -> None:
