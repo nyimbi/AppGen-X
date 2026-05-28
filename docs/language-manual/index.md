@@ -691,6 +691,14 @@ composition EnterpriseFinance {
 
 A PBC should be independently buildable, testable, deployable, and self-registering. A composition should not reach into another PBC's private tables. Use APIs, events, commands, and published read models.
 
+The language does not hard-code any concrete PBC names. `pbc` and
+`composition` are generic constructs; built-in capability keys such as catalog
+entries are platform metadata. The executable catalog lives in
+`src/pyAppGen/pbc.py`, package manifests live under `src/pyAppGen/pbcs/`, and
+the human-readable declaration is [Built-In PBC Catalog](../pbc-catalog.md).
+The parser accepts the generic shape, while the linter and composition planner
+validate that referenced PBC keys, APIs, events, and commands exist.
+
 Deployment patterns are expressed in `deploy` blocks. A PBC may be generated into the same process, a modular monolith, a separate service, a worker, a scheduled job, or an edge unit. The language supports these patterns through deployment units and directives; the platform policy decides which topologies are allowed for a given generator.
 
 ## APIs, Events, Jobs, Reports, Menus, Components, Packages, Tests

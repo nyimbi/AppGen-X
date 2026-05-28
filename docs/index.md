@@ -18,6 +18,7 @@ usage
 platform-guide
 architecture
 app-generation-guide
+pbc-catalog
 language-tutorials/index
 language-manual/index
 learning-appgen/index

@@ -23,6 +23,14 @@ Do not model a PBC as a shared module that reaches into another PBC's tables.
 Cross-PBC integration happens through API calls, projections, or event
 subscriptions.
 
+Concrete built-in PBCs are catalog metadata, not language keywords. The
+language stays generic through `pbc` and `composition` blocks; the built-in
+catalog is declared by `PBC_CATALOG` in `src/pyAppGen/pbc.py`, mirrored by
+package manifests under `src/pyAppGen/pbcs/<pbc_key>/manifest.py`, and
+documented for humans in [Built-In PBC Catalog](pbc-catalog.md). Adding or
+removing a built-in PBC must update the catalog/manifest layer and generated
+catalog documentation, not the grammar.
+
 ## Package Layout
 
 A built-in PBC's executable source lives under its own implementation directory:
