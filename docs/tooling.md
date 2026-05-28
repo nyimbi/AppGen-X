@@ -649,6 +649,13 @@ formatter, and graph builders as the CLI.
 | `textDocument/formatting` | Call the shared formatter. |
 | `workspace/symbol` | Search declarations by name, kind, and catalog metadata. |
 
+Rename safety is an executable gate. The language service still returns the
+candidate workspace edit and migration preview, but `textDocument/rename`
+returns `ok: false` with an `AGX1101` blocker when the preview requires
+explicit migration approval, such as destructive relationship changes. The
+blocker includes an `add_rename_hint` fix suggestion so agents and IDEs can ask
+for an explicit migration decision before applying the edit.
+
 ### Completion Sources
 
 Completions should be context-aware:

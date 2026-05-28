@@ -2193,12 +2193,15 @@ def lsp_rename_dsl(
     new_text = re.sub(rf"\b{re.escape(token)}\b", new_name, source)
     lint = lint_report_dsl(new_text, source_name=source_name)
     migration = migration_plan_dsl(source, new_text, previous_name=source_name, current_name=source_name)
+    blockers = _lsp_rename_blocking_diagnostics(source, migration)
     return {
         "format": "appgen.lsp-rename.v1",
-        "ok": lint["ok"],
+        "ok": lint["ok"] and not blockers,
         "token": token,
         "new_name": new_name,
         "symbol": symbol,
+        "blocked": bool(blockers),
+        "blockers": blockers,
         "workspace_edit": {
             "changes": {
                 source_name or "memory://appgen": (
@@ -2215,6 +2218,34 @@ def lsp_rename_dsl(
         "lint": lint,
         "migration_preview": migration,
     }
+
+
+def _lsp_rename_blocking_diagnostics(source: str, migration: dict) -> tuple[dict, ...]:
+    if not migration.get("requires_approval"):
+        return ()
+    destructive_kinds = tuple(
+        change.get("kind")
+        for change in migration.get("changes", ())
+        if change.get("destructive") or change.get("requires_approval")
+    )
+    return (
+        {
+            **_spec_diagnostic(
+                source,
+                "AGX1101",
+                "error",
+                "Rename blocked because migration impact requires explicit approval.",
+            ),
+            "related_locations": (),
+            "fixes": (
+                {
+                    "id": "add_rename_hint",
+                    "title": "Add an explicit migration rename hint before applying this rename",
+                },
+            ),
+            "migration_change_kinds": destructive_kinds,
+        },
+    )
 
 
 def _parse_lsp_position(value: str | None) -> dict | None:

@@ -555,9 +555,9 @@ def test_lsp_service_uses_shared_semantic_model_for_core_editor_features() -> No
     report = lsp_service_dsl(
         TOOLING_SAMPLE,
         source_name="finance.appgen",
-        position=_position_of(TOOLING_SAMPLE, "Invoice"),
+        position=_position_of(TOOLING_SAMPLE, "SubmitInvoice"),
         prefix="In",
-        rename_to="SalesInvoice",
+        rename_to="PostInvoice",
     )
 
     assert report["format"] == "appgen.lsp-service.v1"
@@ -572,8 +572,41 @@ def test_lsp_service_uses_shared_semantic_model_for_core_editor_features() -> No
     assert any(symbol["name"] == "Invoice" for symbol in report["documentSymbol"]["symbols"])
     assert report["formatting"]["format"] == "appgen.lsp-formatting.v1"
     assert report["rename"]["ok"] is True
-    assert "SalesInvoice" in report["rename"]["workspace_edit"]["changes"]["finance.appgen"][0]["newText"]
+    assert "PostInvoice" in report["rename"]["workspace_edit"]["changes"]["finance.appgen"][0]["newText"]
     assert any(symbol["name"] == "Invoice" for symbol in report["workspaceSymbol"]["symbols"])
+
+
+def test_lsp_rename_blocks_destructive_migration_impact() -> None:
+    source = """
+app RenameRisk { targets: web }
+
+table Customer {
+  id: int pk
+  name: string
+}
+
+table Invoice {
+  id: int pk
+  customer_id: int -> Customer.id
+}
+
+view InvoiceForm for Invoice {
+  Main: id, customer.name
+}
+"""
+
+    report = lsp_service_dsl(
+        source,
+        source_name="rename-risk.appgen",
+        position=_position_of(source, "id: int pk"),
+        rename_to="identifier",
+    )
+
+    assert report["rename"]["ok"] is False
+    assert report["rename"]["blocked"] is True
+    assert report["rename"]["migration_preview"]["requires_approval"] is True
+    assert any(item["code"] == "AGX1101" and item["severity"] == "error" for item in report["rename"]["blockers"])
+    assert "add_rename_hint" in {fix["id"] for item in report["rename"]["blockers"] for fix in item["fixes"]}
 
 
 def test_lsp_service_exposes_code_action_for_missing_handler_target() -> None:
