@@ -2947,3 +2947,11 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   for touched CLI/parser modules, `tests/test_dsl_tooling_contracts.py -q`,
   focused DSL platform/CLI regression tests, scoped diff whitespace check, and
   restricted-name scan. Commit: `21fbfbfb`.
+- Current explain CLI output pass makes the documented human-readable default
+  for `appgen explain` executable. The command now renders concise text
+  summaries for symbol, diagnostic, and handler explanations unless `--json` is
+  requested, while preserving the stable `appgen.explain-report.v1` JSON
+  contract for CI, IDEs, and agents. Verification passed: Python compile for
+  touched CLI/parser modules, `tests/test_dsl_tooling_contracts.py -q`, focused
+  DSL platform/CLI regression tests, scoped diff whitespace check, and
+  restricted-name scan. Commit: `8f874012`.
