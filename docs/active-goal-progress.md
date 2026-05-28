@@ -3141,3 +3141,12 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   entrypoints, focused component-catalog lint and tooling-audit tests,
   `tests/test_dsl_tooling_contracts.py -q`, scoped diff whitespace check, and
   restricted-name scan. Commit: `b6cdfe46`.
+- Current generation warning-gate pass makes the documented `--allow-warnings`
+  semantics executable. `appgen generate` and `appgen.generate-report.v1` now
+  block warning-only lint results by default with `lint_warnings`, allow them
+  only when `allow_warnings` is true, and still block lint errors even when the
+  flag is set. `appgen.tooling-audit.v1` now records this warning gate in the
+  CLI generation evidence. Verification passed: Python compile for touched
+  tooling entrypoints, focused generation warning CLI/report tests,
+  `tests/test_dsl_tooling_contracts.py -q`, tooling-audit JSON proof, scoped
+  diff whitespace check, and restricted-name scan. Commit: `c6226f4b`.
