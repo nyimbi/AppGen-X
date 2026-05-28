@@ -980,10 +980,11 @@ def dsl_tooling_cli(argv: Iterable[str] | None = None) -> int:
     nl_parser.add_argument("--json", action="store_true")
 
     lsp_parser = subparsers.add_parser("lsp")
-    lsp_parser.add_argument("path")
+    lsp_parser.add_argument("path", nargs="?")
     lsp_parser.add_argument("--position")
     lsp_parser.add_argument("--prefix", default="")
     lsp_parser.add_argument("--rename")
+    lsp_parser.add_argument("--stdio", action="store_true")
     lsp_parser.add_argument("--json", action="store_true")
 
     verify_parser = subparsers.add_parser("verify")
@@ -1104,6 +1105,8 @@ def dsl_tooling_cli(argv: Iterable[str] | None = None) -> int:
         _emit_tooling_payload(report, as_json=args.json)
         return 0 if report["ok"] else 1
     if args.command == "lsp":
+        if args.stdio:
+            return lsp_stdio_server()
         report = lsp_service_dsl(
             source,
             source_name=str(path),
@@ -1987,6 +1990,211 @@ def lsp_service_dsl(
         else None,
         "workspaceSymbol": lsp_workspace_symbols_dsl(source, source_name=source_name, query=prefix),
     }
+
+
+def lsp_stdio_server(input_stream=None, output_stream=None) -> int:
+    """Run a small JSON-RPC LSP server over stdio."""
+    reader = input_stream or sys.stdin.buffer
+    writer = output_stream or sys.stdout.buffer
+    documents: dict[str, str] = {}
+    while True:
+        message = _lsp_read_rpc_message(reader)
+        if message is None:
+            break
+        responses, should_exit = lsp_server_handle_message(message, documents)
+        for response in responses:
+            _lsp_write_rpc_message(writer, response)
+        if should_exit:
+            break
+    return 0
+
+
+def lsp_server_handle_message(message: dict, documents: dict[str, str] | None = None) -> tuple[tuple[dict, ...], bool]:
+    """Handle one JSON-RPC/LSP message and mutate the supplied document cache."""
+    docs = documents if documents is not None else {}
+    method = message.get("method")
+    params = message.get("params") or {}
+    request_id = message.get("id")
+    is_request = "id" in message
+    source_uri = _lsp_request_uri(params)
+    source = _lsp_document_source(source_uri, docs)
+    position = params.get("position") or {"line": 0, "character": 0}
+    responses: list[dict] = []
+
+    if method == "initialize":
+        return (
+            (
+                _lsp_rpc_result(
+                    request_id,
+                    {
+                        "capabilities": _lsp_initialize_capabilities(),
+                        "serverInfo": {"name": "appgen-lsp", "version": "0.1.0"},
+                    },
+                ),
+            ),
+            False,
+        )
+    if method == "shutdown":
+        return ((_lsp_rpc_result(request_id, None),) if is_request else (), False)
+    if method == "exit":
+        return (), True
+    if method == "textDocument/didOpen":
+        text_document = params.get("textDocument") or {}
+        uri = text_document.get("uri") or source_uri or "memory://appgen"
+        docs[uri] = text_document.get("text", "")
+        responses.append(_lsp_publish_diagnostics_notification(uri, docs[uri]))
+        return tuple(responses), False
+    if method == "textDocument/didChange":
+        text_document = params.get("textDocument") or {}
+        uri = text_document.get("uri") or source_uri or "memory://appgen"
+        changes = params.get("contentChanges") or ()
+        if changes:
+            docs[uri] = changes[-1].get("text", docs.get(uri, ""))
+        responses.append(_lsp_publish_diagnostics_notification(uri, docs.get(uri, "")))
+        return tuple(responses), False
+
+    if method == "textDocument/completion":
+        result = lsp_completion_dsl(
+            source,
+            source_name=source_uri,
+            position=position,
+            prefix=_lsp_prefix_at_position(source, position),
+        )
+        responses.append(
+            _lsp_rpc_result(
+                request_id,
+                {"isIncomplete": result["isIncomplete"], "items": result["items"]},
+            )
+        )
+    elif method == "textDocument/hover":
+        result = lsp_hover_dsl(source, source_name=source_uri, position=position)
+        responses.append(
+            _lsp_rpc_result(
+                request_id,
+                {
+                    "contents": {"kind": "markdown", "value": "\n\n".join(result["contents"])},
+                    "range": result["range"],
+                }
+                if result["ok"]
+                else None,
+            )
+        )
+    elif method == "textDocument/definition":
+        result = lsp_definition_dsl(source, source_name=source_uri, position=position)
+        responses.append(_lsp_rpc_result(request_id, result["location"] if result["ok"] else None))
+    elif method == "textDocument/references":
+        result = lsp_references_dsl(source, source_name=source_uri, position=position)
+        responses.append(_lsp_rpc_result(request_id, result["locations"]))
+    elif method == "textDocument/documentSymbol":
+        result = lsp_document_symbols_dsl(source, source_name=source_uri)
+        responses.append(_lsp_rpc_result(request_id, result["symbols"]))
+    elif method == "textDocument/codeAction":
+        result = lsp_code_actions_dsl(source, source_name=source_uri)
+        responses.append(_lsp_rpc_result(request_id, result["actions"]))
+    elif method == "textDocument/formatting":
+        result = lsp_formatting_dsl(source, source_name=source_uri)
+        responses.append(_lsp_rpc_result(request_id, result["edits"]))
+    elif method == "textDocument/rename":
+        result = lsp_rename_dsl(source, source_name=source_uri, position=position, new_name=params.get("newName"))
+        responses.append(
+            _lsp_rpc_result(
+                request_id,
+                result["workspace_edit"]
+                if result["ok"]
+                else {
+                    "blocked": result.get("blocked", False),
+                    "diagnostics": result.get("diagnostics", result.get("blockers", ())),
+                },
+            )
+        )
+    elif method == "workspace/symbol":
+        query = params.get("query", "")
+        joined = "\n\n".join(docs.values()) if docs else source
+        result = lsp_workspace_symbols_dsl(joined, source_name=source_uri, query=query)
+        responses.append(_lsp_rpc_result(request_id, result["symbols"]))
+    elif is_request:
+        responses.append(_lsp_rpc_error(request_id, -32601, f"Unsupported AppGen-X LSP method: {method}"))
+    return tuple(responses), False
+
+
+def _lsp_initialize_capabilities() -> dict:
+    return {
+        "textDocumentSync": 1,
+        "completionProvider": {"resolveProvider": False, "triggerCharacters": (".", " ", ":")},
+        "hoverProvider": True,
+        "definitionProvider": True,
+        "referencesProvider": True,
+        "documentSymbolProvider": True,
+        "renameProvider": {"prepareProvider": False},
+        "codeActionProvider": True,
+        "documentFormattingProvider": True,
+        "workspaceSymbolProvider": True,
+    }
+
+
+def _lsp_request_uri(params: dict) -> str | None:
+    text_document = params.get("textDocument") or {}
+    return text_document.get("uri")
+
+
+def _lsp_document_source(uri: str | None, documents: dict[str, str]) -> str:
+    if uri and uri in documents:
+        return documents[uri]
+    if uri and uri.startswith("file://"):
+        path = Path(uri.removeprefix("file://"))
+        if path.exists() and path.is_file():
+            return path.read_text(encoding="utf-8")
+    return ""
+
+
+def _lsp_publish_diagnostics_notification(uri: str, source: str) -> dict:
+    diagnostics = lsp_diagnostics_dsl(source, source_name=uri)
+    return {
+        "jsonrpc": "2.0",
+        "method": "textDocument/publishDiagnostics",
+        "params": {"uri": uri, "diagnostics": diagnostics["diagnostics"]},
+    }
+
+
+def _lsp_prefix_at_position(source: str, position: dict | None) -> str:
+    token = _lsp_token_at_position(source, position)
+    return token if token else ""
+
+
+def _lsp_rpc_result(request_id, result) -> dict:
+    return {"jsonrpc": "2.0", "id": request_id, "result": result}
+
+
+def _lsp_rpc_error(request_id, code: int, message: str) -> dict:
+    return {"jsonrpc": "2.0", "id": request_id, "error": {"code": code, "message": message}}
+
+
+def _lsp_read_rpc_message(reader) -> dict | None:
+    headers: dict[str, str] = {}
+    while True:
+        line = reader.readline()
+        if not line:
+            return None
+        decoded = line.decode("ascii", errors="replace").strip()
+        if not decoded:
+            break
+        if ":" in decoded:
+            key, value = decoded.split(":", 1)
+            headers[key.lower()] = value.strip()
+    length = int(headers.get("content-length", "0") or "0")
+    if length <= 0:
+        return None
+    raw = reader.read(length)
+    if not raw:
+        return None
+    return json.loads(raw.decode("utf-8"))
+
+
+def _lsp_write_rpc_message(writer, message: dict) -> None:
+    body = json.dumps(message, separators=(",", ":"), default=list).encode("utf-8")
+    writer.write(f"Content-Length: {len(body)}\r\n\r\n".encode("ascii"))
+    writer.write(body)
+    writer.flush()
 
 
 def lsp_diagnostics_dsl(text: str, *, source_name: str | None = None) -> dict:

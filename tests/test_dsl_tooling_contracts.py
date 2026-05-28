@@ -14,6 +14,7 @@ from pyAppGen.dsl import generate_report_dsl
 from pyAppGen.dsl import lint_report_dsl
 from pyAppGen.dsl import lint_report_dsl_path
 from pyAppGen.dsl import lint_report_dsl_sources
+from pyAppGen.dsl import lsp_server_handle_message
 from pyAppGen.dsl import lsp_service_dsl
 from pyAppGen.dsl import migration_plan_dsl
 from pyAppGen.dsl import nl_plan_dsl
@@ -796,6 +797,86 @@ def test_appgen_lsp_subcommand_emits_json_contract(tmp_path: Path) -> None:
     payload = json.loads(result.stdout)
     assert payload["format"] == "appgen.lsp-service.v1"
     assert payload["capabilities"]["source_of_truth"] == "appgen.semantic-model.v1"
+
+
+def test_lsp_json_rpc_server_handles_editor_lifecycle_from_shared_semantics() -> None:
+    uri = "memory://finance.appgen"
+    documents: dict[str, str] = {}
+
+    init_responses, should_exit = lsp_server_handle_message(
+        {"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}},
+        documents,
+    )
+    open_responses, _ = lsp_server_handle_message(
+        {
+            "jsonrpc": "2.0",
+            "method": "textDocument/didOpen",
+            "params": {
+                "textDocument": {
+                    "uri": uri,
+                    "languageId": "appgen",
+                    "version": 1,
+                    "text": TOOLING_SAMPLE,
+                }
+            },
+        },
+        documents,
+    )
+    completion_responses, _ = lsp_server_handle_message(
+        {
+            "jsonrpc": "2.0",
+            "id": 2,
+            "method": "textDocument/completion",
+            "params": {"textDocument": {"uri": uri}, "position": _position_of(TOOLING_SAMPLE, "Invoice")},
+        },
+        documents,
+    )
+    symbols_responses, _ = lsp_server_handle_message(
+        {
+            "jsonrpc": "2.0",
+            "id": 3,
+            "method": "textDocument/documentSymbol",
+            "params": {"textDocument": {"uri": uri}},
+        },
+        documents,
+    )
+    rename_responses, _ = lsp_server_handle_message(
+        {
+            "jsonrpc": "2.0",
+            "id": 4,
+            "method": "textDocument/rename",
+            "params": {
+                "textDocument": {"uri": uri},
+                "position": _position_of(TOOLING_SAMPLE, "SubmitInvoice"),
+                "newName": "PostInvoice",
+            },
+        },
+        documents,
+    )
+    workspace_responses, _ = lsp_server_handle_message(
+        {"jsonrpc": "2.0", "id": 5, "method": "workspace/symbol", "params": {"query": "Invoice"}},
+        documents,
+    )
+    shutdown_responses, _ = lsp_server_handle_message(
+        {"jsonrpc": "2.0", "id": 6, "method": "shutdown"},
+        documents,
+    )
+    exit_responses, should_exit_after_exit = lsp_server_handle_message(
+        {"jsonrpc": "2.0", "method": "exit"},
+        documents,
+    )
+
+    assert should_exit is False
+    assert init_responses[0]["result"]["capabilities"]["completionProvider"]["triggerCharacters"]
+    assert open_responses[0]["method"] == "textDocument/publishDiagnostics"
+    assert not any(item["severity"] == 1 for item in open_responses[0]["params"]["diagnostics"])
+    assert any(item["label"] == "Invoice" for item in completion_responses[0]["result"]["items"])
+    assert any(symbol["name"] == "Invoice" for symbol in symbols_responses[0]["result"])
+    assert "PostInvoice" in rename_responses[0]["result"]["changes"][uri][0]["newText"]
+    assert any(symbol["name"] == "Invoice" for symbol in workspace_responses[0]["result"])
+    assert shutdown_responses[0]["result"] is None
+    assert exit_responses == ()
+    assert should_exit_after_exit is True
 
 
 def test_release_verifier_report_covers_package_pbc_and_deployment_evidence() -> None:

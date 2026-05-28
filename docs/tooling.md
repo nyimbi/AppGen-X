@@ -638,6 +638,20 @@ must not write generated code unless the DSL diff validates.
 The language server should use the same parser, semantic model, diagnostics,
 formatter, and graph builders as the CLI.
 
+The executable launch path is:
+
+```bash
+appgen lsp --stdio
+```
+
+`--stdio` starts the JSON-RPC language server over standard input/output. It
+accepts `initialize`, `shutdown`, `exit`, `textDocument/didOpen`,
+`textDocument/didChange`, completion, hover, definition, references, document
+symbols, rename, code actions, formatting, and workspace symbol requests. The
+server keeps an in-memory document cache for open `.appgen` buffers and
+publishes diagnostics after open/change notifications using the same
+`appgen.semantic-model.v1` and linter reports as the CLI.
+
 ### Capabilities
 
 | LSP Feature | Required Behavior |
