@@ -1,315 +1,314 @@
-# Global Inventory Visibility and Pool Management PBC Improvement Backlog
+# Global Inventory Visibility PBC Improvement Backlog
 
 ## Purpose
 
-This backlog identifies 50 high-impact, high-value improvements for `global_inventory_visibility`. Each item is specific to the domain surface currently declared by the PBC and is intended to move the package beyond world-class breadth toward complete specialist-grade coverage.
+This backlog identifies 50 high-impact, high-value improvements for `global_inventory_visibility`. The items are specific to federated inventory visibility: inventory pools, supply nodes, availability snapshots, ATP and CTP projections, channel projections, supply and demand signals, reservations, allocations, adjustments, reconciliation, exceptions, freshness SLA evidence, federation projections, audit traces, rules, parameters, configuration, AppGen-X event reliability, UI workbenches, and agent-assisted availability operations.
 
 ## Current Domain Evidence Used
 
-- Domain purpose: Unified availability across locations, in-transit cargo, vendors, and third-party logistics.
-- Representative owned tables: `global_inventory_visibility_inventory_pool`, `global_inventory_visibility_inventory_projection`, `global_inventory_visibility_supply_node`, `global_inventory_visibility_availability_snapshot`.
-- Representative operations/APIs: `query_global_availability`, `command_pool_rules`, `query_supply_nodes`.
-- Representative events: `AvailabilityProjected`, `InventoryPoolChanged`.
-- Representative advanced capabilities: `event_sourced_availability_projections`, `graph_relational_supply_topology`, `multi_tenant_inventory_pool_isolation`, `schema_evolution_resilient_availability_schema`, `probabilistic_availability_freshness_scoring`, `real_time_atp_visibility_convergence`, `counterfactual_allocation_simulation`, `temporal_availability_forecasting`, `autonomous_exception_resolution`, `semantic_availability_query_parsing`, ...
+- Domain purpose: `global_inventory_visibility` owns federated, multi-location inventory visibility with on-hand, reserved, allocated, in-transit, freshness, ATP, CTP, reservation, channel, supply, demand, reconciliation, exception, and federation evidence.
+- Owned boundary: inventory pools, supply nodes, availability snapshots, inventory projections, ATP projections, CTP projections, channel projections, supply signals, demand signals, reservations, allocations, adjustments, reconciliations, exceptions, freshness SLA evidence, federation projections, audit traces, control assertions, schema extensions, rules, parameters, configuration, governed models, inbox/outbox, and dead-letter evidence.
+- Existing command/query surface: runtime configuration, parameter/rule/schema-extension registration, pool and supply-node registration, availability snapshots, availability projection, inventory reservation, global availability query, consumed-event ingestion, workbench rendering, schema/service/release evidence, permissions, UI binding, and boundary verification.
+- Existing events and dependencies: emits `AvailabilityProjected` and `InventoryPoolChanged`; consumes goods receipt, shipment, and allocation events through AppGen-X inbox evidence; integrates with warehouse, transportation, planning, channel, order, and commerce capabilities only through declared APIs/events/projections.
 
 ## 50 Better-Than-World-Class Improvements
 
-### 1. Deep specialist lifecycle semantics for `global_inventory_visibility_inventory_pool`
+### 1. Inventory pool readiness gate
 
-**Justification:** This owned table is part of the Global Inventory Visibility and Pool Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Unified availability across locations, in-transit cargo, vendors, and third-party logistics.
+**Justification:** Availability decisions become unsafe when pool ownership, tenant, channel, node coverage, reservation policy, freshness policy, and allocation rules are incomplete.
 
-**Improvement:** Extend `global_inventory_visibility_inventory_pool` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `inventory_pool_master`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add readiness checks for pool identity, tenant/site scope, eligible supply nodes, eligible channels, ATP/CTP mode, reservation TTL, allocation priority, freshness SLA, safety-stock policy, and governance approvals before a pool can publish availability.
 
-### 2. Deep specialist lifecycle semantics for `global_inventory_visibility_inventory_projection`
+### 2. Supply node capability model
 
-**Justification:** This owned table is part of the Global Inventory Visibility and Pool Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Unified availability across locations, in-transit cargo, vendors, and third-party logistics.
+**Justification:** Nodes differ by location type, fulfillment capability, cutoff windows, carrier reach, capacity, inventory accuracy, and service constraints.
 
-**Improvement:** Extend `global_inventory_visibility_inventory_projection` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `supply_node_master`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Model supply node class, geo coverage, fulfillment modes, operating calendar, cutoff time, capacity, channel eligibility, inventory accuracy score, freshness SLA, carbon profile, and dependency projection health.
 
-### 3. Deep specialist lifecycle semantics for `global_inventory_visibility_supply_node`
+### 3. Multi-location pool topology
 
-**Justification:** This owned table is part of the Global Inventory Visibility and Pool Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Unified availability across locations, in-transit cargo, vendors, and third-party logistics.
+**Justification:** Inventory visibility must reason across stores, warehouses, drop-ship suppliers, in-transit positions, returns centers, and third-party nodes.
 
-**Improvement:** Extend `global_inventory_visibility_supply_node` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `availability_snapshot`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Build graph-relational topology linking pools, nodes, lanes, channel projections, in-transit signals, reservations, allocations, and exceptions with explainable traversal for availability queries.
 
-### 4. Deep specialist lifecycle semantics for `global_inventory_visibility_availability_snapshot`
+### 4. Availability snapshot completeness
 
-**Justification:** This owned table is part of the Global Inventory Visibility and Pool Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Unified availability across locations, in-transit cargo, vendors, and third-party logistics.
+**Justification:** Snapshots must distinguish on-hand, reserved, allocated, in-transit, damaged, held, expired, and unavailable quantities.
 
-**Improvement:** Extend `global_inventory_visibility_availability_snapshot` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `inventory_projection`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add snapshot validation for quantity buckets, unit of measure, item identity, lot/batch optionality, node, source timestamp, source confidence, stale flag, and reconciliation status.
 
-### 5. Deep specialist lifecycle semantics for `global_inventory_visibility_inventory_pool`
+### 5. Freshness SLA and staleness model
 
-**Justification:** This owned table is part of the Global Inventory Visibility and Pool Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Unified availability across locations, in-transit cargo, vendors, and third-party logistics.
+**Justification:** Availability is only useful when users can trust how current each projection is.
 
-**Improvement:** Extend `global_inventory_visibility_inventory_pool` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `global_available_to_promise`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Track source timestamp, received timestamp, processed timestamp, SLA class, freshness half-life, staleness reason, affected pools, downstream confidence, and workbench warnings for stale projections.
 
-### 6. Deep specialist lifecycle semantics for `global_inventory_visibility_inventory_projection`
+### 6. ATP projection engine
 
-**Justification:** This owned table is part of the Global Inventory Visibility and Pool Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Unified availability across locations, in-transit cargo, vendors, and third-party logistics.
+**Justification:** Available-to-promise must account for current availability, reservations, allocations, safety stock, channel rules, in-transit arrivals, and freshness confidence.
 
-**Improvement:** Extend `global_inventory_visibility_inventory_projection` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `capable_to_promise_projection`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add ATP calculation traces by item, pool, node, channel, date, quantity bucket, reservation state, safety-stock buffer, source confidence, and blocking exception.
 
-### 7. Deep specialist lifecycle semantics for `global_inventory_visibility_supply_node`
+### 7. CTP projection engine
 
-**Justification:** This owned table is part of the Global Inventory Visibility and Pool Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Unified availability across locations, in-transit cargo, vendors, and third-party logistics.
+**Justification:** Capable-to-promise must include replenishment, transfer, lead time, capacity, and cutoff logic beyond current stock.
 
-**Improvement:** Extend `global_inventory_visibility_supply_node` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `channel_projection`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add CTP projections using expected receipts, transfers, transportation windows, node capacity, processing calendars, supplier/channel constraints, and confidence intervals.
 
-### 8. Deep specialist lifecycle semantics for `global_inventory_visibility_availability_snapshot`
+### 8. Channel projection governance
 
-**Justification:** This owned table is part of the Global Inventory Visibility and Pool Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Unified availability across locations, in-transit cargo, vendors, and third-party logistics.
+**Justification:** Channels need differentiated inventory views for marketplace, wholesale, retail, subscription, service, and internal demand.
 
-**Improvement:** Extend `global_inventory_visibility_availability_snapshot` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `supply_demand_signal`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Model channel eligibility, allocation priority, visibility buffer, embargo windows, oversell tolerance, promised-service level, and channel-specific ATP/CTP publication evidence.
 
-### 9. Deep specialist lifecycle semantics for `global_inventory_visibility_inventory_pool`
+### 9. Reservation lifecycle state machine
 
-**Justification:** This owned table is part of the Global Inventory Visibility and Pool Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Unified availability across locations, in-transit cargo, vendors, and third-party logistics.
+**Justification:** Reservations must expire, confirm, release, split, substitute, transfer, or fail without corrupting global availability.
 
-**Improvement:** Extend `global_inventory_visibility_inventory_pool` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `reservation_visibility`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Implement reservation states with idempotency key, source demand, TTL, quantity, node/pool, channel, confirmation event, release reason, conflict state, and availability re-projection effects.
 
-### 10. Deep specialist lifecycle semantics for `global_inventory_visibility_inventory_projection`
+### 10. Allocation lifecycle governance
 
-**Justification:** This owned table is part of the Global Inventory Visibility and Pool Management operating core; if it remains a generic record, specialists cannot model the real states, exceptions, evidence, and controls implied by Unified availability across locations, in-transit cargo, vendors, and third-party logistics.
+**Justification:** Allocation decisions can starve channels, customers, regions, or priority orders when rules are opaque.
 
-**Improvement:** Extend `global_inventory_visibility_inventory_projection` with domain-specific status values, subtype fields, temporal validity, provenance, quality/control flags, exception reasons, and relationship invariants for `allocation_visibility`. Pair the schema with migration DDL, typed model descriptors, command/query services, role-aware UI panels, release tests, and agent-safe CRUD previews so the full lifecycle is explicit and auditable inside the PBC boundary.
+**Improvement:** Add allocation states, policy id, demand class, priority, fairness constraints, node ranking, partial allocation, override reason, audit trace, and counterfactual comparison.
 
-### 11. Turn `query_global_availability` into an expert read-model experience
+### 11. Supply signal normalization
 
-**Justification:** Domain experts rely on `query_global_availability` for operational decisions; a world-class read path must be explainable, filterable, temporally accurate, and safe under stale projections.
+**Justification:** Receipts, returns, transfers, inbound shipments, production completions, supplier commitments, and adjustments arrive with different semantics.
 
-**Improvement:** Build `query_global_availability` as a dedicated query contract with projection freshness, filter validation, pagination, saved views, temporal/as-of reads, row-level permissions, traceable source records, and UI drilldowns. Add agent explanations for how the answer was produced, what events like `AvailabilityProjected` last changed the projection, and where uncertainty or missing data affects confidence.
+**Improvement:** Normalize supply signals into type, quantity, item, node, expected date, confidence, source event, ownership, quality/hold status, and effective availability contribution.
 
-### 12. Make `command_pool_rules` a complete command lifecycle
+### 12. Demand signal normalization
 
-**Justification:** High-value users need `command_pool_rules` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Orders, carts, reservations, forecasts, replenishment, service needs, and marketplace commitments compete for the same inventory.
 
-**Improvement:** Implement `command_pool_rules` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `InventoryPoolChanged`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Normalize demand signals into demand class, requested item, channel, required date, service level, priority, confidence, reservation status, substitution eligibility, and expiration.
 
-### 13. Turn `query_supply_nodes` into an expert read-model experience
+### 13. In-transit inventory visibility
 
-**Justification:** Domain experts rely on `query_supply_nodes` for operational decisions; a world-class read path must be explainable, filterable, temporally accurate, and safe under stale projections.
+**Justification:** A meaningful global view must include inventory moving between nodes and its uncertainty.
 
-**Improvement:** Build `query_supply_nodes` as a dedicated query contract with projection freshness, filter validation, pagination, saved views, temporal/as-of reads, row-level permissions, traceable source records, and UI drilldowns. Add agent explanations for how the answer was produced, what events like `AvailabilityProjected` last changed the projection, and where uncertainty or missing data affects confidence.
+**Improvement:** Track in-transit quantities by shipment, lane, origin, destination, carrier, milestone, ETA, delay risk, damage/hold signal, ownership state, and ATP/CTP inclusion rules.
 
-### 14. Turn `query_global_availability` into an expert read-model experience
+### 14. Inventory adjustment governance
 
-**Justification:** Domain experts rely on `query_global_availability` for operational decisions; a world-class read path must be explainable, filterable, temporally accurate, and safe under stale projections.
+**Justification:** Adjustments can mask shrink, damage, cycle count differences, unit conversion errors, or integration failures.
 
-**Improvement:** Build `query_global_availability` as a dedicated query contract with projection freshness, filter validation, pagination, saved views, temporal/as-of reads, row-level permissions, traceable source records, and UI drilldowns. Add agent explanations for how the answer was produced, what events like `InventoryPoolChanged` last changed the projection, and where uncertainty or missing data affects confidence.
+**Improvement:** Add adjustment types, reason codes, evidence requirements, approval thresholds, source confidence, reconciliation linkage, audit trace, and re-projection impact preview.
 
-### 15. Make `command_pool_rules` a complete command lifecycle
+### 15. Reconciliation workflow
 
-**Justification:** High-value users need `command_pool_rules` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** Federated visibility must continuously compare projections with physical and upstream source counts.
 
-**Improvement:** Implement `command_pool_rules` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `AvailabilityProjected`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Add reconciliation runs with expected quantity, observed quantity, variance, tolerance, suspected source, affected projections, remediation owner, approval, and closure evidence.
 
-### 16. Turn `query_supply_nodes` into an expert read-model experience
+### 16. Exception case management
 
-**Justification:** Domain experts rely on `query_supply_nodes` for operational decisions; a world-class read path must be explainable, filterable, temporally accurate, and safe under stale projections.
+**Justification:** Users need guided resolution for stale snapshots, negative ATP, reservation conflicts, duplicate signals, mismatched units, and missing nodes.
 
-**Improvement:** Build `query_supply_nodes` as a dedicated query contract with projection freshness, filter validation, pagination, saved views, temporal/as-of reads, row-level permissions, traceable source records, and UI drilldowns. Add agent explanations for how the answer was produced, what events like `InventoryPoolChanged` last changed the projection, and where uncertainty or missing data affects confidence.
+**Improvement:** Create exception cases with severity, category, affected pools/nodes/items, root cause hypothesis, recommended action, owner, SLA, event replay options, and closure evidence.
 
-### 17. Turn `query_global_availability` into an expert read-model experience
+### 17. Negative availability controls
 
-**Justification:** Domain experts rely on `query_global_availability` for operational decisions; a world-class read path must be explainable, filterable, temporally accurate, and safe under stale projections.
+**Justification:** Negative available quantities can be legitimate backorder signals or severe data defects.
 
-**Improvement:** Build `query_global_availability` as a dedicated query contract with projection freshness, filter validation, pagination, saved views, temporal/as-of reads, row-level permissions, traceable source records, and UI drilldowns. Add agent explanations for how the answer was produced, what events like `AvailabilityProjected` last changed the projection, and where uncertainty or missing data affects confidence.
+**Improvement:** Detect negative ATP, over-allocation, over-reservation, bucket mismatch, and stale-source artifacts, then classify, block publication when needed, and propose remediation.
 
-### 18. Make `command_pool_rules` a complete command lifecycle
+### 18. Oversell risk scoring
 
-**Justification:** High-value users need `command_pool_rules` to cover intake, validation, approval, execution, amendment, cancellation, audit, and exception recovery rather than a happy-path transaction.
+**Justification:** High-volume commerce needs quantified risk when availability is stale, fragmented, or heavily contested.
 
-**Improvement:** Implement `command_pool_rules` with idempotency, preflight simulation, permission checks, typed validation, rule evaluation, policy explanations, AppGen-X outbox emission through `InventoryPoolChanged`, retry/dead-letter evidence, and UI actions for draft, submit, approve, reject, amend, cancel, replay, and evidence export. The PBC agent should preview the mutation, explain risks, and require human confirmation.
+**Improvement:** Score oversell risk by freshness, demand velocity, reservation TTL, allocation pressure, node accuracy, in-transit uncertainty, channel priority, and projection confidence.
 
-### 19. Turn `query_supply_nodes` into an expert read-model experience
+### 19. Stockout risk forecasting
 
-**Justification:** Domain experts rely on `query_supply_nodes` for operational decisions; a world-class read path must be explainable, filterable, temporally accurate, and safe under stale projections.
+**Justification:** Visibility should predict where availability will fail, not only report current counts.
 
-**Improvement:** Build `query_supply_nodes` as a dedicated query contract with projection freshness, filter validation, pagination, saved views, temporal/as-of reads, row-level permissions, traceable source records, and UI drilldowns. Add agent explanations for how the answer was produced, what events like `AvailabilityProjected` last changed the projection, and where uncertainty or missing data affects confidence.
+**Improvement:** Forecast stockout probability by item, node, pool, channel, date, demand class, lead-time uncertainty, in-transit delay, safety stock, and signal freshness.
 
-### 20. Turn `query_global_availability` into an expert read-model experience
+### 20. Freshness confidence scoring
 
-**Justification:** Domain experts rely on `query_global_availability` for operational decisions; a world-class read path must be explainable, filterable, temporally accurate, and safe under stale projections.
+**Justification:** Users need confidence levels to decide whether to promise, hold, or ask for manual review.
 
-**Improvement:** Build `query_global_availability` as a dedicated query contract with projection freshness, filter validation, pagination, saved views, temporal/as-of reads, row-level permissions, traceable source records, and UI drilldowns. Add agent explanations for how the answer was produced, what events like `InventoryPoolChanged` last changed the projection, and where uncertainty or missing data affects confidence.
+**Improvement:** Compute confidence from source age, event latency, reconciliation variance, node accuracy, demand volatility, signal completeness, dead-letter health, and projection route status.
 
-### 21. Operationalize `event_sourced_availability_projections` as a governed decision system
+### 21. Counterfactual allocation simulation
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Global Inventory Visibility and Pool Management and measurably improves authorization rate without hiding assumptions.
+**Justification:** Planners need to compare allocation rules before changing customer promises or channel inventory.
 
-**Improvement:** Promote `event_sourced_availability_projections` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `authorization_rate`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Simulate alternative pool rules, node ranking, safety-stock buffers, channel priorities, reservation TTLs, and carbon weights with effects on service level, margin, fairness, and oversell risk.
 
-### 22. Operationalize `graph_relational_supply_topology` as a governed decision system
+### 22. Competing-pool allocation optimization
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Global Inventory Visibility and Pool Management and measurably improves route margin without hiding assumptions.
+**Justification:** The same inventory can serve multiple pools, channels, regions, and customer classes.
 
-**Improvement:** Promote `graph_relational_supply_topology` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `route_margin`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add optimization that balances service level, profitability, fairness, contractual commitments, regional constraints, freshness confidence, capacity, and carbon cost.
 
-### 23. Operationalize `multi_tenant_inventory_pool_isolation` as a governed decision system
+### 23. Supply identity verification
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Global Inventory Visibility and Pool Management and measurably improves return cycle time without hiding assumptions.
+**Justification:** Federated visibility must know whether supply signals come from trusted nodes, partners, devices, or documents.
 
-**Improvement:** Promote `multi_tenant_inventory_pool_isolation` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `return_cycle_time`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add supply identity proof references, issuer, trust level, verification status, expiry, revocation, payload hash, and confidence effect for supply nodes and signals.
 
-### 24. Operationalize `schema_evolution_resilient_availability_schema` as a governed decision system
+### 24. Cryptographic availability proof
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Global Inventory Visibility and Pool Management and measurably improves landed cost accuracy without hiding assumptions.
+**Justification:** Marketplaces, partners, auditors, and high-value customers may need proof that availability was calculated from controlled evidence.
 
-**Improvement:** Promote `schema_evolution_resilient_availability_schema` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `landed_cost_accuracy`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Generate proof packets with snapshot hashes, projection trace, policy id, event ids, freshness evidence, redacted quantities when needed, verifier identity, and expiry.
 
-### 25. Operationalize `probabilistic_availability_freshness_scoring` as a governed decision system
+### 25. Immutable inventory audit trace
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Global Inventory Visibility and Pool Management and measurably improves availability projected throughput without hiding assumptions.
+**Justification:** Availability disputes require reconstruction of what was known, promised, reserved, and published at a point in time.
 
-**Improvement:** Promote `probabilistic_availability_freshness_scoring` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `availability_projected_throughput`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Hash-chain pool changes, snapshot ingestion, projections, reservations, allocations, reconciliations, exceptions, and rule changes with temporal query support.
 
-### 26. Operationalize `real_time_atp_visibility_convergence` as a governed decision system
+### 26. Temporal as-of availability queries
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Global Inventory Visibility and Pool Management and measurably improves inventory pool changed throughput without hiding assumptions.
+**Justification:** Users must answer what inventory was visible at order capture, promise time, shipment release, or dispute review.
 
-**Improvement:** Promote `real_time_atp_visibility_convergence` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `inventory_pool_changed_throughput`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Add as-of queries by transaction time, source valid time, processing time, pool, node, item, channel, and demand id with projection lineage.
 
-### 27. Operationalize `counterfactual_allocation_simulation` as a governed decision system
+### 27. Semantic availability query parsing
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Global Inventory Visibility and Pool Management and measurably improves authorization rate without hiding assumptions.
+**Justification:** Operators ask natural questions such as where an item can be promised by Friday or which nodes are stale.
 
-**Improvement:** Promote `counterfactual_allocation_simulation` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `authorization_rate`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Parse natural-language availability questions into safe read queries with filters, time horizon, channel, service level, freshness floor, confidence explanation, and no mutation.
 
-### 28. Operationalize `temporal_availability_forecasting` as a governed decision system
+### 28. Agent-safe reservation planning
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Global Inventory Visibility and Pool Management and measurably improves route margin without hiding assumptions.
+**Justification:** AI assistance must not silently reserve, allocate, adjust, or publish inventory.
 
-**Improvement:** Promote `temporal_availability_forecasting` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `route_margin`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Require side-effect-free agent plans for pool, node, snapshot, projection, reservation, adjustment, reconciliation, and exception commands that name permission, owned tables, idempotency key, expected event, risk, and human confirmation.
 
-### 29. Operationalize `autonomous_exception_resolution` as a governed decision system
+### 29. Document and instruction intake
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Global Inventory Visibility and Pool Management and measurably improves return cycle time without hiding assumptions.
+**Justification:** Inventory facts arrive in partner feeds, shipment notices, cycle count sheets, emails, and incident reports.
 
-**Improvement:** Promote `autonomous_exception_resolution` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `return_cycle_time`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Extract candidate supply, demand, adjustment, reconciliation, and exception facts with confidence, evidence links, field gaps, source identity, rule checks, and governed mutation previews.
 
-### 30. Operationalize `semantic_availability_query_parsing` as a governed decision system
+### 30. Dynamic policy screening
 
-**Justification:** The capability only creates value when it changes specialist decisions inside Global Inventory Visibility and Pool Management and measurably improves landed cost accuracy without hiding assumptions.
+**Justification:** Inventory rules vary by channel, node, item, region, customer segment, contract, safety stock, and freshness confidence.
 
-**Improvement:** Promote `semantic_availability_query_parsing` into an executable subsystem with model/version metadata, deterministic fallbacks, confidence bands, counterfactual comparisons, drift checks, policy constraints, and user-visible evidence. Surface it as a workbench panel tied to `landed_cost_accuracy`, with drilldowns from recommendation to source records, rules, events, model inputs, approval requirements, and agent rationale.
+**Improvement:** Compile deterministic policies for node preference, channel allocation, safety-stock overrides, reservation TTL, exception resolution, stale projection handling, and publication gating.
 
-### 31. Create simulation-grade governance for `GLOBAL_INVENTORY_VISIBILITY_DATABASE_URL` and `GLOBAL_INVENTORY_VISIBILITY_DATABASE_URL`
+### 31. Runtime parameter impact controls
 
-**Justification:** Complete Global Inventory Visibility and Pool Management coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Parameters such as freshness half-life, confidence floor, reservation TTL, and stockout thresholds directly affect promises.
 
-**Improvement:** Add a policy cockpit where `GLOBAL_INVENTORY_VISIBILITY_DATABASE_URL` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `GLOBAL_INVENTORY_VISIBILITY_DATABASE_URL` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add parameter bounds, impact simulation, approval workflow, effective dating, rollback, tenant overrides, and release evidence for all runtime parameter changes.
 
-### 32. Create simulation-grade governance for `GLOBAL_INVENTORY_VISIBILITY_EVENT_TOPIC` and `GLOBAL_INVENTORY_VISIBILITY_EVENT_TOPIC`
+### 32. Schema extension governance
 
-**Justification:** Complete Global Inventory Visibility and Pool Management coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Visibility implementations often need custom item, node, channel, or partner attributes without breaking owned boundaries.
 
-**Improvement:** Add a policy cockpit where `GLOBAL_INVENTORY_VISIBILITY_EVENT_TOPIC` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `GLOBAL_INVENTORY_VISIBILITY_EVENT_TOPIC` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Allow extensions only on owned `global_inventory_visibility` tables with type policy, migration preview, UI binding preview, API exposure review, and release-audit evidence.
 
-### 33. Create simulation-grade governance for `GLOBAL_INVENTORY_VISIBILITY_RETRY_LIMIT` and `GLOBAL_INVENTORY_VISIBILITY_RETRY_LIMIT`
+### 33. AppGen-X inbox reliability
 
-**Justification:** Complete Global Inventory Visibility and Pool Management coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Goods receipt, shipment, allocation, and other source events drive real-time availability.
 
-**Improvement:** Add a policy cockpit where `GLOBAL_INVENTORY_VISIBILITY_RETRY_LIMIT` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `GLOBAL_INVENTORY_VISIBILITY_RETRY_LIMIT` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add inbox idempotency, schema-version validation, source trust checks, retry evidence, unsupported-event rejection, dead-letter promotion, projection rebuild, and workbench replay/quarantine controls.
 
-### 34. Create simulation-grade governance for `GLOBAL_INVENTORY_VISIBILITY_DATABASE_URL` and `GLOBAL_INVENTORY_VISIBILITY_DATABASE_URL`
+### 34. AppGen-X outbox delivery assurance
 
-**Justification:** Complete Global Inventory Visibility and Pool Management coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Availability and pool-change events must be reliable for order routing, checkout, channel publication, analytics, and audit.
 
-**Improvement:** Add a policy cockpit where `GLOBAL_INVENTORY_VISIBILITY_DATABASE_URL` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `GLOBAL_INVENTORY_VISIBILITY_DATABASE_URL` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add outbox state, ordering group, payload hash, delivery attempts, next retry, delivery proof, dead-letter linkage, and replay controls for emitted availability events.
 
-### 35. Create simulation-grade governance for `GLOBAL_INVENTORY_VISIBILITY_EVENT_TOPIC` and `GLOBAL_INVENTORY_VISIBILITY_EVENT_TOPIC`
+### 35. Projection route self-healing
 
-**Justification:** Complete Global Inventory Visibility and Pool Management coverage requires specialists to tune policy safely without code changes while preserving explainability, approvals, and tenant isolation.
+**Justification:** Federated inventory depends on many upstream feeds and projections that can lag or fail.
 
-**Improvement:** Add a policy cockpit where `GLOBAL_INVENTORY_VISIBILITY_EVENT_TOPIC` can be versioned, tested against historical cases, simulated against open work, approved, rolled back, and monitored. Bind `GLOBAL_INVENTORY_VISIBILITY_EVENT_TOPIC` to typed ranges, defaults, impact analysis, release notes, control evidence, and agent explanations showing exactly which records, events, queues, and UI decisions will change.
+**Improvement:** Add route health, alternate projection route, source fallback priority, stale-source quarantine, confidence downgrade, alerting, and recovery evidence without exposing event-engine choices to users.
 
-### 36. Upgrade `GlobalInventoryVisibilityWorkbench` into a full specialist command center
+### 36. Cross-system federation contract
 
-**Justification:** The PBC UI must expose the complete Global Inventory Visibility and Pool Management surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Global visibility must federate warehouse, transportation, planning, channel, and order views while preserving ownership boundaries.
 
-**Improvement:** Expand `GlobalInventoryVisibilityWorkbench` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Publish dependency contracts for each projection/API with freshness SLA, required fields, lineage, idempotency, version compatibility, authorization, and no shared-table access proof.
 
-### 37. Upgrade `GlobalInventoryVisibilityDetail` into a full specialist command center
+### 37. Inventory anomaly detection
 
-**Justification:** The PBC UI must expose the complete Global Inventory Visibility and Pool Management surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Abnormal signals can reveal integration defects, fraud, shrink, mis-picks, duplicate events, or broken unit conversions.
 
-**Improvement:** Expand `GlobalInventoryVisibilityDetail` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Detect anomalies in negative stock, duplicate signals, sudden ATP jumps, stale nodes, abnormal adjustments, reservation churn, reconciliation variance, in-transit delays, and channel publication gaps.
 
-### 38. Upgrade `GlobalInventoryVisibilityWorkbench` into a full specialist command center
+### 38. Governed model evidence
 
-**Justification:** The PBC UI must expose the complete Global Inventory Visibility and Pool Management surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Forecasting, stockout scoring, freshness confidence, and allocation optimization influence customer promises and revenue.
 
-**Improvement:** Expand `GlobalInventoryVisibilityWorkbench` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Track model purpose, training window, feature lineage, approval state, drift, performance, false-promise impact, rollback, and explainability evidence for every inventory model.
 
-### 39. Upgrade `GlobalInventoryVisibilityDetail` into a full specialist command center
+### 39. Carbon-aware sourcing windows
 
-**Justification:** The PBC UI must expose the complete Global Inventory Visibility and Pool Management surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Inventory visibility can prefer lower-emission sourcing when service promises still hold.
 
-**Improvement:** Expand `GlobalInventoryVisibilityDetail` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add carbon weight, node carbon profile, lane emissions estimate, service-level guardrail, override reason, and counterfactual comparison in ATP/CTP and allocation outputs.
 
-### 40. Upgrade `GlobalInventoryVisibilityWorkbench` into a full specialist command center
+### 40. Tenant and pool isolation proof
 
-**Justification:** The PBC UI must expose the complete Global Inventory Visibility and Pool Management surface so experts can operate queues, exceptions, analytics, rules, and automations without leaving the package.
+**Justification:** Multi-tenant and multi-brand inventory pools must not leak quantities, nodes, or reservation policies.
 
-**Improvement:** Expand `GlobalInventoryVisibilityWorkbench` with role-specific queues, record timelines, state-transition actions, inline policy explanations, exception triage, projection freshness, event replay, agent guidance, release-evidence status, saved views, and audit breadcrumbs. Every operation, rule, parameter, owned-table browser, advanced capability, and edge-case queue should be permission-aware and directly reachable.
+**Improvement:** Add isolation tests and release evidence for tenant, pool, channel, region, permission, agent plan, query, projection, and event payload boundaries.
 
-### 41. Prove cross-PBC federation for `GET /global-availability` and `GoodsReceiptPosted`
+### 41. Availability workbench coverage
 
-**Justification:** Global Inventory Visibility and Pool Management must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Users need an operational command center, not raw inventory tables.
 
-**Improvement:** Add compatibility tests and workbench evidence for `GET /global-availability` and consumed event `GoodsReceiptPosted` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Expand workbench surfaces for pools, nodes, snapshots, ATP, CTP, channels, supply/demand signals, reservations, allocations, adjustments, reconciliation, exceptions, freshness SLA, events, rules, parameters, configuration, and release evidence.
 
-### 42. Prove cross-PBC federation for `POST /pool-rules` and `ShipmentDelivered`
+### 42. Availability query cockpit
 
-**Justification:** Global Inventory Visibility and Pool Management must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Customer-service, commerce, operations, and fulfillment teams need different availability lenses.
 
-**Improvement:** Add compatibility tests and workbench evidence for `POST /pool-rules` and consumed event `ShipmentDelivered` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Add role-aware views for item search, promise-by-date, node comparison, channel publication, stale-node review, reservation conflicts, stockout risks, and confidence explanations.
 
-### 43. Prove cross-PBC federation for `GET /supply-nodes` and `InventoryAllocated`
+### 43. Exception resolution cockpit
 
-**Justification:** Global Inventory Visibility and Pool Management must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Inventory exceptions require fast triage because stale or wrong visibility creates failed promises.
 
-**Improvement:** Add compatibility tests and workbench evidence for `GET /supply-nodes` and consumed event `InventoryAllocated` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Add priority queues for stale snapshots, over-allocation, missing node, dead letters, reconciliation variance, duplicate signal, channel mismatch, and negative ATP with recommended next actions.
 
-### 44. Prove cross-PBC federation for `GET /global-availability` and `GoodsReceiptPosted`
+### 44. Reservation conflict resolution
 
-**Justification:** Global Inventory Visibility and Pool Management must compose through APIs, events, and projections instead of shared tables; integration failures usually emerge at schema evolution, idempotency, replay, or stale-data boundaries.
+**Justification:** Multiple demand sources can compete for limited inventory during high-volume events.
 
-**Improvement:** Add compatibility tests and workbench evidence for `GET /global-availability` and consumed event `GoodsReceiptPosted` covering version negotiation, payload validation, idempotent replay, dead-letter triage, stale projection warnings, authorization failures, and dependency health. Operators should be able to inspect payload lineage and safely replay or quarantine messages.
+**Improvement:** Add conflict detection, demand ranking, partial reservation, substitution suggestion, escalation, expiration, compensation policy, and audit explanation.
 
-### 45. Temporal reconstruction and bitemporal audit for Global Inventory Visibility and Pool Management
+### 45. Reconciliation close packet
 
-**Justification:** Regulated and operationally complex domains need to answer what was known, valid, processed, and visible at any point in time.
+**Justification:** Operations need a clean handoff of unresolved variances and stale sources at shift or daily close.
 
-**Improvement:** Add transaction-time, valid-time, and processing-time fields to core records, temporal query APIs, projection rebuild tooling, and UI time travel so specialists can reconstruct decisions, reports, and automation outcomes.
+**Improvement:** Generate close packets with unresolved variances, stale nodes, negative ATP, blocked reservations, dead letters, high-risk stockouts, adjustments pending approval, and responsible owners.
 
-### 46. Bulk operations and migration-grade controls for Global Inventory Visibility and Pool Management
+### 46. Continuous inventory control testing
 
-**Justification:** World-class deployments must handle imports, mass corrections, high-volume operating days, and cutovers without bypassing governance.
+**Justification:** Better-than-world-class visibility proves controls continuously instead of waiting for manual audits.
 
-**Improvement:** Add staged bulk upload, duplicate detection, chunked validation, approval sampling, partial failure handling, retry dashboards, reconciliation summaries, and agent-generated remediation plans for large batches.
+**Improvement:** Add assertions for stale publication, reservation after expiry, allocation above ATP, negative unclassified stock, adjustment without evidence, foreign-table access, dead-letter aging, and agent-preview bypass.
 
-### 47. Specialist edge-case playbooks for Global Inventory Visibility and Pool Management
+### 47. Availability resilience drills
 
-**Justification:** Rare cases often carry the highest financial, legal, safety, service, or compliance risk.
+**Justification:** Commerce promises must degrade gracefully when feeds, projections, or event delivery fail.
 
-**Improvement:** Create a playbook catalog with detection rules, required evidence, escalation paths, fallback actions, owner roles, and release-audited tests for high-severity edge cases and exception queues.
+**Improvement:** Add drills for duplicate receipt, delayed shipment, allocation replay, node feed outage, dead-letter recovery, federation lag, stale projection publication, and workbench degraded mode.
 
-### 48. Pre-mutation simulation and blast-radius analysis for Global Inventory Visibility and Pool Management
+### 48. Global Inventory readiness score
 
-**Justification:** Users should understand consequences before committing irreversible, customer-visible, operationally disruptive, or financially material changes.
+**Justification:** Users need an evidence-backed view of whether `global_inventory_visibility` is ready for real-time promise decisions.
 
-**Improvement:** Add what-if simulation for every material command, showing impacted records, emitted events, dependent projections, rule outcomes, approvals, downstream PBC dependencies, and rollback limits.
+**Improvement:** Compute readiness from pool setup, node coverage, snapshot freshness, ATP/CTP coverage, signal quality, reservations, allocations, reconciliation, exceptions, event reliability, UI coverage, model governance, controls, and agent safety.
 
-### 49. Continuous control testing and operational assurance for Global Inventory Visibility and Pool Management
+### 49. External package registration evidence
 
-**Justification:** Better-than-world-class PBCs prove controls continuously, not only at release or during periodic audits.
+**Justification:** Inventory visibility must be discoverable and composable as a self-registering PBC without side effects.
 
-**Improvement:** Add executable control assertions, sampled evidence checks, anomaly thresholds, control-owner dashboards, breach/recovery events, and release gates that fail when domain controls lose evidence.
+**Improvement:** Add registration evidence listing source directory, owned tables, AppGen-X event contract, APIs, permissions, UI fragments, rules, parameters, configuration, seed data, tests, release evidence, and no-mutation discovery plan.
 
-### 50. Human-in-the-loop domain agent execution for Global Inventory Visibility and Pool Management
+### 50. End-to-end availability proof
 
-**Justification:** The PBC chatbot must help specialists perform real work while preventing unsafe autonomous mutation.
+**Justification:** A complete Global Inventory Visibility PBC must prove it can ingest signals and produce trusted availability.
 
-**Improvement:** Add domain-specific skills, document parsing, task planning, CRUD previews, confidence/risk scoring, confirmation gates, redaction, policy explanations, and post-action evidence packets for every supported command and query.
+**Improvement:** Add an executable proof scenario covering pool registration, supply node setup, snapshot ingestion, supply/demand signals, ATP and CTP projection, channel publication, reservation, reconciliation, exception handling, emitted events, freshness proof, UI evidence, boundary proof, controls, and agent explanation.
