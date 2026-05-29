@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from pathlib import Path
 
 from .dsl import dsl_authoring_release_gate
@@ -283,6 +284,7 @@ def studio_browser_smoke_ci_contract(repo_root: str | Path | None = None) -> dic
     semantic_contract_text = semantic_contract.read_text(encoding="utf-8") if semantic_contract.exists() else ""
     semantic_panel_text = semantic_panel.read_text(encoding="utf-8") if semantic_panel.exists() else ""
     workflow_text = workflow_path.read_text(encoding="utf-8") if workflow_path.exists() else ""
+    frontend_semantic = _frontend_semantic_service_audit(semantic_contract_text, semantic_panel_text)
     scenarios = (
         "studio_shell",
         "semantic_service_bridge",
@@ -319,12 +321,7 @@ def studio_browser_smoke_ci_contract(repo_root: str | Path | None = None) -> dic
         },
         {
             "id": "frontend_semantic_service_bridge",
-            "ok": semantic_contract.exists()
-            and semantic_panel.exists()
-            and "appgen.frontend-semantic-service-audit.v1" in semantic_contract_text
-            and "appgen.lsp-service.v1" in semantic_contract_text
-            and "appgen.designer-sync-report.v1" in semantic_contract_text
-            and "Editor And Designer Bridge" in semantic_panel_text,
+            "ok": semantic_contract.exists() and semantic_panel.exists() and frontend_semantic["ok"],
         },
     )
     return {
@@ -336,6 +333,7 @@ def studio_browser_smoke_ci_contract(repo_root: str | Path | None = None) -> dic
         "script": str(smoke_script),
         "semantic_contract": str(semantic_contract),
         "semantic_panel": str(semantic_panel),
+        "frontend_semantic_service_audit": frontend_semantic,
         "scenarios": scenarios,
         "environment": {
             "browser_binary": "APPGEN_CHROME_BIN",
@@ -344,6 +342,80 @@ def studio_browser_smoke_ci_contract(repo_root: str | Path | None = None) -> dic
         },
         "checks": checks,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }
+
+
+def _frontend_semantic_service_audit(semantic_contract_text: str, semantic_panel_text: str) -> dict:
+    """Return static evidence for the frontend semantic-service bridge contract."""
+    required_services = (
+        "appgen.lsp-service.v1",
+        "appgen.designer-sync-report.v1",
+        "appgen.graph-suite-report.v1",
+        "appgen.nl-plan.v1",
+    )
+    required_surfaces = (
+        "dsl_editor",
+        "component_palette",
+        "form_designer",
+        "database_designer",
+        "workflow_designer",
+        "pbc_composition_designer",
+        "package_deployment_designer",
+        "diagnostics_panel",
+        "graph_explain_panel",
+        "natural_language_planner",
+    )
+    required_surface_contracts = (
+        "appgen.designer-dsl-editor.v1",
+        "appgen.designer-component-palette.v1",
+        "appgen.designer-form-projection.v1",
+        "appgen.designer-database-projection.v1",
+        "appgen.designer-workflow-projection.v1",
+        "appgen.designer-pbc-composition-projection.v1",
+        "appgen.designer-package-deployment-projection.v1",
+        "appgen.lsp-diagnostics.v1",
+        "appgen.designer-graph-explain-panel.v1",
+        "appgen.designer-nl-planner-panel.v1",
+    )
+    observed_services = tuple(dict.fromkeys(re.findall(r"evidence:\s*'([^']+)'", semantic_contract_text)))
+    observed_surface_contracts = tuple(dict.fromkeys(re.findall(r"contract:\s*'([^']+)'", semantic_contract_text)))
+    observed_surfaces = tuple(surface for surface in required_surfaces if surface in semantic_contract_text)
+    missing_services = tuple(service for service in required_services if service not in observed_services)
+    missing_surfaces = tuple(surface for surface in required_surfaces if surface not in observed_surfaces)
+    missing_surface_contracts = tuple(
+        contract for contract in required_surface_contracts if contract not in observed_surface_contracts
+    )
+    checks = {
+        "contract_format": "appgen.frontend-semantic-service-audit.v1" in semantic_contract_text,
+        "service_evidence": not missing_services,
+        "surface_ids": not missing_surfaces,
+        "surface_contracts": not missing_surface_contracts,
+        "panel_renders_audit": "semanticServiceAudit()" in semantic_panel_text,
+        "panel_renders_services": "semanticServices.map" in semantic_panel_text,
+        "panel_renders_surfaces": "semanticSurfaces.map" in semantic_panel_text,
+    }
+    return {
+        "format": "appgen.frontend-semantic-service-audit.v1",
+        "ok": all(checks.values()),
+        "checks": checks,
+        "service_count": len(observed_services),
+        "required_service_count": len(required_services),
+        "missing_service_count": len(missing_services),
+        "surface_count": len(observed_surfaces),
+        "required_surface_count": len(required_surfaces),
+        "missing_surface_count": len(missing_surfaces),
+        "surface_contract_count": len(observed_surface_contracts),
+        "required_surface_contract_count": len(required_surface_contracts),
+        "missing_surface_contract_count": len(missing_surface_contracts),
+        "services": observed_services,
+        "required_services": required_services,
+        "missing_services": missing_services,
+        "surfaces": observed_surfaces,
+        "required_surfaces": required_surfaces,
+        "missing_surfaces": missing_surfaces,
+        "surface_contracts": observed_surface_contracts,
+        "required_surface_contracts": required_surface_contracts,
+        "missing_surface_contracts": missing_surface_contracts,
     }
 
 

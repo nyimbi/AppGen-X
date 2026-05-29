@@ -1697,6 +1697,11 @@ def test_package_studio_audit_covers_ide_database_and_generation(
     assert browser_smoke["format"] == "appgen.studio-browser-smoke-ci-contract.v1"
     assert browser_smoke["ok"] is True
     assert browser_smoke["command"] == "npm run test:browser"
+    assert browser_smoke["frontend_semantic_service_audit"]["format"] == "appgen.frontend-semantic-service-audit.v1"
+    assert browser_smoke["frontend_semantic_service_audit"]["ok"] is True
+    assert browser_smoke["frontend_semantic_service_audit"]["missing_service_count"] == 0
+    assert browser_smoke["frontend_semantic_service_audit"]["missing_surface_count"] == 0
+    assert browser_smoke["frontend_semantic_service_audit"]["missing_surface_contract_count"] == 0
     assert {
         "studio_shell",
         "semantic_service_bridge",

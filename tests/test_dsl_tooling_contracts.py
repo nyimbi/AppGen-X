@@ -3364,6 +3364,15 @@ def test_studio_semantic_service_audit_proves_panel_contracts() -> None:
     assert report["browser_smoke_format"] == "appgen.studio-browser-smoke-ci-contract.v1"
     assert "semantic_service_bridge" in report["browser_smoke_scenarios"]
     assert report["browser_smoke_checks"]["frontend_semantic_service_bridge"] is True
+    assert report["frontend_semantic_service_format"] == "appgen.frontend-semantic-service-audit.v1"
+    assert report["frontend_semantic_service_audit"]["ok"] is True
+    assert report["frontend_semantic_service_count"] == 4
+    assert report["frontend_semantic_surface_count"] == len(report["required_surfaces"])
+    assert report["frontend_semantic_missing_service_count"] == 0
+    assert report["frontend_semantic_missing_surface_count"] == 0
+    assert report["frontend_semantic_missing_surface_contract_count"] == 0
+    assert report["frontend_semantic_service_audit"]["checks"]["panel_renders_services"] is True
+    assert report["frontend_semantic_service_audit"]["checks"]["panel_renders_surfaces"] is True
 
 
 def test_generate_report_writes_validated_dsl_app_and_blocks_lint_errors(tmp_path: Path) -> None:

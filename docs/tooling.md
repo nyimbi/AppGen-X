@@ -1293,7 +1293,11 @@ natural-language edit operations must be exposed, so a panel cannot pass with
 only an empty format envelope.
 The frontend renders the same bridge through a dedicated semantic-service
 panel, and the browser smoke contract includes that panel as a required
-scenario.
+scenario. The browser-smoke CI contract embeds
+`appgen.frontend-semantic-service-audit.v1`, which statically verifies the
+frontend `semanticServiceContract.ts` service evidence, required surface ids,
+surface contract formats, and the `SemanticServicePanel` rendering hooks before
+the Studio bridge counts as complete in Python release evidence.
 
 ## Graph Tooling
 

@@ -5106,6 +5106,7 @@ def _tooling_audit_studio_semantic_service(source: str) -> dict:
     graph_panel = graph_explain.get("panel", {})
     nl = report.get("natural_language_evolution", {})
     nl_plan = nl.get("plan", {})
+    frontend_semantic = browser_smoke.get("frontend_semantic_service_audit", {})
     browser_smoke_checks = {check.get("id"): check.get("ok") for check in browser_smoke.get("checks", ())}
     panel_counts = {
         "component_palette_components": len(surfaces.get("component_palette", {}).get("components", ())),
@@ -5175,7 +5176,9 @@ def _tooling_audit_studio_semantic_service(source: str) -> dict:
         "frontend_browser_smoke_bridge": browser_smoke.get("format") == "appgen.studio-browser-smoke-ci-contract.v1"
         and browser_smoke.get("ok") is True
         and "semantic_service_bridge" in browser_smoke.get("scenarios", ())
-        and browser_smoke_checks.get("frontend_semantic_service_bridge") is True,
+        and browser_smoke_checks.get("frontend_semantic_service_bridge") is True
+        and frontend_semantic.get("format") == "appgen.frontend-semantic-service-audit.v1"
+        and frontend_semantic.get("ok") is True,
     }
     return {
         "format": "appgen.studio-semantic-service-audit.v1",
@@ -5204,6 +5207,13 @@ def _tooling_audit_studio_semantic_service(source: str) -> dict:
         "browser_smoke_format": browser_smoke.get("format"),
         "browser_smoke_scenarios": tuple(browser_smoke.get("scenarios", ())),
         "browser_smoke_checks": browser_smoke_checks,
+        "frontend_semantic_service_audit": frontend_semantic,
+        "frontend_semantic_service_format": frontend_semantic.get("format"),
+        "frontend_semantic_service_count": frontend_semantic.get("service_count"),
+        "frontend_semantic_surface_count": frontend_semantic.get("surface_count"),
+        "frontend_semantic_missing_service_count": frontend_semantic.get("missing_service_count"),
+        "frontend_semantic_missing_surface_count": frontend_semantic.get("missing_surface_count"),
+        "frontend_semantic_missing_surface_contract_count": frontend_semantic.get("missing_surface_contract_count"),
         "blocking_gaps": tuple(name for name, ok in checks.items() if not ok),
     }
 
