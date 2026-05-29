@@ -146,6 +146,7 @@ PBC_MANIFEST = {
     "tests": (
         "tests/test_contract.py",
         "tests/test_lifecycle_app_slice.py",
+        "tests/test_standalone.py",
     ),
     "ui_fragments": (
         "CapitalProjectsDeliveryWorkbench",
@@ -153,7 +154,7 @@ PBC_MANIFEST = {
         "CapitalProjectsDeliveryAssistantPanel",
         "CapitalProjectGateApprovalWizard",
     ),
-    "version": "1.1.0",
+    "version": "1.2.0",
     "workflows": (
         "capital_projects_delivery_create_capital_project_workflow",
         "capital_projects_delivery_record_epc_package_workflow",
