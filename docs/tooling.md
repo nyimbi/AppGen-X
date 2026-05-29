@@ -861,6 +861,11 @@ formatting, while command palette actions call the same CLI contracts for lint,
 format, graph, explain, generate, and package. Graph previews, generated
 artifact previews, and the PBC catalog browser render CLI JSON reports in
 webview panels rather than relying on editor-specific state.
+`appgen.vscode-extension-audit.v1` checks this surface explicitly: language
+metadata, syntax grammar, command contributions, LSP providers, diagnostics
+collection, CLI-backed command argument contracts, and graph/artifact/PBC
+webview renderers must all be present before the extension is counted as
+tooling-complete.
 
 ### AppGen-X Studio / Monaco
 

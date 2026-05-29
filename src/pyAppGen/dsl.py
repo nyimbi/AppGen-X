@@ -2535,12 +2535,33 @@ def _tooling_audit_vscode_extension(root: Path) -> dict:
         "registerDocumentFormattingEditProvider",
         '["lsp", "--stdio"]',
     )
+    command_cli_markers = (
+        '["lint", activeFile(), "--json"]',
+        '["format", activeFile(), "--write", "--json"]',
+        '["graph-suite", activeFile(), "--json"]',
+        '["explain", file, "--symbol", symbol, "--json"]',
+        '["generate", file, "--out", out, "--json"]',
+        '["generate", file, "--out", out, "--allow-warnings", "--json"]',
+        '["package", file, "--out", out, "--json"]',
+        '["pbc", "list", "--json"]',
+    )
+    webview_markers = (
+        "createWebviewPanel",
+        "renderGraphPreview",
+        "renderArtifactPreview",
+        "renderPbcCatalog",
+        "showJsonPreview",
+    )
     checks = {
         "package_json": package_path.exists(),
         "language_configuration": language_config.exists(),
         "grammar": grammar.exists(),
         "commands": required_commands <= commands,
         "providers": all(marker in source for marker in provider_markers),
+        "diagnostics_collection": 'createDiagnosticCollection("appgen")' in source
+        and "textDocument/publishDiagnostics" in source,
+        "cli_command_contracts": all(marker in source for marker in command_cli_markers),
+        "webview_renderers": all(marker in source for marker in webview_markers),
     }
     return {
         "format": "appgen.vscode-extension-audit.v1",
@@ -2548,6 +2569,9 @@ def _tooling_audit_vscode_extension(root: Path) -> dict:
         "checks": checks,
         "commands": tuple(sorted(commands)),
         "required_commands": tuple(sorted(required_commands)),
+        "provider_markers": provider_markers,
+        "command_cli_markers": command_cli_markers,
+        "webview_markers": webview_markers,
     }
 
 

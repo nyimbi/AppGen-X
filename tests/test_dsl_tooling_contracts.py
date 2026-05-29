@@ -1972,6 +1972,13 @@ def test_vscode_extension_contract_wires_appgen_language_server_and_commands() -
     assert "renderGraphPreview" in source
     assert "renderArtifactPreview" in source
     assert "createWebviewPanel" in source
+    audit = appgen_dsl._tooling_audit_vscode_extension(Path(__file__).resolve().parents[1])
+    assert audit["format"] == "appgen.vscode-extension-audit.v1"
+    assert audit["ok"] is True
+    assert audit["checks"]["diagnostics_collection"] is True
+    assert audit["checks"]["cli_command_contracts"] is True
+    assert audit["checks"]["webview_renderers"] is True
+    assert '["generate", file, "--out", out, "--allow-warnings", "--json"]' in audit["command_cli_markers"]
 
 
 def test_release_verifier_report_covers_package_pbc_and_deployment_evidence() -> None:
@@ -2737,6 +2744,10 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
         "package_and_release_verifiers",
         "parser_golden_and_drift_gates",
     } <= {check["id"] for check in report["checks"]}
+    vscode_check = next(check for check in report["checks"] if check["id"] == "vscode_extension_surface")
+    assert vscode_check["detail"]["checks"]["diagnostics_collection"] is True
+    assert vscode_check["detail"]["checks"]["cli_command_contracts"] is True
+    assert vscode_check["detail"]["checks"]["webview_renderers"] is True
     designer_check = next(check for check in report["checks"] if check["id"] == "ide_visual_designer_round_trip")
     assert designer_check["detail"]["cli"]["format"] == "appgen.designer-sync-cli-audit.v1"
     assert designer_check["detail"]["cli"]["ok"] is True
