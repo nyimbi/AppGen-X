@@ -1872,7 +1872,7 @@ def _emit_tooling_payload(payload: dict, *, as_json: bool) -> None:
             print(f"{diagnostic['severity']} {diagnostic['code']}: {diagnostic['message']}")
         return
     if payload.get("format") == "appgen.internal-error.v1":
-        print(f"internal-error {payload.get('error_type')}: {payload.get('message')}")
+        print(f"internal-error format={payload.get('format')} {payload.get('error_type')}: {payload.get('message')}")
         return
     if payload.get("format") == "appgen.graph-suite-report.v1":
         status = "ok" if payload.get("ok") else "failed"
@@ -4565,7 +4565,7 @@ def _tooling_audit_internal_error_exit(tmp: Path) -> dict:
         and payload.get("format") == "appgen.internal-error.v1"
         and payload.get("code") == "AGX9000"
         and payload.get("ok") is False
-        and text_stdout.startswith("internal-error")
+        and text_stdout.startswith("internal-error format=appgen.internal-error.v1")
         and "Traceback" not in json_stderr
         and "Traceback" not in text_stderr
         and "Traceback" not in text_stdout,
