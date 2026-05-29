@@ -30,6 +30,8 @@ def test_slice_app_bootstraps_owned_tables_and_creates_account_flow():
     assert workbench["summary"]["account_count"] == 1
     assert result["success_plan"]["success_account_id"] == result["record"]["id"]
     assert result["onboarding_milestone"]["success_account_id"] == result["record"]["id"]
+    assert result["touchpoint"]["success_account_id"] == result["record"]["id"]
+    assert workbench["summary"]["touchpoint_count"] == 1
 
 
 def test_health_playbook_route_and_events_flow_is_executable():
@@ -57,6 +59,19 @@ def test_health_playbook_route_and_events_flow_is_executable():
             "renewal": 0.8,
         }
     )
+    touchpoint = dispatch_route(
+        "POST",
+        "/touchpoints",
+        {
+            "tenant": "tenant-b",
+            "success_account_id": account["record"]["id"],
+            "owner": "csm-globex",
+            "channel": "email",
+            "purpose": "health_follow_up",
+            "outcome": "response_pending",
+        },
+        app=app,
+    )
     playbook = app.launch_playbook(
         {"tenant": "tenant-b", "success_account_id": account["record"]["id"], "owner": "csm-globex"}
     )
@@ -67,10 +82,12 @@ def test_health_playbook_route_and_events_flow_is_executable():
         app=app,
     )
     assert health["ok"] is True
+    assert touchpoint["ok"] is True
     assert playbook["ok"] is True
     assert route["ok"] is True
     assert len(health["components"]) == 6
     assert playbook["tasks"]
+    assert route["result"]["summary"]["touchpoint_count"] >= 2
 
 
 def test_event_idempotency_and_boundary_enforcement_hold():

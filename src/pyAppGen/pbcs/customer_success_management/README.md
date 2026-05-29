@@ -5,9 +5,9 @@
 ## What is implemented
 
 - Owned SQLite-backed standalone app in [slice_app.py](/Volumes/Media/src/pjs/appgen/src/pyAppGen/pbcs/customer_success_management/slice_app.py)
-- Owned schema and migration for 21 domain tables plus AppGen-X outbox/inbox/dead-letter tables
-- Executable customer-success operations for accounts, plans, onboarding, health, playbooks, escalations, renewals, expansion, EBRs, objectives, value, churn, exceptions, rules, and simulations
-- Package-local route dispatch, service contracts, UI workbench, forms, wizards, controls, and agent CRUD/document planning
+- Owned schema and migration for 22 domain tables plus AppGen-X outbox/inbox/dead-letter tables
+- Executable customer-success operations for accounts, plans, onboarding, touchpoints, health, playbooks, escalations, renewals, expansion, EBRs, objectives, value, churn, exceptions, rules, and simulations
+- Package-local route dispatch, service contracts, touchpoint-aware UI workbench, forms, wizards, controls, and agent CRUD/document planning
 - Release audits for `pbc_source_artifact_contract`, `pbc_implementation_release_audit`, and `pbc_generation_smoke_audit`
 
 ## Quick package validation

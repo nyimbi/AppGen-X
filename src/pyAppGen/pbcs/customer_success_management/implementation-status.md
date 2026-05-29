@@ -5,17 +5,18 @@
 - Added a package-local standalone slice app with owned SQLite-backed persistence in [slice_app.py](/Volumes/Media/src/pjs/appgen/src/pyAppGen/pbcs/customer_success_management/slice_app.py)
 - Replaced the conflicting migration with one coherent owned schema in [migrations/001_initial.sql](/Volumes/Media/src/pjs/appgen/src/pyAppGen/pbcs/customer_success_management/migrations/001_initial.sql)
 - Rebound runtime, schema, services, routes, events, handlers, UI, agent planning, seed data, and release evidence to the shared core
-- Added forms, wizards, controls, AppGen-X route dispatch, idempotent event handling, document planning, CRUD previews, and release audits
+- Added forms, wizards, controls, touchpoint timeline coverage, AppGen-X route dispatch, idempotent event handling, document planning, CRUD previews, and release audits
 - Added focused tests for contracts, standalone execution, migration bootstrap, and audit gates
 - Added package-local docs: README, implementation plan, implementation status, refreshed release evidence
 
 ## Implemented domain behavior
 
-- Success account intake with readiness checks plus automatic success-plan and onboarding-milestone creation
+- Success account intake with readiness checks plus automatic success-plan, onboarding-milestone, and kickoff-touchpoint creation
+- Customer touchpoint capture with channel, purpose, outcome, and follow-up evidence plus emitted AppGen-X events
 - Explainable health scoring with stored component records
 - Playbook launch with generated tasks
 - Renewal motion creation and churn-risk scoring
-- Package-local workbench summary with operational records and UI surface metadata
+- Package-local workbench summary with operational records, touchpoint counts, and UI surface metadata
 - Event inbox/outbox/dead-letter handling with duplicate suppression
 
 ## Remaining gaps

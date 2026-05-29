@@ -70,6 +70,7 @@ TABLE_DESCRIPTION_OVERRIDES = {
     f"{PBC_KEY}_customer_success_account": "Primary success account record with readiness and renewal posture.",
     f"{PBC_KEY}_success_plan": "Outcome plan linking stakeholders, milestones, and value hypotheses.",
     f"{PBC_KEY}_onboarding_milestone": "Customer onboarding milestone tracking and time-to-value evidence.",
+    f"{PBC_KEY}_customer_touchpoint": "Structured customer touchpoint with channel, outcome, and follow-up evidence.",
     f"{PBC_KEY}_adoption_signal": "Normalized product, support, billing, or manual adoption telemetry.",
     f"{PBC_KEY}_health_score": "Computed explainable customer health score.",
     f"{PBC_KEY}_health_score_component": "Weighted score component for health explainability.",
@@ -93,6 +94,7 @@ TABLE_DESCRIPTION_OVERRIDES = {
 ROUTE_DEFINITIONS = (
     {"method": "POST", "path": "/success-accounts", "operation": "create_success_account"},
     {"method": "POST", "path": "/success-plans", "operation": "create_success_plan"},
+    {"method": "POST", "path": "/touchpoints", "operation": "record_touchpoint"},
     {"method": "POST", "path": "/health-scores", "operation": "calculate_health_score"},
     {"method": "POST", "path": "/playbooks", "operation": "launch_playbook"},
     {"method": "POST", "path": "/renewal-motions", "operation": "start_renewal_motion"},
@@ -117,6 +119,12 @@ FORM_DEFINITIONS = (
         ),
     },
     {
+        "id": "touchpoint_log",
+        "title": "Customer touchpoint",
+        "operation": "record_touchpoint",
+        "fields": ("success_account_id", "channel", "purpose", "outcome", "owner", "occurred_at"),
+    },
+    {
         "id": "health_score_override",
         "title": "Health score override",
         "operation": "calculate_health_score",
@@ -137,9 +145,14 @@ WIZARD_DEFINITIONS = (
         "steps": ("intake", "milestones", "stakeholders", "handoff"),
     },
     {
+        "id": "touchpoint_follow_up",
+        "title": "Touchpoint follow-up wizard",
+        "steps": ("prepare", "engage", "capture", "next-best-action"),
+    },
+    {
         "id": "health_recovery",
         "title": "Health recovery wizard",
-        "steps": ("signal-intake", "score", "playbook", "exec-brief"),
+        "steps": ("signal-intake", "touchpoint", "score", "playbook", "exec-brief"),
     },
     {
         "id": "renewal_close_plan",
@@ -151,6 +164,7 @@ WIZARD_DEFINITIONS = (
 CONTROL_DEFINITIONS = (
     {"id": "policy_rule_editor", "type": "rule-editor", "targets": tuple(DOMAIN_RULES)},
     {"id": "runtime_parameter_editor", "type": "parameter-editor", "targets": tuple(DOMAIN_PARAMETERS)},
+    {"id": "touchpoint_timeline", "type": "timeline", "targets": (f"{PBC_KEY}_customer_touchpoint", f"{PBC_KEY}_playbook_task")},
     {"id": "agent_mutation_guard", "type": "approval-guard", "targets": ("document_instruction_plan", "datastore_crud_plan")},
     {"id": "event_replay_console", "type": "event-console", "targets": EVENT_TABLES},
 )
@@ -384,6 +398,7 @@ class CustomerSuccessManagementSliceApp:
                         "lifecycle_stage": bool(payload.get("lifecycle_stage")),
                         "owner": bool(payload.get("owner")),
                         "renewal_date": bool(payload.get("renewal_date")),
+                        "touchpoint_strategy": bool(payload.get("touchpoint_strategy", "onboarding_outreach")),
                     },
                 },
             },
@@ -411,12 +426,28 @@ class CustomerSuccessManagementSliceApp:
                 ),
             }
         )
+        touchpoint = self.record_touchpoint(
+            {
+                "tenant": payload["tenant"],
+                "success_account_id": account["id"],
+                "code": payload.get("touchpoint_code", f"{payload['code']}-KICKOFF"),
+                "title": payload.get("touchpoint_title", "Kickoff touchpoint"),
+                "owner": payload["owner"],
+                "channel": payload.get("touchpoint_channel", "video"),
+                "purpose": payload.get("touchpoint_purpose", "onboarding_kickoff"),
+                "outcome": payload.get("touchpoint_outcome", "next_steps_confirmed"),
+                "next_step": payload.get("touchpoint_next_step", "schedule adoption workshop"),
+                "occurred_at": payload.get("touchpoint_occurred_at", _utcnow()),
+                "status": "completed",
+            }
+        )
         event = self._emit_event("SuccessAccountCreated", account["tenant"], account["id"], account["payload"])
         return {
             "ok": True,
             "record": account,
             "success_plan": success_plan["record"],
             "onboarding_milestone": onboarding["record"],
+            "touchpoint": touchpoint["record"],
             "event": event,
             "side_effects": (),
         }
@@ -451,6 +482,44 @@ class CustomerSuccessManagementSliceApp:
             },
         )
         return {"ok": True, "record": record, "side_effects": ()}
+
+    def record_touchpoint(self, payload: dict[str, Any]) -> dict[str, Any]:
+        touchpoint_payload = {
+            "channel": payload.get("channel", "email"),
+            "purpose": payload.get("purpose", "customer_outreach"),
+            "outcome": payload.get("outcome", "pending"),
+            "next_step": payload.get("next_step", "follow_up"),
+            "occurred_at": payload.get("occurred_at", _utcnow()),
+            **dict(payload),
+        }
+        record = self._insert_record(
+            f"{PBC_KEY}_customer_touchpoint",
+            {
+                "tenant": touchpoint_payload.get("tenant", "default"),
+                "success_account_id": touchpoint_payload.get("success_account_id"),
+                "code": touchpoint_payload.get(
+                    "code",
+                    _code("TP", touchpoint_payload.get("tenant", "default"), touchpoint_payload),
+                ),
+                "title": touchpoint_payload.get("title", f"{touchpoint_payload['channel'].title()} touchpoint"),
+                "owner": touchpoint_payload.get("owner", "unassigned"),
+                "status": touchpoint_payload.get("status", "completed"),
+                "score": float(touchpoint_payload.get("sentiment", 0.75)),
+                "due_on": touchpoint_payload.get("due_on"),
+                "payload": touchpoint_payload,
+            },
+        )
+        event = self._emit_event(
+            "CustomerTouchpointLogged",
+            touchpoint_payload.get("tenant", "default"),
+            touchpoint_payload.get("success_account_id"),
+            {
+                "touchpoint_id": record["id"],
+                "channel": touchpoint_payload["channel"],
+                "outcome": touchpoint_payload["outcome"],
+            },
+        )
+        return {"ok": True, "record": record, "event": event, "side_effects": ()}
 
     def ingest_adoption_signal(self, payload: dict[str, Any]) -> dict[str, Any]:
         normalized = {
@@ -893,12 +962,14 @@ class CustomerSuccessManagementSliceApp:
 
     def query_workbench(self, tenant: str = "default", limit: int = 25) -> dict[str, Any]:
         accounts = self.repo.fetch_all(f"{PBC_KEY}_customer_success_account", tenant=tenant, limit=limit)
+        touchpoints = self.repo.fetch_all(f"{PBC_KEY}_customer_touchpoint", tenant=tenant, limit=limit)
         risks = self.repo.fetch_all(f"{PBC_KEY}_churn_risk_signal", tenant=tenant, limit=limit)
         renewals = self.repo.fetch_all(f"{PBC_KEY}_renewal_motion", tenant=tenant, limit=limit)
         playbooks = self.repo.fetch_all(f"{PBC_KEY}_success_playbook", tenant=tenant, limit=limit)
         tasks = self.repo.fetch_all(f"{PBC_KEY}_playbook_task", tenant=tenant, limit=limit)
         summary = {
             "account_count": len(accounts),
+            "touchpoint_count": len(touchpoints),
             "at_risk_count": len(tuple(item for item in risks if float(item.get("score") or 0.0) >= 0.5)),
             "open_playbooks": len(tuple(item for item in playbooks if item.get("status") != "completed")),
             "open_tasks": len(tuple(item for item in tasks if item.get("status") != "completed")),
@@ -910,6 +981,7 @@ class CustomerSuccessManagementSliceApp:
             "summary": summary,
             "records": {
                 "accounts": accounts,
+                "touchpoints": touchpoints,
                 "risks": risks,
                 "renewals": renewals,
                 "playbooks": playbooks,
@@ -931,6 +1003,7 @@ class CustomerSuccessManagementSliceApp:
             "panels": (
                 "command_center",
                 "accounts",
+                "touchpoint_timeline",
                 "health_cockpit",
                 "playbook_board",
                 "renewal_room",
@@ -1237,6 +1310,11 @@ def build_seed_plan() -> dict[str, Any]:
                 "status": "active",
             },
             {
+                "table": f"{PBC_KEY}_customer_touchpoint",
+                "code": "TP-DEMO-001",
+                "status": "completed",
+            },
+            {
                 "table": f"{PBC_KEY}_success_runtime_parameter",
                 "code": "workbench_limit",
                 "status": "active",
@@ -1249,7 +1327,6 @@ def build_seed_plan() -> dict[str, Any]:
         ),
         "side_effects": (),
     }
-
 
 def verify_owned_table_boundary(references: tuple[str, ...] | list[str] = ()) -> dict[str, Any]:
     allowed = set(RUNTIME_TABLES) | set(CONSUMED_EVENTS) | {
@@ -1315,6 +1392,16 @@ def slice_app_smoke_test() -> dict[str, Any]:
             "renewal_date": "2026-12-31",
         }
     )
+    touchpoint = app.record_touchpoint(
+        {
+            "tenant": "tenant-smoke",
+            "success_account_id": account["record"]["id"],
+            "channel": "phone",
+            "purpose": "renewal_alignment",
+            "outcome": "executive_follow_up_scheduled",
+            "owner": "csm-1",
+        }
+    )
     health = app.calculate_health_score(
         {"tenant": "tenant-smoke", "success_account_id": account["record"]["id"], "adoption": 0.8, "support": 0.7}
     )
@@ -1322,7 +1409,7 @@ def slice_app_smoke_test() -> dict[str, Any]:
     renewal = app.start_renewal_motion(
         {"tenant": "tenant-smoke", "success_account_id": account["record"]["id"], "renewal_date": "2026-12-31"}
     )
-    document_plan = app.document_instruction_plan("Renewal risk memo", "update health and renewal")
+    document_plan = app.document_instruction_plan("Renewal risk memo", "update health and renewal touchpoints")
     crud_plan = app.datastore_crud_plan("update", table=f"{PBC_KEY}_success_plan", payload={"status": "active"})
     handled = app.receive_event(
         {"event_type": "PaymentFailed", "tenant": "tenant-smoke", "success_account_id": account["record"]["id"]}
@@ -1336,12 +1423,26 @@ def slice_app_smoke_test() -> dict[str, Any]:
         }
     )
     workbench = app.query_workbench("tenant-smoke")
-    route = dispatch_route("GET", "/customer-success-workbench", {"tenant": "tenant-smoke"}, app=app)
+    route = dispatch_route(
+        "POST",
+        "/touchpoints",
+        {
+            "tenant": "tenant-smoke",
+            "success_account_id": account["record"]["id"],
+            "channel": "email",
+            "purpose": "health_follow_up",
+            "outcome": "reply_pending",
+            "owner": "csm-1",
+        },
+        app=app,
+    )
+    workbench_route = dispatch_route("GET", "/customer-success-workbench", {"tenant": "tenant-smoke"}, app=app)
     return {
         "ok": all(
             (
                 config["ok"],
                 account["ok"],
+                touchpoint["ok"],
                 health["ok"],
                 playbook["ok"],
                 renewal["ok"],
@@ -1350,11 +1451,14 @@ def slice_app_smoke_test() -> dict[str, Any]:
                 handled["ok"],
                 duplicate["duplicate"] is True,
                 workbench["summary"]["account_count"] >= 1,
+                workbench["summary"]["touchpoint_count"] >= 2,
                 route["ok"],
+                workbench_route["ok"],
             )
         ),
         "configuration": config,
         "account": account,
+        "touchpoint": touchpoint,
         "health": health,
         "playbook": playbook,
         "renewal": renewal,
@@ -1364,9 +1468,9 @@ def slice_app_smoke_test() -> dict[str, Any]:
         "duplicate_event": duplicate,
         "workbench": workbench,
         "route": route,
+        "workbench_route": workbench_route,
         "side_effects": (),
     }
-
 
 def pbc_source_artifact_contract() -> dict[str, Any]:
     schema = build_schema_contract()

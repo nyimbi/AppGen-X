@@ -17,7 +17,7 @@ Turn `customer_success_management` into a coherent one-PBC standalone app that i
 
 1. Establish one shared executable core.
    - Add a package-local slice app backed by SQLite for focused smoke coverage.
-   - Encode owned tables, route mappings, forms, wizards, controls, permissions, and release artifacts in one place.
+   - Encode owned tables, route mappings, touchpoint workflows, forms, wizards, controls, permissions, and release artifacts in one place.
 
 2. Make the owned database real and coherent.
    - Replace the conflicting migration with a single schema that matches the executable app and contracts.
@@ -28,7 +28,7 @@ Turn `customer_success_management` into a coherent one-PBC standalone app that i
    - Preserve package entry points used by existing tests and audits.
 
 4. Improve the domain behavior, not just the declarations.
-   - Implement executable account intake, success plan creation, onboarding milestones, health scoring, playbook launch, renewal motion, churn scoring, document planning, CRUD planning, and AppGen-X event handling.
+   - Implement executable account intake, success plan creation, onboarding milestones, touchpoint capture, health scoring, playbook launch, renewal motion, churn scoring, document planning, CRUD planning, and AppGen-X event handling.
 
 5. Add focused validation and release evidence.
    - Add tests for the standalone slice app, migration/bootstrap, route dispatch, event idempotency, and release audits.

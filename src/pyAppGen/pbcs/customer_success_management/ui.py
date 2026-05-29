@@ -22,6 +22,7 @@ def customer_success_management_ui_contract() -> dict:
             "navigation_sections": (
                 "command_center",
                 "accounts",
+                "touchpoint_timeline",
                 "health_cockpit",
                 "playbook_board",
                 "renewal_room",
@@ -37,6 +38,7 @@ def customer_success_management_ui_contract() -> dict:
         "navigation_sections": (
             "command_center",
             "accounts",
+            "touchpoint_timeline",
             "health_cockpit",
             "playbook_board",
             "renewal_room",
