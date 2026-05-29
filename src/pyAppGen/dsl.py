@@ -701,6 +701,38 @@ def semantic_model_dsl(text: str, *, source_name: str | None = None) -> dict:
         "ok": lint["ok"],
     }
     model["symbol_coverage"] = symbol_coverage_dsl(source, source_name=source_name, model=model)
+    required_top_level_fields = (
+        "format",
+        "source_files",
+        "app",
+        "symbols",
+        "tables",
+        "views",
+        "flows",
+        "operations",
+        "rules",
+        "roles",
+        "security",
+        "agents",
+        "llms",
+        "pbcs",
+        "composition",
+        "contracts",
+        "deployment",
+        "packages",
+        "graphs",
+        "diagnostics",
+    )
+    missing_top_level_fields = tuple(field for field in required_top_level_fields if field not in model)
+    model["contract_counts"] = {
+        "required_top_level_field_count": len(required_top_level_fields),
+        "present_top_level_field_count": len(required_top_level_fields) - len(missing_top_level_fields),
+        "missing_top_level_field_count": len(missing_top_level_fields),
+        "symbol_count": len(model.get("symbols", {})),
+        "symbol_kind_count": len({symbol.get("kind") for symbol in model.get("symbols", {}).values()}),
+        "diagnostic_count": len(model.get("diagnostics", ())),
+    }
+    model["missing_top_level_fields"] = missing_top_level_fields
     return model
 
 
@@ -715,6 +747,9 @@ def symbol_coverage_dsl(text: str, *, source_name: str | None = None, model: dic
         "required": REQUIRED_SYMBOL_KINDS,
         "detected": tuple(kind for kind in REQUIRED_SYMBOL_KINDS if kind in detected),
         "missing": tuple(kind for kind in REQUIRED_SYMBOL_KINDS if kind not in detected),
+        "required_kind_count": len(REQUIRED_SYMBOL_KINDS),
+        "detected_kind_count": sum(1 for kind in REQUIRED_SYMBOL_KINDS if kind in detected),
+        "missing_kind_count": sum(1 for kind in REQUIRED_SYMBOL_KINDS if kind not in detected),
         "counts": {
             kind: sum(1 for symbol in symbols if symbol.get("kind") == kind)
             for kind in REQUIRED_SYMBOL_KINDS
@@ -3979,8 +4014,16 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             "docs/tooling.md#semantic-model-contract",
             {
                 "format": semantic.get("format"),
+                "contract_counts": semantic.get("contract_counts"),
+                "missing_top_level_fields": semantic.get("missing_top_level_fields"),
                 "symbol_coverage": symbol_coverage.get("format"),
                 "symbol_coverage_missing": symbol_coverage.get("missing"),
+                "symbol_coverage_counts": {
+                    "required_kind_count": symbol_coverage.get("required_kind_count"),
+                    "detected_kind_count": symbol_coverage.get("detected_kind_count"),
+                    "missing_kind_count": symbol_coverage.get("missing_kind_count"),
+                    "symbol_count": symbol_coverage.get("symbol_count"),
+                },
             },
         ),
         _tooling_audit_check(

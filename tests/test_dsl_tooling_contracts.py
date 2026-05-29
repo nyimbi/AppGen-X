@@ -175,6 +175,12 @@ def test_semantic_model_exposes_spec_contract_for_tables_views_flows_and_pbcs() 
     assert model["pbcs"]["gl_core"]["catalog_resolved"] is True
     assert "table.Invoice.customer_id" in model["symbols"]
     assert model["symbol_coverage"]["format"] == "appgen.symbol-coverage.v1"
+    assert model["contract_counts"]["required_top_level_field_count"] == 20
+    assert model["contract_counts"]["present_top_level_field_count"] == 20
+    assert model["contract_counts"]["missing_top_level_field_count"] == 0
+    assert model["contract_counts"]["symbol_count"] == len(model["symbols"])
+    assert model["contract_counts"]["symbol_kind_count"] > 0
+    assert model["missing_top_level_fields"] == ()
 
 
 def test_semantic_symbol_coverage_proves_required_nested_symbol_kinds() -> None:
@@ -218,6 +224,10 @@ def test_semantic_symbol_coverage_proves_required_nested_symbol_kinds() -> None:
     assert coverage["format"] == "appgen.symbol-coverage.v1"
     assert model["symbol_coverage"]["missing"] == ()
     assert coverage["missing"] == ()
+    assert coverage["required_kind_count"] == len(coverage["required"])
+    assert coverage["detected_kind_count"] == len(coverage["detected"])
+    assert coverage["missing_kind_count"] == len(coverage["missing"])
+    assert coverage["detected_kind_count"] == coverage["required_kind_count"]
     assert set(coverage["required"]) <= set(coverage["detected"])
     assert coverage["counts"]["group"] == 1
     assert coverage["counts"]["component_binding"] == 1
@@ -3725,6 +3735,15 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
         "non_goal_policy_guards",
         "tooling_audit_text_renderer",
     } <= {check["id"] for check in report["checks"]}
+    semantic_check = next(check for check in report["checks"] if check["id"] == "shared_semantic_model")
+    assert semantic_check["detail"]["contract_counts"]["required_top_level_field_count"] == 20
+    assert semantic_check["detail"]["contract_counts"]["missing_top_level_field_count"] == 0
+    assert semantic_check["detail"]["missing_top_level_fields"] == ()
+    assert semantic_check["detail"]["symbol_coverage_counts"]["required_kind_count"] == (
+        semantic_check["detail"]["symbol_coverage_counts"]["detected_kind_count"]
+    )
+    assert semantic_check["detail"]["symbol_coverage_counts"]["missing_kind_count"] == 0
+    assert semantic_check["detail"]["symbol_coverage_counts"]["symbol_count"] > 0
     non_goal_check = next(check for check in report["checks"] if check["id"] == "non_goal_policy_guards")
     assert non_goal_check["detail"]["format"] == "appgen.non-goal-policy-audit.v1"
     assert non_goal_check["detail"]["ok"] is True
