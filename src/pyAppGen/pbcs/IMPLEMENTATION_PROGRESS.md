@@ -56,6 +56,7 @@ This file tracks the branch-isolated implementation pass for standalone Packaged
 | cross_border_trade | `pbc/cross-border-trade-standalone` | `5d7ceb09` | Compile, 14 tests, spec/source/release/smoke true. |
 | order_routing_optimization | `pbc/order-routing-optimization-standalone` | `44a80fbd` | Compile, 14 tests, spec/source/release/smoke true. |
 | customer_360 | `pbc/customer-360-standalone` | `f838821d` | Compile, 11 tests, spec/source/release/smoke true. |
+| case_knowledge_management | `pbc/case-knowledge-management-standalone` | `cbcc01b3` | Compile, 15 tests, source/package/spec/agent/implementation/capability/generation audits true. |
 | cdp_segmentation | `pbc/cdp-segmentation-standalone` | `de76c716` | Compile, 18 direct tests, spec/source/release/smoke true. |
 | dam_core | `pbc/dam-core-standalone` | `ec976c9e` | Compile, 16 tests, spec/source/release/smoke true. |
 | lead_opportunity | `pbc/lead-opportunity-standalone` | `1d0b2cc4` | Compile, 12 tests, spec/source/release/smoke true. |
