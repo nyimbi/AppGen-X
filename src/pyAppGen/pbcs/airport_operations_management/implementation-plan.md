@@ -1,44 +1,17 @@
 # Airport Operations Management Implementation Plan
 
-## Target Slice
+## Objective
 
-Implement a real executable slice of backlog item 1, "Gate and stand compatibility matrix with operational constraints," with a small extension into assistant decision rationale. The slice must stay package-local and remain aligned with AppGen-X contracts and ordinary relational backends.
+Make `airport_operations_management` usable as a standalone one-PBC airport operations center covering gates, stands, slots, runway/taxiway constraints, turnarounds, baggage, passenger flows, deicing, safety controls, disruptions, command-board views, and governed assistant support.
 
-## Scope
+## Plan
 
-1. Add a package-local compatibility evaluator for gate and stand planning.
-2. Produce machine-readable reject reasons for blocked assignments.
-3. Wire the evaluator into runtime command/query paths so an assignment request can be accepted or rejected for operational reasons.
-4. Surface decision-support metadata in service, UI, and agent contracts.
-5. Add focused tests for narrowbody, widebody, international, remote-stand, and adjacent-shadow scenarios.
+1. Preserve the package boundary under `src/pyAppGen/pbcs/airport_operations_management` and keep all external AODB, ATC, weather, baggage-system, common-use, airline, and audit inputs as AppGen-X event/API projections.
+2. Add a package-local standalone app contract with explicit forms, wizards, controls, route contracts, DSL exposure, seeded operating scenarios, and a go-live drill simulation.
+3. Implement executable domain primitives for turnaround milestone graphs, remote-stand bussing, deicing queues, A-CDM slot reconciliation, baggage contingency, passenger-flow capacity forecasting, disruption playbooks, gate-change impact previews, assistant planning, boundary guardrails, and drill scorecards.
+4. Connect the standalone surface into package `__init__`, UI, routes, agent, and release evidence so generated apps can discover it.
+5. Add focused tests proving the forms/wizards/controls cover all 50 improve1 backlog items, the operating primitives execute, boundaries reject foreign tables, the assistant is citation/confirmation gated, and package smoke/release evidence include the standalone app.
 
-## Planned File Touches
+## Verification
 
-- `src/pyAppGen/pbcs/airport_operations_management/compatibility.py`
-  Real decision logic for stand evaluation, compatibility matrix building, and decision explanation.
-- `src/pyAppGen/pbcs/airport_operations_management/runtime.py`
-  Runtime entry points for compatibility evaluation, command execution, workbench summaries, and smoke coverage.
-- `src/pyAppGen/pbcs/airport_operations_management/services.py`
-  Query exposure for compatibility planning.
-- `src/pyAppGen/pbcs/airport_operations_management/ui.py`
-  Decision-support panels and workbench metadata.
-- `src/pyAppGen/pbcs/airport_operations_management/agent.py`
-  Assistant-facing rationale surface for stand selection and rejection explanation.
-- `tests/test_pbc_airport_operations_management_implementation.py`
-  Focused execution tests for the implemented slice.
-
-## Explicit Non-Goals
-
-- Full turnaround milestone graph implementation.
-- Full runway/taxiway operating model.
-- New external datastore dependencies beyond PostgreSQL, MySQL, or MariaDB.
-- Any event model outside the AppGen-X contract.
-- Broad route proliferation or unrelated package refactors.
-
-## Acceptance Signals
-
-1. A viable stand is selected for compatible flight/stand combinations.
-2. Blocked combinations return machine-readable reason codes.
-3. Rejected assignment commands emit the AppGen-X exception event path.
-4. Workbench and assistant surfaces expose decision-support metadata.
-5. Focused tests pass for compatibility and rejection scenarios.
+Run package compile, package tests, focused PBC audits, and diff hygiene checks before commit. Live database execution remains out of scope for this slice; database support is represented by migrations/contracts for PostgreSQL, MySQL, and MariaDB.

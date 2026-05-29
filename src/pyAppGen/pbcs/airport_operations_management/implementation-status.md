@@ -1,35 +1,20 @@
 # Airport Operations Management Implementation Status
 
-## Implemented
+## Status
 
-- Added `compatibility.py` with a package-local gate/stand compatibility matrix.
-- Implemented operational checks for:
-  - aircraft family fit
-  - wingspan code limits
-  - international-capable stands
-  - contact-stand requirements
-  - hydrant fuel, ground power, and PCA requirements
-  - remote-stand bussing support
-  - adjacent stand shadow conflicts
-- Extended `command_gate_assignment` so rejected requests become explicit rejected records and emit `AirportOperationsManagementExceptionOpened`.
-- Added runtime and service evaluation surfaces for non-mutating compatibility planning.
-- Extended UI and agent contracts with decision-support metadata and rationale support.
-- Added focused implementation tests in `tests/test_pbc_airport_operations_management_implementation.py`.
+Standalone PBC implementation completed on branch `pbc/airport-operations-management-standalone`.
 
-## Validation
+## Completed Work
 
-- `./.venv/bin/python -m py_compile src/pyAppGen/pbcs/airport_operations_management/compatibility.py src/pyAppGen/pbcs/airport_operations_management/runtime.py src/pyAppGen/pbcs/airport_operations_management/services.py src/pyAppGen/pbcs/airport_operations_management/ui.py src/pyAppGen/pbcs/airport_operations_management/agent.py tests/test_pbc_airport_operations_management_implementation.py`
-- `./.venv/bin/pytest -q tests/test_pbc_airport_operations_management_implementation.py tests/test_pbc_airport_operations_management_runtime.py src/pyAppGen/pbcs/airport_operations_management/tests/test_contract.py`
+- Added `standalone.py` with airport operations center forms, wizards, controls, declared dependencies, operating primitives, assistant CRUD planning, route contracts, DSL exposure, seeded scenarios, and a go-live operational drill.
+- Connected the standalone app surface into `__init__.py`, `ui.py`, `routes.py`, `agent.py`, and `release_evidence.py`.
+- Added `tests/test_standalone_app.py` for improve1 coverage, operating primitives, assistant guardrails, boundary enforcement, routes, release evidence, implementation contract, and package smoke.
+- Refreshed this implementation plan, status, and README inside the PBC directory.
 
-## Self Review
+## Boundary
 
-- Removed an unused runtime import after the first implementation pass.
-- Moved new imports in `services.py` and `agent.py` to module top level to avoid style-check noise.
-- Kept the slice package-local and avoided unrelated manifest or cross-package changes.
-- Preserved AppGen-X terminology and kept datastore assumptions limited to PostgreSQL, MySQL, and MariaDB.
+The PBC owns airport operating records: gate assignments, stand allocations, slots, turnaround tasks, baggage belts, passenger flows, disruptions, policies, parameters, schema extensions, control assertions, governed models, and AppGen-X inbox/outbox/dead-letter tables. AODB, ATC, weather, baggage-system, common-use, airline, and audit systems are dependency projections only.
 
-## Remaining Backlog
+## Known Gaps
 
-- The current compatibility slice does not yet model MARS split/merge stands, deicing capacity, full remote bus fleet scheduling, or runway/taxiway state.
-- The stand catalog is currently request-supplied or default-fixture-based, not yet a persisted owned-table projection.
-- Public route expansion for validation-only compatibility checks remains a future step if the package chooses to expose this slice over HTTP.
+The implementation is side-effect-free and package-local. It proves generated-app contracts, workflows, and release evidence, but it does not run against live airport feeds, a live web server, or real PostgreSQL/MySQL/MariaDB instances in this slice.
