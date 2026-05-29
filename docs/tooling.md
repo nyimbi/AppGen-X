@@ -619,7 +619,9 @@ detected migration families.
 `appgen.lint-text-renderer.v1` is embedded in the tooling audit to prove lint
 text logs preserve source mode, file count, source file names, ordered stage
 counts, migration preview metadata, detected migration families, and diagnostic
-lines without JSON parsing.
+lines without JSON parsing. Its contract reports required-fragment,
+missing-fragment, output-line, and marker-line counts so release evidence can
+distinguish complete text coverage from a partially rendered summary.
 `appgen diagnostics`
 text output summarizes the `appgen.diagnostic-catalog.v1` format in the header,
 registry coverage, required registry codes as `required-code ...`, covered
@@ -637,7 +639,9 @@ evidence formats, blocking gap count, named blocking gaps as `gap ...`, digest,
 and per-surface checks.
 `appgen.semantic-drift-text-renderer.v1` is embedded in the tooling audit to
 prove those shared-model drift summaries keep surface, evidence, named-gap,
-digest, and check-result markers visible without JSON parsing.
+digest, and check-result markers visible without JSON parsing. The diagnostics
+and drift renderer contracts also report required-fragment, missing-fragment,
+output-line, and marker-line counts for their human-readable evidence.
 
 ### `appgen format`
 
@@ -656,6 +660,8 @@ also reports the formatter report format in the header, `organize`, `write_reque
 `appgen.format-text-renderer.v1` is embedded in the tooling audit to prove
 format text logs preserve the formatter envelope, idempotence state,
 organize/write flags, write path, and diagnostic lines without JSON parsing.
+The format text contract reports fragment and marker counts for the formatter
+header, mutation posture, write path, and diagnostic markers.
 `--organize` enables the optional table-body organization profile: identity
 fields and spreads, business keys, relationships, editable scalar fields,
 calculated fields, audit fields, and directives are ordered inside each table
@@ -680,7 +686,9 @@ in the header, semantic-model format as `semantic_format=...`, checks, missing o
 and diagnostics. `appgen.validate-generate-text-renderer.v1` is embedded in
 the tooling audit to prove validation and generation text logs keep target,
 semantic-model, diagnostic, artifact, manifest, and blocking-gap evidence
-visible without JSON parsing.
+visible without JSON parsing. Its renderer contract reports fragment and marker
+counts across both validation and generation summaries so target failures,
+artifacts, manifests, gaps, and diagnostics are measurable in release logs.
 
 ### `appgen generate`
 
@@ -780,7 +788,10 @@ coverage, symbol coverage, CLI alias contract, module boundaries, designer
 sync, and extension audits.
 `appgen.doctor-text-renderer.v1` is embedded in the tooling audit to prove
 doctor text logs keep check status, blocking-gap counts, and embedded
-`detail_format=...` evidence visible without JSON parsing.
+`detail_format=...` evidence visible without JSON parsing. The renderer
+contract also reports required-fragment, check-line, and detail-format-line
+counts so release evidence can prove the text summary preserved every expected
+status and embedded audit marker.
 
 ### `appgen tooling-audit`
 
@@ -1161,7 +1172,8 @@ sync checks.
 `appgen.designer-sync-text-renderer.v1` is embedded in the tooling audit to
 prove those designer handoff logs keep round-trip, projection, diff-preview,
 matrix, required-operation, and executed-case evidence visible without JSON
-parsing.
+parsing. The renderer contract reports fragment and marker counts for the
+designer summary, surface list, visual edit, DSL diff, matrix, and check lines.
 `--edit-json` must be a JSON object; malformed edit payloads are CLI
 configuration errors and return exit code `2` before any designer mutation is
 accepted.

@@ -2092,6 +2092,29 @@ def _tooling_text_phase_detail(payload: dict) -> dict | None:
     return None
 
 
+def _text_renderer_contract_counts(
+    text: str,
+    required_fragments: tuple[str, ...],
+    *,
+    marker_prefixes: tuple[str, ...] = (),
+    marker_contains: tuple[str, ...] = (),
+) -> dict:
+    lines = tuple(line for line in text.splitlines() if line.strip())
+    marker_lines = tuple(
+        line
+        for line in lines
+        if (marker_prefixes and line.startswith(marker_prefixes))
+        or any(marker in line for marker in marker_contains)
+    )
+    missing = tuple(fragment for fragment in required_fragments if fragment not in text)
+    return {
+        "required_fragment_count": len(required_fragments),
+        "missing_fragment_count": len(missing),
+        "output_line_count": len(lines),
+        "marker_line_count": len(marker_lines),
+    }
+
+
 def _parser_golden_text_renderer_contract() -> dict:
     """Prove parser-golden text logs expose fixture and construct coverage evidence."""
     payload = {
@@ -2184,6 +2207,11 @@ def _lint_text_renderer_contract() -> dict:
     return {
         "format": "appgen.lint-text-renderer.v1",
         "ok": not missing and not text.lstrip().startswith("{"),
+        **_text_renderer_contract_counts(
+            text,
+            required_fragments,
+            marker_prefixes=("source-file ", "stages ", "migration-", "error ", "warning "),
+        ),
         "required_fragments": required_fragments,
         "missing_fragments": missing,
         "json_fallback": text.lstrip().startswith("{"),
@@ -2222,6 +2250,11 @@ def _format_text_renderer_contract() -> dict:
     return {
         "format": "appgen.format-text-renderer.v1",
         "ok": not missing and not text.lstrip().startswith("{"),
+        **_text_renderer_contract_counts(
+            text,
+            required_fragments,
+            marker_prefixes=("format ", "write_path ", "warning "),
+        ),
         "required_fragments": required_fragments,
         "missing_fragments": missing,
         "json_fallback": text.lstrip().startswith("{"),
@@ -2393,6 +2426,11 @@ def _validate_generate_text_renderer_contract() -> dict:
     return {
         "format": "appgen.validate-generate-text-renderer.v1",
         "ok": not missing and not text.lstrip().startswith("{"),
+        **_text_renderer_contract_counts(
+            text,
+            required_fragments,
+            marker_prefixes=("validate ", "generate ", "ok ", "fail ", "unknown-targets ", "missing-targets ", "artifact ", "gap ", "warning ", "error "),
+        ),
         "required_fragments": required_fragments,
         "missing_fragments": missing,
         "json_fallback": text.lstrip().startswith("{"),
@@ -2845,6 +2883,11 @@ def _designer_sync_text_renderer_contract() -> dict:
     return {
         "format": "appgen.designer-sync-text-renderer.v1",
         "ok": not missing and not text.lstrip().startswith("{"),
+        **_text_renderer_contract_counts(
+            text,
+            required_fragments,
+            marker_prefixes=("designer-sync ", "surfaces ", "visual-edit", "dsl-diff ", "ok ", "fail "),
+        ),
         "required_fragments": required_fragments,
         "missing_fragments": missing,
         "json_fallback": text.lstrip().startswith("{"),
@@ -2928,6 +2971,11 @@ def _diagnostics_text_renderer_contract() -> dict:
     return {
         "format": "appgen.diagnostics-text-renderer.v1",
         "ok": not missing and not text.lstrip().startswith("{"),
+        **_text_renderer_contract_counts(
+            text,
+            required_fragments,
+            marker_prefixes=("diagnostics", "required-code ", "covered-", "missing-", "fail "),
+        ),
         "required_fragments": required_fragments,
         "missing_fragments": missing,
         "json_fallback": text.lstrip().startswith("{"),
@@ -2994,6 +3042,11 @@ def _semantic_drift_text_renderer_contract() -> dict:
     return {
         "format": "appgen.semantic-drift-text-renderer.v1",
         "ok": not missing and not text.lstrip().startswith("{"),
+        **_text_renderer_contract_counts(
+            text,
+            required_fragments,
+            marker_prefixes=("drift ", "surfaces ", "gap ", "evidence ", "ok ", "fail "),
+        ),
         "required_fragments": required_fragments,
         "missing_fragments": missing,
         "json_fallback": text.lstrip().startswith("{"),
@@ -3039,9 +3092,18 @@ def _doctor_text_renderer_contract() -> dict:
         "fail module_boundaries detail_format=appgen.module-boundary-audit.v1: Documented DSL tooling boundaries are incomplete.",
     )
     missing = tuple(fragment for fragment in required_fragments if fragment not in text)
+    counts = _text_renderer_contract_counts(
+        text,
+        required_fragments,
+        marker_prefixes=("ok ", "fail "),
+        marker_contains=("detail_format=appgen.",),
+    )
     return {
         "format": "appgen.doctor-text-renderer.v1",
         "ok": not missing and not text.lstrip().startswith("{"),
+        **counts,
+        "check_line_count": counts["marker_line_count"],
+        "detail_format_line_count": sum(1 for line in text.splitlines() if "detail_format=appgen." in line),
         "required_fragments": required_fragments,
         "missing_fragments": missing,
         "json_fallback": text.lstrip().startswith("{"),

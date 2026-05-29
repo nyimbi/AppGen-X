@@ -4058,6 +4058,9 @@ def test_diagnostics_text_renderer_contract_proves_catalog_and_fixture_log_marke
 
     assert report["format"] == "appgen.diagnostics-text-renderer.v1"
     assert report["ok"] is True
+    assert report["required_fragment_count"] == len(report["required_fragments"])
+    assert report["missing_fragment_count"] == 0
+    assert report["marker_line_count"] >= 8
     assert report["missing_fragments"] == ()
     assert report["json_fallback"] is False
     assert report["text_prefix"].startswith(
@@ -4079,6 +4082,9 @@ def test_lint_text_renderer_contract_proves_stage_and_migration_log_markers() ->
 
     assert report["format"] == "appgen.lint-text-renderer.v1"
     assert report["ok"] is True
+    assert report["required_fragment_count"] == len(report["required_fragments"])
+    assert report["missing_fragment_count"] == 0
+    assert report["marker_line_count"] >= 7
     assert report["missing_fragments"] == ()
     assert report["json_fallback"] is False
     assert report["text_prefix"].startswith("lint failed: format=appgen.lint-report.v1")
@@ -4098,6 +4104,9 @@ def test_semantic_drift_text_renderer_contract_proves_shared_model_log_markers()
 
     assert report["format"] == "appgen.semantic-drift-text-renderer.v1"
     assert report["ok"] is True
+    assert report["required_fragment_count"] == len(report["required_fragments"])
+    assert report["missing_fragment_count"] == 0
+    assert report["marker_line_count"] >= 8
     assert report["missing_fragments"] == ()
     assert report["json_fallback"] is False
     assert report["text_prefix"].startswith(
@@ -4117,6 +4126,11 @@ def test_doctor_text_renderer_contract_proves_check_and_detail_format_markers() 
 
     assert report["format"] == "appgen.doctor-text-renderer.v1"
     assert report["ok"] is True
+    assert report["required_fragment_count"] == len(report["required_fragments"])
+    assert report["required_fragment_count"] == 4
+    assert report["missing_fragment_count"] == 0
+    assert report["check_line_count"] == 3
+    assert report["detail_format_line_count"] == 3
     assert report["missing_fragments"] == ()
     assert report["json_fallback"] is False
     assert report["text_prefix"].startswith("doctor failed: format=appgen.doctor-report.v1 checks=3")
@@ -4132,6 +4146,9 @@ def test_validate_generate_text_renderer_contract_proves_readiness_log_markers()
 
     assert report["format"] == "appgen.validate-generate-text-renderer.v1"
     assert report["ok"] is True
+    assert report["required_fragment_count"] == len(report["required_fragments"])
+    assert report["missing_fragment_count"] == 0
+    assert report["marker_line_count"] >= 10
     assert report["missing_fragments"] == ()
     assert report["json_fallback"] is False
     assert report["text_prefix"].startswith(
@@ -4151,6 +4168,9 @@ def test_format_text_renderer_contract_proves_write_and_idempotence_log_markers(
 
     assert report["format"] == "appgen.format-text-renderer.v1"
     assert report["ok"] is True
+    assert report["required_fragment_count"] == len(report["required_fragments"])
+    assert report["missing_fragment_count"] == 0
+    assert report["marker_line_count"] >= 3
     assert report["missing_fragments"] == ()
     assert report["json_fallback"] is False
     assert report["text_prefix"].startswith("format changed: format=appgen.format-result.v1")
@@ -4166,6 +4186,9 @@ def test_designer_sync_text_renderer_contract_proves_round_trip_log_markers() ->
 
     assert report["format"] == "appgen.designer-sync-text-renderer.v1"
     assert report["ok"] is True
+    assert report["required_fragment_count"] == len(report["required_fragments"])
+    assert report["missing_fragment_count"] == 0
+    assert report["marker_line_count"] >= 10
     assert report["missing_fragments"] == ()
     assert report["json_fallback"] is False
     assert report["text_prefix"].startswith(
