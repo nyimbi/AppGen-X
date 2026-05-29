@@ -3152,6 +3152,21 @@ view CustomerForm for Customer {
         text=True,
         capture_output=True,
     )
+    blocked_text = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pyAppGen",
+            "generate",
+            str(source_path),
+            "--out",
+            str(tmp_path / "blocked-text"),
+        ],
+        check=False,
+        cwd=root,
+        text=True,
+        capture_output=True,
+    )
     allowed = subprocess.run(
         [
             sys.executable,
@@ -3172,6 +3187,10 @@ view CustomerForm for Customer {
 
     assert blocked.returncode == 1, blocked.stderr
     assert "lint_warnings" in json.loads(blocked.stdout)["blocking_gaps"]
+    assert blocked_text.returncode == 1, blocked_text.stderr
+    assert blocked_text.stdout.startswith("generate failed: generated=False")
+    assert "gap lint_warnings" in blocked_text.stdout
+    assert "warning AGX0404:" in blocked_text.stdout
     assert allowed.returncode == 0, allowed.stderr
     assert json.loads(allowed.stdout)["allow_warnings"] is True
     assert (allowed_dir / "appgen.json").exists()
