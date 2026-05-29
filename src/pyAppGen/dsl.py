@@ -3169,6 +3169,10 @@ def _emit_lsp_code_action_apply_text(payload: dict) -> None:
     title = payload.get("title")
     if title:
         print(f"title {title}")
+    for edit in edits:
+        new_text = edit.get("newText") if isinstance(edit, dict) else None
+        if new_text:
+            print(f"edit {new_text}")
     available = tuple(payload.get("available_actions", ()))
     if available:
         print(f"available-actions {', '.join(available)}")
@@ -3213,6 +3217,7 @@ def _lsp_code_action_text_renderer_contract() -> dict:
     required_fragments = (
         "lsp-code-action ok: format=appgen.lsp-code-action-apply.v1 action=create_operation_from_handler changed=True edits=1 lint_ok=True",
         "title Create operation SubmitInvoice",
+        "edit operation SubmitInvoice {}",
         "lsp-code-action failed: format=appgen.lsp-code-action-apply.v1 action=missing_action changed=False edits=0 lint_ok=False",
         "available-actions create_operation_from_handler, create_flow_from_handler",
         "error AGX1002: Unknown code action: missing_action",

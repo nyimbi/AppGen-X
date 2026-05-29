@@ -4207,6 +4207,7 @@ def test_lsp_code_action_text_renderer_contract_proves_quick_fix_log_markers() -
     )
     assert {
         "title Create operation SubmitInvoice",
+        "edit operation SubmitInvoice {}",
         "lsp-code-action failed: format=appgen.lsp-code-action-apply.v1 action=missing_action changed=False edits=0 lint_ok=False",
         "available-actions create_operation_from_handler, create_flow_from_handler",
         "error AGX1002: Unknown code action: missing_action",
