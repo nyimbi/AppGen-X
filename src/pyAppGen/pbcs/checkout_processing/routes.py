@@ -139,3 +139,82 @@ def smoke_test() -> dict:
         "dispatch": dispatched,
         "side_effects": (),
     }
+
+
+
+STANDALONE_ROUTES = (
+    {"method": "POST", "path": "/app/checkout-processing/demo-workspace", "handler": "seed_demo_workspace", "permission": "checkout_processing.configure"},
+    {"method": "GET", "path": "/app/checkout-processing/workbench", "handler": "build_workbench", "permission": "checkout_processing.audit"},
+    {"method": "POST", "path": "/app/checkout-processing/carts", "handler": "create_cart", "permission": "checkout_processing.cart"},
+    {"method": "POST", "path": "/app/checkout-processing/sessions", "handler": "open_checkout_session", "permission": "checkout_processing.checkout"},
+    {"method": "POST", "path": "/app/checkout-processing/checkouts/complete", "handler": "complete_checkout", "permission": "checkout_processing.checkout"},
+    {"method": "POST", "path": "/app/checkout-processing/proofs", "handler": "generate_checkout_proof", "permission": "checkout_processing.audit"},
+    {"method": "POST", "path": "/app/checkout-processing/assistant/sessions", "handler": "run_agent_skill", "permission": "checkout_processing.audit"},
+)
+
+
+def standalone_route_contracts() -> dict:
+    from .services import standalone_service_operation_contracts
+
+    service_contracts = {item["operation"]: item for item in standalone_service_operation_contracts()["contracts"]}
+    contracts = tuple(
+        {
+            **route,
+            "operation": route["handler"],
+            "service_operation": service_contracts[route["handler"]],
+            "owned_tables": service_contracts[route["handler"]]["owned_tables"],
+            "read_tables": service_contracts[route["handler"]]["read_tables"],
+            "emitted_event": service_contracts[route["handler"]]["emitted_event"],
+            "event_contract": "AppGen-X",
+            "stream_engine_picker_visible": False,
+            "shared_table_access": False,
+            "route_id": f"{route['method']} {route['path']}",
+        }
+        for route in STANDALONE_ROUTES
+    )
+    return {
+        "format": "appgen.checkout-processing-standalone-routes.v1",
+        "ok": bool(contracts)
+        and all(item["event_contract"] == "AppGen-X" for item in contracts)
+        and all(item["shared_table_access"] is False for item in contracts)
+        and all(item["stream_engine_picker_visible"] is False for item in contracts),
+        "pbc": "checkout_processing",
+        "routes": tuple(item["route_id"] for item in contracts),
+        "contracts": contracts,
+        "side_effects": (),
+    }
+
+
+def dispatch_standalone_route(method: str, path: str, payload: dict | None = None, *, service=None) -> dict:
+    from .services import CheckoutProcessingStandaloneService
+
+    route = next((item for item in STANDALONE_ROUTES if item["method"] == method and item["path"] == path), None)
+    if route is None:
+        return {"ok": False, "handled": False, "reason": "route_not_found", "side_effects": ()}
+    owned_service = service is None
+    if service is None:
+        service = CheckoutProcessingStandaloneService()
+    supplied = dict(payload or {})
+    try:
+        if route["handler"] == "seed_demo_workspace":
+            result = service.seed_demo_workspace(tenant=supplied.get("tenant", "tenant_demo"))
+        elif route["handler"] == "build_workbench":
+            result = service.build_workbench(tenant=supplied.get("tenant", "tenant_demo"))
+        elif route["handler"] == "create_cart":
+            result = service.create_cart(supplied, tenant=supplied.get("tenant", "tenant_demo"))
+        elif route["handler"] == "open_checkout_session":
+            result = service.open_checkout_session(supplied, tenant=supplied.get("tenant", "tenant_demo"))
+        elif route["handler"] == "complete_checkout":
+            result = service.complete_checkout(supplied["session_id"], tenant=supplied.get("tenant", "tenant_demo"))
+        elif route["handler"] == "generate_checkout_proof":
+            result = service.generate_checkout_proof(
+                supplied["session_id"],
+                supplied.get("disclosure", ("session_id", "order_id", "status")),
+                tenant=supplied.get("tenant", "tenant_demo"),
+            )
+        else:
+            result = service.run_agent_skill(supplied, tenant=supplied.get("tenant", "tenant_demo"))
+        return {"ok": result.get("ok") is True, "handled": True, "route": route, "result": result, "side_effects": ()}
+    finally:
+        if owned_service:
+            service.close()
