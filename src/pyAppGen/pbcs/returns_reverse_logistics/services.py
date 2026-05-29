@@ -176,3 +176,42 @@ def smoke_test():
         'result': result,
         'side_effects': (),
     }
+
+
+
+STANDALONE_OPERATION_CONTRACTS = (
+    {'operation':'seed_demo_workspace','operation_kind':'command','method':'POST','path':'/app/returns-reverse-logistics/demo-workspace','permission':'returns_reverse_logistics.configure','owned_tables':('returns_reverse_logistics_runtime_state','returns_reverse_logistics_form_submission','returns_reverse_logistics_workflow_run','returns_reverse_logistics_control_execution','returns_reverse_logistics_agent_session','returns_reverse_logistics_workbench_read_model'),'read_tables':(),'emitted_event':'ReturnAuthorized'},
+    {'operation':'build_workbench','operation_kind':'query','method':'GET','path':'/app/returns-reverse-logistics/workbench','permission':'returns_reverse_logistics.audit','owned_tables':(),'read_tables':('returns_reverse_logistics_workbench_read_model',),'emitted_event':None},
+    {'operation':'authorize_return','operation_kind':'command','method':'POST','path':'/app/returns-reverse-logistics/returns','permission':'returns_reverse_logistics.authorize','owned_tables':('returns_reverse_logistics_runtime_state','returns_reverse_logistics_form_submission'),'read_tables':(),'emitted_event':'ReturnAuthorized'},
+    {'operation':'create_return_label','operation_kind':'command','method':'POST','path':'/app/returns-reverse-logistics/labels','permission':'returns_reverse_logistics.label','owned_tables':('returns_reverse_logistics_runtime_state','returns_reverse_logistics_form_submission'),'read_tables':(),'emitted_event':'ReturnLabelCreated'},
+    {'operation':'record_return_receipt','operation_kind':'command','method':'POST','path':'/app/returns-reverse-logistics/receipts','permission':'returns_reverse_logistics.inspect','owned_tables':('returns_reverse_logistics_runtime_state','returns_reverse_logistics_workflow_run'),'read_tables':(),'emitted_event':'ReturnReceived'},
+    {'operation':'record_inspection_grade','operation_kind':'command','method':'POST','path':'/app/returns-reverse-logistics/inspections','permission':'returns_reverse_logistics.inspect','owned_tables':('returns_reverse_logistics_runtime_state','returns_reverse_logistics_workflow_run'),'read_tables':(),'emitted_event':'InspectionGraded'},
+    {'operation':'issue_credit_adjustment','operation_kind':'command','method':'POST','path':'/app/returns-reverse-logistics/credits','permission':'returns_reverse_logistics.adjust','owned_tables':('returns_reverse_logistics_runtime_state','returns_reverse_logistics_form_submission'),'read_tables':(),'emitted_event':'CreditAdjustmentIssued'},
+    {'operation':'generate_return_proof','operation_kind':'command','method':'POST','path':'/app/returns-reverse-logistics/proofs','permission':'returns_reverse_logistics.audit','owned_tables':('returns_reverse_logistics_control_execution',),'read_tables':(),'emitted_event':'ReturnProofGenerated'},
+    {'operation':'run_agent_skill','operation_kind':'command','method':'POST','path':'/app/returns-reverse-logistics/assistant/sessions','permission':'returns_reverse_logistics.audit','owned_tables':('returns_reverse_logistics_agent_session',),'read_tables':(),'emitted_event':'ReturnAssistantSessionRecorded'},
+)
+
+def standalone_service_operation_contracts():
+    commands=tuple(i for i in STANDALONE_OPERATION_CONTRACTS if i['operation_kind']=='command'); queries=tuple(i for i in STANDALONE_OPERATION_CONTRACTS if i['operation_kind']=='query')
+    tables=tuple(t for i in STANDALONE_OPERATION_CONTRACTS for t in i['owned_tables']+i['read_tables'])
+    return {'format':'appgen.returns-reverse-logistics-standalone-services.v1','ok':bool(STANDALONE_OPERATION_CONTRACTS) and all(t.startswith('returns_reverse_logistics_') for t in tables) and all(i['emitted_event'] for i in commands) and all(i['emitted_event'] is None for i in queries),'pbc':'returns_reverse_logistics','service_class':'ReturnsReverseLogisticsStandaloneService','operations':tuple(i['operation'] for i in STANDALONE_OPERATION_CONTRACTS),'command_operations':tuple(i['operation'] for i in commands),'query_operations':tuple(i['operation'] for i in queries),'contracts':STANDALONE_OPERATION_CONTRACTS,'event_contract':'AppGen-X','stream_engine_picker_visible':False,'side_effects':()}
+
+class ReturnsReverseLogisticsStandaloneService:
+    def __init__(self, repository=None, *, database_path=':memory:'):
+        if repository is None:
+            from .repository import ReturnsReverseLogisticsStandaloneRepository
+            repository=ReturnsReverseLogisticsStandaloneRepository(database_path=database_path)
+        self.repository=repository
+    def close(self):
+        close=getattr(self.repository,'close',None)
+        if callable(close): close()
+    def seed_demo_workspace(self, tenant='tenant_demo'): return self.repository.seed_demo_workspace(tenant=tenant)
+    def build_workbench(self, tenant='tenant_demo'): return self.repository.build_workbench(tenant)
+    def authorize_return(self,payload=None,*,tenant='tenant_demo'): supplied=dict(payload or {}); return self.repository.authorize_return(supplied.get('tenant',tenant), supplied)
+    def create_return_label(self,payload=None,*,tenant='tenant_demo'): supplied=dict(payload or {}); return self.repository.create_return_label(supplied.get('tenant',tenant), supplied)
+    def record_return_receipt(self,payload=None,*,tenant='tenant_demo'): supplied=dict(payload or {}); return self.repository.record_return_receipt(supplied.get('tenant',tenant), supplied)
+    def record_inspection_grade(self,payload=None,*,tenant='tenant_demo'): supplied=dict(payload or {}); return self.repository.record_inspection_grade(supplied.get('tenant',tenant), supplied)
+    def issue_credit_adjustment(self,payload=None,*,tenant='tenant_demo'): supplied=dict(payload or {}); return self.repository.issue_credit_adjustment(supplied.get('tenant',tenant), supplied)
+    def generate_return_proof(self,return_id,disclosure=('return_id','order_id','status'),*,tenant='tenant_demo'): return self.repository.generate_return_proof(tenant,return_id,tuple(disclosure))
+    def run_agent_skill(self,payload=None,*,skill='returns_reverse_logistics.document_instruction_intake',tenant='tenant_demo'):
+        supplied=dict(payload or {}); return self.repository.run_agent_skill(supplied.get('tenant',tenant), supplied.get('skill',skill), supplied)
