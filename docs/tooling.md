@@ -946,6 +946,12 @@ the `appgen.release-evidence-bundle.v1` bundle format and
 graph-suite kinds as `graph-kinds ...`, graph-suite rendering formats as
 `graph-formats ...`, per-target verifier status, blocking gaps, and artifact paths;
 `--json` remains the complete machine-readable report.
+The JSON report also publishes target, check, passing-check, failing-check,
+report, diagnostic, graph-kind, graph-format, evidence-artifact, and
+written-artifact counts at the top level, and each target verifier publishes
+check, passing-check, and blocking-gap counts. Agents and release gates should
+use these counts to prove package breadth before expanding target-specific
+handoff details.
 `appgen.release-verifier-text-renderer.v1` is embedded in the tooling audit to
 prove those human-readable handoff logs keep the envelope, evidence bundle,
 graph-suite kind/format, per-target status, blocking-gap, and artifact markers

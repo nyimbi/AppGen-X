@@ -2491,11 +2491,22 @@ def test_release_verifier_report_covers_package_pbc_and_deployment_evidence() ->
     assert report["format"] == "appgen.release-verifier-report.v1"
     assert report["ok"] is True
     assert set(report["reports"]) == {"web", "mobile", "desktop", "pbc", "deployment"}
+    assert report["target_count"] == len(report["targets"]) == 5
+    assert report["report_count"] == len(report["reports"]) == 5
+    assert report["check_count"] == len(report["checks"]) == 5
+    assert report["passing_check_count"] == report["check_count"]
+    assert report["failing_check_count"] == 0
+    assert report["diagnostic_count"] == len(report["diagnostics"])
+    assert report["evidence_artifact_count"] == len(report["evidence_bundle"]["artifacts"])
+    assert report["written_artifact_count"] == 0
     assert report["reports"]["web"]["format"] == "appgen.web-verifier.v1"
     assert report["reports"]["mobile"]["format"] == "appgen.mobile-verifier.v1"
     assert report["reports"]["desktop"]["format"] == "appgen.desktop-verifier.v1"
     assert report["reports"]["pbc"]["format"] == "appgen.pbc-verifier.v1"
     assert report["reports"]["deployment"]["format"] == "appgen.deployment-verifier.v1"
+    assert all(item["check_count"] == len(item["checks"]) for item in report["reports"].values())
+    assert all(item["passing_check_count"] == item["check_count"] for item in report["reports"].values())
+    assert all(item["blocking_gap_count"] == len(item["blocking_gaps"]) == 0 for item in report["reports"].values())
     assert report["evidence_bundle"]["format"] == "appgen.release-evidence-bundle.v1"
     assert report["evidence_bundle"]["graph_suite"]["format"] == "appgen.graph-suite-report.v1"
     assert set(report["evidence_bundle"]["graph_suite"]["required_kinds"]) == {
@@ -2510,6 +2521,8 @@ def test_release_verifier_report_covers_package_pbc_and_deployment_evidence() ->
         "package",
     }
     assert set(report["evidence_bundle"]["graph_suite"]["formats"]) == {"json", "mermaid", "dot"}
+    assert report["graph_kind_count"] == len(report["evidence_bundle"]["graph_suite"]["required_kinds"]) == 9
+    assert report["graph_format_count"] == len(report["evidence_bundle"]["graph_suite"]["formats"]) == 3
     assert report["graph_evidence"]["format"] == "appgen.graph-suite-report.v1"
 
 
@@ -2530,6 +2543,8 @@ def test_package_report_writes_release_evidence_bundle_when_output_dir_is_given(
 
     assert report["format"] == "appgen.release-verifier-report.v1"
     assert report["ok"] is True
+    assert report["target_count"] == 2
+    assert report["written_artifact_count"] == len(report["written_artifacts"]) == 3
     assert evidence_path.exists()
     assert mobile_manifest_path.exists()
     assert desktop_manifest_path.exists()

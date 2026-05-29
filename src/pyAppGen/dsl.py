@@ -11120,6 +11120,9 @@ def release_verifier_report_dsl(
         checks=checks,
         source_name=source_name,
     )
+    failing_checks = tuple(check for check in checks if not check["ok"])
+    diagnostics = tuple(semantic["diagnostics"])
+    graph_suite = evidence_bundle["graph_suite"]
     return {
         "format": "appgen.release-verifier-report.v1",
         "ok": semantic["ok"] and all(check["ok"] for check in checks),
@@ -11127,12 +11130,22 @@ def release_verifier_report_dsl(
         "output_dir": output_dir,
         "semantic_model_format": semantic["format"],
         "targets": selected_keys,
+        "target_count": len(selected_keys),
         "checks": checks,
+        "check_count": len(checks),
+        "passing_check_count": len(checks) - len(failing_checks),
+        "failing_check_count": len(failing_checks),
         "reports": selected_reports,
-        "diagnostics": semantic["diagnostics"],
+        "report_count": len(selected_reports),
+        "diagnostics": diagnostics,
+        "diagnostic_count": len(diagnostics),
         "graph_evidence": graph_evidence,
+        "graph_kind_count": len(graph_suite.get("required_kinds", ())),
+        "graph_format_count": len(graph_suite.get("formats", ())),
         "evidence_bundle": evidence_bundle,
+        "evidence_artifact_count": len(evidence_bundle.get("artifacts", ())),
         "written_artifacts": written_artifacts,
+        "written_artifact_count": len(written_artifacts),
     }
 
 
@@ -11538,6 +11551,9 @@ def _release_verifier_payload(kind: str, payload_format: str, checks: tuple[dict
         "kind": kind,
         "ok": not blocking and semantic.get("ok", True),
         "checks": checks,
+        "check_count": len(checks),
+        "passing_check_count": sum(1 for check in checks if check["ok"]),
+        "blocking_gap_count": len(blocking),
         "blocking_gaps": blocking,
     }
     if extra:
