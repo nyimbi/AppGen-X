@@ -2199,9 +2199,10 @@ def _emit_diagnostic_fixture_audit_text(payload: dict) -> None:
 def _emit_semantic_drift_text(payload: dict) -> None:
     status = "ok" if payload.get("ok") else "failed"
     surfaces = tuple(payload.get("surfaces", ()))
+    gaps = tuple(payload.get("blocking_gaps", ()))
     print(
         f"drift {status}: semantic={payload.get('semantic_model_format')} "
-        f"surfaces={len(surfaces)} digest={payload.get('semantic_digest')}"
+        f"surfaces={len(surfaces)} blocking_gaps={len(gaps)} digest={payload.get('semantic_digest')}"
     )
     if surfaces:
         print(f"surfaces {', '.join(surfaces)}")

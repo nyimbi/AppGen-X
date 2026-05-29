@@ -2929,6 +2929,7 @@ def test_appgen_drift_subcommand_emits_json_and_text_contracts(tmp_path: Path) -
     assert payload["surface_evidence"]["generate_report"] == "appgen.generate-report.v1"
     assert text_result.stdout.startswith("drift ok: semantic=appgen.semantic-model.v1")
     assert "surfaces=8" in text_result.stdout
+    assert "blocking_gaps=0" in text_result.stdout
     assert "evidence lsp_service: appgen.lsp-service.v1" in text_result.stdout
     assert "evidence generate_report: appgen.generate-report.v1" in text_result.stdout
     assert "ok generator_validation_uses_semantic_model" in text_result.stdout

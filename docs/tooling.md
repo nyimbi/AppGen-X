@@ -591,7 +591,7 @@ migration-preview summary and detected migration families. `appgen diagnostics`
 text output summarizes registry coverage and fixture gaps, `appgen diagnostics
 --audit-fixtures` summarizes covered and missing diagnostic codes, and
 `appgen drift` summarizes semantic-model drift surfaces, evidence formats,
-digest, and per-surface checks.
+blocking gap count, digest, and per-surface checks.
 
 ### `appgen format`
 
