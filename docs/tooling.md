@@ -555,8 +555,11 @@ Internal tool errors emit `appgen.internal-error.v1` with `AGX9000`
 diagnostics instead of a Python traceback. Argparse usage/configuration
 failures remain exit code `2`. Missing user-supplied input paths are treated as
 configuration errors and return exit code `2` before the tooling engine reads
-or generates artifacts. Invalid enumerated options, including graph kind and
-database backend choices, are also rejected by argparse with exit code `2`.
+or generates artifacts; the executable missing-input audit covers lint, format,
+validate, graph, graph-suite, explain, generate, migration-plan, nl-plan, lsp,
+verify, package, designer-sync, drift, and previous-semantic baseline paths.
+Invalid enumerated options, including graph kind and database backend choices,
+are also rejected by argparse with exit code `2`.
 
 The executable CLI contract tests cover JSON schemas, default text summaries,
 success and failure exit codes, and argparse usage failures for invalid choices

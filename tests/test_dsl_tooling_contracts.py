@@ -3531,10 +3531,22 @@ def test_missing_input_audit_covers_file_based_commands(tmp_path: Path) -> None:
     assert audit["format"] == "appgen.missing-input-exit-audit.v1"
     assert audit["ok"] is True
     assert {
+        "lint_missing_path",
+        "lint_missing_previous_semantic",
+        "format_missing_path",
+        "validate_missing_path",
         "graph_missing_path",
+        "graph_suite_missing_path",
+        "explain_missing_path",
         "generate_missing_path",
         "migration_missing_previous",
         "migration_missing_current",
+        "nl_plan_missing_path",
+        "lsp_missing_path",
+        "verify_missing_path",
+        "package_missing_path",
+        "designer_sync_missing_path",
+        "drift_missing_path",
     } <= set(cases)
     assert all(case["exit_code"] == 2 for case in cases.values())
     assert all("path does not exist" in case["stderr"] for case in cases.values())

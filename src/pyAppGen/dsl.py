@@ -3841,10 +3841,22 @@ def _tooling_audit_missing_input_exit(tmp: Path) -> dict:
     current_path = tmp / "current.appgen"
     current_path.write_text("app Current { targets: web }\ntable Thing { id: int pk }\n", encoding="utf-8")
     cases = (
+        ("lint_missing_path", ("lint", str(missing_path))),
+        ("lint_missing_previous_semantic", ("lint", str(current_path), "--previous-semantic", str(missing_path))),
+        ("format_missing_path", ("format", str(missing_path), "--check")),
+        ("validate_missing_path", ("validate", str(missing_path))),
         ("graph_missing_path", ("graph", str(missing_path), "--format", "json")),
+        ("graph_suite_missing_path", ("graph-suite", str(missing_path))),
+        ("explain_missing_path", ("explain", str(missing_path), "--symbol", "table.Thing")),
         ("generate_missing_path", ("generate", str(missing_path), "--out", str(tmp / "generated"))),
         ("migration_missing_previous", ("migration-plan", str(missing_path), str(current_path))),
         ("migration_missing_current", ("migration-plan", str(current_path), str(missing_path))),
+        ("nl_plan_missing_path", ("nl-plan", str(missing_path), "--prompt", "Add memo")),
+        ("lsp_missing_path", ("lsp", str(missing_path))),
+        ("verify_missing_path", ("verify", str(missing_path))),
+        ("package_missing_path", ("package", str(missing_path))),
+        ("designer_sync_missing_path", ("designer-sync", str(missing_path))),
+        ("drift_missing_path", ("drift", str(missing_path))),
     )
     results = []
     for name, argv in cases:
