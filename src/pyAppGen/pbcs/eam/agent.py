@@ -90,19 +90,9 @@ def chatbot_interface_contract():
 
 def document_instruction_plan(document=None, instructions=None):
     """Plan document/instruction handling without mutating state."""
-    document_text = str(document or '')
-    instruction_text = str(instructions or '')
-    digest = hashlib.sha256(f'{PBC_KEY}:{document_text}:{instruction_text}'.encode('utf-8')).hexdigest()
-    return {
-        'ok': bool(document_text or instruction_text),
-        'pbc': PBC_KEY,
-        'document_digest': digest,
-        'document_actions': _DOCUMENT_ACTIONS,
-        'candidate_tables': _owned_tables(),
-        'candidate_operations': _command_operations() + _query_operations(),
-        'requires_human_confirmation': True,
-        'side_effects': (),
-    }
+    from .app_surface import document_instruction_eam_plan
+
+    return document_instruction_eam_plan(str(document or ""), str(instructions or ""))
 
 
 def datastore_crud_plan(action='read', table=None, payload=None):
@@ -129,6 +119,8 @@ def datastore_crud_plan(action='read', table=None, payload=None):
 
 def composed_agent_contribution():
     """Return the package contribution to the application's single assistant."""
+    from .app_surface import single_pbc_eam_app_contract
+
     skills = agent_skill_manifest()
     chatbot = chatbot_interface_contract()
     return {
@@ -139,6 +131,7 @@ def composed_agent_contribution():
         'dsl_tools': (f'{PBC_KEY}_skills', f'{PBC_KEY}_documents', f'{PBC_KEY}_crud'),
         'skills': tuple(item['name'] for item in skills['skills']),
         'chatbot': chatbot,
+        'standalone_app': single_pbc_eam_app_contract(),
         'side_effects': (),
     }
 

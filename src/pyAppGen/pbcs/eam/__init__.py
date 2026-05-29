@@ -57,6 +57,8 @@ from .runtime import eam_set_parameter
 from .runtime import eam_simulate_strategy
 from .runtime import eam_verify_owned_table_boundary
 from .runtime import eam_verify_equipment_identity
+from .app_surface import app_surface_smoke_test
+from .app_surface import single_pbc_eam_app_contract
 from .ui import EAM_UI_FRAGMENT_KEYS
 from .ui import eam_render_workbench
 from .ui import eam_ui_contract
@@ -82,6 +84,8 @@ def implementation_contract() -> dict:
         "emits": EAM_EMITTED_EVENT_TYPES,
         "advanced_runtime": runtime,
         "ui_contract": eam_ui_contract(),
+        "single_pbc_app": single_pbc_eam_app_contract(),
+        "app_surface_smoke": app_surface_smoke_test(),
     }
 
 
@@ -126,9 +130,11 @@ def package_discovery_plan(existing_catalog: dict | None = None) -> dict:
 def smoke_test() -> dict:
     """Exercise package metadata validation and discovery planning."""
     discovery = package_discovery_plan()
+    app_surface = app_surface_smoke_test()
     return {
-        "ok": discovery["ok"],
+        "ok": discovery["ok"] and app_surface["ok"],
         "discovery": discovery,
+        "app_surface": app_surface,
         "side_effects": (),
     }
 
