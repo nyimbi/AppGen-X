@@ -4005,14 +4005,24 @@ def test_missing_required_option_audit_covers_required_cli_options(tmp_path: Pat
 
 def test_appgen_format_write_rewrites_file_and_reports_write_metadata(tmp_path: Path) -> None:
     source_path = tmp_path / "format.appgen"
+    text_source_path = tmp_path / "format-text.appgen"
+    unformatted = "app FormatWrite { targets: web }\ntable Invoice { total: decimal; id: int pk }\n"
     source_path.write_text(
-        "app FormatWrite { targets: web }\ntable Invoice { total: decimal; id: int pk }\n",
+        unformatted,
         encoding="utf-8",
     )
+    text_source_path.write_text(unformatted, encoding="utf-8")
     root = Path(__file__).resolve().parents[1]
 
     result = subprocess.run(
         [sys.executable, "-m", "pyAppGen", "format", str(source_path), "--write", "--json"],
+        check=False,
+        cwd=root,
+        text=True,
+        capture_output=True,
+    )
+    text_result = subprocess.run(
+        [sys.executable, "-m", "pyAppGen", "format", str(text_source_path), "--write"],
         check=False,
         cwd=root,
         text=True,
@@ -4026,7 +4036,12 @@ def test_appgen_format_write_rewrites_file_and_reports_write_metadata(tmp_path: 
     assert payload["written"] is True
     assert payload["write_path"] == str(source_path)
     assert source_path.read_text(encoding="utf-8") == payload["text"]
-    assert source_path.read_text(encoding="utf-8") != "app FormatWrite { targets: web }\ntable Invoice { total: decimal; id: int pk }\n"
+    assert source_path.read_text(encoding="utf-8") != unformatted
+    assert text_result.returncode == 0, text_result.stderr
+    assert text_result.stdout.startswith("format changed: idempotent written")
+    assert "write_requested=True written=True" in text_result.stdout
+    assert f"write_path {text_source_path}" in text_result.stdout
+    assert text_source_path.read_text(encoding="utf-8") != unformatted
 
 
 def test_appgen_tooling_cli_returns_code_3_for_internal_errors(tmp_path: Path) -> None:
