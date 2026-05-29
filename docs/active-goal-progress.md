@@ -3316,6 +3316,15 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   audit helper probe, focused LSP quick-fix tests (`2 passed`), scoped diff
   whitespace check, and restricted-name scan outside archive, Git internals,
   and active PBC paths. Commit: `63666d6a`.
+- Current explain CLI example audit pass closes the gap between generic explain
+  command evidence and the documented `appgen explain` examples. The
+  `appgen.explain-cli-audit.v1` check now proves field-symbol text output for
+  `Invoice.customer_id`, diagnostic JSON output for `AGX0303`, and qualified
+  handler text output for `InvoiceForm.Save`. Verification passed: Python
+  compile for touched tooling entrypoints, direct explain CLI audit helper
+  probe, focused graph/explain CLI tests (`2 passed`), scoped diff whitespace
+  check, and restricted-name scan outside archive, Git internals, and active
+  PBC paths. Commit: pending.
 - Current parallel PBC implementation pass delivered executable code for six
   PBCs rather than plan-only artifacts: `actuarial_pricing_reserving`,
   `advertising_campaign_operations`, `agri_supply_chain_traceability`,

@@ -2414,6 +2414,13 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     }
     assert tuple(graph_check["detail"]["suite_cli"]["formats"]) == ("json", "mermaid", "dot")
     assert graph_check["detail"]["suite_cli"]["rendering_kind_count"] == 9
+    assert graph_check["detail"]["explain_cli"]["format"] == "appgen.explain-cli-audit.v1"
+    assert graph_check["detail"]["explain_cli"]["ok"] is True
+    assert {
+        "field_symbol_text",
+        "diagnostic_json",
+        "qualified_handler_text",
+    } <= {case["case"] for case in graph_check["detail"]["explain_cli"]["cases"]}
     nl_check = next(check for check in report["checks"] if check["id"] == "natural_language_patch_planner")
     assert nl_check["detail"]["cli"]["format"] == "appgen.nl-plan-cli-audit.v1"
     assert nl_check["detail"]["cli"]["ok"] is True

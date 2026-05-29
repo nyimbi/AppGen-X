@@ -3305,9 +3305,9 @@ def _tooling_audit_explain_cli_formats(tmp: Path, source: str) -> dict:
     source_path = tmp / "explain-cli.appgen"
     source_path.write_text(source, encoding="utf-8")
     cases = (
-        ("symbol_text", ("explain", str(source_path), "--symbol", "table.Invoice")),
+        ("field_symbol_text", ("explain", str(source_path), "--symbol", "Invoice.customer_id")),
         ("diagnostic_json", ("explain", str(source_path), "--diagnostic", "AGX0303", "--json")),
-        ("handler_text", ("explain", str(source_path), "--handler", "Save")),
+        ("qualified_handler_text", ("explain", str(source_path), "--handler", "InvoiceForm.Save")),
     )
     results = []
     for case_id, argv in cases:
@@ -3327,10 +3327,18 @@ def _tooling_audit_explain_cli_formats(tmp: Path, source: str) -> dict:
                 and payload.get("kind") == "diagnostic"
                 and payload.get("query") == "AGX0303"
             )
-        elif case_id == "symbol_text":
-            text_ok = stdout.startswith("explain symbol ok: table.Invoice") and "table.Invoice: table Invoice" in stdout
-        elif case_id == "handler_text":
-            text_ok = stdout.startswith("explain handler ok: Save") and "matches:" in stdout and "->" in stdout
+        elif case_id == "field_symbol_text":
+            text_ok = (
+                stdout.startswith("explain symbol ok: Invoice.customer_id")
+                and "table.Invoice.customer_id: field customer_id" in stdout
+                and "parent: table.Invoice" in stdout
+            )
+        elif case_id == "qualified_handler_text":
+            text_ok = (
+                stdout.startswith("explain handler ok: InvoiceForm.Save")
+                and "matches:" in stdout
+                and "InvoiceForm.Save ->" in stdout
+            )
         results.append(
             {
                 "case": case_id,
