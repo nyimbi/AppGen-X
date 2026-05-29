@@ -720,7 +720,10 @@ requirement section has a concrete machine-readable proof instead of relying on
 prose or scattered manual checks. The default text output reports pass count,
 blocking gap count, covered documentation sections, source-of-truth document,
 and embedded report formats for each check so release logs remain useful without
-requiring JSON parsing.
+requiring JSON parsing. The report embeds
+`appgen.tooling-doc-anchor-audit.v1`, which proves every emitted
+`docs/tooling.md#...` section reference resolves to a real heading anchor in
+this document.
 When implementation-phase evidence is present, the text output also reports the
 number of audited phases, missing phase count, and the
 `appgen.tooling-implementation-phase-audit.v1` format marker.

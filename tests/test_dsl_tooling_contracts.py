@@ -3493,7 +3493,16 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
         "studio_semantic_service",
         "package_and_release_verifiers",
         "parser_golden_and_drift_gates",
+        "tooling_doc_anchor_integrity",
     } <= {check["id"] for check in report["checks"]}
+    assert report["doc_anchor_integrity"]["format"] == "appgen.tooling-doc-anchor-audit.v1"
+    assert report["doc_anchor_integrity"]["ok"] is True
+    assert report["doc_anchor_integrity"]["missing_sections"] == ()
+    assert "docs/tooling.md#cli-contracts" in report["doc_anchor_integrity"]["referenced_sections"]
+    assert "docs/tooling.md#command-line-interface" not in report["doc_anchor_integrity"]["referenced_sections"]
+    anchor_check = next(check for check in report["checks"] if check["id"] == "tooling_doc_anchor_integrity")
+    assert anchor_check["detail"]["ok"] is True
+    assert anchor_check["detail"]["missing_sections"] == ()
     module_check = next(check for check in report["checks"] if check["id"] == "module_boundaries")
     assert module_check["detail"]["format"] == "appgen.module-boundary-audit.v1"
     assert module_check["detail"]["ok"] is True

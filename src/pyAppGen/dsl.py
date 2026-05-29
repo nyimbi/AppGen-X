@@ -2971,7 +2971,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and "lint_warnings" in warning_generation_blocked["blocking_gaps"]
             and warning_generation_allowed["ok"],
             "Validation and generation reports gate lint/semantic readiness, block warnings by default, and allow warnings only when requested.",
-            "docs/tooling.md#command-line-interface",
+            "docs/tooling.md#cli-contracts",
             {
                 "validate": validation.get("format"),
                 "format_write": format_write,
@@ -3069,7 +3069,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             "studio_semantic_service",
             studio["ok"],
             "Studio semantic service composes LSP, designer sync, graph, quick-fix, and natural-language planner evidence.",
-            "docs/tooling.md#appgen-x-studio--monaco",
+            "docs/tooling.md#appgen-x-studio-monaco",
             studio,
         ),
         _tooling_audit_check(
@@ -3152,6 +3152,16 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             implementation_phases,
         ),
     )
+    doc_anchor_integrity = _tooling_audit_doc_anchor_integrity(root, tuple(check["section"] for check in checks))
+    checks = checks + (
+        _tooling_audit_check(
+            "tooling_doc_anchor_integrity",
+            doc_anchor_integrity["ok"],
+            "Tooling audit section references resolve to headings in docs/tooling.md.",
+            "docs/tooling.md#appgen-tooling-audit",
+            doc_anchor_integrity,
+        ),
+    )
     sections = tuple(sorted({check["section"] for check in checks}))
     blocking_gaps = tuple(check for check in checks if not check["ok"])
     return {
@@ -3160,6 +3170,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
         "required": len(checks),
         "passed": sum(1 for check in checks if check["ok"]),
         "sections": sections,
+        "doc_anchor_integrity": doc_anchor_integrity,
         "checks": checks,
         "blocking_gaps": blocking_gaps,
         "source_of_truth": "docs/tooling.md",
@@ -3174,6 +3185,42 @@ def _tooling_audit_check(check_id: str, ok: bool, evidence: str, section: str, d
         "evidence": evidence,
         "detail": detail or {},
     }
+
+
+def _tooling_audit_doc_anchor_integrity(root: Path, section_refs: Iterable[str]) -> dict:
+    docs_path = root / "docs" / "tooling.md"
+    anchors = _markdown_heading_anchors(docs_path.read_text(encoding="utf-8"))
+    referenced = tuple(dict.fromkeys(str(ref) for ref in section_refs))
+    missing = tuple(
+        ref
+        for ref in referenced
+        if ref.startswith("docs/tooling.md#") and ref.rsplit("#", 1)[-1] not in anchors
+    )
+    return {
+        "format": "appgen.tooling-doc-anchor-audit.v1",
+        "ok": not missing,
+        "source": "docs/tooling.md",
+        "heading_count": len(anchors),
+        "referenced_sections": referenced,
+        "missing_sections": missing,
+    }
+
+
+def _markdown_heading_anchors(markdown: str) -> tuple[str, ...]:
+    anchors = []
+    seen: dict[str, int] = {}
+    for line in markdown.splitlines():
+        if not line.startswith("#"):
+            continue
+        title = line.lstrip("#").strip()
+        if not title:
+            continue
+        slug = re.sub(r"[^\w\s-]", "", title.lower(), flags=re.UNICODE)
+        slug = re.sub(r"\s+", "-", slug).strip("-")
+        count = seen.get(slug, 0)
+        seen[slug] = count + 1
+        anchors.append(slug if count == 0 else f"{slug}-{count}")
+    return tuple(anchors)
 
 
 def _tooling_audit_semantic_keys_present(semantic: dict) -> bool:
