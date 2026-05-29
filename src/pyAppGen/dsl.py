@@ -2195,7 +2195,14 @@ def _emit_lsp_service_text(payload: dict) -> None:
         print(f"source_of_truth={capabilities.get('source_of_truth')}")
     rename = payload.get("rename")
     if rename:
-        print(f"rename ok={rename.get('ok')} changed={rename.get('changed')} diagnostics={len(rename.get('diagnostics', ()))}")
+        diagnostics = tuple(rename.get("diagnostics", ()))
+        blockers = tuple(rename.get("blockers", ()))
+        migration = rename.get("migration_preview", {})
+        print(
+            f"rename ok={rename.get('ok')} changed={rename.get('changed')} "
+            f"blocked={rename.get('blocked', False)} diagnostics={len(diagnostics)} "
+            f"blockers={len(blockers)} requires_approval={migration.get('requires_approval', False)}"
+        )
     hover = payload.get("hover") or {}
     if hover.get("contents"):
         print(f"hover_items={len(hover.get('contents', ()))}")
@@ -4066,6 +4073,18 @@ view InvoiceForm for Invoice {
                 "--json",
             )
         )
+    risk_text_output = io.StringIO()
+    with contextlib.redirect_stdout(risk_text_output):
+        risk_text_exit = dsl_tooling_cli(
+            (
+                "lsp",
+                str(risk_path),
+                "--position",
+                risk_position_arg,
+                "--rename",
+                "identifier",
+            )
+        )
     try:
         risk_payload = json.loads(risk_output.getvalue())
     except json.JSONDecodeError:
@@ -4088,10 +4107,18 @@ view InvoiceForm for Invoice {
         and "AGX1101" in blocked_codes
         and "add_rename_hint" in blocked_fixes
     )
+    blocked_text = risk_text_output.getvalue()
+    blocked_text_ok = (
+        risk_text_exit == 0
+        and "rename ok=False" in blocked_text
+        and "blocked=True" in blocked_text
+        and "requires_approval=True" in blocked_text
+        and "blockers=1" in blocked_text
+    )
 
     return {
         "format": "appgen.lsp-rename-cli-audit.v1",
-        "ok": safe_ok and blocked_ok,
+        "ok": safe_ok and blocked_ok and blocked_text_ok,
         "exit_code": exit_code,
         "payload_format": payload.get("format"),
         "rename_format": rename.get("format"),
@@ -4107,6 +4134,9 @@ view InvoiceForm for Invoice {
         "blocked_rename_format": blocked_rename.get("format"),
         "blocked_rename_ok": blocked_rename.get("ok"),
         "blocked": blocked_rename.get("blocked"),
+        "blocked_text_ok": blocked_text_ok,
+        "blocked_text_exit_code": risk_text_exit,
+        "blocked_text": blocked_text.strip(),
         "blocked_position": risk_position_arg,
         "blocked_code": "AGX1101" if "AGX1101" in blocked_codes else None,
         "blocked_fix": "add_rename_hint" if "add_rename_hint" in blocked_fixes else None,
