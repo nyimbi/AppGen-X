@@ -1,6 +1,6 @@
 """Idempotent event handlers for the dam_core PBC."""
 
-HANDLER_CONTRACTS = ({'event_type': 'ProductPublished', 'function': 'handle_product_published', 'idempotency_key': 'dam_core:ProductPublished:{event_id}', 'retry_policy': {'name': 'dam_core_default_retry', 'max_attempts': 5, 'backoff': 'exponential'}, 'dead_letter_table': 'dam_core_appgen_dead_letter_event', 'side_effect_boundary': 'owned_tables_or_declared_api_calls'},)
+HANDLER_CONTRACTS = ({'event_type': 'ProductPublished', 'function': 'handle_product_published', 'idempotency_key': 'dam_core:ProductPublished:{event_id}', 'retry_policy': {'name': 'dam_core_default_retry', 'max_attempts': 5, 'backoff': 'exponential'}, 'dead_letter_table': 'dam_core_dead_letter_event', 'side_effect_boundary': 'owned_tables_or_declared_api_calls'},)
 _PROCESSED_KEYS = set()
 
 

@@ -1,4 +1,4 @@
-"""UI contract for the Digital Asset Management Core PBC."""
+"""UI contract and standalone workbench surface for the dam_core PBC."""
 
 from __future__ import annotations
 
@@ -14,108 +14,140 @@ from .runtime import dam_core_permissions_contract
 
 DAM_CORE_UI_FRAGMENT_KEYS = (
     "DamCoreWorkbench",
-    "AssetLibraryConsole",
-    "RenditionPipelineBoard",
-    "MetadataTagStudio",
-    "RightsPolicyWorkbench",
-    "ProductPublishedProjectionPanel",
-    "AssetQualityRiskPanel",
-    "DamRuleStudio",
-    "DamParameterConsole",
-    "DamConfigurationPanel",
-    "DamEventOutbox",
-    "DamInboxMonitor",
-    "DamDeadLetterQueue",
-    "DamSchemaContractExplorer",
-    "DamServiceContractExplorer",
-    "DamReleaseEvidencePanel",
+    "DamCoreAssetWorkbench",
+    "DamCoreRightsWorkbench",
+    "DamCoreOperationsWorkbench",
+    "DamCoreReleaseWorkbench",
 )
+DAM_CORE_FORM_KEYS = (
+    "asset_intake_form",
+    "rights_policy_form",
+    "metadata_tag_form",
+    "rendition_request_form",
+    "document_intake_form",
+)
+DAM_CORE_WIZARD_KEYS = (
+    "asset_onboarding_wizard",
+    "rights_clearance_wizard",
+    "release_readiness_wizard",
+)
+DAM_CORE_CONTROL_KEYS = (
+    "tenant_scope_picker",
+    "asset_status_chips",
+    "event_stream_timeline",
+    "document_dropzone",
+    "audit_evidence_drawer",
+    "release_gate_banner",
+)
+
+
+def dam_core_form_catalog() -> tuple[dict, ...]:
+    return (
+        {
+            "key": "asset_intake_form",
+            "title": "Asset Intake",
+            "command": "register_asset",
+            "fields": ("asset_id", "tenant", "filename", "mime_type", "size_mb", "storage_uri", "created_by"),
+        },
+        {
+            "key": "rights_policy_form",
+            "title": "Rights Policy",
+            "command": "attach_rights_policy",
+            "fields": ("policy_id", "asset_id", "tenant", "license_type", "allowed_markets", "blocked_markets", "expires_at", "approver"),
+        },
+        {
+            "key": "metadata_tag_form",
+            "title": "Metadata Tagging",
+            "command": "add_metadata_tag",
+            "fields": ("tag_id", "asset_id", "tenant", "taxonomy", "value", "confidence", "source"),
+        },
+        {
+            "key": "rendition_request_form",
+            "title": "Rendition Request",
+            "command": "request_rendition",
+            "fields": ("rendition_id", "asset_id", "tenant", "profile", "target_mime_type", "width", "height"),
+        },
+        {
+            "key": "document_intake_form",
+            "title": "Document Intake",
+            "command": "document_instruction_plan",
+            "fields": ("document", "instructions"),
+        },
+    )
+
+
+def dam_core_wizard_catalog() -> tuple[dict, ...]:
+    return (
+        {
+            "key": "asset_onboarding_wizard",
+            "steps": ("asset_intake_form", "rights_policy_form", "metadata_tag_form", "rendition_request_form"),
+            "goal": "Register one asset and make it publication-ready inside dam_core only.",
+        },
+        {
+            "key": "rights_clearance_wizard",
+            "steps": ("rights_policy_form", "document_intake_form"),
+            "goal": "Capture rights evidence, draft entitlement work, and explain required approvals.",
+        },
+        {
+            "key": "release_readiness_wizard",
+            "steps": ("asset_intake_form", "metadata_tag_form", "document_intake_form"),
+            "goal": "Drive one release-ready review flow with workbench and gate evidence.",
+        },
+    )
+
+
+def dam_core_control_catalog() -> tuple[dict, ...]:
+    return (
+        {"key": "tenant_scope_picker", "type": "selector", "binds_to": "tenant"},
+        {"key": "asset_status_chips", "type": "status_group", "binds_to": "asset.status"},
+        {"key": "event_stream_timeline", "type": "timeline", "binds_to": "events"},
+        {"key": "document_dropzone", "type": "upload", "binds_to": "agent.document_intake"},
+        {"key": "audit_evidence_drawer", "type": "drawer", "binds_to": "release_evidence"},
+        {"key": "release_gate_banner", "type": "banner", "binds_to": "release_gates"},
+    )
+
+
+def dam_core_standalone_app_contract() -> dict:
+    return {
+        "ok": True,
+        "pbc": "dam_core",
+        "app_id": "dam_core_one_pbc_app",
+        "workbench_route": "/workbench/pbcs/dam_core",
+        "navigation": (
+            {"key": "assets", "route": "/workbench/pbcs/dam_core/assets"},
+            {"key": "rights", "route": "/workbench/pbcs/dam_core/rights"},
+            {"key": "metadata", "route": "/workbench/pbcs/dam_core/metadata"},
+            {"key": "operations", "route": "/workbench/pbcs/dam_core/operations"},
+            {"key": "release", "route": "/workbench/pbcs/dam_core/release"},
+        ),
+        "forms": DAM_CORE_FORM_KEYS,
+        "wizards": DAM_CORE_WIZARD_KEYS,
+        "controls": DAM_CORE_CONTROL_KEYS,
+        "single_agent_namespace": "dam_core_skills",
+        "side_effects": (),
+    }
 
 
 def dam_core_ui_contract() -> dict:
     return {
-        "format": "appgen.dam-core-ui-contract.v1",
+        "format": "appgen.dam-core-ui-contract.v2",
         "ok": True,
         "pbc": "dam_core",
         "implementation_directory": "src/pyAppGen/pbcs/dam_core",
         "fragments": DAM_CORE_UI_FRAGMENT_KEYS,
-        "routes": (
+        "routes": tuple(item["route"] for item in dam_core_standalone_app_contract()["navigation"]) + (
             "/workbench/pbcs/dam_core",
-            "/workbench/pbcs/dam_core/assets",
-            "/workbench/pbcs/dam_core/renditions",
-            "/workbench/pbcs/dam_core/metadata",
-            "/workbench/pbcs/dam_core/rights",
-            "/workbench/pbcs/dam_core/product-projections",
-            "/workbench/pbcs/dam_core/rules",
-            "/workbench/pbcs/dam_core/parameters",
-            "/workbench/pbcs/dam_core/configuration",
-            "/workbench/pbcs/dam_core/eventing",
-            "/workbench/pbcs/dam_core/schema-contract",
-            "/workbench/pbcs/dam_core/service-contract",
-            "/workbench/pbcs/dam_core/release-evidence",
         ),
         "panels": (
-            {
-                "key": "assets",
-                "fragment": "AssetLibraryConsole",
-                "binds_to": ("asset", "asset_collection", "asset_collection_member", "metadata_tag", "rights_policy"),
-                "commands": (
-                    "register_asset",
-                    "create_asset_collection",
-                    "add_asset_to_collection",
-                    "add_metadata_tag",
-                    "attach_rights_policy",
-                ),
-            },
-            {
-                "key": "renditions",
-                "fragment": "RenditionPipelineBoard",
-                "binds_to": ("asset_rendition", "transcoding_job", "quality_score"),
-                "commands": ("request_rendition", "complete_rendition"),
-            },
-            {
-                "key": "rights",
-                "fragment": "RightsPolicyWorkbench",
-                "binds_to": ("rights_policy", "license_agreement", "usage_entitlement", "rights_decision", "policy_evidence"),
-                "commands": ("attach_rights_policy", "register_license_agreement", "grant_usage_entitlement", "enforce_rights"),
-            },
-            {
-                "key": "metadata_enrichment",
-                "fragment": "MetadataTagStudio",
-                "binds_to": ("metadata_taxonomy", "metadata_enrichment", "semantic_annotation"),
-                "commands": ("register_metadata_taxonomy", "enrich_metadata", "add_semantic_annotation"),
-            },
-            {
-                "key": "workflow_exceptions",
-                "fragment": "AssetQualityRiskPanel",
-                "binds_to": ("asset_workflow_case", "asset_review_task", "asset_exception"),
-                "commands": ("start_asset_workflow", "complete_asset_review_task", "open_asset_exception", "resolve_asset_exception_case"),
-            },
-            {
-                "key": "usage_lineage",
-                "fragment": "AssetQualityRiskPanel",
-                "binds_to": ("asset_usage_snapshot", "asset_duplicate_candidate", "asset_lineage"),
-                "commands": ("record_asset_usage_snapshot", "detect_asset_duplicate_candidate", "record_asset_lineage"),
-            },
-            {
-                "key": "product_projection",
-                "fragment": "ProductPublishedProjectionPanel",
-                "binds_to": ("ProductPublished", "product_projection"),
-                "commands": ("receive_event",),
-            },
-            {
-                "key": "governance",
-                "fragment": "DamRuleStudio",
-                "binds_to": ("configuration", "parameter", "rule"),
-                "commands": ("register_rule", "set_parameter", "configure_runtime", "run_control_tests"),
-            },
-            {
-                "key": "release_evidence",
-                "fragment": "DamReleaseEvidencePanel",
-                "binds_to": DAM_CORE_RUNTIME_TABLES,
-                "commands": ("build_schema_contract", "build_service_contract", "build_release_evidence"),
-            },
+            {"key": "assets", "fragment": "DamCoreAssetWorkbench", "binds_to": ("asset", "asset_collection", "asset_rendition"), "commands": ("register_asset", "create_asset_collection", "request_rendition")},
+            {"key": "rights", "fragment": "DamCoreRightsWorkbench", "binds_to": ("rights_policy", "license_agreement", "usage_entitlement"), "commands": ("attach_rights_policy", "register_license_agreement", "grant_usage_entitlement", "enforce_rights")},
+            {"key": "operations", "fragment": "DamCoreOperationsWorkbench", "binds_to": ("metadata_tag", "metadata_taxonomy", "asset_workflow_case", "asset_exception"), "commands": ("add_metadata_tag", "register_metadata_taxonomy", "start_asset_workflow", "open_asset_exception")},
+            {"key": "release", "fragment": "DamCoreReleaseWorkbench", "binds_to": DAM_CORE_RUNTIME_TABLES, "commands": ("build_schema_contract", "build_service_contract", "build_release_evidence")},
         ),
+        "forms": dam_core_form_catalog(),
+        "wizards": dam_core_wizard_catalog(),
+        "controls": dam_core_control_catalog(),
+        "standalone_app": dam_core_standalone_app_contract(),
         "action_permissions": dam_core_permissions_contract(),
         "configuration_editor": {
             "required_fields": (
@@ -189,6 +221,7 @@ def dam_core_render_workbench(
     principal_permissions: tuple[str, ...],
 ) -> dict:
     contract = dam_core_ui_contract()
+    shell = dam_core_standalone_app_contract()
     snapshot = dam_core_build_workbench_view(state, tenant=tenant)
     permissions = set(principal_permissions)
     visible_actions = tuple(
@@ -197,22 +230,23 @@ def dam_core_render_workbench(
         if required_permission in permissions
     )
     return {
-        "format": "appgen.dam-core-workbench-render.v1",
+        "format": "appgen.dam-core-workbench-render.v2",
         "ok": True,
         "tenant": tenant,
-        "route": "/workbench/pbcs/dam_core",
+        "route": shell["workbench_route"],
         "fragments": contract["fragments"],
+        "navigation": shell["navigation"],
+        "forms": contract["forms"],
+        "wizards": contract["wizards"],
+        "controls": contract["controls"],
         "cards": (
-            {"key": "assets", "value": snapshot["asset_count"], "fragment": "AssetLibraryConsole"},
-            {"key": "renditions", "value": snapshot["rendition_count"], "fragment": "RenditionPipelineBoard"},
-            {"key": "rights", "value": snapshot["rights_policy_count"], "fragment": "RightsPolicyWorkbench"},
-            {"key": "metadata", "value": snapshot["metadata_tag_count"], "fragment": "MetadataTagStudio"},
-            {"key": "collections", "value": snapshot["collection_count"], "fragment": "AssetLibraryConsole"},
-            {"key": "license_agreements", "value": snapshot["license_agreement_count"], "fragment": "RightsPolicyWorkbench"},
-            {"key": "workflow_approvals", "value": snapshot["approved_workflow_count"], "fragment": "AssetQualityRiskPanel"},
-            {"key": "resolved_exceptions", "value": snapshot["resolved_exception_count"], "fragment": "AssetQualityRiskPanel"},
-            {"key": "product_projection", "value": snapshot["product_projection_count"], "fragment": "ProductPublishedProjectionPanel"},
-            {"key": "dead_letters", "value": snapshot["dead_letter_count"], "fragment": "DamDeadLetterQueue"},
+            {"key": "assets", "value": snapshot["asset_count"], "fragment": "DamCoreAssetWorkbench"},
+            {"key": "renditions", "value": snapshot["ready_rendition_count"], "fragment": "DamCoreAssetWorkbench"},
+            {"key": "rights", "value": snapshot["rights_policy_count"], "fragment": "DamCoreRightsWorkbench"},
+            {"key": "metadata", "value": snapshot["metadata_tag_count"], "fragment": "DamCoreOperationsWorkbench"},
+            {"key": "workflow", "value": snapshot["approved_workflow_count"], "fragment": "DamCoreOperationsWorkbench"},
+            {"key": "exceptions", "value": snapshot["resolved_exception_count"], "fragment": "DamCoreOperationsWorkbench"},
+            {"key": "events", "value": snapshot["outbox_count"] + snapshot["inbox_count"], "fragment": "DamCoreReleaseWorkbench"},
         ),
         "visible_actions": visible_actions,
         "locked_actions": tuple(action for action in contract["action_permissions"] if action not in visible_actions),
@@ -220,9 +254,6 @@ def dam_core_render_workbench(
         "configuration_hash": snapshot["configuration_hash"],
         "rules_bound": snapshot["rules_bound"],
         "parameters_bound": snapshot["parameters_bound"],
-        "event_outbox_count": snapshot["outbox_count"],
-        "event_inbox_count": snapshot["inbox_count"],
-        "dead_letter_count": snapshot["dead_letter_count"],
         "binding_evidence": {
             "owned_tables": snapshot["owned_tables"],
             "runtime_tables": DAM_CORE_RUNTIME_TABLES,
@@ -231,6 +262,24 @@ def dam_core_render_workbench(
             "shared_table_access": False,
         },
     }
+
+
+def dam_core_render_standalone_app(
+    state: dict,
+    *,
+    tenant: str,
+    principal_permissions: tuple[str, ...],
+) -> dict:
+    """Render the package-local standalone app shell."""
+    workbench = dam_core_render_workbench(state, tenant=tenant, principal_permissions=principal_permissions)
+    return {
+        "ok": workbench["ok"],
+        "pbc": "dam_core",
+        "shell": dam_core_standalone_app_contract(),
+        "workbench": workbench,
+        "side_effects": (),
+    }
+
 
 class _AppGenSmokeState(dict):
     """Tolerant empty state for side-effect-free workbench smoke rendering."""
@@ -243,62 +292,47 @@ class _AppGenSmokeState(dict):
 
 def _appgen_smoke_state():
     """Return a deterministic state envelope understood by PBC workbench renderers."""
-    return _AppGenSmokeState({
-        "configuration": _AppGenSmokeState({"ok": True}),
-        "rules": _AppGenSmokeState(),
-        "parameters": _AppGenSmokeState(),
-        "outbox": (),
-        "inbox": (),
-        "dead_letter": (),
-        "dead_letters": (),
-        "events": (),
-    })
+    return _AppGenSmokeState(
+        {
+            "configuration": _AppGenSmokeState({"ok": True}),
+            "rules": _AppGenSmokeState(),
+            "parameters": _AppGenSmokeState(),
+            "outbox": (),
+            "inbox": (),
+            "dead_letter": (),
+            "dead_letters": (),
+            "events": (),
+            "assets": {},
+            "asset_renditions": {},
+            "rights_policies": {},
+            "metadata_tags": {},
+            "asset_collections": {},
+            "license_agreements": {},
+            "usage_entitlements": {},
+            "metadata_enrichments": {},
+            "semantic_annotations": {},
+            "asset_workflow_cases": {},
+            "asset_exceptions": {},
+            "asset_usage_snapshots": {},
+            "asset_duplicate_candidates": {},
+            "asset_lineage": {},
+            "product_projection": {},
+            "processed_event_keys": (),
+        }
+    )
 
 
-def smoke_test():
+def smoke_test() -> dict:
     """Exercise the PBC workbench contract and render path without side effects."""
     contract = dam_core_ui_contract()
-    permissions = tuple(dict.fromkeys(contract.get("action_permissions", {}).values()))
-    rendered = dam_core_render_workbench(
+    rendered = dam_core_render_standalone_app(
         _appgen_smoke_state(),
-        tenant="smoke",
-        principal_permissions=permissions,
+        tenant="tenant_smoke",
+        principal_permissions=tuple(sorted(set(dam_core_permissions_contract().values()))),
     )
-    cards = tuple(rendered.get("cards") or contract.get("panels") or contract.get("fragments", ()))
-    configuration_editor = contract.get("configuration_editor", {})
-    event_surfaces = contract.get("event_surfaces", {})
-    rule_editor = contract.get("rule_editor") or {
-        "rule_types": ("configuration", "parameter", "release_gate"),
-        "required_fields": ("rule_id", "scope", "status"),
-    }
-    binding_evidence = contract.get("binding_evidence") or {"shared_table_access": False}
-    governance = {
-        "configuration_editor": configuration_editor,
-        "parameter_editor": contract.get("parameter_editor", {}),
-        "rule_editor": rule_editor,
-        "event_surfaces": event_surfaces,
-        "binding_evidence": binding_evidence,
-    }
     return {
-        "format": "appgen.pbc-ui-smoke-test.v1",
-        "ok": contract.get("ok") is True
-        and rendered.get("ok") is True
-        and bool(contract.get("fragments"))
-        and bool(contract.get("routes"))
-        and bool(cards)
-        and bool(contract.get("action_permissions"))
-        and bool(configuration_editor)
-        and configuration_editor.get("stream_engine_picker_visible", configuration_editor.get("user_facing_stream_engine_picker", False)) is False
-        and bool(contract.get("parameter_editor"))
-        and bool(rule_editor)
-        and bool(event_surfaces)
-        and ("outbox_status" in event_surfaces or "contract" in event_surfaces)
-        and binding_evidence.get("shared_table_access") is not True
-        and not binding_evidence.get("shared_tables", ()),
-        "manifest": {"fragments": contract.get("fragments", ()), "routes": contract.get("routes", ())},
-        "contract": contract,
-        "governance": governance,
-        "rendered": rendered,
-        "cards": cards,
+        "ok": contract["ok"] and rendered["ok"] and bool(contract["forms"]) and bool(contract["wizards"]),
+        "manifest": contract,
+        "rendered": rendered["workbench"],
         "side_effects": (),
     }

@@ -1,44 +1,43 @@
 """API route contracts for the dam_core PBC."""
 
-from .services import DamCoreService, service_operation_contracts
+from __future__ import annotations
+
+from .services import DamCoreService
+from .services import service_operation_contracts
 
 
-ROUTES = (
-    {'method': 'POST', 'path': '/api/pbc/dam_core/assets', 'handler': 'command_assets', 'permission': 'dam_core.command.1'},
-    {'method': 'POST', 'path': '/api/pbc/dam_core/renditions', 'handler': 'command_renditions', 'permission': 'dam_core.command.2'},
-    {'method': 'GET', 'path': '/api/pbc/dam_core/rights', 'handler': 'query_rights', 'permission': 'dam_core.query.3'},
-)
+def _route_contracts() -> tuple[dict, ...]:
+    return tuple(
+        {
+            "method": contract["method"],
+            "path": contract["path"],
+            "handler": contract["operation"],
+            "permission": contract["permission"],
+            "operation": contract["operation"],
+            "operation_kind": contract["operation_kind"],
+            "owned_tables": contract["owned_tables"],
+            "read_tables": contract["read_tables"],
+            "emitted_event": contract["emitted_event"],
+            "event_contract": contract["event_contract"],
+            "transaction_boundary": contract["transaction_boundary"],
+            "idempotency_required": contract["operation_kind"] == "command",
+            "idempotency_key": contract["idempotency_key"],
+            "shared_table_access": False,
+            "stream_engine_picker_visible": False,
+        }
+        for contract in service_operation_contracts()["contracts"]
+    )
 
-ROUTES = ROUTES + (
-    {'method': 'POST', 'path': '/api/pbc/dam_core/collections', 'handler': 'command_collections', 'permission': 'dam_core.asset.write'},
-    {'method': 'POST', 'path': '/api/pbc/dam_core/collection-members', 'handler': 'command_collection_members', 'permission': 'dam_core.asset.write'},
-    {'method': 'POST', 'path': '/api/pbc/dam_core/license-agreements', 'handler': 'command_license_agreements', 'permission': 'dam_core.rights.manage'},
-    {'method': 'POST', 'path': '/api/pbc/dam_core/usage-entitlements', 'handler': 'command_usage_entitlements', 'permission': 'dam_core.rights.manage'},
-    {'method': 'POST', 'path': '/api/pbc/dam_core/metadata-taxonomies', 'handler': 'command_metadata_taxonomies', 'permission': 'dam_core.metadata.write'},
-    {'method': 'POST', 'path': '/api/pbc/dam_core/metadata-enrichments', 'handler': 'command_metadata_enrichments', 'permission': 'dam_core.metadata.write'},
-    {'method': 'POST', 'path': '/api/pbc/dam_core/semantic-annotations', 'handler': 'command_semantic_annotations', 'permission': 'dam_core.metadata.write'},
-    {'method': 'POST', 'path': '/api/pbc/dam_core/asset-workflows', 'handler': 'command_asset_workflows', 'permission': 'dam_core.workflow'},
-    {'method': 'POST', 'path': '/api/pbc/dam_core/review-tasks', 'handler': 'command_review_tasks', 'permission': 'dam_core.workflow'},
-    {'method': 'POST', 'path': '/api/pbc/dam_core/asset-exceptions', 'handler': 'command_asset_exceptions', 'permission': 'dam_core.workflow'},
-    {'method': 'POST', 'path': '/api/pbc/dam_core/exception-resolutions', 'handler': 'command_exception_resolutions', 'permission': 'dam_core.workflow'},
-    {'method': 'POST', 'path': '/api/pbc/dam_core/usage-snapshots', 'handler': 'command_usage_snapshots', 'permission': 'dam_core.audit'},
-    {'method': 'POST', 'path': '/api/pbc/dam_core/duplicate-candidates', 'handler': 'command_duplicate_candidates', 'permission': 'dam_core.audit'},
-    {'method': 'POST', 'path': '/api/pbc/dam_core/asset-lineage', 'handler': 'command_asset_lineage', 'permission': 'dam_core.audit'},
-)
 
-
-API_ROUTE_CONTRACTS = ({'method': 'POST', 'path': '/api/pbc/dam_core/assets', 'handler': 'command_assets', 'permission': 'dam_core.command.1', 'operation': 'command_assets', 'operation_kind': 'command', 'owned_tables': ('dam_core_asset', 'dam_core_asset_rendition', 'dam_core_rights_policy', 'dam_core_metadata_tag'), 'read_tables': (), 'emitted_event': 'AssetPublished', 'event_contract': 'AppGen-X', 'transaction_boundary': 'owned_datastore_plus_outbox', 'idempotency_required': True, 'idempotency_key': 'dam_core:command_assets:idempotency_key', 'shared_table_access': False, 'stream_engine_picker_visible': False}, {'method': 'POST', 'path': '/api/pbc/dam_core/renditions', 'handler': 'command_renditions', 'permission': 'dam_core.command.2', 'operation': 'command_renditions', 'operation_kind': 'command', 'owned_tables': ('dam_core_asset', 'dam_core_asset_rendition', 'dam_core_rights_policy', 'dam_core_metadata_tag'), 'read_tables': (), 'emitted_event': 'RightsPolicyChanged', 'event_contract': 'AppGen-X', 'transaction_boundary': 'owned_datastore_plus_outbox', 'idempotency_required': True, 'idempotency_key': 'dam_core:command_renditions:idempotency_key', 'shared_table_access': False, 'stream_engine_picker_visible': False}, {'method': 'GET', 'path': '/api/pbc/dam_core/rights', 'handler': 'query_rights', 'permission': 'dam_core.query.3', 'operation': 'query_rights', 'operation_kind': 'query', 'owned_tables': (), 'read_tables': ('dam_core_asset', 'dam_core_asset_rendition', 'dam_core_rights_policy', 'dam_core_metadata_tag'), 'emitted_event': None, 'event_contract': 'AppGen-X', 'transaction_boundary': 'owned_datastore_plus_outbox', 'idempotency_required': False, 'idempotency_key': None, 'shared_table_access': False, 'stream_engine_picker_visible': False})
-
-API_ROUTE_CONTRACTS = API_ROUTE_CONTRACTS + tuple(
+API_ROUTE_CONTRACTS = _route_contracts()
+ROUTES = tuple(
     {
-        **contract,
-        'idempotency_required': True,
-        'idempotency_key': f"dam_core:{contract['operation']}:idempotency_key",
-        'shared_table_access': False,
-        'stream_engine_picker_visible': False,
+        "method": contract["method"],
+        "path": contract["path"],
+        "handler": contract["handler"],
+        "permission": contract["permission"],
     }
-    for contract in service_operation_contracts()['contracts']
-    if contract['operation'] not in {item['operation'] for item in API_ROUTE_CONTRACTS}
+    for contract in API_ROUTE_CONTRACTS
 )
 
 
@@ -47,98 +46,132 @@ def register_routes(app=None):
     return ROUTES
 
 
-def api_route_contracts():
+def api_route_contracts() -> dict:
     """Return executable API route contracts with policy and boundary evidence."""
-    service_contracts = service_operation_contracts()['contracts']
-    operation_index = {item['operation']: item for item in service_contracts}
     contracts = tuple(
         {
             **contract,
-            'service_operation': operation_index.get(contract['operation']),
-            'route_id': f"{contract['method']} {contract['path']}",
+            "route_id": f"{contract['method']} {contract['path']}",
         }
         for contract in API_ROUTE_CONTRACTS
     )
     return {
-        'ok': bool(contracts)
-        and all(item['event_contract'] == 'AppGen-X' for item in contracts)
-        and all(item['transaction_boundary'] == 'owned_datastore_plus_outbox' for item in contracts)
-        and all(item['stream_engine_picker_visible'] is False for item in contracts)
-        and all(item['shared_table_access'] is False for item in contracts),
-        'pbc': 'dam_core',
-        'contracts': contracts,
-        'routes': tuple(item['route_id'] for item in contracts),
-        'side_effects': (),
+        "ok": bool(contracts)
+        and all(item["event_contract"] == "AppGen-X" for item in contracts)
+        and all(item["transaction_boundary"] == "owned_datastore_plus_outbox" for item in contracts)
+        and all(item["stream_engine_picker_visible"] is False for item in contracts)
+        and all(item["shared_table_access"] is False for item in contracts),
+        "pbc": "dam_core",
+        "contracts": contracts,
+        "routes": tuple(item["route_id"] for item in contracts),
+        "side_effects": (),
     }
 
 
-def validate_api_route_contracts():
+def validate_api_route_contracts() -> dict:
     """Validate routes against service operations, permissions, idempotency, and table boundaries."""
     manifest = api_route_contracts()
-    contracts = manifest['contracts']
+    contracts = manifest["contracts"]
+    operation_index = {item["operation"]: item for item in service_operation_contracts()["contracts"]}
     service_mismatches = tuple(
-        item['route_id']
+        item["route_id"]
         for item in contracts
-        if not item['service_operation']
-        or item['service_operation']['method'] != item['method']
-        or item['service_operation']['path'] != item['path']
-        or item['service_operation']['permission'] != item['permission']
+        if item["operation"] not in operation_index
+        or operation_index[item["operation"]]["method"] != item["method"]
+        or operation_index[item["operation"]]["path"] != item["path"]
+        or operation_index[item["operation"]]["permission"] != item["permission"]
     )
     missing_idempotency = tuple(
-        item['route_id']
+        item["route_id"]
         for item in contracts
-        if item['idempotency_required'] and not item['idempotency_key']
+        if item["idempotency_required"] and not item["idempotency_key"]
     )
     invalid_table_scope = tuple(
-        item['route_id']
+        item["route_id"]
         for item in contracts
-        for table in item['owned_tables'] + item['read_tables']
-        if not table.startswith('dam_core_')
+        for table in item["owned_tables"] + item["read_tables"]
+        if not table.startswith("dam_core_")
     )
     return {
-        'ok': manifest['ok']
+        "ok": manifest["ok"]
         and not service_mismatches
         and not missing_idempotency
         and not invalid_table_scope,
-        'pbc': 'dam_core',
-        'contracts': contracts,
-        'service_mismatches': service_mismatches,
-        'missing_idempotency': missing_idempotency,
-        'invalid_table_scope': invalid_table_scope,
-        'side_effects': (),
+        "pbc": "dam_core",
+        "contracts": contracts,
+        "service_mismatches": service_mismatches,
+        "missing_idempotency": missing_idempotency,
+        "invalid_table_scope": invalid_table_scope,
+        "side_effects": (),
     }
 
 
-def dispatch_route(method, path, payload=None):
-    """Dispatch a route contract to its service command without side effects."""
-    route = next(
-        (item for item in ROUTES if item['method'] == method and item['path'] == path),
-        None,
-    )
+def dispatch_route(method: str, path: str, payload: dict | None = None, *, service: DamCoreService | None = None) -> dict:
+    """Dispatch a route contract to its service command without external side effects."""
+    route = next((item for item in ROUTES if item["method"] == method and item["path"] == path), None)
     if route is None:
-        return {'ok': False, 'handled': False, 'reason': 'route_not_found'}
-    service = DamCoreService()
-    handler = getattr(service, route['handler'])
+        return {"ok": False, "handled": False, "reason": "route_not_found", "side_effects": ()}
+    service = service or DamCoreService()
+    handler = getattr(service, route["handler"])
     result = handler(payload or {})
     return {
-        'ok': result.get('ok') is True,
-        'handled': True,
-        'route': route,
-        'result': result,
-        'side_effects': (),
+        "ok": result.get("ok") is True,
+        "handled": True,
+        "route": route,
+        "result": result,
+        "side_effects": (),
     }
 
 
-def smoke_test():
-    """Execute the first route and validate the API contract surface."""
+def smoke_test() -> dict:
+    """Execute configuration, one route, and validate the API contract surface."""
+    service = DamCoreService()
+    dispatch_route(
+        "POST",
+        "/api/pbc/dam_core/runtime/configuration",
+        {
+            "configuration": {
+                "database_backend": "postgresql",
+                "event_topic": "appgen.dam.events",
+                "retry_limit": 3,
+                "default_storage_tier": "warm",
+                "allowed_mime_types": ("image/jpeg",),
+                "rendition_profiles": ("web_large",),
+                "rights_default_decision": "review",
+                "metadata_taxonomies": ("product",),
+                "default_locale": "en-US",
+                "workbench_limit": 100,
+            }
+        },
+        service=service,
+    )
+    dispatch_route(
+        "POST",
+        "/api/pbc/dam_core/runtime/parameters",
+        {"name": "max_asset_size_mb", "value": 100},
+        service=service,
+    )
+    dispatched = dispatch_route(
+        "POST",
+        "/api/pbc/dam_core/assets",
+        {
+            "asset": {
+                "asset_id": "asset_route_smoke",
+                "tenant": "tenant_route_smoke",
+                "filename": "asset.jpg",
+                "mime_type": "image/jpeg",
+                "size_mb": 5,
+                "storage_uri": "object://dam/route-smoke/asset.jpg",
+                "binary": b"route-smoke",
+                "created_by": "route-smoke",
+            }
+        },
+        service=service,
+    )
     validation = validate_api_route_contracts()
-    if not ROUTES:
-        return {'ok': False, 'reason': 'no_routes'}
-    first = ROUTES[0]
-    dispatched = dispatch_route(first['method'], first['path'], {'smoke': True})
     return {
-        'ok': validation['ok'] and dispatched['ok'],
-        'validation': validation,
-        'dispatch': dispatched,
-        'side_effects': (),
+        "ok": validation["ok"] and dispatched["ok"],
+        "validation": validation,
+        "dispatch": dispatched,
+        "side_effects": (),
     }
