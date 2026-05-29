@@ -624,7 +624,8 @@ the app declaration. Validation fails with `AGX0802` when a requested target is
 unknown or is not declared by `app ... { targets: ... }`, and the
 `appgen.validate-report.v1` payload includes `requested_targets`, `app_targets`,
 and a `target_compatibility` check. The default text output prints requested
-targets, app-declared targets, semantic-model format, checks, and diagnostics.
+targets, app-declared targets, semantic-model format, checks, missing or
+unknown target details, and diagnostics.
 
 ### `appgen generate`
 

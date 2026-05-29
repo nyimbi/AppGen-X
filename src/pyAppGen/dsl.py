@@ -1830,6 +1830,13 @@ def _emit_tooling_payload(payload: dict, *, as_json: bool) -> None:
         )
         for check in payload.get("checks", ()):
             print(f"{'ok' if check['ok'] else 'fail'} {check['check']}")
+            if check.get("check") == "target_compatibility":
+                unknown = tuple(check.get("unknown_targets", ()))
+                missing = tuple(check.get("missing_targets", ()))
+                if unknown:
+                    print(f"unknown-targets {', '.join(unknown)}")
+                if missing:
+                    print(f"missing-targets {', '.join(missing)}")
         for diagnostic in payload.get("diagnostics", ()):
             print(f"{diagnostic['severity']} {diagnostic['code']}: {diagnostic['message']}")
         return

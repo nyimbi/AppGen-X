@@ -543,6 +543,13 @@ def test_appgen_validate_subcommand_enforces_requested_targets(tmp_path: Path) -
         text=True,
         capture_output=True,
     )
+    bad_text_result = subprocess.run(
+        [sys.executable, "-m", "pyAppGen", "validate", str(source_path), "--targets", "web,mobile"],
+        check=False,
+        cwd=Path(__file__).resolve().parents[1],
+        text=True,
+        capture_output=True,
+    )
 
     assert ok_result.returncode == 0, ok_result.stderr
     assert bad_result.returncode == 1, bad_result.stderr
@@ -551,6 +558,11 @@ def test_appgen_validate_subcommand_enforces_requested_targets(tmp_path: Path) -
     assert ok_payload["requested_targets"] == ["web"]
     assert bad_payload["requested_targets"] == ["web", "mobile"]
     assert bad_payload["checks"][-1]["missing_targets"] == ["mobile"]
+    assert bad_text_result.returncode == 1
+    assert bad_text_result.stdout.startswith("validate failed: requested=web,mobile")
+    assert "fail target_compatibility" in bad_text_result.stdout
+    assert "missing-targets mobile" in bad_text_result.stdout
+    assert "error AGX0802:" in bad_text_result.stdout
 
 
 def test_formatter_preserves_comments_and_orders_field_modifiers() -> None:
