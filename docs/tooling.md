@@ -695,6 +695,9 @@ prose or scattered manual checks. The default text output reports pass count,
 blocking gap count, covered documentation sections, source-of-truth document,
 and embedded report formats for each check so release logs remain useful without
 requiring JSON parsing.
+When implementation-phase evidence is present, the text output also reports the
+number of audited phases, missing phase count, and the
+`appgen.tooling-implementation-phase-audit.v1` format marker.
 
 ### `appgen package`
 

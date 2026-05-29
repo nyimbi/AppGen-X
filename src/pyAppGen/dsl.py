@@ -1816,6 +1816,14 @@ def _emit_tooling_payload(payload: dict, *, as_json: bool) -> None:
             f"tooling-audit {status}: {payload.get('passed', 0)}/{payload.get('required', 0)} checks "
             f"blocking_gaps={len(gaps)} sections={len(sections)} source={payload.get('source_of_truth')}"
         )
+        phase_detail = _tooling_text_phase_detail(payload)
+        if phase_detail:
+            phases = tuple(phase_detail.get("phases", ()))
+            missing_phases = tuple(phase_detail.get("missing_phases", ()))
+            print(
+                f"implementation-phases {len(phases)} "
+                f"missing={len(missing_phases)} format={phase_detail.get('format')}"
+            )
         for section in sections:
             print(f"section {section}")
         for check in payload.get("checks", ()):
@@ -1850,6 +1858,14 @@ def _tooling_text_detail_formats(value: object) -> tuple[str, ...]:
 
     collect(value)
     return tuple(sorted(formats))
+
+
+def _tooling_text_phase_detail(payload: dict) -> dict | None:
+    for check in payload.get("checks", ()):
+        detail = check.get("detail", {})
+        if isinstance(detail, dict) and detail.get("format") == "appgen.tooling-implementation-phase-audit.v1":
+            return detail
+    return None
 
 
 def _internal_tooling_error_report(exc: Exception) -> dict:
