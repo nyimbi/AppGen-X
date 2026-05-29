@@ -787,6 +787,11 @@ Mermaid, and DOT renderings rather than relying on a count alone.
 output-format counts, and the graph-suite CLI audit reports required-kind,
 output-format, and missing-rendering counts, so graph release evidence captures
 both individual examples and full suite coverage.
+The in-process `appgen.graph-suite-report.v1` also reports required, present,
+and missing graph-kind counts; format, graph-report, rendering,
+expected-rendering, missing-rendering, diagnostic, check, passing-check, and
+blocking-gap counts; and the exact missing kind/rendering lists, so release
+evidence can prove graph breadth without expanding every rendered graph body.
 `appgen.graph-explain-text-renderer.v1` is embedded in the tooling audit to
 prove graph-suite and explain logs keep graph kind, graph format, check,
 symbol, diagnostic-doc, and handler-edge evidence visible without JSON parsing.

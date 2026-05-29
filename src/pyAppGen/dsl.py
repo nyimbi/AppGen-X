@@ -8568,18 +8568,35 @@ def graph_suite_report_dsl(text: str, *, source_name: str | None = None) -> dict
             detail={"semantic_model_format": model.get("format")},
         ),
     )
+    rendering_count = sum(len(outputs) for outputs in renderings.values())
+    diagnostics = tuple(model["diagnostics"])
+    blocking_gaps = tuple(check for check in checks if not check["ok"])
     return {
         "format": "appgen.graph-suite-report.v1",
         "source": source_name,
         "ok": model["ok"] and all(check["ok"] for check in checks),
         "semantic_model_format": model.get("format"),
         "required_kinds": REQUIRED_GRAPH_KINDS,
+        "required_kind_count": len(REQUIRED_GRAPH_KINDS),
+        "present_kind_count": len(graph_reports),
+        "missing_kind_count": len(missing_kinds),
+        "missing_kinds": missing_kinds,
         "formats": GRAPH_TEXT_FORMATS,
+        "format_count": len(GRAPH_TEXT_FORMATS),
         "graph_reports": graph_reports,
+        "graph_report_count": len(graph_reports),
         "renderings": renderings,
+        "rendering_count": rendering_count,
+        "expected_rendering_count": len(REQUIRED_GRAPH_KINDS) * len(GRAPH_TEXT_FORMATS),
+        "missing_rendering_count": len(rendering_gaps),
+        "missing_renderings": rendering_gaps,
         "diagnostics": model["diagnostics"],
+        "diagnostic_count": len(diagnostics),
         "checks": checks,
-        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+        "check_count": len(checks),
+        "passing_check_count": sum(1 for check in checks if check["ok"]),
+        "blocking_gap_count": len(blocking_gaps),
+        "blocking_gaps": blocking_gaps,
     }
 
 

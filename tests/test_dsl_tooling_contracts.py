@@ -769,6 +769,19 @@ def test_graph_suite_report_covers_required_kinds_and_formats() -> None:
 
     assert report["format"] == "appgen.graph-suite-report.v1"
     assert report["ok"] is True
+    assert report["required_kind_count"] == len(report["required_kinds"])
+    assert report["present_kind_count"] == len(report["graph_reports"])
+    assert report["missing_kind_count"] == 0
+    assert report["missing_kinds"] == ()
+    assert report["format_count"] == len(report["formats"]) == 3
+    assert report["graph_report_count"] == len(report["graph_reports"])
+    assert report["rendering_count"] == report["expected_rendering_count"]
+    assert report["missing_rendering_count"] == 0
+    assert report["missing_renderings"] == ()
+    assert report["diagnostic_count"] == len(report["diagnostics"])
+    assert report["check_count"] == len(report["checks"])
+    assert report["passing_check_count"] == report["check_count"]
+    assert report["blocking_gap_count"] == 0
     assert set(report["graph_reports"]) == {
         "er",
         "lookup",
