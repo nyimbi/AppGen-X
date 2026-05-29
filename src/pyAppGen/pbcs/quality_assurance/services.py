@@ -140,3 +140,48 @@ def smoke_test():
         'result': result,
         'side_effects': (),
     }
+
+
+
+def standalone_service_operation_contracts():
+    contracts = (
+        {'operation': 'seed_demo_workspace', 'operation_kind': 'command', 'method': 'POST', 'path': '/app/quality-assurance/demo-workspace', 'table': 'quality_assurance_quality_configuration', 'wizard': 'InspectionLotIntakeWizard', 'permission': 'quality_assurance.configure'},
+        {'operation': 'build_workbench', 'operation_kind': 'query', 'method': 'GET', 'path': '/app/quality-assurance/workbench', 'table': 'quality_assurance_inspection_result', 'wizard': None, 'permission': 'quality_assurance.read'},
+        {'operation': 'create_inspection_plan', 'operation_kind': 'command', 'method': 'POST', 'path': '/app/quality-assurance/plans', 'table': 'quality_assurance_inspection_plan', 'wizard': 'InspectionLotIntakeWizard', 'permission': 'quality_assurance.configure'},
+        {'operation': 'record_inspection_result', 'operation_kind': 'command', 'method': 'POST', 'path': '/app/quality-assurance/results', 'table': 'quality_assurance_inspection_result', 'wizard': 'InspectionLotIntakeWizard', 'permission': 'quality_assurance.execute'},
+        {'operation': 'run_control_tests', 'operation_kind': 'query', 'method': 'GET', 'path': '/app/quality-assurance/controls', 'table': 'quality_assurance_quality_control_assertion', 'wizard': None, 'permission': 'quality_assurance.audit'},
+        {'operation': 'generate_quality_proof', 'operation_kind': 'command', 'method': 'POST', 'path': '/app/quality-assurance/proofs', 'table': 'quality_assurance_audit_evidence_packet', 'wizard': 'HoldReleaseWizard', 'permission': 'quality_assurance.audit'},
+    )
+    return {'format': 'appgen.quality-assurance-standalone-service.v1', 'ok': all(item['table'].startswith('quality_assurance_') for item in contracts), 'pbc': 'quality_assurance', 'contracts': contracts, 'operations': tuple(item['operation'] for item in contracts), 'command_operations': tuple(item['operation'] for item in contracts if item['operation_kind'] == 'command'), 'query_operations': tuple(item['operation'] for item in contracts if item['operation_kind'] == 'query'), 'side_effects': ()}
+
+
+class QualityAssuranceStandaloneService:
+    def __init__(self, repository=None, database_path=':memory:'):
+        if repository is None:
+            from .repository import QualityAssuranceStandaloneRepository
+            repository = QualityAssuranceStandaloneRepository(database_path=database_path)
+        self.repository = repository
+
+    def close(self):
+        self.repository.close()
+
+    def seed_demo_workspace(self, tenant='tenant_demo'):
+        return self.repository.seed_demo_workspace(tenant=tenant)
+
+    def build_workbench(self, tenant='tenant_demo'):
+        return self.repository.build_workbench(tenant)
+
+    def create_inspection_plan(self, tenant, plan):
+        return self.repository.create_inspection_plan(tenant, plan)
+
+    def record_inspection_result(self, tenant, result_payload):
+        return self.repository.record_inspection_result(tenant, result_payload)
+
+    def run_control_tests(self, tenant='tenant_demo'):
+        return self.repository.run_control_tests(tenant)
+
+    def generate_quality_proof(self, tenant, result_id, disclosure=('result_id', 'lot_id', 'decision')):
+        return self.repository.generate_quality_proof(tenant, result_id, tuple(disclosure))
+
+    def run_agent_skill(self, tenant, skill_name, payload):
+        return self.repository.run_agent_skill(tenant, skill_name, payload)
