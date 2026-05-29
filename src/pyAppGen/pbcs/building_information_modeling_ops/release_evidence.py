@@ -8,13 +8,19 @@ from .runtime import (
 
 
 def build_release_evidence() -> dict:
-    return building_information_modeling_ops_build_release_evidence()
+    evidence = building_information_modeling_ops_build_release_evidence()
+    from .standalone import standalone_app_manifest
+
+    return {
+        **evidence,
+        "standalone_app": standalone_app_manifest(),
+    }
 
 
 def release_readiness_manifest() -> dict:
     evidence = build_release_evidence()
     return {
-        "ok": evidence["ok"],
+        "ok": evidence["ok"] and evidence["standalone_app"]["ok"],
         "pbc": evidence["pbc"],
         "sections": (
             "schema",
@@ -25,6 +31,7 @@ def release_readiness_manifest() -> dict:
             "agent",
             "governance",
             "single_pbc_app",
+            "standalone_app",
             "forms",
             "wizards",
             "controls",
@@ -32,6 +39,7 @@ def release_readiness_manifest() -> dict:
         "blocking_gaps": evidence["blocking_gaps"],
         "boundary_gaps": (),
         "single_pbc_app": building_information_modeling_ops_build_single_pbc_app_contract(),
+        "standalone_app": evidence["standalone_app"],
         "evidence": evidence,
         "side_effects": (),
     }
