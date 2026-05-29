@@ -5164,6 +5164,12 @@ def _tooling_audit_package_verify_cli(tmp: Path, source: str) -> dict:
             and pbc_manifest.get("target") == "pbc"
             and deployment_manifest.get("target") == "deployment"
             and web_manifest.get("artifact_class") == "web_application"
+            and web_manifest.get("app_build_contract") is True
+            and web_manifest.get("routes_declared") is True
+            and web_manifest.get("forms_bind_valid_fields") is True
+            and web_manifest.get("handler_targets_resolve") is True
+            and web_manifest.get("smoke_tests_declared") is True
+            and web_manifest.get("smoke_entrypoint") == "web.smoke"
             and {"routes", "forms", "handlers", "smoke_tests"} <= set(web_handoff)
             and mobile_manifest.get("artifact_class") == "mobile_application"
             and mobile_manifest.get("signing_posture_declared") is True
@@ -5203,6 +5209,12 @@ def _tooling_audit_package_verify_cli(tmp: Path, source: str) -> dict:
             "release_graph_formats": tuple(evidence_graph_suite.get("formats", ())),
             "web_artifact_class": web_manifest.get("artifact_class"),
             "web_handoff_artifacts": web_handoff,
+            "web_app_build_contract": web_manifest.get("app_build_contract"),
+            "web_routes_declared": web_manifest.get("routes_declared"),
+            "web_forms_bind_valid_fields": web_manifest.get("forms_bind_valid_fields"),
+            "web_handler_targets_resolve": web_manifest.get("handler_targets_resolve"),
+            "web_smoke_tests_declared": web_manifest.get("smoke_tests_declared"),
+            "web_smoke_entrypoint": web_manifest.get("smoke_entrypoint"),
             "mobile_artifact_class": mobile_manifest.get("artifact_class"),
             "mobile_handoff_artifacts": mobile_handoff,
             "mobile_signing_posture_declared": mobile_manifest.get("signing_posture_declared"),
@@ -8467,6 +8479,11 @@ def _target_package_manifest(
         "web": {
             "artifact_class": "web_application",
             "handoff_artifacts": ("routes", "forms", "handlers", "smoke_tests"),
+            "app_build_contract": check_map.get("app_build_contract", False),
+            "routes_declared": check_map.get("routes_exist", False),
+            "forms_bind_valid_fields": check_map.get("generated_forms_bind_valid_fields", False),
+            "handler_targets_resolve": check_map.get("handler_targets_resolve", False),
+            "smoke_tests_declared": check_map.get("smoke_tests_declared", False),
             "build_required": True,
             "smoke_entrypoint": "web.smoke",
         },

@@ -3070,6 +3070,22 @@ def test_tooling_implementation_phase_audit_maps_phase_exit_criteria_to_evidence
     }
 
 
+def test_package_verify_cli_audit_exposes_web_manifest_readiness_metadata(tmp_path: Path) -> None:
+    report = appgen_dsl._tooling_audit_package_verify_cli(tmp_path, TOOLING_SAMPLE)
+    manifest_case = next(case for case in report["cases"] if case["case"] == "package_writes_target_manifests")
+
+    assert report["format"] == "appgen.package-verify-cli-audit.v1"
+    assert report["ok"] is True
+    assert manifest_case["web_artifact_class"] == "web_application"
+    assert {"routes", "forms", "handlers", "smoke_tests"} <= set(manifest_case["web_handoff_artifacts"])
+    assert manifest_case["web_app_build_contract"] is True
+    assert manifest_case["web_routes_declared"] is True
+    assert manifest_case["web_forms_bind_valid_fields"] is True
+    assert manifest_case["web_handler_targets_resolve"] is True
+    assert manifest_case["web_smoke_tests_declared"] is True
+    assert manifest_case["web_smoke_entrypoint"] == "web.smoke"
+
+
 def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     report = tooling_audit_report_dsl()
     root = Path(__file__).resolve().parents[1]
@@ -3292,6 +3308,13 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert manifest_case["release_graph_suite_format"] == "appgen.graph-suite-report.v1"
     assert set(manifest_case["release_graph_formats"]) == {"json", "mermaid", "dot"}
     assert manifest_case["web_artifact_class"] == "web_application"
+    assert {"routes", "forms", "handlers", "smoke_tests"} <= set(manifest_case["web_handoff_artifacts"])
+    assert manifest_case["web_app_build_contract"] is True
+    assert manifest_case["web_routes_declared"] is True
+    assert manifest_case["web_forms_bind_valid_fields"] is True
+    assert manifest_case["web_handler_targets_resolve"] is True
+    assert manifest_case["web_smoke_tests_declared"] is True
+    assert manifest_case["web_smoke_entrypoint"] == "web.smoke"
     assert manifest_case["mobile_artifact_class"] == "mobile_application"
     assert {"signing_posture", "offline_policy", "permissions", "screen_density", "smoke_launch"} <= set(
         manifest_case["mobile_handoff_artifacts"]

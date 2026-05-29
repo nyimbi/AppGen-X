@@ -720,6 +720,10 @@ pipelines, desktop installer/startup packaging, PBC publication, and deployment
 verification. Generated installers and app-store bundles remain downstream
 builders' responsibility, but the package command now materializes the stable
 contract those builders consume.
+The web package manifest carries explicit verifier booleans for application
+build contract, route declaration, valid generated form bindings, handler target
+resolution, smoke-test declaration, and the `web.smoke` handoff entrypoint so
+web builders do not infer readiness from generic artifact names.
 `appgen.package-verify-cli-audit.v1` exercises `appgen verify --target all` and
 `appgen package --target all --out ...`, then proves that release evidence and
 per-target manifests exist for web, mobile, desktop, PBC, and deployment
