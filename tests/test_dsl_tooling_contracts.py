@@ -3936,6 +3936,8 @@ def test_tooling_audit_text_renderer_contract_proves_human_log_markers() -> None
     assert {
         "formats=appgen.cli-help-surface-audit.v1",
         "formats=appgen.lsp-json-rpc-audit.v1",
+        "formats=appgen.non-goal-policy-audit.v1",
+        "formats=appgen.tooling-doc-anchor-audit.v1",
         "implementation-phases 1 missing=0 format=appgen.tooling-implementation-phase-audit.v1",
     } <= set(report["required_fragments"])
 

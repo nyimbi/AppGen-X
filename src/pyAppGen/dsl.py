@@ -4136,6 +4136,20 @@ def _tooling_audit_text_renderer_contract() -> dict:
                     "missing_phases": (),
                 },
             },
+            {
+                "id": "non_goal_policy_guards",
+                "ok": True,
+                "section": "docs/tooling.md#non-goals",
+                "evidence": "Non-goal policy guards are executable.",
+                "detail": {"format": "appgen.non-goal-policy-audit.v1"},
+            },
+            {
+                "id": "tooling_doc_anchor_integrity",
+                "ok": True,
+                "section": "docs/tooling.md#appgen-tooling-audit",
+                "evidence": "Tooling audit section references resolve.",
+                "detail": {"format": "appgen.tooling-doc-anchor-audit.v1"},
+            },
         ),
     }
     output = io.StringIO()
@@ -4150,6 +4164,8 @@ def _tooling_audit_text_renderer_contract() -> dict:
         "section docs/tooling.md#appgen-tooling-audit",
         "formats=appgen.cli-help-surface-audit.v1",
         "formats=appgen.lsp-json-rpc-audit.v1",
+        "formats=appgen.non-goal-policy-audit.v1",
+        "formats=appgen.tooling-doc-anchor-audit.v1",
         "implementation-phases 1 missing=0 format=appgen.tooling-implementation-phase-audit.v1",
     )
     missing = tuple(fragment for fragment in required_fragments if fragment not in text)
