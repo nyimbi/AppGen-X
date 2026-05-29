@@ -1833,7 +1833,8 @@ def _emit_tooling_payload(payload: dict, *, as_json: bool) -> None:
         semantic = payload.get("semantic_model", {})
         print(
             f"validate {status}: requested={','.join(requested) or 'default'} "
-            f"app_targets={','.join(app_targets) or 'none'} semantic={semantic.get('format')}"
+            f"app_targets={','.join(app_targets) or 'none'} "
+            f"format={payload.get('format')} semantic={semantic.get('format')}"
         )
         for check in payload.get("checks", ()):
             print(f"{'ok' if check['ok'] else 'fail'} {check['check']}")
@@ -1853,6 +1854,7 @@ def _emit_tooling_payload(payload: dict, *, as_json: bool) -> None:
         print(
             f"generate {status}: generated={payload.get('generated', False)} "
             f"targets={','.join(targets) or 'default'} artifacts={len(payload.get('artifacts', ()))} "
+            f"format={payload.get('format')} "
             f"semantic={payload.get('semantic_model_format') or payload.get('validation', {}).get('semantic_model', {}).get('format')}"
         )
         output_dir = payload.get("output_dir")

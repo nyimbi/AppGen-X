@@ -4106,6 +4106,7 @@ def test_cli_contracts_cover_text_summaries_exit_codes_and_bad_arguments(tmp_pat
     assert validate_text.returncode == 0, validate_text.stderr
     assert validate_text.stdout.startswith("validate ok: requested=web")
     assert "app_targets=web,mobile,desktop" in validate_text.stdout
+    assert "format=appgen.validate-report.v1" in validate_text.stdout
     assert "semantic=appgen.semantic-model.v1" in validate_text.stdout
     assert explain_text.returncode == 0, explain_text.stderr
     assert explain_text.stdout.startswith("explain symbol ok: table.Invoice")
@@ -4130,6 +4131,7 @@ def test_cli_contracts_cover_text_summaries_exit_codes_and_bad_arguments(tmp_pat
     assert generate_text.returncode == 0, generate_text.stderr
     assert "generate ok: generated=True" in generate_text.stdout
     assert "targets=web" in generate_text.stdout
+    assert "format=appgen.generate-report.v1" in generate_text.stdout
     assert "semantic=appgen.semantic-model.v1" in generate_text.stdout
     assert "output_dir " in generate_text.stdout
     assert "manifest " in generate_text.stdout
