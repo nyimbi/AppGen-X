@@ -1026,6 +1026,45 @@ def test_lsp_workspace_symbols_include_pbc_catalog_metadata_and_contracts() -> N
     assert contract_symbols[0]["location"]["uri"].startswith("catalog://pbc/gl_core/event/")
 
 
+def test_lsp_definition_resolves_pbc_catalog_keys_and_contracts() -> None:
+    pbc_source = """
+    app DefinitionCatalog { targets: web }
+    composition Suite {
+      include pbc gl_core version 1.0.0
+      connect ap_automation event InvoiceApproved -> gl_core event JournalPosted
+    }
+    """
+    pbc_definition = appgen_dsl.lsp_definition_dsl(
+        pbc_source,
+        source_name="definition-catalog.appgen",
+        position=_position_of(pbc_source, "gl_core"),
+    )
+    event_definition = appgen_dsl.lsp_definition_dsl(
+        pbc_source,
+        source_name="definition-catalog.appgen",
+        position=_position_of(pbc_source, "JournalPosted"),
+    )
+    documents = {"memory://definition-catalog.appgen": pbc_source}
+    rpc_responses, _ = appgen_dsl.lsp_server_handle_message(
+        {
+            "jsonrpc": "2.0",
+            "id": 12,
+            "method": "textDocument/definition",
+            "params": {
+                "textDocument": {"uri": "memory://definition-catalog.appgen"},
+                "position": _position_of(pbc_source, "JournalPosted"),
+            },
+        },
+        documents,
+    )
+
+    assert pbc_definition["ok"] is True
+    assert pbc_definition["location"]["uri"] == "catalog://pbc/gl_core"
+    assert event_definition["ok"] is True
+    assert event_definition["location"]["uri"] == "catalog://pbc/gl_core/event/JournalPosted"
+    assert rpc_responses[0]["result"]["uri"] == "catalog://pbc/gl_core/event/JournalPosted"
+
+
 def test_lsp_json_rpc_audit_proves_advertised_provider_capabilities() -> None:
     broken_handler_source = """
 app Bad { targets: web }

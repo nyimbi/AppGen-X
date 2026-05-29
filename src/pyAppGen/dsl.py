@@ -5617,13 +5617,27 @@ def _lsp_pbc_catalog_metadata_for_token(token: str) -> dict | None:
 def lsp_definition_dsl(text: str, *, source_name: str | None = None, position: dict | None = None) -> dict:
     token = _lsp_token_at_position(text, position)
     symbol = _lsp_symbol_for_token(text, token, source_name=source_name)
-    location = _lsp_location(source_name, symbol.get("range")) if symbol else None
+    location = _lsp_location(source_name, symbol.get("range")) if symbol else _lsp_catalog_definition_location(token)
     return {
         "format": "appgen.lsp-definition.v1",
         "ok": location is not None,
         "token": token,
         "location": location,
     }
+
+
+def _lsp_catalog_definition_location(token: str) -> dict | None:
+    if token in _pbc_catalog_by_key():
+        return _lsp_location(f"catalog://pbc/{token}", None)
+    for key, entry in _pbc_catalog_by_key().items():
+        for contract_kind, contract_name in (
+            tuple(("api", value) for value in entry.get("apis", ()))
+            + tuple(("event", value) for value in entry.get("emits", ()))
+            + tuple(("event", value) for value in entry.get("consumes", ()))
+        ):
+            if token == str(contract_name):
+                return _lsp_location(f"catalog://pbc/{key}/{contract_kind}/{quote(str(contract_name), safe='')}", None)
+    return None
 
 
 def lsp_references_dsl(text: str, *, source_name: str | None = None, position: dict | None = None) -> dict:

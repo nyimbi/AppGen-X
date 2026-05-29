@@ -756,6 +756,10 @@ registered PBCs and their API/event contracts when the query matches PBC names,
 labels, mesh metadata, descriptions, or contract names. This lets editors and
 agents discover selectable PBCs without hard-coding the catalog into grammar
 rules.
+Definition navigation uses the same catalog location scheme for registered PBC
+keys and API/event contract tokens, so `textDocument/definition` can jump from
+composition references to read-only catalog declarations as well as to ordinary
+DSL declarations.
 
 Rename safety is an executable gate. The language service still returns the
 candidate workspace edit and migration preview, but `textDocument/rename`
