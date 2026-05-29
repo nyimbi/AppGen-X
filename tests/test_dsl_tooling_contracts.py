@@ -875,6 +875,21 @@ def test_nl_plan_contract_audit_covers_supported_edit_operations_and_rejections(
     assert audit["blocking_gaps"] == ()
 
 
+def test_nl_plan_cli_audit_covers_all_supported_edit_operations(tmp_path: Path) -> None:
+    audit = appgen_dsl._tooling_audit_nl_plan_cli(tmp_path, TOOLING_SAMPLE)
+    contract = nl_plan_contract_audit_dsl(TOOLING_SAMPLE, source_name="finance.appgen")
+
+    assert audit["format"] == "appgen.nl-plan-cli-audit.v1"
+    assert audit["ok"] is True
+    assert set(audit["accepted_operation_kinds"]) >= set(contract["required_edit_operations"])
+    assert audit["accepted_case_count"] == len(contract["required_edit_operations"])
+    assert audit["blocking_cases"] == ()
+    assert audit["accepted_patch_bytes"] > 0
+    assert audit["accepted_test_count"] >= len(contract["required_edit_operations"])
+    assert audit["accepted_token_budget_notes"] >= len(contract["required_edit_operations"])
+    assert "AGX1201" in audit["rejected_diagnostic_codes"]
+
+
 def test_appgen_migration_plan_subcommand_emits_json_contract(tmp_path: Path) -> None:
     previous = tmp_path / "previous.appgen"
     current = tmp_path / "current.appgen"
@@ -2849,6 +2864,11 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     nl_check = next(check for check in report["checks"] if check["id"] == "natural_language_patch_planner")
     assert nl_check["detail"]["cli"]["format"] == "appgen.nl-plan-cli-audit.v1"
     assert nl_check["detail"]["cli"]["ok"] is True
+    assert set(nl_check["detail"]["cli"]["accepted_operation_kinds"]) >= set(
+        nl_check["detail"]["contract"]["required_edit_operations"]
+    )
+    assert nl_check["detail"]["cli"]["accepted_case_count"] == len(nl_check["detail"]["contract"]["required_edit_operations"])
+    assert nl_check["detail"]["cli"]["blocking_cases"] == ()
     assert nl_check["detail"]["cli"]["accepted_patch_bytes"] > 0
     assert nl_check["detail"]["cli"]["migration_format"] == "appgen.migration-plan.v1"
     assert nl_check["detail"]["cli"]["accepted_test_count"] > 0

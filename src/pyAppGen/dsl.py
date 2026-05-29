@@ -4002,15 +4002,50 @@ def _tooling_audit_nl_plan_cli(tmp: Path, source: str) -> dict:
             payload = {}
         return exit_code, payload
 
-    accepted_exit, accepted_payload = run_json(
-        (
-            "nl-plan",
-            str(source_path),
-            "--prompt",
-            "Add credit memos to accounts receivable",
-            "--json",
-        )
+    accepted_specs = (
+        ("add_table", "Add dispute cases table"),
+        ("add_field", "Add due date to Invoice"),
+        ("add_relationship", "Add relationship from Invoice to Customer"),
+        ("add_view_section", "Add view section Audit to InvoiceForm"),
+        ("add_component_placement", "Add component placement for customer.name to InvoiceForm"),
+        ("add_handler", "Add handler Audit to InvoiceForm"),
+        ("add_operation", "Add operation ArchiveInvoice"),
+        ("add_rule", "Add rule PositiveInvoiceTotal"),
+        ("add_flow_transition", "Add flow transition posted to archived in SubmitInvoice"),
+        ("add_pbc_include", "Include pbc ap_automation"),
+        ("add_api_event_contract", "Add api event contract InvoiceSynced"),
+        ("add_package_deployment_unit", "Add package deployment unit for worker"),
+        ("add_agent_skill_permission", "Add agent skill and permission for invoice review"),
     )
+    accepted_cases = []
+    for expected_kind, prompt in accepted_specs:
+        exit_code, payload = run_json(("nl-plan", str(source_path), "--prompt", prompt, "--json"))
+        operation_kinds = tuple(operation.get("kind") for operation in payload.get("edit_operations", ()))
+        accepted_cases.append(
+            {
+                "expected_kind": expected_kind,
+                "prompt": prompt,
+                "exit_code": exit_code,
+                "format": payload.get("format"),
+                "ok": payload.get("ok"),
+                "operation_kinds": operation_kinds,
+                "patch_bytes": len(payload.get("dsl_patch", "")),
+                "lint_ok": payload.get("lint", {}).get("ok"),
+                "migration_format": payload.get("migration_preview", {}).get("format"),
+                "test_count": len(payload.get("test_plan", ())),
+                "token_budget_notes": len(payload.get("token_budget_notes", ())),
+                "passed": exit_code == 0
+                and payload.get("format") == "appgen.nl-plan.v1"
+                and payload.get("ok") is True
+                and expected_kind in operation_kinds
+                and bool(payload.get("dsl_patch"))
+                and payload.get("lint", {}).get("format") == "appgen.lint-report.v1"
+                and payload.get("lint", {}).get("ok") is True
+                and payload.get("migration_preview", {}).get("format") == "appgen.migration-plan.v1"
+                and bool(payload.get("test_plan"))
+                and bool(payload.get("token_budget_notes")),
+            }
+        )
     rejected_exit, rejected_payload = run_json(
         (
             "nl-plan",
@@ -4021,29 +4056,31 @@ def _tooling_audit_nl_plan_cli(tmp: Path, source: str) -> dict:
         )
     )
     rejected_codes = tuple(item.get("code") for item in rejected_payload.get("diagnostics", ()))
+    accepted_patch_bytes = sum(case["patch_bytes"] for case in accepted_cases)
+    accepted_test_count = sum(case["test_count"] for case in accepted_cases)
+    accepted_token_budget_notes = sum(case["token_budget_notes"] for case in accepted_cases)
+    accepted_operation_kinds = tuple(
+        sorted({operation_kind for case in accepted_cases for operation_kind in case["operation_kinds"]})
+    )
     return {
         "format": "appgen.nl-plan-cli-audit.v1",
-        "ok": accepted_exit == 0
-        and accepted_payload.get("format") == "appgen.nl-plan.v1"
-        and accepted_payload.get("ok") is True
-        and bool(accepted_payload.get("dsl_patch"))
-        and accepted_payload.get("lint", {}).get("format") == "appgen.lint-report.v1"
-        and accepted_payload.get("lint", {}).get("ok") is True
-        and accepted_payload.get("migration_preview", {}).get("format") == "appgen.migration-plan.v1"
-        and bool(accepted_payload.get("test_plan"))
-        and bool(accepted_payload.get("token_budget_notes"))
+        "ok": all(case["passed"] for case in accepted_cases)
         and rejected_exit == 1
         and rejected_payload.get("format") == "appgen.nl-plan.v1"
         and rejected_payload.get("ok") is False
         and rejected_payload.get("dsl_patch") == ""
         and "AGX1201" in rejected_codes,
-        "accepted_exit_code": accepted_exit,
+        "accepted_case_count": len(accepted_cases),
+        "accepted_cases": tuple(accepted_cases),
+        "accepted_operation_kinds": accepted_operation_kinds,
+        "blocking_cases": tuple(case["expected_kind"] for case in accepted_cases if not case["passed"]),
+        "accepted_exit_code": accepted_cases[0]["exit_code"] if accepted_cases else None,
         "rejected_exit_code": rejected_exit,
-        "accepted_payload_format": accepted_payload.get("format"),
-        "accepted_patch_bytes": len(accepted_payload.get("dsl_patch", "")),
-        "accepted_test_count": len(accepted_payload.get("test_plan", ())),
-        "accepted_token_budget_notes": len(accepted_payload.get("token_budget_notes", ())),
-        "migration_format": accepted_payload.get("migration_preview", {}).get("format"),
+        "accepted_payload_format": accepted_cases[0]["format"] if accepted_cases else None,
+        "accepted_patch_bytes": accepted_patch_bytes,
+        "accepted_test_count": accepted_test_count,
+        "accepted_token_budget_notes": accepted_token_budget_notes,
+        "migration_format": accepted_cases[0]["migration_format"] if accepted_cases else None,
         "rejected_payload_format": rejected_payload.get("format"),
         "rejected_diagnostic_codes": rejected_codes,
     }

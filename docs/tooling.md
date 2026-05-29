@@ -1038,6 +1038,12 @@ runs a fixture prompt for each supported operation, verifies that accepted
 requests produce DSL patches, lint results, migration previews, generated test
 plans, and token-budget notes, and verifies that out-of-DSL requests are
 rejected with `AGX1201` instead of generating code.
+The CLI proof mirrors the same operation family through
+`appgen.nl-plan-cli-audit.v1`: each supported edit operation is exercised
+through `appgen nl-plan --json`, then checked for the expected operation kind,
+linted patch, migration preview, generated test plan, and token-budget notes.
+This keeps agent-facing development paths honest; a capability is not counted
+as available just because an in-process helper can produce it.
 
 ## Package And Verifier Tooling
 
