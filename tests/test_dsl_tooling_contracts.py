@@ -477,13 +477,12 @@ def test_appgen_component_publish_subcommand_emits_side_effect_free_catalog_patc
     assert payload["catalog_patch"]["side_effect_free"] is True
     assert payload["catalog_patch"]["write_performed"] is False
     assert text_result.returncode == 0, text_result.stderr
-    assert text_result.stdout.startswith("component-publish ok: component=CustomGauge")
+    assert text_result.stdout.startswith("component-publish ok: format=appgen.component-publish-report.v1 component=CustomGauge")
     assert f"catalog={catalog_path}" in text_result.stdout
     assert "already_registered=False" in text_result.stdout
     assert "side_effect_free=True" in text_result.stdout
     assert "write_performed=False" in text_result.stdout
-    assert "report=appgen.component-publish-report.v1" in text_result.stdout
-    assert "patch=appgen.component-catalog-patch.v1" in text_result.stdout
+    assert "patch_format=appgen.component-catalog-patch.v1" in text_result.stdout
     assert "catalog-count before=1 after=2 existing=1" in text_result.stdout
 
 

@@ -1959,11 +1959,12 @@ def _emit_tooling_payload(payload: dict, *, as_json: bool) -> None:
         patch = payload.get("catalog_patch", {})
         catalog = payload.get("catalog", {})
         print(
-            f"component-publish {status}: component={payload.get('component')} "
+            f"component-publish {status}: format={payload.get('format')} "
+            f"component={payload.get('component')} "
             f"catalog={catalog.get('source') or 'inline'} already_registered={patch.get('already_registered')} "
             f"side_effect_free={patch.get('side_effect_free')} "
             f"write_performed={patch.get('write_performed')} "
-            f"report={payload.get('format')} patch={patch.get('format')}"
+            f"patch_format={patch.get('format')}"
         )
         print(
             f"catalog-count before={patch.get('before_count', catalog.get('count', 0))} "
