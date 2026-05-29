@@ -43,6 +43,7 @@ This file tracks the branch-isolated implementation pass for standalone Packaged
 | production_control | `pbc/production-control-standalone` | `29677a7b` | Compile, 12 tests, spec/source/release/smoke true. |
 | procurement_sourcing | `pbc/procurement-sourcing-standalone` | `ed99321e` | Compile, 13 tests, spec/source/release/smoke true. |
 | personnel_identity | `pbc/personnel-identity-standalone` | `702e305c` | Compile, 10 tests, spec/source/release/smoke true. |
+| product_catalog_pim | `pbc/product-catalog-pim-standalone` | `68cb9615` | Compile, 11 tests, spec/source/release/smoke true. |
 | talent_onboarding | `pbc/talent-onboarding-standalone` | `bb438e42` | Compile, 11 tests, spec/source/release/smoke true. |
 | time_labor | `pbc/time-labor-standalone` | `cdadd9fc` | Compile, 10 tests, spec/source/release/smoke true. |
 | mrp_engine | `pbc/mrp-engine-standalone` | `58e3e2bc` | Compile, 11 tests, spec/source/release/smoke true. |
@@ -52,7 +53,7 @@ This file tracks the branch-isolated implementation pass for standalone Packaged
 
 ## In Flight
 
-Supply-chain/HCM standalone pass is continuing. `wms_core`, `procurement_sourcing`, `transportation_management`, `dom`, `global_inventory_visibility`, `personnel_identity`, `time_labor`, and `payroll_engine` are pushed; quality_assurance is pushed; mrp_engine is pushed; production_control and talent_onboarding are pushed; next slices move to commerce/content/relationship and intelligence PBCs.
+Supply-chain/HCM standalone pass is continuing. `wms_core`, `procurement_sourcing`, `transportation_management`, `dom`, `global_inventory_visibility`, `personnel_identity`, `time_labor`, and `payroll_engine` are pushed; quality_assurance is pushed; mrp_engine is pushed; production_control, talent_onboarding, and product_catalog_pim are pushed; next slices continue through commerce/content/relationship and intelligence PBCs.
 
 ## Next Selection Rule
 
