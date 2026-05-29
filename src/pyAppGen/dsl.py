@@ -2132,6 +2132,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
         format_write = _tooling_audit_format_write(Path(tmp))
         internal_error_exit = _tooling_audit_internal_error_exit(Path(tmp))
         missing_input_exit = _tooling_audit_missing_input_exit(Path(tmp))
+        missing_required_option_exit = _tooling_audit_missing_required_option_exit(Path(tmp))
         invalid_choice_exit = _tooling_audit_invalid_choice_exit(Path(tmp))
         lint_directory_cli = _tooling_audit_lint_directory_cli(Path(tmp), source)
         validate_generate_cli = _tooling_audit_validate_generate_cli(Path(tmp), source)
@@ -2238,6 +2239,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and format_write["ok"]
             and internal_error_exit["ok"]
             and missing_input_exit["ok"]
+            and missing_required_option_exit["ok"]
             and invalid_choice_exit["ok"]
             and validate_generate_cli["ok"]
             and cli_help_surface["ok"]
@@ -2253,6 +2255,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                 "format_write": format_write,
                 "internal_error_exit": internal_error_exit,
                 "missing_input_exit": missing_input_exit,
+                "missing_required_option_exit": missing_required_option_exit,
                 "invalid_choice_exit": invalid_choice_exit,
                 "validate_generate_cli": validate_generate_cli,
                 "cli_help_surface": cli_help_surface,
@@ -3018,6 +3021,40 @@ def _tooling_audit_missing_input_exit(tmp: Path) -> dict:
         "exit_code": exit_code,
         "stderr": stderr.strip(),
         "stdout": output.getvalue().strip(),
+    }
+
+
+def _tooling_audit_missing_required_option_exit(tmp: Path) -> dict:
+    source_path = tmp / "missing-required-option.appgen"
+    source_path.write_text("app MissingRequiredOption { targets: web }\ntable Thing { id: int pk }\n", encoding="utf-8")
+    cases = (
+        ("generate_missing_out", ("generate", str(source_path))),
+        ("nl_plan_missing_prompt", ("nl-plan", str(source_path))),
+    )
+    results = []
+    for name, argv in cases:
+        output = io.StringIO()
+        error = io.StringIO()
+        exit_code = 0
+        with contextlib.redirect_stdout(output), contextlib.redirect_stderr(error):
+            try:
+                exit_code = dsl_tooling_cli(argv)
+            except SystemExit as exc:
+                exit_code = int(exc.code or 0)
+        stderr = error.getvalue()
+        results.append(
+            {
+                "name": name,
+                "ok": exit_code == 2 and "the following arguments are required" in stderr and "Traceback" not in stderr,
+                "exit_code": exit_code,
+                "stderr": stderr.strip(),
+                "stdout": output.getvalue().strip(),
+            }
+        )
+    return {
+        "format": "appgen.missing-required-option-exit-audit.v1",
+        "ok": all(result["ok"] for result in results),
+        "cases": tuple(results),
     }
 
 

@@ -3537,3 +3537,13 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   `appgen.invalid-choice-exit-audit.v1` helper probe with `ok=True`, focused
   non-PBC CLI/audit tests (`2 passed`), scoped diff whitespace check, and
   restricted-name scan outside archive, Git internals, and active PBC paths.
+  Commit: `f9b88330`.
+- Current missing-required-option CLI audit pass closes the remaining
+  command-boundary gap for argparse required options. `appgen.tooling-audit.v1`
+  now embeds `appgen.missing-required-option-exit-audit.v1`, which proves
+  `appgen generate` without `--out` and `appgen nl-plan` without `--prompt`
+  fail with exit code `2`, argparse required-argument text, and no traceback.
+  Verification passed: Python compile for the touched tooling entrypoint, direct
+  `appgen.missing-required-option-exit-audit.v1` helper probe with `ok=True`,
+  focused non-PBC CLI/audit tests (`2 passed`), scoped diff whitespace check,
+  and restricted-name scan outside archive, Git internals, and active PBC paths.

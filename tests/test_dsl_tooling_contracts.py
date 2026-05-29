@@ -2418,6 +2418,14 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert cli_check["detail"]["format_write"]["organize_order"] == tuple(
         sorted(cli_check["detail"]["format_write"]["organize_order"])
     )
+    assert cli_check["detail"]["missing_required_option_exit"]["format"] == (
+        "appgen.missing-required-option-exit-audit.v1"
+    )
+    assert cli_check["detail"]["missing_required_option_exit"]["ok"] is True
+    assert {
+        "generate_missing_out",
+        "nl_plan_missing_prompt",
+    } <= {case["name"] for case in cli_check["detail"]["missing_required_option_exit"]["cases"]}
     assert {
         "graph_kind",
         "graph_format",
@@ -2654,6 +2662,18 @@ def test_invalid_choice_audit_covers_graph_formats_and_backend_choices(tmp_path:
     assert {"graph_kind", "graph_format", "migration_backend", "nl_backend"} <= set(cases)
     assert all(case["exit_code"] == 2 for case in cases.values())
     assert all("invalid choice" in case["stderr"] for case in cases.values())
+    assert all("Traceback" not in case["stderr"] for case in cases.values())
+
+
+def test_missing_required_option_audit_covers_required_cli_options(tmp_path: Path) -> None:
+    audit = appgen_dsl._tooling_audit_missing_required_option_exit(tmp_path)
+    cases = {case["name"]: case for case in audit["cases"]}
+
+    assert audit["format"] == "appgen.missing-required-option-exit-audit.v1"
+    assert audit["ok"] is True
+    assert {"generate_missing_out", "nl_plan_missing_prompt"} <= set(cases)
+    assert all(case["exit_code"] == 2 for case in cases.values())
+    assert all("the following arguments are required" in case["stderr"] for case in cases.values())
     assert all("Traceback" not in case["stderr"] for case in cases.values())
 
 
