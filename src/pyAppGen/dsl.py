@@ -2446,7 +2446,9 @@ def doctor_report_dsl() -> dict:
     """Check parser generation, imports, catalog, templates, backends, and IDE hooks."""
     root = Path(__file__).resolve().parents[2]
     vscode = _tooling_audit_vscode_extension(root)
+    cli_help = _tooling_audit_cli_help_surface(root)
     module_boundaries = module_boundary_audit_dsl()
+    alias_contract = cli_help.get("alias_contract", {})
     checks = (
         _doctor_check(
             "grammar_file",
@@ -2508,6 +2510,17 @@ def doctor_report_dsl() -> dict:
             lsp_capabilities_dsl()["source_of_truth"] == "appgen.semantic-model.v1",
             "Language-server adapter is bound to the shared semantic model.",
             {"report_format": "appgen.lsp-capabilities.v1"},
+        ),
+        _doctor_check(
+            "cli_alias_contract",
+            alias_contract.get("ok") is True and alias_contract.get("shared_target") == "pyAppGen.__main__:main",
+            "appgen and apg resolve to the same tooling entrypoint.",
+            {
+                "report_format": alias_contract.get("format"),
+                "commands": alias_contract.get("commands"),
+                "shared_target": alias_contract.get("shared_target"),
+                "module_dispatches_tooling": alias_contract.get("module_dispatches_tooling"),
+            },
         ),
         _doctor_check(
             "lsp_completion_coverage",

@@ -2851,12 +2851,18 @@ def test_doctor_report_checks_parser_catalog_generator_and_ide_hooks() -> None:
         "template_writers",
         "generator_backends",
         "lsp_semantic_service",
+        "cli_alias_contract",
         "lsp_completion_coverage",
         "semantic_symbol_coverage",
         "module_boundaries",
         "studio_semantic_service",
         "vscode_extension_surface",
     } <= {check["check"] for check in report["checks"]}
+    alias_check = next(check for check in report["checks"] if check["check"] == "cli_alias_contract")
+    assert alias_check["detail"]["report_format"] == "appgen.cli-alias-contract.v1"
+    assert alias_check["detail"]["commands"] == ("appgen", "apg")
+    assert alias_check["detail"]["shared_target"] == "pyAppGen.__main__:main"
+    assert alias_check["detail"]["module_dispatches_tooling"] is True
 
 
 def test_studio_semantic_service_audit_proves_panel_contracts() -> None:
