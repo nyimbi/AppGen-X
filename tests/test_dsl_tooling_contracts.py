@@ -1761,6 +1761,29 @@ def test_package_report_writes_release_evidence_bundle_when_output_dir_is_given(
     assert desktop_manifest["startup_assets_declared"] is True
 
 
+def test_package_cli_audit_proves_mobile_and_desktop_handoff_contracts(tmp_path: Path) -> None:
+    report = appgen_dsl._tooling_audit_package_verify_cli(tmp_path, TOOLING_SAMPLE)
+    manifest_case = next(case for case in report["cases"] if case["case"] == "package_writes_target_manifests")
+
+    assert report["format"] == "appgen.package-verify-cli-audit.v1"
+    assert report["ok"] is True
+    assert set(manifest_case["release_evidence_reports"]) == {"mobile", "desktop"}
+    assert manifest_case["mobile_artifact_class"] == "mobile_application"
+    assert {"mobile_metadata", "signing_posture", "offline_policy", "permissions", "smoke_launch"} <= set(
+        manifest_case["mobile_handoff_artifacts"]
+    )
+    assert manifest_case["mobile_signing_posture_declared"] is True
+    assert manifest_case["mobile_offline_policy_declared"] is True
+    assert manifest_case["mobile_smoke_entrypoint"] == "mobile.launch"
+    assert manifest_case["desktop_artifact_class"] == "desktop_application"
+    assert {"desktop_metadata", "installer_profile", "startup_assets", "menus", "smoke_launch"} <= set(
+        manifest_case["desktop_handoff_artifacts"]
+    )
+    assert manifest_case["desktop_installer_posture_declared"] is True
+    assert manifest_case["desktop_startup_assets_declared"] is True
+    assert manifest_case["desktop_smoke_entrypoint"] == "desktop.launch"
+
+
 def test_appgen_package_subcommand_materializes_release_evidence(tmp_path: Path) -> None:
     source_path = tmp_path / "release.appgen"
     output_dir = tmp_path / "dist"
@@ -2534,6 +2557,22 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
         "verify_all_targets",
         "package_writes_target_manifests",
     } <= {case["case"] for case in package_check["detail"]["cli"]["cases"]}
+    manifest_case = next(
+        case for case in package_check["detail"]["cli"]["cases"] if case["case"] == "package_writes_target_manifests"
+    )
+    assert set(manifest_case["release_evidence_reports"]) == {"mobile", "desktop"}
+    assert manifest_case["mobile_artifact_class"] == "mobile_application"
+    assert {"signing_posture", "offline_policy", "smoke_launch"} <= set(manifest_case["mobile_handoff_artifacts"])
+    assert manifest_case["mobile_signing_posture_declared"] is True
+    assert manifest_case["mobile_offline_policy_declared"] is True
+    assert manifest_case["mobile_smoke_entrypoint"] == "mobile.launch"
+    assert manifest_case["desktop_artifact_class"] == "desktop_application"
+    assert {"installer_profile", "startup_assets", "menus", "smoke_launch"} <= set(
+        manifest_case["desktop_handoff_artifacts"]
+    )
+    assert manifest_case["desktop_installer_posture_declared"] is True
+    assert manifest_case["desktop_startup_assets_declared"] is True
+    assert manifest_case["desktop_smoke_entrypoint"] == "desktop.launch"
     graph_check = next(check for check in report["checks"] if check["id"] == "graph_and_explain_tooling")
     assert graph_check["detail"]["cli"]["format"] == "appgen.graph-cli-format-audit.v1"
     assert graph_check["detail"]["cli"]["ok"] is True

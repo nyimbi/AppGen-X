@@ -3653,3 +3653,13 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   probe with `ok=True`, focused non-PBC designer-sync audit test (`1 passed`),
   scoped diff whitespace check, and restricted-name scan outside archive, Git
   internals, and active PBC paths.
+- Current package CLI audit hardening pass closes the gap between manifest-file
+  existence and deterministic target handoff evidence. `appgen.package-verify-
+  cli-audit.v1` now proves `appgen package --target mobile --target desktop`
+  writes release evidence for both targets plus mobile signing/offline/smoke
+  handoff metadata and desktop installer/startup/menu/smoke handoff metadata.
+  Verification passed: Python compile for the touched tooling entrypoint,
+  direct `appgen.package-verify-cli-audit.v1` helper probe with target handoff
+  evidence, focused non-PBC package audit test (`1 passed`), scoped diff
+  whitespace check, and restricted-name scan outside archive, Git internals, and
+  active PBC paths.

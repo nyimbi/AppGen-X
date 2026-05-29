@@ -3941,6 +3941,8 @@ def _tooling_audit_package_verify_cli(tmp: Path, source: str) -> dict:
         desktop_manifest = json.loads(desktop_manifest_path.read_text(encoding="utf-8"))
     except (FileNotFoundError, json.JSONDecodeError):
         desktop_manifest = {}
+    mobile_handoff = tuple(mobile_manifest.get("handoff_artifacts", ()))
+    desktop_handoff = tuple(desktop_manifest.get("handoff_artifacts", ()))
     cases = (
         {
             "case": "verify_all_targets",
@@ -3958,16 +3960,38 @@ def _tooling_audit_package_verify_cli(tmp: Path, source: str) -> dict:
             and package_payload.get("format") == "appgen.release-verifier-report.v1"
             and tuple(package_payload.get("targets", ())) == ("mobile", "desktop")
             and evidence_payload.get("format") == "appgen.release-evidence-file.v1"
+            and set(evidence_payload.get("reports", {})) == {"mobile", "desktop"}
             and mobile_manifest.get("format") == "appgen.package-manifest.v1"
             and desktop_manifest.get("format") == "appgen.package-manifest.v1"
             and mobile_manifest.get("target") == "mobile"
-            and desktop_manifest.get("target") == "desktop",
+            and desktop_manifest.get("target") == "desktop"
+            and mobile_manifest.get("artifact_class") == "mobile_application"
+            and mobile_manifest.get("signing_posture_declared") is True
+            and mobile_manifest.get("offline_policy_declared") is True
+            and mobile_manifest.get("smoke_entrypoint") == "mobile.launch"
+            and {"mobile_metadata", "signing_posture", "offline_policy", "permissions", "smoke_launch"} <= set(mobile_handoff)
+            and desktop_manifest.get("artifact_class") == "desktop_application"
+            and desktop_manifest.get("installer_posture_declared") is True
+            and desktop_manifest.get("startup_assets_declared") is True
+            and desktop_manifest.get("smoke_entrypoint") == "desktop.launch"
+            and {"desktop_metadata", "installer_profile", "startup_assets", "menus", "smoke_launch"} <= set(desktop_handoff),
             "exit_code": package_exit,
             "payload_format": package_payload.get("format"),
             "targets": tuple(package_payload.get("targets", ())),
             "artifacts": tuple(Path(item.get("path", "")).name for item in package_payload.get("written_artifacts", ())),
             "mobile_manifest": mobile_manifest.get("format"),
             "desktop_manifest": desktop_manifest.get("format"),
+            "release_evidence_reports": tuple(evidence_payload.get("reports", {}).keys()),
+            "mobile_artifact_class": mobile_manifest.get("artifact_class"),
+            "mobile_handoff_artifacts": mobile_handoff,
+            "mobile_signing_posture_declared": mobile_manifest.get("signing_posture_declared"),
+            "mobile_offline_policy_declared": mobile_manifest.get("offline_policy_declared"),
+            "mobile_smoke_entrypoint": mobile_manifest.get("smoke_entrypoint"),
+            "desktop_artifact_class": desktop_manifest.get("artifact_class"),
+            "desktop_handoff_artifacts": desktop_handoff,
+            "desktop_installer_posture_declared": desktop_manifest.get("installer_posture_declared"),
+            "desktop_startup_assets_declared": desktop_manifest.get("startup_assets_declared"),
+            "desktop_smoke_entrypoint": desktop_manifest.get("smoke_entrypoint"),
         },
     )
     return {
