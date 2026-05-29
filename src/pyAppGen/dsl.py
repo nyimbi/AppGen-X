@@ -3493,12 +3493,18 @@ def _tooling_audit_graph_cli_formats(tmp: Path, source: str) -> dict:
     source_path = tmp / "graph-cli.appgen"
     source_path.write_text(source, encoding="utf-8")
     cases = (
-        ("json", ("graph", str(source_path), "--kind", "workflow", "--format", "json")),
-        ("mermaid", ("graph", str(source_path), "--kind", "workflow", "--format", "mermaid")),
-        ("dot", ("graph", str(source_path), "--kind", "pbc", "--format", "dot")),
+        ("er_mermaid", "er", "mermaid", ("graph", str(source_path), "--kind", "er", "--format", "mermaid")),
+        ("workflow_json", "workflow", "json", ("graph", str(source_path), "--kind", "workflow", "--format", "json")),
+        (
+            "workflow_mermaid",
+            "workflow",
+            "mermaid",
+            ("graph", str(source_path), "--kind", "workflow", "--format", "mermaid"),
+        ),
+        ("pbc_dot", "pbc", "dot", ("graph", str(source_path), "--kind", "pbc", "--format", "dot")),
     )
     results = []
-    for output_format, argv in cases:
+    for case_id, graph_kind, output_format, argv in cases:
         output = io.StringIO()
         with contextlib.redirect_stdout(output):
             exit_code = dsl_tooling_cli(argv)
@@ -3509,12 +3515,14 @@ def _tooling_audit_graph_cli_formats(tmp: Path, source: str) -> dict:
                 payload = json.loads(stdout)
             except json.JSONDecodeError:
                 payload = {}
-            json_ok = payload.get("format") == "appgen.graph-report.v1" and payload.get("kind") == "workflow"
+            json_ok = payload.get("format") == "appgen.graph-report.v1" and payload.get("kind") == graph_kind
         text_ok = (output_format == "mermaid" and stdout.startswith("graph TD")) or (
             output_format == "dot" and stdout.startswith("digraph appgen")
         )
         results.append(
             {
+                "case": case_id,
+                "kind": graph_kind,
                 "format": output_format,
                 "ok": exit_code == 0 and (json_ok or text_ok),
                 "exit_code": exit_code,

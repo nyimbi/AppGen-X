@@ -2490,6 +2490,14 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
         "package_writes_target_manifests",
     } <= {case["case"] for case in package_check["detail"]["cli"]["cases"]}
     graph_check = next(check for check in report["checks"] if check["id"] == "graph_and_explain_tooling")
+    assert graph_check["detail"]["cli"]["format"] == "appgen.graph-cli-format-audit.v1"
+    assert graph_check["detail"]["cli"]["ok"] is True
+    assert {
+        "er_mermaid",
+        "workflow_json",
+        "workflow_mermaid",
+        "pbc_dot",
+    } <= {case["case"] for case in graph_check["detail"]["cli"]["cases"]}
     assert graph_check["detail"]["suite_cli"]["format"] == "appgen.graph-suite-cli-audit.v1"
     assert graph_check["detail"]["suite_cli"]["ok"] is True
     assert set(graph_check["detail"]["suite_cli"]["required_kinds"]) >= {
@@ -2727,6 +2735,22 @@ def test_explain_cli_audit_covers_text_and_json_modes(tmp_path: Path) -> None:
         "qualified_handler_text",
         "qualified_handler_json",
     } <= set(cases)
+    assert all(case["exit_code"] == 0 for case in cases.values())
+
+
+def test_graph_cli_audit_covers_documented_graph_examples(tmp_path: Path) -> None:
+    audit = appgen_dsl._tooling_audit_graph_cli_formats(tmp_path, TOOLING_SAMPLE)
+    cases = {case["case"]: case for case in audit["cases"]}
+
+    assert audit["format"] == "appgen.graph-cli-format-audit.v1"
+    assert audit["ok"] is True
+    assert {"er_mermaid", "workflow_json", "workflow_mermaid", "pbc_dot"} <= set(cases)
+    assert cases["er_mermaid"]["kind"] == "er"
+    assert cases["er_mermaid"]["format"] == "mermaid"
+    assert cases["workflow_json"]["kind"] == "workflow"
+    assert cases["workflow_json"]["format"] == "json"
+    assert cases["pbc_dot"]["kind"] == "pbc"
+    assert cases["pbc_dot"]["format"] == "dot"
     assert all(case["exit_code"] == 0 for case in cases.values())
 
 

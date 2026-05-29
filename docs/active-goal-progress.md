@@ -3597,3 +3597,13 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   `appgen.explain-cli-audit.v1` helper probe with `ok=True`, focused non-PBC
   explain audit test (`1 passed`), scoped diff whitespace check, and
   restricted-name scan outside archive, Git internals, and active PBC paths.
+  Commit: `feef60e8`.
+- Current graph CLI audit hardening pass closes the remaining gap between the
+  concrete `appgen graph` examples in `docs/tooling.md` and executable audit
+  evidence. `appgen.graph-cli-format-audit.v1` now proves ER Mermaid, workflow
+  JSON, workflow Mermaid, and PBC DOT command cases with explicit graph kind and
+  output format metadata. Verification passed: Python compile for the touched
+  tooling entrypoint, direct `appgen.graph-cli-format-audit.v1` helper probe
+  with `ok=True`, focused non-PBC graph audit test (`1 passed`), scoped diff
+  whitespace check, and restricted-name scan outside archive, Git internals, and
+  active PBC paths.
