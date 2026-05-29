@@ -5190,9 +5190,15 @@ def test_explain_cli_audit_covers_text_and_json_modes(tmp_path: Path) -> None:
     assert audit["ok"] is True
     assert audit["case_count"] == len(audit["cases"])
     assert audit["case_count"] == 6
+    assert audit["passing_case_count"] == audit["case_count"]
+    assert audit["exit_failure_count"] == 0
     assert audit["text_case_count"] == 3
     assert audit["json_case_count"] == 3
     assert audit["report_format_case_count"] == audit["case_count"]
+    assert audit["missing_report_format_count"] == 0
+    assert audit["symbol_case_count"] == 2
+    assert audit["diagnostic_case_count"] == 2
+    assert audit["handler_case_count"] == 2
     assert {
         "field_symbol_text",
         "field_symbol_json",

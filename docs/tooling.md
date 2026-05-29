@@ -827,8 +827,10 @@ matching handler edges. `appgen.explain-cli-audit.v1` proves the symbol,
 diagnostic, and handler text modes all include the same `format=...` envelope
 marker as JSON mode, so release logs and agents can identify explain contracts
 without parsing prose. The audit also reports total, text, JSON, and
-report-format-covered case counts so release evidence can prove all six explain
-modes remain covered. It also reports `symbol_id`, `symbol_kind`,
+report-format-covered case counts plus passing-case, exit-failure,
+missing-report-format, symbol-case, diagnostic-case, and handler-case counts so
+release evidence can prove all six explain modes remain covered. It also
+reports `symbol_id`, `symbol_kind`,
 `symbol_parent`, `symbol_reference_count`, `diagnostic_title`,
 `diagnostic_docs_url`, `handler_match_count`, and `handler_edges` from JSON
 mode so CLI release evidence carries the same navigational details as IDE

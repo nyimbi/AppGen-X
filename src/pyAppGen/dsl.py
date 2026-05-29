@@ -7217,9 +7217,15 @@ def _tooling_audit_explain_cli_formats(tmp: Path, source: str) -> dict:
         "format": "appgen.explain-cli-audit.v1",
         "ok": all(result["ok"] for result in results),
         "case_count": len(results),
+        "passing_case_count": sum(1 for result in results if result["ok"]),
+        "exit_failure_count": sum(1 for result in results if result["exit_code"] != 0),
         "text_case_count": sum(1 for result in results if result["case"].endswith("_text")),
         "json_case_count": sum(1 for result in results if result["case"].endswith("_json")),
         "report_format_case_count": sum(1 for result in results if result["has_report_format"]),
+        "missing_report_format_count": sum(1 for result in results if not result["has_report_format"]),
+        "symbol_case_count": sum(1 for result in results if "symbol" in result["case"]),
+        "diagnostic_case_count": sum(1 for result in results if "diagnostic" in result["case"]),
+        "handler_case_count": sum(1 for result in results if "handler" in result["case"]),
         "cases": tuple(results),
     }
 
