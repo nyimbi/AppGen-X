@@ -2759,6 +2759,7 @@ def _tooling_audit_lsp_stdio_transport(source: str) -> dict:
     uri = "memory://stdio-tooling-audit.appgen"
     input_stream = io.BytesIO()
     output_stream = io.BytesIO()
+    completion_position = _tooling_lsp_position(source, "Invoice")
     for message in (
         {"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}},
         {
@@ -2766,7 +2767,22 @@ def _tooling_audit_lsp_stdio_transport(source: str) -> dict:
             "method": "textDocument/didOpen",
             "params": {"textDocument": {"uri": uri, "languageId": "appgen", "version": 1, "text": source}},
         },
-        {"jsonrpc": "2.0", "id": 2, "method": "shutdown"},
+        {
+            "jsonrpc": "2.0",
+            "method": "textDocument/didChange",
+            "params": {
+                "textDocument": {"uri": uri, "version": 2},
+                "contentChanges": ({"text": source},),
+            },
+        },
+        {
+            "jsonrpc": "2.0",
+            "id": 2,
+            "method": "textDocument/completion",
+            "params": {"textDocument": {"uri": uri}, "position": completion_position},
+        },
+        {"jsonrpc": "2.0", "id": 3, "method": "workspace/symbol", "params": {"query": "Invoice"}},
+        {"jsonrpc": "2.0", "id": 4, "method": "shutdown"},
         {"jsonrpc": "2.0", "method": "exit"},
     ):
         _lsp_write_rpc_message(input_stream, message)
@@ -2783,12 +2799,25 @@ def _tooling_audit_lsp_stdio_transport(source: str) -> dict:
         "format": "appgen.lsp-stdio-transport-audit.v1",
         "ok": exit_code == 0
         and any(response.get("id") == 1 and "capabilities" in response.get("result", {}) for response in responses)
-        and any(response.get("method") == "textDocument/publishDiagnostics" for response in responses)
-        and any(response.get("id") == 2 and response.get("result") is None for response in responses),
+        and sum(1 for response in responses if response.get("method") == "textDocument/publishDiagnostics") >= 2
+        and any(
+            response.get("id") == 2
+            and any(item.get("label") == "Invoice" for item in response.get("result", {}).get("items", ()))
+            for response in responses
+        )
+        and any(
+            response.get("id") == 3
+            and any(item.get("name") == "Invoice" for item in response.get("result", ()))
+            for response in responses
+        )
+        and any(response.get("id") == 4 and response.get("result") is None for response in responses),
         "exit_code": exit_code,
         "response_count": len(responses),
         "methods": tuple(response.get("method") for response in responses if response.get("method")),
         "ids": tuple(response.get("id") for response in responses if "id" in response),
+        "diagnostic_publication_count": sum(
+            1 for response in responses if response.get("method") == "textDocument/publishDiagnostics"
+        ),
     }
 
 

@@ -1405,6 +1405,17 @@ def test_appgen_lsp_stdio_subcommand_speaks_json_rpc_frames() -> None:
     assert any(response.get("id") == 2 and response.get("result") is None for response in responses)
 
 
+def test_lsp_stdio_transport_audit_exercises_editor_requests() -> None:
+    audit = appgen_dsl._tooling_audit_lsp_stdio_transport(TOOLING_SAMPLE)
+
+    assert audit["format"] == "appgen.lsp-stdio-transport-audit.v1"
+    assert audit["ok"] is True
+    assert audit["exit_code"] == 0
+    assert audit["diagnostic_publication_count"] >= 2
+    assert {1, 2, 3, 4} <= set(audit["ids"])
+    assert "textDocument/publishDiagnostics" in audit["methods"]
+
+
 def test_lsp_json_rpc_server_serves_code_actions_formatting_and_did_change() -> None:
     bad_uri = "memory://bad-handler.appgen"
     format_uri = "memory://format.appgen"

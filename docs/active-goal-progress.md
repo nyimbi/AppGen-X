@@ -3556,4 +3556,15 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   compile for the touched tooling entrypoint, direct
   `appgen.lsp-json-rpc-audit.v1` helper probe with `ok=True`, focused non-PBC
   LSP audit test (`1 passed`), scoped diff whitespace check, and restricted-name
-  scan outside archive, Git internals, and active PBC paths.
+  scan outside archive, Git internals, and active PBC paths. Commit:
+  `726ebaaf`.
+- Current LSP stdio transport audit hardening pass closes the gap between
+  real framed stdio launch evidence and the editor request surface. The
+  `appgen.lsp-stdio-transport-audit.v1` proof now sends Content-Length framed
+  initialize, didOpen, didChange, completion, workspace symbol, shutdown, and
+  exit messages, and verifies diagnostics are republished plus completion and
+  workspace-symbol responses resolve `Invoice`. Verification passed: Python
+  compile for the touched tooling entrypoint, direct
+  `appgen.lsp-stdio-transport-audit.v1` helper probe with `ok=True`, focused
+  non-PBC stdio audit test (`1 passed`), scoped diff whitespace check, and
+  restricted-name scan outside archive, Git internals, and active PBC paths.
