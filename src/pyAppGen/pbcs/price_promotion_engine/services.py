@@ -166,3 +166,30 @@ def smoke_test():
         'result': result,
         'side_effects': (),
     }
+
+
+
+def standalone_service_operation_contracts():
+    contracts=(
+        {'operation':'seed_demo_workspace','operation_kind':'command','method':'POST','path':'/app/price-promotion-engine/demo-workspace','table':'price_promotion_engine_price_configuration','wizard':'PriceSetupWizard','permission':'price_promotion_engine.configure'},
+        {'operation':'build_workbench','operation_kind':'query','method':'GET','path':'/app/price-promotion-engine/workbench','table':'price_promotion_engine_price_decision','wizard':None,'permission':'price_promotion_engine.read'},
+        {'operation':'register_price_rule','operation_kind':'command','method':'POST','path':'/app/price-promotion-engine/price-rules','table':'price_promotion_engine_price_rule','wizard':'PriceSetupWizard','permission':'price_promotion_engine.price'},
+        {'operation':'quote_price','operation_kind':'command','method':'POST','path':'/app/price-promotion-engine/quotes','table':'price_promotion_engine_price_decision','wizard':'PriceQuoteWizard','permission':'price_promotion_engine.quote'},
+        {'operation':'redeem_coupon','operation_kind':'command','method':'POST','path':'/app/price-promotion-engine/coupon-redemptions','table':'price_promotion_engine_coupon','wizard':'CouponRedemptionWizard','permission':'price_promotion_engine.promotion'},
+        {'operation':'settle_promotion','operation_kind':'command','method':'POST','path':'/app/price-promotion-engine/promotion-settlements','table':'price_promotion_engine_promotion_settlement','wizard':'PromotionSettlementWizard','permission':'price_promotion_engine.settle'},
+    )
+    return {'format':'appgen.price-promotion-engine-standalone-service.v1','ok':all(i['table'].startswith('price_promotion_engine_') for i in contracts),'pbc':'price_promotion_engine','contracts':contracts,'operations':tuple(i['operation'] for i in contracts),'command_operations':tuple(i['operation'] for i in contracts if i['operation_kind']=='command'),'query_operations':tuple(i['operation'] for i in contracts if i['operation_kind']=='query'),'side_effects':()}
+
+class PricePromotionEngineStandaloneService:
+    def __init__(self,repository=None,database_path=':memory:'):
+        if repository is None:
+            from .repository import PricePromotionEngineStandaloneRepository
+            repository=PricePromotionEngineStandaloneRepository(database_path=database_path)
+        self.repository=repository
+    def close(self): self.repository.close()
+    def seed_demo_workspace(self,tenant='tenant_demo'): return self.repository.seed_demo_workspace(tenant=tenant)
+    def build_workbench(self,tenant='tenant_demo'): return self.repository.build_workbench(tenant)
+    def register_price_rule(self,tenant,command): return self.repository.register_price_rule(tenant,command)
+    def quote_price(self,tenant,command): return self.repository.quote_price(tenant,command)
+    def redeem_coupon(self,tenant,decision_id,coupon_code): return self.repository.redeem_coupon(tenant,decision_id,coupon_code)
+    def settle_promotion(self,tenant,accrual_id,settled_amount,settled_by='trade_finance'): return self.repository.settle_promotion(tenant,accrual_id,settled_amount,settled_by)

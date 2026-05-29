@@ -9,6 +9,7 @@ from .runtime import PRICE_PROMOTION_ENGINE_REQUIRED_EVENT_TOPIC
 from .runtime import PRICE_PROMOTION_ENGINE_REQUIRED_RULE_FIELDS
 from .runtime import PRICE_PROMOTION_ENGINE_RUNTIME_TABLES
 from .runtime import PRICE_PROMOTION_ENGINE_SUPPORTED_PARAMETER_KEYS
+from .runtime import PRICE_PROMOTION_ENGINE_SUPPORTED_CONFIGURATION_FIELDS
 from .runtime import price_promotion_engine_binding_evidence
 
 
@@ -294,3 +295,49 @@ def smoke_test():
         "cards": cards,
         "side_effects": (),
     }
+
+
+
+def price_promotion_engine_form_contracts() -> dict:
+    contracts=(
+        {'key':'PriceConfigurationForm','operation':'configure_runtime','table':'price_promotion_engine_price_configuration','fields':PRICE_PROMOTION_ENGINE_SUPPORTED_CONFIGURATION_FIELDS,'permission':'price_promotion_engine.configure','keywords':('configure','currency','calendar')},
+        {'key':'PriceRuleForm','operation':'register_price_rule','table':'price_promotion_engine_price_rule','fields':('price_rule_id','tenant','sku','region','currency','base_price','cost','segments','volume_breaks','status'),'permission':'price_promotion_engine.price','keywords':('price rule','sku','base price')},
+        {'key':'PriceAgreementForm','operation':'register_price_agreement','table':'price_promotion_engine_price_agreement','fields':('agreement_id','tenant','customer_id','sku','contracted_price','effective_from','effective_to'),'permission':'price_promotion_engine.price','keywords':('agreement','contract price','customer')},
+        {'key':'PromotionForm','operation':'register_promotion','table':'price_promotion_engine_promotion','fields':('promotion_id','tenant','code','discount_percent','segments','regions','currencies','stackable','budget_amount','status'),'permission':'price_promotion_engine.promotion','keywords':('promotion','coupon','discount')},
+        {'key':'PriceQuoteForm','operation':'quote_price','table':'price_promotion_engine_price_decision','fields':('decision_id','tenant','customer_id','sku','region','currency','quantity','promotion_codes'),'permission':'price_promotion_engine.quote','keywords':('quote','decision','checkout')},
+        {'key':'CouponRedemptionForm','operation':'redeem_coupon','table':'price_promotion_engine_coupon','fields':('decision_id','coupon_code'),'permission':'price_promotion_engine.promotion','keywords':('coupon','redeem')},
+        {'key':'PromotionSettlementForm','operation':'settle_promotion','table':'price_promotion_engine_promotion_settlement','fields':('accrual_id','settled_amount','settled_by'),'permission':'price_promotion_engine.settle','keywords':('settle','accrual','trade promotion')},
+    )
+    return {'format':'appgen.price-promotion-engine-standalone-forms.v1','ok':all(i['table'].startswith('price_promotion_engine_') for i in contracts),'pbc':'price_promotion_engine','contracts':contracts,'side_effects':()}
+
+def price_promotion_engine_wizard_contracts() -> dict:
+    contracts=(
+        {'key':'PriceSetupWizard','steps':('configure_runtime','compile_policy','register_price_rule','register_customer_agreement'),'forms':('PriceConfigurationForm','PriceRuleForm','PriceAgreementForm'),'keywords':('configure','price rule','agreement')},
+        {'key':'PromotionLaunchWizard','steps':('create_promotion','approve_discount','create_coupon','validate_budget'),'forms':('PromotionForm',),'keywords':('promotion','campaign','coupon')},
+        {'key':'PriceQuoteWizard','steps':('resolve_segment_forecast','select_price_rule','simulate_margin','create_decision'),'forms':('PriceQuoteForm',),'keywords':('quote','checkout','decision')},
+        {'key':'CouponRedemptionWizard','steps':('validate_coupon','apply_promotion','update_budget','emit_appgen_event'),'forms':('CouponRedemptionForm',),'keywords':('coupon','redeem','apply')},
+        {'key':'PromotionSettlementWizard','steps':('accrue_promotion','settle_accrual','post_settlement_event'),'forms':('PromotionSettlementForm',),'keywords':('settle','accrual','trade')},
+    )
+    return {'format':'appgen.price-promotion-engine-standalone-wizards.v1','ok':all(i['steps'] for i in contracts),'pbc':'price_promotion_engine','contracts':contracts,'side_effects':()}
+
+def price_promotion_engine_control_catalog() -> dict:
+    contracts=(
+        {'key':'price_backend_event_contract','operation':'run_control_tests','table':'price_promotion_engine_price_audit_trace','permission':'price_promotion_engine.audit'},
+        {'key':'margin_guardrail_control','operation':'quote_price','table':'price_promotion_engine_price_margin_guardrail','permission':'price_promotion_engine.audit'},
+        {'key':'promotion_settlement_control','operation':'settle_promotion','table':'price_promotion_engine_promotion_settlement','permission':'price_promotion_engine.audit'},
+    )
+    return {'format':'appgen.price-promotion-engine-standalone-controls.v1','ok':all(i['table'].startswith('price_promotion_engine_') for i in contracts),'pbc':'price_promotion_engine','contracts':contracts,'side_effects':()}
+
+def price_promotion_engine_standalone_workbench_blueprint() -> dict:
+    forms=price_promotion_engine_form_contracts(); wizards=price_promotion_engine_wizard_contracts(); controls=price_promotion_engine_control_catalog()
+    return {'format':'appgen.price-promotion-engine-standalone-workbench.v1','ok':forms['ok'] and wizards['ok'] and controls['ok'],'pbc':'price_promotion_engine','forms':forms['contracts'],'wizards':wizards['contracts'],'controls':controls['contracts'],'panels':price_promotion_engine_ui_contract()['panels'],'side_effects':()}
+
+def price_promotion_engine_render_standalone_workbench(workbench: dict) -> dict:
+    bp=price_promotion_engine_standalone_workbench_blueprint(); cards=(
+        {'key':'price_rules','value':workbench.get('price_rule_count',0),'fragment':'PriceRuleConsole'},
+        {'key':'promotions','value':workbench.get('promotion_count',0),'fragment':'PromotionConsole'},
+        {'key':'approved_promotions','value':workbench.get('approved_promotion_count',0),'fragment':'PromotionApprovalBoard'},
+        {'key':'decisions','value':workbench.get('price_decision_count',workbench.get('decision_count',0)),'fragment':'PriceDecisionConsole'},
+        {'key':'coupon_redemptions','value':workbench.get('coupon_redemption_count',0),'fragment':'CouponConsole'},
+        {'key':'settlements','value':workbench.get('promotion_settlement_count',0),'fragment':'PromotionSettlementBoard'},)
+    return {'format':'appgen.price-promotion-engine-standalone-render.v1','ok':bp['ok'] and bool(cards),'pbc':'price_promotion_engine','tenant':workbench.get('tenant'),'cards':cards,'forms':tuple(i['key'] for i in bp['forms']),'wizards':tuple(i['key'] for i in bp['wizards']),'controls':tuple(i['key'] for i in bp['controls']),'side_effects':()}
