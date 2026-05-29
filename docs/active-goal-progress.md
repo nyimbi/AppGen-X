@@ -3518,4 +3518,13 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   for the touched tooling entrypoint, focused formatter CLI tests (`2 passed`),
   direct `appgen.format-write-audit.v1` helper probe with `ok=True`, scoped diff
   whitespace check, and restricted-name scan outside archive, Git internals, and
-  active PBC paths.
+  active PBC paths. Commit: `072f196e`.
+- Current designer-sync CLI audit hardening pass closes a command-boundary gap
+  for visual designer edits. `appgen.designer-sync-cli-audit.v1` now proves the
+  CLI accepts structured edit objects, rejects malformed JSON, and also rejects
+  non-object JSON such as arrays with exit code `2` before visual edits can
+  reach the semantic designer pipeline. Verification passed: Python compile for
+  the touched tooling entrypoint, focused designer-sync CLI test (`1 passed`),
+  direct `appgen.designer-sync-cli-audit.v1` helper probe with `ok=True`, scoped
+  diff whitespace check, and restricted-name scan outside archive, Git internals,
+  and active PBC paths.

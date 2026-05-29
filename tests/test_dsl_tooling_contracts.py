@@ -1997,6 +1997,13 @@ def test_appgen_designer_sync_subcommand_emits_json_contract(tmp_path: Path) -> 
         text=True,
         capture_output=True,
     )
+    non_object_edit_result = subprocess.run(
+        [sys.executable, "-m", "pyAppGen", "designer-sync", str(path), "--edit-json", "[]", "--json"],
+        check=False,
+        cwd=Path(__file__).resolve().parents[1],
+        text=True,
+        capture_output=True,
+    )
 
     assert result.returncode == 0, result.stderr
     payload = json.loads(result.stdout)
@@ -2008,7 +2015,10 @@ def test_appgen_designer_sync_subcommand_emits_json_contract(tmp_path: Path) -> 
     assert "sync_note" in edit_payload["visual_edit"]["patched_source"]
     assert invalid_edit_result.returncode == 2
     assert "invalid JSON for --edit-json" in invalid_edit_result.stderr
+    assert non_object_edit_result.returncode == 2
+    assert "--edit-json must be a JSON object" in non_object_edit_result.stderr
     assert "Traceback" not in invalid_edit_result.stderr
+    assert "Traceback" not in non_object_edit_result.stderr
 
 
 def test_diagnostic_catalog_and_fixture_audit_cover_required_agx_codes() -> None:
@@ -2342,6 +2352,11 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
         "package_and_release_verifiers",
         "parser_golden_and_drift_gates",
     } <= {check["id"] for check in report["checks"]}
+    designer_check = next(check for check in report["checks"] if check["id"] == "ide_visual_designer_round_trip")
+    assert designer_check["detail"]["cli"]["format"] == "appgen.designer-sync-cli-audit.v1"
+    assert designer_check["detail"]["cli"]["ok"] is True
+    assert designer_check["detail"]["cli"]["non_object_exit"] == 2
+    assert "--edit-json must be a JSON object" in designer_check["detail"]["cli"]["non_object_stderr"]
     lsp_check = next(check for check in report["checks"] if check["id"] == "language_server_core_features")
     assert lsp_check["detail"]["rpc"]["format"] == "appgen.lsp-json-rpc-audit.v1"
     assert lsp_check["detail"]["rpc"]["blocking_gaps"] == ()

@@ -3365,6 +3365,15 @@ def _tooling_audit_designer_sync_cli(tmp: Path, source: str) -> dict:
         except SystemExit as exc:
             invalid_exit = int(exc.code or 0)
     invalid_stderr = invalid_error.getvalue()
+    non_object_output = io.StringIO()
+    non_object_error = io.StringIO()
+    non_object_exit = 0
+    with contextlib.redirect_stdout(non_object_output), contextlib.redirect_stderr(non_object_error):
+        try:
+            non_object_exit = dsl_tooling_cli(("designer-sync", str(source_path), "--edit-json", "[]", "--json"))
+        except SystemExit as exc:
+            non_object_exit = int(exc.code or 0)
+    non_object_stderr = non_object_error.getvalue()
     return {
         "format": "appgen.designer-sync-cli-audit.v1",
         "ok": valid_exit == 0
@@ -3372,12 +3381,17 @@ def _tooling_audit_designer_sync_cli(tmp: Path, source: str) -> dict:
         and "sync_note" in valid_payload.get("visual_edit", {}).get("patched_source", "")
         and invalid_exit == 2
         and "invalid JSON for --edit-json" in invalid_stderr
-        and "Traceback" not in invalid_stderr,
+        and "Traceback" not in invalid_stderr
+        and non_object_exit == 2
+        and "--edit-json must be a JSON object" in non_object_stderr
+        and "Traceback" not in non_object_stderr,
         "valid_exit": valid_exit,
         "valid_payload_format": valid_payload.get("format"),
         "valid_round_trip": valid_payload.get("visual_edit", {}).get("round_trip_ok"),
         "invalid_exit": invalid_exit,
         "invalid_stderr": invalid_stderr.strip(),
+        "non_object_exit": non_object_exit,
+        "non_object_stderr": non_object_stderr.strip(),
     }
 
 
