@@ -1008,6 +1008,9 @@ applied text edits, and the lint result after applying the selected quick fix.
 Without `--json`, the same command prints the
 `appgen.lsp-code-action-apply.v1` format, action id, change status, edit count,
 lint status, title, available actions for unknown ids, and diagnostics.
+`appgen.lsp-code-action-text-renderer.v1` is embedded in the tooling audit to
+prove quick-fix logs keep success, failure, title, available-action, lint, edit,
+and diagnostic evidence visible without JSON parsing.
 This is the evidence path for missing-operation, lookup-directive,
 event-contract, relationship, typo, secret-literal replacement, invalid
 runtime/stream/backend picker removal, PBC manifest, agent-permission, package

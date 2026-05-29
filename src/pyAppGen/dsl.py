@@ -2789,6 +2789,58 @@ def _emit_lsp_code_action_apply_text(payload: dict) -> None:
         print(f"{diagnostic['severity']} {diagnostic['code']}: {diagnostic['message']}")
 
 
+def _lsp_code_action_text_renderer_contract() -> dict:
+    """Prove LSP code-action text logs expose quick-fix evidence."""
+    success_payload = {
+        "format": "appgen.lsp-code-action-apply.v1",
+        "ok": True,
+        "action_id": "create_operation_from_handler",
+        "changed": True,
+        "applied_edits": ({"newText": "operation SubmitInvoice {}"},),
+        "lint": {"ok": True},
+        "title": "Create operation SubmitInvoice",
+        "available_actions": (),
+        "diagnostics": (),
+    }
+    failure_payload = {
+        "format": "appgen.lsp-code-action-apply.v1",
+        "ok": False,
+        "action_id": "missing_action",
+        "changed": False,
+        "applied_edits": (),
+        "lint": {"ok": False},
+        "available_actions": ("create_operation_from_handler", "create_flow_from_handler"),
+        "diagnostics": (
+            {
+                "severity": "error",
+                "code": "AGX1002",
+                "message": "Unknown code action: missing_action",
+            },
+        ),
+    }
+    output = io.StringIO()
+    with contextlib.redirect_stdout(output):
+        _emit_tooling_payload(success_payload, as_json=False)
+        _emit_tooling_payload(failure_payload, as_json=False)
+    text = output.getvalue()
+    required_fragments = (
+        "lsp-code-action ok: format=appgen.lsp-code-action-apply.v1 action=create_operation_from_handler changed=True edits=1 lint_ok=True",
+        "title Create operation SubmitInvoice",
+        "lsp-code-action failed: format=appgen.lsp-code-action-apply.v1 action=missing_action changed=False edits=0 lint_ok=False",
+        "available-actions create_operation_from_handler, create_flow_from_handler",
+        "error AGX1002: Unknown code action: missing_action",
+    )
+    missing = tuple(fragment for fragment in required_fragments if fragment not in text)
+    return {
+        "format": "appgen.lsp-code-action-text-renderer.v1",
+        "ok": not missing and not text.lstrip().startswith("{"),
+        "required_fragments": required_fragments,
+        "missing_fragments": missing,
+        "json_fallback": text.lstrip().startswith("{"),
+        "text_prefix": text[:240],
+    }
+
+
 def _graph_as_text(graph: dict, output_format: str) -> str:
     nodes = graph.get("nodes", ())
     edges = graph.get("edges", ())
@@ -3251,6 +3303,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
         action_id="create_operation_from_handler",
     )
     code_action_apply_audit = lsp_code_action_apply_audit_dsl()
+    code_action_text_renderer = _lsp_code_action_text_renderer_contract()
     designer = designer_sync_report_dsl(
         source,
         source_name="tooling-audit.appgen",
@@ -3559,13 +3612,15 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and quick_fix["changed"]
             and "operation SubmitInvoice" in quick_fix["patched_source"]
             and code_action_apply_audit["ok"]
+            and code_action_text_renderer["ok"]
             and lsp_apply_cli["ok"],
-            "LSP code actions are executable through deterministic DSL patch application contracts and the appgen lsp CLI.",
+            "LSP code actions are executable through deterministic DSL patch application contracts, text evidence, and the appgen lsp CLI.",
             "docs/tooling.md#code-actions",
             {
                 "format": quick_fix.get("format"),
                 "action": quick_fix.get("action_id"),
                 "application_audit": code_action_apply_audit,
+                "text_renderer": code_action_text_renderer,
                 "cli": lsp_apply_cli,
             },
         ),

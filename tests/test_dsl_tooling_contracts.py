@@ -4010,6 +4010,24 @@ def test_lsp_service_text_renderer_contract_proves_editor_log_markers() -> None:
     } <= set(report["required_fragments"])
 
 
+def test_lsp_code_action_text_renderer_contract_proves_quick_fix_log_markers() -> None:
+    report = appgen_dsl._lsp_code_action_text_renderer_contract()
+
+    assert report["format"] == "appgen.lsp-code-action-text-renderer.v1"
+    assert report["ok"] is True
+    assert report["missing_fragments"] == ()
+    assert report["json_fallback"] is False
+    assert report["text_prefix"].startswith(
+        "lsp-code-action ok: format=appgen.lsp-code-action-apply.v1 action=create_operation_from_handler"
+    )
+    assert {
+        "title Create operation SubmitInvoice",
+        "lsp-code-action failed: format=appgen.lsp-code-action-apply.v1 action=missing_action changed=False edits=0 lint_ok=False",
+        "available-actions create_operation_from_handler, create_flow_from_handler",
+        "error AGX1002: Unknown code action: missing_action",
+    } <= set(report["required_fragments"])
+
+
 def test_tooling_audit_text_summary_exposes_sections_gaps_and_formats() -> None:
     payload = {
         "format": "appgen.tooling-audit.v1",
