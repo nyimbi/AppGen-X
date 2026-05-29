@@ -2486,15 +2486,15 @@ def test_appgen_package_subcommand_materializes_release_evidence(tmp_path: Path)
     assert text_result.returncode == 0, text_result.stderr
     assert text_result.stdout.startswith("release-verify ok: format=appgen.release-verifier-report.v1 targets=mobile")
     assert "written=2" in text_result.stdout
-    assert "release-evidence appgen.release-evidence-bundle.v1: artifacts=1" in text_result.stdout
-    assert "graph-suite appgen.graph-suite-report.v1: kinds=9 formats=3" in text_result.stdout
+    assert "release-evidence format=appgen.release-evidence-bundle.v1: artifacts=1" in text_result.stdout
+    assert "graph-suite format=appgen.graph-suite-report.v1: kinds=9 formats=3" in text_result.stdout
     assert "ok mobile" in text_result.stdout
     assert f"artifact release_evidence: {output_dir / 'text' / 'appgen-release-evidence.json'}" in text_result.stdout
     assert f"artifact mobile_package_manifest: {output_dir / 'text' / 'appgen-package-mobile.json'}" in text_result.stdout
     assert verify_text.returncode == 0, verify_text.stderr
     assert verify_text.stdout.startswith("release-verify ok: format=appgen.release-verifier-report.v1 targets=mobile written=0")
-    assert "release-evidence appgen.release-evidence-bundle.v1: artifacts=1" in verify_text.stdout
-    assert "graph-suite appgen.graph-suite-report.v1: kinds=9 formats=3" in verify_text.stdout
+    assert "release-evidence format=appgen.release-evidence-bundle.v1: artifacts=1" in verify_text.stdout
+    assert "graph-suite format=appgen.graph-suite-report.v1: kinds=9 formats=3" in verify_text.stdout
     assert "ok mobile" in verify_text.stdout
     assert "artifact " not in verify_text.stdout
     assert invalid_target.returncode == 2
@@ -2524,8 +2524,8 @@ def test_appgen_verify_text_reports_target_blocking_gaps(tmp_path: Path) -> None
 
     assert result.returncode == 1, result.stderr
     assert result.stdout.startswith("release-verify failed: format=appgen.release-verifier-report.v1 targets=mobile written=0")
-    assert "release-evidence appgen.release-evidence-bundle.v1" in result.stdout
-    assert "graph-suite appgen.graph-suite-report.v1: kinds=9 formats=3" in result.stdout
+    assert "release-evidence format=appgen.release-evidence-bundle.v1" in result.stdout
+    assert "graph-suite format=appgen.graph-suite-report.v1: kinds=9 formats=3" in result.stdout
     assert "fail mobile gaps=" in result.stdout
     assert "package_metadata_exists" in result.stdout
     assert "smoke_launch_not_declared" in result.stdout

@@ -2189,11 +2189,11 @@ def _emit_release_verifier_text(payload: dict) -> None:
     )
     evidence = payload.get("evidence_bundle", {})
     if evidence.get("format"):
-        print(f"release-evidence {evidence.get('format')}: artifacts={len(evidence.get('artifacts', ()))}")
+        print(f"release-evidence format={evidence.get('format')}: artifacts={len(evidence.get('artifacts', ()))}")
     graph = evidence.get("graph_suite", {})
     if graph.get("format"):
         print(
-            f"graph-suite {graph.get('format')}: "
+            f"graph-suite format={graph.get('format')}: "
             f"kinds={len(graph.get('required_kinds', ()))} formats={len(graph.get('formats', ()))}"
         )
     for check in payload.get("checks", ()):
