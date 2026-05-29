@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from .runtime import production_control_build_api_contract
 from .runtime import production_control_build_release_evidence
 from .runtime import production_control_build_schema_contract
@@ -76,3 +78,15 @@ def smoke_test() -> dict:
     validation = validate_release_evidence()
     evidence = build_release_evidence()
     return {"ok": validation["ok"] and evidence.get("ok") is True, "validation": validation, "evidence": evidence, "side_effects": ()}
+
+
+
+def _standalone_documentation_evidence():
+    base=Path(__file__).resolve().parent; required=('README.md','SPECIFICATION.md','RELEASE_EVIDENCE.md','repository.py','standalone.py'); docs=tuple({'path':n,'exists':(base/n).exists()} for n in required)
+    return {'ok':all(i['exists'] for i in docs),'docs':docs,'side_effects':()}
+_original_production_control_build_release_evidence=build_release_evidence
+def build_release_evidence():
+    evidence=dict(_original_production_control_build_release_evidence())
+    from . import standalone
+    from .repository import standalone_repository_smoke_test
+    evidence['documentation']=_standalone_documentation_evidence(); evidence['standalone_app']=standalone.production_control_standalone_app_smoke(); evidence['standalone_repository']=standalone_repository_smoke_test(); evidence['ok']=evidence.get('ok') is True and evidence['documentation']['ok'] and evidence['standalone_app']['ok'] and evidence['standalone_repository']['ok']; return evidence
