@@ -349,3 +349,30 @@ def smoke_test():
         "preview": preview,
         "side_effects": (),
     }
+
+
+
+def standalone_service_operation_contracts():
+    contracts=(
+        {'operation':'seed_demo_workspace','operation_kind':'command','method':'POST','path':'/app/asset-lifecycle/demo-workspace','table':'asset_lifecycle_asset_configuration','wizard':'AssetCapitalizationWizard','permission':'asset_lifecycle.configure'},
+        {'operation':'build_workbench','operation_kind':'query','method':'GET','path':'/app/asset-lifecycle/workbench','table':'asset_lifecycle_fixed_asset','wizard':None,'permission':'asset_lifecycle.read'},
+        {'operation':'register_asset','operation_kind':'command','method':'POST','path':'/app/asset-lifecycle/assets','table':'asset_lifecycle_fixed_asset','wizard':'AssetCapitalizationWizard','permission':'asset_lifecycle.register'},
+        {'operation':'run_depreciation','operation_kind':'command','method':'POST','path':'/app/asset-lifecycle/depreciation-runs','table':'asset_lifecycle_asset_depreciation_run','wizard':'DepreciationRunWizard','permission':'asset_lifecycle.depreciation'},
+        {'operation':'transfer_asset','operation_kind':'command','method':'POST','path':'/app/asset-lifecycle/transfers','table':'asset_lifecycle_asset_transfer','wizard':'AssetTransferWizard','permission':'asset_lifecycle.transfer'},
+        {'operation':'generate_asset_audit_proof','operation_kind':'command','method':'POST','path':'/app/asset-lifecycle/audit-proofs','table':'asset_lifecycle_asset_audit_proof','wizard':'AssetAuditProofWizard','permission':'asset_lifecycle.audit'},
+    )
+    return {'format':'appgen.asset-lifecycle-standalone-service.v1','ok':all(i['table'].startswith('asset_lifecycle_') for i in contracts),'pbc':'asset_lifecycle','contracts':contracts,'operations':tuple(i['operation'] for i in contracts),'command_operations':tuple(i['operation'] for i in contracts if i['operation_kind']=='command'),'query_operations':tuple(i['operation'] for i in contracts if i['operation_kind']=='query'),'side_effects':()}
+
+class AssetLifecycleStandaloneService:
+    def __init__(self,repository=None,database_path=':memory:'):
+        if repository is None:
+            from .repository import AssetLifecycleStandaloneRepository
+            repository=AssetLifecycleStandaloneRepository(database_path=database_path)
+        self.repository=repository
+    def close(self): self.repository.close()
+    def seed_demo_workspace(self,tenant='tenant_demo'): return self.repository.seed_demo_workspace(tenant=tenant)
+    def build_workbench(self,tenant='tenant_demo'): return self.repository.build_workbench(tenant)
+    def register_asset(self,tenant,asset): return self.repository.register_asset(tenant,asset)
+    def run_depreciation(self,tenant,run_id,period): return self.repository.run_depreciation(tenant,run_id,period)
+    def transfer_asset(self,tenant,asset_id,location,cost_center,approved_by): return self.repository.transfer_asset(tenant,asset_id,location,cost_center,approved_by)
+    def generate_asset_audit_proof(self,tenant,asset_id,disclosure=('asset_id','status','book_value','location')): return self.repository.generate_asset_audit_proof(tenant,asset_id,tuple(disclosure))
