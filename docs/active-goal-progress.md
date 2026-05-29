@@ -3325,6 +3325,16 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   probe, focused graph/explain CLI tests (`2 passed`), scoped diff whitespace
   check, and restricted-name scan outside archive, Git internals, and active
   PBC paths. Commit: `e06e06d5`.
+- Current validate target CLI audit pass closes the gap between successful
+  validation evidence and the documented `appgen validate --targets` failure
+  contract. `appgen.validate-generate-cli-audit.v1` now proves undeclared
+  target requests and unknown target requests exit `1`, return
+  `appgen.validate-report.v1`, include `requested_targets`, `app_targets`,
+  target-compatibility details, and emit `AGX0802`. Verification passed:
+  Python compile for touched tooling entrypoints, direct validate/generate CLI
+  audit helper probe, focused validate target tests (`2 passed`), scoped diff
+  whitespace check, and restricted-name scan outside archive, Git internals,
+  and active PBC paths. Commit: pending.
 - Current parallel PBC implementation pass delivered executable code for six
   PBCs rather than plan-only artifacts: `actuarial_pricing_reserving`,
   `advertising_campaign_operations`, `agri_supply_chain_traceability`,

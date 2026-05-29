@@ -3033,11 +3033,13 @@ def _tooling_audit_lint_directory_cli(tmp: Path, source: str) -> dict:
 
 def _tooling_audit_validate_generate_cli(tmp: Path, source: str) -> dict:
     source_path = tmp / "validate-generate.appgen"
+    web_only_path = tmp / "validate-web-only.appgen"
     warning_path = tmp / "warning-generate.appgen"
     output_dir = tmp / "generated-cli"
     warning_blocked_dir = tmp / "warning-blocked-cli"
     warning_allowed_dir = tmp / "warning-allowed-cli"
     source_path.write_text(source, encoding="utf-8")
+    web_only_path.write_text("app WebOnly { targets: web }\n\ntable Thing { id: int pk }\n", encoding="utf-8")
     warning_path.write_text(_tooling_audit_warning_generation_sample(), encoding="utf-8")
 
     def run_json(argv: tuple[str, ...]) -> tuple[int, dict]:
@@ -3052,6 +3054,12 @@ def _tooling_audit_validate_generate_cli(tmp: Path, source: str) -> dict:
 
     validate_exit, validate_payload = run_json(
         ("validate", str(source_path), "--targets", "web,mobile,desktop", "--json")
+    )
+    missing_target_exit, missing_target_payload = run_json(
+        ("validate", str(web_only_path), "--targets", "web,mobile", "--json")
+    )
+    unknown_target_exit, unknown_target_payload = run_json(
+        ("validate", str(web_only_path), "--targets", "satellite", "--json")
     )
     generate_exit, generate_payload = run_json(
         ("generate", str(source_path), "--target", "web", "--out", str(output_dir), "--json")
@@ -3075,6 +3083,41 @@ def _tooling_audit_validate_generate_cli(tmp: Path, source: str) -> dict:
             "exit_code": validate_exit,
             "payload_format": validate_payload.get("format"),
             "requested_targets": tuple(validate_payload.get("requested_targets", ())),
+        },
+        {
+            "case": "validate_rejects_undeclared_targets",
+            "ok": missing_target_exit == 1
+            and missing_target_payload.get("format") == "appgen.validate-report.v1"
+            and missing_target_payload.get("ok") is False
+            and tuple(missing_target_payload.get("requested_targets", ())) == ("web", "mobile")
+            and tuple(missing_target_payload.get("app_targets", ())) == ("web",)
+            and any(
+                check.get("check") == "target_compatibility"
+                and tuple(check.get("missing_targets", ())) == ("mobile",)
+                for check in missing_target_payload.get("checks", ())
+            )
+            and any(item.get("code") == "AGX0802" for item in missing_target_payload.get("diagnostics", ())),
+            "exit_code": missing_target_exit,
+            "payload_format": missing_target_payload.get("format"),
+            "requested_targets": tuple(missing_target_payload.get("requested_targets", ())),
+            "app_targets": tuple(missing_target_payload.get("app_targets", ())),
+            "diagnostic_codes": tuple(item.get("code") for item in missing_target_payload.get("diagnostics", ())),
+        },
+        {
+            "case": "validate_rejects_unknown_targets",
+            "ok": unknown_target_exit == 1
+            and unknown_target_payload.get("format") == "appgen.validate-report.v1"
+            and unknown_target_payload.get("ok") is False
+            and any(
+                check.get("check") == "target_compatibility"
+                and tuple(check.get("unknown_targets", ())) == ("satellite",)
+                for check in unknown_target_payload.get("checks", ())
+            )
+            and any(item.get("code") == "AGX0802" for item in unknown_target_payload.get("diagnostics", ())),
+            "exit_code": unknown_target_exit,
+            "payload_format": unknown_target_payload.get("format"),
+            "requested_targets": tuple(unknown_target_payload.get("requested_targets", ())),
+            "diagnostic_codes": tuple(item.get("code") for item in unknown_target_payload.get("diagnostics", ())),
         },
         {
             "case": "generate_writes_artifacts",

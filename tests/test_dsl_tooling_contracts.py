@@ -2363,10 +2363,19 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert cli_check["detail"]["validate_generate_cli"]["ok"] is True
     assert {
         "validate_targets",
+        "validate_rejects_undeclared_targets",
+        "validate_rejects_unknown_targets",
         "generate_writes_artifacts",
         "generate_blocks_warnings",
         "generate_allows_warnings_when_requested",
     } <= {case["case"] for case in cli_check["detail"]["validate_generate_cli"]["cases"]}
+    validate_cases = {case["case"]: case for case in cli_check["detail"]["validate_generate_cli"]["cases"]}
+    assert validate_cases["validate_rejects_undeclared_targets"]["exit_code"] == 1
+    assert validate_cases["validate_rejects_undeclared_targets"]["requested_targets"] == ("web", "mobile")
+    assert validate_cases["validate_rejects_undeclared_targets"]["app_targets"] == ("web",)
+    assert "AGX0802" in validate_cases["validate_rejects_undeclared_targets"]["diagnostic_codes"]
+    assert validate_cases["validate_rejects_unknown_targets"]["exit_code"] == 1
+    assert "AGX0802" in validate_cases["validate_rejects_unknown_targets"]["diagnostic_codes"]
     assert cli_check["detail"]["format_write"]["format"] == "appgen.format-write-audit.v1"
     assert cli_check["detail"]["format_write"]["ok"] is True
     assert cli_check["detail"]["format_write"]["check_exit_code"] == 1
