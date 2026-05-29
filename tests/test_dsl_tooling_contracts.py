@@ -566,6 +566,8 @@ def test_appgen_validate_subcommand_enforces_requested_targets(tmp_path: Path) -
     assert bad_payload["checks"][-1]["missing_targets"] == ["mobile"]
     assert bad_text_result.returncode == 1
     assert bad_text_result.stdout.startswith("validate failed: requested=web,mobile")
+    assert f"app_targets={','.join(bad_payload['app_targets'])}" in bad_text_result.stdout
+    assert f"semantic={bad_payload['semantic_model']['format']}" in bad_text_result.stdout
     assert "fail target_compatibility" in bad_text_result.stdout
     assert "missing-targets mobile" in bad_text_result.stdout
     assert "error AGX0802:" in bad_text_result.stdout
