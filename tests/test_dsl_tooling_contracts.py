@@ -4031,6 +4031,8 @@ def test_diagnostics_text_renderer_contract_proves_catalog_and_fixture_log_marke
     )
     assert {
         "diagnostics-audit failed: format=appgen.diagnostic-fixture-audit.v1 covered=2 required=3 missing=1",
+        "covered-code AGX0201",
+        "covered-code AGX0303",
         "missing-code AGX9000",
         "fail AGX9000: missing fixture",
     } <= set(report["required_fragments"])

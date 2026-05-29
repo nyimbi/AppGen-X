@@ -617,8 +617,9 @@ JSON parsing.
 `appgen diagnostics`
 text output summarizes the `appgen.diagnostic-catalog.v1` format in the header,
 registry coverage, and fixture gaps; `appgen diagnostics --audit-fixtures`
-summarizes the `appgen.diagnostic-fixture-audit.v1` format in the header plus covered and missing
-diagnostic codes. `appgen.diagnostics-text-renderer.v1` is embedded in the
+summarizes the `appgen.diagnostic-fixture-audit.v1` format in the header plus
+covered diagnostic codes as `covered-code ...` lines and missing diagnostic
+codes as `missing-code ...` lines. `appgen.diagnostics-text-renderer.v1` is embedded in the
 tooling audit to prove both diagnostic text summaries keep coverage, missing
 code, and blocking-gap evidence visible without JSON parsing. `appgen drift`
 summarizes the
