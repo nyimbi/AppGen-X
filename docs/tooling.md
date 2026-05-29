@@ -791,7 +791,12 @@ PBC commands operate on manifests and package directories, not grammar changes.
 entrypoint, validates the manifest, proves the manifest is publishable, returns
 the catalog patch, attaches release-evidence verification, and records that the
 publish plan is side-effect-free. Catalog writes are an explicit downstream
-step, not an implicit CLI side effect.
+step, not an implicit CLI side effect. Without `--json`, `list` prints the
+catalog report format, total count, mesh counts, and each selectable PBC key;
+`verify` prints the verifier format, selected PBC key, check count, blocking gap
+count, catalog metadata, and per-check status. `appgen.pbc-cli-text-audit.v1`
+is embedded in the tooling audit to prove the text output is not a raw JSON
+fallback.
 
 ### `appgen nl-plan`
 

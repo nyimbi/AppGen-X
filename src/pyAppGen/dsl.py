@@ -14,6 +14,7 @@ import subprocess
 import sys
 import tempfile
 import tomllib
+from collections import Counter
 from pathlib import Path
 from typing import Iterable
 from urllib.parse import quote
@@ -1990,6 +1991,37 @@ def _emit_tooling_payload(payload: dict, *, as_json: bool) -> None:
         for check in payload.get("checks", ()):
             print(f"{'ok' if check['ok'] else 'fail'} {check['check']}")
         return
+    if payload.get("format") == "appgen.pbc-verifier-catalog.v1":
+        status = "ok" if payload.get("ok") else "failed"
+        pbcs = tuple(payload.get("pbcs", ()))
+        print(f"pbc list {status}: count={payload.get('count', len(pbcs))} format={payload.get('format')}")
+        mesh_counts = Counter(str(item.get("mesh") or "unclassified") for item in pbcs)
+        for mesh, count in sorted(mesh_counts.items()):
+            print(f"mesh {mesh}: count={count}")
+        for item in pbcs:
+            print(
+                f"pbc {item.get('pbc')}: ok={item.get('ok')} "
+                f"mesh={item.get('mesh')} datastore={item.get('datastore_backend')} "
+                f"label={item.get('label')}"
+            )
+        return
+    if payload.get("format") == "appgen.pbc-package-verifier.v1":
+        status = "ok" if payload.get("ok") else "failed"
+        checks = tuple(payload.get("checks", ()))
+        gaps = tuple(payload.get("blocking_gaps", ()))
+        print(
+            f"pbc verify {status}: pbc={payload.get('pbc')} "
+            f"checks={len(checks)} gaps={len(gaps)} format={payload.get('format')}"
+        )
+        catalog = payload.get("catalog", {})
+        if catalog:
+            print(
+                f"catalog label={catalog.get('label')} mesh={catalog.get('mesh')} "
+                f"datastore={catalog.get('datastore_backend')}"
+            )
+        for check in checks:
+            print(f"{'ok' if check['ok'] else 'fail'} {check['check']}")
+        return
     print(json.dumps(payload, indent=2, sort_keys=True, default=list))
 
 
@@ -2816,6 +2848,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
     doctor = doctor_report_dsl()
     module_boundaries = module_boundary_audit_dsl()
     pbc_catalog = pbc_verifier_catalog_report()
+    pbc_cli_text = _tooling_audit_pbc_cli_text()
     vscode = _tooling_audit_vscode_extension(root)
     studio = _tooling_audit_studio_semantic_service(source)
     lsp_rpc = _tooling_audit_lsp_json_rpc(source, broken_handler_source=broken_handler_source)
@@ -3090,10 +3123,14 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
         ),
         _tooling_audit_check(
             "pbc_manifest_catalog_commands",
-            pbc_catalog["ok"] and pbc_catalog["count"] > 0,
-            "PBC tooling lists and verifies manifest-backed package catalog entries without grammar-specific PBC names.",
+            pbc_catalog["ok"] and pbc_catalog["count"] > 0 and pbc_cli_text["ok"],
+            "PBC tooling lists and verifies manifest-backed package catalog entries without grammar-specific PBC names and exposes text summaries for agent logs.",
             "docs/tooling.md#appgen-pbc",
-            {"format": pbc_catalog.get("format"), "count": pbc_catalog.get("count")},
+            {
+                "format": pbc_catalog.get("format"),
+                "count": pbc_catalog.get("count"),
+                "text_cli": pbc_cli_text,
+            },
         ),
         _tooling_audit_check(
             "parser_golden_and_drift_gates",
@@ -4834,6 +4871,55 @@ def _tooling_cli_json_case(argv: tuple[str, ...]) -> tuple[int, dict]:
     except json.JSONDecodeError:
         payload = {}
     return exit_code, payload
+
+
+def _tooling_cli_text_case(argv: tuple[str, ...]) -> tuple[int, str]:
+    output = io.StringIO()
+    with contextlib.redirect_stdout(output):
+        exit_code = dsl_tooling_cli(argv)
+    return exit_code, output.getvalue()
+
+
+def _tooling_audit_pbc_cli_text() -> dict:
+    list_exit, list_text = _tooling_cli_text_case(("pbc", "list"))
+    verify_exit, verify_text = _tooling_cli_text_case(("pbc", "verify", "gl_core"))
+    cases = (
+        {
+            "case": "pbc_list_text",
+            "ok": list_exit == 0
+            and list_text.startswith("pbc list ok: count=")
+            and "format=appgen.pbc-verifier-catalog.v1" in list_text
+            and "mesh " in list_text
+            and "pbc gl_core: ok=True" in list_text
+            and not list_text.lstrip().startswith("{"),
+            "exit_code": list_exit,
+            "has_catalog_format": "format=appgen.pbc-verifier-catalog.v1" in list_text,
+            "has_mesh_counts": "mesh " in list_text,
+            "has_catalog_entry": "pbc gl_core: ok=True" in list_text,
+            "json_fallback": list_text.lstrip().startswith("{"),
+        },
+        {
+            "case": "pbc_verify_text",
+            "ok": verify_exit == 0
+            and verify_text.startswith("pbc verify ok: pbc=gl_core")
+            and "format=appgen.pbc-package-verifier.v1" in verify_text
+            and "checks=7 gaps=0" in verify_text
+            and "ok manifest_validates" in verify_text
+            and "catalog label=" in verify_text
+            and not verify_text.lstrip().startswith("{"),
+            "exit_code": verify_exit,
+            "has_verifier_format": "format=appgen.pbc-package-verifier.v1" in verify_text,
+            "has_check_counts": "checks=7 gaps=0" in verify_text,
+            "has_per_check_status": "ok manifest_validates" in verify_text,
+            "has_catalog_metadata": "catalog label=" in verify_text,
+            "json_fallback": verify_text.lstrip().startswith("{"),
+        },
+    )
+    return {
+        "format": "appgen.pbc-cli-text-audit.v1",
+        "ok": all(case["ok"] for case in cases),
+        "cases": cases,
+    }
 
 
 def _tooling_audit_diagnostics_catalog_cli() -> dict:

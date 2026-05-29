@@ -2576,6 +2576,44 @@ def test_appgen_verify_and_pbc_subcommands_emit_json_contracts(tmp_path: Path) -
     assert publish_payload["catalog_patch"]["gl_core"]["datastore_backend"] == "postgresql"
 
 
+def test_appgen_pbc_list_and_verify_text_outputs_are_human_readable() -> None:
+    root = Path(__file__).resolve().parents[1]
+    audit = appgen_dsl._tooling_audit_pbc_cli_text()
+
+    pbc_list = subprocess.run(
+        [sys.executable, "-m", "pyAppGen", "pbc", "list"],
+        check=False,
+        cwd=root,
+        text=True,
+        capture_output=True,
+    )
+    pbc_verify = subprocess.run(
+        [sys.executable, "-m", "pyAppGen", "pbc", "verify", "gl_core"],
+        check=False,
+        cwd=root,
+        text=True,
+        capture_output=True,
+    )
+
+    assert pbc_list.returncode == 0, pbc_list.stderr
+    assert pbc_verify.returncode == 0, pbc_verify.stderr
+    assert pbc_list.stdout.startswith("pbc list ok: count=")
+    assert "format=appgen.pbc-verifier-catalog.v1" in pbc_list.stdout
+    assert "mesh " in pbc_list.stdout
+    assert "pbc gl_core: ok=True" in pbc_list.stdout
+    assert "datastore=postgresql" in pbc_list.stdout
+    assert not pbc_list.stdout.lstrip().startswith("{")
+    assert pbc_verify.stdout.startswith("pbc verify ok: pbc=gl_core")
+    assert "format=appgen.pbc-package-verifier.v1" in pbc_verify.stdout
+    assert "checks=7 gaps=0" in pbc_verify.stdout
+    assert "ok manifest_validates" in pbc_verify.stdout
+    assert "catalog label=" in pbc_verify.stdout
+    assert not pbc_verify.stdout.lstrip().startswith("{")
+    assert audit["format"] == "appgen.pbc-cli-text-audit.v1"
+    assert audit["ok"] is True
+    assert {case["case"] for case in audit["cases"]} == {"pbc_list_text", "pbc_verify_text"}
+
+
 def test_designer_sync_projects_all_required_ide_surfaces_from_semantic_model() -> None:
     report = designer_sync_report_dsl(TOOLING_SAMPLE, source_name="finance.appgen")
 
