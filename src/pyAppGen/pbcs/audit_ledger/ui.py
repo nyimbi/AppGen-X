@@ -27,6 +27,27 @@ AUDIT_LEDGER_UI_FRAGMENT_KEYS = (
     "AuditConfigurationPanel",
 )
 
+AUDIT_LEDGER_FORM_DEFINITIONS = (
+    {"form_id": "audit_event_seal", "title": "Seal audit event", "operation": "record_audit_event", "owned_tables": ("audit_ledger_audit_event", "audit_ledger_signature_chain")},
+    {"form_id": "access_evidence", "title": "Record access evidence", "operation": "record_access_evidence", "owned_tables": ("audit_ledger_access_evidence",)},
+    {"form_id": "retention_policy", "title": "Define retention policy", "operation": "define_retention_policy", "owned_tables": ("audit_ledger_retention_policy",)},
+    {"form_id": "forensic_export", "title": "Prepare forensic export", "operation": "prepare_forensic_export", "owned_tables": ("audit_ledger_forensic_export", "audit_ledger_disclosure_proof")},
+    {"form_id": "control_assertion", "title": "Assert audit control", "operation": "assert_control", "owned_tables": ("audit_ledger_control_assertion",)},
+)
+
+AUDIT_LEDGER_WIZARDS = (
+    {"wizard_id": "regulator_export_packet", "title": "Regulator export packet", "forms": ("audit_event_seal", "retention_policy", "forensic_export")},
+    {"wizard_id": "access_decision_review", "title": "Access decision review", "forms": ("access_evidence", "control_assertion")},
+    {"wizard_id": "signature_chain_recovery", "title": "Signature chain recovery", "forms": ("audit_event_seal", "control_assertion")},
+)
+
+AUDIT_LEDGER_CONTROLS = (
+    {"control_id": "signature_chain_complete", "title": "Signature chain complete", "permission": "audit_ledger.verify"},
+    {"control_id": "retention_policy_bound", "title": "Retention policy bound", "permission": "audit_ledger.configure"},
+    {"control_id": "disclosure_minimized", "title": "Disclosure minimized", "permission": "audit_ledger.export"},
+    {"control_id": "release_evidence_ready", "title": "Release evidence ready", "permission": "audit_ledger.audit"},
+)
+
 
 def audit_ledger_ui_contract() -> dict:
     return {
@@ -58,6 +79,9 @@ def audit_ledger_ui_contract() -> dict:
             {"key": "controls", "fragment": "ControlAssertionBoard", "binds_to": ("control_assertion", "access_evidence"), "commands": ("assert_control", "record_access_evidence")},
             {"key": "governance", "fragment": "AuditRuleStudio", "binds_to": ("rule", "parameter", "configuration"), "commands": ("register_rule", "set_parameter", "configure_runtime")},
         ),
+        "forms": AUDIT_LEDGER_FORM_DEFINITIONS,
+        "wizards": AUDIT_LEDGER_WIZARDS,
+        "controls": AUDIT_LEDGER_CONTROLS,
         "action_permissions": {
             "record_audit_event": "audit_ledger.seal",
             "record_access_evidence": "audit_ledger.seal",
@@ -183,6 +207,56 @@ def audit_ledger_render_workbench(
         "proof_widgets": contract["proof_widgets"],
         "chain_proof": proof,
         "binding_evidence": contract["binding_evidence"],
+    }
+
+
+def audit_ledger_standalone_app_contract() -> dict:
+    """Return the standalone one-PBC application UI shell contract."""
+    contract = audit_ledger_ui_contract()
+    return {
+        "format": "appgen.audit-ledger-standalone-app-contract.v1",
+        "ok": contract["ok"] and bool(contract["forms"]) and bool(contract["wizards"]) and bool(contract["controls"]),
+        "pbc": "audit_ledger",
+        "app_route": "/app/audit-ledger",
+        "workbench_route": "/app/audit-ledger/workbench",
+        "forms": contract["forms"],
+        "wizards": contract["wizards"],
+        "controls": contract["controls"],
+        "fragments": contract["fragments"],
+        "action_permissions": contract["action_permissions"],
+        "event_contract": "AppGen-X",
+        "stream_engine_picker_visible": False,
+        "shared_table_access": False,
+        "side_effects": (),
+    }
+
+
+def audit_ledger_render_standalone_app(
+    state: dict,
+    *,
+    tenant: str,
+    principal_permissions: tuple[str, ...],
+) -> dict:
+    """Render the standalone one-PBC audit application shell."""
+    workbench = audit_ledger_render_workbench(
+        state,
+        tenant=tenant,
+        principal_permissions=principal_permissions,
+    )
+    contract = audit_ledger_ui_contract()
+    return {
+        "format": "appgen.audit-ledger-standalone-app-render.v1",
+        "ok": workbench["ok"],
+        "pbc": "audit_ledger",
+        "tenant": tenant,
+        "route": "/app/audit-ledger",
+        "workbench": workbench,
+        "forms": contract["forms"],
+        "wizards": contract["wizards"],
+        "controls": contract["controls"],
+        "visible_actions": workbench["visible_actions"],
+        "locked_actions": workbench["locked_actions"],
+        "side_effects": (),
     }
 
 class _AppGenSmokeState(dict):

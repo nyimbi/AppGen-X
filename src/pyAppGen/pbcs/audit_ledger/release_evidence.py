@@ -41,15 +41,31 @@ def build_release_evidence():
     """Return generated release audit evidence for this PBC."""
     runtime_evidence = audit_ledger_build_release_evidence()
     proof_slice = audit_ledger_proof_slice_release_evidence()
+    try:
+        from . import standalone, repository
+
+        standalone_app = standalone.smoke_test()
+        repository_evidence = repository.repository_smoke_test()
+    except Exception as exc:  # pragma: no cover - release evidence reports the failure instead.
+        standalone_app = {'ok': False, 'reason': type(exc).__name__, 'message': str(exc)}
+        repository_evidence = {'ok': False, 'reason': type(exc).__name__, 'message': str(exc)}
+    docs_base = Path(__file__).resolve().parent
+    documentation = {
+        'ok': all((docs_base / name).exists() for name in ('README.md', 'implementation-plan.md', 'implementation-status.md', 'RELEASE_EVIDENCE.md')),
+        'files': tuple(name for name in ('README.md', 'implementation-plan.md', 'implementation-status.md', 'RELEASE_EVIDENCE.md') if (docs_base / name).exists()),
+    }
     evidence = {
         **dict(RELEASE_EVIDENCE),
         **runtime_evidence,
         'schema': runtime_evidence.get('schema', _build_schema_contract()),
         'service': runtime_evidence.get('service', _build_service_contract()),
         'proof_slice': proof_slice,
+        'standalone_app': standalone_app,
+        'repository': repository_evidence,
+        'documentation': documentation,
         'pbc': 'audit_ledger',
     }
-    evidence['ok'] = bool(runtime_evidence.get('ok') and proof_slice.get('ok'))
+    evidence['ok'] = bool(runtime_evidence.get('ok') and proof_slice.get('ok') and standalone_app.get('ok') and repository_evidence.get('ok') and documentation.get('ok'))
     evidence['blocking_gaps'] = tuple(runtime_evidence.get('blocking_gaps', ()))
     return evidence
 
