@@ -72,3 +72,27 @@ def smoke_test() -> dict:
         and chemical_batch_compliance_render_workbench()["ok"],
         "side_effects": (),
     }
+
+def chemical_batch_compliance_standalone_app_contract() -> dict:
+    contract = chemical_batch_compliance_ui_contract()
+    surface = contract["full_capability_surface"]
+    return {
+        "ok": contract["ok"]
+        and len(surface["forms"]) >= 4
+        and len(surface["wizards"]) >= 3
+        and len(surface["controls"]) >= 5,
+        "pbc": PBC_KEY,
+        "app_id": "chemical_batch_compliance_one_pbc_app",
+        "shell": {
+            "navigation": surface["navigation_sections"],
+            "primary_workbench": "ChemicalBatchComplianceWorkbench",
+            "assistant_panel": "ChemicalBatchComplianceAssistantPanel",
+            "configuration_editor": True,
+        },
+        "forms": surface["forms"],
+        "wizards": surface["wizards"],
+        "controls": surface["controls"],
+        "agent_tools": surface["agent_tools"],
+        "stream_engine_picker_visible": False,
+        "side_effects": (),
+    }
