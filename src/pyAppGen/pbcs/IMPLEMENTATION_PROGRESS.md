@@ -43,13 +43,14 @@ This file tracks the branch-isolated implementation pass for standalone Packaged
 | procurement_sourcing | `pbc/procurement-sourcing-standalone` | `ed99321e` | Compile, 13 tests, spec/source/release/smoke true. |
 | personnel_identity | `pbc/personnel-identity-standalone` | `702e305c` | Compile, 10 tests, spec/source/release/smoke true. |
 | time_labor | `pbc/time-labor-standalone` | `cdadd9fc` | Compile, 10 tests, spec/source/release/smoke true. |
+| mrp_engine | `pbc/mrp-engine-standalone` | `58e3e2bc` | Compile, 11 tests, spec/source/release/smoke true. |
 | payroll_engine | `pbc/payroll-engine-standalone` | `91db28ac` | Compile, 10 tests, spec/source/release/smoke true. |
 | transportation_management | `pbc/transportation-management-standalone` | `17f7e4fe` | Compile, 13 tests, spec/source/release/smoke true. |
 | wms_core | `pbc/wms-core-standalone` | `7574fcc3` | Compile, 13 tests, spec/source/release/smoke true. |
 
 ## In Flight
 
-Supply-chain/HCM standalone pass is continuing. `wms_core`, `procurement_sourcing`, `transportation_management`, `dom`, `global_inventory_visibility`, `personnel_identity`, `time_labor`, and `payroll_engine` are pushed; quality_assurance is pushed; delegated slices are active for talent_onboarding, mrp_engine, and production_control.
+Supply-chain/HCM standalone pass is continuing. `wms_core`, `procurement_sourcing`, `transportation_management`, `dom`, `global_inventory_visibility`, `personnel_identity`, `time_labor`, and `payroll_engine` are pushed; quality_assurance is pushed; mrp_engine is pushed; remaining active local slices are talent_onboarding and production_control.
 
 ## Next Selection Rule
 
