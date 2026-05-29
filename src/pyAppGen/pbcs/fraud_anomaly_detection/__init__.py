@@ -44,6 +44,12 @@ from .runtime import fraud_anomaly_detection_verify_owned_table_boundary
 from .ui import FRAUD_ANOMALY_DETECTION_UI_FRAGMENT_KEYS
 from .ui import fraud_anomaly_detection_render_workbench
 from .ui import fraud_anomaly_detection_ui_contract
+from .ui import fraud_anomaly_detection_forms_contract
+from .ui import fraud_anomaly_detection_wizards_contract
+from .ui import fraud_anomaly_detection_controls_contract
+from .app_surface import app_surface_smoke_test
+from .app_surface import document_instruction_fraud_anomaly_detection_plan
+from .app_surface import single_pbc_fraud_anomaly_detection_app_contract
 
 PBC_KEY = "fraud_anomaly_detection"
 
@@ -56,6 +62,8 @@ def implementation_contract() -> dict:
         "standard_features": runtime["standard_features"],
         "advanced_runtime": runtime,
         "ui_contract": fraud_anomaly_detection_ui_contract(),
+        "single_pbc_app": single_pbc_fraud_anomaly_detection_app_contract(),
+        "app_surface_smoke": app_surface_smoke_test(),
         "api_contract": fraud_anomaly_detection_build_api_contract(),
         "schema_contract": fraud_anomaly_detection_build_schema_contract(),
         "service_contract": fraud_anomaly_detection_build_service_contract(),

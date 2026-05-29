@@ -3,13 +3,21 @@
 from __future__ import annotations
 
 from .runtime import fraud_anomaly_detection_build_release_evidence
+from .app_surface import app_surface_smoke_test
+from .app_surface import single_pbc_fraud_anomaly_detection_app_contract
 
 RELEASE_EVIDENCE = fraud_anomaly_detection_build_release_evidence()
 
 
 def build_release_evidence():
     """Return generated release audit evidence for this PBC."""
-    return dict(RELEASE_EVIDENCE)
+    evidence = dict(RELEASE_EVIDENCE)
+    standalone_app = single_pbc_fraud_anomaly_detection_app_contract()
+    standalone_smoke = app_surface_smoke_test()
+    evidence["standalone_app"] = standalone_app
+    evidence["standalone_app_smoke"] = standalone_smoke
+    evidence["checks"] = tuple(evidence.get("checks", ())) + ({"id": "standalone_forms_wizards_controls", "ok": standalone_smoke["ok"]},)
+    return evidence
 
 
 def release_readiness_manifest():
@@ -17,7 +25,7 @@ def release_readiness_manifest():
     evidence = build_release_evidence()
     sections = tuple(
         name
-        for name in ("schema", "service", "api", "permissions", "ui", "control")
+        for name in ("schema", "service", "api", "permissions", "ui", "control", "standalone_app", "standalone_app_smoke")
         if isinstance(evidence.get(name), dict)
     )
     checks = tuple(evidence.get("checks", ()))
@@ -28,7 +36,7 @@ def release_readiness_manifest():
         "sections": sections,
         "checks": checks,
         "blocking_gaps": tuple(evidence.get("blocking_gaps", ())),
-        "required_sections": ("schema", "service", "api", "permissions", "ui", "control"),
+        "required_sections": ("schema", "service", "api", "permissions", "ui", "control", "standalone_app"),
         "side_effects": (),
     }
 
@@ -42,6 +50,7 @@ def validate_release_evidence():
     schema = evidence.get("schema", {}) if isinstance(evidence.get("schema"), dict) else {}
     service = evidence.get("service", {}) if isinstance(evidence.get("service"), dict) else {}
     control = evidence.get("control", {}) if isinstance(evidence.get("control"), dict) else {}
+    standalone_app = evidence.get("standalone_app", {}) if isinstance(evidence.get("standalone_app"), dict) else {}
     boundary_gaps = tuple(
         gap
         for gap, failed in (
@@ -49,6 +58,10 @@ def validate_release_evidence():
             ("service_shared_table_access", service.get("shared_table_access") is True),
             ("service_missing_command_methods", not bool(service.get("command_methods"))),
             ("standard_table_runtime_population", control.get("workbench", {}).get("identity_link_count", 0) < 1),
+            ("standalone_app_not_database_backed", standalone_app.get("database_backed") is not True),
+            ("standalone_app_missing_forms", not bool(standalone_app.get("forms"))),
+            ("standalone_app_missing_wizards", not bool(standalone_app.get("wizards"))),
+            ("standalone_app_missing_controls", not bool(standalone_app.get("controls"))),
         )
         if failed
     )
