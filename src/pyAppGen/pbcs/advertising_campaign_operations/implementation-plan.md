@@ -1,67 +1,73 @@
-# Advertising Campaign Operations Implementation Plan
+# Advertising Campaign Operations Standalone Implementation Plan
 
 ## Scope
 
-Implement a real, executable slice from the advertising backlog that replaces placeholder behavior with domain-specific campaign operations logic. The chosen slice covers:
+Implement one executable, package-local PBC app surface inside
+`src/pyAppGen/pbcs/advertising_campaign_operations` only.
 
-1. Canonical campaign brief and objective modeling.
-2. Pre-launch readiness gating.
+The slice is grounded in `improve1.md` and focuses on:
 
-This stays inside the `advertising_campaign_operations` package and the single root test file owned for this task.
+1. Canonical campaign brief modeling.
+2. Launch-readiness review and launch attempt handling.
+3. Package-local standalone app wiring for routes, services, UI, assistant planning, permissions, workflows, and release evidence.
 
-## Why This Slice
+## Constraints
 
-- It is directly grounded in the backlog in `improve1.md`.
-- It turns the existing generic `command_ad_campaign` path into advertising-specific behavior.
-- It produces testable business outcomes without broadening scope into unrelated integrations or storage layers.
+- Do not edit shared generator, DSL, or progress-ledger files.
+- Keep all behavior and verification inside this package.
+- Preserve the declared AppGen-X event contract and owned-table boundary.
+- Prefer the smallest viable diff that produces an executable one-PBC surface.
 
 ## Planned Changes
 
-### New package-local planning module
+### 1. Tighten executable contracts
 
-Add a focused helper module that:
+- Replace thin wrappers in `models.py`, `schema_contract.py`, and `service_contract.py` with contracts that describe the implemented slice.
+- Keep schema ownership and service operations aligned with package-local runtime behavior.
 
-- Normalizes campaign briefs into a deterministic shape.
-- Validates required brief fields: objective, offer, audience promise, channels, primary KPI, guardrails, and launch dependencies.
-- Builds a stable draft campaign plan from the normalized brief.
-- Evaluates launch readiness against a fixed AppGen-X-compatible checklist.
-- Produces a workbench-friendly command-center summary for draft plans.
+### 2. Build the standalone surface
 
-### Runtime integration
+- Add a package-local `standalone.py`.
+- Upgrade `services.py` to own in-memory runtime state and expose command/query operations through one consistent contract.
+- Upgrade `routes.py` to method/path route dispatch instead of string-only placeholders.
 
-Extend `runtime.py` to:
+### 3. Make the UI package-local and usable
 
-- Store campaign plans and launch reviews in runtime state.
-- Add an executable `create_campaign_plan` command.
-- Add an executable `review_launch_readiness` query/assessment path.
-- Enrich `command_ad_campaign` when a structured brief is supplied.
-- Emit only AppGen-X event types already declared by the PBC manifest.
+- Add standalone app metadata, navigation, forms, wizards, and controls in `ui.py`.
+- Render a workbench shell that surfaces launch queue, blockers, actions, and release evidence affordances.
 
-### Service, UI, and agent integration
+### 4. Complete assistant and workflow support
 
-Extend package-local modules so the new slice is visible through the existing package surfaces:
+- Expand `agent.py` for campaign-brief preview, launch-readiness preview, and document-instruction CRUD planning.
+- Add package-local workflows for brief-to-plan, launch gate review, and assistant document planning.
 
-- `services.py`: expose the new command/query operations.
-- `ui.py`: return a launch command-center summary and planning panels.
-- `agent.py`: provide brief preview and launch readiness preview helpers for the assistant surface.
+### 5. Tighten governance and release evidence
+
+- Expand `permissions.py`, `config.py`, `handlers.py`, and `release_evidence.py` so they reflect the same executable slice.
+- Update `README.md`, `implementation-status.md`, and `RELEASE_EVIDENCE.md` to describe only package-local evidence.
+
+### 6. Add focused package tests
+
+- Keep tests under `src/pyAppGen/pbcs/advertising_campaign_operations/tests`.
+- Cover standalone app bootstrapping, route dispatch, assistant planning, UI shell contracts, and release evidence.
 
 ## Acceptance Targets
 
-- Incomplete structured briefs are rejected with itemized missing fields.
-- Repeated brief submissions produce the same normalized draft shape and fingerprint.
-- Launch readiness returns explicit blockers until required approvals and readiness evidence are present.
-- A ready campaign can produce an approval event without introducing non-AppGen-X event contracts.
-- Focused tests prove the behavior through runtime and service entry points.
+- A standalone app can bootstrap package-local state, create a campaign plan, attempt launch, and render the workbench.
+- Routes and service contracts agree on methods, paths, permissions, and owned-table scope.
+- UI contract exposes forms, wizards, and controls for the slice.
+- Assistant document planning returns a governed CRUD preview with required confirmation.
+- Release evidence is package-local and references only focused package verification.
 
 ## Verification Plan
 
-- Run focused pytest coverage for the new implementation file.
-- Re-run the existing advertising campaign operations runtime and contract tests.
-- Run Python compilation checks on modified package files.
+- Run `py_compile` on modified package modules.
+- Run focused pytest for `src/pyAppGen/pbcs/advertising_campaign_operations/tests`.
+- Run package-local smoke and audit entry points that exist for this PBC.
 
 ## Non-Goals
 
+- No edits outside this package.
 - No new dependencies.
-- No edits outside this PBC package and `tests/test_pbc_advertising_campaign_operations_implementation.py`.
-- No non-approved backend references; only ordinary PostgreSQL/MySQL/MariaDB language remains.
-- No SAP, S/4, Salesforce, or QuickBooks terminology.
+- No shared framework refactors.
+- No attempt to implement the full backlog from `improve1.md`; only the standalone slice foundation.

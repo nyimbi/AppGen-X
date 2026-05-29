@@ -1,35 +1,40 @@
 # Advertising Campaign Operations
 
-This PBC now includes an executable advertising-specific slice for campaign planning and launch control.
+This package now exposes a standalone, package-local AppGen-X slice for advertising campaign planning, launch readiness, assistant CRUD planning, and release evidence.
 
-## Implemented Slice
+## Implemented Standalone Slice
 
-- Canonical campaign brief normalization and validation.
-- Deterministic campaign plan creation from a structured brief.
-- Pre-launch readiness review with explicit blockers.
-- Launch attempt handling that transitions plans to `ready_for_launch` or `launch_blocked`.
-- Workbench command-center summary data for ready versus blocked launch plans.
-- Assistant previews for campaign brief validation and launch readiness review.
+- Canonical campaign brief normalization and deterministic campaign-plan creation.
+- Launch-readiness review with explicit blockers and launch-attempt handling.
+- Package-local standalone app surface with in-memory state ownership.
+- Route, service, UI, workflow, permission, configuration, assistant, and release-evidence contracts aligned to the implemented slice.
+- Focused package tests under `src/pyAppGen/pbcs/advertising_campaign_operations/tests`.
 
 ## Package Entry Points
 
-- `runtime.py`
-  - `advertising_campaign_operations_create_campaign_plan`
-  - `advertising_campaign_operations_review_launch_readiness`
-  - `advertising_campaign_operations_attempt_launch_campaign`
+- `standalone.py`
+  - `AdvertisingCampaignOperationsStandaloneApp`
+  - `standalone_app_manifest`
+  - `smoke_test`
 - `services.py`
-  - `AdvertisingCampaignOperationsService.create_campaign_plan`
-  - `AdvertisingCampaignOperationsService.review_launch_readiness`
-  - `AdvertisingCampaignOperationsService.attempt_launch_campaign`
+  - `AdvertisingCampaignOperationsService`
+  - `service_operation_contracts`
+- `routes.py`
+  - `api_route_contracts`
+  - `dispatch_route`
 - `ui.py`
-  - `advertising_campaign_operations_render_workbench`
+  - `advertising_campaign_operations_standalone_app_contract`
+  - `advertising_campaign_operations_render_standalone_app`
 - `agent.py`
   - `campaign_brief_preview`
   - `launch_readiness_preview`
+  - `document_instruction_plan`
+- `release_evidence.py`
+  - `build_release_evidence`
 
 ## Behavior Summary
 
-`campaign_planning.py` provides the shared domain logic. It requires every campaign brief to include:
+The implemented slice requires every campaign brief to provide:
 
 - `objective`
 - `offer`
@@ -39,28 +44,19 @@ This PBC now includes an executable advertising-specific slice for campaign plan
 - `guardrails`
 - `launch_dependencies`
 
-Equivalent briefs normalize to the same deterministic shape and fingerprint. Launch readiness stays blocked until:
+Equivalent briefs normalize to the same deterministic fingerprint. Launch attempts stay blocked until budget, creative, audience, placements, tracking, supplier, and policy readiness are all satisfied and all declared dependencies are marked ready.
 
-- budget is approved,
-- creative is approved,
-- audience is ready,
-- placements are ready,
-- tracking is ready,
-- suppliers are eligible,
-- policy is compliant,
-- and all declared launch dependencies are marked ready.
+## Validation Evidence
 
-## Event Contract
+Executed in the isolated worktree:
 
-The implemented slice stays on the AppGen-X event contract and emits only declared PBC event types:
+- `PYTHONPATH=src python3 -m py_compile src/pyAppGen/pbcs/advertising_campaign_operations/*.py src/pyAppGen/pbcs/advertising_campaign_operations/tests/*.py`
+  - passed
+- `PYTHONPATH=src python3 - <<'PY' ...`
+  - direct execution harness passed 9 package-local tests from `test_contract.py` and `test_standalone.py`
+- `PYTHONPATH=src python3 - <<'PY' ...`
+  - package, routes, services, standalone, workflows, and release-evidence smoke/audit entry points all returned `True`
 
-- `AdvertisingCampaignOperationsCreated`
-- `AdvertisingCampaignOperationsApproved`
-- `AdvertisingCampaignOperationsExceptionOpened`
+Environment note:
 
-## Validation
-
-Validated with:
-
-- `./.venv/bin/python -m py_compile src/pyAppGen/pbcs/advertising_campaign_operations/campaign_planning.py src/pyAppGen/pbcs/advertising_campaign_operations/runtime.py src/pyAppGen/pbcs/advertising_campaign_operations/services.py src/pyAppGen/pbcs/advertising_campaign_operations/ui.py src/pyAppGen/pbcs/advertising_campaign_operations/agent.py tests/test_pbc_advertising_campaign_operations_implementation.py`
-- `./.venv/bin/pytest tests/test_pbc_advertising_campaign_operations_implementation.py tests/test_pbc_advertising_campaign_operations_runtime.py src/pyAppGen/pbcs/advertising_campaign_operations/tests/test_contract.py`
+- `pytest` could not be used directly because `/usr/local/bin/pytest` points to a missing Python 3.9 interpreter on this machine.
