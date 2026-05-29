@@ -3209,8 +3209,18 @@ def test_parser_golden_audit_covers_required_grammar_constructs() -> None:
     assert audit["format"] == "appgen.parser-golden-audit.v1"
     assert audit["ok"] is True
     assert audit["missing_constructs"] == ()
+    assert audit["required_construct_count"] == len(audit["constructs_required"])
+    assert audit["covered_construct_count"] == len(audit["constructs_covered"])
+    assert audit["missing_construct_count"] == 0
+    assert audit["fixture_count"] == len(audit["fixtures"])
     assert audit["valid_fixture_count"] >= 1
     assert audit["invalid_fixture_count"] >= 1
+    assert audit["passing_fixture_count"] == audit["fixture_count"]
+    assert audit["failing_fixture_count"] == 0
+    assert audit["blocking_gap_count"] == 0
+    assert audit["parsed_fixture_count"] >= audit["valid_fixture_count"]
+    assert audit["valid_parsed_fixture_count"] == audit["valid_fixture_count"]
+    assert audit["invalid_rejected_fixture_count"] == audit["invalid_fixture_count"]
     assert set(audit["constructs_required"]) <= set(audit["constructs_covered"])
     assert {
         "composition_connect",
@@ -3247,9 +3257,9 @@ def test_appgen_parser_golden_subcommand_emits_json_and_text_contracts() -> None
     assert f"valid={payload['valid_fixture_count']}" in text_result.stdout
     assert f"invalid={payload['invalid_fixture_count']}" in text_result.stdout
     assert f"format={payload['format']}" in text_result.stdout
-    assert f"required={len(payload['constructs_required'])}" in text_result.stdout
-    assert f"constructs={len(payload['constructs_covered'])}" in text_result.stdout
-    assert "missing=0" in text_result.stdout
+    assert f"required={payload['required_construct_count']}" in text_result.stdout
+    assert f"constructs={payload['covered_construct_count']}" in text_result.stdout
+    assert f"missing={payload['missing_construct_count']}" in text_result.stdout
     assert "missing-constructs " not in text_result.stdout
     assert "fail " not in text_result.stdout
 

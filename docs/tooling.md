@@ -1618,6 +1618,14 @@ The report contract is `appgen.parser-golden-audit.v1`:
 - `constructs_required`: the grammar surface the platform promises to keep covered;
 - `constructs_covered`: constructs proven by valid fixtures;
 - `missing_constructs`: constructs that need new valid examples before release;
+- `required_construct_count`, `covered_construct_count`, and
+  `missing_construct_count`: top-level coverage counters for release gates and
+  token-efficient agents;
+- `fixture_count`, `valid_fixture_count`, `invalid_fixture_count`,
+  `passing_fixture_count`, `failing_fixture_count`, `parsed_fixture_count`,
+  `valid_parsed_fixture_count`, `invalid_rejected_fixture_count`, and
+  `blocking_gap_count`: fixture outcome counters that prove both valid and
+  invalid examples ran through the parser;
 - `fixtures`: per-fixture parse outcome, validity expectation, construct tags, and syntax error text;
 - `blocking_gaps`: the exact fixture failures that should block CI.
 

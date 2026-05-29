@@ -1225,17 +1225,29 @@ def parser_golden_audit_dsl() -> dict:
     }
     required = tuple(PARSER_GOLDEN_REQUIRED_CONSTRUCTS)
     missing = tuple(construct for construct in required if construct not in covered)
+    blocking_gaps = tuple(result for result in results if not result["ok"])
+    valid_fixtures = tuple(result for result in results if result["valid"])
+    invalid_fixtures = tuple(result for result in results if not result["valid"])
     return {
         "format": "appgen.parser-golden-audit.v1",
-        "ok": not missing and all(result["ok"] for result in results),
+        "ok": not missing and not blocking_gaps,
         "constructs_required": required,
+        "required_construct_count": len(required),
         "constructs_covered": tuple(sorted(covered)),
+        "covered_construct_count": len(covered),
         "missing_constructs": missing,
+        "missing_construct_count": len(missing),
         "fixture_count": len(results),
-        "valid_fixture_count": sum(1 for result in results if result["valid"]),
-        "invalid_fixture_count": sum(1 for result in results if not result["valid"]),
+        "valid_fixture_count": len(valid_fixtures),
+        "invalid_fixture_count": len(invalid_fixtures),
+        "passing_fixture_count": sum(1 for result in results if result["ok"]),
+        "failing_fixture_count": len(blocking_gaps),
+        "parsed_fixture_count": sum(1 for result in results if result["parsed"]),
+        "valid_parsed_fixture_count": sum(1 for result in valid_fixtures if result["parsed"]),
+        "invalid_rejected_fixture_count": sum(1 for result in invalid_fixtures if not result["parsed"]),
         "fixtures": results,
-        "blocking_gaps": tuple(result for result in results if not result["ok"]),
+        "blocking_gap_count": len(blocking_gaps),
+        "blocking_gaps": blocking_gaps,
     }
 
 
@@ -2015,9 +2027,9 @@ def _emit_tooling_payload(payload: dict, *, as_json: bool) -> None:
             f"fixtures={payload.get('fixture_count', 0)} "
             f"valid={payload.get('valid_fixture_count', 0)} "
             f"invalid={payload.get('invalid_fixture_count', 0)} "
-            f"required={len(payload.get('constructs_required', ()))} "
-            f"constructs={len(payload.get('constructs_covered', ()))} "
-            f"missing={len(missing)}"
+            f"required={payload.get('required_construct_count', len(payload.get('constructs_required', ())))} "
+            f"constructs={payload.get('covered_construct_count', len(payload.get('constructs_covered', ())))} "
+            f"missing={payload.get('missing_construct_count', len(missing))}"
         )
         covered = tuple(payload.get("constructs_covered", ()))
         if covered:
