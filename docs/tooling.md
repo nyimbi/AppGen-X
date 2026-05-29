@@ -1230,6 +1230,14 @@ When a new keyword, block, nested item, or syntax form is added to `lang/appgen.
 
 ## Implementation Phases
 
+Phase completion is an executable contract, not a planning note.
+`appgen.tooling-implementation-phase-audit.v1` is embedded in
+`appgen.tooling-audit.v1` and maps each phase below to concrete exit-criteria
+evidence. A phase is counted as complete only when every listed exit criterion
+has a current machine-readable proof from the CLI, semantic model, LSP, designer
+sync, migration planner, natural-language planner, release verifier, or fixture
+audit surfaces.
+
 ### Phase 0: Inventory And Stabilization
 
 - Inventory existing parser, linter, formatter, release-audit, PBC catalog, and

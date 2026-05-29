@@ -2622,6 +2622,49 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
     lsp_stdio = _tooling_audit_lsp_stdio_transport(source)
     cli_help_surface = _tooling_audit_cli_help_surface(root)
     package_artifact_names = tuple(Path(item["path"]).name for item in package.get("written_artifacts", ()))
+    implementation_phases = _tooling_audit_implementation_phases(
+        semantic=semantic,
+        symbol_coverage=symbol_coverage,
+        diagnostics=diagnostics,
+        diagnostic_fixtures=diagnostic_fixtures,
+        parser_golden=parser_golden,
+        drift=drift,
+        test_strategy_cli=test_strategy_cli,
+        module_boundaries=module_boundaries,
+        lint=lint,
+        strict_lint=strict_lint,
+        catalog_lint=catalog_lint,
+        lint_directory_cli=lint_directory_cli,
+        formatted=formatted,
+        formatter_contract=formatter_contract,
+        validation=validation,
+        validate_generate_cli=validate_generate_cli,
+        cli_help_surface=cli_help_surface,
+        graphs=graphs,
+        graph_cli=graph_cli,
+        graph_suite_cli=graph_suite_cli,
+        explain_cli=explain_cli,
+        lsp=lsp,
+        lsp_rpc=lsp_rpc,
+        lsp_stdio=lsp_stdio,
+        lsp_rename_cli=lsp_rename_cli,
+        quick_fix=quick_fix,
+        code_action_apply_audit=code_action_apply_audit,
+        lsp_apply_cli=lsp_apply_cli,
+        vscode=vscode,
+        studio=studio,
+        designer=designer,
+        designer_visual_edit_matrix=designer_visual_edit_matrix,
+        designer_sync_cli=designer_sync_cli,
+        migration_detected=migration_detected,
+        migration_cli=migration_cli,
+        nl_plan=nl_plan,
+        nl_plan_contract=nl_plan_contract,
+        nl_plan_cli=nl_plan_cli,
+        release=release,
+        package=package,
+        package_verify_cli=package_verify_cli,
+    )
 
     checks = (
         _tooling_audit_check(
@@ -2864,6 +2907,13 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                 "cli": test_strategy_cli,
             },
         ),
+        _tooling_audit_check(
+            "implementation_phase_exit_criteria",
+            implementation_phases["ok"],
+            "Implementation phases 0 through 6 have executable exit-criteria evidence instead of prose-only status.",
+            "docs/tooling.md#implementation-phases",
+            implementation_phases,
+        ),
     )
     sections = tuple(sorted({check["section"] for check in checks}))
     blocking_gaps = tuple(check for check in checks if not check["ok"])
@@ -2912,6 +2962,231 @@ def _tooling_audit_semantic_keys_present(semantic: dict) -> bool:
         "diagnostics",
     }
     return required <= set(semantic)
+
+
+def _tooling_audit_implementation_phases(**evidence: dict) -> dict:
+    def phase(phase_id: str, title: str, criteria: tuple[dict, ...]) -> dict:
+        missing = tuple(item["id"] for item in criteria if not item["ok"])
+        return {
+            "id": phase_id,
+            "title": title,
+            "ok": not missing,
+            "exit_criteria": criteria,
+            "missing_exit_criteria": missing,
+        }
+
+    semantic = evidence["semantic"]
+    phases = (
+        phase(
+            "phase_0_inventory_and_stabilization",
+            "Inventory And Stabilization",
+            (
+                {
+                    "id": "current_behavior_documented",
+                    "ok": evidence["module_boundaries"].get("ok") is True,
+                    "evidence_format": evidence["module_boundaries"].get("format"),
+                },
+                {
+                    "id": "fixture_catalogs_run_in_ci",
+                    "ok": evidence["parser_golden"].get("ok") is True
+                    and evidence["diagnostic_fixtures"].get("ok") is True
+                    and evidence["drift"].get("ok") is True,
+                    "evidence_formats": (
+                        evidence["parser_golden"].get("format"),
+                        evidence["diagnostic_fixtures"].get("format"),
+                        evidence["drift"].get("format"),
+                    ),
+                },
+                {
+                    "id": "test_strategy_cli_proves_shared_surfaces",
+                    "ok": evidence["test_strategy_cli"].get("ok") is True,
+                    "evidence_format": evidence["test_strategy_cli"].get("format"),
+                },
+            ),
+        ),
+        phase(
+            "phase_1_shared_semantic_model_mvp",
+            "Shared Semantic Model MVP",
+            (
+                {
+                    "id": "semantic_model_contract",
+                    "ok": semantic.get("ok") is True
+                    and semantic.get("format") == "appgen.semantic-model.v1"
+                    and _tooling_audit_semantic_keys_present(semantic),
+                    "evidence_format": semantic.get("format"),
+                },
+                {
+                    "id": "symbol_coverage_complete",
+                    "ok": evidence["symbol_coverage"].get("missing") == (),
+                    "evidence_format": evidence["symbol_coverage"].get("format"),
+                },
+                {
+                    "id": "database_backed_form_validation",
+                    "ok": evidence["lint"].get("ok") is True and evidence["validate_generate_cli"].get("ok") is True,
+                    "evidence_formats": (evidence["lint"].get("format"), evidence["validate_generate_cli"].get("format")),
+                },
+            ),
+        ),
+        phase(
+            "phase_2_linter_and_formatter",
+            "Linter And Formatter",
+            (
+                {
+                    "id": "diagnostic_registry_and_fixtures",
+                    "ok": evidence["diagnostics"].get("ok") is True
+                    and evidence["diagnostic_fixtures"].get("ok") is True,
+                    "evidence_formats": (evidence["diagnostics"].get("format"), evidence["diagnostic_fixtures"].get("format")),
+                },
+                {
+                    "id": "lint_profiles_and_directory_input",
+                    "ok": evidence["lint"].get("ok") is True
+                    and evidence["strict_lint"].get("ok") is True
+                    and evidence["catalog_lint"].get("ok") is True
+                    and evidence["lint_directory_cli"].get("ok") is True,
+                    "evidence_format": evidence["lint_directory_cli"].get("format"),
+                },
+                {
+                    "id": "formatter_idempotency",
+                    "ok": evidence["formatted"].get("idempotent") is True
+                    and evidence["formatter_contract"].get("ok") is True,
+                    "evidence_formats": (evidence["formatted"].get("format"), evidence["formatter_contract"].get("format")),
+                },
+            ),
+        ),
+        phase(
+            "phase_3_cli_and_graph_tooling",
+            "CLI And Graph Tooling",
+            (
+                {
+                    "id": "machine_readable_cli_contracts",
+                    "ok": evidence["validation"].get("ok") is True
+                    and evidence["validate_generate_cli"].get("ok") is True
+                    and evidence["cli_help_surface"].get("ok") is True,
+                    "evidence_formats": (
+                        evidence["validation"].get("format"),
+                        evidence["validate_generate_cli"].get("format"),
+                        evidence["cli_help_surface"].get("format"),
+                    ),
+                },
+                {
+                    "id": "graph_json_mermaid_and_dot",
+                    "ok": evidence["graphs"].get("ok") is True
+                    and evidence["graph_cli"].get("ok") is True
+                    and evidence["graph_suite_cli"].get("ok") is True,
+                    "evidence_formats": (
+                        evidence["graphs"].get("format"),
+                        evidence["graph_cli"].get("format"),
+                        evidence["graph_suite_cli"].get("format"),
+                    ),
+                },
+                {
+                    "id": "explain_symbols_diagnostics_handlers",
+                    "ok": evidence["explain_cli"].get("ok") is True,
+                    "evidence_format": evidence["explain_cli"].get("format"),
+                },
+            ),
+        ),
+        phase(
+            "phase_4_language_server",
+            "Language Server",
+            (
+                {
+                    "id": "lsp_core_json_rpc_and_stdio",
+                    "ok": evidence["lsp"].get("ok") is True
+                    and evidence["lsp_rpc"].get("ok") is True
+                    and evidence["lsp_stdio"].get("ok") is True,
+                    "evidence_formats": (
+                        evidence["lsp"].get("format"),
+                        evidence["lsp_rpc"].get("format"),
+                        evidence["lsp_stdio"].get("format"),
+                    ),
+                },
+                {
+                    "id": "rename_and_code_actions",
+                    "ok": evidence["lsp_rename_cli"].get("ok") is True
+                    and evidence["quick_fix"].get("ok") is True
+                    and evidence["code_action_apply_audit"].get("ok") is True
+                    and evidence["lsp_apply_cli"].get("ok") is True,
+                    "evidence_formats": (
+                        evidence["lsp_rename_cli"].get("format"),
+                        evidence["quick_fix"].get("format"),
+                        evidence["code_action_apply_audit"].get("format"),
+                        evidence["lsp_apply_cli"].get("format"),
+                    ),
+                },
+                {
+                    "id": "editor_extension_surface",
+                    "ok": evidence["vscode"].get("ok") is True,
+                    "evidence_format": evidence["vscode"].get("format"),
+                },
+            ),
+        ),
+        phase(
+            "phase_5_ide_and_visual_designer_integration",
+            "IDE And Visual Designer Integration",
+            (
+                {
+                    "id": "visual_edits_generate_linted_dsl_patches",
+                    "ok": evidence["designer"].get("ok") is True
+                    and evidence["designer_visual_edit_matrix"].get("ok") is True
+                    and evidence["designer_sync_cli"].get("ok") is True,
+                    "evidence_formats": (
+                        evidence["designer"].get("format"),
+                        evidence["designer_visual_edit_matrix"].get("format"),
+                        evidence["designer_sync_cli"].get("format"),
+                    ),
+                },
+                {
+                    "id": "studio_semantic_bridge",
+                    "ok": evidence["studio"].get("ok") is True,
+                    "evidence_format": evidence["studio"].get("format"),
+                },
+            ),
+        ),
+        phase(
+            "phase_6_migration_natural_language_and_release_verifiers",
+            "Migration, Natural Language, And Release Verifiers",
+            (
+                {
+                    "id": "migration_detection_coverage",
+                    "ok": set(REQUIRED_MIGRATION_DETECTIONS) <= set(evidence["migration_detected"])
+                    and evidence["migration_cli"].get("ok") is True,
+                    "evidence_format": evidence["migration_cli"].get("format"),
+                },
+                {
+                    "id": "natural_language_planner_contract",
+                    "ok": evidence["nl_plan"].get("ok") is True
+                    and bool(evidence["nl_plan"].get("dsl_patch"))
+                    and evidence["nl_plan_contract"].get("ok") is True
+                    and evidence["nl_plan_cli"].get("ok") is True,
+                    "evidence_formats": (
+                        evidence["nl_plan"].get("format"),
+                        evidence["nl_plan_contract"].get("format"),
+                        evidence["nl_plan_cli"].get("format"),
+                    ),
+                },
+                {
+                    "id": "release_and_package_verifiers",
+                    "ok": evidence["release"].get("ok") is True
+                    and evidence["package"].get("ok") is True
+                    and evidence["package_verify_cli"].get("ok") is True,
+                    "evidence_formats": (
+                        evidence["release"].get("format"),
+                        evidence["package"].get("format"),
+                        evidence["package_verify_cli"].get("format"),
+                    ),
+                },
+            ),
+        ),
+    )
+    missing = tuple(item["id"] for item in phases if not item["ok"])
+    return {
+        "format": "appgen.tooling-implementation-phase-audit.v1",
+        "ok": not missing,
+        "phases": phases,
+        "missing_phases": missing,
+        "source_of_truth": "docs/tooling.md#implementation-phases",
+    }
 
 
 def _tooling_audit_vscode_extension(root: Path) -> dict:

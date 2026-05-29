@@ -2978,6 +2978,98 @@ view CustomerForm for Customer {
     assert (allowed_dir / "appgen.json").exists()
 
 
+def test_tooling_implementation_phase_audit_maps_phase_exit_criteria_to_evidence() -> None:
+    def ok(format_name: str) -> dict:
+        return {"ok": True, "format": format_name}
+
+    report = appgen_dsl._tooling_audit_implementation_phases(
+        semantic={
+            "ok": True,
+            "format": "appgen.semantic-model.v1",
+            **{key: {} for key in (
+                "source_files",
+                "app",
+                "symbols",
+                "tables",
+                "views",
+                "flows",
+                "operations",
+                "rules",
+                "roles",
+                "security",
+                "agents",
+                "llms",
+                "pbcs",
+                "composition",
+                "contracts",
+                "deployment",
+                "packages",
+                "graphs",
+                "diagnostics",
+            )},
+        },
+        symbol_coverage={"format": "appgen.symbol-coverage.v1", "missing": ()},
+        diagnostics=ok("appgen.diagnostic-catalog.v1"),
+        diagnostic_fixtures=ok("appgen.diagnostic-fixture-audit.v1"),
+        parser_golden=ok("appgen.parser-golden-audit.v1"),
+        drift=ok("appgen.semantic-drift-audit.v1"),
+        test_strategy_cli=ok("appgen.test-strategy-cli-audit.v1"),
+        module_boundaries=ok("appgen.module-boundary-audit.v1"),
+        lint=ok("appgen.lint-report.v1"),
+        strict_lint=ok("appgen.lint-report.v1"),
+        catalog_lint=ok("appgen.lint-report.v1"),
+        lint_directory_cli=ok("appgen.lint-directory-cli-audit.v1"),
+        formatted={"ok": True, "format": "appgen.format-result.v1", "idempotent": True},
+        formatter_contract=ok("appgen.formatter-contract-audit.v1"),
+        validation=ok("appgen.validate-report.v1"),
+        validate_generate_cli=ok("appgen.validate-generate-cli-audit.v1"),
+        cli_help_surface=ok("appgen.cli-help-surface-audit.v1"),
+        graphs=ok("appgen.graph-suite-report.v1"),
+        graph_cli=ok("appgen.graph-cli-audit.v1"),
+        graph_suite_cli=ok("appgen.graph-suite-cli-audit.v1"),
+        explain_cli=ok("appgen.explain-cli-audit.v1"),
+        lsp=ok("appgen.lsp-service.v1"),
+        lsp_rpc=ok("appgen.lsp-json-rpc-audit.v1"),
+        lsp_stdio=ok("appgen.lsp-stdio-transport-audit.v1"),
+        lsp_rename_cli=ok("appgen.lsp-rename-cli-audit.v1"),
+        quick_fix=ok("appgen.lsp-code-action-apply.v1"),
+        code_action_apply_audit=ok("appgen.lsp-code-action-apply-audit.v1"),
+        lsp_apply_cli=ok("appgen.lsp-code-action-cli-audit.v1"),
+        vscode=ok("appgen.vscode-extension-audit.v1"),
+        studio=ok("appgen.studio-semantic-service-audit.v1"),
+        designer=ok("appgen.designer-sync-report.v1"),
+        designer_visual_edit_matrix=ok("appgen.designer-visual-edit-matrix.v1"),
+        designer_sync_cli=ok("appgen.designer-sync-cli-audit.v1"),
+        migration_detected=appgen_dsl.REQUIRED_MIGRATION_DETECTIONS,
+        migration_cli=ok("appgen.migration-cli-audit.v1"),
+        nl_plan={"ok": True, "format": "appgen.nl-plan.v1", "dsl_patch": "--- before\n+++ after"},
+        nl_plan_contract=ok("appgen.nl-plan-contract-audit.v1"),
+        nl_plan_cli=ok("appgen.nl-plan-cli-audit.v1"),
+        release=ok("appgen.release-verifier-report.v1"),
+        package=ok("appgen.release-verifier-report.v1"),
+        package_verify_cli=ok("appgen.package-verify-cli-audit.v1"),
+    )
+
+    assert report["format"] == "appgen.tooling-implementation-phase-audit.v1"
+    assert report["ok"] is True
+    assert report["missing_phases"] == ()
+    assert len(report["phases"]) == 7
+    assert all(phase["missing_exit_criteria"] == () for phase in report["phases"])
+    assert {
+        criterion["id"]
+        for phase in report["phases"]
+        for criterion in phase["exit_criteria"]
+    } >= {
+        "current_behavior_documented",
+        "semantic_model_contract",
+        "formatter_idempotency",
+        "graph_json_mermaid_and_dot",
+        "rename_and_code_actions",
+        "studio_semantic_bridge",
+        "release_and_package_verifiers",
+    }
+
+
 def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     report = tooling_audit_report_dsl()
     root = Path(__file__).resolve().parents[1]
@@ -3003,6 +3095,7 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert {
         "shared_semantic_model",
         "module_boundaries",
+        "implementation_phase_exit_criteria",
         "language_server_core_features",
         "ide_visual_designer_round_trip",
         "vscode_extension_surface",
@@ -3015,6 +3108,20 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert module_check["detail"]["ok"] is True
     assert module_check["detail"]["missing_boundaries"] == ()
     assert module_check["detail"]["core_runtime_gaps"] == ()
+    phase_check = next(check for check in report["checks"] if check["id"] == "implementation_phase_exit_criteria")
+    assert phase_check["detail"]["format"] == "appgen.tooling-implementation-phase-audit.v1"
+    assert phase_check["detail"]["ok"] is True
+    assert phase_check["detail"]["missing_phases"] == ()
+    assert {phase["id"] for phase in phase_check["detail"]["phases"]} == {
+        "phase_0_inventory_and_stabilization",
+        "phase_1_shared_semantic_model_mvp",
+        "phase_2_linter_and_formatter",
+        "phase_3_cli_and_graph_tooling",
+        "phase_4_language_server",
+        "phase_5_ide_and_visual_designer_integration",
+        "phase_6_migration_natural_language_and_release_verifiers",
+    }
+    assert all(phase["missing_exit_criteria"] == () for phase in phase_check["detail"]["phases"])
     vscode_check = next(check for check in report["checks"] if check["id"] == "vscode_extension_surface")
     assert vscode_check["detail"]["checks"]["diagnostics_collection"] is True
     assert vscode_check["detail"]["checks"]["cli_command_contracts"] is True
