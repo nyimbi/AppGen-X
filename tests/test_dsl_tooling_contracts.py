@@ -2943,6 +2943,7 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
         "nl_plan_missing_prompt",
     } <= {case["name"] for case in cli_check["detail"]["missing_required_option_exit"]["cases"]}
     assert {
+        "lint_backend",
         "graph_kind",
         "graph_format",
         "migration_backend",
@@ -3283,7 +3284,7 @@ def test_invalid_choice_audit_covers_graph_formats_and_backend_choices(tmp_path:
 
     assert audit["format"] == "appgen.invalid-choice-exit-audit.v1"
     assert audit["ok"] is True
-    assert {"graph_kind", "graph_format", "migration_backend", "nl_backend"} <= set(cases)
+    assert {"lint_backend", "graph_kind", "graph_format", "migration_backend", "nl_backend"} <= set(cases)
     assert all(case["exit_code"] == 2 for case in cases.values())
     assert all("invalid choice" in case["stderr"] for case in cases.values())
     assert all("Traceback" not in case["stderr"] for case in cases.values())
