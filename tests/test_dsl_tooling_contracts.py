@@ -3180,7 +3180,24 @@ def test_studio_semantic_service_audit_proves_panel_contracts() -> None:
     assert report["format"] == "appgen.studio-semantic-service-audit.v1"
     assert report["ok"] is True
     assert report["blocking_gaps"] == ()
+    assert report["service_format"] == "appgen.studio-semantic-service.v1"
+    assert report["missing_service_formats"] == ()
+    assert {
+        "appgen.studio-semantic-service.v1",
+        "appgen.lsp-service.v1",
+        "appgen.designer-sync-report.v1",
+        "appgen.graph-suite-report.v1",
+        "appgen.nl-plan.v1",
+    } <= set(report["observed_service_formats"])
+    assert tuple(report["required_service_formats"]) == (
+        "appgen.studio-semantic-service.v1",
+        "appgen.lsp-service.v1",
+        "appgen.designer-sync-report.v1",
+        "appgen.graph-suite-report.v1",
+        "appgen.nl-plan.v1",
+    )
     assert all(report["checks"].values())
+    assert report["checks"]["service_format_contracts"] is True
     assert report["services"] == {
         "lsp": "appgen.lsp-service.v1",
         "designer_sync": "appgen.designer-sync-report.v1",

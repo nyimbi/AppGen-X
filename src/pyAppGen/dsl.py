@@ -4731,6 +4731,27 @@ def _tooling_audit_studio_semantic_service(source: str) -> dict:
     }
     surfaces = report.get("designer_surfaces", {})
     services = report.get("services", {})
+    required_service_formats = (
+        "appgen.studio-semantic-service.v1",
+        "appgen.lsp-service.v1",
+        "appgen.designer-sync-report.v1",
+        "appgen.graph-suite-report.v1",
+        "appgen.nl-plan.v1",
+    )
+    observed_service_formats = tuple(
+        item
+        for item in (
+            report.get("format"),
+            services.get("lsp"),
+            services.get("designer_sync"),
+            services.get("graph_suite"),
+            services.get("natural_language_planner"),
+        )
+        if item
+    )
+    missing_service_formats = tuple(
+        service_format for service_format in required_service_formats if service_format not in observed_service_formats
+    )
     diagnostics = report.get("diagnostics_quick_fixes", {})
     diagnostics_report = diagnostics.get("diagnostics", {})
     code_actions = diagnostics.get("code_actions", {})
@@ -4773,6 +4794,7 @@ def _tooling_audit_studio_semantic_service(source: str) -> dict:
             "graph_suite": "appgen.graph-suite-report.v1",
             "natural_language_planner": "appgen.nl-plan.v1",
         },
+        "service_format_contracts": not missing_service_formats,
         "required_surfaces": set(required_surfaces) <= set(surfaces),
         "surface_formats": all(
             surface_formats.get(name) == expected for name, expected in expected_surface_formats.items()
@@ -4814,6 +4836,9 @@ def _tooling_audit_studio_semantic_service(source: str) -> dict:
         "ok": all(checks.values()),
         "service_format": report.get("format"),
         "services": services,
+        "required_service_formats": required_service_formats,
+        "observed_service_formats": observed_service_formats,
+        "missing_service_formats": missing_service_formats,
         "checks": checks,
         "surfaces": tuple(surfaces),
         "required_surfaces": required_surfaces,

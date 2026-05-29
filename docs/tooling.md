@@ -1155,7 +1155,11 @@ the expected contract format, semantic-bound panels report
 `appgen.semantic-model.v1`, diagnostics and quick fixes come from the LSP
 contracts, graph/explain comes from the graph-suite and designer explain-panel
 contracts, and natural-language evolution requires a DSL diff preview applied
-through `appgen designer-sync`. It also verifies panel payload depth: component
+through `appgen designer-sync`. The audit reports `required_service_formats`,
+`observed_service_formats`, and `missing_service_formats` so release evidence
+proves the Studio bridge is not only present but composed from the documented
+LSP, designer-sync, graph-suite, and natural-language planner contracts. It
+also verifies panel payload depth: component
 palette entries, form views, database tables, workflows, PBC composition
 entries, package/deployment counts, diagnostic rows, graph/explain graphs, and
 natural-language edit operations must be exposed, so a panel cannot pass with
