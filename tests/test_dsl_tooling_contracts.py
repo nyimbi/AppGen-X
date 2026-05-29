@@ -958,11 +958,19 @@ def test_appgen_nl_plan_subcommand_emits_json_and_text_contracts(tmp_path: Path)
     assert payload["migration_preview"]["format"] == "appgen.migration-plan.v1"
     assert text_result.returncode == 0, text_result.stderr
     assert text_result.stdout.startswith("nl-plan ok:")
-    assert "token_notes=3" in text_result.stdout
-    assert "token-budget-notes 3" in text_result.stdout
+    assert f"intent={payload['intent']}" in text_result.stdout
+    assert f"operations={len(payload['edit_operations'])}" in text_result.stdout
+    assert f"patch_bytes={len(payload['dsl_patch'])}" in text_result.stdout
+    assert f"tests={len(payload['test_plan'])}" in text_result.stdout
+    assert f"token_notes={len(payload['token_budget_notes'])}" in text_result.stdout
+    assert f"token-budget-notes {len(payload['token_budget_notes'])}" in text_result.stdout
     assert "operation-kinds add_table" in text_result.stdout
-    assert "lint_ok=True" in text_result.stdout
-    assert "migration-preview postgresql:" in text_result.stdout
+    assert f"lint_ok={payload['lint']['ok']}" in text_result.stdout
+    assert (
+        "migration-preview postgresql: "
+        f"changes={len(payload['migration_preview']['changes'])} "
+        f"requires_approval={payload['migration_preview']['requires_approval']}"
+    ) in text_result.stdout
 
 
 def test_nl_plan_contract_audit_covers_supported_edit_operations_and_rejections() -> None:
