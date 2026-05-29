@@ -1,13 +1,17 @@
-"""UI contract for the Schema Registry PBC."""
+"""UI contract for the Schema Registry standalone PBC."""
 
 from __future__ import annotations
 
+from .forms import schema_registry_form_catalog
+from .forms import schema_registry_form_keys
 from .runtime import SCHEMA_REGISTRY_ALLOWED_DATABASE_BACKENDS
 from .runtime import SCHEMA_REGISTRY_CONSUMED_EVENT_TYPES
 from .runtime import SCHEMA_REGISTRY_EMITTED_EVENT_TYPES
 from .runtime import SCHEMA_REGISTRY_OWNED_TABLES
 from .runtime import SCHEMA_REGISTRY_REQUIRED_EVENT_TOPIC
 from .runtime import schema_registry_permissions_contract
+from .wizards import schema_registry_wizard_catalog
+from .wizards import schema_registry_wizard_keys
 
 
 SCHEMA_REGISTRY_UI_FRAGMENT_KEYS = (
@@ -24,22 +28,60 @@ SCHEMA_REGISTRY_UI_FRAGMENT_KEYS = (
     "SchemaParameterConsole",
     "SchemaConfigurationPanel",
 )
+SCHEMA_REGISTRY_FORM_KEYS = schema_registry_form_keys()
+SCHEMA_REGISTRY_WIZARD_KEYS = schema_registry_wizard_keys()
+SCHEMA_REGISTRY_CONTROL_KEYS = (
+    "tenant_scope_picker",
+    "compatibility_heatmap",
+    "consumer_blast_radius_graph",
+    "validation_timeline",
+    "assistant_guidance_drawer",
+    "release_gate_banner",
+)
+
+
+def schema_registry_control_catalog() -> tuple[dict, ...]:
+    return (
+        {"key": "tenant_scope_picker", "type": "selector", "binds_to": "tenant"},
+        {"key": "compatibility_heatmap", "type": "matrix", "binds_to": "validation_runs"},
+        {"key": "consumer_blast_radius_graph", "type": "graph", "binds_to": "consumer_bindings"},
+        {"key": "validation_timeline", "type": "timeline", "binds_to": "events"},
+        {"key": "assistant_guidance_drawer", "type": "drawer", "binds_to": "agent"},
+        {"key": "release_gate_banner", "type": "banner", "binds_to": "release_evidence"},
+    )
+
+
+def schema_registry_standalone_app_contract() -> dict:
+    return {
+        "ok": True,
+        "pbc": "schema_registry",
+        "app_id": "schema_registry_one_pbc_app",
+        "workbench_route": "/workbench/pbcs/schema_registry",
+        "navigation": (
+            {"key": "subjects", "route": "/workbench/pbcs/schema_registry/subjects"},
+            {"key": "versions", "route": "/workbench/pbcs/schema_registry/versions"},
+            {"key": "compatibility", "route": "/workbench/pbcs/schema_registry/compatibility"},
+            {"key": "consumers", "route": "/workbench/pbcs/schema_registry/consumers"},
+            {"key": "validations", "route": "/workbench/pbcs/schema_registry/validations"},
+            {"key": "release", "route": "/workbench/pbcs/schema_registry/release"},
+        ),
+        "forms": SCHEMA_REGISTRY_FORM_KEYS,
+        "wizards": SCHEMA_REGISTRY_WIZARD_KEYS,
+        "controls": SCHEMA_REGISTRY_CONTROL_KEYS,
+        "single_agent_namespace": "schema_registry_skills",
+        "side_effects": (),
+    }
 
 
 def schema_registry_ui_contract() -> dict:
     return {
-        "format": "appgen.schema-registry-ui-contract.v1",
+        "format": "appgen.schema-registry-ui-contract.v2",
         "ok": True,
         "pbc": "schema_registry",
         "implementation_directory": "src/pyAppGen/pbcs/schema_registry",
         "fragments": SCHEMA_REGISTRY_UI_FRAGMENT_KEYS,
-        "routes": (
+        "routes": tuple(item["route"] for item in schema_registry_standalone_app_contract()["navigation"]) + (
             "/workbench/pbcs/schema_registry",
-            "/workbench/pbcs/schema_registry/subjects",
-            "/workbench/pbcs/schema_registry/versions",
-            "/workbench/pbcs/schema_registry/compatibility",
-            "/workbench/pbcs/schema_registry/consumers",
-            "/workbench/pbcs/schema_registry/validations",
             "/workbench/pbcs/schema_registry/violations",
             "/workbench/pbcs/schema_registry/projections",
             "/workbench/pbcs/schema_registry/rules",
@@ -72,6 +114,10 @@ def schema_registry_ui_contract() -> dict:
                 "commands": ("register_rule", "set_parameter", "configure_runtime"),
             },
         ),
+        "forms": schema_registry_form_catalog(),
+        "wizards": schema_registry_wizard_catalog(),
+        "controls": schema_registry_control_catalog(),
+        "standalone_app": schema_registry_standalone_app_contract(),
         "action_permissions": schema_registry_permissions_contract()["action_permissions"],
         "configuration_editor": {
             "required_fields": ("database_backend", "event_topic", "retry_limit", "default_compatibility", "default_timezone"),
@@ -113,6 +159,7 @@ def schema_registry_render_workbench(
     principal_permissions: tuple[str, ...],
 ) -> dict:
     contract = schema_registry_ui_contract()
+    shell = schema_registry_standalone_app_contract()
     permissions = set(principal_permissions)
     visible_actions = tuple(action for action, required in contract["action_permissions"].items() if required in permissions)
     subjects = tuple(subject for subject in state["subjects"].values() if subject["tenant"] == tenant)
@@ -128,11 +175,15 @@ def schema_registry_render_workbench(
         {"key": "release_blocking", "value": len(tuple(item for item in violations if item["release_blocking"])), "fragment": "ContractViolationBoard"},
     )
     return {
-        "format": "appgen.schema-registry-workbench-render.v1",
+        "format": "appgen.schema-registry-workbench-render.v2",
         "ok": True,
         "tenant": tenant,
-        "route": "/workbench/pbcs/schema_registry",
+        "route": shell["workbench_route"],
         "fragments": contract["fragments"],
+        "navigation": shell["navigation"],
+        "forms": contract["forms"],
+        "wizards": contract["wizards"],
+        "controls": contract["controls"],
         "cards": cards,
         "visible_actions": visible_actions,
         "locked_actions": tuple(action for action in contract["action_permissions"] if action not in visible_actions),
@@ -151,6 +202,26 @@ def schema_registry_render_workbench(
             "required_event_topic": SCHEMA_REGISTRY_REQUIRED_EVENT_TOPIC,
         },
     }
+
+
+def schema_registry_render_standalone_app(
+    state: dict,
+    *,
+    tenant: str,
+    principal_permissions: tuple[str, ...],
+) -> dict:
+    return {
+        "ok": True,
+        "pbc": "schema_registry",
+        "shell": schema_registry_standalone_app_contract(),
+        "workbench": schema_registry_render_workbench(
+            state,
+            tenant=tenant,
+            principal_permissions=principal_permissions,
+        ),
+        "side_effects": (),
+    }
+
 
 class _AppGenSmokeState(dict):
     """Tolerant empty state for side-effect-free workbench smoke rendering."""
@@ -172,6 +243,11 @@ def _appgen_smoke_state():
         "dead_letter": (),
         "dead_letters": (),
         "events": (),
+        "subjects": {},
+        "versions": {},
+        "validation_runs": {},
+        "violations": {},
+        "consumer_bindings": {},
     })
 
 
@@ -179,12 +255,13 @@ def smoke_test():
     """Exercise the PBC workbench contract and render path without side effects."""
     contract = schema_registry_ui_contract()
     permissions = tuple(dict.fromkeys(contract.get("action_permissions", {}).values()))
-    rendered = schema_registry_render_workbench(
+    rendered = schema_registry_render_standalone_app(
         _appgen_smoke_state(),
         tenant="smoke",
         principal_permissions=permissions,
     )
-    cards = tuple(rendered.get("cards") or contract.get("panels") or contract.get("fragments", ()))
+    workbench = rendered["workbench"]
+    cards = tuple(workbench.get("cards") or contract.get("panels") or contract.get("fragments", ()))
     configuration_editor = contract.get("configuration_editor", {})
     event_surfaces = contract.get("event_surfaces", {})
     rule_editor = contract.get("rule_editor") or {
@@ -200,12 +277,15 @@ def smoke_test():
         "binding_evidence": binding_evidence,
     }
     return {
-        "format": "appgen.pbc-ui-smoke-test.v1",
+        "format": "appgen.pbc-ui-smoke-test.v2",
         "ok": contract.get("ok") is True
         and rendered.get("ok") is True
         and bool(contract.get("fragments"))
         and bool(contract.get("routes"))
         and bool(cards)
+        and bool(contract.get("forms"))
+        and bool(contract.get("wizards"))
+        and bool(contract.get("controls"))
         and bool(contract.get("action_permissions"))
         and bool(configuration_editor)
         and configuration_editor.get("stream_engine_picker_visible", configuration_editor.get("user_facing_stream_engine_picker", False)) is False
@@ -218,7 +298,7 @@ def smoke_test():
         "manifest": {"fragments": contract.get("fragments", ()), "routes": contract.get("routes", ())},
         "contract": contract,
         "governance": governance,
-        "rendered": rendered,
+        "rendered": workbench,
         "cards": cards,
         "side_effects": (),
     }
