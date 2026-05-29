@@ -2206,6 +2206,58 @@ def _emit_release_verifier_text(payload: dict) -> None:
         print(f"{diagnostic['severity']} {diagnostic['code']}: {diagnostic['message']}")
 
 
+def _release_verifier_text_renderer_contract() -> dict:
+    """Prove release verifier text logs stay useful without parsing JSON."""
+    payload = {
+        "format": "appgen.release-verifier-report.v1",
+        "ok": False,
+        "targets": ("mobile", "desktop"),
+        "written_artifacts": (
+            {"kind": "release_evidence", "path": "dist/appgen-release-evidence.json"},
+            {"kind": "mobile_package_manifest", "path": "dist/appgen-package-mobile.json"},
+        ),
+        "evidence_bundle": {
+            "format": "appgen.release-evidence-bundle.v1",
+            "artifacts": ({"kind": "release_evidence", "path": "dist/appgen-release-evidence.json"},),
+            "graph_suite": {
+                "format": "appgen.graph-suite-report.v1",
+                "required_kinds": ("workflow", "package"),
+                "formats": ("json", "mermaid", "dot"),
+            },
+        },
+        "checks": (
+            {
+                "verifier": "mobile",
+                "ok": False,
+                "blocking_gaps": ("package_metadata_exists", "smoke_launch_not_declared"),
+            },
+            {"verifier": "desktop", "ok": True, "blocking_gaps": ()},
+        ),
+    }
+    output = io.StringIO()
+    with contextlib.redirect_stdout(output):
+        _emit_tooling_payload(payload, as_json=False)
+    text = output.getvalue()
+    required_fragments = (
+        "release-verify failed: format=appgen.release-verifier-report.v1 targets=mobile,desktop written=2",
+        "release-evidence format=appgen.release-evidence-bundle.v1: artifacts=1",
+        "graph-suite format=appgen.graph-suite-report.v1: kinds=2 formats=3",
+        "fail mobile gaps=package_metadata_exists,smoke_launch_not_declared",
+        "ok desktop",
+        "artifact release_evidence: dist/appgen-release-evidence.json",
+        "artifact mobile_package_manifest: dist/appgen-package-mobile.json",
+    )
+    missing = tuple(fragment for fragment in required_fragments if fragment not in text)
+    return {
+        "format": "appgen.release-verifier-text-renderer.v1",
+        "ok": not missing and not text.lstrip().startswith("{"),
+        "required_fragments": required_fragments,
+        "missing_fragments": missing,
+        "json_fallback": text.lstrip().startswith("{"),
+        "text_prefix": text[:240],
+    }
+
+
 def _emit_designer_sync_text(payload: dict) -> None:
     status = "ok" if payload.get("ok") else "failed"
     surfaces = tuple(payload.get("surfaces", ()))
@@ -2895,6 +2947,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
     doctor = doctor_report_dsl()
     module_boundaries = module_boundary_audit_dsl()
     non_goal_policy = _tooling_audit_non_goal_policy()
+    release_text_renderer = _release_verifier_text_renderer_contract()
     pbc_catalog = pbc_verifier_catalog_report()
     pbc_cli_text = _tooling_audit_pbc_cli_text()
     vscode = _tooling_audit_vscode_extension(root)
@@ -3169,6 +3222,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             release["ok"]
             and package["ok"]
             and package_verify_cli["ok"]
+            and release_text_renderer["ok"]
             and package_invalid_target["ok"]
             and "appgen-release-evidence.json" in package_artifact_names
             and {
@@ -3185,6 +3239,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                 "release": release.get("format"),
                 "artifacts": package_artifact_names,
                 "cli": package_verify_cli,
+                "text_renderer": release_text_renderer,
                 "invalid_target": package_invalid_target,
             },
         ),

@@ -3864,6 +3864,24 @@ def test_tooling_audit_text_renderer_contract_proves_human_log_markers() -> None
     } <= set(report["required_fragments"])
 
 
+def test_release_verifier_text_renderer_contract_proves_handoff_log_markers() -> None:
+    report = appgen_dsl._release_verifier_text_renderer_contract()
+
+    assert report["format"] == "appgen.release-verifier-text-renderer.v1"
+    assert report["ok"] is True
+    assert report["missing_fragments"] == ()
+    assert report["json_fallback"] is False
+    assert report["text_prefix"].startswith(
+        "release-verify failed: format=appgen.release-verifier-report.v1 targets=mobile,desktop"
+    )
+    assert {
+        "release-evidence format=appgen.release-evidence-bundle.v1: artifacts=1",
+        "graph-suite format=appgen.graph-suite-report.v1: kinds=2 formats=3",
+        "fail mobile gaps=package_metadata_exists,smoke_launch_not_declared",
+        "artifact mobile_package_manifest: dist/appgen-package-mobile.json",
+    } <= set(report["required_fragments"])
+
+
 def test_tooling_audit_text_summary_exposes_sections_gaps_and_formats() -> None:
     payload = {
         "format": "appgen.tooling-audit.v1",
