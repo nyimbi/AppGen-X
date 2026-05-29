@@ -4091,6 +4091,7 @@ def test_cli_contracts_cover_text_summaries_exit_codes_and_bad_arguments(tmp_pat
 
     assert lint_text.returncode == 0, lint_text.stderr
     assert "lint ok:" in lint_text.stdout
+    assert "format=appgen.lint-report.v1" in lint_text.stdout
     assert "stages syntax=0 semantic=1 policy=0" in lint_text.stdout
     assert lint_migration_text.returncode == 0, lint_migration_text.stderr
     assert "migration-preview postgresql: changes=1 requires_approval=False" in lint_migration_text.stdout

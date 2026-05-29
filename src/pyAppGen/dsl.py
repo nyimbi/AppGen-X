@@ -1788,7 +1788,7 @@ def _emit_tooling_payload(payload: dict, *, as_json: bool) -> None:
     if payload.get("format") == "appgen.lint-report.v1":
         status = "ok" if payload.get("ok") else "failed"
         counts = payload.get("severity_counts", {})
-        print(f"lint {status}: {counts}")
+        print(f"lint {status}: format={payload.get('format')} {counts}")
         stages = payload.get("stages") or {}
         if stages:
             stage_names = tuple(payload.get("stage_names") or LINT_STAGE_NAMES)
