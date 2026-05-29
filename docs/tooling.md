@@ -1031,6 +1031,13 @@ those editor-service summaries keep diagnostics, completions, actions, symbols,
 source-of-truth, navigation, formatting, hover content as `hover ...`,
 completion coverage gaps as `completion-missing ...`, and rename safety markers
 visible without JSON parsing.
+The JSON service payload also carries `service_counts` with diagnostic,
+completion, required/detected/missing completion-source, hover-content,
+reference, document-symbol, code-action, formatting-edit, workspace-symbol, and
+rename-edit counts. `appgen.completion-coverage.v1` carries matching
+required/detected/missing source counts, total completion label count, and
+label counts by source so agents can prove completion breadth without walking
+every nested completion item.
 The renderer contract reports fragment and marker counts for service, coverage,
 navigation, formatting, rename, blocker, and hover lines.
 Rename text output includes the `appgen.lsp-rename.v1` contract format, whether

@@ -1193,6 +1193,14 @@ def test_lsp_service_uses_shared_semantic_model_for_core_editor_features() -> No
     assert report["ok"] is True
     assert report["semantic_model_format"] == "appgen.semantic-model.v1"
     assert report["capabilities"]["features"]["textDocument/completion"] is True
+    assert report["service_counts"]["diagnostic_count"] == len(report["publishDiagnostics"]["diagnostics"])
+    assert report["service_counts"]["completion_count"] == len(report["completion"]["items"])
+    assert report["service_counts"]["completion_missing_source_count"] == report["completionCoverage"]["missing_source_count"]
+    assert report["service_counts"]["reference_count"] == len(report["references"]["locations"])
+    assert report["service_counts"]["document_symbol_count"] == len(report["documentSymbol"]["symbols"])
+    assert report["service_counts"]["code_action_count"] == len(report["codeAction"]["actions"])
+    assert report["service_counts"]["workspace_symbol_count"] == len(report["workspaceSymbol"]["symbols"])
+    assert report["service_counts"]["rename_edit_count"] >= 1
     assert not any(item["severity"] == 1 for item in report["publishDiagnostics"]["diagnostics"])
     assert any(item["label"] == "Invoice" for item in report["completion"]["items"])
     assert report["hover"]["ok"] is True
@@ -1437,6 +1445,17 @@ def test_lsp_completion_coverage_proves_required_context_sources() -> None:
     assert coverage["missing"] == ()
     assert service["completionCoverage"]["missing"] == ()
     assert set(coverage["required"]) <= set(coverage["detected"])
+    assert coverage["required_source_count"] == len(coverage["required"])
+    assert coverage["detected_source_count"] == len(coverage["detected"])
+    assert coverage["missing_source_count"] == 0
+    assert coverage["label_count"] >= coverage["detected_source_count"]
+    assert service["service_counts"]["completion_required_source_count"] == coverage["required_source_count"]
+    assert service["service_counts"]["completion_detected_source_count"] == coverage["detected_source_count"]
+    assert service["service_counts"]["completion_missing_source_count"] == 0
+    assert coverage["source_label_counts"]["operation_targets"] >= 1
+    assert coverage["source_label_counts"]["lookup_paths"] >= 1
+    assert coverage["source_label_counts"]["pbc_apis"] >= 1
+    assert coverage["source_label_counts"]["agent_skills"] >= 1
     assert "SubmitInvoice" in coverage["labels_by_source"]["operation_targets"]
     assert "customer.name" in coverage["labels_by_source"]["lookup_paths"]
     assert "Lookup" in coverage["labels_by_source"]["components"]

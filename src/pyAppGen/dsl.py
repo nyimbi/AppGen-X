@@ -8720,25 +8720,53 @@ def lsp_service_dsl(
     source = text or ""
     semantic = semantic_model_dsl(source, source_name=source_name)
     active_position = position or {"line": 0, "character": 0}
+    diagnostics = lsp_diagnostics_dsl(source, source_name=source_name)
+    completion = lsp_completion_dsl(source, source_name=source_name, position=active_position, prefix=prefix)
+    completion_coverage = completion_coverage_dsl(source, source_name=source_name)
+    hover = lsp_hover_dsl(source, source_name=source_name, position=active_position)
+    definition = lsp_definition_dsl(source, source_name=source_name, position=active_position)
+    references = lsp_references_dsl(source, source_name=source_name, position=active_position)
+    document_symbols = lsp_document_symbols_dsl(source, source_name=source_name)
+    code_actions = lsp_code_actions_dsl(source, source_name=source_name)
+    formatting = lsp_formatting_dsl(source, source_name=source_name)
+    rename = (
+        lsp_rename_dsl(source, source_name=source_name, position=active_position, new_name=rename_to)
+        if rename_to
+        else None
+    )
+    workspace_symbols = lsp_workspace_symbols_dsl(source, source_name=source_name, query=prefix)
+    rename_changes = (rename or {}).get("workspace_edit", {}).get("changes", {}) if rename else {}
     return {
         "format": "appgen.lsp-service.v1",
         "ok": semantic["ok"],
         "source": source_name,
         "capabilities": lsp_capabilities_dsl(),
         "semantic_model_format": semantic["format"],
-        "publishDiagnostics": lsp_diagnostics_dsl(source, source_name=source_name),
-        "completion": lsp_completion_dsl(source, source_name=source_name, position=active_position, prefix=prefix),
-        "completionCoverage": completion_coverage_dsl(source, source_name=source_name),
-        "hover": lsp_hover_dsl(source, source_name=source_name, position=active_position),
-        "definition": lsp_definition_dsl(source, source_name=source_name, position=active_position),
-        "references": lsp_references_dsl(source, source_name=source_name, position=active_position),
-        "documentSymbol": lsp_document_symbols_dsl(source, source_name=source_name),
-        "codeAction": lsp_code_actions_dsl(source, source_name=source_name),
-        "formatting": lsp_formatting_dsl(source, source_name=source_name),
-        "rename": lsp_rename_dsl(source, source_name=source_name, position=active_position, new_name=rename_to)
-        if rename_to
-        else None,
-        "workspaceSymbol": lsp_workspace_symbols_dsl(source, source_name=source_name, query=prefix),
+        "service_counts": {
+            "diagnostic_count": len(diagnostics.get("diagnostics", ())),
+            "completion_count": len(completion.get("items", ())),
+            "completion_required_source_count": completion_coverage.get("required_source_count"),
+            "completion_detected_source_count": completion_coverage.get("detected_source_count"),
+            "completion_missing_source_count": completion_coverage.get("missing_source_count"),
+            "hover_content_count": len(hover.get("contents", ())),
+            "reference_count": len(references.get("locations", ())),
+            "document_symbol_count": len(document_symbols.get("symbols", ())),
+            "code_action_count": len(code_actions.get("actions", ())),
+            "formatting_edit_count": len(formatting.get("edits", ())),
+            "workspace_symbol_count": len(workspace_symbols.get("symbols", ())),
+            "rename_edit_count": sum(len(edits) for edits in rename_changes.values()),
+        },
+        "publishDiagnostics": diagnostics,
+        "completion": completion,
+        "completionCoverage": completion_coverage,
+        "hover": hover,
+        "definition": definition,
+        "references": references,
+        "documentSymbol": document_symbols,
+        "codeAction": code_actions,
+        "formatting": formatting,
+        "rename": rename,
+        "workspaceSymbol": workspace_symbols,
     }
 
 
@@ -9057,17 +9085,25 @@ def completion_coverage_dsl(text: str, *, source_name: str | None = None) -> dic
         if source_key:
             detected.add(source_key)
             labels_by_source.setdefault(source_key, []).append(label)
+    detected_sources = tuple(item for item in REQUIRED_COMPLETION_SOURCES if item in detected)
+    missing_sources = tuple(item for item in REQUIRED_COMPLETION_SOURCES if item not in detected)
+    deduped_labels = {
+        key: tuple(dict.fromkeys(value))
+        for key, value in labels_by_source.items()
+        if value
+    }
     return {
         "format": "appgen.completion-coverage.v1",
         "source": source_name,
         "required": REQUIRED_COMPLETION_SOURCES,
-        "detected": tuple(item for item in REQUIRED_COMPLETION_SOURCES if item in detected),
-        "missing": tuple(item for item in REQUIRED_COMPLETION_SOURCES if item not in detected),
-        "labels_by_source": {
-            key: tuple(dict.fromkeys(value))
-            for key, value in labels_by_source.items()
-            if value
-        },
+        "detected": detected_sources,
+        "missing": missing_sources,
+        "required_source_count": len(REQUIRED_COMPLETION_SOURCES),
+        "detected_source_count": len(detected_sources),
+        "missing_source_count": len(missing_sources),
+        "label_count": sum(len(value) for value in deduped_labels.values()),
+        "source_label_counts": {key: len(value) for key, value in deduped_labels.items()},
+        "labels_by_source": deduped_labels,
     }
 
 
