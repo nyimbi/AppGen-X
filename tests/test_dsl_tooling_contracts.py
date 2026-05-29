@@ -4062,8 +4062,11 @@ def test_graph_cli_audit_covers_documented_graph_examples(tmp_path: Path) -> Non
     assert cases["er_mermaid"]["format"] == "mermaid"
     assert cases["workflow_json"]["kind"] == "workflow"
     assert cases["workflow_json"]["format"] == "json"
+    assert cases["workflow_json"]["payload_format"] == "appgen.graph-report.v1"
+    assert cases["workflow_mermaid"]["stdout_prefix"].startswith("graph TD")
     assert cases["pbc_dot"]["kind"] == "pbc"
     assert cases["pbc_dot"]["format"] == "dot"
+    assert cases["pbc_dot"]["stdout_prefix"].startswith("digraph appgen")
     assert all(case["exit_code"] == 0 for case in cases.values())
 
 

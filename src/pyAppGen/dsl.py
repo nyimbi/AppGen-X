@@ -4950,12 +4950,14 @@ def _tooling_audit_graph_cli_formats(tmp: Path, source: str) -> dict:
         with contextlib.redirect_stdout(output):
             exit_code = dsl_tooling_cli(argv)
         stdout = output.getvalue().strip()
+        payload_format = None
         json_ok = False
         if output_format == "json":
             try:
                 payload = json.loads(stdout)
             except json.JSONDecodeError:
                 payload = {}
+            payload_format = payload.get("format")
             json_ok = payload.get("format") == "appgen.graph-report.v1" and payload.get("kind") == graph_kind
         text_ok = (output_format == "mermaid" and stdout.startswith("graph TD")) or (
             output_format == "dot" and stdout.startswith("digraph appgen")
@@ -4967,6 +4969,7 @@ def _tooling_audit_graph_cli_formats(tmp: Path, source: str) -> dict:
                 "format": output_format,
                 "ok": exit_code == 0 and (json_ok or text_ok),
                 "exit_code": exit_code,
+                "payload_format": payload_format,
                 "stdout_prefix": stdout[:80],
             }
         )
