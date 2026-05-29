@@ -7675,16 +7675,35 @@ def _tooling_audit_cli_help_surface(root: Path) -> dict:
             capture_output=True,
             timeout=10,
         )
+        repo_alias_path = root / "apg"
+        repo_alias_lint = subprocess.run(
+            [str(repo_alias_path), "lint", str(source_path), "--json"],
+            check=False,
+            cwd=root,
+            text=True,
+            capture_output=True,
+            timeout=10,
+        )
     try:
         module_lint_payload = json.loads(module_lint.stdout)
     except json.JSONDecodeError:
         module_lint_payload = {}
+    try:
+        repo_alias_lint_payload = json.loads(repo_alias_lint.stdout)
+    except json.JSONDecodeError:
+        repo_alias_lint_payload = {}
     module_dispatches_tooling = (
         "_run_tooling" in module_entrypoint
         and "dsl_tooling_cli" in module_entrypoint
         and module_lint.returncode == 0
         and module_lint_payload.get("format") == "appgen.lint-report.v1"
         and "Traceback" not in module_lint.stderr
+    )
+    repo_alias_dispatches_tooling = (
+        repo_alias_path.exists()
+        and repo_alias_lint.returncode == 0
+        and repo_alias_lint_payload.get("format") == "appgen.lint-report.v1"
+        and "Traceback" not in repo_alias_lint.stderr
     )
     return {
         "format": "appgen.cli-help-surface-audit.v1",
@@ -7693,13 +7712,18 @@ def _tooling_audit_cli_help_surface(root: Path) -> dict:
         and help_lists_subcommands
         and subcommand_option_help_ok
         and alias_contract["ok"]
-        and module_dispatches_tooling,
+        and module_dispatches_tooling
+        and repo_alias_dispatches_tooling,
         "alias_declared": alias_declared,
         "script_targets": {"appgen": scripts.get("appgen"), "apg": scripts.get("apg")},
         "alias_contract": {
             **alias_contract,
+            "ok": alias_declared and module_dispatches_tooling and repo_alias_dispatches_tooling,
             "module_dispatches_tooling": module_dispatches_tooling,
             "module_payload_format": module_lint_payload.get("format"),
+            "repo_alias_dispatches_tooling": repo_alias_dispatches_tooling,
+            "repo_alias_payload_format": repo_alias_lint_payload.get("format"),
+            "repo_alias_path": "apg",
         },
         "help_exit_code": help_exit_code,
         "help_lists_subcommands": help_lists_subcommands,
@@ -7718,6 +7742,14 @@ def _tooling_audit_cli_help_surface(root: Path) -> dict:
             "exit_code": module_lint.returncode,
             "payload_format": module_lint_payload.get("format"),
             "traceback_free": "Traceback" not in module_lint.stderr,
+        },
+        "repo_alias_command": {
+            "ok": repo_alias_dispatches_tooling,
+            "path": "apg",
+            "exists": repo_alias_path.exists(),
+            "exit_code": repo_alias_lint.returncode,
+            "payload_format": repo_alias_lint_payload.get("format"),
+            "traceback_free": "Traceback" not in repo_alias_lint.stderr,
         },
         "subcommands_documented": required_subcommands if help_has_subcommands else tuple(command for command in required_subcommands if command in entrypoint),
         "required_subcommands": required_subcommands,

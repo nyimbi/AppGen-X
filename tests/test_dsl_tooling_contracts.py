@@ -4737,6 +4737,14 @@ def test_top_level_help_exposes_tooling_subcommands_and_apg_alias() -> None:
     assert audit["alias_contract"]["shared_target"] == "pyAppGen.__main__:main"
     assert audit["alias_contract"]["module_dispatches_tooling"] is True
     assert audit["alias_contract"]["module_payload_format"] == "appgen.lint-report.v1"
+    assert audit["alias_contract"]["repo_alias_dispatches_tooling"] is True
+    assert audit["alias_contract"]["repo_alias_payload_format"] == "appgen.lint-report.v1"
+    assert audit["repo_alias_command"]["ok"] is True
+    assert audit["repo_alias_command"]["exists"] is True
+    assert audit["repo_alias_command"]["path"] == "apg"
+    assert audit["repo_alias_command"]["exit_code"] == 0
+    assert audit["repo_alias_command"]["payload_format"] == "appgen.lint-report.v1"
+    assert audit["repo_alias_command"]["traceback_free"] is True
     assert audit["help_exit_code"] == 0
     assert audit["help_lists_subcommands"] is True
     assert audit["required_subcommand_count"] == len(audit["required_subcommands"])

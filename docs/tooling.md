@@ -566,9 +566,10 @@ important subcommand help surface, and nested package/component-publish help so
 new flags cannot be implemented without being discoverable by humans, scripts,
 and coding agents. It also embeds `appgen.cli-alias-contract.v1`, which proves
 that `appgen` and `apg` resolve to the same `pyAppGen.__main__:main` entrypoint
-and that the module entrypoint dispatches into the tooling CLI. The audit also
-reports required/documented/listed subcommand counts plus option-surface,
-required-option, and missing-option counts, so release evidence can prove CLI
+and that both the module entrypoint and the repo-local `./apg` command dispatch
+into the tooling CLI. The audit also reports required/documented/listed
+subcommand counts plus option-surface, required-option, missing-option, module
+entrypoint, and repo-alias execution evidence, so release evidence can prove CLI
 discoverability breadth without scraping nested help payloads.
 `appgen.missing-required-option-exit-audit.v1` covers required command options,
 including generator output directories, natural-language prompts, and component
