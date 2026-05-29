@@ -2396,6 +2396,12 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert cli_check["detail"]["format_write"]["check_written"] is False
     assert cli_check["detail"]["format_write"]["clean_check_exit_code"] == 0
     assert cli_check["detail"]["format_write"]["clean_check_changed"] is False
+    assert cli_check["detail"]["format_write"]["organize_exit_code"] == 0
+    assert cli_check["detail"]["format_write"]["organize"] is True
+    assert cli_check["detail"]["format_write"]["organize_idempotent"] is True
+    assert cli_check["detail"]["format_write"]["organize_order"] == tuple(
+        sorted(cli_check["detail"]["format_write"]["organize_order"])
+    )
     lint_check = next(check for check in report["checks"] if check["id"] == "lint_directory_and_strict_profiles")
     assert lint_check["detail"]["directory_cli"]["format"] == "appgen.lint-directory-cli-audit.v1"
     assert lint_check["detail"]["directory_cli"]["ok"] is True

@@ -2877,11 +2877,31 @@ def _tooling_audit_format_write(tmp: Path) -> dict:
     path = tmp / "format-write.appgen"
     check_path = tmp / "format-check.appgen"
     clean_check_path = tmp / "format-check-clean.appgen"
+    organize_path = tmp / "format-organize.appgen"
     source = "app FormatWrite { targets: web }\ntable Invoice { total: decimal; id: int pk }\n"
+    organize_source = """
+app FormatOrganize { targets: web }
+
+table Invoice {
+  total: decimal = subtotal + tax
+  customer_id: int -> Customer.id
+  updated_at: string
+  invoice_number: string unique
+  subtotal: decimal
+  tax: decimal
+  id: int pk
+  index(total)
+}
+
+table Customer {
+  id: int pk
+}
+"""
     path.write_text(source, encoding="utf-8")
     check_path.write_text(source, encoding="utf-8")
     clean_source = format_report_dsl(source, include_text=True)["text"]
     clean_check_path.write_text(clean_source, encoding="utf-8")
+    organize_path.write_text(organize_source, encoding="utf-8")
 
     check_output = io.StringIO()
     with contextlib.redirect_stdout(check_output):
@@ -2892,6 +2912,21 @@ def _tooling_audit_format_write(tmp: Path) -> dict:
     with contextlib.redirect_stdout(clean_check_output):
         clean_check_exit = dsl_tooling_cli(("format", str(clean_check_path), "--check", "--json"))
     clean_check_payload = json.loads(clean_check_output.getvalue())
+
+    organize_output = io.StringIO()
+    with contextlib.redirect_stdout(organize_output):
+        organize_exit = dsl_tooling_cli(("format", str(organize_path), "--organize", "--json"))
+    organize_payload = json.loads(organize_output.getvalue())
+    organize_text = organize_payload.get("text", "")
+    organized_table_index_order = (
+        organize_text.find("  id: int pk"),
+        organize_text.find("  invoice_number: string unique"),
+        organize_text.find("  customer_id: int -> Customer.id"),
+        organize_text.find("  subtotal: decimal"),
+        organize_text.find("  total: decimal = subtotal + tax"),
+        organize_text.find("  updated_at: string"),
+        organize_text.find("  index(total)"),
+    )
 
     output = io.StringIO()
     with contextlib.redirect_stdout(output):
@@ -2910,6 +2945,12 @@ def _tooling_audit_format_write(tmp: Path) -> dict:
         and clean_check_exit == 0
         and clean_check_payload.get("format") == "appgen.format-result.v1"
         and clean_check_payload.get("changed") is False
+        and organize_exit == 0
+        and organize_payload.get("format") == "appgen.format-result.v1"
+        and organize_payload.get("organize") is True
+        and organize_payload.get("idempotent") is True
+        and -1 not in organized_table_index_order
+        and organized_table_index_order == tuple(sorted(organized_table_index_order))
         and payload.get("write_requested") is True
         and payload.get("written") is True
         and after == payload.get("text")
@@ -2922,6 +2963,10 @@ def _tooling_audit_format_write(tmp: Path) -> dict:
         "check_written": check_payload.get("written"),
         "clean_check_exit_code": clean_check_exit,
         "clean_check_changed": clean_check_payload.get("changed"),
+        "organize_exit_code": organize_exit,
+        "organize": organize_payload.get("organize"),
+        "organize_idempotent": organize_payload.get("idempotent"),
+        "organize_order": organized_table_index_order,
         "written": payload.get("written"),
         "write_path": payload.get("write_path"),
     }

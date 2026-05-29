@@ -3509,3 +3509,13 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   --json` with `16/16` checks and no blocking gaps, scoped diff whitespace
   check, and restricted-name scan outside archive, Git internals, and active
   PBC paths. Commit: `90be036e`.
+- Current formatter CLI audit hardening pass closes the remaining gap between
+  the documented `appgen format --organize` profile and the aggregate
+  `appgen.tooling-audit.v1` release gate. `appgen.format-write-audit.v1` now
+  runs the organize CLI path, proves the payload is idempotent, and verifies the
+  table-body order for identity, business key, relationship, scalar,
+  calculated, audit, and directive entries. Verification passed: Python compile
+  for the touched tooling entrypoint, focused formatter CLI tests (`2 passed`),
+  direct `appgen.format-write-audit.v1` helper probe with `ok=True`, scoped diff
+  whitespace check, and restricted-name scan outside archive, Git internals, and
+  active PBC paths.
