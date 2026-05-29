@@ -3973,6 +3973,24 @@ def test_designer_sync_text_renderer_contract_proves_round_trip_log_markers() ->
     } <= set(report["required_fragments"])
 
 
+def test_migration_plan_text_renderer_contract_proves_safety_log_markers() -> None:
+    report = appgen_dsl._migration_plan_text_renderer_contract()
+
+    assert report["format"] == "appgen.migration-plan-text-renderer.v1"
+    assert report["ok"] is True
+    assert report["missing_fragments"] == ()
+    assert report["json_fallback"] is False
+    assert report["text_prefix"].startswith(
+        "migration-plan failed: format=appgen.migration-plan.v1 backend=postgresql"
+    )
+    assert {
+        "migration-coverage format=appgen.migration-coverage.v1: detected=3 missing=1",
+        "migration-detected added_table, dropped_field, type_change",
+        "safe-alternative drop_field: Mark Invoice.legacy_code deprecated before dropping it.",
+        "warning AGX1101: Destructive migration changes require approval.",
+    } <= set(report["required_fragments"])
+
+
 def test_tooling_audit_text_summary_exposes_sections_gaps_and_formats() -> None:
     payload = {
         "format": "appgen.tooling-audit.v1",

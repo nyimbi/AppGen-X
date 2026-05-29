@@ -1197,6 +1197,10 @@ destructive change count, approval requirement, the
 missing-family count, detected migration families, each change kind, safe
 alternatives when present, and diagnostics; JSON remains the machine-readable
 source of truth.
+`appgen.migration-plan-text-renderer.v1` is embedded in the tooling audit to
+prove migration text logs keep backend, destructive-count, approval, coverage,
+detected-family, change, safe-alternative, and diagnostic markers visible
+without JSON parsing.
 
 ## Natural-Language Change Planner
 

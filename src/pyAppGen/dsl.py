@@ -2268,6 +2268,67 @@ def _emit_migration_plan_text(payload: dict) -> None:
         print(f"{diagnostic['severity']} {diagnostic['code']}: {diagnostic['message']}")
 
 
+def _migration_plan_text_renderer_contract() -> dict:
+    """Prove migration-plan text logs expose coverage and safety evidence."""
+    payload = {
+        "format": "appgen.migration-plan.v1",
+        "ok": False,
+        "backend": "postgresql",
+        "requires_approval": True,
+        "coverage": {
+            "format": "appgen.migration-coverage.v1",
+            "detected": ("added_table", "dropped_field", "type_change"),
+            "missing": ("relationship_change",),
+        },
+        "changes": (
+            {"kind": "add_table", "table": "CreditMemo", "destructive": False},
+            {
+                "kind": "drop_field",
+                "field": "Invoice.legacy_code",
+                "destructive": True,
+                "safe_alternative": "Mark Invoice.legacy_code deprecated before dropping it.",
+            },
+            {
+                "kind": "type_change",
+                "field": "Invoice.total",
+                "destructive": True,
+                "safe_alternative": "Add Invoice.total_decimal and backfill before swapping.",
+            },
+        ),
+        "diagnostics": (
+            {
+                "severity": "warning",
+                "code": "AGX1101",
+                "message": "Destructive migration changes require approval.",
+            },
+        ),
+    }
+    output = io.StringIO()
+    with contextlib.redirect_stdout(output):
+        _emit_tooling_payload(payload, as_json=False)
+    text = output.getvalue()
+    required_fragments = (
+        "migration-plan failed: format=appgen.migration-plan.v1 backend=postgresql changes=3 destructive=2 requires_approval=True",
+        "migration-coverage format=appgen.migration-coverage.v1: detected=3 missing=1",
+        "migration-detected added_table, dropped_field, type_change",
+        "change add_table: CreditMemo",
+        "change drop_field: Invoice.legacy_code",
+        "safe-alternative drop_field: Mark Invoice.legacy_code deprecated before dropping it.",
+        "change type_change: Invoice.total",
+        "safe-alternative type_change: Add Invoice.total_decimal and backfill before swapping.",
+        "warning AGX1101: Destructive migration changes require approval.",
+    )
+    missing = tuple(fragment for fragment in required_fragments if fragment not in text)
+    return {
+        "format": "appgen.migration-plan-text-renderer.v1",
+        "ok": not missing and not text.lstrip().startswith("{"),
+        "required_fragments": required_fragments,
+        "missing_fragments": missing,
+        "json_fallback": text.lstrip().startswith("{"),
+        "text_prefix": text[:240],
+    }
+
+
 def _emit_nl_plan_text(payload: dict) -> None:
     status = "ok" if payload.get("ok") else "failed"
     operations = tuple(payload.get("edit_operations", ()))
@@ -3143,6 +3204,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
     designer_visual_edit_matrix = designer_visual_edit_matrix_dsl(source, source_name="tooling-audit.appgen")
     designer_sync_text_renderer = _designer_sync_text_renderer_contract()
     migration_reports = _tooling_audit_migration_reports()
+    migration_text_renderer = _migration_plan_text_renderer_contract()
     migration_detected = tuple(
         sorted(
             {
@@ -3478,10 +3540,16 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
         _tooling_audit_check(
             "migration_detection_coverage",
             set(REQUIRED_MIGRATION_DETECTIONS) <= set(migration_detected)
+            and migration_text_renderer["ok"]
             and migration_cli["ok"],
-            "Migration planner detects required change families and the CLI accepts supported backend profiles plus rename hints.",
+            "Migration planner detects required change families, emits safety text evidence, and the CLI accepts supported backend profiles plus rename hints.",
             "docs/tooling.md#migration-planner",
-            {"detected": migration_detected, "required": REQUIRED_MIGRATION_DETECTIONS, "cli": migration_cli},
+            {
+                "detected": migration_detected,
+                "required": REQUIRED_MIGRATION_DETECTIONS,
+                "text_renderer": migration_text_renderer,
+                "cli": migration_cli,
+            },
         ),
         _tooling_audit_check(
             "natural_language_patch_planner",
