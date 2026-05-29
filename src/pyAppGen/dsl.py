@@ -1978,7 +1978,8 @@ def _emit_tooling_payload(payload: dict, *, as_json: bool) -> None:
         gaps = tuple(payload.get("blocking_gaps", ()))
         sections = tuple(payload.get("sections", ()))
         print(
-            f"tooling-audit {status}: {payload.get('passed', 0)}/{payload.get('required', 0)} checks "
+            f"tooling-audit {status}: format={payload.get('format')} "
+            f"{payload.get('passed', 0)}/{payload.get('required', 0)} checks "
             f"blocking_gaps={len(gaps)} sections={len(sections)} source={payload.get('source_of_truth')}"
         )
         phase_detail = _tooling_text_phase_detail(payload)

@@ -3900,7 +3900,7 @@ def test_tooling_audit_text_summary_exposes_sections_gaps_and_formats() -> None:
         appgen_dsl._emit_tooling_payload(payload, as_json=False)
 
     text = output.getvalue()
-    assert text.startswith("tooling-audit ok: 5/5 checks blocking_gaps=0 sections=5 source=docs/tooling.md")
+    assert text.startswith("tooling-audit ok: format=appgen.tooling-audit.v1 5/5 checks blocking_gaps=0 sections=5 source=docs/tooling.md")
     assert "implementation-phases 1 missing=0 format=appgen.tooling-implementation-phase-audit.v1" in text
     assert "section docs/tooling.md#cli-contracts" in text
     assert "section docs/tooling.md#non-goals" in text

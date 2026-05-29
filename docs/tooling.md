@@ -735,9 +735,10 @@ completion, hover, definition, references, symbols, code actions, formatting,
 rename, and workspace symbol search. A passing report means every audited
 requirement section has a concrete machine-readable proof instead of relying on
 prose or scattered manual checks. The default text output reports pass count,
-blocking gap count, covered documentation sections, source-of-truth document,
-and embedded report formats for each check so release logs remain useful without
-requiring JSON parsing. The report embeds
+the top-level `appgen.tooling-audit.v1` envelope format, blocking gap count,
+covered documentation sections, source-of-truth document, and embedded report
+formats for each check so release logs remain useful without requiring JSON
+parsing. The report embeds
 `appgen.tooling-doc-anchor-audit.v1`, which proves every emitted
 `docs/tooling.md#...` section reference resolves to a real heading anchor in
 this document. The text renderer must include embedded audit format names such
