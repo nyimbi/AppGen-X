@@ -2824,8 +2824,9 @@ def _tooling_audit_lsp_stdio_transport(source: str) -> dict:
 
 
 def _tooling_audit_lsp_apply_code_action_cli(tmp: Path) -> dict:
-    source_path = tmp / "lsp-apply-code-action.appgen"
-    source_path.write_text(
+    operation_path = tmp / "lsp-apply-operation.appgen"
+    lookup_path = tmp / "lsp-apply-lookup.appgen"
+    operation_path.write_text(
         """
 app Bad { targets: web }
 table Invoice { id: int pk }
@@ -2833,39 +2834,81 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
 """,
         encoding="utf-8",
     )
-    output = io.StringIO()
-    with contextlib.redirect_stdout(output):
-        exit_code = dsl_tooling_cli(
-            (
-                "lsp",
-                str(source_path),
-                "--apply-code-action",
-                "create_operation_from_handler",
-                "--json",
+    lookup_path.write_text(
+        """
+app LookupFix { targets: web }
+table Customer { id: int pk; name: string }
+table Invoice { id: int pk; customer_id: int -> Customer.id }
+view InvoiceForm for Invoice { Main: customer_name }
+""",
+        encoding="utf-8",
+    )
+
+    def run_apply(path: Path, action_id: str) -> tuple[int, dict]:
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            exit_code = dsl_tooling_cli(
+                (
+                    "lsp",
+                    str(path),
+                    "--apply-code-action",
+                    action_id,
+                    "--json",
+                )
             )
-        )
-    try:
-        payload = json.loads(output.getvalue())
-    except json.JSONDecodeError:
-        payload = {}
+        try:
+            payload = json.loads(output.getvalue())
+        except json.JSONDecodeError:
+            payload = {}
+        return exit_code, payload
+
+    operation_exit, operation_payload = run_apply(operation_path, "create_operation_from_handler")
+    lookup_exit, lookup_payload = run_apply(lookup_path, "add_lookup_directive")
+    cases = (
+        {
+            "case": "create_operation_from_handler",
+            "ok": operation_exit == 0
+            and operation_payload.get("format") == "appgen.lsp-code-action-apply.v1"
+            and operation_payload.get("ok") is True
+            and operation_payload.get("changed") is True
+            and operation_payload.get("action_id") == "create_operation_from_handler"
+            and "operation SubmitInvoice" in operation_payload.get("patched_source", "")
+            and operation_payload.get("lint", {}).get("format") == "appgen.lint-report.v1"
+            and operation_payload.get("lint", {}).get("ok") is True
+            and bool(operation_payload.get("applied_edits")),
+            "exit_code": operation_exit,
+            "payload_format": operation_payload.get("format"),
+            "action_id": operation_payload.get("action_id"),
+            "changed": operation_payload.get("changed"),
+            "applied_edit_count": len(operation_payload.get("applied_edits", ())),
+            "lint_format": operation_payload.get("lint", {}).get("format"),
+            "lint_ok": operation_payload.get("lint", {}).get("ok"),
+        },
+        {
+            "case": "add_lookup_directive",
+            "ok": lookup_exit == 0
+            and lookup_payload.get("format") == "appgen.lsp-code-action-apply.v1"
+            and lookup_payload.get("ok") is True
+            and lookup_payload.get("changed") is True
+            and lookup_payload.get("action_id") == "add_lookup_directive"
+            and "lookup customer_name (customer.name)" in lookup_payload.get("patched_source", "")
+            and lookup_payload.get("lint", {}).get("format") == "appgen.lint-report.v1"
+            and lookup_payload.get("lint", {}).get("ok") is True
+            and bool(lookup_payload.get("applied_edits")),
+            "exit_code": lookup_exit,
+            "payload_format": lookup_payload.get("format"),
+            "action_id": lookup_payload.get("action_id"),
+            "changed": lookup_payload.get("changed"),
+            "applied_edit_count": len(lookup_payload.get("applied_edits", ())),
+            "lint_format": lookup_payload.get("lint", {}).get("format"),
+            "lint_ok": lookup_payload.get("lint", {}).get("ok"),
+        },
+    )
     return {
         "format": "appgen.lsp-code-action-cli-audit.v1",
-        "ok": exit_code == 0
-        and payload.get("format") == "appgen.lsp-code-action-apply.v1"
-        and payload.get("ok") is True
-        and payload.get("changed") is True
-        and payload.get("action_id") == "create_operation_from_handler"
-        and "operation SubmitInvoice" in payload.get("patched_source", "")
-        and payload.get("lint", {}).get("format") == "appgen.lint-report.v1"
-        and payload.get("lint", {}).get("ok") is True
-        and bool(payload.get("applied_edits")),
-        "exit_code": exit_code,
-        "payload_format": payload.get("format"),
-        "action_id": payload.get("action_id"),
-        "changed": payload.get("changed"),
-        "applied_edit_count": len(payload.get("applied_edits", ())),
-        "lint_format": payload.get("lint", {}).get("format"),
-        "lint_ok": payload.get("lint", {}).get("ok"),
+        "ok": all(case["ok"] for case in cases),
+        "cases": cases,
+        "required_cli_actions": tuple(case["case"] for case in cases),
     }
 
 

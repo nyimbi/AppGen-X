@@ -1274,6 +1274,23 @@ def test_lsp_code_action_apply_audit_proves_required_quick_fixes() -> None:
     } <= set(audit["required_actions"])
 
 
+def test_lsp_code_action_cli_audit_covers_missing_operation_and_lookup_directive(tmp_path: Path) -> None:
+    report = appgen_dsl._tooling_audit_lsp_apply_code_action_cli(tmp_path)
+    cases = {case["case"]: case for case in report["cases"]}
+
+    assert report["format"] == "appgen.lsp-code-action-cli-audit.v1"
+    assert report["ok"] is True
+    assert {"create_operation_from_handler", "add_lookup_directive"} <= set(report["required_cli_actions"])
+    assert cases["create_operation_from_handler"]["ok"] is True
+    assert cases["create_operation_from_handler"]["changed"] is True
+    assert cases["create_operation_from_handler"]["applied_edit_count"] > 0
+    assert cases["create_operation_from_handler"]["lint_ok"] is True
+    assert cases["add_lookup_directive"]["ok"] is True
+    assert cases["add_lookup_directive"]["changed"] is True
+    assert cases["add_lookup_directive"]["applied_edit_count"] > 0
+    assert cases["add_lookup_directive"]["lint_ok"] is True
+
+
 def test_appgen_lsp_subcommand_emits_json_contract(tmp_path: Path) -> None:
     path = tmp_path / "finance.appgen"
     path.write_text(TOOLING_SAMPLE, encoding="utf-8")
@@ -2469,11 +2486,13 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     quick_fix_check = next(check for check in report["checks"] if check["id"] == "lsp_quick_fix_application")
     assert quick_fix_check["detail"]["cli"]["format"] == "appgen.lsp-code-action-cli-audit.v1"
     assert quick_fix_check["detail"]["cli"]["ok"] is True
-    assert quick_fix_check["detail"]["cli"]["action_id"] == "create_operation_from_handler"
-    assert quick_fix_check["detail"]["cli"]["changed"] is True
-    assert quick_fix_check["detail"]["cli"]["applied_edit_count"] > 0
-    assert quick_fix_check["detail"]["cli"]["lint_format"] == "appgen.lint-report.v1"
-    assert quick_fix_check["detail"]["cli"]["lint_ok"] is True
+    assert {"create_operation_from_handler", "add_lookup_directive"} <= set(
+        quick_fix_check["detail"]["cli"]["required_cli_actions"]
+    )
+    assert all(case["changed"] for case in quick_fix_check["detail"]["cli"]["cases"])
+    assert all(case["applied_edit_count"] > 0 for case in quick_fix_check["detail"]["cli"]["cases"])
+    assert all(case["lint_format"] == "appgen.lint-report.v1" for case in quick_fix_check["detail"]["cli"]["cases"])
+    assert all(case["lint_ok"] is True for case in quick_fix_check["detail"]["cli"]["cases"])
     cli_check = next(check for check in report["checks"] if check["id"] == "cli_validation_and_generation_contracts")
     assert cli_check["detail"]["validate_generate_cli"]["format"] == "appgen.validate-generate-cli-audit.v1"
     assert cli_check["detail"]["validate_generate_cli"]["ok"] is True

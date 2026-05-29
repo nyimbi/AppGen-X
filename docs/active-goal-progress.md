@@ -3663,3 +3663,13 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   evidence, focused non-PBC package audit test (`1 passed`), scoped diff
   whitespace check, and restricted-name scan outside archive, Git internals, and
   active PBC paths.
+- Current LSP code-action CLI audit hardening pass closes the gap between
+  broad in-process quick-fix coverage and the executable CLI contract called
+  out in `docs/tooling.md`. `appgen.lsp-code-action-cli-audit.v1` now proves
+  `appgen lsp --apply-code-action` applies both missing-operation and lookup-
+  directive quick fixes, returns patched DSL, applied edits, and a passing
+  lint report. Verification passed: Python compile for the touched tooling
+  entrypoint, direct `appgen.lsp-code-action-cli-audit.v1` helper probe with
+  both CLI quick-fix cases, focused non-PBC LSP code-action CLI audit test
+  (`1 passed`), scoped diff whitespace check, and restricted-name scan outside
+  archive, Git internals, and active PBC paths.
