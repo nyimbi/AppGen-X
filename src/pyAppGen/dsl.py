@@ -2279,6 +2279,15 @@ def _emit_lsp_service_text(payload: dict) -> None:
     if coverage:
         missing = tuple(coverage.get("missing", ()))
         print(f"completion_coverage={coverage.get('format')} missing={len(missing)}")
+    definition = payload.get("definition") or {}
+    if definition:
+        print(f"definition={definition.get('format')} ok={definition.get('ok')}")
+    references = payload.get("references") or {}
+    if references:
+        print(f"references={references.get('format')} locations={len(references.get('locations', ()))}")
+    formatting = payload.get("formatting") or {}
+    if formatting:
+        print(f"formatting={formatting.get('format')} edits={len(formatting.get('edits', ()))}")
     rename = payload.get("rename")
     if rename:
         diagnostics = tuple(rename.get("diagnostics", ()))

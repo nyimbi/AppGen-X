@@ -1835,6 +1835,9 @@ def test_appgen_lsp_subcommand_emits_json_and_text_contracts(tmp_path: Path) -> 
     assert "source_of_truth=appgen.semantic-model.v1" in text_result.stdout
     assert f"completion_coverage={payload['completionCoverage']['format']}" in text_result.stdout
     assert f"missing={len(payload['completionCoverage']['missing'])}" in text_result.stdout
+    assert f"definition={payload['definition']['format']} ok={payload['definition']['ok']}" in text_result.stdout
+    assert f"references={payload['references']['format']} locations={len(payload['references']['locations'])}" in text_result.stdout
+    assert f"formatting={payload['formatting']['format']} edits={len(payload['formatting']['edits'])}" in text_result.stdout
     assert f"hover_items={len(payload['hover']['contents'])}" in text_result.stdout
 
 
