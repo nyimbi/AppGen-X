@@ -47,6 +47,10 @@ COMPOSITION_ENGINE_FORM_DEFINITIONS = (
             {"name": "fragment", "type": "string", "required": True},
             {"name": "permissions", "type": "list", "required": True},
             {"name": "schemas", "type": "list", "required": True},
+            {"name": "fragment_id", "type": "string", "required": False},
+            {"name": "route", "type": "string", "required": False},
+            {"name": "slots", "type": "list", "required": False},
+            {"name": "events", "type": "list", "required": False},
         ),
     },
     {
@@ -120,6 +124,71 @@ COMPOSITION_ENGINE_FORM_DEFINITIONS = (
             {"name": "requested_action", "type": "enum", "required": True, "choices": ("create", "read", "update", "delete")},
         ),
     },
+    {
+        "form_id": "selection_impact_preview_request",
+        "title": "Preview selection impact",
+        "route": "POST /api/pbc/composition_engine/composition/selection-impact",
+        "operation": "preview_selection_impact",
+        "permission": "composition_engine.compose",
+        "owned_tables": ("composition_engine_composition_workspace", "composition_engine_composition_plan"),
+        "fields": (
+            {"name": "workspace_id", "type": "string", "required": True},
+            {"name": "candidate_pbcs", "type": "list", "required": True},
+        ),
+    },
+    {
+        "form_id": "agent_intent_request",
+        "title": "Route agent intent",
+        "route": "POST /api/pbc/composition_engine/composition/assistant/route-intent",
+        "operation": "route_agent_intent",
+        "permission": "composition_engine.read",
+        "owned_tables": ("composition_engine_composition_workspace",),
+        "fields": (
+            {"name": "intent", "type": "text", "required": True},
+            {"name": "workspace_id", "type": "string", "required": False},
+        ),
+    },
+    {
+        "form_id": "workspace_governance_review",
+        "title": "Run workspace governance review",
+        "route": "POST /api/pbc/composition_engine/composition/rehearsal",
+        "operation": "release_rehearsal",
+        "permission": "composition_engine.publish",
+        "owned_tables": (
+            "composition_engine_composition_validation_run",
+            "composition_engine_dsl_artifact",
+            "composition_engine_package_registration_plan",
+        ),
+        "fields": (
+            {"name": "workspace_id", "type": "string", "required": True},
+        ),
+    },
+    {
+        "form_id": "control_center_request",
+        "title": "Inspect control center",
+        "route": "POST /api/pbc/composition_engine/composition/control-center",
+        "operation": "build_control_center",
+        "permission": "composition_engine.audit",
+        "owned_tables": (
+            "composition_engine_release_evidence",
+            "composition_engine_composition_validation_run",
+            "composition_engine_composition_rule",
+        ),
+        "fields": (
+            {"name": "workspace_id", "type": "string", "required": True},
+        ),
+    },
+    {
+        "form_id": "release_notes_request",
+        "title": "Draft release notes",
+        "route": "POST /api/pbc/composition_engine/composition/release-notes",
+        "operation": "build_release_notes",
+        "permission": "composition_engine.audit",
+        "owned_tables": ("composition_engine_release_evidence",),
+        "fields": (
+            {"name": "workspace_id", "type": "string", "required": True},
+        ),
+    },
 )
 
 
@@ -155,7 +224,8 @@ def composition_engine_validate_form_payload(form_id: str, payload: dict | None 
     missing = tuple(
         field["name"]
         for field in form["fields"]
-        if field.get("required") and supplied.get(field["name"]) in {None, ""}
+        if field.get("required")
+        and (supplied.get(field["name"]) is None or supplied.get(field["name"]) == "")
     )
     invalid_choices = tuple(
         field["name"]
@@ -175,9 +245,9 @@ def composition_engine_validate_form_payload(form_id: str, payload: dict | None 
 
 
 def smoke_test() -> dict:
-    """Exercise one happy-path form validation."""
+    """Exercise happy-path form validation across standalone and assistant flows."""
     catalog = composition_engine_form_catalog()
-    validation = composition_engine_validate_form_payload(
+    document_validation = composition_engine_validate_form_payload(
         "assistant_document_intake",
         {
             "document_text": "Compose a customer service workbench with customer_360 and workflow orchestration.",
@@ -186,9 +256,14 @@ def smoke_test() -> dict:
             "target_table": "composition_engine_composition_workspace",
         },
     )
+    workflow_validation = composition_engine_validate_form_payload(
+        "workspace_governance_review",
+        {"workspace_id": "ws_100"},
+    )
     return {
-        "ok": catalog["ok"] and validation["ok"],
+        "ok": catalog["ok"] and document_validation["ok"] and workflow_validation["ok"],
         "catalog": catalog,
-        "validation": validation,
+        "document_validation": document_validation,
+        "workflow_validation": workflow_validation,
         "side_effects": (),
     }

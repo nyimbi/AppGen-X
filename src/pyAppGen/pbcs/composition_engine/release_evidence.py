@@ -2,11 +2,15 @@
 
 from __future__ import annotations
 
+from .repository import repository_manifest
 from .runtime import composition_engine_build_release_evidence
+from .standalone import standalone_app_manifest
 
 
 RELEASE_EVIDENCE = {
     **composition_engine_build_release_evidence(),
+    "repository": repository_manifest(),
+    "standalone_app": standalone_app_manifest(),
     "pbc": "composition_engine",
 }
 
@@ -34,6 +38,8 @@ def release_readiness_manifest():
             "rehearsal",
             "assistant",
             "agent_competencies",
+            "repository",
+            "standalone_app",
         )
         if isinstance(evidence.get(name), dict)
     )
@@ -45,7 +51,7 @@ def release_readiness_manifest():
         "sections": sections,
         "checks": checks,
         "blocking_gaps": tuple(evidence.get("blocking_gaps", ())),
-        "required_sections": ("schema", "service", "rehearsal", "assistant"),
+        "required_sections": ("schema", "service", "rehearsal", "assistant", "repository", "standalone_app"),
         "side_effects": (),
     }
 
@@ -59,12 +65,16 @@ def validate_release_evidence():
     security = evidence.get("security", {}) if isinstance(evidence.get("security"), dict) else {}
     rehearsal = evidence.get("rehearsal", {}) if isinstance(evidence.get("rehearsal"), dict) else {}
     boundary = evidence.get("boundary", {}) if isinstance(evidence.get("boundary"), dict) else {}
+    repository = evidence.get("repository", {}) if isinstance(evidence.get("repository"), dict) else {}
+    standalone = evidence.get("standalone_app", {}) if isinstance(evidence.get("standalone_app"), dict) else {}
     boundary_gaps = tuple(
         gap
         for gap, failed in (
             ("security_blocking_findings", bool(security.get("blocking_findings"))),
             ("release_freeze", bool(rehearsal.get("release_freeze"))),
             ("boundary_violation", boundary.get("ok") is not True),
+            ("repository_contract_invalid", repository.get("ok") is not True),
+            ("standalone_contract_invalid", standalone.get("ok") is not True),
         )
         if failed
     )

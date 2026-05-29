@@ -1,27 +1,32 @@
 # Composition Engine PBC
 
-`composition_engine` is a self-contained one-PBC composition/orchestration slice for AppGen-X. It owns workspace setup, PBC selection, component and fragment registration, layout binding, validation, side-effect-free package registration planning, release rehearsal, release evidence, assistant document previews, and package-local workbench surfaces.
+`composition_engine` is a standalone one-PBC composition/orchestration slice for AppGen-X. It now ships with an executable runtime, a SQLite-backed repository, a standalone application wrapper, database-backed forms and wizards, control-center evidence, and assistant skills that stay inside composition-owned tables.
 
-## What It Exposes
+## What It Owns
 
-- Owned runtime state and schema descriptors for composition workspaces, fragments, bindings, DSL artifacts, validation runs, package plans, release evidence, rules, parameters, configuration, and AppGen-X inbox/outbox/dead-letter tables.
-- Composition-specific forms, guided wizards, and operational controls under [`forms.py`](./forms.py), [`wizards.py`](./wizards.py), and [`controls.py`](./controls.py).
-- A richer assistant surface under [`agent.py`](./agent.py) for document-driven intake, intent routing, competency catalog publication, and CRUD previews that stay inside composition-owned tables.
-- Workbench UI metadata and render helpers under [`ui.py`](./ui.py) for the composition console, assistant preview workbench, release rehearsal panel, documentation matrix, and security review panel.
-- Package-local release evidence in [`runtime.py`](./runtime.py) and [`release_evidence.py`](./release_evidence.py), including smoke-plan synthesis, artifact lineage, documentation coverage, assistant guardrails, and security review.
+- Composition workspaces, selected PBCs, component registrations, UI fragments, layout bindings, generated DSL artifacts, validation runs, package-registration plans, package-index entries, release evidence, configuration, parameters, and rules.
+- Package-local AppGen-X outbox, inbox, and dead-letter tables.
+- Composition workbench forms, guided wizards, controls, assistant routing, CRUD previews, release rehearsal, release notes, lineage, documentation matrix, and security review.
 
-## Key Runtime Entry Points
+## Standalone Surface
 
-- `composition_engine_runtime_smoke()`
-- `composition_engine_release_rehearsal(state, workspace_id)`
-- `composition_engine_assistant_document_preview(document_text, instructions, ...)`
-- `composition_engine_build_control_center(state, workspace_id=...)`
-- `composition_engine_build_release_evidence()`
+- [`repository.py`](./repository.py): applies owned migrations and persists the runtime snapshot into SQLite tables.
+- [`standalone.py`](./standalone.py): bootstraps a usable standalone app, executes forms and wizards, renders the workbench, exposes assistant previews, and syncs runtime state to the repository.
+- [`forms.py`](./forms.py): executable forms for workspace intake, selection impact, assistant routing, governance review, control-center inspection, and release-note drafting.
+- [`wizards.py`](./wizards.py): bootstrap, document-driven intake, and release-gate workflows that run against real form payloads.
+
+## Typical Flow
+
+1. Bootstrap the app with `CompositionEngineStandaloneApp(bootstrap=True)`.
+2. Submit `workspace_intake`, `pbc_selection`, `component_fragment_registration`, and `layout_binding` forms.
+3. Run `workspace_governance_review` or the `bootstrap_composition` wizard.
+4. Inspect `control_center()` and `assistant_preview(...)` before publication.
+5. Use `render_workbench(...)` and repository queries to confirm persisted state.
 
 ## Verification
 
-- `./.venv/bin/pytest src/pyAppGen/pbcs/composition_engine/tests -q`
 - `python3 -m compileall src/pyAppGen/pbcs/composition_engine`
-- `./.venv/bin/python - <<'PY' ... runtime/ui/agent/control smoke checks ... PY`
+- `./.venv/bin/pytest src/pyAppGen/pbcs/composition_engine/tests -q`
+- `./.venv/bin/pytest tests/test_pbc_composition_engine_runtime.py -q`
 
-See [`implementation-status.md`](./implementation-status.md) for the latest recorded evidence.
+See [`implementation-status.md`](./implementation-status.md) for the current evidence snapshot.
