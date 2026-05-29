@@ -4796,26 +4796,46 @@ def _tooling_audit_validate_generate_cli(tmp: Path, source: str) -> dict:
     }
 
 
+def _tooling_cli_json_case(argv: tuple[str, ...]) -> tuple[int, dict]:
+    output = io.StringIO()
+    with contextlib.redirect_stdout(output):
+        exit_code = dsl_tooling_cli(argv)
+    try:
+        payload = json.loads(output.getvalue())
+    except json.JSONDecodeError:
+        payload = {}
+    return exit_code, payload
+
+
+def _tooling_audit_diagnostics_catalog_cli() -> dict:
+    catalog_exit, catalog_payload = _tooling_cli_json_case(("diagnostics", "--json"))
+    return {
+        "case": "diagnostics_catalog",
+        "ok": catalog_exit == 0
+        and catalog_payload.get("format") == "appgen.diagnostic-catalog.v1"
+        and catalog_payload.get("ok") is True
+        and not catalog_payload.get("missing_fixtures")
+        and set(catalog_payload.get("required_codes", ())) == set(catalog_payload.get("covered_fixture_codes", ())),
+        "exit_code": catalog_exit,
+        "payload_format": catalog_payload.get("format"),
+        "required_count": len(catalog_payload.get("required_codes", ())),
+        "covered_count": len(catalog_payload.get("covered_fixture_codes", ())),
+        "fixture_count": catalog_payload.get("fixture_count"),
+    }
+
+
 def _tooling_audit_test_strategy_cli(tmp: Path, source: str) -> dict:
     source_path = tmp / "test-strategy.appgen"
     source_path.write_text(source, encoding="utf-8")
 
-    def run_json(argv: tuple[str, ...]) -> tuple[int, dict]:
-        output = io.StringIO()
-        with contextlib.redirect_stdout(output):
-            exit_code = dsl_tooling_cli(argv)
-        try:
-            payload = json.loads(output.getvalue())
-        except json.JSONDecodeError:
-            payload = {}
-        return exit_code, payload
-
+    run_json = _tooling_cli_json_case
     diagnostics_exit, diagnostics_payload = run_json(("diagnostics", "--audit-fixtures", "--json"))
     parser_exit, parser_payload = run_json(("parser-golden", "--json"))
     drift_exit, drift_payload = run_json(("drift", str(source_path), "--json"))
     doctor_exit, doctor_payload = run_json(("doctor", "--json"))
     drift_required_surfaces = ("cli", "lsp", "studio", "graph", "generator", "release_verifier")
     cases = (
+        _tooling_audit_diagnostics_catalog_cli(),
         {
             "case": "diagnostics_audit_fixtures",
             "ok": diagnostics_exit == 0

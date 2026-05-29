@@ -2976,15 +2976,28 @@ def test_appgen_drift_subcommand_emits_json_and_text_contracts(tmp_path: Path) -
 
 def test_test_strategy_cli_audit_requires_generator_drift_surface(tmp_path: Path) -> None:
     report = appgen_dsl._tooling_audit_test_strategy_cli(tmp_path, TOOLING_SAMPLE)
+    catalog_case = next(case for case in report["cases"] if case["case"] == "diagnostics_catalog")
     drift_case = next(case for case in report["cases"] if case["case"] == "semantic_drift")
 
     assert report["format"] == "appgen.test-strategy-cli-audit.v1"
     assert report["ok"] is True
+    assert catalog_case["payload_format"] == "appgen.diagnostic-catalog.v1"
+    assert catalog_case["required_count"] == catalog_case["covered_count"]
+    assert catalog_case["fixture_count"] >= catalog_case["required_count"]
     assert {"cli", "lsp", "studio", "graph", "generator", "release_verifier"} <= set(
         drift_case["required_surfaces"]
     )
     assert set(drift_case["required_surfaces"]) <= set(drift_case["surfaces"])
     assert drift_case["generate_report"] == "appgen.generate-report.v1"
+
+
+def test_test_strategy_diagnostic_catalog_case_proves_registry_coverage_without_pbc_imports() -> None:
+    catalog_case = appgen_dsl._tooling_audit_diagnostics_catalog_cli()
+
+    assert catalog_case["ok"] is True
+    assert catalog_case["payload_format"] == "appgen.diagnostic-catalog.v1"
+    assert catalog_case["required_count"] == catalog_case["covered_count"]
+    assert catalog_case["fixture_count"] >= catalog_case["required_count"]
 
 
 def test_module_boundary_audit_proves_documented_tooling_surfaces() -> None:
@@ -3583,6 +3596,7 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert test_strategy_check["detail"]["cli"]["format"] == "appgen.test-strategy-cli-audit.v1"
     assert test_strategy_check["detail"]["cli"]["ok"] is True
     assert {
+        "diagnostics_catalog",
         "diagnostics_audit_fixtures",
         "parser_golden",
         "semantic_drift",
