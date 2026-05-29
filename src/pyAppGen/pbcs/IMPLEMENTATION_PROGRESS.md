@@ -38,11 +38,12 @@ This file tracks the branch-isolated implementation pass for standalone Packaged
 | federated_iam | `pbc/federated-iam-standalone` | `8e57b2f4` | Compile, 14 tests, spec/source/release/smoke true. |
 | inventory_positioning | `pbc/inventory-positioning-standalone` | `5fa432ae` | Compile, 8 tests, spec/source/release/smoke true. |
 | procurement_sourcing | `pbc/procurement-sourcing-standalone` | `ed99321e` | Compile, 13 tests, spec/source/release/smoke true. |
+| transportation_management | `pbc/transportation-management-standalone` | `17f7e4fe` | Compile, 13 tests, spec/source/release/smoke true. |
 | wms_core | `pbc/wms-core-standalone` | `7574fcc3` | Compile, 13 tests, spec/source/release/smoke true. |
 
 ## In Flight
 
-Supply-chain standalone pass is continuing. `wms_core` and `procurement_sourcing` are pushed; `transportation_management`, `dom`, and `global_inventory_visibility` remain in isolated worktrees for this batch.
+Supply-chain standalone pass is continuing. `wms_core`, `procurement_sourcing`, and `transportation_management` are pushed; `dom` and `global_inventory_visibility` are delegated in isolated worktrees for this batch.
 
 ## Next Selection Rule
 
