@@ -2588,6 +2588,10 @@ def test_top_level_help_exposes_tooling_subcommands_and_apg_alias() -> None:
     assert audit["help_exit_code"] == 0
     assert audit["help_lists_subcommands"] is True
     assert audit["help_missing_subcommands"] == ()
+    assert audit["module_entrypoint"]["ok"] is True
+    assert audit["module_entrypoint"]["exit_code"] == 0
+    assert audit["module_entrypoint"]["payload_format"] == "appgen.lint-report.v1"
+    assert audit["module_entrypoint"]["traceback_free"] is True
 
 
 def test_cli_contracts_cover_text_summaries_exit_codes_and_bad_arguments(tmp_path: Path) -> None:

@@ -10,6 +10,7 @@ import hashlib
 import io
 import json
 import re
+import subprocess
 import sys
 import tempfile
 import tomllib
@@ -4026,6 +4027,7 @@ def _tooling_audit_cli_help_surface(root: Path) -> dict:
     pyproject = (root / "pyproject.toml").read_text(encoding="utf-8")
     pyproject_data = tomllib.loads(pyproject)
     entrypoint = (root / "src/pyAppGen/gen.py").read_text(encoding="utf-8")
+    module_entrypoint = (root / "src/pyAppGen/__main__.py").read_text(encoding="utf-8")
     required_subcommands = (
         "lint",
         "format",
@@ -4060,14 +4062,46 @@ def _tooling_audit_cli_help_surface(root: Path) -> dict:
     help_lists_subcommands = all(command in help_text for command in required_subcommands)
     scripts = pyproject_data.get("project", {}).get("scripts", {})
     alias_declared = scripts.get("apg") == scripts.get("appgen") == "pyAppGen.__main__:main"
+    with tempfile.TemporaryDirectory(prefix="appgen-entrypoint-audit-") as tmp:
+        source_path = Path(tmp) / "entrypoint.appgen"
+        source_path.write_text("app EntryPoint { targets: web }\ntable Thing { id: int pk }\n", encoding="utf-8")
+        module_lint = subprocess.run(
+            [sys.executable, "-m", "pyAppGen", "lint", str(source_path), "--json"],
+            check=False,
+            cwd=root,
+            text=True,
+            capture_output=True,
+            timeout=10,
+        )
+    try:
+        module_lint_payload = json.loads(module_lint.stdout)
+    except json.JSONDecodeError:
+        module_lint_payload = {}
+    module_dispatches_tooling = (
+        "_run_tooling" in module_entrypoint
+        and "dsl_tooling_cli" in module_entrypoint
+        and module_lint.returncode == 0
+        and module_lint_payload.get("format") == "appgen.lint-report.v1"
+        and "Traceback" not in module_lint.stderr
+    )
     return {
         "format": "appgen.cli-help-surface-audit.v1",
-        "ok": help_exit_code == 0 and help_has_subcommands and help_lists_subcommands and alias_declared,
+        "ok": help_exit_code == 0
+        and help_has_subcommands
+        and help_lists_subcommands
+        and alias_declared
+        and module_dispatches_tooling,
         "alias_declared": alias_declared,
         "script_targets": {"appgen": scripts.get("appgen"), "apg": scripts.get("apg")},
         "help_exit_code": help_exit_code,
         "help_lists_subcommands": help_lists_subcommands,
         "help_missing_subcommands": tuple(command for command in required_subcommands if command not in help_text),
+        "module_entrypoint": {
+            "ok": module_dispatches_tooling,
+            "exit_code": module_lint.returncode,
+            "payload_format": module_lint_payload.get("format"),
+            "traceback_free": "Traceback" not in module_lint.stderr,
+        },
         "subcommands_documented": required_subcommands if help_has_subcommands else tuple(command for command in required_subcommands if command in entrypoint),
         "required_subcommands": required_subcommands,
     }

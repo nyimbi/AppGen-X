@@ -25,6 +25,26 @@ _TOOLING_SUBCOMMANDS = {
     "doctor",
     "tooling-audit",
 }
+_HELP_FLAGS = {"-h", "--help"}
+
+
+def _print_help() -> None:
+    print(
+        """Usage: appgen [OPTIONS] COMMAND [ARGS]...
+
+AppGen-X application generator and DSL tooling.
+
+Tooling subcommands are also available:
+  lint, format, validate, generate, graph, graph-suite, explain,
+  migration-plan, nl-plan, lsp, verify, package, pbc, designer-sync,
+  diagnostics, parser-golden, drift, doctor, and tooling-audit
+
+The platform supports visual drag-and-drop form design, database design,
+workflow design, PBC composition, packaging, and release evidence.
+
+Use `appgen <command> --help` for command-specific help.
+"""
+    )
 
 
 def _tooling_argv(*args, **kwargs):
@@ -42,7 +62,13 @@ def _run_tooling(argv):
     raise SystemExit(dsl_tooling_cli(argv))
 
 
-if _tooling_argv() and _tooling_argv()[0] in _TOOLING_SUBCOMMANDS:
+if _tooling_argv() and _tooling_argv()[0] in _HELP_FLAGS:
+
+    def main(*args, **kwargs):
+        """Print tooling-aware help without importing the legacy generator."""
+        _print_help()
+
+elif _tooling_argv() and _tooling_argv()[0] in _TOOLING_SUBCOMMANDS:
 
     def main(*args, **kwargs):
         """Dispatch tooling subcommands without importing the legacy generator."""

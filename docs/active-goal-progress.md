@@ -3631,3 +3631,15 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   focused non-PBC internal-error CLI tests (`2 passed`), scoped diff whitespace
   check, and restricted-name scan outside archive, Git internals, and active PBC
   paths.
+- Current CLI help/entrypoint audit hardening pass closes the gap between
+  declared command aliases and executable source-entrypoint behavior. The
+  `appgen.cli-help-surface-audit.v1` proof now checks pyproject `appgen`/`apg`
+  aliases, top-level tooling help coverage, source `pyAppGen.__main__`
+  dispatch wiring, and a real `python -m pyAppGen lint --json` subprocess that
+  returns `appgen.lint-report.v1` without a traceback. The module entrypoint now
+  also emits top-level help without importing the legacy generator path.
+  Verification passed: Python compile for the touched entrypoints, direct
+  `appgen.cli-help-surface-audit.v1` helper probe with module-entrypoint
+  evidence, direct `python -m pyAppGen --help` smoke, focused non-PBC help/alias
+  test (`1 passed`), scoped diff whitespace check, and restricted-name scan
+  outside archive, Git internals, and active PBC paths.
