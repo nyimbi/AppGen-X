@@ -2345,6 +2345,13 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     lsp_check = next(check for check in report["checks"] if check["id"] == "language_server_core_features")
     assert lsp_check["detail"]["rpc"]["format"] == "appgen.lsp-json-rpc-audit.v1"
     assert lsp_check["detail"]["rpc"]["blocking_gaps"] == ()
+    assert lsp_check["detail"]["rename_cli"]["format"] == "appgen.lsp-rename-cli-audit.v1"
+    assert lsp_check["detail"]["rename_cli"]["ok"] is True
+    assert lsp_check["detail"]["rename_cli"]["rename_format"] == "appgen.lsp-rename.v1"
+    assert lsp_check["detail"]["rename_cli"]["token"] == "SubmitInvoice"
+    assert lsp_check["detail"]["rename_cli"]["new_name"] == "PostInvoice"
+    assert lsp_check["detail"]["rename_cli"]["changed"] is True
+    assert lsp_check["detail"]["rename_cli"]["migration_format"] == "appgen.migration-plan.v1"
     assert {
         "did_change_diagnostics",
         "code_action_request",

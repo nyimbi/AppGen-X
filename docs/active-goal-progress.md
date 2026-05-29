@@ -3344,6 +3344,15 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   probe, focused generation tests (`2 passed`), scoped diff whitespace check,
   and restricted-name scan outside archive, Git internals, and active PBC
   paths. Commit: `d368ac20`.
+- Current LSP rename CLI audit pass closes the gap between LSP rename service
+  evidence and the `appgen lsp` command boundary used by editor adapters.
+  `appgen.tooling-audit.v1` now embeds `appgen.lsp-rename-cli-audit.v1`, which
+  runs `appgen lsp --position ... --rename PostInvoice --json` and proves the
+  embedded `appgen.lsp-rename.v1` workspace edit plus migration preview.
+  Verification passed: Python compile for touched tooling entrypoints, direct
+  LSP rename CLI audit helper probe, focused LSP rename tests (`2 passed`),
+  scoped diff whitespace check, and restricted-name scan outside archive, Git
+  internals, and active PBC paths. Commit: pending.
 - Current parallel PBC implementation pass delivered executable code for six
   PBCs rather than plan-only artifacts: `actuarial_pricing_reserving`,
   `advertising_campaign_operations`, `agri_supply_chain_traceability`,

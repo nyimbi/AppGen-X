@@ -2168,6 +2168,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
         )
         package_verify_cli = _tooling_audit_package_verify_cli(Path(tmp), source)
         package_invalid_target = _tooling_audit_package_invalid_target(Path(tmp), source)
+        lsp_rename_cli = _tooling_audit_lsp_rename_cli(Path(tmp), source)
 
     diagnostics = diagnostic_catalog_dsl()
     diagnostic_fixtures = diagnostic_fixture_audit_dsl()
@@ -2288,14 +2289,16 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and lsp["completionCoverage"]["missing"] == ()
             and lsp["formatting"]["format"] == "appgen.lsp-formatting.v1"
             and lsp_rpc["ok"]
-            and lsp_stdio["ok"],
-            "Language server exposes and serves diagnostics, completion, hover, definitions, references, symbols, rename, code actions, and formatting from JSON-RPC.",
+            and lsp_stdio["ok"]
+            and lsp_rename_cli["ok"],
+            "Language server exposes and serves diagnostics, completion, hover, definitions, references, symbols, rename, code actions, and formatting from JSON-RPC and the appgen lsp CLI.",
             "docs/tooling.md#language-server-specification",
             {
                 "format": lsp.get("format"),
                 "coverage": lsp.get("completionCoverage", {}).get("format"),
                 "rpc": lsp_rpc,
                 "stdio": lsp_stdio,
+                "rename_cli": lsp_rename_cli,
             },
         ),
         _tooling_audit_check(
@@ -2820,6 +2823,53 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
         "applied_edit_count": len(payload.get("applied_edits", ())),
         "lint_format": payload.get("lint", {}).get("format"),
         "lint_ok": payload.get("lint", {}).get("ok"),
+    }
+
+
+def _tooling_audit_lsp_rename_cli(tmp: Path, source: str) -> dict:
+    source_path = tmp / "lsp-rename.appgen"
+    source_path.write_text(source, encoding="utf-8")
+    position = _tooling_lsp_position(source, "SubmitInvoice")
+    position_arg = f"{position['line']}:{position['character']}"
+    output = io.StringIO()
+    with contextlib.redirect_stdout(output):
+        exit_code = dsl_tooling_cli(
+            (
+                "lsp",
+                str(source_path),
+                "--position",
+                position_arg,
+                "--rename",
+                "PostInvoice",
+                "--json",
+            )
+        )
+    try:
+        payload = json.loads(output.getvalue())
+    except json.JSONDecodeError:
+        payload = {}
+    rename = payload.get("rename", {})
+    changes = rename.get("workspace_edit", {}).get("changes", {})
+    file_changes = changes.get(str(source_path), ())
+    patched_text = file_changes[0].get("newText", "") if file_changes else ""
+    return {
+        "format": "appgen.lsp-rename-cli-audit.v1",
+        "ok": exit_code == 0
+        and payload.get("format") == "appgen.lsp-service.v1"
+        and rename.get("format") == "appgen.lsp-rename.v1"
+        and rename.get("ok") is True
+        and rename.get("token") == "SubmitInvoice"
+        and rename.get("new_name") == "PostInvoice"
+        and "PostInvoice" in patched_text
+        and rename.get("migration_preview", {}).get("format") == "appgen.migration-plan.v1",
+        "exit_code": exit_code,
+        "payload_format": payload.get("format"),
+        "rename_format": rename.get("format"),
+        "token": rename.get("token"),
+        "new_name": rename.get("new_name"),
+        "position": position_arg,
+        "changed": bool(file_changes),
+        "migration_format": rename.get("migration_preview", {}).get("format"),
     }
 
 
