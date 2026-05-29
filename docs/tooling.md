@@ -1246,6 +1246,9 @@ The CLI proof mirrors the same operation family through
 `appgen.nl-plan-cli-audit.v1`: each supported edit operation is exercised
 through `appgen nl-plan --json`, then checked for the expected operation kind,
 linted patch, migration preview, generated test plan, and token-budget notes.
+It also runs an accepted request without `--json` and requires the text output
+to expose the `appgen.nl-plan.v1` envelope, nested lint and migration-preview
+format markers, PostgreSQL backend marker, and token-budget notes marker.
 This keeps agent-facing development paths honest; a capability is not counted
 as available just because an in-process helper can produce it.
 

@@ -1037,6 +1037,12 @@ def test_nl_plan_cli_audit_covers_all_supported_edit_operations(tmp_path: Path) 
     assert audit["accepted_patch_bytes"] > 0
     assert audit["accepted_test_count"] >= len(contract["required_edit_operations"])
     assert audit["accepted_token_budget_notes"] >= len(contract["required_edit_operations"])
+    assert audit["accepted_text_exit_code"] == 0
+    assert audit["accepted_text_prefix"].startswith("nl-plan ok: format=appgen.nl-plan.v1")
+    assert audit["accepted_text_has_report_format"] is True
+    assert audit["accepted_text_has_lint_format"] is True
+    assert audit["accepted_text_has_migration_format"] is True
+    assert audit["accepted_text_has_token_notes"] is True
     assert "AGX1201" in audit["rejected_diagnostic_codes"]
 
 

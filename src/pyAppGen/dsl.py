@@ -5662,6 +5662,12 @@ def _tooling_audit_nl_plan_cli(tmp: Path, source: str) -> dict:
             payload = {}
         return exit_code, payload
 
+    def run_text(argv: tuple[str, ...]) -> tuple[int, str]:
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            exit_code = dsl_tooling_cli(argv)
+        return exit_code, output.getvalue()
+
     accepted_specs = (
         ("add_table", "Add dispute cases table"),
         ("add_field", "Add due date to Invoice"),
@@ -5716,6 +5722,19 @@ def _tooling_audit_nl_plan_cli(tmp: Path, source: str) -> dict:
         )
     )
     rejected_codes = tuple(item.get("code") for item in rejected_payload.get("diagnostics", ()))
+    accepted_text_exit, accepted_text = run_text(
+        (
+            "nl-plan",
+            str(source_path),
+            "--prompt",
+            accepted_specs[0][1],
+        )
+    )
+    accepted_text_lines = tuple(line for line in accepted_text.splitlines() if line.strip())
+    accepted_text_has_report_format = accepted_text.startswith("nl-plan ok: format=appgen.nl-plan.v1")
+    accepted_text_has_lint_format = "lint format=appgen.lint-report.v1: ok=True" in accepted_text
+    accepted_text_has_migration_format = "migration-preview format=appgen.migration-plan.v1 backend=postgresql:" in accepted_text
+    accepted_text_has_token_notes = any(line.startswith("token-budget-notes ") for line in accepted_text_lines)
     accepted_patch_bytes = sum(case["patch_bytes"] for case in accepted_cases)
     accepted_test_count = sum(case["test_count"] for case in accepted_cases)
     accepted_token_budget_notes = sum(case["token_budget_notes"] for case in accepted_cases)
@@ -5725,6 +5744,11 @@ def _tooling_audit_nl_plan_cli(tmp: Path, source: str) -> dict:
     return {
         "format": "appgen.nl-plan-cli-audit.v1",
         "ok": all(case["passed"] for case in accepted_cases)
+        and accepted_text_exit == 0
+        and accepted_text_has_report_format
+        and accepted_text_has_lint_format
+        and accepted_text_has_migration_format
+        and accepted_text_has_token_notes
         and rejected_exit == 1
         and rejected_payload.get("format") == "appgen.nl-plan.v1"
         and rejected_payload.get("ok") is False
@@ -5735,6 +5759,12 @@ def _tooling_audit_nl_plan_cli(tmp: Path, source: str) -> dict:
         "accepted_operation_kinds": accepted_operation_kinds,
         "blocking_cases": tuple(case["expected_kind"] for case in accepted_cases if not case["passed"]),
         "accepted_exit_code": accepted_cases[0]["exit_code"] if accepted_cases else None,
+        "accepted_text_exit_code": accepted_text_exit,
+        "accepted_text_prefix": accepted_text_lines[0] if accepted_text_lines else "",
+        "accepted_text_has_report_format": accepted_text_has_report_format,
+        "accepted_text_has_lint_format": accepted_text_has_lint_format,
+        "accepted_text_has_migration_format": accepted_text_has_migration_format,
+        "accepted_text_has_token_notes": accepted_text_has_token_notes,
         "rejected_exit_code": rejected_exit,
         "accepted_payload_format": accepted_cases[0]["format"] if accepted_cases else None,
         "accepted_patch_bytes": accepted_patch_bytes,
