@@ -2212,7 +2212,8 @@ def _emit_designer_sync_text(payload: dict) -> None:
     visual_edit = payload.get("visual_edit") or {}
     matrix = payload.get("visual_edit_matrix") or {}
     print(
-        f"designer-sync {status}: format={payload.get('format')} semantic={payload.get('semantic_model_format')} "
+        f"designer-sync {status}: format={payload.get('format')} "
+        f"semantic_format={payload.get('semantic_model_format')} "
         f"surfaces={len(surfaces)}"
     )
     if surfaces:

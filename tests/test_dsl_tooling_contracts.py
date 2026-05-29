@@ -2821,7 +2821,7 @@ def test_appgen_designer_sync_subcommand_emits_json_and_text_contracts(tmp_path:
     assert payload["projections"]["dsl_editor"]["semantic_model_format"] == "appgen.semantic-model.v1"
     assert text_result.returncode == 0, text_result.stderr
     assert text_result.stdout.startswith(
-        "designer-sync ok: format=appgen.designer-sync-report.v1 semantic=appgen.semantic-model.v1"
+        "designer-sync ok: format=appgen.designer-sync-report.v1 semantic_format=appgen.semantic-model.v1"
     )
     assert "surfaces=10" in text_result.stdout
     assert "form_designer" in text_result.stdout
