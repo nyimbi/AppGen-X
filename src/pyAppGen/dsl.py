@@ -1105,6 +1105,7 @@ def diagnostic_catalog_dsl() -> dict:
         }
         for item in DIAGNOSTIC_RANGES
     )
+    covered = tuple(item["code"] for item in specs if item["fixture"])
     return {
         "format": "appgen.diagnostic-catalog.v1",
         "ok": all(item["fixture"] for item in specs) and not catalog_shape_gaps,
@@ -1115,6 +1116,7 @@ def diagnostic_catalog_dsl() -> dict:
         "catalog_shape_gaps": catalog_shape_gaps,
         "runtime_shape_enforced_by": "appgen.diagnostic-fixture-audit.v1",
         "required_codes": tuple(item["code"] for item in specs),
+        "covered_fixture_codes": covered,
         "fixture_count": len(DIAGNOSTIC_FIXTURES),
         "missing_fixtures": tuple(item["code"] for item in specs if not item["fixture"]),
     }
@@ -2173,9 +2175,10 @@ def _emit_designer_sync_text(payload: dict) -> None:
 def _emit_diagnostic_catalog_text(payload: dict) -> None:
     status = "ok" if payload.get("ok") else "failed"
     required = tuple(payload.get("required_codes", ()))
+    covered = tuple(payload.get("covered_fixture_codes", ()))
     missing = tuple(payload.get("missing_fixtures", ()))
     print(
-        f"diagnostics {status}: required={len(required)} "
+        f"diagnostics {status}: covered={len(covered)} required={len(required)} "
         f"fixtures={payload.get('fixture_count', 0)} missing={len(missing)}"
     )
     for code in missing:

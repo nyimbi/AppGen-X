@@ -2802,6 +2802,7 @@ def test_diagnostic_catalog_and_fixture_audit_cover_required_agx_codes() -> None
         "fixture",
     }
     assert all(set(catalog["catalog_fields"]) <= set(item) for item in catalog["diagnostics"])
+    assert set(catalog["required_codes"]) == set(catalog["covered_fixture_codes"])
     assert set(catalog["required_codes"]) <= set(audit["covered_codes"])
     assert all(not fixture["shape_gaps"] for fixture in audit["fixtures"])
     assert all(not fixture["severity_gaps"] for fixture in audit["fixtures"])
@@ -2857,6 +2858,7 @@ def test_appgen_diagnostics_subcommand_emits_catalog_fixture_audit_and_text() ->
     assert catalog_payload["format"] == "appgen.diagnostic-catalog.v1"
     assert audit_payload["format"] == "appgen.diagnostic-fixture-audit.v1"
     assert catalog_text.stdout.startswith("diagnostics ok:")
+    assert f"covered={len(catalog_payload['covered_fixture_codes'])}" in catalog_text.stdout
     assert f"required={len(catalog_payload['required_codes'])}" in catalog_text.stdout
     assert f"fixtures={catalog_payload['fixture_count']}" in catalog_text.stdout
     assert "missing=0" in catalog_text.stdout
