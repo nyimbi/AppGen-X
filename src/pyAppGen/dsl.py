@@ -2751,6 +2751,8 @@ def _emit_designer_sync_text(payload: dict) -> None:
             f"round_trip={visual_edit.get('round_trip_ok')} "
             f"changed={','.join(changed)} diff_lines={len(visual_edit.get('dsl_diff', ()))}"
         )
+        for line in visual_edit.get("dsl_diff", ()):
+            print(f"dsl-diff {line}")
         for diagnostic in visual_edit.get("diagnostics", ()):
             print(f"{diagnostic['severity']} {diagnostic['code']}: {diagnostic['message']}")
     if matrix.get("format") == "appgen.designer-visual-edit-matrix.v1":
@@ -2813,6 +2815,8 @@ def _designer_sync_text_renderer_contract() -> dict:
         "designer-sync ok: format=appgen.designer-sync-report.v1 semantic_format=appgen.semantic-model.v1 surfaces=4",
         "surfaces form_designer, database_designer, workflow_designer, package_designer",
         "visual-edit accepted=True round_trip=True changed=database_designer,form_designer diff_lines=2",
+        "dsl-diff +  sync_note: string",
+        "dsl-diff +  Main: sync_note",
         "visual-edit-matrix ok=True cases=3 gaps=0",
         "visual-edit-operations add_field, add_component, add_flow_transition",
         "visual-edit-case database_add_field",

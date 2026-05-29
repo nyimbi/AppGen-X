@@ -1143,13 +1143,14 @@ patched DSL before the Studio accepts the visual operation.
 Without `--json`, `appgen designer-sync` prints the
 `appgen.designer-sync-report.v1` format, semantic-model format as
 `semantic_format=...`, surface count and names, visual edit acceptance,
-round-trip status, changed surfaces, DSL diff line count, visual-edit matrix
-coverage, required visual
+round-trip status, changed surfaces, DSL diff line count, DSL diff preview lines
+as `dsl-diff ...`, visual-edit matrix coverage, required visual
 edit operation names, executed matrix case ids as `visual-edit-case ...`, and
 sync checks.
 `appgen.designer-sync-text-renderer.v1` is embedded in the tooling audit to
-prove those designer handoff logs keep round-trip, projection, matrix, and
-required-operation and executed-case evidence visible without JSON parsing.
+prove those designer handoff logs keep round-trip, projection, diff-preview,
+matrix, required-operation, and executed-case evidence visible without JSON
+parsing.
 `--edit-json` must be a JSON object; malformed edit payloads are CLI
 configuration errors and return exit code `2` before any designer mutation is
 accepted.
