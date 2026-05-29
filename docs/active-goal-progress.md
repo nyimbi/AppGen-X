@@ -3352,7 +3352,7 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   Verification passed: Python compile for touched tooling entrypoints, direct
   LSP rename CLI audit helper probe, focused LSP rename tests (`2 passed`),
   scoped diff whitespace check, and restricted-name scan outside archive, Git
-  internals, and active PBC paths. Commit: pending.
+  internals, and active PBC paths. Commit: `70c70f2d`.
 - Current parallel PBC implementation pass delivered executable code for six
   PBCs rather than plan-only artifacts: `actuarial_pricing_reserving`,
   `advertising_campaign_operations`, `agri_supply_chain_traceability`,
