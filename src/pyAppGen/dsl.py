@@ -732,10 +732,12 @@ def lint_report_dsl(
         "info": sum(1 for item in diagnostics if item["severity"] == "info"),
         "hint": sum(1 for item in diagnostics if item["severity"] == "hint"),
     }
+    stages = _lint_stage_counts(diagnostics)
     return {
         "format": "appgen.lint-report.v1",
         "ok": not counts["error"],
         "files": (source_name,) if source_name else (),
+        "stages": stages,
         "severity_counts": counts,
         "diagnostics": diagnostics,
         "fixes_available": any(item.get("fixes") for item in diagnostics),
@@ -775,6 +777,7 @@ def lint_report_dsl_sources(
             "format": "appgen.lint-report.v1",
             "ok": False,
             "files": (),
+            "stages": _lint_stage_counts((diagnostic,)),
             "severity_counts": {"error": 1, "warning": 0, "info": 0, "hint": 0},
             "diagnostics": (diagnostic,),
             "fixes_available": False,
@@ -811,10 +814,12 @@ def lint_report_dsl_sources(
         "info": sum(1 for item in diagnostics if item["severity"] == "info"),
         "hint": sum(1 for item in diagnostics if item["severity"] == "hint"),
     }
+    stages = _lint_stage_counts(diagnostics)
     return {
         "format": "appgen.lint-report.v1",
         "ok": not counts["error"],
         "files": tuple(report["files"][0] for report in reports if report.get("files")),
+        "stages": stages,
         "severity_counts": counts,
         "diagnostics": diagnostics,
         "fixes_available": any(report["fixes_available"] for report in reports),
@@ -916,6 +921,31 @@ def _load_previous_semantic_model(path: str | Path | None) -> dict | None:
     if isinstance(payload, dict) and isinstance(payload.get("semantic_model"), dict):
         return payload["semantic_model"]
     return payload if isinstance(payload, dict) else None
+
+
+def _lint_stage_counts(diagnostics: Iterable[dict]) -> dict:
+    diagnostics = tuple(diagnostics)
+    return {
+        stage: {
+            "diagnostic_count": len(items),
+            "error": sum(1 for item in items if item.get("severity") == "error"),
+            "warning": sum(1 for item in items if item.get("severity") == "warning"),
+            "codes": tuple(item.get("code") for item in items),
+        }
+        for stage, items in (
+            (stage, tuple(item for item in diagnostics if _lint_stage_for_diagnostic(item) == stage))
+            for stage in ("syntax", "semantic", "policy")
+        )
+    }
+
+
+def _lint_stage_for_diagnostic(diagnostic: dict) -> str:
+    code = str(diagnostic.get("code", ""))
+    if code in {"AGX0001"} or code.startswith("AGX90"):
+        return "syntax"
+    if code in {"AGX0404", "AGX0702", "AGX0802", "AGX0903", "AGX1002", "AGX1101", "AGX1201"}:
+        return "policy"
+    return "semantic"
 
 
 def _lint_migration_preview(
@@ -3706,6 +3736,15 @@ view CustomerForm for Customer {
     normal_unknown_diagnostics = tuple(normal_unknown_payload.get("diagnostics", ()))
     strict_unknown_diagnostics = tuple(strict_unknown_payload.get("diagnostics", ()))
     strict_catalog_diagnostics = tuple(strict_catalog_payload.get("diagnostics", ()))
+    syntax_path = tmp / "syntax-stage.appgen"
+    semantic_path = tmp / "semantic-stage.appgen"
+    policy_path = tmp / "policy-stage.appgen"
+    syntax_path.write_text("app Broken { table Missing { id: int pk ", encoding="utf-8")
+    semantic_path.write_text("app SemanticStage { targets: web }\nview MissingForm for Missing { Main: id }\n", encoding="utf-8")
+    policy_path.write_text(_tooling_audit_warning_generation_sample(), encoding="utf-8")
+    syntax_exit_code, syntax_payload = run_json(("lint", str(syntax_path), "--json"))
+    semantic_exit_code, semantic_payload = run_json(("lint", str(semantic_path), "--json"))
+    policy_exit_code, policy_payload = run_json(("lint", str(policy_path), "--json"))
     normal_unknown_component_warning = (
         normal_unknown_exit_code == 0
         and normal_unknown_payload.get("ok") is True
@@ -3739,6 +3778,12 @@ view CustomerForm for Customer {
         and migration_preview.get("backend") == "postgresql"
         and "added_field" in set(migration_preview.get("coverage", {}).get("detected", ()))
     )
+    stage_separation = {
+        "syntax": syntax_exit_code == 1 and syntax_payload.get("stages", {}).get("syntax", {}).get("error", 0) >= 1,
+        "semantic": semantic_exit_code == 1
+        and semantic_payload.get("stages", {}).get("semantic", {}).get("error", 0) >= 1,
+        "policy": policy_exit_code == 0 and policy_payload.get("stages", {}).get("policy", {}).get("warning", 0) >= 1,
+    }
     return {
         "format": "appgen.lint-directory-cli-audit.v1",
         "ok": exit_code == 0
@@ -3759,7 +3804,8 @@ view CustomerForm for Customer {
         and normal_unknown_component_warning
         and strict_unknown_component_error
         and strict_catalog_component_success
-        and migration_lint_success,
+        and migration_lint_success
+        and all(stage_separation.values()),
         "exit_code": exit_code,
         "payload_format": payload.get("format"),
         "source_mode": payload.get("source_mode"),
@@ -3796,6 +3842,13 @@ view CustomerForm for Customer {
             "format": migration_preview.get("format"),
             "backend": migration_preview.get("backend"),
             "detected": tuple(migration_preview.get("coverage", {}).get("detected", ())),
+        },
+        "stage_separation": {
+            "ok": all(stage_separation.values()),
+            "stages": stage_separation,
+            "syntax": syntax_payload.get("stages", {}),
+            "semantic": semantic_payload.get("stages", {}),
+            "policy": policy_payload.get("stages", {}),
         },
     }
 

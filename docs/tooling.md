@@ -370,6 +370,11 @@ The linter must run in three stages:
    PBC catalog bindings, permissions, deployment/package compatibility.
 3. **Policy stage**: enterprise safety, style, secrets, catalog rules,
    release-readiness checks.
+`appgen.lint-report.v1` exposes these stages under `stages.syntax`,
+`stages.semantic`, and `stages.policy`, with diagnostic counts, severity
+counts, and codes for each lane. `appgen.lint-directory-cli-audit.v1` proves
+that syntax errors, semantic reference errors, and policy warnings are reported
+through distinct stage buckets.
 
 ### Linter Inputs
 
@@ -401,6 +406,11 @@ Text mode is for humans. JSON mode is for CI, IDEs, agents, and generated apps.
   "format": "appgen.lint-report.v1",
   "ok": false,
   "files": ["finance.appgen"],
+  "stages": {
+    "syntax": {"diagnostic_count": 0, "error": 0, "warning": 0, "codes": []},
+    "semantic": {"diagnostic_count": 1, "error": 1, "warning": 0, "codes": ["AGX0402"]},
+    "policy": {"diagnostic_count": 0, "error": 0, "warning": 0, "codes": []}
+  },
   "severity_counts": {"error": 1, "warning": 0, "info": 0, "hint": 0},
   "diagnostics": [],
   "fixes_available": true,

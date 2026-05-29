@@ -428,6 +428,11 @@ def test_lint_directory_audit_covers_strict_component_cli_gate(tmp_path: Path) -
     assert report["previous_semantic_migration_preview"]["ok"] is True
     assert report["previous_semantic_migration_preview"]["format"] == "appgen.migration-plan.v1"
     assert "added_field" in report["previous_semantic_migration_preview"]["detected"]
+    assert report["stage_separation"]["ok"] is True
+    assert report["stage_separation"]["stages"] == {"syntax": True, "semantic": True, "policy": True}
+    assert report["stage_separation"]["syntax"]["syntax"]["error"] >= 1
+    assert report["stage_separation"]["semantic"]["semantic"]["error"] >= 1
+    assert report["stage_separation"]["policy"]["policy"]["warning"] >= 1
 
 
 def test_format_validate_and_graph_reports_follow_tooling_contracts() -> None:
