@@ -567,7 +567,10 @@ release package targets, designer-sync edits, and diagnostics/golden/drift
 audit commands. The default `appgen lint` text output includes stage counts for
 syntax, semantic, and policy diagnostics, and when `--previous-semantic` is
 provided it also prints a migration-preview summary and detected migration
-families.
+families. `appgen diagnostics` text output summarizes registry coverage and
+fixture gaps, `appgen diagnostics --audit-fixtures` summarizes covered and
+missing diagnostic codes, and `appgen drift` summarizes semantic-model drift
+surfaces, evidence formats, digest, and per-surface checks.
 
 ### `appgen format`
 

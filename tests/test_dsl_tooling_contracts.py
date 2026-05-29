@@ -2560,7 +2560,7 @@ def test_diagnostic_catalog_and_fixture_audit_cover_required_agx_codes() -> None
     } <= set(audit["covered_codes"])
 
 
-def test_appgen_diagnostics_subcommand_emits_catalog_and_fixture_audit() -> None:
+def test_appgen_diagnostics_subcommand_emits_catalog_fixture_audit_and_text() -> None:
     base_command = [sys.executable, "-m", "pyAppGen", "diagnostics", "--json"]
     catalog_result = subprocess.run(
         base_command,
@@ -2576,11 +2576,31 @@ def test_appgen_diagnostics_subcommand_emits_catalog_and_fixture_audit() -> None
         text=True,
         capture_output=True,
     )
+    catalog_text = subprocess.run(
+        [sys.executable, "-m", "pyAppGen", "diagnostics"],
+        check=False,
+        cwd=Path(__file__).resolve().parents[1],
+        text=True,
+        capture_output=True,
+    )
+    audit_text = subprocess.run(
+        [sys.executable, "-m", "pyAppGen", "diagnostics", "--audit-fixtures"],
+        check=False,
+        cwd=Path(__file__).resolve().parents[1],
+        text=True,
+        capture_output=True,
+    )
 
     assert catalog_result.returncode == 0, catalog_result.stderr
     assert audit_result.returncode == 0, audit_result.stderr
+    assert catalog_text.returncode == 0, catalog_text.stderr
+    assert audit_text.returncode == 0, audit_text.stderr
     assert json.loads(catalog_result.stdout)["format"] == "appgen.diagnostic-catalog.v1"
     assert json.loads(audit_result.stdout)["format"] == "appgen.diagnostic-fixture-audit.v1"
+    assert catalog_text.stdout.startswith("diagnostics ok:")
+    assert "missing=0" in catalog_text.stdout
+    assert audit_text.stdout.startswith("diagnostics-audit ok:")
+    assert "missing=0" in audit_text.stdout
 
 
 def test_parser_golden_audit_covers_required_grammar_constructs() -> None:
@@ -2646,7 +2666,7 @@ def test_semantic_drift_audit_proves_tooling_surfaces_share_one_model() -> None:
     assert report["surface_evidence"]["generate_report"] == "appgen.generate-report.v1"
 
 
-def test_appgen_drift_subcommand_emits_json_contract(tmp_path: Path) -> None:
+def test_appgen_drift_subcommand_emits_json_and_text_contracts(tmp_path: Path) -> None:
     path = tmp_path / "release.appgen"
     path.write_text(RELEASE_SAMPLE, encoding="utf-8")
 
@@ -2657,12 +2677,25 @@ def test_appgen_drift_subcommand_emits_json_contract(tmp_path: Path) -> None:
         text=True,
         capture_output=True,
     )
+    text_result = subprocess.run(
+        [sys.executable, "-m", "pyAppGen", "drift", str(path)],
+        check=False,
+        cwd=Path(__file__).resolve().parents[1],
+        text=True,
+        capture_output=True,
+    )
 
     assert result.returncode == 0, result.stderr
+    assert text_result.returncode == 0, text_result.stderr
     payload = json.loads(result.stdout)
     assert payload["format"] == "appgen.semantic-drift-audit.v1"
     assert payload["surface_evidence"]["lsp_service"] == "appgen.lsp-service.v1"
     assert payload["surface_evidence"]["generate_report"] == "appgen.generate-report.v1"
+    assert text_result.stdout.startswith("drift ok: semantic=appgen.semantic-model.v1")
+    assert "surfaces=8" in text_result.stdout
+    assert "evidence lsp_service: appgen.lsp-service.v1" in text_result.stdout
+    assert "evidence generate_report: appgen.generate-report.v1" in text_result.stdout
+    assert "ok generator_validation_uses_semantic_model" in text_result.stdout
 
 
 def test_test_strategy_cli_audit_requires_generator_drift_surface(tmp_path: Path) -> None:

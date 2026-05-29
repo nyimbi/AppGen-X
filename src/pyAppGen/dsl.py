@@ -1741,6 +1741,15 @@ def _emit_tooling_payload(payload: dict, *, as_json: bool) -> None:
     if payload.get("format") == "appgen.designer-sync-report.v1":
         _emit_designer_sync_text(payload)
         return
+    if payload.get("format") == "appgen.diagnostic-catalog.v1":
+        _emit_diagnostic_catalog_text(payload)
+        return
+    if payload.get("format") == "appgen.diagnostic-fixture-audit.v1":
+        _emit_diagnostic_fixture_audit_text(payload)
+        return
+    if payload.get("format") == "appgen.semantic-drift-audit.v1":
+        _emit_semantic_drift_text(payload)
+        return
     if payload.get("format") == "appgen.parser-golden-audit.v1":
         status = "ok" if payload.get("ok") else "failed"
         print(
@@ -1918,6 +1927,51 @@ def _emit_designer_sync_text(payload: dict) -> None:
             f"visual-edit-matrix ok={matrix.get('ok')} "
             f"cases={len(matrix.get('cases', ()))} gaps={len(matrix.get('blocking_gaps', ()))}"
         )
+    for check in payload.get("checks", ()):
+        print(f"{'ok' if check.get('ok') else 'fail'} {check.get('check')}")
+
+
+def _emit_diagnostic_catalog_text(payload: dict) -> None:
+    status = "ok" if payload.get("ok") else "failed"
+    required = tuple(payload.get("required_codes", ()))
+    missing = tuple(payload.get("missing_fixtures", ()))
+    print(
+        f"diagnostics {status}: required={len(required)} "
+        f"fixtures={payload.get('fixture_count', 0)} missing={len(missing)}"
+    )
+    for code in missing:
+        print(f"missing-fixture {code}")
+
+
+def _emit_diagnostic_fixture_audit_text(payload: dict) -> None:
+    status = "ok" if payload.get("ok") else "failed"
+    covered = tuple(payload.get("covered_codes", ()))
+    missing = tuple(payload.get("missing_codes", ()))
+    print(
+        f"diagnostics-audit {status}: covered={len(covered)} "
+        f"required={len(payload.get('required_codes', ()))} missing={len(missing)}"
+    )
+    for code in missing:
+        print(f"missing-code {code}")
+    for gap in payload.get("blocking_gaps", ()):
+        print(f"fail {gap.get('name')}: {','.join(gap.get('shape_gaps', ()) or gap.get('severity_gaps', ()))}")
+
+
+def _emit_semantic_drift_text(payload: dict) -> None:
+    status = "ok" if payload.get("ok") else "failed"
+    surfaces = tuple(payload.get("surfaces", ()))
+    print(
+        f"drift {status}: semantic={payload.get('semantic_model_format')} "
+        f"surfaces={len(surfaces)} digest={payload.get('semantic_digest')}"
+    )
+    if surfaces:
+        print(f"surfaces {', '.join(surfaces)}")
+    evidence = payload.get("surface_evidence", {})
+    for name in sorted(evidence):
+        value = evidence[name]
+        if isinstance(value, (list, tuple)):
+            value = ",".join(str(item) for item in value)
+        print(f"evidence {name}: {value}")
     for check in payload.get("checks", ()):
         print(f"{'ok' if check.get('ok') else 'fail'} {check.get('check')}")
 
