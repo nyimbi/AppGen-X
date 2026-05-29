@@ -3873,6 +3873,11 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     }
     assert tuple(graph_check["detail"]["suite_cli"]["formats"]) == ("json", "mermaid", "dot")
     assert graph_check["detail"]["suite_cli"]["rendering_kind_count"] == 9
+    assert graph_check["detail"]["suite_cli"]["missing_renderings"] == ()
+    assert all(
+        set(formats) == {"json", "mermaid", "dot"}
+        for formats in graph_check["detail"]["suite_cli"]["rendering_formats_by_kind"].values()
+    )
     assert graph_check["detail"]["suite_cli"]["text_has_report_format"] is True
     assert graph_check["detail"]["suite_cli"]["text_has_kinds"] is True
     assert graph_check["detail"]["suite_cli"]["text_has_formats"] is True
@@ -4588,6 +4593,20 @@ def test_graph_cli_audit_covers_documented_graph_examples(tmp_path: Path) -> Non
     assert cases["pbc_dot"]["format"] == "dot"
     assert cases["pbc_dot"]["stdout_prefix"].startswith("digraph appgen")
     assert all(case["exit_code"] == 0 for case in cases.values())
+
+
+def test_graph_suite_cli_audit_proves_all_required_renderings(tmp_path: Path) -> None:
+    audit = appgen_dsl._tooling_audit_graph_suite_cli(tmp_path, TOOLING_SAMPLE)
+
+    assert audit["format"] == "appgen.graph-suite-cli-audit.v1"
+    assert audit["ok"] is True
+    assert set(audit["required_kinds"]) == set(appgen_dsl.REQUIRED_GRAPH_KINDS)
+    assert tuple(audit["formats"]) == ("json", "mermaid", "dot")
+    assert audit["missing_renderings"] == ()
+    assert all(
+        set(formats) == {"json", "mermaid", "dot"}
+        for formats in audit["rendering_formats_by_kind"].values()
+    )
 
 
 def test_invalid_choice_audit_covers_graph_formats_and_backend_choices(tmp_path: Path) -> None:

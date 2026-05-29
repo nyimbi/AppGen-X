@@ -6420,6 +6420,20 @@ def _tooling_audit_graph_suite_cli(tmp: Path, source: str) -> dict:
     renderings = json_payload.get("renderings", {})
     required_kinds = tuple(json_payload.get("required_kinds", ()))
     output_formats = tuple(json_payload.get("formats", ()))
+    rendering_formats_by_kind = {
+        kind: tuple(renderings.get(kind, {}).keys())
+        for kind in required_kinds
+    }
+    missing_renderings = tuple(
+        {
+            "kind": kind,
+            "missing_formats": tuple(
+                output_format for output_format in GRAPH_TEXT_FORMATS if output_format not in formats
+            ),
+        }
+        for kind, formats in rendering_formats_by_kind.items()
+        if set(GRAPH_TEXT_FORMATS) - set(formats)
+    )
     return {
         "format": "appgen.graph-suite-cli-audit.v1",
         "ok": json_exit_code == 0
@@ -6427,7 +6441,7 @@ def _tooling_audit_graph_suite_cli(tmp: Path, source: str) -> dict:
         and json_payload.get("ok") is True
         and set(REQUIRED_GRAPH_KINDS) <= set(required_kinds)
         and set(GRAPH_TEXT_FORMATS) <= set(output_formats)
-        and all(set(outputs) == set(GRAPH_TEXT_FORMATS) for outputs in renderings.values())
+        and not missing_renderings
         and text_exit_code == 0
         and text_stdout.startswith("graph-suite ok: format=appgen.graph-suite-report.v1")
         and "graph-kinds " in text_stdout
@@ -6438,6 +6452,8 @@ def _tooling_audit_graph_suite_cli(tmp: Path, source: str) -> dict:
         "required_kinds": required_kinds,
         "formats": output_formats,
         "rendering_kind_count": len(renderings),
+        "rendering_formats_by_kind": rendering_formats_by_kind,
+        "missing_renderings": missing_renderings,
         "text_has_report_format": text_stdout.startswith("graph-suite ok: format=appgen.graph-suite-report.v1"),
         "text_has_kinds": "graph-kinds " in text_stdout,
         "text_has_formats": "graph-formats json, mermaid, dot" in text_stdout,
