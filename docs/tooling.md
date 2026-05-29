@@ -757,9 +757,9 @@ successful command exit codes, so downstream builders receive stable contracts
 for routes/forms/handlers, mobile signing/offline launch, desktop installer and
 startup assets, PBC publication, and deployment topology verification.
 The default text output for both `appgen verify` and `appgen package` summarizes
-selected targets, written artifacts, graph-suite evidence, per-target verifier
-status, blocking gaps, and artifact paths; `--json` remains the complete
-machine-readable report.
+selected targets, written artifacts, release-evidence bundle format, graph-suite
+evidence, per-target verifier status, blocking gaps, and artifact paths;
+`--json` remains the complete machine-readable report.
 
 ### `appgen component-publish`
 

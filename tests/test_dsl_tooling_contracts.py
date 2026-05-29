@@ -2425,12 +2425,14 @@ def test_appgen_package_subcommand_materializes_release_evidence(tmp_path: Path)
     assert text_result.returncode == 0, text_result.stderr
     assert text_result.stdout.startswith("release-verify ok: targets=mobile")
     assert "written=2" in text_result.stdout
+    assert "release-evidence appgen.release-evidence-bundle.v1: artifacts=1" in text_result.stdout
     assert "graph-suite appgen.graph-suite-report.v1: kinds=9 formats=3" in text_result.stdout
     assert "ok mobile" in text_result.stdout
     assert "artifact release_evidence:" in text_result.stdout
     assert "artifact mobile_package_manifest:" in text_result.stdout
     assert verify_text.returncode == 0, verify_text.stderr
     assert verify_text.stdout.startswith("release-verify ok: targets=mobile written=0")
+    assert "release-evidence appgen.release-evidence-bundle.v1: artifacts=1" in verify_text.stdout
     assert "ok mobile" in verify_text.stdout
     assert invalid_target.returncode == 2
     assert "invalid choice" in invalid_target.stderr

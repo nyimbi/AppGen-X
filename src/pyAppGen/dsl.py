@@ -2112,7 +2112,10 @@ def _emit_release_verifier_text(payload: dict) -> None:
     targets = tuple(payload.get("targets", ()))
     written = tuple(payload.get("written_artifacts", ()))
     print(f"release-verify {status}: targets={','.join(targets)} written={len(written)}")
-    graph = payload.get("evidence_bundle", {}).get("graph_suite", {})
+    evidence = payload.get("evidence_bundle", {})
+    if evidence.get("format"):
+        print(f"release-evidence {evidence.get('format')}: artifacts={len(evidence.get('artifacts', ()))}")
+    graph = evidence.get("graph_suite", {})
     if graph.get("format"):
         print(
             f"graph-suite {graph.get('format')}: "
