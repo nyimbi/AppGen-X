@@ -6757,6 +6757,10 @@ def _tooling_audit_explain_cli_formats(tmp: Path, source: str) -> dict:
     return {
         "format": "appgen.explain-cli-audit.v1",
         "ok": all(result["ok"] for result in results),
+        "case_count": len(results),
+        "text_case_count": sum(1 for result in results if result["case"].endswith("_text")),
+        "json_case_count": sum(1 for result in results if result["case"].endswith("_json")),
+        "report_format_case_count": sum(1 for result in results if result["has_report_format"]),
         "cases": tuple(results),
     }
 
