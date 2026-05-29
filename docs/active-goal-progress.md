@@ -3306,6 +3306,16 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   formatter CLI audit helper probe, focused formatter tests (`2 passed`),
   scoped diff whitespace check, and restricted-name scan outside archive, Git
   internals, and active PBC paths. Commit: `efec52e6`.
+- Current LSP code-action CLI audit pass closes the gap between helper-level
+  quick-fix application evidence and the documented `appgen lsp app.appgen
+  --apply-code-action <id> --json` command contract. `appgen.tooling-audit.v1`
+  now embeds `appgen.lsp-code-action-cli-audit.v1`, which applies
+  `create_operation_from_handler` through the CLI and proves patched DSL,
+  applied edits, and post-apply lint success. Verification passed: Python
+  compile for touched tooling entrypoints, direct LSP apply-code-action CLI
+  audit helper probe, focused LSP quick-fix tests (`2 passed`), scoped diff
+  whitespace check, and restricted-name scan outside archive, Git internals,
+  and active PBC paths. Commit: pending.
 - Current parallel PBC implementation pass delivered executable code for six
   PBCs rather than plan-only artifacts: `actuarial_pricing_reserving`,
   `advertising_campaign_operations`, `agri_supply_chain_traceability`,

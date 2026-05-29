@@ -2136,6 +2136,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
         lint_directory_cli = _tooling_audit_lint_directory_cli(Path(tmp), source)
         validate_generate_cli = _tooling_audit_validate_generate_cli(Path(tmp), source)
         designer_sync_cli = _tooling_audit_designer_sync_cli(Path(tmp), source)
+        lsp_apply_cli = _tooling_audit_lsp_apply_code_action_cli(Path(tmp))
         graph_cli = _tooling_audit_graph_cli_formats(Path(tmp), source)
         graph_suite_cli = _tooling_audit_graph_suite_cli(Path(tmp), source)
         explain_cli = _tooling_audit_explain_cli_formats(Path(tmp), source)
@@ -2302,13 +2303,15 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             quick_fix["ok"]
             and quick_fix["changed"]
             and "operation SubmitInvoice" in quick_fix["patched_source"]
-            and code_action_apply_audit["ok"],
-            "LSP code actions are executable through deterministic DSL patch application contracts.",
+            and code_action_apply_audit["ok"]
+            and lsp_apply_cli["ok"],
+            "LSP code actions are executable through deterministic DSL patch application contracts and the appgen lsp CLI.",
             "docs/tooling.md#code-actions",
             {
                 "format": quick_fix.get("format"),
                 "action": quick_fix.get("action_id"),
                 "application_audit": code_action_apply_audit,
+                "cli": lsp_apply_cli,
             },
         ),
         _tooling_audit_check(
@@ -2771,6 +2774,52 @@ def _tooling_audit_lsp_stdio_transport(source: str) -> dict:
         "response_count": len(responses),
         "methods": tuple(response.get("method") for response in responses if response.get("method")),
         "ids": tuple(response.get("id") for response in responses if "id" in response),
+    }
+
+
+def _tooling_audit_lsp_apply_code_action_cli(tmp: Path) -> dict:
+    source_path = tmp / "lsp-apply-code-action.appgen"
+    source_path.write_text(
+        """
+app Bad { targets: web }
+table Invoice { id: int pk }
+view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
+""",
+        encoding="utf-8",
+    )
+    output = io.StringIO()
+    with contextlib.redirect_stdout(output):
+        exit_code = dsl_tooling_cli(
+            (
+                "lsp",
+                str(source_path),
+                "--apply-code-action",
+                "create_operation_from_handler",
+                "--json",
+            )
+        )
+    try:
+        payload = json.loads(output.getvalue())
+    except json.JSONDecodeError:
+        payload = {}
+    return {
+        "format": "appgen.lsp-code-action-cli-audit.v1",
+        "ok": exit_code == 0
+        and payload.get("format") == "appgen.lsp-code-action-apply.v1"
+        and payload.get("ok") is True
+        and payload.get("changed") is True
+        and payload.get("action_id") == "create_operation_from_handler"
+        and "operation SubmitInvoice" in payload.get("patched_source", "")
+        and payload.get("lint", {}).get("format") == "appgen.lint-report.v1"
+        and payload.get("lint", {}).get("ok") is True
+        and bool(payload.get("applied_edits")),
+        "exit_code": exit_code,
+        "payload_format": payload.get("format"),
+        "action_id": payload.get("action_id"),
+        "changed": payload.get("changed"),
+        "applied_edit_count": len(payload.get("applied_edits", ())),
+        "lint_format": payload.get("lint", {}).get("format"),
+        "lint_ok": payload.get("lint", {}).get("ok"),
     }
 
 

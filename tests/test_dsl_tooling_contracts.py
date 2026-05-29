@@ -2350,6 +2350,14 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
         "code_action_request",
         "formatting_request",
     } <= {check["check"] for check in lsp_check["detail"]["rpc"]["checks"]}
+    quick_fix_check = next(check for check in report["checks"] if check["id"] == "lsp_quick_fix_application")
+    assert quick_fix_check["detail"]["cli"]["format"] == "appgen.lsp-code-action-cli-audit.v1"
+    assert quick_fix_check["detail"]["cli"]["ok"] is True
+    assert quick_fix_check["detail"]["cli"]["action_id"] == "create_operation_from_handler"
+    assert quick_fix_check["detail"]["cli"]["changed"] is True
+    assert quick_fix_check["detail"]["cli"]["applied_edit_count"] > 0
+    assert quick_fix_check["detail"]["cli"]["lint_format"] == "appgen.lint-report.v1"
+    assert quick_fix_check["detail"]["cli"]["lint_ok"] is True
     cli_check = next(check for check in report["checks"] if check["id"] == "cli_validation_and_generation_contracts")
     assert cli_check["detail"]["validate_generate_cli"]["format"] == "appgen.validate-generate-cli-audit.v1"
     assert cli_check["detail"]["validate_generate_cli"]["ok"] is True
