@@ -788,16 +788,22 @@ def lint_report_dsl(
         for severity in LINT_SEVERITY_NAMES
     }
     stages = _lint_stage_counts(diagnostics)
+    fixes = tuple(fix for item in diagnostics for fix in item.get("fixes", ()))
     return {
         "format": "appgen.lint-report.v1",
         "ok": not counts["error"],
         "stage_names": LINT_STAGE_NAMES,
         "severity_names": LINT_SEVERITY_NAMES,
+        "stage_count": len(LINT_STAGE_NAMES),
+        "severity_count": len(LINT_SEVERITY_NAMES),
         "files": (source_name,) if source_name else (),
+        "file_count": 1 if source_name else 0,
         "stages": stages,
         "severity_counts": counts,
         "diagnostics": diagnostics,
-        "fixes_available": any(item.get("fixes") for item in diagnostics),
+        "diagnostic_count": len(diagnostics),
+        "fix_count": len(fixes),
+        "fixes_available": bool(fixes),
         "semantic_model_available": legacy["ok"],
         "strict": strict,
         "component_catalog": {
@@ -835,10 +841,15 @@ def lint_report_dsl_sources(
             "ok": False,
             "stage_names": LINT_STAGE_NAMES,
             "severity_names": LINT_SEVERITY_NAMES,
+            "stage_count": len(LINT_STAGE_NAMES),
+            "severity_count": len(LINT_SEVERITY_NAMES),
             "files": (),
+            "file_count": 0,
             "stages": _lint_stage_counts((diagnostic,)),
             "severity_counts": {"error": 1, "warning": 0, "info": 0, "hint": 0},
             "diagnostics": (diagnostic,),
+            "diagnostic_count": 1,
+            "fix_count": 0,
             "fixes_available": False,
             "semantic_model_available": False,
             "strict": strict,
@@ -872,16 +883,22 @@ def lint_report_dsl_sources(
         for severity in LINT_SEVERITY_NAMES
     }
     stages = _lint_stage_counts(diagnostics)
+    fixes = tuple(fix for item in diagnostics for fix in item.get("fixes", ()))
     return {
         "format": "appgen.lint-report.v1",
         "ok": not counts["error"],
         "stage_names": LINT_STAGE_NAMES,
         "severity_names": LINT_SEVERITY_NAMES,
+        "stage_count": len(LINT_STAGE_NAMES),
+        "severity_count": len(LINT_SEVERITY_NAMES),
         "files": tuple(report["files"][0] for report in reports if report.get("files")),
+        "file_count": len(reports),
         "stages": stages,
         "severity_counts": counts,
         "diagnostics": diagnostics,
-        "fixes_available": any(report["fixes_available"] for report in reports),
+        "diagnostic_count": len(diagnostics),
+        "fix_count": len(fixes),
+        "fixes_available": bool(fixes),
         "semantic_model_available": all(report["semantic_model_available"] for report in reports),
         "strict": strict,
         "component_catalog": {

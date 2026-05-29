@@ -407,6 +407,9 @@ counts, and codes for each lane. Every lint report also publishes
 `stage_names: ["syntax", "semantic", "policy"]` and
 `severity_names: ["error", "warning", "info", "hint"]` so CI, IDEs, and agents
 can validate the report schema without hard-coding the prose specification.
+Each report also carries top-level stage, severity, file, diagnostic, and fix
+counts, plus `fixes_available`, so release evidence can prove report breadth
+without expanding every diagnostic item.
 `appgen.lint-directory-cli-audit.v1` proves that syntax errors, semantic
 reference errors, and policy warnings are reported through distinct stage
 buckets.

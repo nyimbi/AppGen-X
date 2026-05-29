@@ -269,6 +269,12 @@ def test_lint_report_maps_existing_linter_errors_to_stable_agx_diagnostics() -> 
 
     assert report["format"] == "appgen.lint-report.v1"
     assert report["ok"] is False
+    assert report["stage_count"] == len(report["stage_names"]) == 3
+    assert report["severity_count"] == len(report["severity_names"]) == 4
+    assert report["file_count"] == 1
+    assert report["diagnostic_count"] == len(report["diagnostics"])
+    assert report["fix_count"] == sum(len(item.get("fixes", ())) for item in report["diagnostics"])
+    assert report["fixes_available"] is (report["fix_count"] > 0)
     assert report["severity_counts"]["error"] >= 1
     assert any(item["code"] == "AGX0303" for item in report["diagnostics"])
     assert any(item["legacy_code"] == "unresolved_lookup_path" for item in report["diagnostics"])
@@ -293,10 +299,18 @@ def test_lint_report_accepts_directory_source_sets(tmp_path: Path) -> None:
     assert report["format"] == "appgen.lint-report.v1"
     assert report["source_mode"] == "directory"
     assert report["ok"] is False
+    assert report["stage_count"] == len(report["stage_names"]) == 3
+    assert report["severity_count"] == len(report["severity_names"]) == 4
+    assert report["file_count"] == len(report["files"]) == 2
+    assert report["diagnostic_count"] == len(report["diagnostics"])
+    assert report["fix_count"] == sum(len(item.get("fixes", ())) for item in report["diagnostics"])
+    assert report["fixes_available"] is (report["fix_count"] > 0)
     assert {Path(item).name for item in report["files"]} == {"finance.appgen", "broken.appgen"}
     assert len(report["file_reports"]) == 2
     assert any(item["code"] == "AGX0201" and Path(item["file"]).name == "broken.appgen" for item in report["diagnostics"])
     assert memory_report["source_mode"] == "directory"
+    assert memory_report["file_count"] == len(memory_report["files"]) == 2
+    assert memory_report["diagnostic_count"] == len(memory_report["diagnostics"])
 
 
 def test_lint_report_strict_mode_promotes_unknown_components_to_errors() -> None:
