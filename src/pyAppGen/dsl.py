@@ -2957,6 +2957,8 @@ def _emit_lsp_service_text(payload: dict) -> None:
     if coverage:
         missing = tuple(coverage.get("missing", ()))
         print(f"completion_coverage format={coverage.get('format')} missing={len(missing)}")
+        if missing:
+            print(f"completion-missing {', '.join(sorted(missing))}")
     definition = payload.get("definition") or {}
     if definition:
         print(f"definition format={definition.get('format')} ok={definition.get('ok')}")
@@ -3040,6 +3042,7 @@ def _lsp_service_text_renderer_contract() -> dict:
         "lsp ok: format=appgen.lsp-service.v1 semantic_format=appgen.semantic-model.v1 diagnostics=2 completions=2 actions=1 symbols=2 workspace_symbols=1",
         "source_of_truth=appgen.semantic-model.v1",
         "completion_coverage format=appgen.completion-coverage.v1 missing=1",
+        "completion-missing agent_actions",
         "definition format=appgen.lsp-definition.v1 ok=True",
         "references format=appgen.lsp-references.v1 locations=2",
         "formatting format=appgen.lsp-formatting.v1 edits=1",
