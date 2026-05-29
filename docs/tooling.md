@@ -1051,12 +1051,16 @@ The executable tooling audit includes `appgen.lsp-stdio-transport-audit.v1`,
 which sends real `Content-Length` JSON-RPC frames through the stdio transport
 and verifies initialize, diagnostics publication, shutdown, and exit handling.
 The JSON-RPC audit reports check, passing-check, provider, enabled-provider,
-request-check, code-action, and formatting-edit counts so release evidence
-proves the language server surface is broad enough for editor and agent
-workflows rather than merely returning an initialize response.
+missing-provider, request-check, passing-request-check, code-action,
+formatting-edit, and blocking-gap counts plus provider names, missing provider
+names, and request-check ids so release evidence proves the language server
+surface is broad enough for editor and agent workflows rather than merely
+returning an initialize response.
 The stdio audit reports request-message, response, id-response, notification,
-method, and diagnostic-publication counts so framed transport coverage remains
-measurable separately from in-process JSON-RPC handling.
+method, diagnostic-publication, total-message, notification-message,
+expected-id, missing-response-id, completion-response, workspace-symbol-response,
+and shutdown-response counts so framed transport coverage remains measurable
+separately from in-process JSON-RPC handling.
 Without `--json`, `appgen lsp <file>` prints a concise service summary with
 the `appgen.lsp-service.v1` envelope format, semantic-model format as
 `semantic_format=...`, diagnostic

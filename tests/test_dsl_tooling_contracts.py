@@ -1478,11 +1478,27 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
     assert audit["ok"] is True
     assert audit["check_count"] == len(audit["checks"])
     assert audit["passing_check_count"] == audit["check_count"]
+    assert audit["failing_check_count"] == 0
     assert audit["provider_count"] == 9
     assert audit["enabled_provider_count"] == audit["provider_count"]
+    assert audit["missing_provider_count"] == 0
+    assert audit["missing_providers"] == ()
+    assert audit["provider_count"] == len(audit["provider_names"])
     assert audit["request_check_count"] == 8
+    assert audit["passing_request_check_count"] == audit["request_check_count"]
+    assert audit["request_check_ids"] == (
+        "completion",
+        "hover",
+        "definition",
+        "references",
+        "document_symbols",
+        "rename",
+        "workspace_symbol",
+        "workspace_symbol_catalog_metadata",
+    )
     assert audit["code_action_count"] >= 1
     assert audit["formatting_edit_count"] >= 1
+    assert audit["blocking_gap_count"] == 0
     assert audit["blocking_gaps"] == ()
     assert capabilities["completionProvider"]["triggerCharacters"]
     assert capabilities["hoverProvider"] is True
@@ -2166,12 +2182,20 @@ def test_lsp_stdio_transport_audit_exercises_editor_requests() -> None:
     assert audit["format"] == "appgen.lsp-stdio-transport-audit.v1"
     assert audit["ok"] is True
     assert audit["exit_code"] == 0
+    assert audit["total_message_count"] == 7
     assert audit["request_message_count"] == 4
+    assert audit["notification_message_count"] == 3
     assert audit["response_count"] >= audit["request_message_count"]
     assert audit["id_response_count"] >= audit["request_message_count"]
+    assert audit["expected_id_count"] == len(audit["expected_ids"]) == 4
+    assert audit["missing_response_id_count"] == 0
+    assert audit["missing_response_ids"] == ()
     assert audit["notification_count"] >= 2
     assert audit["method_count"] >= 1
     assert audit["diagnostic_publication_count"] >= 2
+    assert audit["completion_response_count"] >= 1
+    assert audit["workspace_symbol_response_count"] >= 1
+    assert audit["shutdown_response_count"] >= 1
     assert {1, 2, 3, 4} <= set(audit["ids"])
     assert "textDocument/publishDiagnostics" in audit["methods"]
 

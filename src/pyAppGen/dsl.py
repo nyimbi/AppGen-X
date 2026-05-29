@@ -5593,31 +5593,41 @@ def _tooling_audit_lsp_json_rpc(source: str, *, broken_handler_source: str) -> d
             bool(formatting_edits) and "table Invoice" in formatting_edits[0].get("newText", ""),
         )
     )
-    provider_flags = (
-        bool(capabilities.get("completionProvider", {}).get("triggerCharacters")),
-        capabilities.get("hoverProvider") is True,
-        capabilities.get("definitionProvider") is True,
-        capabilities.get("referencesProvider") is True,
-        capabilities.get("documentSymbolProvider") is True,
-        bool(capabilities.get("renameProvider")),
-        capabilities.get("codeActionProvider") is True,
-        capabilities.get("documentFormattingProvider") is True,
-        bool(capabilities.get("workspaceSymbolProvider")),
-    )
+    provider_flags = {
+        "completion": bool(capabilities.get("completionProvider", {}).get("triggerCharacters")),
+        "hover": capabilities.get("hoverProvider") is True,
+        "definition": capabilities.get("definitionProvider") is True,
+        "references": capabilities.get("referencesProvider") is True,
+        "document_symbols": capabilities.get("documentSymbolProvider") is True,
+        "rename": bool(capabilities.get("renameProvider")),
+        "code_actions": capabilities.get("codeActionProvider") is True,
+        "formatting": capabilities.get("documentFormattingProvider") is True,
+        "workspace_symbols": bool(capabilities.get("workspaceSymbolProvider")),
+    }
+    failing_checks = tuple(check["check"] for check in checks if not check["ok"])
+    request_check_ids = tuple(name for name, _, _ in request_checks)
+    missing_providers = tuple(name for name, enabled in provider_flags.items() if not enabled)
 
     return {
         "format": "appgen.lsp-json-rpc-audit.v1",
-        "ok": all(check["ok"] for check in checks),
+        "ok": not failing_checks,
         "check_count": len(checks),
         "passing_check_count": sum(1 for check in checks if check["ok"]),
+        "failing_check_count": len(failing_checks),
         "provider_count": len(provider_flags),
-        "enabled_provider_count": sum(1 for enabled in provider_flags if enabled),
+        "enabled_provider_count": sum(1 for enabled in provider_flags.values() if enabled),
+        "missing_provider_count": len(missing_providers),
+        "provider_names": tuple(provider_flags),
+        "missing_providers": missing_providers,
         "request_check_count": len(request_checks),
+        "passing_request_check_count": sum(1 for check in checks if check["check"] in request_check_ids and check["ok"]),
+        "request_check_ids": request_check_ids,
         "code_action_count": len(code_actions),
         "formatting_edit_count": len(formatting_edits),
         "checks": checks,
         "initialize_capabilities": capabilities,
-        "blocking_gaps": tuple(check["check"] for check in checks if not check["ok"]),
+        "blocking_gap_count": len(failing_checks),
+        "blocking_gaps": failing_checks,
     }
 
 
@@ -5634,7 +5644,7 @@ def _tooling_audit_lsp_stdio_transport(source: str) -> dict:
     input_stream = io.BytesIO()
     output_stream = io.BytesIO()
     completion_position = _tooling_lsp_position(source, "Invoice")
-    for message in (
+    messages = (
         {"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}},
         {
             "jsonrpc": "2.0",
@@ -5658,7 +5668,8 @@ def _tooling_audit_lsp_stdio_transport(source: str) -> dict:
         {"jsonrpc": "2.0", "id": 3, "method": "workspace/symbol", "params": {"query": "Invoice"}},
         {"jsonrpc": "2.0", "id": 4, "method": "shutdown"},
         {"jsonrpc": "2.0", "method": "exit"},
-    ):
+    )
+    for message in messages:
         _lsp_write_rpc_message(input_stream, message)
     input_stream.seek(0)
     exit_code = lsp_stdio_server(input_stream=input_stream, output_stream=output_stream)
@@ -5669,33 +5680,52 @@ def _tooling_audit_lsp_stdio_transport(source: str) -> dict:
         if response is None:
             break
         responses.append(response)
+    expected_ids = tuple(message["id"] for message in messages if "id" in message)
+    observed_ids = tuple(response.get("id") for response in responses if "id" in response)
+    missing_response_ids = tuple(response_id for response_id in expected_ids if response_id not in observed_ids)
+    diagnostic_publication_count = sum(
+        1 for response in responses if response.get("method") == "textDocument/publishDiagnostics"
+    )
+    completion_response_count = sum(
+        1
+        for response in responses
+        if response.get("id") == 2
+        and any(item.get("label") == "Invoice" for item in response.get("result", {}).get("items", ()))
+    )
+    workspace_symbol_response_count = sum(
+        1
+        for response in responses
+        if response.get("id") == 3
+        and any(item.get("name") == "Invoice" for item in response.get("result", ()))
+    )
+    shutdown_response_count = sum(1 for response in responses if response.get("id") == 4 and response.get("result") is None)
     return {
         "format": "appgen.lsp-stdio-transport-audit.v1",
         "ok": exit_code == 0
         and any(response.get("id") == 1 and "capabilities" in response.get("result", {}) for response in responses)
-        and sum(1 for response in responses if response.get("method") == "textDocument/publishDiagnostics") >= 2
-        and any(
-            response.get("id") == 2
-            and any(item.get("label") == "Invoice" for item in response.get("result", {}).get("items", ()))
-            for response in responses
-        )
-        and any(
-            response.get("id") == 3
-            and any(item.get("name") == "Invoice" for item in response.get("result", ()))
-            for response in responses
-        )
-        and any(response.get("id") == 4 and response.get("result") is None for response in responses),
+        and diagnostic_publication_count >= 2
+        and completion_response_count >= 1
+        and workspace_symbol_response_count >= 1
+        and shutdown_response_count >= 1
+        and not missing_response_ids,
         "exit_code": exit_code,
+        "total_message_count": len(messages),
         "request_message_count": 4,
+        "notification_message_count": len(messages) - 4,
         "response_count": len(responses),
         "id_response_count": sum(1 for response in responses if "id" in response),
+        "expected_id_count": len(expected_ids),
+        "expected_ids": expected_ids,
+        "missing_response_id_count": len(missing_response_ids),
+        "missing_response_ids": missing_response_ids,
         "notification_count": sum(1 for response in responses if response.get("method")),
         "method_count": len({response.get("method") for response in responses if response.get("method")}),
         "methods": tuple(response.get("method") for response in responses if response.get("method")),
         "ids": tuple(response.get("id") for response in responses if "id" in response),
-        "diagnostic_publication_count": sum(
-            1 for response in responses if response.get("method") == "textDocument/publishDiagnostics"
-        ),
+        "diagnostic_publication_count": diagnostic_publication_count,
+        "completion_response_count": completion_response_count,
+        "workspace_symbol_response_count": workspace_symbol_response_count,
+        "shutdown_response_count": shutdown_response_count,
     }
 
 
