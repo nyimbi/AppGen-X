@@ -770,6 +770,9 @@ format, total check count, blocking gap count, each check status, and embedded
 audit formats as `detail_format=...` markers for parser-golden, completion
 coverage, symbol coverage, CLI alias contract, module boundaries, designer
 sync, and extension audits.
+`appgen.doctor-text-renderer.v1` is embedded in the tooling audit to prove
+doctor text logs keep check status, blocking-gap counts, and embedded
+`detail_format=...` evidence visible without JSON parsing.
 
 ### `appgen tooling-audit`
 

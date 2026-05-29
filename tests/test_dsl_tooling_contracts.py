@@ -4079,6 +4079,21 @@ def test_semantic_drift_text_renderer_contract_proves_shared_model_log_markers()
     } <= set(report["required_fragments"])
 
 
+def test_doctor_text_renderer_contract_proves_check_and_detail_format_markers() -> None:
+    report = appgen_dsl._doctor_text_renderer_contract()
+
+    assert report["format"] == "appgen.doctor-text-renderer.v1"
+    assert report["ok"] is True
+    assert report["missing_fragments"] == ()
+    assert report["json_fallback"] is False
+    assert report["text_prefix"].startswith("doctor failed: format=appgen.doctor-report.v1 checks=3")
+    assert {
+        "ok parser_golden_fixtures detail_format=appgen.parser-golden-audit.v1: Parser golden fixtures cover valid and invalid DSL grammar constructs.",
+        "ok lsp_completion_coverage detail_format=appgen.completion-coverage.v1: Language-server completion sources cover docs/tooling.md contexts.",
+        "fail module_boundaries detail_format=appgen.module-boundary-audit.v1: Documented DSL tooling boundaries are incomplete.",
+    } <= set(report["required_fragments"])
+
+
 def test_validate_generate_text_renderer_contract_proves_readiness_log_markers() -> None:
     report = appgen_dsl._validate_generate_text_renderer_contract()
 

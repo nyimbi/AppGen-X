@@ -2968,6 +2968,54 @@ def _semantic_drift_text_renderer_contract() -> dict:
     }
 
 
+def _doctor_text_renderer_contract() -> dict:
+    """Prove doctor text logs expose check and embedded audit-format evidence."""
+    payload = {
+        "format": "appgen.doctor-report.v1",
+        "ok": False,
+        "checks": (
+            {
+                "check": "parser_golden_fixtures",
+                "ok": True,
+                "message": "Parser golden fixtures cover valid and invalid DSL grammar constructs.",
+                "detail": {"report_format": "appgen.parser-golden-audit.v1"},
+            },
+            {
+                "check": "lsp_completion_coverage",
+                "ok": True,
+                "message": "Language-server completion sources cover docs/tooling.md contexts.",
+                "detail": {"report_format": "appgen.completion-coverage.v1"},
+            },
+            {
+                "check": "module_boundaries",
+                "ok": False,
+                "message": "Documented DSL tooling boundaries are incomplete.",
+                "detail": {"report_format": "appgen.module-boundary-audit.v1"},
+            },
+        ),
+        "blocking_gaps": ("module_boundaries",),
+    }
+    output = io.StringIO()
+    with contextlib.redirect_stdout(output):
+        _emit_tooling_payload(payload, as_json=False)
+    text = output.getvalue()
+    required_fragments = (
+        "doctor failed: format=appgen.doctor-report.v1 checks=3 blocking_gaps=1",
+        "ok parser_golden_fixtures detail_format=appgen.parser-golden-audit.v1: Parser golden fixtures cover valid and invalid DSL grammar constructs.",
+        "ok lsp_completion_coverage detail_format=appgen.completion-coverage.v1: Language-server completion sources cover docs/tooling.md contexts.",
+        "fail module_boundaries detail_format=appgen.module-boundary-audit.v1: Documented DSL tooling boundaries are incomplete.",
+    )
+    missing = tuple(fragment for fragment in required_fragments if fragment not in text)
+    return {
+        "format": "appgen.doctor-text-renderer.v1",
+        "ok": not missing and not text.lstrip().startswith("{"),
+        "required_fragments": required_fragments,
+        "missing_fragments": missing,
+        "json_fallback": text.lstrip().startswith("{"),
+        "text_prefix": text[:240],
+    }
+
+
 def _emit_lsp_service_text(payload: dict) -> None:
     status = "ok" if payload.get("ok") else "failed"
     diagnostics = payload.get("publishDiagnostics", {}).get("diagnostics", ())
@@ -3714,6 +3762,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
     parser_golden_text_renderer = _parser_golden_text_renderer_contract()
     drift = semantic_drift_audit_dsl(source, source_name="tooling-audit.appgen")
     drift_text_renderer = _semantic_drift_text_renderer_contract()
+    doctor_text_renderer = _doctor_text_renderer_contract()
     lsp_text_renderer = _lsp_service_text_renderer_contract()
     doctor = doctor_report_dsl()
     module_boundaries = module_boundary_audit_dsl()
@@ -4071,8 +4120,9 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and drift["ok"]
             and drift_text_renderer["ok"]
             and doctor["ok"]
+            and doctor_text_renderer["ok"]
             and test_strategy_cli["ok"],
-            "Parser golden, parser text summaries, diagnostic fixture, semantic drift, drift text summaries, and doctor gates prove grammar coverage and shared-model alignment across tooling surfaces.",
+            "Parser golden, parser text summaries, diagnostic fixture, semantic drift, drift text summaries, doctor text summaries, and doctor gates prove grammar coverage and shared-model alignment across tooling surfaces.",
             "docs/tooling.md#test-strategy",
             {
                 "parser": parser_golden.get("format"),
@@ -4080,6 +4130,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                 "drift": drift.get("format"),
                 "drift_text_renderer": drift_text_renderer,
                 "doctor": doctor.get("format"),
+                "doctor_text_renderer": doctor_text_renderer,
                 "cli": test_strategy_cli,
             },
         ),
