@@ -643,7 +643,7 @@ unknown or is not declared by `app ... { targets: ... }`, and the
 `appgen.validate-report.v1` payload includes `requested_targets`, `app_targets`,
 and a `target_compatibility` check. The default text output prints requested
 targets, app-declared targets, the `appgen.validate-report.v1` envelope format
-in the header, semantic-model format, checks, missing or unknown target details,
+in the header, semantic-model format as `semantic_format=...`, checks, missing or unknown target details,
 and diagnostics.
 
 ### `appgen generate`
@@ -657,7 +657,7 @@ Generation fails before writing artifacts when lint has errors. Lint warnings
 also block generation by default; `--allow-warnings` permits warning-only
 sources and does not permit errors. The default text output prints requested or
 resolved targets, artifact count, the `appgen.generate-report.v1` envelope
-format in the header, semantic-model format, output directory, manifest path,
+format in the header, semantic-model format as `semantic_format=...`, output directory, manifest path,
 artifact paths, blocking gaps, and diagnostics.
 
 ### `appgen graph`

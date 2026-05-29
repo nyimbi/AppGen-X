@@ -577,7 +577,7 @@ def test_appgen_validate_subcommand_enforces_requested_targets(tmp_path: Path) -
     assert bad_text_result.returncode == 1
     assert bad_text_result.stdout.startswith("validate failed: format=appgen.validate-report.v1 requested=web,mobile")
     assert f"app_targets={','.join(bad_payload['app_targets'])}" in bad_text_result.stdout
-    assert f"semantic={bad_payload['semantic_model']['format']}" in bad_text_result.stdout
+    assert f"semantic_format={bad_payload['semantic_model']['format']}" in bad_text_result.stdout
     assert "fail target_compatibility" in bad_text_result.stdout
     assert "missing-targets mobile" in bad_text_result.stdout
     assert "error AGX0802:" in bad_text_result.stdout
@@ -3342,7 +3342,7 @@ view CustomerForm for Customer {
     assert blocked_text.stdout.startswith("generate failed: format=appgen.generate-report.v1 generated=False")
     assert f"targets={','.join(blocked_payload['targets'])}" in blocked_text.stdout
     assert f"artifacts={len(blocked_payload['artifacts'])}" in blocked_text.stdout
-    assert f"semantic={blocked_payload['validation']['semantic_model']['format']}" in blocked_text.stdout
+    assert f"semantic_format={blocked_payload['validation']['semantic_model']['format']}" in blocked_text.stdout
     assert f"output_dir {tmp_path / 'blocked-text'}" in blocked_text.stdout
     assert "gap lint_warnings" in blocked_text.stdout
     assert "warning AGX0404:" in blocked_text.stdout
@@ -4127,7 +4127,7 @@ def test_cli_contracts_cover_text_summaries_exit_codes_and_bad_arguments(tmp_pat
     assert validate_text.stdout.startswith("validate ok: format=appgen.validate-report.v1 requested=web")
     assert "app_targets=web,mobile,desktop" in validate_text.stdout
     assert "format=appgen.validate-report.v1" in validate_text.stdout
-    assert "semantic=appgen.semantic-model.v1" in validate_text.stdout
+    assert "semantic_format=appgen.semantic-model.v1" in validate_text.stdout
     assert explain_text.returncode == 0, explain_text.stderr
     assert explain_text.stdout.startswith("explain symbol ok: format=appgen.explain-report.v1 table.Invoice")
     assert "table.Invoice: table Invoice" in explain_text.stdout
@@ -4152,7 +4152,7 @@ def test_cli_contracts_cover_text_summaries_exit_codes_and_bad_arguments(tmp_pat
     assert "generate ok: format=appgen.generate-report.v1 generated=True" in generate_text.stdout
     assert "targets=web" in generate_text.stdout
     assert "format=appgen.generate-report.v1" in generate_text.stdout
-    assert "semantic=appgen.semantic-model.v1" in generate_text.stdout
+    assert "semantic_format=appgen.semantic-model.v1" in generate_text.stdout
     assert "output_dir " in generate_text.stdout
     assert "manifest " in generate_text.stdout
     assert "artifact appgen.json" in generate_text.stdout
