@@ -821,8 +821,8 @@ Produces a proposed DSL diff, lint report, migration preview, and test plan. It
 must not write generated code unless the DSL diff validates. Without `--json`,
 the command prints a concise text summary with intent, operation count, patch
 size, generated test count, token-budget note count, operation kinds, lint
-status, and migration-preview status so agents can inspect the plan without
-parsing the full JSON payload.
+report format and status, and migration-preview format and status so agents can
+inspect the plan without parsing the full JSON payload.
 
 ## Language Server Specification
 

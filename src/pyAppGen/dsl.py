@@ -2144,11 +2144,12 @@ def _emit_nl_plan_text(payload: dict) -> None:
         print(f"operation-kinds {', '.join(operation_kinds)}")
     if token_budget_notes:
         print(f"token-budget-notes {len(token_budget_notes)}")
-    if payload.get("lint", {}).get("format") == "appgen.lint-report.v1":
-        print(f"lint_ok={payload.get('lint', {}).get('ok')}")
+    lint = payload.get("lint", {})
+    if lint.get("format") == "appgen.lint-report.v1":
+        print(f"lint {lint.get('format')}: ok={lint.get('ok')}")
     if migration.get("format") == "appgen.migration-plan.v1":
         print(
-            f"migration-preview {migration.get('backend', 'unknown')}: "
+            f"migration-preview {migration.get('format')} {migration.get('backend', 'unknown')}: "
             f"changes={len(migration.get('changes', ()))} "
             f"requires_approval={migration.get('requires_approval', False)}"
         )
