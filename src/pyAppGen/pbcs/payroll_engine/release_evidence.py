@@ -1,78 +1,17 @@
 """Generated release evidence for the payroll_engine PBC."""
-
 from __future__ import annotations
-
-from .runtime import payroll_engine_build_release_evidence
-
-RELEASE_EVIDENCE = {**payroll_engine_build_release_evidence(), "pbc": "payroll_engine"}
-
-
-def build_release_evidence():
-    """Return generated release audit evidence for this PBC."""
-    return dict(RELEASE_EVIDENCE)
-
-
-def release_readiness_manifest():
-    """Return side-effect-free release evidence coverage and gate metadata."""
-    evidence = build_release_evidence()
-    sections = tuple(
-        name
-        for name in ("schema", "service", "api", "permissions", "ui", "events")
-        if isinstance(evidence.get(name), dict)
-    )
-    checks = tuple(evidence.get("checks", ()))
-    return {
-        "ok": evidence.get("ok") is True and bool(checks),
-        "pbc": "payroll_engine",
-        "format": evidence.get("format"),
-        "sections": sections,
-        "checks": checks,
-        "blocking_gaps": tuple(evidence.get("blocking_gaps", ())),
-        "required_sections": ("schema", "service", "api", "permissions"),
-        "side_effects": (),
-    }
-
-
-def validate_release_evidence():
-    """Validate release evidence, blocking gaps, and owned-boundary proof."""
-    evidence = build_release_evidence()
-    manifest = release_readiness_manifest()
-    missing_sections = tuple(section for section in manifest["required_sections"] if section not in manifest["sections"])
-    failed_checks = tuple(check for check in manifest["checks"] if check.get("ok") is not True)
-    schema = evidence.get("schema", {}) if isinstance(evidence.get("schema"), dict) else {}
-    service = evidence.get("service", {}) if isinstance(evidence.get("service"), dict) else {}
-    boundary_gaps = tuple(
-        gap
-        for gap, failed in (
-            ("schema_shared_table_access", schema.get("shared_table_access") is not False),
-            ("service_shared_table_access", service.get("shared_table_access") is True),
-            ("service_missing_command_methods", not bool(service.get("command_methods"))),
-        )
-        if failed
-    )
-    return {
-        "ok": manifest["ok"]
-        and evidence.get("pbc") == manifest["pbc"]
-        and not manifest["blocking_gaps"]
-        and not missing_sections
-        and not failed_checks
-        and not boundary_gaps,
-        "pbc": "payroll_engine",
-        "manifest": manifest,
-        "missing_sections": missing_sections,
-        "failed_checks": failed_checks,
-        "boundary_gaps": boundary_gaps,
-        "side_effects": (),
-    }
-
-
-def smoke_test():
-    """Exercise release evidence readiness validation side-effect-free."""
-    validation = validate_release_evidence()
-    evidence = build_release_evidence()
-    return {
-        "ok": validation["ok"] and evidence.get("ok") is True,
-        "validation": validation,
-        "evidence": evidence,
-        "side_effects": (),
-    }
+from pathlib import Path
+from . import agent,events,models,permissions,repository,schema_contract,service_contract,ui
+from .runtime import payroll_engine_build_release_evidence as _runtime_build_release_evidence,payroll_engine_runtime_smoke
+_PACKAGE_DIR=Path(__file__).resolve().parent
+def _artifact_paths()->tuple[dict,...]:
+ artifacts=("README.md","SPECIFICATION.md","implementation-plan.md","implementation-status.md","RELEASE_EVIDENCE.md","repository.py","standalone.py","migrations/001_initial.sql","tests/test_contract.py","tests/test_standalone.py"); return tuple({"artifact":a,"exists":(_PACKAGE_DIR/a).exists()} for a in artifacts)
+def build_release_evidence()->dict:
+ runtime_evidence=_runtime_build_release_evidence(); event_manifest=events.event_contract_manifest(); agent_manifest=agent.composed_agent_contribution(); ui_manifest=ui.payroll_engine_ui_contract(); model_manifest=models.model_manifest(); repository_manifest=repository.payroll_engine_repository_contract(); artifact_status=_artifact_paths(); from . import standalone; standalone_smoke=standalone.workbench_smoke_test(); checks=tuple(runtime_evidence["checks"])+({"id":"package_artifacts_present","ok":all(x["exists"] for x in artifact_status)},{"id":"agent_surface_present","ok":agent_manifest["ok"]},{"id":"ui_forms_wizards_controls_present","ok":bool(ui_manifest["forms"]) and bool(ui_manifest["wizards"]) and bool(ui_manifest["controls"])},{"id":"repository_surface_present","ok":repository_manifest["ok"]},{"id":"standalone_smoke","ok":standalone_smoke["ok"]}); gaps=tuple(c for c in checks if not c["ok"]); return {"format":"appgen.payroll-engine-release-evidence.v1","ok":not gaps,"pbc":"payroll_engine","checks":checks,"blocking_gaps":gaps,"schema":schema_contract.build_schema_contract(),"service":service_contract.build_service_contract(),"api":runtime_evidence["api"],"permissions":permissions.permission_manifest(),"events":event_manifest,"ui":ui_manifest,"agent":agent_manifest,"models":model_manifest,"repository":repository_manifest,"runtime_smoke":payroll_engine_runtime_smoke(),"standalone_smoke":standalone_smoke,"artifact_status":artifact_status}
+RELEASE_EVIDENCE=build_release_evidence()
+def release_readiness_manifest()->dict:
+ e=build_release_evidence(); sections=tuple(n for n in ("schema","service","api","permissions","events","ui","agent","models","repository") if isinstance(e.get(n),dict)); return {"ok":e["ok"] and bool(e["checks"]),"pbc":"payroll_engine","format":e["format"],"sections":sections,"checks":tuple(e["checks"]),"blocking_gaps":tuple(e["blocking_gaps"]),"required_sections":("schema","service","api","events","ui","agent","models","repository"),"side_effects":()}
+def validate_release_evidence()->dict:
+ e=build_release_evidence(); m=release_readiness_manifest(); missing=tuple(s for s in m["required_sections"] if s not in m["sections"]); failed=tuple(c for c in m["checks"] if c.get("ok") is not True); boundary=tuple(g for g,f in (("schema_shared_table_access",e["schema"].get("shared_table_access") is not False),("service_shared_table_access",e["service"].get("shared_table_access") is not False),("api_shared_table_access",e["api"].get("shared_table_access") is not False),("repository_shared_table_access",e["repository"].get("shared_table_access") is not False)) if f); return {"ok":m["ok"] and e["pbc"]==m["pbc"] and not m["blocking_gaps"] and not missing and not failed and not boundary,"pbc":"payroll_engine","manifest":m,"missing_sections":missing,"failed_checks":failed,"boundary_gaps":boundary,"side_effects":()}
+def smoke_test()->dict:
+ v=validate_release_evidence(); e=build_release_evidence(); return {"ok":v["ok"] and e["ok"],"validation":v,"evidence":e,"side_effects":()}
