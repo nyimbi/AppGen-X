@@ -416,7 +416,9 @@ linting from a single-file lint pass.
 and attaches an `appgen.migration-plan.v1` migration preview to the lint report,
 so CI, IDEs, and agents can see schema drift while they are already reviewing
 semantic diagnostics. The lint CLI audit exercises this path through
-`appgen.lint-directory-cli-audit.v1`.
+`appgen.lint-directory-cli-audit.v1`, which reports `file_order_sorted` and
+`file_relative_order` so release evidence proves deterministic recursive
+discovery rather than only reporting a file count.
 
 ### Linter Outputs
 

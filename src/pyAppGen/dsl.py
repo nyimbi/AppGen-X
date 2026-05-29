@@ -5818,6 +5818,8 @@ view CustomerForm for Customer {
 
     files = tuple(payload.get("files", ()))
     file_reports = tuple(payload.get("file_reports", ()))
+    file_order_sorted = files == tuple(sorted(files))
+    file_relative_order = tuple(str(Path(file).relative_to(source_dir)) for file in files)
     warning_files = tuple(warning_payload.get("files", ()))
     warning_diagnostics = tuple(warning_payload.get("diagnostics", ()))
     warning_severity_counts = warning_payload.get("severity_counts", {})
@@ -5882,7 +5884,7 @@ view CustomerForm for Customer {
         and payload.get("ok") is True
         and payload.get("source_mode") == "directory"
         and len(files) == 2
-        and files == tuple(sorted(files))
+        and file_order_sorted
         and len(file_reports) == 2
         and payload.get("strict") is True
         and payload.get("component_catalog", {}).get("components") == ["CustomGauge"]
@@ -5901,6 +5903,8 @@ view CustomerForm for Customer {
         "payload_format": payload.get("format"),
         "source_mode": payload.get("source_mode"),
         "files": files,
+        "file_order_sorted": file_order_sorted,
+        "file_relative_order": file_relative_order,
         "file_report_count": len(file_reports),
         "strict": payload.get("strict"),
         "component_catalog": payload.get("component_catalog"),

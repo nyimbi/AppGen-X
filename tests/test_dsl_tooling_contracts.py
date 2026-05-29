@@ -491,6 +491,8 @@ def test_lint_directory_audit_covers_strict_component_cli_gate(tmp_path: Path) -
 
     assert report["format"] == "appgen.lint-directory-cli-audit.v1"
     assert report["ok"] is True
+    assert report["file_order_sorted"] is True
+    assert report["file_relative_order"] == ("a.appgen", "nested/b.appgen")
     assert report["normal_unknown_component_warning"]["ok"] is True
     assert report["normal_unknown_component_warning"]["exit_code"] == 0
     assert report["normal_unknown_component_warning"]["strict"] is False
