@@ -5714,6 +5714,9 @@ def _tooling_audit_invalid_choice_exit(tmp: Path) -> dict:
         ("graph_format", ("graph", str(source_path), "--kind", "er", "--format", "svg")),
         ("migration_backend", ("migration-plan", str(source_path), str(source_path), "--backend", "oracle")),
         ("nl_backend", ("nl-plan", str(source_path), "--prompt", "Add memo", "--backend", "oracle")),
+        ("verify_target", ("verify", str(source_path), "--target", "wearable")),
+        ("package_target", ("package", str(source_path), "--target", "wearable")),
+        ("pbc_publish_catalog", ("pbc", "publish", "gl_core", "--catalog", "sidecar")),
     )
     results = []
     for name, argv in cases:
