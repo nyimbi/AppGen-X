@@ -1799,9 +1799,14 @@ def _emit_tooling_payload(payload: dict, *, as_json: bool) -> None:
         return
     if payload.get("format") == "appgen.doctor-report.v1":
         status = "ok" if payload.get("ok") else "failed"
-        print(f"doctor {status}")
+        checks = tuple(payload.get("checks", ()))
+        gaps = tuple(payload.get("blocking_gaps", ()))
+        print(f"doctor {status}: checks={len(checks)} blocking_gaps={len(gaps)}")
         for check in payload.get("checks", ()):
-            print(f"{'ok' if check['ok'] else 'fail'} {check['check']}: {check.get('message', '')}")
+            detail = check.get("detail", {})
+            report_format = detail.get("report_format")
+            suffix = f" report={report_format}" if report_format else ""
+            print(f"{'ok' if check['ok'] else 'fail'} {check['check']}{suffix}: {check.get('message', '')}")
         return
     if payload.get("format") == "appgen.tooling-audit.v1":
         status = "ok" if payload.get("ok") else "failed"

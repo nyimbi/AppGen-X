@@ -666,7 +666,10 @@ Checks parser generation, Python package imports, catalog availability, template
 paths, generator backends, and optional IDE/LSP dependencies. The doctor report
 also embeds a VS Code extension surface check so the editor scaffold, command
 palette entries, language configuration, syntax grammar, and LSP provider
-registrations are verified from the same command used in CI.
+registrations are verified from the same command used in CI. The default text
+output prints total check count, blocking gap count, each check status, and
+embedded report formats such as parser-golden, completion coverage, symbol
+coverage, module boundaries, designer sync, and extension audits.
 
 ### `appgen tooling-audit`
 

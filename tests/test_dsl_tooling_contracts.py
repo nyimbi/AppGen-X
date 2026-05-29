@@ -3459,7 +3459,11 @@ def test_cli_contracts_cover_text_summaries_exit_codes_and_bad_arguments(tmp_pat
     assert explain_json.returncode == 0, explain_json.stderr
     assert json.loads(explain_json.stdout)["format"] == "appgen.explain-report.v1"
     assert doctor_text.returncode == 0, doctor_text.stderr
-    assert doctor_text.stdout.startswith("doctor ok")
+    assert doctor_text.stdout.startswith("doctor ok: checks=")
+    assert "blocking_gaps=0" in doctor_text.stdout
+    assert "report=appgen.parser-golden-audit.v1" in doctor_text.stdout
+    assert "report=appgen.completion-coverage.v1" in doctor_text.stdout
+    assert "report=appgen.module-boundary-audit.v1" in doctor_text.stdout
     assert generate_text.returncode == 0, generate_text.stderr
     assert "generate ok: generated=True" in generate_text.stdout
     assert "targets=web" in generate_text.stdout
