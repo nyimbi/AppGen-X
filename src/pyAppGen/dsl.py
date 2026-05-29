@@ -1809,7 +1809,8 @@ def _emit_tooling_payload(payload: dict, *, as_json: bool) -> None:
             detected = tuple(migration.get("coverage", {}).get("detected", ()))
             print(
                 "migration-preview "
-                f"{migration.get('backend', 'unknown')}: changes={len(changes)} "
+                f"{migration.get('format')} {migration.get('backend', 'unknown')}: "
+                f"changes={len(changes)} "
                 f"requires_approval={migration.get('requires_approval', False)}"
             )
             if detected:

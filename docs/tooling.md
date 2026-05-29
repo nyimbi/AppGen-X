@@ -600,7 +600,8 @@ audit commands. The default `appgen lint` text output renders the
 `appgen.lint-report.v1` envelope format and stage counts in the report's
 published `stage_names` order, currently syntax, semantic, and policy
 diagnostics, and when `--previous-semantic` is provided it also prints a
-migration-preview summary and detected migration families. `appgen diagnostics`
+migration-preview summary with the embedded `appgen.migration-plan.v1` format,
+backend, approval flag, change count, and detected migration families. `appgen diagnostics`
 text output summarizes the `appgen.diagnostic-catalog.v1` format, registry
 coverage, and fixture gaps; `appgen diagnostics --audit-fixtures` summarizes
 the `appgen.diagnostic-fixture-audit.v1` format plus covered and missing
