@@ -2168,10 +2168,12 @@ def test_package_cli_audit_proves_all_target_handoff_contracts(tmp_path: Path) -
         "screen_density",
         "smoke_launch",
     } <= set(manifest_case["mobile_handoff_artifacts"])
+    assert manifest_case["mobile_package_metadata_exists"] is True
     assert manifest_case["mobile_signing_posture_declared"] is True
     assert manifest_case["mobile_offline_policy_declared"] is True
     assert manifest_case["mobile_permissions_explained"] is True
     assert manifest_case["mobile_screens_fit_target_density"] is True
+    assert manifest_case["mobile_smoke_launch_path_exists"] is True
     assert manifest_case["mobile_smoke_entrypoint"] == "mobile.launch"
     assert manifest_case["desktop_artifact_class"] == "desktop_application"
     assert {
@@ -2182,9 +2184,11 @@ def test_package_cli_audit_proves_all_target_handoff_contracts(tmp_path: Path) -
         "context_menus",
         "smoke_launch",
     } <= set(manifest_case["desktop_handoff_artifacts"])
+    assert manifest_case["desktop_package_metadata_exists"] is True
     assert manifest_case["desktop_installer_posture_declared"] is True
     assert manifest_case["desktop_startup_assets_declared"] is True
     assert manifest_case["desktop_menus_bind_to_handlers"] is True
+    assert manifest_case["desktop_smoke_launch_path_exists"] is True
     assert manifest_case["desktop_smoke_entrypoint"] == "desktop.launch"
     assert manifest_case["pbc_artifact_class"] == "packaged_business_capability"
     assert {"manifest", "contracts", "owned_schema", "registration", "release_evidence"} <= set(
@@ -3109,6 +3113,20 @@ def test_package_verify_cli_audit_exposes_deployment_manifest_readiness_metadata
     assert manifest_case["deployment_resource_hints_present"] is True
     assert manifest_case["deployment_topology_graph_connected"] is True
     assert manifest_case["deployment_topology_declared"] is True
+
+
+def test_package_verify_cli_audit_exposes_native_package_metadata_and_smoke_readiness(tmp_path: Path) -> None:
+    report = appgen_dsl._tooling_audit_package_verify_cli(tmp_path, TOOLING_SAMPLE)
+    manifest_case = next(case for case in report["cases"] if case["case"] == "package_writes_target_manifests")
+
+    assert report["format"] == "appgen.package-verify-cli-audit.v1"
+    assert report["ok"] is True
+    assert manifest_case["mobile_package_metadata_exists"] is True
+    assert manifest_case["mobile_smoke_launch_path_exists"] is True
+    assert manifest_case["mobile_smoke_entrypoint"] == "mobile.launch"
+    assert manifest_case["desktop_package_metadata_exists"] is True
+    assert manifest_case["desktop_smoke_launch_path_exists"] is True
+    assert manifest_case["desktop_smoke_entrypoint"] == "desktop.launch"
 
 
 def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:

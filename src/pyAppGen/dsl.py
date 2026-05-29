@@ -5172,17 +5172,21 @@ def _tooling_audit_package_verify_cli(tmp: Path, source: str) -> dict:
             and web_manifest.get("smoke_entrypoint") == "web.smoke"
             and {"routes", "forms", "handlers", "smoke_tests"} <= set(web_handoff)
             and mobile_manifest.get("artifact_class") == "mobile_application"
+            and mobile_manifest.get("package_metadata_exists") is True
             and mobile_manifest.get("signing_posture_declared") is True
             and mobile_manifest.get("offline_policy_declared") is True
             and mobile_manifest.get("permissions_explained") is True
             and mobile_manifest.get("screens_fit_target_density") is True
+            and mobile_manifest.get("smoke_launch_path_exists") is True
             and mobile_manifest.get("smoke_entrypoint") == "mobile.launch"
             and {"mobile_metadata", "signing_posture", "offline_policy", "permissions", "screen_density", "smoke_launch"}
             <= set(mobile_handoff)
             and desktop_manifest.get("artifact_class") == "desktop_application"
+            and desktop_manifest.get("package_metadata_exists") is True
             and desktop_manifest.get("installer_posture_declared") is True
             and desktop_manifest.get("startup_assets_declared") is True
             and desktop_manifest.get("menus_bind_to_handlers") is True
+            and desktop_manifest.get("smoke_launch_path_exists") is True
             and desktop_manifest.get("smoke_entrypoint") == "desktop.launch"
             and {"desktop_metadata", "installer_profile", "startup_assets", "menus", "context_menus", "smoke_launch"}
             <= set(desktop_handoff)
@@ -5223,16 +5227,20 @@ def _tooling_audit_package_verify_cli(tmp: Path, source: str) -> dict:
             "web_smoke_entrypoint": web_manifest.get("smoke_entrypoint"),
             "mobile_artifact_class": mobile_manifest.get("artifact_class"),
             "mobile_handoff_artifacts": mobile_handoff,
+            "mobile_package_metadata_exists": mobile_manifest.get("package_metadata_exists"),
             "mobile_signing_posture_declared": mobile_manifest.get("signing_posture_declared"),
             "mobile_offline_policy_declared": mobile_manifest.get("offline_policy_declared"),
             "mobile_permissions_explained": mobile_manifest.get("permissions_explained"),
             "mobile_screens_fit_target_density": mobile_manifest.get("screens_fit_target_density"),
+            "mobile_smoke_launch_path_exists": mobile_manifest.get("smoke_launch_path_exists"),
             "mobile_smoke_entrypoint": mobile_manifest.get("smoke_entrypoint"),
             "desktop_artifact_class": desktop_manifest.get("artifact_class"),
             "desktop_handoff_artifacts": desktop_handoff,
+            "desktop_package_metadata_exists": desktop_manifest.get("package_metadata_exists"),
             "desktop_installer_posture_declared": desktop_manifest.get("installer_posture_declared"),
             "desktop_startup_assets_declared": desktop_manifest.get("startup_assets_declared"),
             "desktop_menus_bind_to_handlers": desktop_manifest.get("menus_bind_to_handlers"),
+            "desktop_smoke_launch_path_exists": desktop_manifest.get("smoke_launch_path_exists"),
             "desktop_smoke_entrypoint": desktop_manifest.get("smoke_entrypoint"),
             "pbc_artifact_class": pbc_manifest.get("artifact_class"),
             "pbc_handoff_artifacts": pbc_handoff,
@@ -8509,10 +8517,12 @@ def _target_package_manifest(
                 "screen_density",
                 "smoke_launch",
             ),
+            "package_metadata_exists": check_map.get("package_metadata_exists", False),
             "signing_posture_declared": check_map.get("signing_posture_declared", False),
             "offline_policy_declared": check_map.get("offline_policy_declared", False),
             "permissions_explained": check_map.get("permissions_explained", False),
             "screens_fit_target_density": check_map.get("screens_fit_target_density", False),
+            "smoke_launch_path_exists": check_map.get("smoke_launch_path_exists", False),
             "smoke_entrypoint": "mobile.launch",
         },
         "desktop": {
@@ -8525,9 +8535,11 @@ def _target_package_manifest(
                 "context_menus",
                 "smoke_launch",
             ),
+            "package_metadata_exists": check_map.get("package_metadata_exists", False),
             "installer_posture_declared": check_map.get("installer_or_update_posture_declared", False),
             "startup_assets_declared": check_map.get("splash_or_startup_assets_declared_when_used", False),
             "menus_bind_to_handlers": check_map.get("menus_and_context_menus_bind_to_handlers", False),
+            "smoke_launch_path_exists": check_map.get("smoke_launch_path_exists", False),
             "smoke_entrypoint": "desktop.launch",
         },
         "pbc": {
