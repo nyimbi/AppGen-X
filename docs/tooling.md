@@ -378,9 +378,13 @@ The linter must run in three stages:
    release-readiness checks.
 `appgen.lint-report.v1` exposes these stages under `stages.syntax`,
 `stages.semantic`, and `stages.policy`, with diagnostic counts, severity
-counts, and codes for each lane. `appgen.lint-directory-cli-audit.v1` proves
-that syntax errors, semantic reference errors, and policy warnings are reported
-through distinct stage buckets.
+counts, and codes for each lane. Every lint report also publishes
+`stage_names: ["syntax", "semantic", "policy"]` and
+`severity_names: ["error", "warning", "info", "hint"]` so CI, IDEs, and agents
+can validate the report schema without hard-coding the prose specification.
+`appgen.lint-directory-cli-audit.v1` proves that syntax errors, semantic
+reference errors, and policy warnings are reported through distinct stage
+buckets.
 
 ### Linter Inputs
 
@@ -411,6 +415,8 @@ Text mode is for humans. JSON mode is for CI, IDEs, agents, and generated apps.
 {
   "format": "appgen.lint-report.v1",
   "ok": false,
+  "stage_names": ["syntax", "semantic", "policy"],
+  "severity_names": ["error", "warning", "info", "hint"],
   "files": ["finance.appgen"],
   "stages": {
     "syntax": {"diagnostic_count": 0, "error": 0, "warning": 0, "codes": []},

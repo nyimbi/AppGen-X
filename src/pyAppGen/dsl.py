@@ -72,6 +72,8 @@ REQUIRED_GRAPH_KINDS = (
 GRAPH_TEXT_FORMATS = ("json", "mermaid", "dot")
 SUPPORTED_DATABASE_BACKENDS = ("postgresql", "mysql", "mariadb")
 RELEASE_TARGET_CHOICES = ("web", "mobile", "desktop", "pbc", "deployment", "all")
+LINT_STAGE_NAMES = ("syntax", "semantic", "policy")
+LINT_SEVERITY_NAMES = ("error", "warning", "info", "hint")
 REQUIRED_MIGRATION_DETECTIONS = (
     "added_table",
     "dropped_table",
@@ -746,15 +748,15 @@ def lint_report_dsl(
         for item in legacy["diagnostics"]
     )
     counts = {
-        "error": sum(1 for item in diagnostics if item["severity"] == "error"),
-        "warning": sum(1 for item in diagnostics if item["severity"] == "warning"),
-        "info": sum(1 for item in diagnostics if item["severity"] == "info"),
-        "hint": sum(1 for item in diagnostics if item["severity"] == "hint"),
+        severity: sum(1 for item in diagnostics if item["severity"] == severity)
+        for severity in LINT_SEVERITY_NAMES
     }
     stages = _lint_stage_counts(diagnostics)
     return {
         "format": "appgen.lint-report.v1",
         "ok": not counts["error"],
+        "stage_names": LINT_STAGE_NAMES,
+        "severity_names": LINT_SEVERITY_NAMES,
         "files": (source_name,) if source_name else (),
         "stages": stages,
         "severity_counts": counts,
@@ -795,6 +797,8 @@ def lint_report_dsl_sources(
         return {
             "format": "appgen.lint-report.v1",
             "ok": False,
+            "stage_names": LINT_STAGE_NAMES,
+            "severity_names": LINT_SEVERITY_NAMES,
             "files": (),
             "stages": _lint_stage_counts((diagnostic,)),
             "severity_counts": {"error": 1, "warning": 0, "info": 0, "hint": 0},
@@ -828,15 +832,15 @@ def lint_report_dsl_sources(
         for diagnostic in report["diagnostics"]
     )
     counts = {
-        "error": sum(1 for item in diagnostics if item["severity"] == "error"),
-        "warning": sum(1 for item in diagnostics if item["severity"] == "warning"),
-        "info": sum(1 for item in diagnostics if item["severity"] == "info"),
-        "hint": sum(1 for item in diagnostics if item["severity"] == "hint"),
+        severity: sum(1 for item in diagnostics if item["severity"] == severity)
+        for severity in LINT_SEVERITY_NAMES
     }
     stages = _lint_stage_counts(diagnostics)
     return {
         "format": "appgen.lint-report.v1",
         "ok": not counts["error"],
+        "stage_names": LINT_STAGE_NAMES,
+        "severity_names": LINT_SEVERITY_NAMES,
         "files": tuple(report["files"][0] for report in reports if report.get("files")),
         "stages": stages,
         "severity_counts": counts,
@@ -953,7 +957,7 @@ def _lint_stage_counts(diagnostics: Iterable[dict]) -> dict:
         }
         for stage, items in (
             (stage, tuple(item for item in diagnostics if _lint_stage_for_diagnostic(item) == stage))
-            for stage in ("syntax", "semantic", "policy")
+            for stage in LINT_STAGE_NAMES
         )
     }
 
@@ -4467,6 +4471,8 @@ view CustomerForm for Customer {
         },
         "stage_separation": {
             "ok": all(stage_separation.values()),
+            "stage_names": syntax_payload.get("stage_names", ()),
+            "severity_names": syntax_payload.get("severity_names", ()),
             "stages": stage_separation,
             "syntax": syntax_payload.get("stages", {}),
             "semantic": semantic_payload.get("stages", {}),
