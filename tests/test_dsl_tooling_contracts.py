@@ -1544,11 +1544,15 @@ def test_lsp_code_action_apply_patches_missing_operation_and_lookup_directive(tm
     assert text_result.returncode == 0, text_result.stderr
     assert payload["format"] == "appgen.lsp-code-action-apply.v1"
     assert "operation SubmitInvoice" in payload["patched_source"]
-    assert text_result.stdout.startswith("lsp-code-action ok: action=create_operation_from_handler")
+    assert text_result.stdout.startswith(
+        "lsp-code-action ok: format=appgen.lsp-code-action-apply.v1 action=create_operation_from_handler"
+    )
     assert "changed=True" in text_result.stdout
     assert "lint_ok=True" in text_result.stdout
     assert unknown_text_result.returncode == 1
-    assert unknown_text_result.stdout.startswith("lsp-code-action failed: action=missing_action")
+    assert unknown_text_result.stdout.startswith(
+        "lsp-code-action failed: format=appgen.lsp-code-action-apply.v1 action=missing_action"
+    )
     assert "available-actions " in unknown_text_result.stdout
     assert "create_operation_from_handler" in unknown_text_result.stdout
     assert "error AGX0100: Unknown code action: missing_action" in unknown_text_result.stdout
@@ -2806,7 +2810,9 @@ def test_appgen_designer_sync_subcommand_emits_json_and_text_contracts(tmp_path:
     assert payload["format"] == "appgen.designer-sync-report.v1"
     assert payload["projections"]["dsl_editor"]["semantic_model_format"] == "appgen.semantic-model.v1"
     assert text_result.returncode == 0, text_result.stderr
-    assert text_result.stdout.startswith("designer-sync ok: semantic=appgen.semantic-model.v1")
+    assert text_result.stdout.startswith(
+        "designer-sync ok: format=appgen.designer-sync-report.v1 semantic=appgen.semantic-model.v1"
+    )
     assert "surfaces=10" in text_result.stdout
     assert "form_designer" in text_result.stdout
     assert "visual-edit-matrix ok=True" in text_result.stdout

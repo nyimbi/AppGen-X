@@ -2196,7 +2196,7 @@ def _emit_designer_sync_text(payload: dict) -> None:
     visual_edit = payload.get("visual_edit") or {}
     matrix = payload.get("visual_edit_matrix") or {}
     print(
-        f"designer-sync {status}: semantic={payload.get('semantic_model_format')} "
+        f"designer-sync {status}: format={payload.get('format')} semantic={payload.get('semantic_model_format')} "
         f"surfaces={len(surfaces)}"
     )
     if surfaces:
@@ -2316,7 +2316,7 @@ def _emit_lsp_code_action_apply_text(payload: dict) -> None:
     edits = tuple(payload.get("applied_edits", ()))
     lint = payload.get("lint") or {}
     print(
-        f"lsp-code-action {status}: action={payload.get('action_id')} "
+        f"lsp-code-action {status}: format={payload.get('format')} action={payload.get('action_id')} "
         f"changed={payload.get('changed')} edits={len(edits)} lint_ok={lint.get('ok')}"
     )
     title = payload.get("title")

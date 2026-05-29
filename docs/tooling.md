@@ -959,7 +959,8 @@ Code-action application is executable through
 `appgen.lsp-code-action-apply.v1`. The CLI supports
 `appgen lsp app.appgen --apply-code-action <id> --json`, returning patched DSL,
 applied text edits, and the lint result after applying the selected quick fix.
-Without `--json`, the same command prints action id, change status, edit count,
+Without `--json`, the same command prints the
+`appgen.lsp-code-action-apply.v1` format, action id, change status, edit count,
 lint status, title, available actions for unknown ids, and diagnostics.
 This is the evidence path for missing-operation, lookup-directive,
 event-contract, relationship, typo, secret-literal replacement, invalid
@@ -1029,9 +1030,10 @@ diff previews, patched source, the after-edit semantic model, changed designer
 surfaces, and refreshed projections for accepted visual edits. Form, database,
 workflow, PBC composition, and package/deployment edit paths must validate the
 patched DSL before the Studio accepts the visual operation.
-Without `--json`, `appgen designer-sync` prints the semantic-model format,
-surface count and names, visual edit acceptance, round-trip status, changed
-surfaces, DSL diff line count, visual-edit matrix coverage, required visual
+Without `--json`, `appgen designer-sync` prints the
+`appgen.designer-sync-report.v1` format, semantic-model format, surface count
+and names, visual edit acceptance, round-trip status, changed surfaces, DSL diff
+line count, visual-edit matrix coverage, required visual
 edit operation names, and sync checks.
 `--edit-json` must be a JSON object; malformed edit payloads are CLI
 configuration errors and return exit code `2` before any designer mutation is
