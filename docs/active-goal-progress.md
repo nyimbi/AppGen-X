@@ -3547,3 +3547,13 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   `appgen.missing-required-option-exit-audit.v1` helper probe with `ok=True`,
   focused non-PBC CLI/audit tests (`2 passed`), scoped diff whitespace check,
   and restricted-name scan outside archive, Git internals, and active PBC paths.
+  Commit: `d8c5947a`.
+- Current LSP JSON-RPC audit hardening pass closes an initialize-handshake
+  evidence gap. `appgen.lsp-json-rpc-audit.v1` now records and verifies the
+  advertised provider surface for completion, hover, definition, references,
+  document symbols, rename, code actions, formatting, and workspace symbols
+  before exercising the matching JSON-RPC requests. Verification passed: Python
+  compile for the touched tooling entrypoint, direct
+  `appgen.lsp-json-rpc-audit.v1` helper probe with `ok=True`, focused non-PBC
+  LSP audit test (`1 passed`), scoped diff whitespace check, and restricted-name
+  scan outside archive, Git internals, and active PBC paths.

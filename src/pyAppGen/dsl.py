@@ -2560,12 +2560,20 @@ def _tooling_audit_lsp_json_rpc(source: str, *, broken_handler_source: str) -> d
         {"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}},
         documents,
     )
+    capabilities = init_responses[0]["result"]["capabilities"] if init_responses else {}
     checks.append(
         _release_check(
             "initialize_capabilities",
             bool(init_responses)
-            and init_responses[0]["result"]["capabilities"].get("codeActionProvider") is True
-            and init_responses[0]["result"]["capabilities"].get("documentFormattingProvider") is True,
+            and bool(capabilities.get("completionProvider", {}).get("triggerCharacters"))
+            and capabilities.get("hoverProvider") is True
+            and capabilities.get("definitionProvider") is True
+            and capabilities.get("referencesProvider") is True
+            and capabilities.get("documentSymbolProvider") is True
+            and bool(capabilities.get("renameProvider"))
+            and capabilities.get("codeActionProvider") is True
+            and capabilities.get("documentFormattingProvider") is True
+            and bool(capabilities.get("workspaceSymbolProvider")),
         )
     )
 
@@ -2734,6 +2742,7 @@ def _tooling_audit_lsp_json_rpc(source: str, *, broken_handler_source: str) -> d
         "format": "appgen.lsp-json-rpc-audit.v1",
         "ok": all(check["ok"] for check in checks),
         "checks": checks,
+        "initialize_capabilities": capabilities,
         "blocking_gaps": tuple(check["check"] for check in checks if not check["ok"]),
     }
 

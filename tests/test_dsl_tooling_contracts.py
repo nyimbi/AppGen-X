@@ -922,6 +922,29 @@ def test_lsp_service_uses_shared_semantic_model_for_core_editor_features() -> No
     assert "PostInvoice" in report["rename"]["workspace_edit"]["changes"]["finance.appgen"][0]["newText"]
 
 
+def test_lsp_json_rpc_audit_proves_advertised_provider_capabilities() -> None:
+    broken_handler_source = """
+app Bad { targets: web }
+table Invoice { id: int pk }
+view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
+"""
+    audit = appgen_dsl._tooling_audit_lsp_json_rpc(TOOLING_SAMPLE, broken_handler_source=broken_handler_source)
+    capabilities = audit["initialize_capabilities"]
+
+    assert audit["format"] == "appgen.lsp-json-rpc-audit.v1"
+    assert audit["ok"] is True
+    assert audit["blocking_gaps"] == ()
+    assert capabilities["completionProvider"]["triggerCharacters"]
+    assert capabilities["hoverProvider"] is True
+    assert capabilities["definitionProvider"] is True
+    assert capabilities["referencesProvider"] is True
+    assert capabilities["documentSymbolProvider"] is True
+    assert capabilities["renameProvider"]["prepareProvider"] is False
+    assert capabilities["codeActionProvider"] is True
+    assert capabilities["documentFormattingProvider"] is True
+    assert capabilities["workspaceSymbolProvider"] is True
+
+
 def test_lsp_completion_coverage_proves_required_context_sources() -> None:
     source = """
     app CompletionDemo { targets: web, mobile, desktop }
