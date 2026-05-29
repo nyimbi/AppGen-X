@@ -113,3 +113,61 @@ def smoke_test():
         'dispatch': dispatched,
         'side_effects': (),
     }
+
+
+
+STANDALONE_ROUTES = (
+    {"method": "POST", "path": "/app/global-inventory-visibility/demo-workspace", "handler": "seed_demo_workspace"},
+    {"method": "GET", "path": "/app/global-inventory-visibility/workbench", "handler": "build_workbench"},
+    {"method": "GET", "path": "/app/global-inventory-visibility/pools/detail", "handler": "build_pool_read_model"},
+    {"method": "POST", "path": "/app/global-inventory-visibility/pools", "handler": "register_inventory_pool"},
+    {"method": "POST", "path": "/app/global-inventory-visibility/proofs", "handler": "generate_pool_proof"},
+    {"method": "GET", "path": "/app/global-inventory-visibility/release-evidence", "handler": "build_release_read_model"},
+)
+
+
+def standalone_route_contracts():
+    """Return route contracts for repository-backed standalone apps."""
+    from .services import standalone_service_operation_contracts
+
+    operations = {item["operation"]: item for item in standalone_service_operation_contracts()["contracts"]}
+    contracts = tuple({**route, "operation": route["handler"], "service_operation": operations.get(route["handler"])} for route in STANDALONE_ROUTES)
+    return {
+        "format": "appgen.global-inventory-visibility-standalone-routes.v1",
+        "ok": all(item["service_operation"] for item in contracts),
+        "pbc": "global_inventory_visibility",
+        "routes": tuple(f"{item['method']} {item['path']}" for item in contracts),
+        "contracts": contracts,
+        "side_effects": (),
+    }
+
+
+def dispatch_standalone_route(method, path, payload=None, *, service=None):
+    """Dispatch a standalone route against the repository-backed service."""
+    from .services import GlobalInventoryVisibilityStandaloneService
+
+    route = next((item for item in STANDALONE_ROUTES if item["method"] == method and item["path"] == path), None)
+    if route is None:
+        return {"ok": False, "handled": False, "reason": "route_not_found", "side_effects": ()}
+    own_service = service is None
+    service = service or GlobalInventoryVisibilityStandaloneService()
+    data = dict(payload or {})
+    try:
+        if route["handler"] == "seed_demo_workspace":
+            result = service.seed_demo_workspace(tenant=data.get("tenant", "tenant_demo"))
+        elif route["handler"] == "build_workbench":
+            result = service.build_workbench(tenant=data.get("tenant", "tenant_demo"))
+        elif route["handler"] == "build_pool_read_model":
+            result = service.build_pool_read_model(pool_id=data["pool_id"], tenant=data.get("tenant"))
+        elif route["handler"] == "register_inventory_pool":
+            result = service.register_inventory_pool(data)
+        elif route["handler"] == "generate_pool_proof":
+            result = service.generate_pool_proof(pool_id=data["pool_id"], disclosure=tuple(data.get("disclosure", ("available_to_promise", "capable_to_promise", "freshness_score"))))
+        elif route["handler"] == "build_release_read_model":
+            result = service.build_release_read_model(tenant=data.get("tenant", "tenant_demo"))
+        else:
+            result = {"ok": False, "reason": "handler_not_implemented"}
+        return {"ok": result.get("ok") is True, "handled": True, "route": route, "result": {"ok": result.get("ok") is True, "result": result}, "side_effects": ()}
+    finally:
+        if own_service:
+            service.close()

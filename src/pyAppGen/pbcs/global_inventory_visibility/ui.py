@@ -341,3 +341,182 @@ def smoke_test():
         "cards": cards,
         "side_effects": (),
     }
+
+
+
+def global_inventory_visibility_form_contracts() -> dict:
+    """Return package-local forms for the standalone inventory workbench."""
+    contracts = (
+        {
+            "key": "InventoryConfigurationForm",
+            "title": "Inventory configuration",
+            "operation": "configure_runtime",
+            "table": "global_inventory_visibility_inventory_configuration",
+            "fields": ("database_backend", "event_topic", "retry_limit", "projection_horizon_days", "staleness_sla_minutes", "workbench_limit"),
+            "permission": "global_inventory_visibility.configure",
+            "keywords": ("configure", "backend", "event topic", "runtime"),
+        },
+        {
+            "key": "SupplyNodeForm",
+            "title": "Supply node",
+            "operation": "register_supply_node",
+            "table": "global_inventory_visibility_supply_node",
+            "fields": ("node_id", "tenant", "node_type", "country", "region", "health_score", "latency_ms", "carbon_intensity", "identity"),
+            "permission": "global_inventory_visibility.configure",
+            "keywords": ("node", "warehouse", "port", "identity"),
+        },
+        {
+            "key": "InventoryPoolForm",
+            "title": "Inventory pool",
+            "operation": "register_inventory_pool",
+            "table": "global_inventory_visibility_inventory_pool",
+            "fields": ("pool_id", "tenant", "item_id", "pool_type", "node_ids", "allocation_policy", "safety_stock_units"),
+            "permission": "global_inventory_visibility.configure",
+            "keywords": ("pool", "sku", "allocation", "safety stock"),
+        },
+        {
+            "key": "AvailabilitySnapshotForm",
+            "title": "Availability snapshot",
+            "operation": "record_availability_snapshot",
+            "table": "global_inventory_visibility_availability_snapshot",
+            "fields": ("snapshot_id", "tenant", "pool_id", "node_id", "on_hand", "reserved", "allocated", "in_transit", "safety_stock", "freshness_age_hours", "staleness_minutes"),
+            "permission": "global_inventory_visibility.configure",
+            "keywords": ("snapshot", "on hand", "in transit", "freshness"),
+        },
+        {
+            "key": "ReservationForm",
+            "title": "Inventory reservation",
+            "operation": "reserve_inventory",
+            "table": "global_inventory_visibility_inventory_reservation",
+            "fields": ("reservation_id", "tenant", "pool_id", "order_id", "quantity", "channel"),
+            "permission": "global_inventory_visibility.reserve",
+            "keywords": ("reserve", "reservation", "order", "channel"),
+        },
+        {
+            "key": "InventoryEventInboxForm",
+            "title": "Inventory event intake",
+            "operation": "receive_event",
+            "table": "global_inventory_visibility_appgen_inbox_event",
+            "fields": ("event_id", "event_type", "tenant", "pool_id", "node_id", "quantity"),
+            "permission": "global_inventory_visibility.configure",
+            "keywords": ("event", "receipt", "shipment", "allocation"),
+        },
+    )
+    return {
+        "format": "appgen.global-inventory-visibility-standalone-forms.v1",
+        "ok": all(item["table"].startswith("global_inventory_visibility_") for item in contracts),
+        "pbc": "global_inventory_visibility",
+        "contracts": contracts,
+        "side_effects": (),
+    }
+
+
+def global_inventory_visibility_wizard_contracts() -> dict:
+    """Return guided workflows for a one-PBC inventory visibility app."""
+    contracts = (
+        {
+            "key": "InventoryInstructionIntakeWizard",
+            "title": "Document and instruction intake",
+            "steps": ("classify_inventory_document", "extract_pool_node_snapshot_fields", "preview_crud_plan", "require_confirmation"),
+            "forms": ("InventoryPoolForm", "SupplyNodeForm", "AvailabilitySnapshotForm", "InventoryEventInboxForm"),
+            "keywords": ("document", "instruction", "asn", "handoff", "spreadsheet", "inventory file"),
+        },
+        {
+            "key": "AvailabilityProjectionWizard",
+            "title": "Global availability projection",
+            "steps": ("validate_configuration", "capture_supply_nodes", "capture_pool", "record_snapshots", "refresh_projection", "publish_appgen_event"),
+            "forms": ("InventoryConfigurationForm", "SupplyNodeForm", "InventoryPoolForm", "AvailabilitySnapshotForm"),
+            "keywords": ("availability", "projection", "atp", "ctp", "freshness"),
+        },
+        {
+            "key": "ReservationControlWizard",
+            "title": "Reservation and control workflow",
+            "steps": ("read_latest_projection", "screen_reservation", "create_reservation", "refresh_projection", "run_control_tests"),
+            "forms": ("ReservationForm",),
+            "keywords": ("reservation", "reserve", "promise", "channel"),
+        },
+    )
+    return {
+        "format": "appgen.global-inventory-visibility-standalone-wizards.v1",
+        "ok": all(item["steps"] for item in contracts),
+        "pbc": "global_inventory_visibility",
+        "contracts": contracts,
+        "side_effects": (),
+    }
+
+
+def global_inventory_visibility_control_catalog() -> dict:
+    """Return executable controls surfaced by the standalone workbench."""
+    contracts = (
+        {
+            "key": "backend_event_contract_allowlist",
+            "title": "Backend and AppGen-X event contract",
+            "operation": "build_release_read_model",
+            "table": "global_inventory_visibility_inventory_control_assertion",
+            "permission": "global_inventory_visibility.audit",
+        },
+        {
+            "key": "freshness_sla_control",
+            "title": "Freshness SLA and stale snapshot control",
+            "operation": "build_release_read_model",
+            "table": "global_inventory_visibility_inventory_control_assertion",
+            "permission": "global_inventory_visibility.audit",
+        },
+        {
+            "key": "owned_boundary_control",
+            "title": "Owned datastore boundary",
+            "operation": "build_release_read_model",
+            "table": "global_inventory_visibility_inventory_control_assertion",
+            "permission": "global_inventory_visibility.audit",
+        },
+    )
+    return {
+        "format": "appgen.global-inventory-visibility-standalone-controls.v1",
+        "ok": all(item["table"].startswith("global_inventory_visibility_") for item in contracts),
+        "pbc": "global_inventory_visibility",
+        "contracts": contracts,
+        "side_effects": (),
+    }
+
+
+def global_inventory_visibility_standalone_workbench_blueprint() -> dict:
+    """Return the standalone UI blueprint with forms, wizards, controls, and panels."""
+    forms = global_inventory_visibility_form_contracts()
+    wizards = global_inventory_visibility_wizard_contracts()
+    controls = global_inventory_visibility_control_catalog()
+    base_contract = global_inventory_visibility_ui_contract()
+    return {
+        "format": "appgen.global-inventory-visibility-standalone-workbench.v1",
+        "ok": forms["ok"] and wizards["ok"] and controls["ok"] and base_contract["ok"],
+        "pbc": "global_inventory_visibility",
+        "forms": forms["contracts"],
+        "wizards": wizards["contracts"],
+        "controls": controls["contracts"],
+        "panels": base_contract["panels"],
+        "routes": base_contract["routes"],
+        "side_effects": (),
+    }
+
+
+def global_inventory_visibility_render_standalone_workbench(workbench: dict) -> dict:
+    """Render a repository read model into deterministic workbench sections."""
+    blueprint = global_inventory_visibility_standalone_workbench_blueprint()
+    cards = (
+        {"key": "pools", "value": workbench.get("pool_count", 0), "fragment": "InventoryPoolStudio"},
+        {"key": "nodes", "value": workbench.get("node_count", 0), "fragment": "SupplyNodeConsole"},
+        {"key": "available_to_promise", "value": workbench.get("available_to_promise", 0), "fragment": "GlobalAvailabilityConsole"},
+        {"key": "freshness_alerts", "value": workbench.get("freshness_alert_count", 0), "fragment": "FreshnessRiskPanel"},
+        {"key": "control_failures", "value": workbench.get("release_control_failure_count", 0), "fragment": "DeadLetterAuditView"},
+    )
+    return {
+        "format": "appgen.global-inventory-visibility-standalone-render.v1",
+        "ok": blueprint["ok"] and bool(cards),
+        "pbc": "global_inventory_visibility",
+        "tenant": workbench.get("tenant"),
+        "cards": cards,
+        "forms": tuple(item["key"] for item in blueprint["forms"]),
+        "wizards": tuple(item["key"] for item in blueprint["wizards"]),
+        "controls": tuple(item["key"] for item in blueprint["controls"]),
+        "pool_read_models": workbench.get("pool_read_models", ()),
+        "side_effects": (),
+    }
