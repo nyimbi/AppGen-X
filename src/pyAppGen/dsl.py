@@ -1729,6 +1729,12 @@ def _emit_tooling_payload(payload: dict, *, as_json: bool) -> None:
         for check in payload.get("checks", ()):
             print(f"{'ok' if check['ok'] else 'fail'} {check['check']}")
         return
+    if payload.get("format") == "appgen.migration-plan.v1":
+        _emit_migration_plan_text(payload)
+        return
+    if payload.get("format") == "appgen.nl-plan.v1":
+        _emit_nl_plan_text(payload)
+        return
     if payload.get("format") == "appgen.parser-golden-audit.v1":
         status = "ok" if payload.get("ok") else "failed"
         print(
@@ -1815,6 +1821,49 @@ def _emit_explain_text(payload: dict) -> None:
         print(f"matches: {len(matches)}")
         for match in matches:
             print(f"{match.get('from')} -> {match.get('to')} [{match.get('label')}]")
+
+
+def _emit_migration_plan_text(payload: dict) -> None:
+    status = "ok" if payload.get("ok") else "failed"
+    changes = payload.get("changes", ())
+    detected = tuple(payload.get("coverage", {}).get("detected", ()))
+    destructive_count = sum(1 for change in changes if change.get("destructive"))
+    print(
+        f"migration-plan {status}: backend={payload.get('backend', 'unknown')} "
+        f"changes={len(changes)} destructive={destructive_count} "
+        f"requires_approval={payload.get('requires_approval', False)}"
+    )
+    if detected:
+        print(f"migration-detected {', '.join(sorted(detected))}")
+    for change in changes:
+        target = change.get("table") or change.get("field") or change.get("pbc") or change.get("contract") or ""
+        print(f"change {change.get('kind')}: {target}".rstrip())
+    for diagnostic in payload.get("diagnostics", ()):
+        print(f"{diagnostic['severity']} {diagnostic['code']}: {diagnostic['message']}")
+
+
+def _emit_nl_plan_text(payload: dict) -> None:
+    status = "ok" if payload.get("ok") else "failed"
+    operations = tuple(payload.get("edit_operations", ()))
+    operation_kinds = tuple(operation.get("kind") for operation in operations if operation.get("kind"))
+    migration = payload.get("migration_preview") or {}
+    print(
+        f"nl-plan {status}: intent={payload.get('intent', 'unknown')} "
+        f"operations={len(operations)} patch_bytes={len(payload.get('dsl_patch', ''))} "
+        f"tests={len(payload.get('test_plan', ()))}"
+    )
+    if operation_kinds:
+        print(f"operation-kinds {', '.join(operation_kinds)}")
+    if payload.get("lint", {}).get("format") == "appgen.lint-report.v1":
+        print(f"lint_ok={payload.get('lint', {}).get('ok')}")
+    if migration.get("format") == "appgen.migration-plan.v1":
+        print(
+            f"migration-preview {migration.get('backend', 'unknown')}: "
+            f"changes={len(migration.get('changes', ()))} "
+            f"requires_approval={migration.get('requires_approval', False)}"
+        )
+    for diagnostic in payload.get("diagnostics", ()):
+        print(f"{diagnostic['severity']} {diagnostic['code']}: {diagnostic['message']}")
 
 
 def _graph_as_text(graph: dict, output_format: str) -> str:

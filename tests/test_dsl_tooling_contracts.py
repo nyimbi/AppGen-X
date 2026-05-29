@@ -816,7 +816,7 @@ def test_nl_plan_returns_linted_dsl_patch_and_migration_preview() -> None:
     assert plan["token_budget_notes"]
 
 
-def test_appgen_nl_plan_subcommand_emits_json_contract(tmp_path: Path) -> None:
+def test_appgen_nl_plan_subcommand_emits_json_and_text_contracts(tmp_path: Path) -> None:
     path = tmp_path / "finance.appgen"
     path.write_text(TOOLING_SAMPLE, encoding="utf-8")
 
@@ -836,11 +836,31 @@ def test_appgen_nl_plan_subcommand_emits_json_contract(tmp_path: Path) -> None:
         text=True,
         capture_output=True,
     )
+    text_result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pyAppGen",
+            "nl-plan",
+            str(path),
+            "--prompt",
+            "Add credit memos to accounts receivable",
+        ],
+        check=False,
+        cwd=Path(__file__).resolve().parents[1],
+        text=True,
+        capture_output=True,
+    )
 
     assert result.returncode == 0, result.stderr
     payload = json.loads(result.stdout)
     assert payload["format"] == "appgen.nl-plan.v1"
     assert payload["migration_preview"]["format"] == "appgen.migration-plan.v1"
+    assert text_result.returncode == 0, text_result.stderr
+    assert text_result.stdout.startswith("nl-plan ok:")
+    assert "operation-kinds add_table" in text_result.stdout
+    assert "lint_ok=True" in text_result.stdout
+    assert "migration-preview postgresql:" in text_result.stdout
 
 
 def test_nl_plan_contract_audit_covers_supported_edit_operations_and_rejections() -> None:
@@ -898,7 +918,7 @@ def test_nl_plan_cli_audit_covers_all_supported_edit_operations(tmp_path: Path) 
     assert "AGX1201" in audit["rejected_diagnostic_codes"]
 
 
-def test_appgen_migration_plan_subcommand_emits_json_contract(tmp_path: Path) -> None:
+def test_appgen_migration_plan_subcommand_emits_json_and_text_contracts(tmp_path: Path) -> None:
     previous = tmp_path / "previous.appgen"
     current = tmp_path / "current.appgen"
     previous.write_text(TOOLING_SAMPLE, encoding="utf-8")
@@ -930,11 +950,31 @@ table Payment {
         text=True,
         capture_output=True,
     )
+    text_result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pyAppGen",
+            "migration-plan",
+            str(previous),
+            str(current),
+        ],
+        check=False,
+        cwd=Path(__file__).resolve().parents[1],
+        text=True,
+        capture_output=True,
+    )
 
     assert result.returncode == 0, result.stderr
     payload = json.loads(result.stdout)
     assert payload["format"] == "appgen.migration-plan.v1"
     assert any(change["kind"] == "add_table" and change["table"] == "Payment" for change in payload["changes"])
+    assert text_result.returncode == 0, text_result.stderr
+    assert text_result.stdout.startswith("migration-plan ok: backend=postgresql")
+    assert "changes=2" in text_result.stdout
+    assert "migration-detected added_table, relationship_change" in text_result.stdout
+    assert "change add_table: Payment" in text_result.stdout
+    assert "change add_relationship: Payment" in text_result.stdout
 
 
 def test_lsp_service_uses_shared_semantic_model_for_core_editor_features() -> None:
