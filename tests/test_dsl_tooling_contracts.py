@@ -4120,7 +4120,7 @@ def test_appgen_format_write_rewrites_file_and_reports_write_metadata(tmp_path: 
     assert source_path.read_text(encoding="utf-8") != unformatted
     assert text_result.returncode == 0, text_result.stderr
     assert text_result.stdout.startswith("format changed: idempotent written")
-    assert "write_requested=True written=True" in text_result.stdout
+    assert "organize=False write_requested=True written=True" in text_result.stdout
     assert f"write_path {text_source_path}" in text_result.stdout
     assert text_source_path.read_text(encoding="utf-8") != unformatted
 
