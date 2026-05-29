@@ -4101,7 +4101,7 @@ def test_cli_contracts_cover_text_summaries_exit_codes_and_bad_arguments(tmp_pat
     assert "format=appgen.format-result.v1" in format_check.stdout
     assert "organize=False write_requested=False written=False" in format_check.stdout
     assert graph_suite_text.returncode == 0, graph_suite_text.stderr
-    assert "graph-suite ok: 9 kinds, 3 formats" in graph_suite_text.stdout
+    assert "graph-suite ok: format=appgen.graph-suite-report.v1 9 kinds, 3 formats" in graph_suite_text.stdout
     assert "graph-kinds er, lookup, workflow, handler, pbc, security, agent, deployment, package" in graph_suite_text.stdout
     assert "graph-formats json, mermaid, dot" in graph_suite_text.stdout
     assert validate_text.returncode == 0, validate_text.stderr
@@ -4110,13 +4110,13 @@ def test_cli_contracts_cover_text_summaries_exit_codes_and_bad_arguments(tmp_pat
     assert "format=appgen.validate-report.v1" in validate_text.stdout
     assert "semantic=appgen.semantic-model.v1" in validate_text.stdout
     assert explain_text.returncode == 0, explain_text.stderr
-    assert explain_text.stdout.startswith("explain symbol ok: table.Invoice")
+    assert explain_text.stdout.startswith("explain symbol ok: format=appgen.explain-report.v1 table.Invoice")
     assert "table.Invoice: table Invoice" in explain_text.stdout
     assert not explain_text.stdout.lstrip().startswith("{")
     assert explain_json.returncode == 0, explain_json.stderr
     assert json.loads(explain_json.stdout)["format"] == "appgen.explain-report.v1"
     assert explain_diagnostic_text.returncode == 0, explain_diagnostic_text.stderr
-    assert explain_diagnostic_text.stdout.startswith("explain diagnostic ok: AGX0303")
+    assert explain_diagnostic_text.stdout.startswith("explain diagnostic ok: format=appgen.explain-report.v1 AGX0303")
     assert "AGX0303: Unresolved lookup path" in explain_diagnostic_text.stdout
     assert "docs: docs/tooling.md#diagnostic-specification" in explain_diagnostic_text.stdout
     assert doctor_text.returncode == 0, doctor_text.stderr

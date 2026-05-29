@@ -1880,7 +1880,7 @@ def _emit_tooling_payload(payload: dict, *, as_json: bool) -> None:
         formats = tuple(payload.get("formats", ()))
         kind_count = len(kinds)
         format_count = len(formats)
-        print(f"graph-suite {status}: {kind_count} kinds, {format_count} formats")
+        print(f"graph-suite {status}: format={payload.get('format')} {kind_count} kinds, {format_count} formats")
         if kinds:
             print(f"graph-kinds {', '.join(kinds)}")
         if formats:
@@ -2085,7 +2085,7 @@ def _emit_explain_text(payload: dict) -> None:
     status = "ok" if payload.get("ok") else "failed"
     kind = payload.get("kind", "unknown")
     query = payload.get("query") or payload.get("message", "")
-    print(f"explain {kind} {status}: {query}")
+    print(f"explain {kind} {status}: format={payload.get('format')} {query}")
     if kind == "diagnostic":
         explanation = payload.get("explanation", {})
         print(f"{explanation.get('code')}: {explanation.get('title')}")

@@ -667,8 +667,8 @@ kind and renders each graph as JSON, Mermaid, and DOT. This command is the
 preferred CI and IDE health check because it proves that graph previews,
 documentation diagrams, release evidence, and downstream graph tooling all use
 the same semantic model. Text mode prints both the required graph kind names and
-the supported output format names so release logs remain reviewable without
-parsing JSON.
+the supported output format names, plus the `appgen.graph-suite-report.v1`
+envelope format, so release logs remain reviewable without parsing JSON.
 
 Supported graph kinds:
 
@@ -691,6 +691,7 @@ appgen explain app.appgen --handler InvoiceForm.Save
 ```
 
 Explain output should be human-readable by default and JSON with `--json`.
+Default explanations print the `appgen.explain-report.v1` envelope format.
 Default symbol explanations print the resolved symbol id, kind, parent, and
 reference count. Default diagnostic explanations print the diagnostic code,
 title, summary, and documentation anchor. Default handler explanations print
