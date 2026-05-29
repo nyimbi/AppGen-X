@@ -50,6 +50,7 @@ This file tracks the branch-isolated implementation pass for standalone Packaged
 | checkout_processing | `pbc/checkout-processing-standalone` | `dee3836d` | Compile, 18 tests, spec/source/release/smoke true. |
 | payment_orchestration | `pbc/payment-orchestration-standalone` | `d40508f2` | Compile, 13 tests, spec/source/release/smoke true. |
 | subscription_billing | `pbc/subscription-billing-standalone` | `6eea93d8` | Compile, 13 tests, spec/source/release/smoke true. |
+| revenue_recognition | `pbc/revenue-recognition-standalone` | `839b71ee` | Compile, 12 tests, source/package/spec/agent/implementation/capability/generation audits true. |
 | returns_reverse_logistics | `pbc/returns-reverse-logistics-standalone` | `0c9bc46f` | Compile, 16 tests, spec/source/release/smoke true. |
 | contract_lifecycle | `pbc/contract-lifecycle-standalone` | `a43f6669` | Compile, 15 tests, source/package/spec/agent/implementation/capability/generation audits true. |
 | cross_border_trade | `pbc/cross-border-trade-standalone` | `5d7ceb09` | Compile, 14 tests, spec/source/release/smoke true. |
