@@ -3480,6 +3480,7 @@ def _tooling_audit_vscode_extension(root: Path) -> dict:
 def _tooling_audit_studio_semantic_service(source: str) -> dict:
     try:
         from .studio import studio_semantic_service_workspace
+        from .studio import studio_browser_smoke_ci_contract
     except Exception as exc:  # pragma: no cover - import boundary
         return {
             "format": "appgen.studio-semantic-service-audit.v1",
@@ -3487,6 +3488,7 @@ def _tooling_audit_studio_semantic_service(source: str) -> dict:
             "error": str(exc),
         }
     report = studio_semantic_service_workspace(source)
+    browser_smoke = studio_browser_smoke_ci_contract()
     required_surfaces = (
         "dsl_editor",
         "component_palette",
@@ -3521,6 +3523,7 @@ def _tooling_audit_studio_semantic_service(source: str) -> dict:
     graph_panel = graph_explain.get("panel", {})
     nl = report.get("natural_language_evolution", {})
     nl_plan = nl.get("plan", {})
+    browser_smoke_checks = {check.get("id"): check.get("ok") for check in browser_smoke.get("checks", ())}
     surface_formats = {
         name: surfaces.get(name, {}).get("format")
         for name in required_surfaces
@@ -3557,6 +3560,10 @@ def _tooling_audit_studio_semantic_service(source: str) -> dict:
         and nl_plan.get("format") == "appgen.nl-plan.v1"
         and nl.get("requires_dsl_diff_preview") is True
         and nl.get("applies_through") == "appgen designer-sync",
+        "frontend_browser_smoke_bridge": browser_smoke.get("format") == "appgen.studio-browser-smoke-ci-contract.v1"
+        and browser_smoke.get("ok") is True
+        and "semantic_service_bridge" in browser_smoke.get("scenarios", ())
+        and browser_smoke_checks.get("frontend_semantic_service_bridge") is True,
     }
     return {
         "format": "appgen.studio-semantic-service-audit.v1",
@@ -3569,6 +3576,9 @@ def _tooling_audit_studio_semantic_service(source: str) -> dict:
         "surface_formats": surface_formats,
         "expected_surface_formats": expected_surface_formats,
         "semantic_surface_formats": semantic_surface_formats,
+        "browser_smoke_format": browser_smoke.get("format"),
+        "browser_smoke_scenarios": tuple(browser_smoke.get("scenarios", ())),
+        "browser_smoke_checks": browser_smoke_checks,
         "blocking_gaps": tuple(name for name, ok in checks.items() if not ok),
     }
 

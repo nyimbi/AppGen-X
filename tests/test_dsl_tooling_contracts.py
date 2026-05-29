@@ -3098,6 +3098,10 @@ def test_studio_semantic_service_audit_proves_panel_contracts() -> None:
     assert report["surface_formats"]["graph_explain_panel"] == "appgen.designer-graph-explain-panel.v1"
     assert report["surface_formats"]["natural_language_planner"] == "appgen.designer-nl-planner-panel.v1"
     assert all(value == "appgen.semantic-model.v1" for value in report["semantic_surface_formats"].values())
+    assert report["checks"]["frontend_browser_smoke_bridge"] is True
+    assert report["browser_smoke_format"] == "appgen.studio-browser-smoke-ci-contract.v1"
+    assert "semantic_service_bridge" in report["browser_smoke_scenarios"]
+    assert report["browser_smoke_checks"]["frontend_semantic_service_bridge"] is True
 
 
 def test_generate_report_writes_validated_dsl_app_and_blocks_lint_errors(tmp_path: Path) -> None:
