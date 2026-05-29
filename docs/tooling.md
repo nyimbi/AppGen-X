@@ -762,7 +762,8 @@ Completion coverage is executable through `appgen.completion-coverage.v1`.
 The language service includes this report as `completionCoverage`, and
 `appgen doctor --json` checks `lsp_completion_coverage` against a fixture that
 exercises keywords, snippets, table names, fields, lookup paths, components,
-handler events, operation targets, flow states, PBC keys and contracts, package
+handler events, operation targets, flow states, PBC keys, aggregate PBC
+contracts, explicit PBC APIs, PBC events, PBC command-style contracts, package
 targets, deployment units, LLM providers, and agent skills.
 
 ### Code Actions

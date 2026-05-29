@@ -99,6 +99,9 @@ REQUIRED_COMPLETION_SOURCES = (
     "flow_states",
     "pbc_keys",
     "pbc_contracts",
+    "pbc_apis",
+    "pbc_events",
+    "pbc_commands",
     "package_targets",
     "deployment_units",
     "llm_providers",
@@ -463,8 +466,12 @@ def dsl_completion_items(prefix: str = "", *, source: str | None = None) -> tupl
                 items.append({"label": key, "insert": key, "kind": "pbc", "detail": pbc.get("label", "PBC catalog entry")})
                 for api in pbc.get("apis", ())[:8]:
                     items.append({"label": api, "insert": api, "kind": "pbc_contract", "detail": key})
+                    items.append({"label": api, "insert": api, "kind": "pbc_api", "detail": key})
+                    if str(api).upper().startswith(("POST ", "PUT ", "PATCH ", "DELETE ")):
+                        items.append({"label": api, "insert": api, "kind": "pbc_command", "detail": key})
                 for event_name in tuple(pbc.get("emits", ()))[:8] + tuple(pbc.get("consumes", ()))[:8]:
                     items.append({"label": event_name, "insert": event_name, "kind": "pbc_contract", "detail": key})
+                    items.append({"label": event_name, "insert": event_name, "kind": "pbc_event", "detail": key})
             for target in ("web", "mobile", "desktop", "pbc", "deployment"):
                 items.append({"label": target, "insert": target, "kind": "package_target"})
             for block in schema.platform_blocks:
@@ -5472,7 +5479,7 @@ def lsp_completion_dsl(
                 "data": {"source": "semantic_model", "kind": "flow"},
             }
         )
-    deduped = tuple({(item["label"], item["detail"]): item for item in items}.values())
+    deduped = tuple({(item["label"], item["detail"], item.get("data", {}).get("kind")): item for item in items}.values())
     return {
         "format": "appgen.lsp-completion.v1",
         "position": position,
@@ -5523,6 +5530,9 @@ def _completion_source_for_kind(kind: str) -> str | None:
         "flow_state": "flow_states",
         "pbc": "pbc_keys",
         "pbc_contract": "pbc_contracts",
+        "pbc_api": "pbc_apis",
+        "pbc_event": "pbc_events",
+        "pbc_command": "pbc_commands",
         "package_target": "package_targets",
         "deployment_unit": "deployment_units",
         "llm": "llm_providers",
