@@ -413,6 +413,61 @@ view CustomerForm for Customer {
     assert not any(item["code"] == "AGX0404" for item in payload["diagnostics"])
 
 
+def test_appgen_component_publish_subcommand_emits_side_effect_free_catalog_patch(tmp_path: Path) -> None:
+    catalog_path = tmp_path / "components.json"
+    catalog_path.write_text(json.dumps({"components": [{"name": "ExistingBox"}]}), encoding="utf-8")
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pyAppGen",
+            "component-publish",
+            "--component",
+            "CustomGauge",
+            "--catalog",
+            str(catalog_path),
+            "--json",
+        ],
+        check=False,
+        cwd=Path(__file__).resolve().parents[1],
+        text=True,
+        capture_output=True,
+    )
+    text_result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pyAppGen",
+            "component-publish",
+            "--component",
+            "CustomGauge",
+            "--catalog",
+            str(catalog_path),
+        ],
+        check=False,
+        cwd=Path(__file__).resolve().parents[1],
+        text=True,
+        capture_output=True,
+    )
+
+    payload = json.loads(result.stdout)
+
+    assert result.returncode == 0, result.stderr
+    assert payload["format"] == "appgen.component-publish-report.v1"
+    assert payload["ok"] is True
+    assert payload["component"] == "CustomGauge"
+    assert payload["catalog"]["components"] == ["ExistingBox"]
+    assert payload["catalog_patch"]["format"] == "appgen.component-catalog-patch.v1"
+    assert payload["catalog_patch"]["component"]["name"] == "CustomGauge"
+    assert payload["catalog_patch"]["component"]["icon"] == "custom-gauge"
+    assert payload["catalog_patch"]["side_effect_free"] is True
+    assert payload["catalog_patch"]["write_performed"] is False
+    assert text_result.returncode == 0, text_result.stderr
+    assert text_result.stdout.startswith("component-publish ok: component=CustomGauge")
+    assert "write_performed=False" in text_result.stdout
+
+
 def test_lint_directory_audit_covers_strict_component_cli_gate(tmp_path: Path) -> None:
     report = appgen_dsl._tooling_audit_lint_directory_cli(tmp_path, TOOLING_SAMPLE)
 
@@ -3552,6 +3607,7 @@ def test_top_level_help_exposes_tooling_subcommands_and_apg_alias() -> None:
     assert help_result.returncode == 0, help_result.stderr
     assert "Tooling subcommands are also available" in normalized_help
     assert "lint, format, validate, generate, graph, graph-suite" in normalized_help
+    assert "component-publish, pbc, designer-sync" in normalized_help
     assert "diagnostics, parser-golden, drift, doctor, and tooling-audit" in normalized_help
     assert "apg =" in pyproject
     assert "visual drag-and-drop form design" in normalized_help
@@ -3569,6 +3625,7 @@ def test_top_level_help_exposes_tooling_subcommands_and_apg_alias() -> None:
     assert audit["help_lists_subcommands"] is True
     assert audit["help_missing_subcommands"] == ()
     assert audit["subcommand_option_help_ok"] is True
+    assert audit["subcommand_option_help"]["component-publish"]["missing"] == ()
     assert audit["subcommand_option_help"]["lint"]["missing"] == ()
     assert audit["subcommand_option_help"]["lint"]["exit_code"] == 0
     assert audit["subcommand_option_help"]["migration-plan"]["missing"] == ()

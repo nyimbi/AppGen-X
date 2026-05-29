@@ -17,6 +17,7 @@ _TOOLING_SUBCOMMANDS = {
     "lsp",
     "verify",
     "package",
+    "component-publish",
     "pbc",
     "designer-sync",
     "diagnostics",
@@ -36,7 +37,7 @@ AppGen-X application generator and DSL tooling.
 
 Tooling subcommands are also available:
   lint, format, validate, generate, graph, graph-suite, explain,
-  migration-plan, nl-plan, lsp, verify, package, pbc, designer-sync,
+  migration-plan, nl-plan, lsp, verify, package, component-publish, pbc, designer-sync,
   diagnostics, parser-golden, drift, doctor, and tooling-audit
 
 The platform supports visual drag-and-drop form design, database design,

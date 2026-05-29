@@ -752,6 +752,19 @@ selected targets, written artifacts, graph-suite evidence, per-target verifier
 status, blocking gaps, and artifact paths; `--json` remains the complete
 machine-readable report.
 
+### `appgen component-publish`
+
+```console
+appgen component-publish --component CustomGauge --catalog components.json --json
+```
+
+Prepares a reusable visual-component catalog publication plan without mutating
+the catalog file. The command emits `appgen.component-publish-report.v1` with a
+side-effect-free `appgen.component-catalog-patch.v1`, existing catalog component
+names when a catalog path is supplied, the upsert target, and explicit
+`side_effect_free`/`write_performed` evidence. This command is the non-PBC
+publication lane for components used by strict linting and visual designers.
+
 ### `appgen pbc`
 
 ```console

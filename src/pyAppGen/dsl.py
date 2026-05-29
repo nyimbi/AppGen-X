@@ -1013,6 +1013,65 @@ def _component_names_from_catalog(payload: object) -> set[str]:
     return names
 
 
+def component_publish_report(component: str, *, catalog_path: str | Path | None = None) -> dict:
+    """Return a side-effect-free component catalog publication plan."""
+    component_name = component.strip()
+    path = Path(catalog_path) if catalog_path else None
+    catalog_exists = path.exists() if path else False
+    catalog_components = _load_component_catalog(path) if path and catalog_exists else ()
+    already_registered = component_name in catalog_components
+    catalog_patch = {
+        "format": "appgen.component-catalog-patch.v1",
+        "operation": "upsert_component",
+        "component": {
+            "name": component_name,
+            "icon": _component_icon_name(component_name),
+        },
+        "catalog_path": str(path) if path else None,
+        "before_count": len(catalog_components),
+        "after_count": len(catalog_components) if already_registered else len(catalog_components) + 1,
+        "already_registered": already_registered,
+        "side_effect_free": True,
+        "write_performed": False,
+    }
+    checks = (
+        {
+            "check": "component_name_declared",
+            "ok": bool(component_name),
+            "message": "A component name must be provided.",
+        },
+        {
+            "check": "catalog_path_readable",
+            "ok": path is None or catalog_exists,
+            "message": "Catalog path exists when one is supplied.",
+        },
+        {
+            "check": "side_effect_free_plan",
+            "ok": catalog_patch["side_effect_free"] is True and catalog_patch["write_performed"] is False,
+            "message": "Publishing returns a catalog patch without mutating files.",
+        },
+    )
+    return {
+        "format": "appgen.component-publish-report.v1",
+        "ok": all(check["ok"] for check in checks),
+        "component": component_name,
+        "catalog": {
+            "source": str(path) if path else None,
+            "exists": catalog_exists,
+            "components": catalog_components,
+            "count": len(catalog_components),
+        },
+        "catalog_patch": catalog_patch,
+        "checks": checks,
+        "blocking_gaps": tuple(check["check"] for check in checks if not check["ok"]),
+    }
+
+
+def _component_icon_name(component_name: str) -> str:
+    words = re.findall(r"[A-Z]?[a-z]+|[A-Z]+(?=[A-Z]|$)|\d+", component_name)
+    return "-".join(word.lower() for word in words) or "component"
+
+
 def diagnostic_catalog_dsl() -> dict:
     """Return the stable diagnostic registry required by docs/tooling.md."""
     specs = tuple(
@@ -1460,6 +1519,11 @@ def _dsl_tooling_cli_impl(argv: Iterable[str] | None = None) -> int:
     package_parser.add_argument("--out")
     package_parser.add_argument("--json", action="store_true")
 
+    component_publish_parser = subparsers.add_parser("component-publish")
+    component_publish_parser.add_argument("--component", required=True)
+    component_publish_parser.add_argument("--catalog")
+    component_publish_parser.add_argument("--json", action="store_true")
+
     pbc_parser = subparsers.add_parser("pbc")
     pbc_subparsers = pbc_parser.add_subparsers(dest="pbc_command", required=True)
     pbc_list_parser = pbc_subparsers.add_parser("list")
@@ -1633,6 +1697,10 @@ def _dsl_tooling_cli_impl(argv: Iterable[str] | None = None) -> int:
             targets=args.target or ("web", "mobile", "desktop"),
             output_dir=args.out,
         )
+        _emit_tooling_payload(report, as_json=args.json)
+        return 0 if report["ok"] else 1
+    if args.command == "component-publish":
+        report = component_publish_report(args.component, catalog_path=args.catalog)
         _emit_tooling_payload(report, as_json=args.json)
         return 0 if report["ok"] else 1
     if args.command == "pbc":
@@ -1847,6 +1915,18 @@ def _emit_tooling_payload(payload: dict, *, as_json: bool) -> None:
             report_format = detail.get("report_format")
             suffix = f" report={report_format}" if report_format else ""
             print(f"{'ok' if check['ok'] else 'fail'} {check['check']}{suffix}: {check.get('message', '')}")
+        return
+    if payload.get("format") == "appgen.component-publish-report.v1":
+        status = "ok" if payload.get("ok") else "failed"
+        patch = payload.get("catalog_patch", {})
+        catalog = payload.get("catalog", {})
+        print(
+            f"component-publish {status}: component={payload.get('component')} "
+            f"catalog={catalog.get('source') or 'inline'} already_registered={patch.get('already_registered')} "
+            f"write_performed={patch.get('write_performed')}"
+        )
+        for gap in payload.get("blocking_gaps", ()):
+            print(f"gap {gap}")
         return
     if payload.get("format") == "appgen.tooling-audit.v1":
         status = "ok" if payload.get("ok") else "failed"
@@ -5407,6 +5487,7 @@ def _tooling_audit_cli_help_surface(root: Path) -> dict:
         "lsp",
         "verify",
         "package",
+        "component-publish",
         "pbc",
         "designer-sync",
         "diagnostics",
@@ -5439,6 +5520,7 @@ def _tooling_audit_cli_help_surface(root: Path) -> dict:
         ("lsp",): ("--position", "--prefix", "--rename", "--apply-code-action", "--stdio", "--json"),
         ("verify",): ("--target", "--json"),
         ("package",): ("--target", "--out", "--json"),
+        ("component-publish",): ("--component", "--catalog", "--json"),
         ("pbc",): ("list", "verify", "publish"),
         ("pbc", "publish"): ("--catalog", "--catalog-path", "--json"),
         ("designer-sync",): ("--edit-json", "--json"),
