@@ -411,6 +411,22 @@ view CustomerForm for Customer {
     assert not any(item["code"] == "AGX0404" for item in payload["diagnostics"])
 
 
+def test_lint_directory_audit_covers_strict_component_cli_gate(tmp_path: Path) -> None:
+    report = appgen_dsl._tooling_audit_lint_directory_cli(tmp_path, TOOLING_SAMPLE)
+
+    assert report["format"] == "appgen.lint-directory-cli-audit.v1"
+    assert report["ok"] is True
+    assert report["normal_unknown_component_warning"]["ok"] is True
+    assert report["normal_unknown_component_warning"]["exit_code"] == 0
+    assert report["normal_unknown_component_warning"]["strict"] is False
+    assert report["strict_unknown_component_error"]["ok"] is True
+    assert report["strict_unknown_component_error"]["exit_code"] == 1
+    assert report["strict_unknown_component_error"]["strict"] is True
+    assert report["strict_catalog_component_success"]["ok"] is True
+    assert report["strict_catalog_component_success"]["exit_code"] == 0
+    assert report["strict_catalog_component_success"]["component_catalog"]["components"] == ["CustomGauge"]
+
+
 def test_format_validate_and_graph_reports_follow_tooling_contracts() -> None:
     formatted = format_report_dsl(TOOLING_SAMPLE, source_name="finance.appgen")
     validation = validate_report_dsl(formatted["text"], source_name="finance.appgen", targets=("web", "mobile"))
@@ -2473,6 +2489,9 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert lint_check["detail"]["directory_cli"]["file_report_count"] == 2
     assert lint_check["detail"]["directory_cli"]["warning_count"] >= 1
     assert lint_check["detail"]["directory_cli"]["diagnostics_have_files"] is True
+    assert lint_check["detail"]["directory_cli"]["normal_unknown_component_warning"]["ok"] is True
+    assert lint_check["detail"]["directory_cli"]["strict_unknown_component_error"]["ok"] is True
+    assert lint_check["detail"]["directory_cli"]["strict_catalog_component_success"]["ok"] is True
     test_strategy_check = next(check for check in report["checks"] if check["id"] == "parser_golden_and_drift_gates")
     assert test_strategy_check["detail"]["cli"]["format"] == "appgen.test-strategy-cli-audit.v1"
     assert test_strategy_check["detail"]["cli"]["ok"] is True

@@ -3154,12 +3154,26 @@ def _tooling_audit_lint_directory_cli(tmp: Path, source: str) -> dict:
     source_dir = tmp / "lint-directory"
     nested_dir = source_dir / "nested"
     catalog_path = tmp / "component-catalog.json"
+    strict_component_path = tmp / "strict-component.appgen"
+    catalog_component_path = tmp / "catalog-component.appgen"
     nested_dir.mkdir(parents=True, exist_ok=True)
     first_path = source_dir / "a.appgen"
     second_path = nested_dir / "b.appgen"
     first_path.write_text(source, encoding="utf-8")
     second_path.write_text(_doctor_sample_dsl(), encoding="utf-8")
     catalog_path.write_text(json.dumps({"components": ["CustomGauge"]}, indent=2), encoding="utf-8")
+    strict_component_path.write_text(
+        """
+app StrictComponentDemo { targets: web }
+table Customer { id: int pk; name: string }
+view CustomerForm for Customer {
+  Main: name
+  @ name UnknownWidget 0 0 4 1
+}
+""".strip(),
+        encoding="utf-8",
+    )
+    catalog_component_path.write_text(_tooling_audit_component_catalog_sample(), encoding="utf-8")
 
     def run_json(argv: tuple[str, ...]) -> tuple[int, dict]:
         output = io.StringIO()
@@ -3172,6 +3186,13 @@ def _tooling_audit_lint_directory_cli(tmp: Path, source: str) -> dict:
         return exit_code, payload
 
     exit_code, payload = run_json(("lint", str(source_dir), "--strict", "--catalog", str(catalog_path), "--json"))
+    normal_unknown_exit_code, normal_unknown_payload = run_json(("lint", str(strict_component_path), "--json"))
+    strict_unknown_exit_code, strict_unknown_payload = run_json(
+        ("lint", str(strict_component_path), "--strict", "--json")
+    )
+    strict_catalog_exit_code, strict_catalog_payload = run_json(
+        ("lint", str(catalog_component_path), "--strict", "--catalog", str(catalog_path), "--json")
+    )
 
     warning_dir = tmp / "lint-directory-warnings"
     warning_nested_dir = warning_dir / "nested"
@@ -3187,6 +3208,34 @@ def _tooling_audit_lint_directory_cli(tmp: Path, source: str) -> dict:
     warning_severity_counts = warning_payload.get("severity_counts", {})
     warning_diagnostics_have_files = all(
         "file" in diagnostic and diagnostic["file"] in warning_files for diagnostic in warning_diagnostics
+    )
+    normal_unknown_diagnostics = tuple(normal_unknown_payload.get("diagnostics", ()))
+    strict_unknown_diagnostics = tuple(strict_unknown_payload.get("diagnostics", ()))
+    strict_catalog_diagnostics = tuple(strict_catalog_payload.get("diagnostics", ()))
+    normal_unknown_component_warning = (
+        normal_unknown_exit_code == 0
+        and normal_unknown_payload.get("ok") is True
+        and normal_unknown_payload.get("strict") is False
+        and any(
+            item.get("code") == "AGX0404" and item.get("severity") == "warning"
+            for item in normal_unknown_diagnostics
+        )
+    )
+    strict_unknown_component_error = (
+        strict_unknown_exit_code == 1
+        and strict_unknown_payload.get("ok") is False
+        and strict_unknown_payload.get("strict") is True
+        and any(
+            item.get("code") == "AGX0404" and item.get("severity") == "error"
+            for item in strict_unknown_diagnostics
+        )
+    )
+    strict_catalog_component_success = (
+        strict_catalog_exit_code == 0
+        and strict_catalog_payload.get("ok") is True
+        and strict_catalog_payload.get("strict") is True
+        and strict_catalog_payload.get("component_catalog", {}).get("components") == ["CustomGauge"]
+        and not any(item.get("code") == "AGX0404" for item in strict_catalog_diagnostics)
     )
     return {
         "format": "appgen.lint-directory-cli-audit.v1",
@@ -3204,7 +3253,10 @@ def _tooling_audit_lint_directory_cli(tmp: Path, source: str) -> dict:
         and warning_payload.get("source_mode") == "directory"
         and warning_severity_counts.get("warning", 0) >= 1
         and len(warning_diagnostics) >= 1
-        and warning_diagnostics_have_files,
+        and warning_diagnostics_have_files
+        and normal_unknown_component_warning
+        and strict_unknown_component_error
+        and strict_catalog_component_success,
         "exit_code": exit_code,
         "payload_format": payload.get("format"),
         "source_mode": payload.get("source_mode"),
@@ -3217,6 +3269,24 @@ def _tooling_audit_lint_directory_cli(tmp: Path, source: str) -> dict:
         "warning_count": warning_severity_counts.get("warning", 0),
         "diagnostic_count": len(warning_diagnostics),
         "diagnostics_have_files": warning_diagnostics_have_files,
+        "normal_unknown_component_warning": {
+            "ok": normal_unknown_component_warning,
+            "exit_code": normal_unknown_exit_code,
+            "strict": normal_unknown_payload.get("strict"),
+            "severity_counts": normal_unknown_payload.get("severity_counts"),
+        },
+        "strict_unknown_component_error": {
+            "ok": strict_unknown_component_error,
+            "exit_code": strict_unknown_exit_code,
+            "strict": strict_unknown_payload.get("strict"),
+            "severity_counts": strict_unknown_payload.get("severity_counts"),
+        },
+        "strict_catalog_component_success": {
+            "ok": strict_catalog_component_success,
+            "exit_code": strict_catalog_exit_code,
+            "strict": strict_catalog_payload.get("strict"),
+            "component_catalog": strict_catalog_payload.get("component_catalog"),
+        },
     }
 
 

@@ -3606,4 +3606,15 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   tooling entrypoint, direct `appgen.graph-cli-format-audit.v1` helper probe
   with `ok=True`, focused non-PBC graph audit test (`1 passed`), scoped diff
   whitespace check, and restricted-name scan outside archive, Git internals, and
-  active PBC paths.
+  active PBC paths. Commit: `f1e3abea`.
+- Current strict component lint CLI audit hardening pass closes the executable
+  gap behind the documented `appgen lint --strict --catalog` component gate.
+  `appgen.lint-directory-cli-audit.v1` now proves normal unknown visual
+  components remain `AGX0404` warnings with exit code `0`, strict mode promotes
+  the same diagnostics to errors with exit code `1`, and catalog-registered
+  components pass strict mode. Verification passed: Python compile for the
+  touched tooling entrypoint, direct `appgen.lint-directory-cli-audit.v1`
+  helper probe with `ok=True` and exit-code shape `0/1/0`, focused non-PBC
+  lint audit test (`1 passed`), scoped diff whitespace check, and restricted-name
+  scan outside archive, Git internals, and active PBC paths. Commit:
+  `9722b606`.
