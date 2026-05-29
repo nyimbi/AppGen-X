@@ -138,3 +138,30 @@ def smoke_test():
         'result': result,
         'side_effects': (),
     }
+
+
+
+def standalone_service_operation_contracts():
+    contracts=(
+        {'operation':'seed_demo_workspace','operation_kind':'command','method':'POST','path':'/app/product-catalog-pim/demo-workspace','table':'product_catalog_pim_product_configuration','wizard':'ProductLaunchIntakeWizard','permission':'product_catalog_pim.configure'},
+        {'operation':'build_workbench','operation_kind':'query','method':'GET','path':'/app/product-catalog-pim/workbench','table':'product_catalog_pim_product','wizard':None,'permission':'product_catalog_pim.read'},
+        {'operation':'register_product','operation_kind':'command','method':'POST','path':'/app/product-catalog-pim/products','table':'product_catalog_pim_product','wizard':'ProductLaunchIntakeWizard','permission':'product_catalog_pim.product'},
+        {'operation':'add_localized_content','operation_kind':'command','method':'POST','path':'/app/product-catalog-pim/content','table':'product_catalog_pim_product_locale_content','wizard':'ProductEnrichmentWizard','permission':'product_catalog_pim.enrich'},
+        {'operation':'publish_product','operation_kind':'command','method':'POST','path':'/app/product-catalog-pim/publications','table':'product_catalog_pim_catalog_publication','wizard':'CatalogPublicationWizard','permission':'product_catalog_pim.publish'},
+        {'operation':'generate_publication_proof','operation_kind':'command','method':'POST','path':'/app/product-catalog-pim/publication-proofs','table':'product_catalog_pim_product_publication_proof','wizard':'CatalogPublicationWizard','permission':'product_catalog_pim.audit'},
+    )
+    return {'format':'appgen.product-catalog-pim-standalone-service.v1','ok':all(i['table'].startswith('product_catalog_pim_') for i in contracts),'pbc':'product_catalog_pim','contracts':contracts,'operations':tuple(i['operation'] for i in contracts),'command_operations':tuple(i['operation'] for i in contracts if i['operation_kind']=='command'),'query_operations':tuple(i['operation'] for i in contracts if i['operation_kind']=='query'),'side_effects':()}
+
+class ProductCatalogPimStandaloneService:
+    def __init__(self,repository=None,database_path=':memory:'):
+        if repository is None:
+            from .repository import ProductCatalogPimStandaloneRepository
+            repository=ProductCatalogPimStandaloneRepository(database_path=database_path)
+        self.repository=repository
+    def close(self): self.repository.close()
+    def seed_demo_workspace(self,tenant='tenant_demo'): return self.repository.seed_demo_workspace(tenant=tenant)
+    def build_workbench(self,tenant='tenant_demo'): return self.repository.build_workbench(tenant)
+    def register_product(self,tenant,product): return self.repository.register_product(tenant,product)
+    def add_localized_content(self,tenant,content): return self.repository.add_localized_content(tenant,content)
+    def publish_product(self,tenant,product_id,channels,locales,published_by='catalog_manager_1'): return self.repository.publish_product(tenant,product_id,tuple(channels),tuple(locales),published_by)
+    def generate_publication_proof(self,tenant,product_id,disclosure=('product_id','sku','lifecycle_state','completeness')): return self.repository.generate_publication_proof(tenant,product_id,tuple(disclosure))
