@@ -3642,6 +3642,16 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert json.loads(cli_json.stdout)["format"] == "appgen.tooling-audit.v1"
     assert cli_text.returncode == 0, cli_text.stderr
     assert cli_text.stdout.startswith("tooling-audit ok:")
+    assert "blocking_gaps=0 sections=" in cli_text.stdout
+    assert "source=docs/tooling.md" in cli_text.stdout
+    assert "section docs/tooling.md#language-server-specification" in cli_text.stdout
+    assert "section docs/tooling.md#package-and-verifier-tooling" in cli_text.stdout
+    assert "formats=appgen.cli-alias-contract.v1" in cli_text.stdout
+    assert "appgen.lsp-json-rpc-audit.v1" in cli_text.stdout
+    assert "appgen.lsp-code-action-cli-audit.v1" in cli_text.stdout
+    assert "appgen.designer-sync-cli-audit.v1" in cli_text.stdout
+    assert "appgen.studio-semantic-service-audit.v1" in cli_text.stdout
+    assert "appgen.tooling-implementation-phase-audit.v1" in cli_text.stdout
 
 
 def test_tooling_audit_text_summary_exposes_sections_gaps_and_formats() -> None:
