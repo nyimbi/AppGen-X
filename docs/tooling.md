@@ -770,6 +770,10 @@ document.
 The executable tooling audit includes `appgen.lsp-stdio-transport-audit.v1`,
 which sends real `Content-Length` JSON-RPC frames through the stdio transport
 and verifies initialize, diagnostics publication, shutdown, and exit handling.
+Without `--json`, `appgen lsp <file>` prints a concise service summary with
+semantic-model format, diagnostic count, completion count, code-action count,
+document-symbol count, workspace-symbol count, source-of-truth contract, hover
+evidence, and rename status when a rename is requested.
 
 ### Capabilities
 
@@ -864,6 +868,8 @@ Code-action application is executable through
 `appgen.lsp-code-action-apply.v1`. The CLI supports
 `appgen lsp app.appgen --apply-code-action <id> --json`, returning patched DSL,
 applied text edits, and the lint result after applying the selected quick fix.
+Without `--json`, the same command prints action id, change status, edit count,
+lint status, title, available actions for unknown ids, and diagnostics.
 This is the evidence path for missing-operation, lookup-directive,
 event-contract, relationship, typo, secret-literal replacement, invalid
 runtime/stream/backend picker removal, PBC manifest, agent-permission, package

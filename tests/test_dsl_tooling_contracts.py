@@ -1356,11 +1356,30 @@ def test_lsp_code_action_apply_patches_missing_operation_and_lookup_directive(tm
         text=True,
         capture_output=True,
     )
+    text_result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pyAppGen",
+            "lsp",
+            str(source_path),
+            "--apply-code-action",
+            "create_operation_from_handler",
+        ],
+        check=False,
+        cwd=Path(__file__).resolve().parents[1],
+        text=True,
+        capture_output=True,
+    )
     payload = json.loads(result.stdout)
 
     assert result.returncode == 0, result.stderr
+    assert text_result.returncode == 0, text_result.stderr
     assert payload["format"] == "appgen.lsp-code-action-apply.v1"
     assert "operation SubmitInvoice" in payload["patched_source"]
+    assert text_result.stdout.startswith("lsp-code-action ok: action=create_operation_from_handler")
+    assert "changed=True" in text_result.stdout
+    assert "lint_ok=True" in text_result.stdout
 
 
 def test_lsp_code_actions_cover_required_tooling_quick_fixes() -> None:
@@ -1587,7 +1606,7 @@ def test_lsp_rename_cli_audit_covers_safe_and_blocked_renames(tmp_path: Path) ->
     assert report["blocked_requires_approval"] is True
 
 
-def test_appgen_lsp_subcommand_emits_json_contract(tmp_path: Path) -> None:
+def test_appgen_lsp_subcommand_emits_json_and_text_contracts(tmp_path: Path) -> None:
     path = tmp_path / "finance.appgen"
     path.write_text(TOOLING_SAMPLE, encoding="utf-8")
 
@@ -1609,11 +1628,33 @@ def test_appgen_lsp_subcommand_emits_json_contract(tmp_path: Path) -> None:
         text=True,
         capture_output=True,
     )
+    text_result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pyAppGen",
+            "lsp",
+            str(path),
+            "--position",
+            "9:6",
+            "--prefix",
+            "In",
+        ],
+        check=False,
+        cwd=Path(__file__).resolve().parents[1],
+        text=True,
+        capture_output=True,
+    )
 
     assert result.returncode == 0, result.stderr
+    assert text_result.returncode == 0, text_result.stderr
     payload = json.loads(result.stdout)
     assert payload["format"] == "appgen.lsp-service.v1"
     assert payload["capabilities"]["source_of_truth"] == "appgen.semantic-model.v1"
+    assert text_result.stdout.startswith("lsp ok: semantic=appgen.semantic-model.v1")
+    assert "source_of_truth=appgen.semantic-model.v1" in text_result.stdout
+    assert "completions=" in text_result.stdout
+    assert "actions=" in text_result.stdout
 
 
 def test_lsp_json_rpc_server_handles_editor_lifecycle_from_shared_semantics() -> None:

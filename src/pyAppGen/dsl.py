@@ -1750,6 +1750,12 @@ def _emit_tooling_payload(payload: dict, *, as_json: bool) -> None:
     if payload.get("format") == "appgen.semantic-drift-audit.v1":
         _emit_semantic_drift_text(payload)
         return
+    if payload.get("format") == "appgen.lsp-service.v1":
+        _emit_lsp_service_text(payload)
+        return
+    if payload.get("format") == "appgen.lsp-code-action-apply.v1":
+        _emit_lsp_code_action_apply_text(payload)
+        return
     if payload.get("format") == "appgen.parser-golden-audit.v1":
         status = "ok" if payload.get("ok") else "failed"
         print(
@@ -1974,6 +1980,47 @@ def _emit_semantic_drift_text(payload: dict) -> None:
         print(f"evidence {name}: {value}")
     for check in payload.get("checks", ()):
         print(f"{'ok' if check.get('ok') else 'fail'} {check.get('check')}")
+
+
+def _emit_lsp_service_text(payload: dict) -> None:
+    status = "ok" if payload.get("ok") else "failed"
+    diagnostics = payload.get("publishDiagnostics", {}).get("diagnostics", ())
+    completions = payload.get("completion", {}).get("items", ())
+    code_actions = payload.get("codeAction", {}).get("actions", ())
+    symbols = payload.get("documentSymbol", {}).get("symbols", ())
+    workspace_symbols = payload.get("workspaceSymbol", {}).get("symbols", ())
+    print(
+        f"lsp {status}: semantic={payload.get('semantic_model_format')} "
+        f"diagnostics={len(diagnostics)} completions={len(completions)} "
+        f"actions={len(code_actions)} symbols={len(symbols)} workspace_symbols={len(workspace_symbols)}"
+    )
+    capabilities = payload.get("capabilities", {})
+    if capabilities:
+        print(f"source_of_truth={capabilities.get('source_of_truth')}")
+    rename = payload.get("rename")
+    if rename:
+        print(f"rename ok={rename.get('ok')} changed={rename.get('changed')} diagnostics={len(rename.get('diagnostics', ()))}")
+    hover = payload.get("hover") or {}
+    if hover.get("contents"):
+        print(f"hover_items={len(hover.get('contents', ()))}")
+
+
+def _emit_lsp_code_action_apply_text(payload: dict) -> None:
+    status = "ok" if payload.get("ok") else "failed"
+    edits = tuple(payload.get("applied_edits", ()))
+    lint = payload.get("lint") or {}
+    print(
+        f"lsp-code-action {status}: action={payload.get('action_id')} "
+        f"changed={payload.get('changed')} edits={len(edits)} lint_ok={lint.get('ok')}"
+    )
+    title = payload.get("title")
+    if title:
+        print(f"title {title}")
+    available = tuple(payload.get("available_actions", ()))
+    if available:
+        print(f"available-actions {', '.join(available)}")
+    for diagnostic in payload.get("diagnostics", ()):
+        print(f"{diagnostic['severity']} {diagnostic['code']}: {diagnostic['message']}")
 
 
 def _graph_as_text(graph: dict, output_format: str) -> str:
