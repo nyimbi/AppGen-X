@@ -942,6 +942,9 @@ scenario.
 ## Graph Tooling
 
 Graph output must be available from CLI, IDE, tests, and release evidence.
+`appgen.release-evidence-bundle.v1` embeds graph-suite evidence with the
+required graph kinds and output formats, so packaged releases carry the same
+reviewable graph contract as the CLI and IDE previews.
 
 | Graph | Nodes | Edges | Use |
 | --- | --- | --- | --- |

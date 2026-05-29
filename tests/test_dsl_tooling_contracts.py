@@ -2001,6 +2001,20 @@ def test_release_verifier_report_covers_package_pbc_and_deployment_evidence() ->
     assert report["reports"]["pbc"]["format"] == "appgen.pbc-verifier.v1"
     assert report["reports"]["deployment"]["format"] == "appgen.deployment-verifier.v1"
     assert report["evidence_bundle"]["format"] == "appgen.release-evidence-bundle.v1"
+    assert report["evidence_bundle"]["graph_suite"]["format"] == "appgen.graph-suite-report.v1"
+    assert set(report["evidence_bundle"]["graph_suite"]["required_kinds"]) == {
+        "er",
+        "lookup",
+        "workflow",
+        "handler",
+        "pbc",
+        "security",
+        "agent",
+        "deployment",
+        "package",
+    }
+    assert set(report["evidence_bundle"]["graph_suite"]["formats"]) == {"json", "mermaid", "dot"}
+    assert report["graph_evidence"]["format"] == "appgen.graph-suite-report.v1"
 
 
 def test_package_report_writes_release_evidence_bundle_when_output_dir_is_given(tmp_path: Path) -> None:
@@ -2031,6 +2045,8 @@ def test_package_report_writes_release_evidence_bundle_when_output_dir_is_given(
     }
     assert payload["format"] == "appgen.release-evidence-file.v1"
     assert payload["evidence_bundle"]["format"] == "appgen.release-evidence-bundle.v1"
+    assert payload["evidence_bundle"]["graph_suite"]["format"] == "appgen.graph-suite-report.v1"
+    assert set(payload["evidence_bundle"]["graph_suite"]["formats"]) == {"json", "mermaid", "dot"}
     assert set(payload["reports"]) == {"mobile", "desktop"}
     assert mobile_manifest["format"] == "appgen.package-manifest.v1"
     assert mobile_manifest["target"] == "mobile"
@@ -2054,6 +2070,11 @@ def test_package_cli_audit_proves_all_target_handoff_contracts(tmp_path: Path) -
     assert report["ok"] is True
     assert set(manifest_case["release_evidence_reports"]) == {"web", "mobile", "desktop", "pbc", "deployment"}
     assert manifest_case["web_artifact_class"] == "web_application"
+    assert manifest_case["release_graph_suite_format"] == "appgen.graph-suite-report.v1"
+    assert set(manifest_case["release_graph_formats"]) == {"json", "mermaid", "dot"}
+    assert {"er", "lookup", "workflow", "handler", "security", "agent", "deployment", "package"} <= set(
+        manifest_case["release_graph_kinds"]
+    )
     assert {"routes", "forms", "handlers", "smoke_tests"} <= set(manifest_case["web_handoff_artifacts"])
     assert manifest_case["mobile_artifact_class"] == "mobile_application"
     assert {
@@ -2989,6 +3010,8 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
         case for case in package_check["detail"]["cli"]["cases"] if case["case"] == "package_writes_target_manifests"
     )
     assert set(manifest_case["release_evidence_reports"]) == {"web", "mobile", "desktop", "pbc", "deployment"}
+    assert manifest_case["release_graph_suite_format"] == "appgen.graph-suite-report.v1"
+    assert set(manifest_case["release_graph_formats"]) == {"json", "mermaid", "dot"}
     assert manifest_case["web_artifact_class"] == "web_application"
     assert manifest_case["mobile_artifact_class"] == "mobile_application"
     assert {"signing_posture", "offline_policy", "permissions", "screen_density", "smoke_launch"} <= set(

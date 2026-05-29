@@ -4544,6 +4544,7 @@ def _tooling_audit_package_verify_cli(tmp: Path, source: str) -> dict:
     desktop_handoff = tuple(desktop_manifest.get("handoff_artifacts", ()))
     pbc_handoff = tuple(pbc_manifest.get("handoff_artifacts", ()))
     deployment_handoff = tuple(deployment_manifest.get("handoff_artifacts", ()))
+    evidence_graph_suite = evidence_payload.get("evidence_bundle", {}).get("graph_suite", {})
     cases = (
         {
             "case": "verify_all_targets",
@@ -4562,6 +4563,9 @@ def _tooling_audit_package_verify_cli(tmp: Path, source: str) -> dict:
             and tuple(package_payload.get("targets", ())) == expected_targets
             and evidence_payload.get("format") == "appgen.release-evidence-file.v1"
             and set(evidence_payload.get("reports", {})) == set(expected_targets)
+            and evidence_graph_suite.get("format") == "appgen.graph-suite-report.v1"
+            and set(evidence_graph_suite.get("required_kinds", ())) == set(REQUIRED_GRAPH_KINDS)
+            and set(evidence_graph_suite.get("formats", ())) == set(GRAPH_TEXT_FORMATS)
             and web_manifest.get("format") == "appgen.package-manifest.v1"
             and mobile_manifest.get("format") == "appgen.package-manifest.v1"
             and desktop_manifest.get("format") == "appgen.package-manifest.v1"
@@ -4607,6 +4611,9 @@ def _tooling_audit_package_verify_cli(tmp: Path, source: str) -> dict:
                 "deployment": deployment_manifest.get("format"),
             },
             "release_evidence_reports": tuple(evidence_payload.get("reports", {}).keys()),
+            "release_graph_suite_format": evidence_graph_suite.get("format"),
+            "release_graph_kinds": tuple(evidence_graph_suite.get("required_kinds", ())),
+            "release_graph_formats": tuple(evidence_graph_suite.get("formats", ())),
             "web_artifact_class": web_manifest.get("artifact_class"),
             "web_handoff_artifacts": web_handoff,
             "mobile_artifact_class": mobile_manifest.get("artifact_class"),
@@ -7716,6 +7723,7 @@ def release_verifier_report_dsl(
     """Return machine-readable release verifier evidence for DSL tooling."""
     source = text or ""
     semantic = semantic_model_dsl(source, source_name=source_name)
+    graph_evidence = graph_suite_report_dsl(source, source_name=source_name)
     requested_targets = _release_requested_targets(targets, semantic)
     reports = {
         "web": web_verifier_report_dsl(source, source_name=source_name, semantic=semantic),
@@ -7740,6 +7748,14 @@ def release_verifier_report_dsl(
         "format": "appgen.release-evidence-bundle.v1",
         "source": source_name,
         "artifacts": tuple(f"{key}:{report['format']}" for key, report in selected_reports.items()),
+        "graph_suite": {
+            "format": graph_evidence.get("format"),
+            "ok": graph_evidence.get("ok"),
+            "required_kinds": graph_evidence.get("required_kinds", ()),
+            "formats": graph_evidence.get("formats", ()),
+            "graph_reports": tuple(graph_evidence.get("graph_reports", {}).keys()),
+            "blocking_gaps": graph_evidence.get("blocking_gaps", ()),
+        },
         "requires_generation": any(
             gap in {"app_build_not_observed", "smoke_tests_not_declared", "smoke_launch_not_declared"}
             for report in selected_reports.values()
@@ -7763,6 +7779,7 @@ def release_verifier_report_dsl(
         "checks": checks,
         "reports": selected_reports,
         "diagnostics": semantic["diagnostics"],
+        "graph_evidence": graph_evidence,
         "evidence_bundle": evidence_bundle,
         "written_artifacts": written_artifacts,
     }
