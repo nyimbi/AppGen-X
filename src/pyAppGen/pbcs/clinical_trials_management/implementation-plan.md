@@ -26,6 +26,7 @@ Turn `clinical_trials_management` into a coherent one-PBC clinical operations ap
 
 4. Strengthen release evidence
    - Ensure release evidence covers schema, services, routes, UI, controls, assistant previews, docs presence, and package-local smoke paths.
+   - Add explicit standalone one-PBC app evidence proving this package can run without companion PBCs.
    - Add package-local `README.md` and `implementation-status.md`.
 
 5. Add focused tests
@@ -41,4 +42,5 @@ Turn `clinical_trials_management` into a coherent one-PBC clinical operations ap
 
 - Run package-local `pytest` for `src/pyAppGen/pbcs/clinical_trials_management/tests`.
 - Run Python compilation checks on modified modules.
-- Use runtime smoke plus focused new tests as the primary evidence.
+- Run standalone smoke, release evidence validation, and focused PBC source/package/specification/agent/implementation/capability/generation audits.
+- Use runtime smoke plus focused standalone tests as the primary evidence.

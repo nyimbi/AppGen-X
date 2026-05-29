@@ -82,7 +82,7 @@ PBC_MANIFEST = {
     ),
     "migrations": ("migrations/001_initial.sql",),
     "seed_data": ("seed_data.py",),
-    "tests": ("tests/test_contract.py",),
+    "tests": ("tests/test_contract.py", "tests/test_standalone_app.py"),
     "docs": (
         "README.md",
         "SPECIFICATION.md",

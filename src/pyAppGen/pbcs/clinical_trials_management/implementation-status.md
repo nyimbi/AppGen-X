@@ -11,12 +11,16 @@ Implemented as a package-local executable clinical-trials slice with protocol, s
 - Replaced generic package-local wrappers with clinical-trials-specific contracts for schema, models, services, routes, UI, events, handlers, configuration, permissions, seed data, and release evidence.
 - Added governed assistant document/instruction CRUD previews for protocol, site, subject, consent, visit, safety, monitoring, rule, and parameter updates.
 - Added focused package-local tests for enrollment gates, workbench surfaces, controls, assistant previews, route contracts, and release readiness.
+- Added `ClinicalTrialsManagementStandaloneApp` with package-local startup, enrollment, safety, monitoring, lock-readiness, governed-model, assistant, route, event, UI, and release-evidence contract surfaces.
 
-## Verification Target
+## Verification Completed
 
-- Package-local tests under `src/pyAppGen/pbcs/clinical_trials_management/tests`.
-- Runtime smoke and wrapper smoke tests.
-- Python compilation on modified modules.
+- `PYTHONPATH=src python3 -m compileall -q src/pyAppGen/pbcs/clinical_trials_management`
+- `PYTHONPATH=src ./.venv/bin/pytest -q src/pyAppGen/pbcs/clinical_trials_management/tests` -> 13 passed
+- `standalone_smoke_test()` -> true
+- `validate_release_evidence()` -> true
+- Focused PBC source-artifact, package-local, specification, agent-capability, implementation, implemented-capability, and generation smoke audits -> true
+- `git diff --check -- src/pyAppGen/pbcs/clinical_trials_management`
 
 ## Remaining Risks
 

@@ -30,6 +30,7 @@ This package is optimized for clinical operations teams who need to:
 - Wizards: [wizards.py](/Volumes/Media/src/pjs/appgen/src/pyAppGen/pbcs/clinical_trials_management/wizards.py)
 - Controls: [controls.py](/Volumes/Media/src/pjs/appgen/src/pyAppGen/pbcs/clinical_trials_management/controls.py)
 - Assistant support: [agent.py](/Volumes/Media/src/pjs/appgen/src/pyAppGen/pbcs/clinical_trials_management/agent.py)
+- Standalone one-PBC app: [standalone.py](/Volumes/Media/src/pjs/appgen/src/pyAppGen/pbcs/clinical_trials_management/standalone.py)
 - Release evidence: [release_evidence.py](/Volumes/Media/src/pjs/appgen/src/pyAppGen/pbcs/clinical_trials_management/release_evidence.py)
 
 ## One-PBC App Surface
@@ -42,6 +43,27 @@ The package exposes:
 - workbench bindings for amendment queues, site activation, screening, visit readiness, safety reporting, monitoring issues, and data-lock blockers,
 - assistant previews that classify uploaded notes into bounded CRUD plans over package-owned tables only.
 
+## Standalone App Contract
+
+`ClinicalTrialsManagementStandaloneApp` proves that this PBC can run as the only package in a composed application. The smoke path configures trial parameters, registers safety and lock-readiness rules, receives a sponsor amendment event, and executes a realistic clinical-operations path:
+
+- active protocol creation with amendment and regulatory evidence,
+- site activation with investigator, IRB, readiness, and contract metadata,
+- consent capture, subject enrollment, visit completion, and deviation tracking,
+- serious adverse-event escalation against configured reporting windows,
+- monitoring finding creation/resolution and data-lock readiness assessment,
+- governed model registration and assistant preview generation for bounded CRUD changes.
+
+The generated app contract exposes package-owned models, services, routes, event contracts, handlers, forms, wizards, controls, workbench views, assistant skills, RBAC, configuration, seed data, and release evidence without stream-engine pickers or shared tables.
+
 ## Verification
 
 Primary verification lives in package-local tests under [tests](/Volumes/Media/src/pjs/appgen/src/pyAppGen/pbcs/clinical_trials_management/tests) and in the executable runtime smoke path inside [runtime.py](/Volumes/Media/src/pjs/appgen/src/pyAppGen/pbcs/clinical_trials_management/runtime.py).
+
+Latest focused verification for this slice:
+
+- `PYTHONPATH=src python3 -m compileall -q src/pyAppGen/pbcs/clinical_trials_management`
+- `PYTHONPATH=src ./.venv/bin/pytest -q src/pyAppGen/pbcs/clinical_trials_management/tests` -> 13 passed
+- `standalone_smoke_test()` and `validate_release_evidence()` -> true
+- focused source, package-local, specification, agent, implementation, implemented-capability, and generation audits -> true
+- `git diff --check -- src/pyAppGen/pbcs/clinical_trials_management`

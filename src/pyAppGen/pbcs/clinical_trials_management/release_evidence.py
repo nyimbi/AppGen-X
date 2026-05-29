@@ -14,6 +14,7 @@ from .runtime import clinical_trials_management_build_release_evidence as runtim
 from .runtime import clinical_trials_management_build_schema_contract
 from .runtime import clinical_trials_management_build_service_contract
 from .runtime import clinical_trials_management_permissions_contract
+from .standalone import standalone_smoke_test
 
 PBC_KEY = "clinical_trials_management"
 PACKAGE_DIR = Path(__file__).parent
@@ -22,8 +23,12 @@ PACKAGE_DIR = Path(__file__).parent
 def build_release_evidence() -> dict:
     """Return generated release audit evidence for this PBC."""
     runtime_evidence = runtime_build_release_evidence()
+    standalone = standalone_smoke_test()
+    checks = tuple(runtime_evidence.get("checks", ())) + ({"id": "standalone_one_pbc_app", "ok": standalone["ok"]},)
     return {
         **runtime_evidence,
+        "checks": checks,
+        "standalone_app_ok": standalone["ok"],
         "pbc": PBC_KEY,
         "schema": clinical_trials_management_build_schema_contract(),
         "service": clinical_trials_management_build_service_contract(),
@@ -53,7 +58,7 @@ def release_readiness_manifest() -> dict:
         name
         for name in ("schema", "service", "api", "permissions", "ui", "forms", "wizards", "controls", "assistant")
         if isinstance(evidence.get(name), dict)
-    )
+    ) + (("standalone_app",) if evidence.get("standalone_app_ok") is True else ())
     checks = tuple(evidence.get("checks", ()))
     docs_present = evidence.get("docs_present", {})
     blocking_gaps = tuple(evidence.get("blocking_gaps", ())) + tuple(name for name, present in docs_present.items() if not present)
@@ -64,7 +69,7 @@ def release_readiness_manifest() -> dict:
         "sections": sections,
         "checks": checks,
         "blocking_gaps": blocking_gaps,
-        "required_sections": ("schema", "service", "api", "permissions", "ui", "forms", "wizards", "controls", "assistant"),
+        "required_sections": ("schema", "service", "api", "permissions", "ui", "forms", "wizards", "controls", "assistant", "standalone_app"),
         "docs_present": docs_present,
         "side_effects": (),
     }

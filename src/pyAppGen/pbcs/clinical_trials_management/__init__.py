@@ -4,6 +4,9 @@ from .agent import composed_agent_contribution
 from .controls import clinical_trials_management_control_catalog
 from .forms import clinical_trials_management_form_catalog
 from .manifest import PBC_MANIFEST
+from .standalone import ClinicalTrialsManagementStandaloneApp
+from .standalone import single_pbc_app_contract
+from .standalone import standalone_smoke_test
 from .runtime import *
 from .ui import clinical_trials_management_render_workbench
 from .ui import clinical_trials_management_ui_contract
