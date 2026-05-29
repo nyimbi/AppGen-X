@@ -3517,6 +3517,8 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     }
     assert tuple(graph_check["detail"]["suite_cli"]["formats"]) == ("json", "mermaid", "dot")
     assert graph_check["detail"]["suite_cli"]["rendering_kind_count"] == 9
+    assert graph_check["detail"]["suite_cli"]["text_has_kinds"] is True
+    assert graph_check["detail"]["suite_cli"]["text_has_formats"] is True
     assert graph_check["detail"]["explain_cli"]["format"] == "appgen.explain-cli-audit.v1"
     assert graph_check["detail"]["explain_cli"]["ok"] is True
     assert {
@@ -3802,6 +3804,8 @@ def test_cli_contracts_cover_text_summaries_exit_codes_and_bad_arguments(tmp_pat
     assert "organize=False write_requested=False written=False" in format_check.stdout
     assert graph_suite_text.returncode == 0, graph_suite_text.stderr
     assert "graph-suite ok: 9 kinds, 3 formats" in graph_suite_text.stdout
+    assert "graph-kinds er, lookup, workflow, handler, pbc, security, agent, deployment, package" in graph_suite_text.stdout
+    assert "graph-formats json, mermaid, dot" in graph_suite_text.stdout
     assert validate_text.returncode == 0, validate_text.stderr
     assert validate_text.stdout.startswith("validate ok: requested=web")
     assert "app_targets=web,mobile,desktop" in validate_text.stdout

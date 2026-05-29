@@ -657,7 +657,9 @@ Emits `appgen.graph-suite-report.v1` release evidence for every required graph
 kind and renders each graph as JSON, Mermaid, and DOT. This command is the
 preferred CI and IDE health check because it proves that graph previews,
 documentation diagrams, release evidence, and downstream graph tooling all use
-the same semantic model.
+the same semantic model. Text mode prints both the required graph kind names and
+the supported output format names so release logs remain reviewable without
+parsing JSON.
 
 Supported graph kinds:
 

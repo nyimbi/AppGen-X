@@ -1859,9 +1859,15 @@ def _emit_tooling_payload(payload: dict, *, as_json: bool) -> None:
         return
     if payload.get("format") == "appgen.graph-suite-report.v1":
         status = "ok" if payload.get("ok") else "failed"
-        kind_count = len(payload.get("required_kinds", ()))
-        format_count = len(payload.get("formats", ()))
+        kinds = tuple(payload.get("required_kinds", ()))
+        formats = tuple(payload.get("formats", ()))
+        kind_count = len(kinds)
+        format_count = len(formats)
         print(f"graph-suite {status}: {kind_count} kinds, {format_count} formats")
+        if kinds:
+            print(f"graph-kinds {', '.join(kinds)}")
+        if formats:
+            print(f"graph-formats {', '.join(formats)}")
         for check in payload.get("checks", ()):
             print(f"{'ok' if check['ok'] else 'fail'} {check['check']}")
         return
@@ -4971,14 +4977,18 @@ def _tooling_audit_graph_suite_cli(tmp: Path, source: str) -> dict:
         and set(GRAPH_TEXT_FORMATS) <= set(output_formats)
         and all(set(outputs) == set(GRAPH_TEXT_FORMATS) for outputs in renderings.values())
         and text_exit_code == 0
-        and text_stdout.startswith("graph-suite ok:"),
+        and text_stdout.startswith("graph-suite ok:")
+        and "graph-kinds " in text_stdout
+        and "graph-formats json, mermaid, dot" in text_stdout,
         "json_exit_code": json_exit_code,
         "text_exit_code": text_exit_code,
         "payload_format": json_payload.get("format"),
         "required_kinds": required_kinds,
         "formats": output_formats,
         "rendering_kind_count": len(renderings),
-        "text_prefix": text_stdout[:80],
+        "text_has_kinds": "graph-kinds " in text_stdout,
+        "text_has_formats": "graph-formats json, mermaid, dot" in text_stdout,
+        "text_prefix": text_stdout[:160],
     }
 
 
