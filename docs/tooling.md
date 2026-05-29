@@ -1297,7 +1297,11 @@ scenario. The browser-smoke CI contract embeds
 `appgen.frontend-semantic-service-audit.v1`, which statically verifies the
 frontend `semanticServiceContract.ts` service evidence, required surface ids,
 surface contract formats, and the `SemanticServicePanel` rendering hooks before
-the Studio bridge counts as complete in Python release evidence.
+the Studio bridge counts as complete in Python release evidence. It also embeds
+`appgen.frontend-interaction-audit.v1`, which proves the frontend interaction
+audit covers palette category/search/empty states, component drag payloads,
+device and data workbench render inputs, status-rail audit inputs, and the
+semantic-service bridge before the Studio browser-smoke gate can pass.
 
 ## Graph Tooling
 

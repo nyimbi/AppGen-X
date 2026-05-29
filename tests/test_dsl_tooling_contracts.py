@@ -3363,7 +3363,9 @@ def test_studio_semantic_service_audit_proves_panel_contracts() -> None:
     assert report["checks"]["frontend_browser_smoke_bridge"] is True
     assert report["browser_smoke_format"] == "appgen.studio-browser-smoke-ci-contract.v1"
     assert "semantic_service_bridge" in report["browser_smoke_scenarios"]
+    assert "interaction_audit_bridge" in report["browser_smoke_scenarios"]
     assert report["browser_smoke_checks"]["frontend_semantic_service_bridge"] is True
+    assert report["browser_smoke_checks"]["frontend_interaction_audit_bridge"] is True
     assert report["frontend_semantic_service_format"] == "appgen.frontend-semantic-service-audit.v1"
     assert report["frontend_semantic_service_audit"]["ok"] is True
     assert report["frontend_semantic_service_count"] == 4
@@ -3373,6 +3375,14 @@ def test_studio_semantic_service_audit_proves_panel_contracts() -> None:
     assert report["frontend_semantic_missing_surface_contract_count"] == 0
     assert report["frontend_semantic_service_audit"]["checks"]["panel_renders_services"] is True
     assert report["frontend_semantic_service_audit"]["checks"]["panel_renders_surfaces"] is True
+    assert report["frontend_interaction_format"] == "appgen.frontend-interaction-audit.v1"
+    assert report["frontend_interaction_audit"]["ok"] is True
+    assert report["frontend_interaction_scenario_count"] == 8
+    assert report["frontend_interaction_missing_scenario_count"] == 0
+    assert report["frontend_interaction_missing_audit_input_count"] == 0
+    assert report["frontend_interaction_missing_helper_count"] == 0
+    assert report["frontend_interaction_audit"]["checks"]["status_rail_inputs"] is True
+    assert report["frontend_interaction_audit"]["checks"]["palette_helpers"] is True
 
 
 def test_generate_report_writes_validated_dsl_app_and_blocks_lint_errors(tmp_path: Path) -> None:

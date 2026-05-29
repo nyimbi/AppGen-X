@@ -174,6 +174,11 @@ async function main() {
       includes: ['Language service', 'Designer sync', 'Graph suite', 'Change planner'],
     },
     {
+      id: 'interaction_audit_bridge',
+      path: '/',
+      includes: ['Interactions', '8 checks', 'Device APIs', 'Data Services', 'Editors'],
+    },
+    {
       id: 'device_palette_filter',
       path: '/?studioCategory=Device',
       includes: ['Secure Storage', 'File Storage', 'Background Sync', 'Share Sheet'],

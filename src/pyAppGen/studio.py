@@ -276,6 +276,7 @@ def studio_browser_smoke_ci_contract(repo_root: str | Path | None = None) -> dic
     smoke_script = frontend / "scripts" / "browser-smoke.mjs"
     semantic_contract = frontend / "src" / "semanticServiceContract.ts"
     semantic_panel = frontend / "src" / "SemanticServicePanel.tsx"
+    interaction_audit = frontend / "src" / "interactionAudit.ts"
     workflow_path = root / ".github" / "workflows" / "studio-browser-smoke.yml"
     package = {}
     if package_path.exists():
@@ -283,11 +284,14 @@ def studio_browser_smoke_ci_contract(repo_root: str | Path | None = None) -> dic
     script_text = smoke_script.read_text(encoding="utf-8") if smoke_script.exists() else ""
     semantic_contract_text = semantic_contract.read_text(encoding="utf-8") if semantic_contract.exists() else ""
     semantic_panel_text = semantic_panel.read_text(encoding="utf-8") if semantic_panel.exists() else ""
+    interaction_audit_text = interaction_audit.read_text(encoding="utf-8") if interaction_audit.exists() else ""
     workflow_text = workflow_path.read_text(encoding="utf-8") if workflow_path.exists() else ""
     frontend_semantic = _frontend_semantic_service_audit(semantic_contract_text, semantic_panel_text)
+    frontend_interaction = _frontend_interaction_audit(interaction_audit_text)
     scenarios = (
         "studio_shell",
         "semantic_service_bridge",
+        "interaction_audit_bridge",
         "device_palette_filter",
         "storage_search_filter",
         "empty_palette_state",
@@ -323,6 +327,10 @@ def studio_browser_smoke_ci_contract(repo_root: str | Path | None = None) -> dic
             "id": "frontend_semantic_service_bridge",
             "ok": semantic_contract.exists() and semantic_panel.exists() and frontend_semantic["ok"],
         },
+        {
+            "id": "frontend_interaction_audit_bridge",
+            "ok": interaction_audit.exists() and frontend_interaction["ok"],
+        },
     )
     return {
         "format": "appgen.studio-browser-smoke-ci-contract.v1",
@@ -333,7 +341,9 @@ def studio_browser_smoke_ci_contract(repo_root: str | Path | None = None) -> dic
         "script": str(smoke_script),
         "semantic_contract": str(semantic_contract),
         "semantic_panel": str(semantic_panel),
+        "interaction_audit": str(interaction_audit),
         "frontend_semantic_service_audit": frontend_semantic,
+        "frontend_interaction_audit": frontend_interaction,
         "scenarios": scenarios,
         "environment": {
             "browser_binary": "APPGEN_CHROME_BIN",
@@ -342,6 +352,74 @@ def studio_browser_smoke_ci_contract(repo_root: str | Path | None = None) -> dic
         },
         "checks": checks,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }
+
+
+def _frontend_interaction_audit(interaction_audit_text: str) -> dict:
+    """Return static evidence for frontend Studio interaction coverage."""
+    required_scenarios = (
+        "palette_category_filter",
+        "palette_search_filter",
+        "palette_empty_state",
+        "component_drag_payload",
+        "device_workbench_render_inputs",
+        "data_workbench_render_inputs",
+        "status_rail_audit_inputs",
+        "semantic_service_bridge",
+    )
+    required_audits = (
+        "visualBindingAudit",
+        "componentIconAudit",
+        "dataServiceAudit",
+        "deviceApiAudit",
+        "inspectorEditorAudit",
+        "packageInstallAudit",
+        "semanticServiceAudit",
+    )
+    required_helpers = (
+        "filterPaletteComponents",
+        "groupPaletteComponents",
+        "paletteCategoryCounts",
+        "componentDragPayload",
+    )
+    observed_scenarios = tuple(
+        scenario for scenario in required_scenarios if f"id: '{scenario}'" in interaction_audit_text
+    )
+    observed_audits = tuple(audit for audit in required_audits if audit in interaction_audit_text)
+    observed_helpers = tuple(helper for helper in required_helpers if helper in interaction_audit_text)
+    missing_scenarios = tuple(scenario for scenario in required_scenarios if scenario not in observed_scenarios)
+    missing_audits = tuple(audit for audit in required_audits if audit not in observed_audits)
+    missing_helpers = tuple(helper for helper in required_helpers if helper not in observed_helpers)
+    checks = {
+        "contract_format": "appgen.frontend-interaction-audit.v1" in interaction_audit_text,
+        "required_scenarios": not missing_scenarios,
+        "status_rail_inputs": not missing_audits,
+        "palette_helpers": not missing_helpers,
+        "blocking_scenarios": "blockingScenarios: scenarios.filter" in interaction_audit_text,
+        "scenario_total": "totalScenarios: scenarios.length" in interaction_audit_text,
+    }
+    return {
+        "format": "appgen.frontend-interaction-audit.v1",
+        "ok": all(checks.values()),
+        "checks": checks,
+        "scenario_count": len(observed_scenarios),
+        "required_scenario_count": len(required_scenarios),
+        "missing_scenario_count": len(missing_scenarios),
+        "audit_input_count": len(observed_audits),
+        "required_audit_input_count": len(required_audits),
+        "missing_audit_input_count": len(missing_audits),
+        "helper_count": len(observed_helpers),
+        "required_helper_count": len(required_helpers),
+        "missing_helper_count": len(missing_helpers),
+        "scenarios": observed_scenarios,
+        "required_scenarios": required_scenarios,
+        "missing_scenarios": missing_scenarios,
+        "audit_inputs": observed_audits,
+        "required_audit_inputs": required_audits,
+        "missing_audit_inputs": missing_audits,
+        "helpers": observed_helpers,
+        "required_helpers": required_helpers,
+        "missing_helpers": missing_helpers,
     }
 
 

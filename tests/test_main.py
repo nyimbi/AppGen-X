@@ -1702,9 +1702,15 @@ def test_package_studio_audit_covers_ide_database_and_generation(
     assert browser_smoke["frontend_semantic_service_audit"]["missing_service_count"] == 0
     assert browser_smoke["frontend_semantic_service_audit"]["missing_surface_count"] == 0
     assert browser_smoke["frontend_semantic_service_audit"]["missing_surface_contract_count"] == 0
+    assert browser_smoke["frontend_interaction_audit"]["format"] == "appgen.frontend-interaction-audit.v1"
+    assert browser_smoke["frontend_interaction_audit"]["ok"] is True
+    assert browser_smoke["frontend_interaction_audit"]["missing_scenario_count"] == 0
+    assert browser_smoke["frontend_interaction_audit"]["missing_audit_input_count"] == 0
+    assert browser_smoke["frontend_interaction_audit"]["missing_helper_count"] == 0
     assert {
         "studio_shell",
         "semantic_service_bridge",
+        "interaction_audit_bridge",
         "device_palette_filter",
         "storage_search_filter",
         "empty_palette_state",

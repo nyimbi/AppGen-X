@@ -5107,6 +5107,7 @@ def _tooling_audit_studio_semantic_service(source: str) -> dict:
     nl = report.get("natural_language_evolution", {})
     nl_plan = nl.get("plan", {})
     frontend_semantic = browser_smoke.get("frontend_semantic_service_audit", {})
+    frontend_interaction = browser_smoke.get("frontend_interaction_audit", {})
     browser_smoke_checks = {check.get("id"): check.get("ok") for check in browser_smoke.get("checks", ())}
     panel_counts = {
         "component_palette_components": len(surfaces.get("component_palette", {}).get("components", ())),
@@ -5176,9 +5177,13 @@ def _tooling_audit_studio_semantic_service(source: str) -> dict:
         "frontend_browser_smoke_bridge": browser_smoke.get("format") == "appgen.studio-browser-smoke-ci-contract.v1"
         and browser_smoke.get("ok") is True
         and "semantic_service_bridge" in browser_smoke.get("scenarios", ())
+        and "interaction_audit_bridge" in browser_smoke.get("scenarios", ())
         and browser_smoke_checks.get("frontend_semantic_service_bridge") is True
+        and browser_smoke_checks.get("frontend_interaction_audit_bridge") is True
         and frontend_semantic.get("format") == "appgen.frontend-semantic-service-audit.v1"
-        and frontend_semantic.get("ok") is True,
+        and frontend_semantic.get("ok") is True
+        and frontend_interaction.get("format") == "appgen.frontend-interaction-audit.v1"
+        and frontend_interaction.get("ok") is True,
     }
     return {
         "format": "appgen.studio-semantic-service-audit.v1",
@@ -5214,6 +5219,12 @@ def _tooling_audit_studio_semantic_service(source: str) -> dict:
         "frontend_semantic_missing_service_count": frontend_semantic.get("missing_service_count"),
         "frontend_semantic_missing_surface_count": frontend_semantic.get("missing_surface_count"),
         "frontend_semantic_missing_surface_contract_count": frontend_semantic.get("missing_surface_contract_count"),
+        "frontend_interaction_audit": frontend_interaction,
+        "frontend_interaction_format": frontend_interaction.get("format"),
+        "frontend_interaction_scenario_count": frontend_interaction.get("scenario_count"),
+        "frontend_interaction_missing_scenario_count": frontend_interaction.get("missing_scenario_count"),
+        "frontend_interaction_missing_audit_input_count": frontend_interaction.get("missing_audit_input_count"),
+        "frontend_interaction_missing_helper_count": frontend_interaction.get("missing_helper_count"),
         "blocking_gaps": tuple(name for name, ok in checks.items() if not ok),
     }
 
