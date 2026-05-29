@@ -1,5 +1,6 @@
 """API route contracts for the contract_lifecycle PBC."""
 
+from .app_surface import standalone_route_contracts
 from .application import ContractLifecycleService, PBC_KEY, route_contracts
 
 ROUTES = route_contracts()
@@ -11,6 +12,7 @@ def api_route_contracts():
         "pbc": PBC_KEY,
         "contracts": ROUTES,
         "routes": ROUTES,
+        "standalone_routes": standalone_route_contracts(),
         "stream_engine_picker_visible": False,
     }
 
@@ -52,6 +54,6 @@ def smoke_test():
     service = ContractLifecycleService()
     dispatched = dispatch_route("/contract-lifecycle-workbench", {"limit": 5}, method="GET", service=service)
     return {
-        "ok": validate_api_route_contracts()["ok"] and dispatched["ok"],
+        "ok": validate_api_route_contracts()["ok"] and dispatched["ok"] and any(route["path"] == "/contract-lifecycle/app" for route in standalone_route_contracts()),
         "dispatch": dispatched,
     }
