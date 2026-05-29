@@ -386,6 +386,11 @@ sorts them for deterministic output, runs the same single-file lint contract for
 each file, aggregates diagnostics with a `file` field, and returns one
 `appgen.lint-report.v1` payload with `source_mode: "directory"` and nested
 `file_reports`.
+`--previous-semantic` loads a previous `appgen.semantic-model.v1` JSON payload
+and attaches an `appgen.migration-plan.v1` migration preview to the lint report,
+so CI, IDEs, and agents can see schema drift while they are already reviewing
+semantic diagnostics. The lint CLI audit exercises this path through
+`appgen.lint-directory-cli-audit.v1`.
 
 ### Linter Outputs
 
@@ -513,6 +518,7 @@ as `appgen`. Existing flags may remain as aliases.
 appgen lint app.appgen
 appgen lint app.appgen --json
 appgen lint src/appgen --strict --catalog docs/pbc-catalog.json
+appgen lint app.appgen --previous-semantic previous-semantic.json --json
 ```
 
 `--catalog` loads a component catalog JSON file. The catalog may list component

@@ -425,6 +425,9 @@ def test_lint_directory_audit_covers_strict_component_cli_gate(tmp_path: Path) -
     assert report["strict_catalog_component_success"]["ok"] is True
     assert report["strict_catalog_component_success"]["exit_code"] == 0
     assert report["strict_catalog_component_success"]["component_catalog"]["components"] == ["CustomGauge"]
+    assert report["previous_semantic_migration_preview"]["ok"] is True
+    assert report["previous_semantic_migration_preview"]["format"] == "appgen.migration-plan.v1"
+    assert "added_field" in report["previous_semantic_migration_preview"]["detected"]
 
 
 def test_format_validate_and_graph_reports_follow_tooling_contracts() -> None:

@@ -714,6 +714,9 @@ def lint_report_dsl(
     strict: bool = False,
     component_catalog: Iterable[str] | None = None,
     component_catalog_source: str | None = None,
+    previous_semantic_model: dict | None = None,
+    previous_semantic_source: str | None = None,
+    migration_backend: str = "postgresql",
 ) -> dict:
     """Return the docs/tooling.md appgen.lint-report.v1 contract."""
     source = text or ""
@@ -743,6 +746,13 @@ def lint_report_dsl(
             "components": component_catalog_names,
             "count": len(component_catalog_names),
         },
+        "migration_preview": _lint_migration_preview(
+            source,
+            source_name=source_name,
+            previous_semantic_model=previous_semantic_model,
+            previous_semantic_source=previous_semantic_source,
+            backend=migration_backend,
+        ),
         "legacy_report": legacy,
     }
 
@@ -753,6 +763,9 @@ def lint_report_dsl_sources(
     strict: bool = False,
     component_catalog: Iterable[str] | None = None,
     component_catalog_source: str | None = None,
+    previous_semantic_model: dict | None = None,
+    previous_semantic_source: str | None = None,
+    migration_backend: str = "postgresql",
 ) -> dict:
     """Aggregate linter output for a multi-file AppGen-X source set."""
     component_catalog_names = tuple(dict.fromkeys(component_catalog or ()))
@@ -774,6 +787,7 @@ def lint_report_dsl_sources(
             },
             "source_mode": "directory",
             "file_reports": (),
+            "migration_preview": None,
         }
     reports = tuple(
         lint_report_dsl(
@@ -785,6 +799,7 @@ def lint_report_dsl_sources(
         )
         for name, source in sorted(sources.items())
     )
+    combined_source = "\n\n".join(source for _, source in sorted(sources.items()))
     diagnostics = tuple(
         {**diagnostic, "file": report["files"][0] if report.get("files") else None}
         for report in reports
@@ -812,6 +827,13 @@ def lint_report_dsl_sources(
         },
         "source_mode": "directory" if len(reports) != 1 else "multi-source",
         "file_reports": reports,
+        "migration_preview": _lint_migration_preview(
+            combined_source,
+            source_name=";".join(sorted(sources)),
+            previous_semantic_model=previous_semantic_model,
+            previous_semantic_source=previous_semantic_source,
+            backend=migration_backend,
+        ),
     }
 
 
@@ -821,6 +843,9 @@ def lint_report_dsl_file(
     strict: bool = False,
     component_catalog: Iterable[str] | None = None,
     component_catalog_source: str | None = None,
+    previous_semantic_model: dict | None = None,
+    previous_semantic_source: str | None = None,
+    migration_backend: str = "postgresql",
 ) -> dict:
     path = Path(path)
     return lint_report_dsl(
@@ -829,6 +854,9 @@ def lint_report_dsl_file(
         strict=strict,
         component_catalog=component_catalog,
         component_catalog_source=component_catalog_source,
+        previous_semantic_model=previous_semantic_model,
+        previous_semantic_source=previous_semantic_source,
+        migration_backend=migration_backend,
     )
 
 
@@ -837,10 +865,14 @@ def lint_report_dsl_path(
     *,
     strict: bool = False,
     catalog_path: str | Path | None = None,
+    previous_semantic_path: str | Path | None = None,
+    migration_backend: str = "postgresql",
 ) -> dict:
     path = Path(path)
     component_catalog = _load_component_catalog(catalog_path) if catalog_path else ()
     component_catalog_source = str(catalog_path) if catalog_path else None
+    previous_semantic_model = _load_previous_semantic_model(previous_semantic_path)
+    previous_semantic_source = str(previous_semantic_path) if previous_semantic_path else None
     if path.is_dir():
         sources = {
             str(item): item.read_text(encoding="utf-8")
@@ -852,12 +884,18 @@ def lint_report_dsl_path(
             strict=strict,
             component_catalog=component_catalog,
             component_catalog_source=component_catalog_source,
+            previous_semantic_model=previous_semantic_model,
+            previous_semantic_source=previous_semantic_source,
+            migration_backend=migration_backend,
         )
     return lint_report_dsl_file(
         path,
         strict=strict,
         component_catalog=component_catalog,
         component_catalog_source=component_catalog_source,
+        previous_semantic_model=previous_semantic_model,
+        previous_semantic_source=previous_semantic_source,
+        migration_backend=migration_backend,
     )
 
 
@@ -867,6 +905,38 @@ def _load_component_catalog(catalog_path: str | Path | None) -> tuple[str, ...]:
     path = Path(catalog_path)
     payload = json.loads(path.read_text(encoding="utf-8"))
     return tuple(sorted(_component_names_from_catalog(payload)))
+
+
+def _load_previous_semantic_model(path: str | Path | None) -> dict | None:
+    if not path:
+        return None
+    payload = json.loads(Path(path).read_text(encoding="utf-8"))
+    if isinstance(payload, dict) and payload.get("format") == "appgen.semantic-model.v1":
+        return payload
+    if isinstance(payload, dict) and isinstance(payload.get("semantic_model"), dict):
+        return payload["semantic_model"]
+    return payload if isinstance(payload, dict) else None
+
+
+def _lint_migration_preview(
+    source: str,
+    *,
+    source_name: str | None,
+    previous_semantic_model: dict | None,
+    previous_semantic_source: str | None,
+    backend: str,
+) -> dict | None:
+    if previous_semantic_model is None:
+        return None
+    current_semantic = semantic_model_dsl(source, source_name=source_name)
+    return migration_plan_from_semantic_models(
+        previous_semantic_model,
+        current_semantic,
+        previous_name=previous_semantic_source,
+        current_name=source_name,
+        current_text=source,
+        backend=backend,
+    )
 
 
 def _component_names_from_catalog(payload: object) -> set[str]:
@@ -1249,6 +1319,8 @@ def _dsl_tooling_cli_impl(argv: Iterable[str] | None = None) -> int:
     lint_parser.add_argument("--json", action="store_true")
     lint_parser.add_argument("--strict", action="store_true")
     lint_parser.add_argument("--catalog")
+    lint_parser.add_argument("--previous-semantic")
+    lint_parser.add_argument("--backend", default="postgresql", choices=SUPPORTED_DATABASE_BACKENDS)
 
     format_parser = subparsers.add_parser("format")
     format_parser.add_argument("path")
@@ -1365,13 +1437,22 @@ def _dsl_tooling_cli_impl(argv: Iterable[str] | None = None) -> int:
     if args.command == "lint":
         component_catalog = _load_component_catalog(args.catalog) if args.catalog else ()
         report = (
-            lint_report_dsl_path(path, strict=args.strict, catalog_path=args.catalog)
+            lint_report_dsl_path(
+                path,
+                strict=args.strict,
+                catalog_path=args.catalog,
+                previous_semantic_path=args.previous_semantic,
+                migration_backend=args.backend,
+            )
             if path is not None
             else lint_report_dsl(
                 source,
                 strict=args.strict,
                 component_catalog=component_catalog,
                 component_catalog_source=args.catalog,
+                previous_semantic_model=_load_previous_semantic_model(args.previous_semantic),
+                previous_semantic_source=args.previous_semantic,
+                migration_backend=args.backend,
             )
         )
         _emit_tooling_payload(report, as_json=args.json)
@@ -1530,7 +1611,7 @@ def _dsl_tooling_cli_impl(argv: Iterable[str] | None = None) -> int:
 
 
 def _validate_tooling_cli_paths(parser: argparse.ArgumentParser, args: argparse.Namespace) -> None:
-    for attr in ("path", "previous", "current"):
+    for attr in ("path", "previous", "current", "previous_semantic"):
         if not hasattr(args, attr):
             continue
         value = getattr(args, attr)
@@ -3554,6 +3635,8 @@ def _tooling_audit_lint_directory_cli(tmp: Path, source: str) -> dict:
     catalog_path = tmp / "component-catalog.json"
     strict_component_path = tmp / "strict-component.appgen"
     catalog_component_path = tmp / "catalog-component.appgen"
+    migration_current_path = tmp / "lint-migration-current.appgen"
+    migration_previous_path = tmp / "lint-previous-semantic.json"
     nested_dir.mkdir(parents=True, exist_ok=True)
     first_path = source_dir / "a.appgen"
     second_path = nested_dir / "b.appgen"
@@ -3572,6 +3655,15 @@ view CustomerForm for Customer {
         encoding="utf-8",
     )
     catalog_component_path.write_text(_tooling_audit_component_catalog_sample(), encoding="utf-8")
+    migration_previous_source = "app MigrationLint { targets: web }\ntable Customer { id: int pk }\n"
+    migration_current_path.write_text(
+        "app MigrationLint { targets: web }\ntable Customer { id: int pk; name: string }\n",
+        encoding="utf-8",
+    )
+    migration_previous_path.write_text(
+        json.dumps(semantic_model_dsl(migration_previous_source, source_name="previous.appgen"), indent=2, default=list),
+        encoding="utf-8",
+    )
 
     def run_json(argv: tuple[str, ...]) -> tuple[int, dict]:
         output = io.StringIO()
@@ -3590,6 +3682,9 @@ view CustomerForm for Customer {
     )
     strict_catalog_exit_code, strict_catalog_payload = run_json(
         ("lint", str(catalog_component_path), "--strict", "--catalog", str(catalog_path), "--json")
+    )
+    migration_exit_code, migration_payload = run_json(
+        ("lint", str(migration_current_path), "--previous-semantic", str(migration_previous_path), "--json")
     )
 
     warning_dir = tmp / "lint-directory-warnings"
@@ -3635,6 +3730,14 @@ view CustomerForm for Customer {
         and strict_catalog_payload.get("component_catalog", {}).get("components") == ["CustomGauge"]
         and not any(item.get("code") == "AGX0404" for item in strict_catalog_diagnostics)
     )
+    migration_preview = migration_payload.get("migration_preview") or {}
+    migration_lint_success = (
+        migration_exit_code == 0
+        and migration_payload.get("format") == "appgen.lint-report.v1"
+        and migration_preview.get("format") == "appgen.migration-plan.v1"
+        and migration_preview.get("backend") == "postgresql"
+        and "added_field" in set(migration_preview.get("coverage", {}).get("detected", ()))
+    )
     return {
         "format": "appgen.lint-directory-cli-audit.v1",
         "ok": exit_code == 0
@@ -3654,7 +3757,8 @@ view CustomerForm for Customer {
         and warning_diagnostics_have_files
         and normal_unknown_component_warning
         and strict_unknown_component_error
-        and strict_catalog_component_success,
+        and strict_catalog_component_success
+        and migration_lint_success,
         "exit_code": exit_code,
         "payload_format": payload.get("format"),
         "source_mode": payload.get("source_mode"),
@@ -3684,6 +3788,13 @@ view CustomerForm for Customer {
             "exit_code": strict_catalog_exit_code,
             "strict": strict_catalog_payload.get("strict"),
             "component_catalog": strict_catalog_payload.get("component_catalog"),
+        },
+        "previous_semantic_migration_preview": {
+            "ok": migration_lint_success,
+            "exit_code": migration_exit_code,
+            "format": migration_preview.get("format"),
+            "backend": migration_preview.get("backend"),
+            "detected": tuple(migration_preview.get("coverage", {}).get("detected", ())),
         },
     }
 
@@ -5316,29 +5427,46 @@ def migration_plan_dsl(
     allowed_backends = set(SUPPORTED_DATABASE_BACKENDS)
     previous = semantic_model_dsl(previous_text, source_name=previous_name)
     current = semantic_model_dsl(current_text, source_name=current_name)
+    return migration_plan_from_semantic_models(
+        previous,
+        current,
+        previous_name=previous_name,
+        current_name=current_name,
+        current_text=current_text,
+        backend=normalized_backend if normalized_backend in allowed_backends else backend,
+        rename_hints=rename_hints,
+    )
+
+
+def migration_plan_from_semantic_models(
+    previous: dict,
+    current: dict,
+    *,
+    previous_name: str | None = None,
+    current_name: str | None = None,
+    current_text: str = "",
+    backend: str = "postgresql",
+    rename_hints: Iterable[str] | None = None,
+) -> dict:
+    """Compare semantic-model JSON payloads and return appgen.migration-plan.v1."""
+    normalized_backend = backend.strip().lower().replace("-", "_")
+    allowed_backends = set(SUPPORTED_DATABASE_BACKENDS)
     hints = _parse_rename_hints(rename_hints or ())
     diagnostics: list[dict] = []
     changes: list[dict] = []
 
     if normalized_backend not in allowed_backends:
+        diagnostics.append(_spec_diagnostic(current_text, "AGX1102", "error", f"Unsupported migration backend: {backend}"))
+    if previous.get("format") != "appgen.semantic-model.v1" or not previous.get("ok"):
         diagnostics.append(
             _spec_diagnostic(
                 current_text,
-                "AGX1102",
-                "error",
-                f"Unsupported migration backend: {backend}",
-            )
-        )
-    if not previous.get("ok"):
-        diagnostics.append(
-            _spec_diagnostic(
-                previous_text,
                 "AGX1100",
                 "error",
                 "Previous semantic model has diagnostics and cannot be used as a migration baseline.",
             )
         )
-    if not current.get("ok"):
+    if current.get("format") != "appgen.semantic-model.v1" or not current.get("ok"):
         diagnostics.append(
             _spec_diagnostic(
                 current_text,
@@ -5354,7 +5482,6 @@ def migration_plan_dsl(
     current_names = set(current_tables)
     added_tables = current_names - previous_names
     dropped_tables = previous_names - current_names
-
     table_renames = _table_rename_candidates(previous_tables, current_tables, dropped_tables, added_tables, hints)
     renamed_old = {item["from"] for item in table_renames}
     renamed_new = {item["to"] for item in table_renames}
@@ -5371,16 +5498,8 @@ def migration_plan_dsl(
                 safe_alternative="Retain the table and mark it archived until data retention is approved.",
             )
         )
-
     for table_name in sorted(previous_names & current_names):
-        changes.extend(
-            _field_migration_changes(
-                table_name,
-                previous_tables[table_name],
-                current_tables[table_name],
-                hints,
-            )
-        )
+        changes.extend(_field_migration_changes(table_name, previous_tables[table_name], current_tables[table_name], hints))
         changes.extend(_directive_migration_changes(table_name, previous_tables[table_name], current_tables[table_name]))
 
     changes.extend(_relationship_migration_changes(previous, current))
@@ -5397,7 +5516,6 @@ def migration_plan_dsl(
                 "Migration plan contains destructive changes and requires explicit approval.",
             )
         )
-
     return {
         "format": "appgen.migration-plan.v1",
         "ok": not any(item["severity"] == "error" for item in diagnostics),
