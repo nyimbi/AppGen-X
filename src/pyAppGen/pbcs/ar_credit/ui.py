@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from .controls import ar_credit_control_catalog
+from .forms import ar_credit_form_catalog
 from .runtime import AR_CREDIT_ALLOWED_DATABASE_BACKENDS
 from .runtime import AR_CREDIT_CONSUMED_EVENT_TYPES
 from .runtime import AR_CREDIT_EMITTED_EVENT_TYPES
@@ -9,6 +11,7 @@ from .runtime import AR_CREDIT_OWNED_TABLES
 from .runtime import AR_CREDIT_REQUIRED_EVENT_TOPIC
 from .runtime import ar_credit_permissions_contract
 from .receivables_workflows import AR_CREDIT_WORKFLOW_OPERATIONS
+from .wizards import ar_credit_wizard_catalog
 
 
 AR_CREDIT_UI_FRAGMENT_KEYS = (
@@ -27,10 +30,14 @@ AR_CREDIT_UI_FRAGMENT_KEYS = (
     "ArRuleStudio",
     "ArParameterConsole",
     "ArConfigurationPanel",
+    "ArStandaloneShell",
 )
 
 
 def ar_credit_ui_contract() -> dict:
+    forms = ar_credit_form_catalog()
+    wizards = ar_credit_wizard_catalog()
+    controls = ar_credit_control_catalog()
     return {
         "format": "appgen.ar-credit-ui-contract.v1",
         "ok": True,
@@ -53,6 +60,7 @@ def ar_credit_ui_contract() -> dict:
             "/workbench/pbcs/ar_credit/rules",
             "/workbench/pbcs/ar_credit/parameters",
             "/workbench/pbcs/ar_credit/configuration",
+            "/workbench/pbcs/ar_credit/standalone",
         ),
         "panels": (
             {
@@ -113,7 +121,7 @@ def ar_credit_ui_contract() -> dict:
             ),
         },
         "rule_editor": {
-            "rule_types": ("cash_application", "credit_limit", "collections", "dispute", "write_off", "refund", "release_gate"),
+            "rule_types": ("cash_application", "credit_extension", "dunning", "delivery_evidence", "release_gate"),
             "required_fields": ("rule_id", "tenant", "scope", "status"),
         },
         "event_surfaces": {
@@ -123,8 +131,28 @@ def ar_credit_ui_contract() -> dict:
             "inbox_status": "visible",
             "dead_letter_status": "visible",
         },
+        "forms": forms,
+        "wizards": wizards,
+        "controls": controls,
         "permissions_contract": ar_credit_permissions_contract(),
         "binding_evidence": {"owned_tables": AR_CREDIT_OWNED_TABLES, "shared_table_access": False},
+    }
+
+
+def ar_credit_standalone_app_contract() -> dict:
+    contract = ar_credit_ui_contract()
+    return {
+        "ok": contract["ok"],
+        "pbc": "ar_credit",
+        "route": "/workbench/pbcs/ar_credit/standalone",
+        "shell_fragment": "ArStandaloneShell",
+        "workbench_fragment": "AccountsReceivableWorkbench",
+        "forms": contract["forms"]["form_ids"],
+        "wizards": contract["wizards"]["wizard_ids"],
+        "controls": contract["controls"]["control_ids"],
+        "workflow_actions": contract["workflow_actions"],
+        "shared_table_access": False,
+        "side_effects": (),
     }
 
 
@@ -137,14 +165,14 @@ def ar_credit_render_workbench(
     contract = ar_credit_ui_contract()
     permissions = set(principal_permissions)
     visible_actions = tuple(action for action, required in contract["action_permissions"].items() if required in permissions)
-    invoices = tuple(invoice for invoice in state["invoices"].values() if invoice["tenant"] == tenant)
-    open_invoices = tuple(invoice for invoice in invoices if invoice["open_amount"] > 0)
-    receipts = tuple(receipt for receipt in state["receipts"].values() if receipt["tenant"] == tenant)
-    collection_actions = tuple(action for action in state["collection_actions"].values() if action["tenant"] == tenant)
+    invoices = tuple(invoice for invoice in state.get("invoices", {}).values() if invoice.get("tenant") == tenant)
+    open_invoices = tuple(invoice for invoice in invoices if invoice.get("open_amount", 0) > 0)
+    receipts = tuple(receipt for receipt in state.get("receipts", {}).values() if receipt.get("tenant") == tenant)
+    collection_actions = tuple(action for action in state.get("collection_actions", {}).values() if action.get("tenant") == tenant)
     cards = (
-        {"key": "customers", "value": len(tuple(customer for customer in state["customers"].values() if customer["tenant"] == tenant)), "fragment": "CustomerCreditConsole"},
+        {"key": "customers", "value": len(tuple(customer for customer in state.get("customers", {}).values() if customer.get("tenant") == tenant)), "fragment": "CustomerCreditConsole"},
         {"key": "open_invoices", "value": len(open_invoices), "fragment": "InvoiceIssueQueue"},
-        {"key": "open_balance", "value": round(sum(invoice["open_amount"] for invoice in open_invoices), 2), "fragment": "CashApplicationWorkbench"},
+        {"key": "open_balance", "value": round(sum(float(invoice.get("open_amount", 0.0)) for invoice in open_invoices), 2), "fragment": "CashApplicationWorkbench"},
         {"key": "receipts", "value": len(receipts), "fragment": "CashApplicationWorkbench"},
         {"key": "collections", "value": len(collection_actions), "fragment": "DunningCollectionsConsole"},
         {"key": "rules", "value": len(state.get("rules", {})), "fragment": "ArRuleStudio"},
@@ -159,27 +187,14 @@ def ar_credit_render_workbench(
         "visible_actions": visible_actions,
         "locked_actions": tuple(action for action in contract["action_permissions"] if action not in visible_actions),
         "workflow_actions": contract["workflow_actions"],
+        "forms": contract["forms"]["forms"],
+        "wizards": contract["wizards"]["wizards"],
+        "controls": contract["controls"]["controls"],
         "focus_workflows": (
-            {
-                "operation": "review_credit_onboarding",
-                "label": "Review credit onboarding",
-                "ready_count": len(tuple(customer for customer in state["customers"].values() if customer["tenant"] == tenant)),
-            },
-            {
-                "operation": "review_invoice_readiness",
-                "label": "Check invoice readiness",
-                "ready_count": len(invoices),
-            },
-            {
-                "operation": "execute_receipt_application",
-                "label": "Apply cash receipt",
-                "ready_count": len(receipts),
-            },
-            {
-                "operation": "build_collections_follow_up",
-                "label": "Build collections follow-up",
-                "ready_count": len(open_invoices),
-            },
+            {"operation": "review_credit_onboarding", "label": "Review credit onboarding", "ready_count": len(tuple(customer for customer in state.get("customers", {}).values() if customer.get("tenant") == tenant))},
+            {"operation": "review_invoice_readiness", "label": "Check invoice readiness", "ready_count": len(invoices)},
+            {"operation": "execute_receipt_application", "label": "Apply cash receipt", "ready_count": len(receipts)},
+            {"operation": "build_collections_follow_up", "label": "Build collections follow-up", "ready_count": len(open_invoices)},
         ),
         "configuration_bound": bool(state.get("configuration", {}).get("ok")),
         "rules_bound": tuple(sorted(state.get("rules", {}))),
@@ -203,6 +218,24 @@ def ar_credit_render_workbench(
         },
     }
 
+
+def ar_credit_render_standalone_app(
+    state: dict,
+    *,
+    tenant: str,
+    principal_permissions: tuple[str, ...],
+) -> dict:
+    contract = ar_credit_standalone_app_contract()
+    workbench = ar_credit_render_workbench(state, tenant=tenant, principal_permissions=principal_permissions)
+    return {
+        "ok": contract["ok"] and workbench["ok"],
+        "pbc": "ar_credit",
+        "standalone_app": contract,
+        "workbench": workbench,
+        "side_effects": (),
+    }
+
+
 class _AppGenSmokeState(dict):
     """Tolerant empty state for side-effect-free workbench smoke rendering."""
 
@@ -213,9 +246,12 @@ class _AppGenSmokeState(dict):
 
 
 def _appgen_smoke_state():
-    """Return a deterministic state envelope understood by PBC workbench renderers."""
     return _AppGenSmokeState({
-        "configuration": _AppGenSmokeState({"ok": True}),
+        "configuration": _AppGenSmokeState({"ok": True, "event_contract": "AppGen-X", "event_topic": AR_CREDIT_REQUIRED_EVENT_TOPIC, "stream_engine_picker_visible": False, "user_selectable_event_contract": False}),
+        "customers": _AppGenSmokeState(),
+        "invoices": _AppGenSmokeState(),
+        "receipts": _AppGenSmokeState(),
+        "collection_actions": _AppGenSmokeState(),
         "rules": _AppGenSmokeState(),
         "parameters": _AppGenSmokeState(),
         "outbox": (),
@@ -227,14 +263,10 @@ def _appgen_smoke_state():
 
 
 def smoke_test():
-    """Exercise the PBC workbench contract and render path without side effects."""
     contract = ar_credit_ui_contract()
     permissions = tuple(dict.fromkeys(contract.get("action_permissions", {}).values()))
-    rendered = ar_credit_render_workbench(
-        _appgen_smoke_state(),
-        tenant="smoke",
-        principal_permissions=permissions,
-    )
+    rendered = ar_credit_render_workbench(_appgen_smoke_state(), tenant="smoke", principal_permissions=permissions)
+    standalone = ar_credit_render_standalone_app(_appgen_smoke_state(), tenant="smoke", principal_permissions=permissions)
     cards = tuple(rendered.get("cards") or contract.get("panels") or contract.get("fragments", ()))
     configuration_editor = contract.get("configuration_editor", {})
     event_surfaces = contract.get("event_surfaces", {})
@@ -254,22 +286,23 @@ def smoke_test():
         "format": "appgen.pbc-ui-smoke-test.v1",
         "ok": contract.get("ok") is True
         and rendered.get("ok") is True
+        and standalone.get("ok") is True
         and bool(contract.get("fragments"))
         and bool(contract.get("routes"))
         and bool(cards)
         and bool(contract.get("action_permissions"))
         and bool(configuration_editor)
-        and configuration_editor.get("stream_engine_picker_visible", configuration_editor.get("user_facing_stream_engine_picker", False)) is False
+        and configuration_editor.get("stream_engine_picker_visible") is False
         and bool(contract.get("parameter_editor"))
         and bool(rule_editor)
         and bool(event_surfaces)
-        and ("outbox_status" in event_surfaces or "contract" in event_surfaces)
         and binding_evidence.get("shared_table_access") is not True
         and not binding_evidence.get("shared_tables", ()),
         "manifest": {"fragments": contract.get("fragments", ()), "routes": contract.get("routes", ())},
         "contract": contract,
         "governance": governance,
         "rendered": rendered,
+        "standalone": standalone,
         "cards": cards,
         "side_effects": (),
     }

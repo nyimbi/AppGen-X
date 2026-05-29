@@ -1,9 +1,9 @@
 # Accounts Receivable and Credit PBC
 
-This package owns customer credit, invoice issuance, remittance handling, cash
-application, collections follow-up, and release evidence for the AR and credit
-boundary. The implemented slice is executable code, not docs-only metadata. It
-stays inside owned AR tables and keeps AppGen-X as the only event contract.
+This package is a standalone AR and credit slice for AppGen-X. It now owns an
+executable one-PBC runtime with database-backed state snapshots, guided forms,
+wizards, controls, route dispatch, release evidence, and assistant previews for
+core invoice-to-cash work.
 
 ## Executable Slice
 
@@ -12,21 +12,21 @@ stays inside owned AR tables and keeps AppGen-X as the only event contract.
   dates, and available credit exposure before issuance.
 - Receipt application that parses remittance, applies matched cash, and routes
   unmatched or excess value into unapplied cash.
-- Collections follow-up assembly using aging, statements, and dunning notices.
+- Collections follow-up assembly using aging, statements, dunning notices, and
+  recommended next actions.
 
-## Wiring Surface
+## Standalone Surface
 
-- `runtime.py` keeps the owned-state model and executable AR transitions.
-- `receivables_workflows.py` adds the backlog-backed workflow slice that
-  composes onboarding, invoice gating, receipt application, and collections.
-- `services.py` exposes the slice through the stable `command_ar_*` and
-  `query_ar_*` service names while preserving AppGen-X and owned-table
-  contracts.
-- `agent.py` contributes workflow previews for onboarding, invoice readiness,
-  cash application, and collections follow-up.
-- `ui.py` exposes workflow metadata for generated workbench surfaces.
-- `release_evidence.py` publishes workflow evidence, implemented backlog items,
-  and composed release readiness checks.
+- `standalone.py` provides `ArCreditStandaloneApp` for bootstrap, form submit,
+  route dispatch, workbench render, control checks, and release snapshots.
+- `repository.py` persists package-local runtime snapshots, workflow runs, and
+  release snapshots in SQLite without leaving the `ar_credit` boundary.
+- `forms.py`, `wizards.py`, and `controls.py` define the operator-facing
+  database-backed workbench contract.
+- `services.py`, `routes.py`, `events.py`, and `handlers.py` are aligned on the
+  AppGen-X event contract and owned-table-only execution.
+- `seed_data.py` loads a demo customer, invoice, receipt, and collections view
+  into the standalone app for smoke and release validation.
 
 ## Boundary Rules
 
@@ -37,6 +37,7 @@ stays inside owned AR tables and keeps AppGen-X as the only event contract.
 
 ## Verification Focus
 
-Focused tests cover onboarding approval, invoice readiness blocking and
+Focused package tests cover the standalone app, repository persistence, UI
+forms/wizards/controls, onboarding approval, invoice readiness blocking and
 issuance, overpayment and unmatched receipt handling, collections follow-up,
 and release-surface exposure across services, UI, agent, and release evidence.

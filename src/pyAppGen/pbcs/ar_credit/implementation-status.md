@@ -2,41 +2,48 @@
 
 ## Completed in This Slice
 
-- Added a written implementation plan based on the AR backlog and the existing
-  runtime, service, UI, agent, and release-evidence surfaces.
-- Implemented `receivables_workflows.py` with executable onboarding review,
-  invoice readiness review, receipt application, and collections follow-up
-  workflows.
-- Upgraded `services.py` from metadata-only planning into executable wrappers
-  that keep the stable `command_ar_*` and `query_ar_*` contract names.
-- Extended `runtime.py` cash application behavior to persist explicit cash
-  application records and emit richer release evidence for the workflow slice.
-- Extended `agent.py`, `ui.py`, and `release_evidence.py` so the executable
-  slice is exposed consistently across assistant, workbench, and readiness
-  evidence surfaces.
-- Added focused implementation tests in
-  `tests/test_pbc_ar_credit_implementation.py`.
-- Added this status file and a package `README.md`.
+- Added a standalone one-PBC application surface in `standalone.py` with owned
+  route dispatch, workbench rendering, control center checks, and release
+  snapshot capture.
+- Added `repository.py` to persist runtime snapshots, workflow runs, and
+  release evidence in package-local SQLite tables.
+- Added domain-specific `forms.py`, `wizards.py`, and `controls.py` for
+  customer onboarding, invoice issue, cash application, collections recovery,
+  and release readiness.
+- Reworked `services.py`, `routes.py`, `events.py`, `handlers.py`,
+  `config.py`, `permissions.py`, and `seed_data.py` so the standalone surface
+  executes real AR behavior with AppGen-X-only eventing.
+- Extended `ui.py`, `release_evidence.py`, and `__init__.py` so the standalone
+  assets are exposed through package metadata, workbench contracts, and release
+  readiness checks.
+- Expanded package-local contract tests in `tests/test_contract.py` to cover
+  repository, standalone app, forms, wizards, controls, and dynamic release
+  evidence.
 
 ## Review Notes
 
-- The new workflow slice uses only owned AR tables and package-local state.
+- All edits remain inside `src/pyAppGen/pbcs/ar_credit`.
+- The slice uses only owned AR tables plus package-local SQLite persistence for
+  the standalone shell.
 - AppGen-X remains the only event contract exposed by the implemented slice.
-- No stream-engine selection or shared-table access was introduced.
-- The service layer now executes real AR behavior for the selected backlog
-  slice instead of returning metadata only.
+- No stream-engine selection, shared-table access, or new dependency was
+  introduced.
 
 ## Validation Evidence
 
-- `./.venv/bin/python -m py_compile src/pyAppGen/pbcs/ar_credit/__init__.py src/pyAppGen/pbcs/ar_credit/runtime.py src/pyAppGen/pbcs/ar_credit/services.py src/pyAppGen/pbcs/ar_credit/ui.py src/pyAppGen/pbcs/ar_credit/agent.py src/pyAppGen/pbcs/ar_credit/release_evidence.py src/pyAppGen/pbcs/ar_credit/receivables_workflows.py tests/test_pbc_ar_credit_implementation.py`
-- `./.venv/bin/pytest tests/test_pbc_ar_credit_implementation.py tests/test_pbc_ar_credit_runtime.py src/pyAppGen/pbcs/ar_credit/tests/test_contract.py -q`
+- Pending final compile and focused pytest run after the integration pass.
+- Planned gates:
+  - `python3 -m py_compile` across modified `ar_credit` Python modules.
+  - `python3 -m pytest src/pyAppGen/pbcs/ar_credit/tests/test_contract.py -q`
+  - Additional focused AR runtime/implementation tests if they pass without
+    requiring edits outside this package.
 
 ## Remaining Depth for Later Slices
 
-- Expand dispute resolution from recommendation-only into full owned-case
-  lifecycle state.
-- Add promise-to-pay and collector work queue execution.
+- Expand dispute resolution from recommendation-only into a full owned-case
+  lifecycle.
+- Add promise-to-pay tracking and collector work queues.
 - Deepen credit policy compilation for temporary limits, authority bands, and
   review cadence.
-- Add more generated-app coverage that exercises the new workflow operations
-  through route dispatch and composed app surfaces.
+- Extend the standalone repository to persist richer operator artifacts such as
+  dispute evidence packs and statement exports.

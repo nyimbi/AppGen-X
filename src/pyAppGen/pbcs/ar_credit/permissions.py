@@ -1,46 +1,43 @@
 """Executable permission contract for the ar_credit PBC."""
 
-PBC_KEY = 'ar_credit'
-PERMISSIONS = ('ar_credit.read', 'ar_credit.create', 'ar_credit.update', 'ar_credit.approve', 'ar_credit.admin')
-ACTION_PERMISSIONS = {
-    permission.rsplit('.', 1)[-1]: permission
-    for permission in PERMISSIONS
-}
+from __future__ import annotations
+
+from .runtime import ar_credit_permissions_contract
 
 
-def permission_manifest():
-    """Return the permission surface without mutating runtime state."""
+PBC_KEY = "ar_credit"
+PERMISSION_CONTRACT = ar_credit_permissions_contract()
+PERMISSIONS = PERMISSION_CONTRACT["permissions"]
+ACTION_PERMISSIONS = PERMISSION_CONTRACT["action_permissions"]
+
+
+def permission_manifest() -> dict:
     return {
-        'ok': bool(PERMISSIONS),
-        'pbc': PBC_KEY,
-        'permissions': PERMISSIONS,
-        'action_permissions': dict(ACTION_PERMISSIONS),
-        'side_effects': (),
+        **PERMISSION_CONTRACT,
+        "pbc": PBC_KEY,
+        "side_effects": (),
     }
 
 
-def authorize(action, granted_permissions=()):
-    """Evaluate one action against a caller permission set."""
+def authorize(action: str, granted_permissions: tuple[str, ...] = ()) -> dict:
     required = ACTION_PERMISSIONS.get(action)
     allowed = required in set(granted_permissions) if required else False
     return {
-        'ok': required is not None,
-        'allowed': allowed,
-        'action': action,
-        'required_permission': required,
-        'granted_permissions': tuple(granted_permissions),
-        'side_effects': (),
+        "ok": required is not None,
+        "allowed": allowed,
+        "action": action,
+        "required_permission": required,
+        "granted_permissions": tuple(granted_permissions),
+        "side_effects": (),
     }
 
 
-def smoke_test():
-    """Exercise one permission decision side-effect-free."""
+def smoke_test() -> dict:
     manifest = permission_manifest()
-    action, permission = next(iter(ACTION_PERMISSIONS.items())) if ACTION_PERMISSIONS else (None, None)
-    decision = authorize(action, (permission,)) if action else {'ok': False, 'allowed': False}
+    decision = authorize("apply_cash", ("ar_credit.cash",))
     return {
-        'ok': manifest['ok'] and decision['ok'] and decision['allowed'],
-        'manifest': manifest,
-        'decision': decision,
-        'side_effects': (),
+        "ok": manifest["ok"] and decision["ok"] and decision["allowed"],
+        "manifest": manifest,
+        "decision": decision,
+        "side_effects": (),
     }
