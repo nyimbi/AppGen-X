@@ -14,6 +14,11 @@ This file tracks the branch-isolated implementation pass for standalone Packaged
 
 | PBC | Branch | Commit | Validation |
 | --- | --- | --- | --- |
+| api_gateway_mesh | `pbc/api-gateway-mesh-standalone` | `2b87e526` | Compile, 16 tests, spec/source/release/smoke true. |
+| audit_ledger | `pbc/audit-ledger-standalone` | `fd33958c` | Compile, 14 tests, spec/source/release/smoke true. |
+| composition_engine | `pbc/composition-engine-standalone` | `15b94ed2` | Compile, 16 tests, spec/source/release/smoke true. |
+| schema_registry | `pbc/schema-registry-standalone` | `4ef03c66` | Compile, 13 tests, spec/source/release/smoke true. |
+| workflow_orchestration | `pbc/workflow-orchestration-standalone` | `d51b6db5` | Compile, 20 tests, spec/source/release/smoke true. |
 | data_product_catalog | `pbc/data-product-catalog-standalone` | `0a93b815` | Previously pushed. |
 | eam | `pbc/eam-standalone` | `27a1665f` | Compile, 9 tests, spec/source/release/smoke true. |
 | education_student_lifecycle | `pbc/education-student-lifecycle-standalone` | `dd0b0a6c` | Compile, 15 tests, spec/source/release/smoke true. |
@@ -30,13 +35,7 @@ This file tracks the branch-isolated implementation pass for standalone Packaged
 
 ## In Flight
 
-| PBC | Worktree | Branch | Owner |
-| --- | --- | --- | --- |
-| schema_registry | `/private/tmp/appgen-pbc-schema-registry` | `pbc/schema-registry-standalone` | child agent |
-| api_gateway_mesh | `/private/tmp/appgen-pbc-api-gateway-mesh` | `pbc/api-gateway-mesh-standalone` | child agent |
-| workflow_orchestration | `/private/tmp/appgen-pbc-workflow-orchestration` | `pbc/workflow-orchestration-standalone` | child agent |
-| audit_ledger | `/private/tmp/appgen-pbc-audit-ledger` | `pbc/audit-ledger-standalone` | child agent |
-| composition_engine | `/private/tmp/appgen-pbc-composition-engine` | `pbc/composition-engine-standalone` | child agent |
+No active child-agent batch is running after the platform-fabric branch push.
 
 ## Next Selection Rule
 
