@@ -2138,7 +2138,7 @@ def _emit_migration_plan_text(payload: dict) -> None:
         f"requires_approval={payload.get('requires_approval', False)}"
     )
     if coverage:
-        print(f"migration-coverage {coverage.get('format')}: detected={len(detected)} missing={len(missing)}")
+        print(f"migration-coverage format={coverage.get('format')}: detected={len(detected)} missing={len(missing)}")
     if detected:
         print(f"migration-detected {', '.join(sorted(detected))}")
     for change in changes:
