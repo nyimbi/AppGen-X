@@ -284,3 +284,65 @@ def test_table_stakes_and_advanced_capability_assurance_is_executable():
     assert validation['boundary_probe']['ok'] is False
     assert validation['boundary_probe']['violations']
     assert not smoke['side_effects']
+
+
+def test_repository_models_and_agent_surface_are_executable():
+    from .. import agent, models, repository
+
+    repository_smoke = repository.smoke_test()
+    model_smoke = models.smoke_test()
+    agent_smoke = agent.smoke_test()
+    assert repository_smoke["ok"] is True
+    assert model_smoke["ok"] is True
+    assert agent_smoke["ok"] is True
+    assert repository_smoke["repository"]["shared_table_access"] is False
+    assert model_smoke["database_contract"]["repository"]["shared_table_access"] is False
+    assert agent_smoke["document"]["route_candidates"]
+    assert not repository_smoke["side_effects"]
+    assert not model_smoke["side_effects"]
+    assert not agent_smoke["side_effects"]
+
+
+PACKAGE_DIR = __import__("pathlib").Path(__file__).resolve().parent.parent
+
+
+
+def test_pbc_source_artifact_contract():
+    from .. import release_evidence
+
+    expected = (
+        "README.md",
+        "SPECIFICATION.md",
+        "implementation-plan.md",
+        "implementation-status.md",
+        "RELEASE_EVIDENCE.md",
+        "repository.py",
+        "standalone.py",
+        "migrations/001_initial.sql",
+        "tests/test_contract.py",
+        "tests/test_standalone.py",
+    )
+    missing = tuple(path for path in expected if not (PACKAGE_DIR / path).exists())
+    evidence = release_evidence.build_release_evidence()
+    assert not missing
+    assert evidence["repo_gate_results"]["pbc_source_artifact_contract"] is True
+
+
+
+def test_pbc_implementation_release_audit():
+    from .. import release_evidence
+
+    validation = release_evidence.validate_release_evidence()
+    evidence = release_evidence.build_release_evidence()
+    assert validation["ok"] is True
+    assert evidence["repo_gate_results"]["pbc_implementation_release_audit"] is True
+
+
+
+def test_pbc_generation_smoke_audit():
+    from .. import release_evidence, standalone
+
+    smoke = standalone.smoke_test()
+    evidence = release_evidence.build_release_evidence()
+    assert smoke["ok"] is True
+    assert evidence["repo_gate_results"]["pbc_generation_smoke_audit"] is True
