@@ -4515,6 +4515,7 @@ def test_missing_input_audit_covers_file_based_commands(tmp_path: Path) -> None:
     assert all(case["exit_code"] == 2 for case in cases.values())
     assert all("path does not exist" in case["stderr"] for case in cases.values())
     assert all("Traceback" not in case["stderr"] for case in cases.values())
+    assert all(case["stdout_empty"] is True for case in cases.values())
 
 
 def test_explain_cli_audit_covers_text_and_json_modes(tmp_path: Path) -> None:

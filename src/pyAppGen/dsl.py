@@ -5652,13 +5652,19 @@ def _tooling_audit_missing_input_exit(tmp: Path) -> dict:
             except SystemExit as exc:
                 exit_code = int(exc.code or 0)
         stderr = error.getvalue()
+        stdout = output.getvalue()
+        stdout_empty = stdout.strip() == ""
         results.append(
             {
                 "name": name,
-                "ok": exit_code == 2 and "path does not exist" in stderr and "Traceback" not in stderr,
+                "ok": exit_code == 2
+                and "path does not exist" in stderr
+                and "Traceback" not in stderr
+                and stdout_empty,
                 "exit_code": exit_code,
                 "stderr": stderr.strip(),
-                "stdout": output.getvalue().strip(),
+                "stdout": stdout.strip(),
+                "stdout_empty": stdout_empty,
             }
         )
     return {
