@@ -1931,10 +1931,10 @@ def _emit_tooling_payload(payload: dict, *, as_json: bool) -> None:
         missing = tuple(payload.get("missing_constructs", ()))
         print(
             f"parser-golden {status}: "
-            f"{payload.get('fixture_count', 0)} fixtures, "
+            f"format={payload.get('format')} "
+            f"fixtures={payload.get('fixture_count', 0)} "
             f"valid={payload.get('valid_fixture_count', 0)} "
             f"invalid={payload.get('invalid_fixture_count', 0)} "
-            f"format={payload.get('format')} "
             f"required={len(payload.get('constructs_required', ()))} "
             f"constructs={len(payload.get('constructs_covered', ()))} "
             f"missing={len(missing)}"

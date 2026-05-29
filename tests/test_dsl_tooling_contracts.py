@@ -2947,14 +2947,14 @@ def test_appgen_diagnostics_subcommand_emits_catalog_fixture_audit_and_text() ->
     audit_payload = json.loads(audit_result.stdout)
     assert catalog_payload["format"] == "appgen.diagnostic-catalog.v1"
     assert audit_payload["format"] == "appgen.diagnostic-fixture-audit.v1"
-    assert catalog_text.stdout.startswith("diagnostics ok:")
+    assert catalog_text.stdout.startswith("diagnostics ok: format=appgen.diagnostic-catalog.v1")
     assert f"format={catalog_payload['format']}" in catalog_text.stdout
     assert f"covered={len(catalog_payload['covered_fixture_codes'])}" in catalog_text.stdout
     assert f"required={len(catalog_payload['required_codes'])}" in catalog_text.stdout
     assert f"fixtures={catalog_payload['fixture_count']}" in catalog_text.stdout
     assert "missing=0" in catalog_text.stdout
     assert "missing-fixture " not in catalog_text.stdout
-    assert audit_text.stdout.startswith("diagnostics-audit ok:")
+    assert audit_text.stdout.startswith("diagnostics-audit ok: format=appgen.diagnostic-fixture-audit.v1")
     assert f"format={audit_payload['format']}" in audit_text.stdout
     assert f"covered={len(audit_payload['covered_codes'])}" in audit_text.stdout
     assert f"required={len(audit_payload['required_codes'])}" in audit_text.stdout
@@ -3001,8 +3001,8 @@ def test_appgen_parser_golden_subcommand_emits_json_and_text_contracts() -> None
     assert text_result.returncode == 0, text_result.stderr
     payload = json.loads(json_result.stdout)
     assert payload["format"] == "appgen.parser-golden-audit.v1"
-    assert text_result.stdout.startswith("parser-golden ok:")
-    assert f"{payload['fixture_count']} fixtures" in text_result.stdout
+    assert text_result.stdout.startswith("parser-golden ok: format=appgen.parser-golden-audit.v1")
+    assert f"fixtures={payload['fixture_count']}" in text_result.stdout
     assert f"valid={payload['valid_fixture_count']}" in text_result.stdout
     assert f"invalid={payload['invalid_fixture_count']}" in text_result.stdout
     assert f"format={payload['format']}" in text_result.stdout

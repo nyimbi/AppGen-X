@@ -604,9 +604,9 @@ diagnostics, and when `--previous-semantic` is provided it also prints a
 migration-preview summary with the embedded `appgen.migration-plan.v1` format
 as `format=...`, backend as `backend=...`, approval flag, change count, and
 detected migration families. `appgen diagnostics`
-text output summarizes the `appgen.diagnostic-catalog.v1` format, registry
-coverage, and fixture gaps; `appgen diagnostics --audit-fixtures` summarizes
-the `appgen.diagnostic-fixture-audit.v1` format plus covered and missing
+text output summarizes the `appgen.diagnostic-catalog.v1` format in the header,
+registry coverage, and fixture gaps; `appgen diagnostics --audit-fixtures`
+summarizes the `appgen.diagnostic-fixture-audit.v1` format in the header plus covered and missing
 diagnostic codes; and `appgen drift` summarizes the
 `appgen.semantic-drift-audit.v1` format, semantic-model format as
 `semantic_format=...`, drift surfaces,
@@ -1335,8 +1335,8 @@ The report contract is `appgen.parser-golden-audit.v1`:
 - `fixtures`: per-fixture parse outcome, validity expectation, construct tags, and syntax error text;
 - `blocking_gaps`: the exact fixture failures that should block CI.
 
-Without `--json`, `appgen parser-golden` prints the pass/fail status, total
-fixture count, valid and invalid fixture counts, report format, required
+Without `--json`, `appgen parser-golden` prints the pass/fail status, report
+format in the header, total fixture count, valid and invalid fixture counts, required
 construct count, covered construct count, missing construct count, missing
 construct names when present, and blocking fixture gaps. JSON remains the
 machine-readable source of truth.
