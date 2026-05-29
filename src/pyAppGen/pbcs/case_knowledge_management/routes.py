@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from .application import create_app
+from .app_surface import standalone_route_contracts
 
 
 PBC_KEY = "case_knowledge_management"
@@ -41,6 +42,7 @@ def api_route_contracts() -> dict:
         "pbc": PBC_KEY,
         "contracts": contracts,
         "routes": ROUTES,
+        "standalone_routes": standalone_route_contracts(),
         "stream_engine_picker_visible": False,
         "side_effects": (),
     }
@@ -98,6 +100,6 @@ def smoke_test() -> dict:
     first = dispatch_route("/support-cases", {"tenant": "tenant-smoke", "title": "Smoke"}, method="POST")
     workbench = dispatch_route("/knowledge-workbench", {"tenant": "tenant-smoke"}, method="GET", state=first["state"])
     return {
-        "ok": validate_api_route_contracts()["ok"] and first["ok"] and workbench["ok"],
+        "ok": validate_api_route_contracts()["ok"] and first["ok"] and workbench["ok"] and any(route["path"] == "/case-knowledge-management/app" for route in standalone_route_contracts()),
         "side_effects": (),
     }

@@ -74,3 +74,33 @@ def smoke_test() -> dict:
         "ok": case_knowledge_management_ui_contract()["ok"] and case_knowledge_management_render_workbench()["ok"],
         "side_effects": (),
     }
+
+
+from .app_surface import (
+    case_knowledge_management_controls_contract,
+    case_knowledge_management_forms_contract,
+    case_knowledge_management_wizards_contract,
+    single_pbc_case_knowledge_management_app_contract,
+)
+
+_BASE_CASE_KNOWLEDGE_MANAGEMENT_UI_CONTRACT = case_knowledge_management_ui_contract
+_BASE_CASE_KNOWLEDGE_MANAGEMENT_RENDER_WORKBENCH = case_knowledge_management_render_workbench
+
+def case_knowledge_management_ui_contract() -> dict:
+    base = dict(_BASE_CASE_KNOWLEDGE_MANAGEMENT_UI_CONTRACT())
+    return {
+        **base,
+        'forms_contract': case_knowledge_management_forms_contract(),
+        'wizards_contract': case_knowledge_management_wizards_contract(),
+        'controls_contract': case_knowledge_management_controls_contract(),
+        'single_pbc_app': single_pbc_case_knowledge_management_app_contract(),
+    }
+
+def case_knowledge_management_render_workbench(state: dict | None = None) -> dict:
+    base = dict(_BASE_CASE_KNOWLEDGE_MANAGEMENT_RENDER_WORKBENCH(state=state))
+    return {**base, 'single_pbc_app': single_pbc_case_knowledge_management_app_contract(state=state)}
+
+def smoke_test() -> dict:
+    contract = case_knowledge_management_ui_contract()
+    workbench = case_knowledge_management_render_workbench()
+    return {'ok': contract['ok'] and workbench['ok'] and contract['single_pbc_app']['ok'], 'contract': contract, 'workbench': workbench, 'side_effects': ()}
