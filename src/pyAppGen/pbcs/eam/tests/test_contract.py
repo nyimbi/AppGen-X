@@ -212,3 +212,194 @@ def test_table_stakes_and_advanced_capability_assurance_is_executable():
     assert validation['boundary_rejection']['ok'] is False
     assert validation['boundary_rejection']['violations']
     assert not smoke['side_effects']
+
+
+def test_standalone_eam_lifecycle_proof():
+    from .. import agent, runtime
+
+    state = runtime.eam_empty_state()
+    state = runtime.eam_configure_runtime(
+        state,
+        {
+            "database_backend": "postgresql",
+            "event_topic": "appgen.maintenance.events",
+            "retry_limit": 3,
+            "allowed_sites": ("plant_east", "plant_west"),
+            "allowed_priorities": ("low", "medium", "high", "critical"),
+            "allowed_work_types": ("preventive", "predictive", "corrective", "calibration"),
+            "allowed_permit_types": ("electrical", "confined_space", "hot_work"),
+            "default_timezone": "UTC",
+            "workbench_limit": 100,
+        },
+    )["state"]
+    for key, value in (
+        ("default_pm_interval_days", 30),
+        ("failure_risk_threshold", 0.65),
+        ("mttr_target_hours", 6),
+        ("criticality_weight", 0.4),
+        ("safety_risk_threshold", 0.7),
+        ("retention_days", 365),
+    ):
+        state = runtime.eam_set_parameter(state, key, value)["state"]
+    state = runtime.eam_register_rule(
+        state,
+        {
+            "rule_id": "eam.asset_readiness_gate",
+            "tenant": "tenant_alpha",
+            "rule_type": "maintenance",
+            "eligible_work_types": ("preventive", "predictive", "corrective"),
+            "allowed_sites": ("plant_east", "plant_west"),
+            "status": "active",
+            "criticality_classes": ("A", "B", "C"),
+        },
+    )["state"]
+    equipment_result = runtime.eam_register_equipment(
+        state,
+        {
+            "tenant": "tenant_alpha",
+            "equipment_id": "pump_001",
+            "site": "plant_east",
+            "asset_tag": "P-1001",
+            "criticality": "A",
+            "location": "Area-1",
+            "parent_equipment_id": None,
+            "warranty_until": "2027-12-31",
+        },
+    )
+    assert equipment_result["ok"] is True
+    state = equipment_result["state"]
+    plan_result = runtime.eam_create_maintenance_plan(
+        state,
+        {
+            "tenant": "tenant_alpha",
+            "plan_id": "pm_001",
+            "equipment_id": "pump_001",
+            "strategy": "preventive",
+            "interval_days": 30,
+            "meter_threshold": 100.0,
+            "condition_threshold": 0.6,
+            "status": "released",
+        },
+    )
+    assert plan_result["ok"] is True
+    state = plan_result["state"]
+    state = runtime.eam_record_condition_reading(
+        state,
+        {
+            "tenant": "tenant_alpha",
+            "reading_id": "cond_001",
+            "equipment_id": "pump_001",
+            "sensor": "vibration",
+            "value": 0.58,
+            "unit": "ips",
+        },
+    )["state"]
+    meter_result = runtime.eam_record_meter_reading(
+        state,
+        {
+            "tenant": "tenant_alpha",
+            "meter_id": "meter_001",
+            "equipment_id": "pump_001",
+            "meter_name": "runtime_hours",
+            "value": 120.0,
+            "unit": "hours",
+        },
+    )
+    assert meter_result["meter_reading"]["triggered_plans"] == ("pm_001",)
+    state = meter_result["state"]
+    permit_result = runtime.eam_create_safety_permit(
+        state,
+        {
+            "tenant": "tenant_alpha",
+            "permit_id": "permit_001",
+            "equipment_id": "pump_001",
+            "permit_type": "electrical",
+            "risk_score": 0.4,
+            "approved_by": "supervisor_1",
+        },
+    )
+    assert permit_result["ok"] is True
+    state = permit_result["state"]
+    work_order_result = runtime.eam_create_work_order(
+        state,
+        {
+            "tenant": "tenant_alpha",
+            "work_order_id": "wo_001",
+            "equipment_id": "pump_001",
+            "plan_id": "pm_001",
+            "work_type": "preventive",
+            "priority": "critical",
+            "permit_id": "permit_001",
+        },
+    )
+    assert work_order_result["ok"] is True
+    state = work_order_result["state"]
+    state = runtime.eam_schedule_work_order(
+        state,
+        "wo_001",
+        window={"start": "2026-06-01T08:00:00Z", "end": "2026-06-01T12:00:00Z"},
+        technician="tech_01",
+    )["state"]
+    state = runtime.eam_issue_spare_part(
+        state,
+        {
+            "tenant": "tenant_alpha",
+            "usage_id": "usage_001",
+            "work_order_id": "wo_001",
+            "part_number": "BRG-100",
+            "quantity": 2,
+            "unit_cost": 45.5,
+        },
+    )["state"]
+    receive_event = runtime.eam_receive_event(
+        state,
+        {
+            "event_type": "InventoryReservationConfirmed",
+            "event_id": "evt_inv_001",
+            "tenant": "tenant_alpha",
+            "payload": {"reservation_id": "res_001", "work_order_id": "wo_001", "quantity": 2},
+        },
+    )
+    assert receive_event["ok"] is True
+    state = receive_event["state"]
+    complete_result = runtime.eam_complete_work_order(
+        state,
+        "wo_001",
+        completed_by="tech_01",
+        actual_hours=3.5,
+        downtime_hours=1.25,
+        resolution="Bearing replaced and aligned",
+    )
+    assert complete_result["ok"] is True
+    state = complete_result["state"]
+
+    control_result = runtime.eam_run_control_tests(state)
+    proof = runtime.eam_generate_compliance_proof(state, "wo_001", disclosure=("status", "completed_by", "resolution"))
+    workbench = runtime.eam_build_workbench_view(state, tenant="tenant_alpha")
+    mutation_plan = agent.governed_mutation_plan("complete_work_order", {"work_order_id": "wo_001"})
+    document_plan = agent.document_instruction_plan("equipment pump_001 permit packet", "complete corrective work with permit and spare evidence")
+
+    assert control_result["ok"] is True
+    assert proof["ok"] is True
+    assert proof["public_claims"]["status"] == "completed"
+    assert workbench["completed_work_order_count"] == 1
+    assert workbench["critical_work_order_count"] == 1
+    assert workbench["spare_usage_count"] == 1
+    assert workbench["configuration_bound"] is True
+    assert workbench["binding_evidence"]["shared_table_access"] is False
+    assert mutation_plan["ok"] is True
+    assert mutation_plan["expected_event"] == "MaintenanceCompleted"
+    assert document_plan["ok"] is True
+    assert "equipment" in document_plan["detected_terms"]
+    assert receive_event["projection"] == "inventory_spares_projection"
+    assert [event["event_type"] for event in state["events"]] == [
+        "EquipmentRegistered",
+        "MaintenancePlanReleased",
+        "ConditionReadingRecorded",
+        "MeterReadingRecorded",
+        "SafetyPermitApproved",
+        "WorkOrderCreated",
+        "WorkOrderScheduled",
+        "SparePartUsed",
+        "MaintenanceCompleted",
+    ]

@@ -4,14 +4,18 @@ from __future__ import annotations
 
 from .runtime import EAM_ALLOWED_DATABASE_BACKENDS
 from .runtime import EAM_CONSUMED_EVENT_TYPES
+from .runtime import EAM_DEAD_LETTER_TABLE
 from .runtime import EAM_EMITTED_EVENT_TYPES
+from .runtime import EAM_EVENT_CONTRACT
+from .runtime import EAM_INBOX_TABLE
+from .runtime import EAM_OUTBOX_TABLE
 from .runtime import EAM_OWNED_TABLES
-from .runtime import EAM_REQUIRED_RULE_FIELDS
 from .runtime import EAM_REQUIRED_CONFIGURATION_FIELDS
 from .runtime import EAM_REQUIRED_EVENT_TOPIC
+from .runtime import EAM_REQUIRED_RULE_FIELDS
 from .runtime import EAM_SUPPORTED_PARAMETERS
-from .runtime import EAM_EVENT_CONTRACT
 from .runtime import _EAM_RUNTIME_TABLES
+from .runtime import eam_permissions_contract
 
 EAM_UI_FRAGMENT_KEYS = (
     "MaintenanceWorkbench",
@@ -28,7 +32,15 @@ EAM_UI_FRAGMENT_KEYS = (
     "MaintenanceRuleStudio",
     "MaintenanceParameterConsole",
     "MaintenanceConfigurationPanel",
+    "TechnicianCockpit",
+    "PlannerCockpit",
+    "EventReliabilityPanel",
+    "ReleaseEvidenceConsole",
+    "AgentPlanningStudio",
+    "DocumentIntakeWorkbench",
 )
+
+_ACTION_PERMISSIONS = eam_permissions_contract()["action_permissions"]
 
 
 def eam_ui_contract() -> dict:
@@ -54,6 +66,12 @@ def eam_ui_contract() -> dict:
             "/workbench/pbcs/eam/rules",
             "/workbench/pbcs/eam/parameters",
             "/workbench/pbcs/eam/configuration",
+            "/workbench/pbcs/eam/technician",
+            "/workbench/pbcs/eam/planner",
+            "/workbench/pbcs/eam/events",
+            "/workbench/pbcs/eam/release",
+            "/workbench/pbcs/eam/agent",
+            "/workbench/pbcs/eam/documents",
         ),
         "panels": (
             {
@@ -81,21 +99,100 @@ def eam_ui_contract() -> dict:
                 "commands": ("register_rule", "set_parameter", "configure_runtime", "run_control_tests"),
             },
         ),
-        "action_permissions": {
-            "register_equipment": "eam.equipment",
-            "create_maintenance_plan": "eam.plan",
-            "record_condition_reading": "eam.execute",
-            "record_meter_reading": "eam.execute",
-            "create_safety_permit": "eam.safety",
-            "create_work_order": "eam.execute",
-            "schedule_work_order": "eam.execute",
-            "issue_spare_part": "eam.execute",
-            "complete_work_order": "eam.execute",
-            "register_rule": "eam.configure",
-            "set_parameter": "eam.configure",
-            "configure_runtime": "eam.configure",
-            "run_control_tests": "eam.audit",
-        },
+        "forms": (
+            {
+                "key": "equipment_registration",
+                "title": "Equipment Registration",
+                "fields": ("tenant", "equipment_id", "site", "asset_tag", "criticality", "location", "parent_equipment_id", "warranty_until"),
+                "command": "register_equipment",
+            },
+            {
+                "key": "work_request_triage",
+                "title": "Work Request Triage",
+                "fields": ("equipment_id", "work_type", "priority", "symptom", "production_impact", "safety_flag"),
+                "command": "create_work_order",
+            },
+            {
+                "key": "safety_permit",
+                "title": "Safety Permit Approval",
+                "fields": ("permit_id", "equipment_id", "permit_type", "risk_score", "approved_by"),
+                "command": "create_safety_permit",
+            },
+            {
+                "key": "completion_checklist",
+                "title": "Work Order Completion",
+                "fields": ("work_order_id", "completed_by", "actual_hours", "downtime_hours", "resolution"),
+                "command": "complete_work_order",
+            },
+        ),
+        "wizards": (
+            {
+                "key": "equipment_readiness",
+                "steps": ("identity", "hierarchy", "location", "criticality", "meter_setup", "warranty", "release"),
+                "outcome": "maintenance_ready_equipment",
+            },
+            {
+                "key": "maintenance_plan_release",
+                "steps": ("strategy", "tasks", "spares", "labor", "permits", "approvals", "release"),
+                "outcome": "released_maintenance_plan",
+            },
+            {
+                "key": "work_package",
+                "steps": ("triage", "planning", "permits", "spares", "schedule", "dispatch"),
+                "outcome": "dispatch_ready_work_order",
+            },
+            {
+                "key": "release_readiness",
+                "steps": ("schema", "services", "events", "permissions", "ui", "agents", "tests"),
+                "outcome": "release_evidence_packet",
+            },
+        ),
+        "controls": (
+            {"key": "hierarchy_tree", "type": "tree", "fragment": "AssetHierarchyMap"},
+            {"key": "risk_heatmap", "type": "heatmap", "fragment": "ReliabilityDashboard"},
+            {"key": "permit_checklist", "type": "checklist", "fragment": "SafetyPermitConsole"},
+            {"key": "spare_kitting_board", "type": "board", "fragment": "SpareUsageConsole"},
+            {"key": "event_replay_queue", "type": "queue", "fragment": "EventReliabilityPanel"},
+            {"key": "agent_plan_preview", "type": "preview", "fragment": "AgentPlanningStudio"},
+        ),
+        "cockpits": (
+            {
+                "key": "technician",
+                "fragment": "TechnicianCockpit",
+                "widgets": ("assigned_jobs", "permit_status", "job_steps", "spares", "photos", "completion_checklist"),
+            },
+            {
+                "key": "planner",
+                "fragment": "PlannerCockpit",
+                "widgets": ("backlog_risk", "package_blockers", "labor_conflicts", "vendor_dependencies", "optimized_windows"),
+            },
+        ),
+        "workflow_lanes": (
+            "intake",
+            "planning",
+            "scheduling",
+            "execution",
+            "closure",
+            "reliability",
+            "release",
+        ),
+        "agent_workflows": (
+            "task_guidance",
+            "document_instruction_intake",
+            "governed_create",
+            "governed_read",
+            "governed_update",
+            "governed_delete",
+            "policy_explanation",
+            "workbench_navigation",
+        ),
+        "document_workflows": (
+            "manual_intake",
+            "vendor_report_review",
+            "permit_packet_review",
+            "compliance_packet_preview",
+        ),
+        "action_permissions": _ACTION_PERMISSIONS,
         "configuration_editor": {
             "required_fields": ("database_backend", "event_topic"),
             "runtime_required_fields": EAM_REQUIRED_CONFIGURATION_FIELDS,
@@ -121,6 +218,9 @@ def eam_ui_contract() -> dict:
             "outbox_status": "visible",
             "inbox_status": "visible",
             "dead_letter_status": "visible",
+            "outbox_table": EAM_OUTBOX_TABLE,
+            "inbox_table": EAM_INBOX_TABLE,
+            "dead_letter_table": EAM_DEAD_LETTER_TABLE,
         },
         "binding_evidence": {
             "owned_tables": EAM_OWNED_TABLES,
@@ -148,13 +248,16 @@ def eam_render_workbench(
     plans = tuple(plan for plan in state["plans"].values() if plan["tenant"] == tenant)
     work_orders = tuple(work_order for work_order in state["work_orders"].values() if work_order["tenant"] == tenant)
     spares = tuple(usage for usage in state["spare_usage"].values() if usage["tenant"] == tenant)
+    documents = tuple(document for document in state.get("documents", {}).values() if document.get("tenant") == tenant)
     cards = (
         {"key": "equipment", "value": len(equipment), "fragment": "EquipmentRegistry"},
         {"key": "maintenance_plans", "value": len(plans), "fragment": "MaintenancePlanConsole"},
         {"key": "work_orders", "value": len(work_orders), "fragment": "WorkOrderBoard"},
+        {"key": "scheduled_work_orders", "value": len(tuple(work_order for work_order in work_orders if work_order["status"] == "scheduled")), "fragment": "MaintenanceScheduler"},
         {"key": "completed_work_orders", "value": len(tuple(work_order for work_order in work_orders if work_order["status"] == "completed")), "fragment": "ReliabilityDashboard"},
-        {"key": "critical_work_orders", "value": len(tuple(work_order for work_order in work_orders if work_order["priority"] == "critical")), "fragment": "MaintenanceScheduler"},
+        {"key": "critical_work_orders", "value": len(tuple(work_order for work_order in work_orders if work_order["priority"] == "critical")), "fragment": "PlannerCockpit"},
         {"key": "spare_usage", "value": len(spares), "fragment": "SpareUsageConsole"},
+        {"key": "documents", "value": len(documents), "fragment": "DocumentIntakeWorkbench"},
     )
     return {
         "format": "appgen.eam-workbench-render.v1",
@@ -163,6 +266,11 @@ def eam_render_workbench(
         "route": "/workbench/pbcs/eam",
         "fragments": contract["fragments"],
         "cards": cards,
+        "forms": contract["forms"],
+        "wizards": contract["wizards"],
+        "controls": contract["controls"],
+        "cockpits": contract["cockpits"],
+        "workflow_lanes": contract["workflow_lanes"],
         "visible_actions": visible_actions,
         "locked_actions": tuple(action for action in action_permissions if action not in visible_actions),
         "configuration_bound": bool(state["configuration"].get("ok")),
@@ -178,8 +286,12 @@ def eam_render_workbench(
             "event_contract": state.get("configuration", {}).get("event_contract"),
             "required_event_topic": EAM_REQUIRED_EVENT_TOPIC,
             "configuration_topic": state.get("configuration", {}).get("event_topic"),
+            "outbox_table": EAM_OUTBOX_TABLE,
+            "inbox_table": EAM_INBOX_TABLE,
+            "dead_letter_table": EAM_DEAD_LETTER_TABLE,
         },
     }
+
 
 class _AppGenSmokeState(dict):
     """Tolerant empty state for side-effect-free workbench smoke rendering."""
@@ -192,16 +304,23 @@ class _AppGenSmokeState(dict):
 
 def _appgen_smoke_state():
     """Return a deterministic state envelope understood by PBC workbench renderers."""
-    return _AppGenSmokeState({
-        "configuration": _AppGenSmokeState({"ok": True}),
-        "rules": _AppGenSmokeState(),
-        "parameters": _AppGenSmokeState(),
-        "outbox": (),
-        "inbox": (),
-        "dead_letter": (),
-        "dead_letters": (),
-        "events": (),
-    })
+    return _AppGenSmokeState(
+        {
+            "configuration": _AppGenSmokeState({"ok": True, "event_contract": EAM_EVENT_CONTRACT, "event_topic": EAM_REQUIRED_EVENT_TOPIC}),
+            "rules": _AppGenSmokeState(),
+            "parameters": _AppGenSmokeState(),
+            "equipment": _AppGenSmokeState(),
+            "plans": _AppGenSmokeState(),
+            "work_orders": _AppGenSmokeState(),
+            "spare_usage": _AppGenSmokeState(),
+            "documents": _AppGenSmokeState(),
+            "outbox": (),
+            "inbox": (),
+            "dead_letter": (),
+            "dead_letters": (),
+            "events": (),
+        }
+    )
 
 
 def smoke_test():
@@ -234,6 +353,10 @@ def smoke_test():
         and rendered.get("ok") is True
         and bool(contract.get("fragments"))
         and bool(contract.get("routes"))
+        and bool(contract.get("forms"))
+        and bool(contract.get("wizards"))
+        and bool(contract.get("controls"))
+        and bool(contract.get("cockpits"))
         and bool(cards)
         and bool(contract.get("action_permissions"))
         and bool(configuration_editor)
@@ -241,6 +364,9 @@ def smoke_test():
         and bool(contract.get("parameter_editor"))
         and bool(rule_editor)
         and bool(event_surfaces)
+        and event_surfaces.get("outbox_table") == EAM_OUTBOX_TABLE
+        and event_surfaces.get("inbox_table") == EAM_INBOX_TABLE
+        and event_surfaces.get("dead_letter_table") == EAM_DEAD_LETTER_TABLE
         and ("outbox_status" in event_surfaces or "contract" in event_surfaces)
         and binding_evidence.get("shared_table_access") is not True
         and not binding_evidence.get("shared_tables", ()),

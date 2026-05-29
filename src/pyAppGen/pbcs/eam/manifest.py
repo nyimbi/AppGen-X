@@ -100,5 +100,11 @@ PBC_MANIFEST = {
     "migrations": ("migrations/001_initial.sql",),
     "seed_data": ("seed_data.py",),
     "tests": ("tests/test_contract.py",),
-    "docs": ("SPECIFICATION.md", "RELEASE_EVIDENCE.md"),
+    "docs": (
+        "SPECIFICATION.md",
+        "RELEASE_EVIDENCE.md",
+        "implementation-plan.md",
+        "implementation-status.md",
+        "README.md",
+    ),
 }

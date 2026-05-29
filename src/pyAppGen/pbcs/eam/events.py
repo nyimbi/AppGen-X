@@ -1,40 +1,47 @@
 """AppGen-X event contract for the Enterprise Asset Management PBC."""
 
+from __future__ import annotations
+
 from .runtime import EAM_CONSUMED_EVENT_TYPES
+from .runtime import EAM_DEAD_LETTER_TABLE
 from .runtime import EAM_EMITTED_EVENT_TYPES
+from .runtime import EAM_EVENT_CONTRACT
+from .runtime import EAM_INBOX_TABLE
+from .runtime import EAM_OUTBOX_TABLE
+from .runtime import EAM_REQUIRED_EVENT_TOPIC
+from .runtime import EAM_REQUIRED_INBOX_TOPIC
+
+
+def _event_rows(event_types, *, direction: str):
+    table = EAM_OUTBOX_TABLE if direction == "emitted" else EAM_INBOX_TABLE
+    topic = EAM_REQUIRED_EVENT_TOPIC if direction == "emitted" else EAM_REQUIRED_INBOX_TOPIC
+    actor_field = "pbc" if direction == "emitted" else "source_pbc"
+    payload_fields = ("event_id", "occurred_at", actor_field, "data")
+    return tuple(
+        {
+            "event_type": event_type,
+            "schema": f"eam.{event_type}.{direction}.v1",
+            "topic": topic,
+            "table": table,
+            "payload_fields": payload_fields,
+        }
+        for event_type in event_types
+    )
 
 
 EVENT_CONTRACT = {
-    "contract": "appgen_event_contract",
+    "contract": EAM_EVENT_CONTRACT,
     "runtime_profile_visibility": "read_only_platform_metadata",
     "adapter": "appgen_event_adapter",
-    "topic": "pbc.eam.events",
-    "inbox_topic": "pbc.eam.inbox",
-    "outbox_table": "eam_appgen_outbox_event",
-    "inbox_table": "eam_appgen_inbox_event",
-    "dead_letter_table": "eam_appgen_dead_letter_event",
-    "emitted": tuple(
-        {
-            "event_type": event_type,
-            "schema": f"eam.{event_type}.emitted.v1",
-            "topic": "pbc.eam.events",
-            "outbox_table": "eam_appgen_outbox_event",
-            "payload_fields": ("event_id", "occurred_at", "pbc", "data"),
-        }
-        for event_type in EAM_EMITTED_EVENT_TYPES
-    ),
-    "consumed": tuple(
-        {
-            "event_type": event_type,
-            "schema": f"eam.{event_type}.consumed.v1",
-            "topic": "pbc.eam.inbox",
-            "inbox_table": "eam_appgen_inbox_event",
-            "payload_fields": ("event_id", "occurred_at", "source_pbc", "data"),
-        }
-        for event_type in EAM_CONSUMED_EVENT_TYPES
-    ),
+    "topic": EAM_REQUIRED_EVENT_TOPIC,
+    "inbox_topic": EAM_REQUIRED_INBOX_TOPIC,
+    "outbox_table": EAM_OUTBOX_TABLE,
+    "inbox_table": EAM_INBOX_TABLE,
+    "dead_letter_table": EAM_DEAD_LETTER_TABLE,
+    "emitted": _event_rows(EAM_EMITTED_EVENT_TYPES, direction="emitted"),
+    "consumed": _event_rows(EAM_CONSUMED_EVENT_TYPES, direction="consumed"),
     "retry_policy": {"name": "eam_default_retry", "max_attempts": 5, "backoff": "exponential"},
-    "idempotency": {"key_fields": ("event_type", "event_id", "handler"), "storage": "eam_appgen_inbox_event"},
+    "idempotency": {"key_fields": ("event_type", "event_id", "handler"), "storage": EAM_INBOX_TABLE},
 }
 EMITTED_EVENTS = EVENT_CONTRACT["emitted"]
 CONSUMED_EVENTS = EVENT_CONTRACT["consumed"]
@@ -43,10 +50,9 @@ CONSUMED_EVENTS = EVENT_CONTRACT["consumed"]
 def event_contract_manifest():
     """Return the executable AppGen-X event contract surface."""
     return {
-        "ok": EVENT_CONTRACT["contract"] == "appgen_event_contract"
-        and len(EMITTED_EVENTS) >= 10
-        and len(CONSUMED_EVENTS) >= 5
-        and EVENT_CONTRACT.get("runtime_profile_visibility") == "read_only_platform_metadata",
+        "ok": EVENT_CONTRACT["contract"] == EAM_EVENT_CONTRACT
+        and len(EMITTED_EVENTS) == len(EAM_EMITTED_EVENT_TYPES)
+        and len(CONSUMED_EVENTS) == len(EAM_CONSUMED_EVENT_TYPES),
         "pbc": "eam",
         "contract": EVENT_CONTRACT["contract"],
         "adapter": EVENT_CONTRACT["adapter"],
@@ -69,19 +75,23 @@ def validate_event_contract():
     manifest = event_contract_manifest()
     required_emitted_fields = {"event_id", "occurred_at", "pbc", "data"}
     required_consumed_fields = {"event_id", "occurred_at", "source_pbc", "data"}
-    invalid_tables = tuple(table for table in (manifest["outbox_table"], manifest["inbox_table"], manifest["dead_letter_table"]) if not table.startswith("eam_"))
+    invalid_tables = tuple(
+        table
+        for table in (manifest["outbox_table"], manifest["inbox_table"], manifest["dead_letter_table"])
+        if not table.startswith("eam_")
+    )
     invalid_emitted = tuple(
         event["event_type"]
         for event in EMITTED_EVENTS
         if event.get("topic") != manifest["topic"]
-        or event.get("outbox_table") != manifest["outbox_table"]
+        or event.get("table") != manifest["outbox_table"]
         or not required_emitted_fields <= set(event.get("payload_fields", ()))
     )
     invalid_consumed = tuple(
         event["event_type"]
         for event in CONSUMED_EVENTS
         if event.get("topic") != manifest["inbox_topic"]
-        or event.get("inbox_table") != manifest["inbox_table"]
+        or event.get("table") != manifest["inbox_table"]
         or not required_consumed_fields <= set(event.get("payload_fields", ()))
     )
     retry = manifest["retry_policy"]

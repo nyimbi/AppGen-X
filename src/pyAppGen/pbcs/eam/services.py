@@ -1,20 +1,22 @@
 """Command and query service layer for the Enterprise Asset Management PBC."""
 
-from .runtime import EAM_EMITTED_EVENT_TYPES
+from .events import EVENT_CONTRACT
 from .runtime import EAM_OWNED_TABLES
 from .runtime import eam_build_api_contract
 from .runtime import eam_build_service_contract
+from .runtime import eam_permissions_contract
 
 
-EVENT_CONTRACT = {
-    "contract": "appgen_event_contract",
-    "runtime_profile_visibility": "read_only_platform_metadata",
-    "adapter": "appgen_event_adapter",
-    "topic": "pbc.eam.events",
-    "inbox_topic": "pbc.eam.inbox",
-    "outbox_table": "eam_appgen_outbox_event",
-    "inbox_table": "eam_appgen_inbox_event",
-    "dead_letter_table": "eam_appgen_dead_letter_event",
+_OPERATION_EVENT_MAP = {
+    "register_equipment": "EquipmentRegistered",
+    "create_maintenance_plan": "MaintenancePlanReleased",
+    "record_condition_reading": "ConditionReadingRecorded",
+    "record_meter_reading": "MeterReadingRecorded",
+    "create_safety_permit": "SafetyPermitApproved",
+    "create_work_order": "WorkOrderCreated",
+    "schedule_work_order": "WorkOrderScheduled",
+    "issue_spare_part": "SparePartUsed",
+    "complete_work_order": "MaintenanceCompleted",
 }
 
 
@@ -22,27 +24,27 @@ def _owned_tables() -> tuple[str, ...]:
     return tuple(table if table.startswith("eam_") else f"eam_{table}" for table in EAM_OWNED_TABLES)
 
 
+
 def _operation_contracts() -> tuple[dict, ...]:
     api = eam_build_api_contract()
     service = eam_build_service_contract()
+    permission_index = eam_permissions_contract()["action_permissions"]
     commands = set(service["command_methods"])
     queries = set(service["query_methods"])
-    emitted = iter(EAM_EMITTED_EVENT_TYPES)
     contracts = []
     for route in api["route_definitions"]:
         operation = route.get("command") or route.get("query")
         operation_kind = "command" if operation in commands else "query"
-        event_type = next(emitted, "MaintenanceCompleted") if operation_kind == "command" else None
         contracts.append(
             {
                 "operation": operation,
                 "operation_kind": operation_kind,
                 "method": route["method"],
                 "path": f"/api/pbc/eam{route['path']}",
-                "permission": api["permissions"][0] if operation_kind == "query" else "eam.execute",
+                "permission": permission_index.get(operation, "eam.read" if operation_kind == "query" else "eam.execute"),
                 "owned_tables": _owned_tables() if operation_kind == "command" else (),
                 "read_tables": () if operation_kind == "command" else _owned_tables(),
-                "emitted_event": event_type,
+                "emitted_event": _OPERATION_EVENT_MAP.get(operation),
                 "transaction_boundary": "owned_datastore_plus_outbox",
                 "event_contract": "AppGen-X",
             }
@@ -53,16 +55,23 @@ def _operation_contracts() -> tuple[dict, ...]:
 OPERATION_CONTRACTS = _operation_contracts()
 
 
+
 def service_operation_contracts():
     """Return route-bound service operation contracts for this PBC."""
     operations = tuple(item["operation"] for item in OPERATION_CONTRACTS)
     command_contracts = tuple(item for item in OPERATION_CONTRACTS if item["operation_kind"] == "command")
     query_contracts = tuple(item for item in OPERATION_CONTRACTS if item["operation_kind"] == "query")
+    governance_commands = tuple(
+        item["operation"]
+        for item in command_contracts
+        if item["operation"] in {"configure_runtime", "set_parameter", "register_rule"}
+    )
+    eventful_commands = tuple(item for item in command_contracts if item["operation"] not in governance_commands)
     return {
         "ok": len(OPERATION_CONTRACTS) >= 13
         and all(item["event_contract"] == "AppGen-X" for item in OPERATION_CONTRACTS)
         and all(item["transaction_boundary"] == "owned_datastore_plus_outbox" for item in OPERATION_CONTRACTS)
-        and all(item["emitted_event"] for item in command_contracts)
+        and all(item["emitted_event"] for item in eventful_commands)
         and all(item["owned_tables"] and not item["read_tables"] for item in command_contracts)
         and all(item["emitted_event"] is None for item in query_contracts)
         and all(item["read_tables"] and not item["owned_tables"] for item in query_contracts),
@@ -70,9 +79,11 @@ def service_operation_contracts():
         "operations": operations,
         "command_operations": tuple(item["operation"] for item in command_contracts),
         "query_operations": tuple(item["operation"] for item in query_contracts),
+        "governance_commands": governance_commands,
         "contracts": OPERATION_CONTRACTS,
         "side_effects": (),
     }
+
 
 
 def operation_plan(operation_name, payload=None):
@@ -128,6 +139,7 @@ class EamService:
         raise AttributeError(operation_name)
 
 
+
 def service_operation_manifest():
     """Return the executable service operation surface."""
     contracts = service_operation_contracts()
@@ -143,6 +155,7 @@ def service_operation_manifest():
         "outbox_table": EVENT_CONTRACT["outbox_table"],
         "side_effects": (),
     }
+
 
 
 def smoke_test():

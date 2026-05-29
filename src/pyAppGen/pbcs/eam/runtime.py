@@ -10,6 +10,10 @@ import re
 EAM_ALLOWED_DATABASE_BACKENDS = ("postgresql", "mysql", "mariadb")
 EAM_EVENT_CONTRACT = "appgen_event_contract"
 EAM_REQUIRED_EVENT_TOPIC = "appgen.maintenance.events"
+EAM_REQUIRED_INBOX_TOPIC = "appgen.maintenance.inbox"
+EAM_OUTBOX_TABLE = "eam_maintenance_outbox"
+EAM_INBOX_TABLE = "eam_maintenance_inbox"
+EAM_DEAD_LETTER_TABLE = "eam_maintenance_dead_letter"
 EAM_OWNED_TABLES = (
     "equipment",
     "maintenance_plan",
@@ -48,9 +52,9 @@ EAM_CONSUMED_EVENT_TYPES = (
     "AssetLifecycleUpdated",
 )
 _EAM_RUNTIME_TABLES = (
-    "eam_appgen_outbox_event",
-    "eam_appgen_inbox_event",
-    "eam_dead_letter_event",
+    EAM_OUTBOX_TABLE,
+    EAM_INBOX_TABLE,
+    EAM_DEAD_LETTER_TABLE,
 )
 _EAM_ALLOWED_DEPENDENCIES = (
     "production_uptime_projection",
@@ -727,9 +731,9 @@ def eam_build_api_contract() -> dict:
         "configuration": ("EAM_DATABASE_URL", "EAM_EVENT_TOPIC", "EAM_RETRY_LIMIT", "EAM_DEFAULT_TIMEZONE"),
         "idempotent_handlers": {
             "key_pattern": "eam:<EventType>:<event_id>",
-            "inbox_table": "maintenance_inbox",
-            "dead_letter_table": "maintenance_dead_letter",
-            "outbox_table": "maintenance_outbox",
+            "inbox_table": EAM_INBOX_TABLE,
+            "dead_letter_table": EAM_DEAD_LETTER_TABLE,
+            "outbox_table": EAM_OUTBOX_TABLE,
         },
     }
 
@@ -914,6 +918,8 @@ def eam_build_release_evidence() -> dict:
         {"id": "api_event_contract", "ok": api["ok"] and api["event_contract"] == "AppGen-X"},
         {"id": "permissions_cover_commands", "ok": {"register_equipment", "complete_work_order", "receive_event"} <= set(permissions["action_permissions"])},
         {"id": "backend_allowlist", "ok": schema["datastore_backends"] == EAM_ALLOWED_DATABASE_BACKENDS},
+        {"id": "event_runtime_tables", "ok": _EAM_RUNTIME_TABLES == (EAM_OUTBOX_TABLE, EAM_INBOX_TABLE, EAM_DEAD_LETTER_TABLE)},
+        {"id": "event_topic_lock", "ok": api["required_event_topic"] == EAM_REQUIRED_EVENT_TOPIC and EAM_REQUIRED_INBOX_TOPIC.endswith(".inbox")},
         {"id": "no_shared_table_access", "ok": not schema["shared_table_access"] and not api["shared_table_access"]},
         {"id": "ui_workbench_evidence", "ok": "MaintenanceConfigurationPanel" in ui["fragments"] and not ui["stream_engine_picker_visible"]},
     )
@@ -1072,9 +1078,9 @@ def eam_build_workbench_view(state: dict, *, tenant: str) -> dict:
         "parameters_bound": tuple(sorted(state.get("parameters", {}))),
         "owned_tables": EAM_OWNED_TABLES,
         "runtime_tables": _EAM_RUNTIME_TABLES,
-        "outbox_table": "maintenance_outbox",
-        "inbox_table": "maintenance_inbox",
-        "dead_letter_table": "maintenance_dead_letter",
+        "outbox_table": EAM_OUTBOX_TABLE,
+        "inbox_table": EAM_INBOX_TABLE,
+        "dead_letter_table": EAM_DEAD_LETTER_TABLE,
         "binding_evidence": {
             "shared_table_access": False,
             "event_contract": EAM_EVENT_CONTRACT,
