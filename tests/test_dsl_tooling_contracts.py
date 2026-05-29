@@ -1789,7 +1789,7 @@ def test_lsp_rename_cli_audit_covers_safe_and_blocked_renames(tmp_path: Path) ->
     assert "format=appgen.lsp-rename.v1" in report["blocked_text"]
     assert "blocked=True" in report["blocked_text"]
     assert "blockers=1" in report["blocked_text"]
-    assert "migration=appgen.migration-plan.v1" in report["blocked_text"]
+    assert "migration_format=appgen.migration-plan.v1" in report["blocked_text"]
     assert "requires_approval=True" in report["blocked_text"]
     assert report["blocked_code"] == "AGX1101"
     assert report["blocked_fix"] == "add_rename_hint"
@@ -1849,11 +1849,11 @@ def test_appgen_lsp_subcommand_emits_json_and_text_contracts(tmp_path: Path) -> 
     assert f"symbols={len(payload['documentSymbol']['symbols'])}" in text_result.stdout
     assert f"workspace_symbols={len(payload['workspaceSymbol']['symbols'])}" in text_result.stdout
     assert "source_of_truth=appgen.semantic-model.v1" in text_result.stdout
-    assert f"completion_coverage={payload['completionCoverage']['format']}" in text_result.stdout
+    assert f"completion_coverage format={payload['completionCoverage']['format']}" in text_result.stdout
     assert f"missing={len(payload['completionCoverage']['missing'])}" in text_result.stdout
-    assert f"definition={payload['definition']['format']} ok={payload['definition']['ok']}" in text_result.stdout
-    assert f"references={payload['references']['format']} locations={len(payload['references']['locations'])}" in text_result.stdout
-    assert f"formatting={payload['formatting']['format']} edits={len(payload['formatting']['edits'])}" in text_result.stdout
+    assert f"definition format={payload['definition']['format']} ok={payload['definition']['ok']}" in text_result.stdout
+    assert f"references format={payload['references']['format']} locations={len(payload['references']['locations'])}" in text_result.stdout
+    assert f"formatting format={payload['formatting']['format']} edits={len(payload['formatting']['edits'])}" in text_result.stdout
     assert f"hover_items={len(payload['hover']['contents'])}" in text_result.stdout
 
 

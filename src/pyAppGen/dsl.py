@@ -2304,16 +2304,16 @@ def _emit_lsp_service_text(payload: dict) -> None:
     coverage = payload.get("completionCoverage", {})
     if coverage:
         missing = tuple(coverage.get("missing", ()))
-        print(f"completion_coverage={coverage.get('format')} missing={len(missing)}")
+        print(f"completion_coverage format={coverage.get('format')} missing={len(missing)}")
     definition = payload.get("definition") or {}
     if definition:
-        print(f"definition={definition.get('format')} ok={definition.get('ok')}")
+        print(f"definition format={definition.get('format')} ok={definition.get('ok')}")
     references = payload.get("references") or {}
     if references:
-        print(f"references={references.get('format')} locations={len(references.get('locations', ()))}")
+        print(f"references format={references.get('format')} locations={len(references.get('locations', ()))}")
     formatting = payload.get("formatting") or {}
     if formatting:
-        print(f"formatting={formatting.get('format')} edits={len(formatting.get('edits', ()))}")
+        print(f"formatting format={formatting.get('format')} edits={len(formatting.get('edits', ()))}")
     rename = payload.get("rename")
     if rename:
         diagnostics = tuple(rename.get("diagnostics", ()))
@@ -2323,7 +2323,7 @@ def _emit_lsp_service_text(payload: dict) -> None:
             f"rename ok={rename.get('ok')} format={rename.get('format')} "
             f"changed={rename.get('changed')} "
             f"blocked={rename.get('blocked', False)} diagnostics={len(diagnostics)} "
-            f"blockers={len(blockers)} migration={migration.get('format')} "
+            f"blockers={len(blockers)} migration_format={migration.get('format')} "
             f"requires_approval={migration.get('requires_approval', False)}"
         )
     hover = payload.get("hover") or {}
@@ -4422,7 +4422,7 @@ view InvoiceForm for Invoice {
         and "format=appgen.lsp-rename.v1" in blocked_text
         and "blocked=True" in blocked_text
         and "requires_approval=True" in blocked_text
-        and "migration=appgen.migration-plan.v1" in blocked_text
+        and "migration_format=appgen.migration-plan.v1" in blocked_text
         and "blockers=1" in blocked_text
     )
 

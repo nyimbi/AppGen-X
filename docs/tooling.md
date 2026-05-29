@@ -875,12 +875,13 @@ Without `--json`, `appgen lsp <file>` prints a concise service summary with
 the `appgen.lsp-service.v1` envelope format, semantic-model format, diagnostic
 count, completion count, code-action count, document-symbol count,
 workspace-symbol count, source-of-truth contract, hover evidence, completion
-coverage format and missing-source count, definition contract status, reference
-contract location count, formatting contract edit count, and rename status when
-a rename is requested. Rename text output includes the `appgen.lsp-rename.v1`
-contract format, whether the rename was blocked, blocker count, the nested
-`appgen.migration-plan.v1` migration-preview format, and whether that migration
-preview requires explicit approval.
+coverage format as a `format=...` marker and missing-source count, definition
+contract format/status, reference contract format/location count, formatting
+contract format/edit count, and rename status when a rename is requested.
+Rename text output includes the `appgen.lsp-rename.v1` contract format, whether
+the rename was blocked, blocker count, the nested `appgen.migration-plan.v1`
+migration-preview as `migration_format=...`, and whether that migration preview
+requires explicit approval.
 
 ### Capabilities
 
