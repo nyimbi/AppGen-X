@@ -1738,6 +1738,9 @@ def _emit_tooling_payload(payload: dict, *, as_json: bool) -> None:
     if payload.get("format") == "appgen.release-verifier-report.v1":
         _emit_release_verifier_text(payload)
         return
+    if payload.get("format") == "appgen.designer-sync-report.v1":
+        _emit_designer_sync_text(payload)
+        return
     if payload.get("format") == "appgen.parser-golden-audit.v1":
         status = "ok" if payload.get("ok") else "failed"
         print(
@@ -1888,6 +1891,35 @@ def _emit_release_verifier_text(payload: dict) -> None:
         print(f"artifact {artifact.get('kind')}: {artifact.get('path')}")
     for diagnostic in payload.get("diagnostics", ()):
         print(f"{diagnostic['severity']} {diagnostic['code']}: {diagnostic['message']}")
+
+
+def _emit_designer_sync_text(payload: dict) -> None:
+    status = "ok" if payload.get("ok") else "failed"
+    surfaces = tuple(payload.get("surfaces", ()))
+    visual_edit = payload.get("visual_edit") or {}
+    matrix = payload.get("visual_edit_matrix") or {}
+    print(
+        f"designer-sync {status}: semantic={payload.get('semantic_model_format')} "
+        f"surfaces={len(surfaces)}"
+    )
+    if surfaces:
+        print(f"surfaces {', '.join(surfaces)}")
+    if visual_edit:
+        changed = tuple(visual_edit.get("changed_surfaces", ()))
+        print(
+            f"visual-edit accepted={visual_edit.get('accepted')} "
+            f"round_trip={visual_edit.get('round_trip_ok')} "
+            f"changed={','.join(changed)} diff_lines={len(visual_edit.get('dsl_diff', ()))}"
+        )
+        for diagnostic in visual_edit.get("diagnostics", ()):
+            print(f"{diagnostic['severity']} {diagnostic['code']}: {diagnostic['message']}")
+    if matrix.get("format") == "appgen.designer-visual-edit-matrix.v1":
+        print(
+            f"visual-edit-matrix ok={matrix.get('ok')} "
+            f"cases={len(matrix.get('cases', ()))} gaps={len(matrix.get('blocking_gaps', ()))}"
+        )
+    for check in payload.get("checks", ()):
+        print(f"{'ok' if check.get('ok') else 'fail'} {check.get('check')}")
 
 
 def _graph_as_text(graph: dict, output_format: str) -> str:

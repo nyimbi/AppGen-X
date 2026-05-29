@@ -2445,7 +2445,7 @@ def test_designer_visual_edit_matrix_covers_required_studio_edit_paths() -> None
     assert matrix["blocking_gaps"] == ()
 
 
-def test_appgen_designer_sync_subcommand_emits_json_contract(tmp_path: Path) -> None:
+def test_appgen_designer_sync_subcommand_emits_json_and_text_contracts(tmp_path: Path) -> None:
     path = tmp_path / "finance.appgen"
     path.write_text(TOOLING_SAMPLE, encoding="utf-8")
     edit = {
@@ -2462,8 +2462,22 @@ def test_appgen_designer_sync_subcommand_emits_json_contract(tmp_path: Path) -> 
         text=True,
         capture_output=True,
     )
+    text_result = subprocess.run(
+        [sys.executable, "-m", "pyAppGen", "designer-sync", str(path)],
+        check=False,
+        cwd=Path(__file__).resolve().parents[1],
+        text=True,
+        capture_output=True,
+    )
     edit_result = subprocess.run(
         [sys.executable, "-m", "pyAppGen", "designer-sync", str(path), "--edit-json", json.dumps(edit), "--json"],
+        check=False,
+        cwd=Path(__file__).resolve().parents[1],
+        text=True,
+        capture_output=True,
+    )
+    edit_text_result = subprocess.run(
+        [sys.executable, "-m", "pyAppGen", "designer-sync", str(path), "--edit-json", json.dumps(edit)],
         check=False,
         cwd=Path(__file__).resolve().parents[1],
         text=True,
@@ -2488,10 +2502,18 @@ def test_appgen_designer_sync_subcommand_emits_json_contract(tmp_path: Path) -> 
     payload = json.loads(result.stdout)
     assert payload["format"] == "appgen.designer-sync-report.v1"
     assert payload["projections"]["dsl_editor"]["semantic_model_format"] == "appgen.semantic-model.v1"
+    assert text_result.returncode == 0, text_result.stderr
+    assert text_result.stdout.startswith("designer-sync ok: semantic=appgen.semantic-model.v1")
+    assert "surfaces=10" in text_result.stdout
+    assert "form_designer" in text_result.stdout
+    assert "visual-edit-matrix ok=True" in text_result.stdout
     assert edit_result.returncode == 0, edit_result.stderr
     edit_payload = json.loads(edit_result.stdout)
     assert edit_payload["visual_edit"]["accepted"] is True
     assert "sync_note" in edit_payload["visual_edit"]["patched_source"]
+    assert edit_text_result.returncode == 0, edit_text_result.stderr
+    assert "visual-edit accepted=True round_trip=True" in edit_text_result.stdout
+    assert "changed=database_designer" in edit_text_result.stdout
     assert invalid_edit_result.returncode == 2
     assert "invalid JSON for --edit-json" in invalid_edit_result.stderr
     assert non_object_edit_result.returncode == 2
