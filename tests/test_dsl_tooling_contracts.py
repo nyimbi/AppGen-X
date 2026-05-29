@@ -3566,6 +3566,10 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert non_goal_cases["reject_runtime_picker_fields"]["picker_fields_removed"] is True
     assert non_goal_cases["reject_generated_code_bypass_prompt"]["accepted"] is False
     assert non_goal_cases["reject_generated_code_bypass_prompt"]["patch_bytes"] == 0
+    assert non_goal_cases["reject_lint_semantic_bypass_prompt"]["patch_bytes"] == 0
+    assert "AGX1201" in non_goal_cases["reject_lint_semantic_bypass_prompt"]["diagnostic_codes"]
+    assert non_goal_cases["reject_release_evidence_bypass_prompt"]["patch_bytes"] == 0
+    assert "AGX1201" in non_goal_cases["reject_release_evidence_bypass_prompt"]["diagnostic_codes"]
     assert report["doc_anchor_integrity"]["format"] == "appgen.tooling-doc-anchor-audit.v1"
     assert report["doc_anchor_integrity"]["ok"] is True
     assert report["doc_anchor_integrity"]["missing_sections"] == ()

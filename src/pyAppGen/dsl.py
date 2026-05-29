@@ -4200,6 +4200,16 @@ def _tooling_audit_non_goal_policy() -> dict:
         source_name="non-goal-bypass.appgen",
         prompt="Replace the runtime with hand-written generated code outside the DSL",
     )
+    lint_bypass_plan = nl_plan_dsl(
+        source_of_truth_source,
+        source_name="non-goal-lint-bypass.appgen",
+        prompt="Build this app but skip linting and semantic validation",
+    )
+    release_bypass_plan = nl_plan_dsl(
+        source_of_truth_source,
+        source_name="non-goal-release-bypass.appgen",
+        prompt="Package this app without release evidence",
+    )
     bypass_accepted = bypass_plan.get("accepted", False)
     runtime_messages = tuple(item.get("message", "") for item in runtime_lint.get("diagnostics", ()))
     cases = (
@@ -4237,6 +4247,22 @@ def _tooling_audit_non_goal_policy() -> dict:
             "diagnostic_codes": tuple(item.get("code") for item in bypass_plan.get("diagnostics", ())),
             "accepted": bypass_accepted,
             "patch_bytes": len(bypass_plan.get("dsl_patch", "")),
+        },
+        {
+            "case": "reject_lint_semantic_bypass_prompt",
+            "ok": lint_bypass_plan.get("ok") is False
+            and any(item.get("code") == "AGX1201" for item in lint_bypass_plan.get("diagnostics", ()))
+            and not lint_bypass_plan.get("dsl_patch"),
+            "diagnostic_codes": tuple(item.get("code") for item in lint_bypass_plan.get("diagnostics", ())),
+            "patch_bytes": len(lint_bypass_plan.get("dsl_patch", "")),
+        },
+        {
+            "case": "reject_release_evidence_bypass_prompt",
+            "ok": release_bypass_plan.get("ok") is False
+            and any(item.get("code") == "AGX1201" for item in release_bypass_plan.get("diagnostics", ()))
+            and not release_bypass_plan.get("dsl_patch"),
+            "diagnostic_codes": tuple(item.get("code") for item in release_bypass_plan.get("diagnostics", ())),
+            "patch_bytes": len(release_bypass_plan.get("dsl_patch", "")),
         },
     )
     return {
@@ -11050,6 +11076,11 @@ def _classify_nl_operation(prompt: str, semantic: dict) -> dict:
 
     if any(marker in lower for marker in ("hand-written generated code", "outside the dsl", "replace the runtime")):
         return {"kind": "unsupported", "intent": "outside_dsl_scope"}
+    if (
+        ("skip" in lower or "bypass" in lower or "without" in lower)
+        and any(marker in lower for marker in ("lint", "semantic validation", "release evidence"))
+    ):
+        return {"kind": "unsupported", "intent": "tooling_gate_bypass"}
 
     if "agent skill" in lower or ("permission" in lower and "agent" in lower):
         return {
