@@ -1,6 +1,9 @@
 """Enterprise Search Vector PBC implementation package."""
 
+from . import release_evidence as release_evidence
+from . import standalone as standalone
 from .manifest import PBC_MANIFEST
+from .release_evidence import build_release_evidence
 
 from ..source_contract import source_pbc_package_contract
 from ..source_contract import source_package_metadata
@@ -42,6 +45,10 @@ from .runtime import enterprise_search_vector_screen_search_policy
 from .runtime import enterprise_search_vector_set_parameter
 from .runtime import enterprise_search_vector_simulate_counterfactual_ranking
 from .runtime import enterprise_search_vector_verify_owned_table_boundary
+from .standalone import bootstrap_standalone_state
+from .standalone import standalone_application_manifest
+from .standalone import standalone_workflow_catalog
+from .standalone import validate_standalone_application
 from .ui import ENTERPRISE_SEARCH_VECTOR_UI_FRAGMENT_KEYS
 from .ui import enterprise_search_vector_render_workbench
 from .ui import enterprise_search_vector_ui_contract
@@ -60,11 +67,13 @@ def implementation_contract() -> dict:
         "api_contract": enterprise_search_vector_build_api_contract(),
         "schema_contract": enterprise_search_vector_build_schema_contract(),
         "service_contract": enterprise_search_vector_build_service_contract(),
-        "release_evidence": enterprise_search_vector_build_release_evidence(),
+        "release_evidence": build_release_evidence(),
         "permissions_contract": enterprise_search_vector_permissions_contract(),
         "owned_tables": ENTERPRISE_SEARCH_VECTOR_OWNED_TABLES,
         "runtime_tables": ENTERPRISE_SEARCH_VECTOR_RUNTIME_TABLES,
         "allowed_database_backends": ENTERPRISE_SEARCH_VECTOR_ALLOWED_DATABASE_BACKENDS,
+        "standalone_application": standalone_application_manifest(),
+        "standalone_workflows": standalone_workflow_catalog(),
     }
 
 
