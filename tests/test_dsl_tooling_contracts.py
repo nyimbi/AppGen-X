@@ -575,7 +575,7 @@ def test_appgen_validate_subcommand_enforces_requested_targets(tmp_path: Path) -
     assert bad_payload["requested_targets"] == ["web", "mobile"]
     assert bad_payload["checks"][-1]["missing_targets"] == ["mobile"]
     assert bad_text_result.returncode == 1
-    assert bad_text_result.stdout.startswith("validate failed: requested=web,mobile")
+    assert bad_text_result.stdout.startswith("validate failed: format=appgen.validate-report.v1 requested=web,mobile")
     assert f"app_targets={','.join(bad_payload['app_targets'])}" in bad_text_result.stdout
     assert f"semantic={bad_payload['semantic_model']['format']}" in bad_text_result.stdout
     assert "fail target_compatibility" in bad_text_result.stdout
@@ -3339,7 +3339,7 @@ view CustomerForm for Customer {
     blocked_payload = json.loads(blocked.stdout)
     assert "lint_warnings" in blocked_payload["blocking_gaps"]
     assert blocked_text.returncode == 1, blocked_text.stderr
-    assert blocked_text.stdout.startswith("generate failed: generated=False")
+    assert blocked_text.stdout.startswith("generate failed: format=appgen.generate-report.v1 generated=False")
     assert f"targets={','.join(blocked_payload['targets'])}" in blocked_text.stdout
     assert f"artifacts={len(blocked_payload['artifacts'])}" in blocked_text.stdout
     assert f"semantic={blocked_payload['validation']['semantic_model']['format']}" in blocked_text.stdout
@@ -4124,7 +4124,7 @@ def test_cli_contracts_cover_text_summaries_exit_codes_and_bad_arguments(tmp_pat
     assert "graph-kinds er, lookup, workflow, handler, pbc, security, agent, deployment, package" in graph_suite_text.stdout
     assert "graph-formats json, mermaid, dot" in graph_suite_text.stdout
     assert validate_text.returncode == 0, validate_text.stderr
-    assert validate_text.stdout.startswith("validate ok: requested=web")
+    assert validate_text.stdout.startswith("validate ok: format=appgen.validate-report.v1 requested=web")
     assert "app_targets=web,mobile,desktop" in validate_text.stdout
     assert "format=appgen.validate-report.v1" in validate_text.stdout
     assert "semantic=appgen.semantic-model.v1" in validate_text.stdout
@@ -4149,7 +4149,7 @@ def test_cli_contracts_cover_text_summaries_exit_codes_and_bad_arguments(tmp_pat
     assert "report=appgen.designer-sync-report.v1" in doctor_text.stdout
     assert "report=appgen.vscode-extension-audit.v1" in doctor_text.stdout
     assert generate_text.returncode == 0, generate_text.stderr
-    assert "generate ok: generated=True" in generate_text.stdout
+    assert "generate ok: format=appgen.generate-report.v1 generated=True" in generate_text.stdout
     assert "targets=web" in generate_text.stdout
     assert "format=appgen.generate-report.v1" in generate_text.stdout
     assert "semantic=appgen.semantic-model.v1" in generate_text.stdout

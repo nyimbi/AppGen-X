@@ -1840,9 +1840,10 @@ def _emit_tooling_payload(payload: dict, *, as_json: bool) -> None:
         app_targets = tuple(payload.get("app_targets", ()))
         semantic = payload.get("semantic_model", {})
         print(
-            f"validate {status}: requested={','.join(requested) or 'default'} "
+            f"validate {status}: format={payload.get('format')} "
+            f"requested={','.join(requested) or 'default'} "
             f"app_targets={','.join(app_targets) or 'none'} "
-            f"format={payload.get('format')} semantic={semantic.get('format')}"
+            f"semantic={semantic.get('format')}"
         )
         for check in payload.get("checks", ()):
             print(f"{'ok' if check['ok'] else 'fail'} {check['check']}")
@@ -1860,9 +1861,9 @@ def _emit_tooling_payload(payload: dict, *, as_json: bool) -> None:
         status = "ok" if payload.get("ok") else "failed"
         targets = tuple(payload.get("targets", ()))
         print(
-            f"generate {status}: generated={payload.get('generated', False)} "
+            f"generate {status}: format={payload.get('format')} "
+            f"generated={payload.get('generated', False)} "
             f"targets={','.join(targets) or 'default'} artifacts={len(payload.get('artifacts', ()))} "
-            f"format={payload.get('format')} "
             f"semantic={payload.get('semantic_model_format') or payload.get('validation', {}).get('semantic_model', {}).get('format')}"
         )
         output_dir = payload.get("output_dir")
