@@ -2974,7 +2974,19 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             diagnostics["ok"] and diagnostic_fixtures["ok"],
             "Diagnostic registry and golden fixture audit cover required AGX codes.",
             "docs/tooling.md#diagnostic-specification",
-            {"catalog": diagnostics.get("format"), "fixtures": diagnostic_fixtures.get("format")},
+            {
+                "catalog": diagnostics.get("format"),
+                "fixtures": diagnostic_fixtures.get("format"),
+                "docs_urls": tuple(
+                    sorted(
+                        {
+                            item.get("docs_url")
+                            for item in diagnostics.get("diagnostics", ())
+                            if isinstance(item.get("docs_url"), str)
+                        }
+                    )
+                ),
+            },
         ),
         _tooling_audit_check(
             "non_goal_policy_guards",
@@ -5387,6 +5399,7 @@ def _tooling_audit_explain_cli_formats(tmp: Path, source: str) -> dict:
         stdout = output.getvalue().strip()
         json_ok = False
         text_ok = False
+        payload = {}
         if case_id in {"diagnostic_json", "field_symbol_json", "qualified_handler_json"}:
             try:
                 payload = json.loads(stdout)
@@ -5414,20 +5427,20 @@ def _tooling_audit_explain_cli_formats(tmp: Path, source: str) -> dict:
                 )
         elif case_id == "field_symbol_text":
             text_ok = (
-                stdout.startswith("explain symbol ok: Invoice.customer_id")
+                stdout.startswith("explain symbol ok: format=appgen.explain-report.v1 Invoice.customer_id")
                 and "table.Invoice.customer_id: field customer_id" in stdout
                 and "parent: table.Invoice" in stdout
             )
         elif case_id == "diagnostic_text":
             text_ok = (
-                stdout.startswith("explain diagnostic ok: AGX0303")
+                stdout.startswith("explain diagnostic ok: format=appgen.explain-report.v1 AGX0303")
                 and "AGX0303: Unresolved lookup path" in stdout
                 and "A lookup path must resolve through declared relationships." in stdout
                 and "docs: docs/tooling.md#diagnostic-specification" in stdout
             )
         elif case_id == "qualified_handler_text":
             text_ok = (
-                stdout.startswith("explain handler ok: InvoiceForm.Save")
+                stdout.startswith("explain handler ok: format=appgen.explain-report.v1 InvoiceForm.Save")
                 and "matches:" in stdout
                 and "InvoiceForm.Save ->" in stdout
             )
@@ -5436,6 +5449,8 @@ def _tooling_audit_explain_cli_formats(tmp: Path, source: str) -> dict:
                 "case": case_id,
                 "ok": exit_code == 0 and (json_ok or text_ok),
                 "exit_code": exit_code,
+                "has_report_format": "format=appgen.explain-report.v1" in stdout
+                or payload.get("format") == "appgen.explain-report.v1",
                 "stdout_prefix": stdout[:120],
             }
         )

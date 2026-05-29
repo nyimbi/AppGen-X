@@ -708,7 +708,10 @@ Default explanations print the `appgen.explain-report.v1` envelope format.
 Default symbol explanations print the resolved symbol id, kind, parent, and
 reference count. Default diagnostic explanations print the diagnostic code,
 title, summary, and documentation anchor. Default handler explanations print
-matching handler edges.
+matching handler edges. `appgen.explain-cli-audit.v1` proves the symbol,
+diagnostic, and handler text modes all include the same `format=...` envelope
+marker as JSON mode, so release logs and agents can identify explain contracts
+without parsing prose.
 
 ### `appgen doctor`
 

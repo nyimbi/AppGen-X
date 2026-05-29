@@ -2892,6 +2892,7 @@ def test_diagnostic_catalog_and_fixture_audit_cover_required_agx_codes() -> None
     assert all(set(catalog["catalog_fields"]) <= set(item) for item in catalog["diagnostics"])
     assert set(catalog["required_codes"]) == set(catalog["covered_fixture_codes"])
     assert set(catalog["required_codes"]) <= set(audit["covered_codes"])
+    assert "docs/tooling.md#linter-rules-by-domain" in appgen_dsl._tooling_audit_doc_refs(catalog["diagnostics"])
     assert all(not fixture["shape_gaps"] for fixture in audit["fixtures"])
     assert all(not fixture["severity_gaps"] for fixture in audit["fixtures"])
     assert {
@@ -3799,6 +3800,7 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert graph_check["detail"]["suite_cli"]["text_has_formats"] is True
     assert graph_check["detail"]["explain_cli"]["format"] == "appgen.explain-cli-audit.v1"
     assert graph_check["detail"]["explain_cli"]["ok"] is True
+    assert all(case["has_report_format"] is True for case in graph_check["detail"]["explain_cli"]["cases"])
     assert {
         "field_symbol_text",
         "field_symbol_json",
@@ -4214,6 +4216,16 @@ def test_explain_cli_audit_covers_text_and_json_modes(tmp_path: Path) -> None:
         "qualified_handler_json",
     } <= set(cases)
     assert all(case["exit_code"] == 0 for case in cases.values())
+    assert all(case["has_report_format"] is True for case in cases.values())
+    assert cases["field_symbol_text"]["stdout_prefix"].startswith(
+        "explain symbol ok: format=appgen.explain-report.v1 Invoice.customer_id"
+    )
+    assert cases["diagnostic_text"]["stdout_prefix"].startswith(
+        "explain diagnostic ok: format=appgen.explain-report.v1 AGX0303"
+    )
+    assert cases["qualified_handler_text"]["stdout_prefix"].startswith(
+        "explain handler ok: format=appgen.explain-report.v1 InvoiceForm.Save"
+    )
 
 
 def test_graph_cli_audit_covers_documented_graph_examples(tmp_path: Path) -> None:
