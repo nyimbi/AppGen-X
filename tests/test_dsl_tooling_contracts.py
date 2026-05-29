@@ -2483,6 +2483,27 @@ def test_release_verifier_reports_blocking_gaps_for_missing_mobile_package_metad
     assert "smoke_launch_not_declared" in report["reports"]["mobile"]["blocking_gaps"]
 
 
+def test_appgen_verify_text_reports_target_blocking_gaps(tmp_path: Path) -> None:
+    source_path = tmp_path / "missing-mobile-package.appgen"
+    source_path.write_text(TOOLING_SAMPLE, encoding="utf-8")
+
+    result = subprocess.run(
+        [sys.executable, "-m", "pyAppGen", "verify", str(source_path), "--target", "mobile"],
+        check=False,
+        cwd=Path(__file__).resolve().parents[1],
+        text=True,
+        capture_output=True,
+    )
+
+    assert result.returncode == 1, result.stderr
+    assert result.stdout.startswith("release-verify failed: targets=mobile written=0")
+    assert "release-evidence appgen.release-evidence-bundle.v1" in result.stdout
+    assert "graph-suite appgen.graph-suite-report.v1: kinds=9 formats=3" in result.stdout
+    assert "fail mobile gaps=" in result.stdout
+    assert "package_metadata_exists" in result.stdout
+    assert "smoke_launch_not_declared" in result.stdout
+
+
 def test_pbc_verifier_accepts_catalog_package_with_release_evidence() -> None:
     report = pbc_verifier_report("gl_core")
 
