@@ -1118,7 +1118,9 @@ metadata, syntax grammar, command contributions, LSP providers, diagnostics
 collection, command activation events, command palette membership, CLI command
 configuration, CLI-backed command argument contracts, and graph/artifact/PBC
 webview renderers must all be present before the extension is counted as
-tooling-complete.
+tooling-complete. The audit also reports command, activation-event,
+provider-marker, CLI-contract-marker, and webview-marker counts so release
+evidence captures the editor surface breadth, not only pass/fail booleans.
 
 ### AppGen-X Studio / Monaco
 

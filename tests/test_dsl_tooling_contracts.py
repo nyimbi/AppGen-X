@@ -2292,6 +2292,10 @@ def test_vscode_extension_contract_wires_appgen_language_server_and_commands() -
     assert audit["checks"]["command_palette"] is True
     assert audit["checks"]["cli_command_configuration"] is True
     assert {".appgen", ".ag", ".ags"} <= set(audit["language_extensions"])
+    assert audit["required_command_count"] == len(audit["required_commands"])
+    assert audit["required_command_count"] >= 10
+    assert audit["command_palette_count"] >= audit["required_command_count"]
+    assert audit["activation_event_count"] == len(audit["activation_events"])
     assert "onLanguage:appgen" in audit["activation_events"]
     assert {f"onCommand:{command}" for command in audit["required_commands"]} <= set(audit["activation_events"])
     assert set(audit["required_commands"]) <= set(audit["command_palette"])
@@ -2299,6 +2303,10 @@ def test_vscode_extension_contract_wires_appgen_language_server_and_commands() -
     assert audit["checks"]["diagnostics_collection"] is True
     assert audit["checks"]["cli_command_contracts"] is True
     assert audit["checks"]["webview_renderers"] is True
+    assert audit["provider_marker_count"] == len(audit["provider_markers"])
+    assert audit["provider_marker_count"] >= 10
+    assert audit["command_cli_marker_count"] == len(audit["command_cli_markers"])
+    assert audit["webview_marker_count"] == len(audit["webview_markers"])
     assert '["generate", file, "--out", out, "--allow-warnings", "--json"]' in audit["command_cli_markers"]
 
 

@@ -4844,13 +4844,19 @@ def _tooling_audit_vscode_extension(root: Path) -> dict:
         "checks": checks,
         "commands": tuple(sorted(commands)),
         "required_commands": tuple(sorted(required_commands)),
+        "required_command_count": len(required_commands),
+        "command_palette_count": len(command_palette),
         "command_palette": tuple(sorted(command_palette)),
         "configuration_properties": tuple(sorted(configuration_properties)),
         "language_extensions": language_extensions,
         "activation_events": activation_events,
+        "activation_event_count": len(activation_events),
         "provider_markers": provider_markers,
+        "provider_marker_count": len(provider_markers),
         "command_cli_markers": command_cli_markers,
+        "command_cli_marker_count": len(command_cli_markers),
         "webview_markers": webview_markers,
+        "webview_marker_count": len(webview_markers),
     }
 
 
