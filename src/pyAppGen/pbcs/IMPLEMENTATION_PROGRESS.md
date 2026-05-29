@@ -53,6 +53,7 @@ This file tracks the branch-isolated implementation pass for standalone Packaged
 | cross_border_trade | `pbc/cross-border-trade-standalone` | `5d7ceb09` | Compile, 14 tests, spec/source/release/smoke true. |
 | order_routing_optimization | `pbc/order-routing-optimization-standalone` | `44a80fbd` | Compile, 14 tests, spec/source/release/smoke true. |
 | customer_360 | `pbc/customer-360-standalone` | `f838821d` | Compile, 11 tests, spec/source/release/smoke true. |
+| dam_core | `pbc/dam-core-standalone` | `ec976c9e` | Compile, 16 tests, spec/source/release/smoke true. |
 | lead_opportunity | `pbc/lead-opportunity-standalone` | `1d0b2cc4` | Compile, 12 tests, spec/source/release/smoke true. |
 | service_ticketing | `pbc/service-ticketing-standalone` | `6952f1e9` | Compile, 12 tests, spec/source/release/smoke true. |
 | notifications | `pbc/notifications-standalone` | `4f48b505` | Compile, 12 tests, spec/source/release/smoke true. |
@@ -67,7 +68,7 @@ This file tracks the branch-isolated implementation pass for standalone Packaged
 
 ## In Flight
 
-Supply-chain/HCM standalone pass is continuing. `wms_core`, `procurement_sourcing`, `transportation_management`, `dom`, `global_inventory_visibility`, `personnel_identity`, `time_labor`, and `payroll_engine` are pushed; quality_assurance is pushed; mrp_engine is pushed; asset_lifecycle, production_control, talent_onboarding, product_catalog_pim, price_promotion_engine, checkout_processing, payment_orchestration, subscription_billing, returns_reverse_logistics, cross_border_trade, order_routing_optimization, customer_360, lead_opportunity, service_ticketing, notifications, predictive_demand, and fraud_anomaly_detection are pushed; next slices continue through content, relationship, and intelligence PBCs.
+Supply-chain/HCM standalone pass is continuing. `wms_core`, `procurement_sourcing`, `transportation_management`, `dom`, `global_inventory_visibility`, `personnel_identity`, `time_labor`, and `payroll_engine` are pushed; quality_assurance is pushed; mrp_engine is pushed; asset_lifecycle, production_control, talent_onboarding, product_catalog_pim, price_promotion_engine, checkout_processing, payment_orchestration, subscription_billing, returns_reverse_logistics, cross_border_trade, order_routing_optimization, customer_360, lead_opportunity, service_ticketing, notifications, predictive_demand, fraud_anomaly_detection, and dam_core are pushed; next slices continue through content, relationship, and intelligence PBCs.
 
 ## Next Selection Rule
 
