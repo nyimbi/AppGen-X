@@ -1952,7 +1952,7 @@ def _emit_tooling_payload(payload: dict, *, as_json: bool) -> None:
         for check in payload.get("checks", ()):
             detail = check.get("detail", {})
             report_format = detail.get("report_format")
-            suffix = f" report={report_format}" if report_format else ""
+            suffix = f" detail_format={report_format}" if report_format else ""
             print(f"{'ok' if check['ok'] else 'fail'} {check['check']}{suffix}: {check.get('message', '')}")
         return
     if payload.get("format") == "appgen.component-publish-report.v1":

@@ -4141,13 +4141,13 @@ def test_cli_contracts_cover_text_summaries_exit_codes_and_bad_arguments(tmp_pat
     assert doctor_text.returncode == 0, doctor_text.stderr
     assert doctor_text.stdout.startswith("doctor ok: format=appgen.doctor-report.v1 checks=")
     assert "blocking_gaps=0" in doctor_text.stdout
-    assert "report=appgen.parser-golden-audit.v1" in doctor_text.stdout
-    assert "report=appgen.cli-alias-contract.v1" in doctor_text.stdout
-    assert "report=appgen.completion-coverage.v1" in doctor_text.stdout
-    assert "report=appgen.symbol-coverage.v1" in doctor_text.stdout
-    assert "report=appgen.module-boundary-audit.v1" in doctor_text.stdout
-    assert "report=appgen.designer-sync-report.v1" in doctor_text.stdout
-    assert "report=appgen.vscode-extension-audit.v1" in doctor_text.stdout
+    assert "detail_format=appgen.parser-golden-audit.v1" in doctor_text.stdout
+    assert "detail_format=appgen.cli-alias-contract.v1" in doctor_text.stdout
+    assert "detail_format=appgen.completion-coverage.v1" in doctor_text.stdout
+    assert "detail_format=appgen.symbol-coverage.v1" in doctor_text.stdout
+    assert "detail_format=appgen.module-boundary-audit.v1" in doctor_text.stdout
+    assert "detail_format=appgen.designer-sync-report.v1" in doctor_text.stdout
+    assert "detail_format=appgen.vscode-extension-audit.v1" in doctor_text.stdout
     assert generate_text.returncode == 0, generate_text.stderr
     assert "generate ok: format=appgen.generate-report.v1 generated=True" in generate_text.stdout
     assert "targets=web" in generate_text.stdout

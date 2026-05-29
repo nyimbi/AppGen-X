@@ -716,8 +716,9 @@ short command alias, editor scaffold, command palette entries, language
 configuration, syntax grammar, and LSP provider registrations are verified from
 the same command used in CI. The default text output prints the doctor report
 format, total check count, blocking gap count, each check status, and embedded
-report formats such as parser-golden, completion coverage, symbol coverage, CLI
-alias contract, module boundaries, designer sync, and extension audits.
+audit formats as `detail_format=...` markers for parser-golden, completion
+coverage, symbol coverage, CLI alias contract, module boundaries, designer
+sync, and extension audits.
 
 ### `appgen tooling-audit`
 
