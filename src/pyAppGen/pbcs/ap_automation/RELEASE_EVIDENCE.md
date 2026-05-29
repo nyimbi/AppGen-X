@@ -2,28 +2,29 @@
 
 Directory: `pbcs/ap_automation`
 
-Generated checks:
-- stable_manifest
-- source_package_directory
-- owned_schema_only
-- migration_artifact
-- model_artifact
-- domain_capability_depth
-- workflow_coverage
-- policy_control_coverage
-- automation_loop_coverage
-- analytics_coverage
-- advanced_domain_not_required
-- service_commands
-- api_routes
-- event_outbox_inbox
-- typed_emitted_events
-- typed_consumed_events
-- idempotent_handlers
-- retry_dead_letter_policy
-- ui_fragments
-- permissions
-- configuration_schema
-- seed_data
-- self_registration_metadata
-- contract_tests
+## Standalone surfaces covered
+
+- Runtime workflows in `runtime.py`
+- Repository bindings in `repository.py`
+- Database-backed forms in `forms.py`
+- Guided AP wizards in `wizards.py`
+- Control library in `controls.py`
+- UI/workbench wiring in `ui.py`
+- Assistant contribution in `agent.py`
+- Package release validation in `release_evidence.py`
+
+## Release checks
+
+- owned schema depth and migration coverage
+- service command depth
+- AppGen-X event contract lock
+- permissions covering command execution
+- backend allowlist
+- no shared-table access
+- execution service bound
+- UI contract bound
+- agent contribution bound
+- repository bound
+- forms bound
+- wizards bound
+- controls bound

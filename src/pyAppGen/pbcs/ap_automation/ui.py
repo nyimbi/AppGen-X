@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from .controls import control_contract
+from .forms import form_contract
 from .runtime import AP_AUTOMATION_ALLOWED_DATABASE_BACKENDS
 from .runtime import AP_AUTOMATION_CONSUMED_EVENT_TYPES
 from .runtime import AP_AUTOMATION_EMITTED_EVENT_TYPES
@@ -9,6 +11,7 @@ from .runtime import AP_AUTOMATION_OWNED_TABLES
 from .runtime import AP_AUTOMATION_REQUIRED_EVENT_TOPIC
 from .runtime import AP_AUTOMATION_RUNTIME_TABLES
 from .runtime import ap_automation_permissions_contract
+from .wizards import wizard_contract
 
 
 AP_AUTOMATION_UI_FRAGMENT_KEYS = (
@@ -29,11 +32,17 @@ AP_AUTOMATION_UI_FRAGMENT_KEYS = (
     "ApRuleStudio",
     "ApParameterConsole",
     "ApConfigurationPanel",
+    "ApFormsHub",
+    "ApWizardHub",
+    "ApControlsHub",
 )
 
 
 def ap_automation_ui_contract() -> dict:
     permissions = ap_automation_permissions_contract()
+    forms = form_contract()
+    wizards = wizard_contract()
+    controls = control_contract()
     return {
         "format": "appgen.ap-automation-ui-contract.v1",
         "ok": True,
@@ -53,6 +62,9 @@ def ap_automation_ui_contract() -> dict:
             "/workbench/pbcs/ap_automation/rules",
             "/workbench/pbcs/ap_automation/parameters",
             "/workbench/pbcs/ap_automation/configuration",
+            "/workbench/pbcs/ap_automation/forms",
+            "/workbench/pbcs/ap_automation/wizards",
+            "/workbench/pbcs/ap_automation/controls",
         ),
         "panels": (
             {
@@ -102,9 +114,30 @@ def ap_automation_ui_contract() -> dict:
                     "configure_runtime",
                 ),
             },
+            {
+                "key": "forms",
+                "fragment": "ApFormsHub",
+                "binds_to": tuple(form["form_id"] for form in forms["forms"]),
+                "commands": tuple(form["submit_action"] for form in forms["forms"]),
+            },
+            {
+                "key": "wizards",
+                "fragment": "ApWizardHub",
+                "binds_to": tuple(wizard["wizard_id"] for wizard in wizards["wizards"]),
+                "commands": tuple(wizard["completion_action"] for wizard in wizards["wizards"]),
+            },
+            {
+                "key": "controls",
+                "fragment": "ApControlsHub",
+                "binds_to": tuple(control["control_id"] for control in controls["controls"]),
+                "commands": ("run_control_tests",),
+            },
         ),
         "action_permissions": permissions["action_permissions"],
         "permissions_contract": permissions,
+        "forms": forms["forms"],
+        "wizards": wizards["wizards"],
+        "controls": controls["controls"],
         "configuration_editor": {
             "required_fields": (
                 "database_backend",
@@ -202,6 +235,9 @@ def ap_automation_render_workbench(
             "value": sum(statement.get("exception_count", 0) for statement in state.get("vendor_statements", {}).values()),
             "fragment": "VendorStatementReconciliation",
         },
+        {"key": "forms", "value": len(contract["forms"]), "fragment": "ApFormsHub"},
+        {"key": "wizards", "value": len(contract["wizards"]), "fragment": "ApWizardHub"},
+        {"key": "controls", "value": len(contract["controls"]), "fragment": "ApControlsHub"},
         {"key": "rules", "value": len(state.get("rules", {})), "fragment": "ApRuleStudio"},
         {"key": "inbox", "value": len(state.get("inbox", ())), "fragment": "PaymentScheduleConsole"},
         {"key": "dead_letter", "value": len(state.get("dead_letter", ())), "fragment": "ExceptionTriageBoard"},
@@ -220,11 +256,15 @@ def ap_automation_render_workbench(
         "configuration_bound": bool(state.get("configuration", {}).get("ok")),
         "rules_bound": tuple(sorted(state.get("rules", {}))),
         "parameters_bound": tuple(sorted(state.get("parameters", {}))),
+        "guided_flows": tuple(wizard["wizard_id"] for wizard in contract["wizards"]),
+        "data_entry_forms": tuple(form["form_id"] for form in contract["forms"]),
+        "control_checks": tuple(control["control_id"] for control in contract["controls"]),
         "event_outbox_count": len(state.get("outbox", ())),
         "event_inbox_count": len(state.get("inbox", ())),
         "dead_letter_count": len(state.get("dead_letter", ())),
         "binding_evidence": contract["binding_evidence"],
     }
+
 
 class _AppGenSmokeState(dict):
     """Tolerant empty state for side-effect-free workbench smoke rendering."""
@@ -233,6 +273,7 @@ class _AppGenSmokeState(dict):
         value = _AppGenSmokeState()
         self[key] = value
         return value
+
 
 
 def _appgen_smoke_state():
@@ -247,6 +288,7 @@ def _appgen_smoke_state():
         "dead_letters": (),
         "events": (),
     })
+
 
 
 def smoke_test():
@@ -286,6 +328,9 @@ def smoke_test():
         and bool(contract.get("parameter_editor"))
         and bool(rule_editor)
         and bool(event_surfaces)
+        and bool(contract.get("forms"))
+        and bool(contract.get("wizards"))
+        and bool(contract.get("controls"))
         and ("outbox_status" in event_surfaces or "contract" in event_surfaces)
         and binding_evidence.get("shared_table_access") is not True
         and not binding_evidence.get("shared_tables", ()),
