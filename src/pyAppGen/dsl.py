@@ -2167,7 +2167,10 @@ def _emit_release_verifier_text(payload: dict) -> None:
     status = "ok" if payload.get("ok") else "failed"
     targets = tuple(payload.get("targets", ()))
     written = tuple(payload.get("written_artifacts", ()))
-    print(f"release-verify {status}: targets={','.join(targets)} written={len(written)}")
+    print(
+        f"release-verify {status}: format={payload.get('format')} "
+        f"targets={','.join(targets)} written={len(written)}"
+    )
     evidence = payload.get("evidence_bundle", {})
     if evidence.get("format"):
         print(f"release-evidence {evidence.get('format')}: artifacts={len(evidence.get('artifacts', ()))}")
