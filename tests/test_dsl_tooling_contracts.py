@@ -1291,6 +1291,28 @@ def test_lsp_code_action_cli_audit_covers_missing_operation_and_lookup_directive
     assert cases["add_lookup_directive"]["lint_ok"] is True
 
 
+def test_lsp_rename_cli_audit_covers_safe_and_blocked_renames(tmp_path: Path) -> None:
+    report = appgen_dsl._tooling_audit_lsp_rename_cli(tmp_path, appgen_dsl._tooling_audit_sample_dsl())
+
+    assert report["format"] == "appgen.lsp-rename-cli-audit.v1"
+    assert report["ok"] is True
+    assert report["safe_ok"] is True
+    assert report["rename_format"] == "appgen.lsp-rename.v1"
+    assert report["token"] == "SubmitInvoice"
+    assert report["new_name"] == "PostInvoice"
+    assert report["changed"] is True
+    assert report["migration_format"] == "appgen.migration-plan.v1"
+    assert report["blocked_ok"] is True
+    assert report["blocked_exit_code"] == 0
+    assert report["blocked_rename_format"] == "appgen.lsp-rename.v1"
+    assert report["blocked_rename_ok"] is False
+    assert report["blocked"] is True
+    assert report["blocked_code"] == "AGX1101"
+    assert report["blocked_fix"] == "add_rename_hint"
+    assert report["blocked_migration_format"] == "appgen.migration-plan.v1"
+    assert report["blocked_requires_approval"] is True
+
+
 def test_appgen_lsp_subcommand_emits_json_contract(tmp_path: Path) -> None:
     path = tmp_path / "finance.appgen"
     path.write_text(TOOLING_SAMPLE, encoding="utf-8")
@@ -2478,6 +2500,13 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert lsp_check["detail"]["rename_cli"]["new_name"] == "PostInvoice"
     assert lsp_check["detail"]["rename_cli"]["changed"] is True
     assert lsp_check["detail"]["rename_cli"]["migration_format"] == "appgen.migration-plan.v1"
+    assert lsp_check["detail"]["rename_cli"]["safe_ok"] is True
+    assert lsp_check["detail"]["rename_cli"]["blocked_ok"] is True
+    assert lsp_check["detail"]["rename_cli"]["blocked_rename_ok"] is False
+    assert lsp_check["detail"]["rename_cli"]["blocked"] is True
+    assert lsp_check["detail"]["rename_cli"]["blocked_code"] == "AGX1101"
+    assert lsp_check["detail"]["rename_cli"]["blocked_fix"] == "add_rename_hint"
+    assert lsp_check["detail"]["rename_cli"]["blocked_requires_approval"] is True
     assert {
         "did_change_diagnostics",
         "code_action_request",

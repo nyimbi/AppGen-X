@@ -2938,16 +2938,77 @@ def _tooling_audit_lsp_rename_cli(tmp: Path, source: str) -> dict:
     changes = rename.get("workspace_edit", {}).get("changes", {})
     file_changes = changes.get(str(source_path), ())
     patched_text = file_changes[0].get("newText", "") if file_changes else ""
-    return {
-        "format": "appgen.lsp-rename-cli-audit.v1",
-        "ok": exit_code == 0
+    safe_ok = (
+        exit_code == 0
         and payload.get("format") == "appgen.lsp-service.v1"
         and rename.get("format") == "appgen.lsp-rename.v1"
         and rename.get("ok") is True
         and rename.get("token") == "SubmitInvoice"
         and rename.get("new_name") == "PostInvoice"
         and "PostInvoice" in patched_text
-        and rename.get("migration_preview", {}).get("format") == "appgen.migration-plan.v1",
+        and rename.get("migration_preview", {}).get("format") == "appgen.migration-plan.v1"
+    )
+
+    risk_source = """
+app RenameRisk { targets: web }
+
+table Customer {
+  id: int pk
+  name: string
+}
+
+table Invoice {
+  id: int pk
+  customer_id: int -> Customer.id
+}
+
+view InvoiceForm for Invoice {
+  Main: id, customer.name
+}
+"""
+    risk_path = tmp / "lsp-rename-risk.appgen"
+    risk_path.write_text(risk_source, encoding="utf-8")
+    risk_position = _tooling_lsp_position(risk_source, "id: int pk")
+    risk_position_arg = f"{risk_position['line']}:{risk_position['character']}"
+    risk_output = io.StringIO()
+    with contextlib.redirect_stdout(risk_output):
+        risk_exit = dsl_tooling_cli(
+            (
+                "lsp",
+                str(risk_path),
+                "--position",
+                risk_position_arg,
+                "--rename",
+                "identifier",
+                "--json",
+            )
+        )
+    try:
+        risk_payload = json.loads(risk_output.getvalue())
+    except json.JSONDecodeError:
+        risk_payload = {}
+    blocked_rename = risk_payload.get("rename", {})
+    blocked_codes = tuple(item.get("code") for item in blocked_rename.get("blockers", ()))
+    blocked_fixes = tuple(
+        fix.get("id")
+        for item in blocked_rename.get("blockers", ())
+        for fix in item.get("fixes", ())
+    )
+    blocked_ok = (
+        risk_exit == 0
+        and risk_payload.get("format") == "appgen.lsp-service.v1"
+        and blocked_rename.get("format") == "appgen.lsp-rename.v1"
+        and blocked_rename.get("ok") is False
+        and blocked_rename.get("blocked") is True
+        and blocked_rename.get("migration_preview", {}).get("format") == "appgen.migration-plan.v1"
+        and blocked_rename.get("migration_preview", {}).get("requires_approval") is True
+        and "AGX1101" in blocked_codes
+        and "add_rename_hint" in blocked_fixes
+    )
+
+    return {
+        "format": "appgen.lsp-rename-cli-audit.v1",
+        "ok": safe_ok and blocked_ok,
         "exit_code": exit_code,
         "payload_format": payload.get("format"),
         "rename_format": rename.get("format"),
@@ -2956,6 +3017,18 @@ def _tooling_audit_lsp_rename_cli(tmp: Path, source: str) -> dict:
         "position": position_arg,
         "changed": bool(file_changes),
         "migration_format": rename.get("migration_preview", {}).get("format"),
+        "safe_ok": safe_ok,
+        "blocked_ok": blocked_ok,
+        "blocked_exit_code": risk_exit,
+        "blocked_payload_format": risk_payload.get("format"),
+        "blocked_rename_format": blocked_rename.get("format"),
+        "blocked_rename_ok": blocked_rename.get("ok"),
+        "blocked": blocked_rename.get("blocked"),
+        "blocked_position": risk_position_arg,
+        "blocked_code": "AGX1101" if "AGX1101" in blocked_codes else None,
+        "blocked_fix": "add_rename_hint" if "add_rename_hint" in blocked_fixes else None,
+        "blocked_migration_format": blocked_rename.get("migration_preview", {}).get("format"),
+        "blocked_requires_approval": blocked_rename.get("migration_preview", {}).get("requires_approval"),
     }
 
 
