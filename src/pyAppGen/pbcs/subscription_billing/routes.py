@@ -144,3 +144,41 @@ def smoke_test():
         'dispatch': dispatched,
         'side_effects': (),
     }
+
+
+
+STANDALONE_ROUTES = (
+    {'method':'POST','path':'/app/subscription-billing/demo-workspace','handler':'seed_demo_workspace','permission':'subscription_billing.configure'},
+    {'method':'GET','path':'/app/subscription-billing/workbench','handler':'build_workbench','permission':'subscription_billing.audit'},
+    {'method':'POST','path':'/app/subscription-billing/subscriptions','handler':'create_subscription','permission':'subscription_billing.subscription'},
+    {'method':'POST','path':'/app/subscription-billing/usage','handler':'record_usage','permission':'subscription_billing.usage'},
+    {'method':'POST','path':'/app/subscription-billing/invoices','handler':'generate_invoice','permission':'subscription_billing.invoice'},
+    {'method':'POST','path':'/app/subscription-billing/payment-applications','handler':'apply_payment_to_invoice','permission':'subscription_billing.invoice'},
+    {'method':'POST','path':'/app/subscription-billing/assistant/sessions','handler':'run_agent_skill','permission':'subscription_billing.audit'},
+)
+
+def standalone_route_contracts():
+    from .services import standalone_service_operation_contracts
+    indexed={i['operation']:i for i in standalone_service_operation_contracts()['contracts']}
+    contracts=tuple({**r,'operation':r['handler'],'service_operation':indexed[r['handler']],'owned_tables':indexed[r['handler']]['owned_tables'],'read_tables':indexed[r['handler']]['read_tables'],'emitted_event':indexed[r['handler']]['emitted_event'],'event_contract':'AppGen-X','stream_engine_picker_visible':False,'shared_table_access':False,'route_id':f"{r['method']} {r['path']}"} for r in STANDALONE_ROUTES)
+    return {'format':'appgen.subscription-billing-standalone-routes.v1','ok':bool(contracts) and all(i['event_contract']=='AppGen-X' for i in contracts) and all(i['shared_table_access'] is False for i in contracts),'pbc':'subscription_billing','routes':tuple(i['route_id'] for i in contracts),'contracts':contracts,'side_effects':()}
+
+def dispatch_standalone_route(method,path,payload=None,*,service=None):
+    from .services import SubscriptionBillingStandaloneService
+    route=next((i for i in STANDALONE_ROUTES if i['method']==method and i['path']==path),None)
+    if route is None: return {'ok':False,'handled':False,'reason':'route_not_found','side_effects':()}
+    owned=service is None
+    if service is None: service=SubscriptionBillingStandaloneService()
+    p=dict(payload or {})
+    try:
+        h=route['handler']
+        if h=='seed_demo_workspace': result=service.seed_demo_workspace(tenant=p.get('tenant','tenant_demo'))
+        elif h=='build_workbench': result=service.build_workbench(tenant=p.get('tenant','tenant_demo'))
+        elif h=='create_subscription': result=service.create_subscription(p,tenant=p.get('tenant','tenant_demo'))
+        elif h=='record_usage': result=service.record_usage(p,tenant=p.get('tenant','tenant_demo'))
+        elif h=='generate_invoice': result=service.generate_invoice(p['subscription_id'],p['period'],tenant=p.get('tenant','tenant_demo'))
+        elif h=='apply_payment_to_invoice': result=service.apply_payment_to_invoice(p['invoice_id'],p['payment_event_id'],p['amount'],tenant=p.get('tenant','tenant_demo'))
+        else: result=service.run_agent_skill(p,tenant=p.get('tenant','tenant_demo'))
+        return {'ok':result.get('ok') is True,'handled':True,'route':route,'result':result,'side_effects':()}
+    finally:
+        if owned: service.close()
