@@ -3918,6 +3918,24 @@ def test_diagnostics_text_renderer_contract_proves_catalog_and_fixture_log_marke
     } <= set(report["required_fragments"])
 
 
+def test_semantic_drift_text_renderer_contract_proves_shared_model_log_markers() -> None:
+    report = appgen_dsl._semantic_drift_text_renderer_contract()
+
+    assert report["format"] == "appgen.semantic-drift-text-renderer.v1"
+    assert report["ok"] is True
+    assert report["missing_fragments"] == ()
+    assert report["json_fallback"] is False
+    assert report["text_prefix"].startswith(
+        "drift failed: format=appgen.semantic-drift-audit.v1 semantic_format=appgen.semantic-model.v1"
+    )
+    assert {
+        "surfaces cli, lsp, studio, generator",
+        "evidence generate_report: appgen.generate-report.v1",
+        "evidence studio_surfaces: database_designer,form_designer",
+        "fail studio_uses_semantic_model",
+    } <= set(report["required_fragments"])
+
+
 def test_tooling_audit_text_summary_exposes_sections_gaps_and_formats() -> None:
     payload = {
         "format": "appgen.tooling-audit.v1",

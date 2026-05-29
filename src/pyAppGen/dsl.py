@@ -2429,6 +2429,49 @@ def _emit_semantic_drift_text(payload: dict) -> None:
         print(f"{'ok' if check.get('ok') else 'fail'} {check.get('check')}")
 
 
+def _semantic_drift_text_renderer_contract() -> dict:
+    """Prove semantic-drift text logs expose shared-model evidence."""
+    payload = {
+        "format": "appgen.semantic-drift-audit.v1",
+        "ok": False,
+        "semantic_model_format": "appgen.semantic-model.v1",
+        "surfaces": ("cli", "lsp", "studio", "generator"),
+        "blocking_gaps": ("studio_missing_surface",),
+        "semantic_digest": "sha256:semantic-fixture",
+        "surface_evidence": {
+            "generate_report": "appgen.generate-report.v1",
+            "lsp_service": "appgen.lsp-service.v1",
+            "studio_surfaces": ("database_designer", "form_designer"),
+        },
+        "checks": (
+            {"check": "cli_uses_semantic_model", "ok": True},
+            {"check": "studio_uses_semantic_model", "ok": False},
+        ),
+    }
+    output = io.StringIO()
+    with contextlib.redirect_stdout(output):
+        _emit_tooling_payload(payload, as_json=False)
+    text = output.getvalue()
+    required_fragments = (
+        "drift failed: format=appgen.semantic-drift-audit.v1 semantic_format=appgen.semantic-model.v1 surfaces=4 blocking_gaps=1 digest=sha256:semantic-fixture",
+        "surfaces cli, lsp, studio, generator",
+        "evidence generate_report: appgen.generate-report.v1",
+        "evidence lsp_service: appgen.lsp-service.v1",
+        "evidence studio_surfaces: database_designer,form_designer",
+        "ok cli_uses_semantic_model",
+        "fail studio_uses_semantic_model",
+    )
+    missing = tuple(fragment for fragment in required_fragments if fragment not in text)
+    return {
+        "format": "appgen.semantic-drift-text-renderer.v1",
+        "ok": not missing and not text.lstrip().startswith("{"),
+        "required_fragments": required_fragments,
+        "missing_fragments": missing,
+        "json_fallback": text.lstrip().startswith("{"),
+        "text_prefix": text[:240],
+    }
+
+
 def _emit_lsp_service_text(payload: dict) -> None:
     status = "ok" if payload.get("ok") else "failed"
     diagnostics = payload.get("publishDiagnostics", {}).get("diagnostics", ())
@@ -3036,6 +3079,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
     diagnostics_text_renderer = _diagnostics_text_renderer_contract()
     parser_golden = parser_golden_audit_dsl()
     drift = semantic_drift_audit_dsl(source, source_name="tooling-audit.appgen")
+    drift_text_renderer = _semantic_drift_text_renderer_contract()
     doctor = doctor_report_dsl()
     module_boundaries = module_boundary_audit_dsl()
     non_goal_policy = _tooling_audit_non_goal_policy()
@@ -3357,12 +3401,13 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
         ),
         _tooling_audit_check(
             "parser_golden_and_drift_gates",
-            parser_golden["ok"] and drift["ok"] and doctor["ok"] and test_strategy_cli["ok"],
-            "Parser golden, diagnostic fixture, semantic drift, and doctor gates prove grammar coverage and shared-model alignment across tooling surfaces.",
+            parser_golden["ok"] and drift["ok"] and drift_text_renderer["ok"] and doctor["ok"] and test_strategy_cli["ok"],
+            "Parser golden, diagnostic fixture, semantic drift, drift text summaries, and doctor gates prove grammar coverage and shared-model alignment across tooling surfaces.",
             "docs/tooling.md#test-strategy",
             {
                 "parser": parser_golden.get("format"),
                 "drift": drift.get("format"),
+                "drift_text_renderer": drift_text_renderer,
                 "doctor": doctor.get("format"),
                 "cli": test_strategy_cli,
             },
