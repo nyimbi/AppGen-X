@@ -4028,6 +4028,25 @@ def test_lsp_code_action_text_renderer_contract_proves_quick_fix_log_markers() -
     } <= set(report["required_fragments"])
 
 
+def test_graph_explain_text_renderer_contract_proves_review_log_markers() -> None:
+    report = appgen_dsl._graph_explain_text_renderer_contract()
+
+    assert report["format"] == "appgen.graph-explain-text-renderer.v1"
+    assert report["ok"] is True
+    assert report["missing_fragments"] == ()
+    assert report["json_fallback"] is False
+    assert report["text_prefix"].startswith(
+        "graph-suite ok: format=appgen.graph-suite-report.v1 3 kinds, 3 formats"
+    )
+    assert {
+        "graph-kinds er, lookup, workflow",
+        "graph-formats json, mermaid, dot",
+        "explain symbol ok: format=appgen.explain-report.v1 table.Invoice",
+        "docs: docs/tooling.md#linter-rules-by-domain",
+        "InvoiceForm.Save -> SubmitInvoice [operation]",
+    } <= set(report["required_fragments"])
+
+
 def test_tooling_audit_text_summary_exposes_sections_gaps_and_formats() -> None:
     payload = {
         "format": "appgen.tooling-audit.v1",

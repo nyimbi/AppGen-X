@@ -2243,6 +2243,87 @@ def _emit_explain_text(payload: dict) -> None:
             print(f"{match.get('from')} -> {match.get('to')} [{match.get('label')}]")
 
 
+def _graph_explain_text_renderer_contract() -> dict:
+    """Prove graph-suite and explain text logs expose reviewable evidence."""
+    graph_payload = {
+        "format": "appgen.graph-suite-report.v1",
+        "ok": True,
+        "required_kinds": ("er", "lookup", "workflow"),
+        "formats": ("json", "mermaid", "dot"),
+        "checks": (
+            {"check": "er_graph", "ok": True},
+            {"check": "workflow_graph", "ok": True},
+        ),
+    }
+    symbol_payload = {
+        "format": "appgen.explain-report.v1",
+        "ok": True,
+        "kind": "symbol",
+        "query": "table.Invoice",
+        "symbol": {
+            "id": "table.Invoice",
+            "kind": "table",
+            "name": "Invoice",
+            "parent": "app Finance",
+            "references": ("InvoiceForm", "SubmitInvoice"),
+        },
+    }
+    diagnostic_payload = {
+        "format": "appgen.explain-report.v1",
+        "ok": True,
+        "kind": "diagnostic",
+        "query": "AGX0303",
+        "explanation": {
+            "code": "AGX0303",
+            "title": "Unresolved lookup path",
+            "summary": "A lookup path references a field that cannot be resolved.",
+            "docs_url": "docs/tooling.md#linter-rules-by-domain",
+        },
+    }
+    handler_payload = {
+        "format": "appgen.explain-report.v1",
+        "ok": True,
+        "kind": "handler",
+        "query": "InvoiceForm.Save",
+        "matches": (
+            {"from": "InvoiceForm.Save", "to": "SubmitInvoice", "label": "operation"},
+            {"from": "SubmitInvoice", "to": "InvoicePosted", "label": "event"},
+        ),
+    }
+    output = io.StringIO()
+    with contextlib.redirect_stdout(output):
+        _emit_tooling_payload(graph_payload, as_json=False)
+        _emit_tooling_payload(symbol_payload, as_json=False)
+        _emit_tooling_payload(diagnostic_payload, as_json=False)
+        _emit_tooling_payload(handler_payload, as_json=False)
+    text = output.getvalue()
+    required_fragments = (
+        "graph-suite ok: format=appgen.graph-suite-report.v1 3 kinds, 3 formats",
+        "graph-kinds er, lookup, workflow",
+        "graph-formats json, mermaid, dot",
+        "ok er_graph",
+        "explain symbol ok: format=appgen.explain-report.v1 table.Invoice",
+        "table.Invoice: table Invoice",
+        "parent: app Finance",
+        "references: 2",
+        "explain diagnostic ok: format=appgen.explain-report.v1 AGX0303",
+        "AGX0303: Unresolved lookup path",
+        "docs: docs/tooling.md#linter-rules-by-domain",
+        "explain handler ok: format=appgen.explain-report.v1 InvoiceForm.Save",
+        "matches: 2",
+        "InvoiceForm.Save -> SubmitInvoice [operation]",
+    )
+    missing = tuple(fragment for fragment in required_fragments if fragment not in text)
+    return {
+        "format": "appgen.graph-explain-text-renderer.v1",
+        "ok": not missing and not text.lstrip().startswith("{"),
+        "required_fragments": required_fragments,
+        "missing_fragments": missing,
+        "json_fallback": text.lstrip().startswith("{"),
+        "text_prefix": text[:240],
+    }
+
+
 def _emit_migration_plan_text(payload: dict) -> None:
     status = "ok" if payload.get("ok") else "failed"
     changes = payload.get("changes", ())
@@ -3317,6 +3398,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
     )
     designer_visual_edit_matrix = designer_visual_edit_matrix_dsl(source, source_name="tooling-audit.appgen")
     designer_sync_text_renderer = _designer_sync_text_renderer_contract()
+    graph_explain_text_renderer = _graph_explain_text_renderer_contract()
     migration_reports = _tooling_audit_migration_reports()
     migration_text_renderer = _migration_plan_text_renderer_contract()
     migration_detected = tuple(
@@ -3572,6 +3654,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and graph_cli["ok"]
             and graph_suite_cli["ok"]
             and explain_cli["ok"]
+            and graph_explain_text_renderer["ok"]
             and explain_report_dsl(source, source_name="tooling-audit.appgen", symbol="table.Invoice")["ok"]
             and explain_report_dsl(source, source_name="tooling-audit.appgen", diagnostic="AGX0303")["ok"]
             and explain_report_dsl(source, source_name="tooling-audit.appgen", handler="Save")["ok"],
@@ -3580,6 +3663,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             {
                 "format": graphs.get("format"),
                 "graphs": graphs.get("required_kinds"),
+                "text_renderer": graph_explain_text_renderer,
                 "cli": graph_cli,
                 "suite_cli": graph_suite_cli,
                 "explain_cli": explain_cli,

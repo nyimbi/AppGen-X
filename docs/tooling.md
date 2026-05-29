@@ -691,6 +691,9 @@ documentation diagrams, release evidence, and downstream graph tooling all use
 the same semantic model. Text mode prints both the required graph kind names and
 the supported output format names, plus the `appgen.graph-suite-report.v1`
 envelope format, so release logs remain reviewable without parsing JSON.
+`appgen.graph-explain-text-renderer.v1` is embedded in the tooling audit to
+prove graph-suite and explain logs keep graph kind, graph format, check,
+symbol, diagnostic-doc, and handler-edge evidence visible without JSON parsing.
 
 Supported graph kinds:
 
