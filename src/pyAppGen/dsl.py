@@ -2287,7 +2287,8 @@ def _emit_lsp_service_text(payload: dict) -> None:
     symbols = payload.get("documentSymbol", {}).get("symbols", ())
     workspace_symbols = payload.get("workspaceSymbol", {}).get("symbols", ())
     print(
-        f"lsp {status}: semantic={payload.get('semantic_model_format')} "
+        f"lsp {status}: format={payload.get('format')} "
+        f"semantic={payload.get('semantic_model_format')} "
         f"diagnostics={len(diagnostics)} completions={len(completions)} "
         f"actions={len(code_actions)} symbols={len(symbols)} workspace_symbols={len(workspace_symbols)}"
     )

@@ -1843,7 +1843,7 @@ def test_appgen_lsp_subcommand_emits_json_and_text_contracts(tmp_path: Path) -> 
     payload = json.loads(result.stdout)
     assert payload["format"] == "appgen.lsp-service.v1"
     assert payload["capabilities"]["source_of_truth"] == "appgen.semantic-model.v1"
-    assert text_result.stdout.startswith("lsp ok: semantic=appgen.semantic-model.v1")
+    assert text_result.stdout.startswith("lsp ok: format=appgen.lsp-service.v1 semantic=appgen.semantic-model.v1")
     assert f"diagnostics={len(payload['publishDiagnostics']['diagnostics'])}" in text_result.stdout
     assert f"completions={len(payload['completion']['items'])}" in text_result.stdout
     assert f"actions={len(payload['codeAction']['actions'])}" in text_result.stdout
