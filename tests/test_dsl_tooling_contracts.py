@@ -1084,6 +1084,9 @@ table Payment {
     assert text_result.returncode == 0, text_result.stderr
     assert text_result.stdout.startswith("migration-plan ok: backend=postgresql")
     assert "changes=2" in text_result.stdout
+    assert f"migration-coverage {payload['coverage']['format']}" in text_result.stdout
+    assert f"detected={len(payload['coverage']['detected'])}" in text_result.stdout
+    assert f"missing={len(payload['coverage']['missing'])}" in text_result.stdout
     assert "migration-detected added_table, relationship_change" in text_result.stdout
     assert "change add_table: Payment" in text_result.stdout
     assert "change add_relationship: Payment" in text_result.stdout

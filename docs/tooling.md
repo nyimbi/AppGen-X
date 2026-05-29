@@ -1138,8 +1138,9 @@ backfill cases instead of inferring coverage from prose.
 Destructive changes must require explicit approval and should include suggested
 safe alternatives when possible. Without `--json`, `appgen migration-plan`
 prints backend, change count, destructive change count, approval requirement,
-detected migration families, each change kind, safe alternatives when present,
-and diagnostics; JSON remains the machine-readable source of truth.
+migration coverage format and missing-family count, detected migration families,
+each change kind, safe alternatives when present, and diagnostics; JSON remains
+the machine-readable source of truth.
 
 ## Natural-Language Change Planner
 

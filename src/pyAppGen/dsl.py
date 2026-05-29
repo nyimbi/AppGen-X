@@ -2106,13 +2106,17 @@ def _emit_explain_text(payload: dict) -> None:
 def _emit_migration_plan_text(payload: dict) -> None:
     status = "ok" if payload.get("ok") else "failed"
     changes = payload.get("changes", ())
-    detected = tuple(payload.get("coverage", {}).get("detected", ()))
+    coverage = payload.get("coverage", {})
+    detected = tuple(coverage.get("detected", ()))
+    missing = tuple(coverage.get("missing", ()))
     destructive_count = sum(1 for change in changes if change.get("destructive"))
     print(
         f"migration-plan {status}: backend={payload.get('backend', 'unknown')} "
         f"changes={len(changes)} destructive={destructive_count} "
         f"requires_approval={payload.get('requires_approval', False)}"
     )
+    if coverage:
+        print(f"migration-coverage {coverage.get('format')}: detected={len(detected)} missing={len(missing)}")
     if detected:
         print(f"migration-detected {', '.join(sorted(detected))}")
     for change in changes:
