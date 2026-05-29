@@ -4467,17 +4467,22 @@ def test_doctor_text_renderer_contract_proves_check_and_detail_format_markers() 
     assert report["format"] == "appgen.doctor-text-renderer.v1"
     assert report["ok"] is True
     assert report["required_fragment_count"] == len(report["required_fragments"])
-    assert report["required_fragment_count"] == 4
+    assert report["required_fragment_count"] == 9
     assert report["missing_fragment_count"] == 0
-    assert report["check_line_count"] == 3
-    assert report["detail_format_line_count"] == 3
+    assert report["check_line_count"] == 8
+    assert report["detail_format_line_count"] == 8
     assert report["missing_fragments"] == ()
     assert report["json_fallback"] is False
-    assert report["text_prefix"].startswith("doctor failed: format=appgen.doctor-report.v1 checks=3")
+    assert report["text_prefix"].startswith("doctor failed: format=appgen.doctor-report.v1 checks=8")
     assert {
         "ok parser_golden_fixtures detail_format=appgen.parser-golden-audit.v1: Parser golden fixtures cover valid and invalid DSL grammar constructs.",
         "ok lsp_completion_coverage detail_format=appgen.completion-coverage.v1: Language-server completion sources cover docs/tooling.md contexts.",
+        "ok semantic_symbol_coverage detail_format=appgen.symbol-coverage.v1: Semantic model emits all required symbol kinds for CLI, IDE, tests, and agents.",
+        "ok lsp_symbol_coverage detail_format=appgen.lsp-symbol-coverage.v1: Language-server document and workspace symbol surfaces expose every required semantic symbol kind.",
+        "ok cli_alias_contract detail_format=appgen.cli-alias-contract.v1: appgen and apg resolve to the same tooling entrypoint.",
         "fail module_boundaries detail_format=appgen.module-boundary-audit.v1: Documented DSL tooling boundaries are incomplete.",
+        "ok studio_semantic_service detail_format=appgen.designer-sync-report.v1: Studio designer service is bound to the shared semantic model.",
+        "ok vscode_extension_surface detail_format=appgen.vscode-extension-surface.v1: VS Code extension scaffold declares the AppGen-X language, commands, and LSP providers.",
     } <= set(report["required_fragments"])
 
 

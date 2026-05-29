@@ -3133,10 +3133,40 @@ def _doctor_text_renderer_contract() -> dict:
                 "detail": {"report_format": "appgen.completion-coverage.v1"},
             },
             {
+                "check": "semantic_symbol_coverage",
+                "ok": True,
+                "message": "Semantic model emits all required symbol kinds for CLI, IDE, tests, and agents.",
+                "detail": {"report_format": "appgen.symbol-coverage.v1"},
+            },
+            {
+                "check": "lsp_symbol_coverage",
+                "ok": True,
+                "message": "Language-server document and workspace symbol surfaces expose every required semantic symbol kind.",
+                "detail": {"report_format": "appgen.lsp-symbol-coverage.v1"},
+            },
+            {
+                "check": "cli_alias_contract",
+                "ok": True,
+                "message": "appgen and apg resolve to the same tooling entrypoint.",
+                "detail": {"report_format": "appgen.cli-alias-contract.v1"},
+            },
+            {
                 "check": "module_boundaries",
                 "ok": False,
                 "message": "Documented DSL tooling boundaries are incomplete.",
                 "detail": {"report_format": "appgen.module-boundary-audit.v1"},
+            },
+            {
+                "check": "studio_semantic_service",
+                "ok": True,
+                "message": "Studio designer service is bound to the shared semantic model.",
+                "detail": {"report_format": "appgen.designer-sync-report.v1"},
+            },
+            {
+                "check": "vscode_extension_surface",
+                "ok": True,
+                "message": "VS Code extension scaffold declares the AppGen-X language, commands, and LSP providers.",
+                "detail": {"report_format": "appgen.vscode-extension-surface.v1"},
             },
         ),
         "blocking_gaps": ("module_boundaries",),
@@ -3146,10 +3176,15 @@ def _doctor_text_renderer_contract() -> dict:
         _emit_tooling_payload(payload, as_json=False)
     text = output.getvalue()
     required_fragments = (
-        "doctor failed: format=appgen.doctor-report.v1 checks=3 blocking_gaps=1",
+        "doctor failed: format=appgen.doctor-report.v1 checks=8 blocking_gaps=1",
         "ok parser_golden_fixtures detail_format=appgen.parser-golden-audit.v1: Parser golden fixtures cover valid and invalid DSL grammar constructs.",
         "ok lsp_completion_coverage detail_format=appgen.completion-coverage.v1: Language-server completion sources cover docs/tooling.md contexts.",
+        "ok semantic_symbol_coverage detail_format=appgen.symbol-coverage.v1: Semantic model emits all required symbol kinds for CLI, IDE, tests, and agents.",
+        "ok lsp_symbol_coverage detail_format=appgen.lsp-symbol-coverage.v1: Language-server document and workspace symbol surfaces expose every required semantic symbol kind.",
+        "ok cli_alias_contract detail_format=appgen.cli-alias-contract.v1: appgen and apg resolve to the same tooling entrypoint.",
         "fail module_boundaries detail_format=appgen.module-boundary-audit.v1: Documented DSL tooling boundaries are incomplete.",
+        "ok studio_semantic_service detail_format=appgen.designer-sync-report.v1: Studio designer service is bound to the shared semantic model.",
+        "ok vscode_extension_surface detail_format=appgen.vscode-extension-surface.v1: VS Code extension scaffold declares the AppGen-X language, commands, and LSP providers.",
     )
     missing = tuple(fragment for fragment in required_fragments if fragment not in text)
     counts = _text_renderer_contract_counts(
