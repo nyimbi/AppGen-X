@@ -3035,12 +3035,15 @@ def _tooling_audit_validate_generate_cli(tmp: Path, source: str) -> dict:
     source_path = tmp / "validate-generate.appgen"
     web_only_path = tmp / "validate-web-only.appgen"
     warning_path = tmp / "warning-generate.appgen"
+    error_path = tmp / "error-generate.appgen"
     output_dir = tmp / "generated-cli"
     warning_blocked_dir = tmp / "warning-blocked-cli"
     warning_allowed_dir = tmp / "warning-allowed-cli"
+    error_allowed_dir = tmp / "error-allowed-cli"
     source_path.write_text(source, encoding="utf-8")
     web_only_path.write_text("app WebOnly { targets: web }\n\ntable Thing { id: int pk }\n", encoding="utf-8")
     warning_path.write_text(_tooling_audit_warning_generation_sample(), encoding="utf-8")
+    error_path.write_text("app Bad { targets: web }\n\ntable Invoice { total: galaxy }\n", encoding="utf-8")
 
     def run_json(argv: tuple[str, ...]) -> tuple[int, dict]:
         output = io.StringIO()
@@ -3069,6 +3072,9 @@ def _tooling_audit_validate_generate_cli(tmp: Path, source: str) -> dict:
     )
     warning_allowed_exit, warning_allowed_payload = run_json(
         ("generate", str(warning_path), "--out", str(warning_allowed_dir), "--allow-warnings", "--json")
+    )
+    error_allowed_exit, error_allowed_payload = run_json(
+        ("generate", str(error_path), "--out", str(error_allowed_dir), "--allow-warnings", "--json")
     )
     cases = (
         {
@@ -3152,6 +3158,20 @@ def _tooling_audit_validate_generate_cli(tmp: Path, source: str) -> dict:
             "payload_format": warning_allowed_payload.get("format"),
             "allow_warnings": warning_allowed_payload.get("allow_warnings"),
             "manifest": warning_allowed_payload.get("manifest"),
+        },
+        {
+            "case": "generate_blocks_errors_even_when_warnings_allowed",
+            "ok": error_allowed_exit == 1
+            and error_allowed_payload.get("format") == "appgen.generate-report.v1"
+            and error_allowed_payload.get("generated") is False
+            and error_allowed_payload.get("allow_warnings") is True
+            and "lint_errors" in error_allowed_payload.get("blocking_gaps", ())
+            and not error_allowed_dir.exists(),
+            "exit_code": error_allowed_exit,
+            "payload_format": error_allowed_payload.get("format"),
+            "allow_warnings": error_allowed_payload.get("allow_warnings"),
+            "blocking_gaps": tuple(error_allowed_payload.get("blocking_gaps", ())),
+            "output_exists": error_allowed_dir.exists(),
         },
     )
     return {

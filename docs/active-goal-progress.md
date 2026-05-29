@@ -3335,6 +3335,15 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   audit helper probe, focused validate target tests (`2 passed`), scoped diff
   whitespace check, and restricted-name scan outside archive, Git internals,
   and active PBC paths. Commit: `d63148b6`.
+- Current generation error-gate CLI audit pass closes the gap in the documented
+  `appgen generate --allow-warnings` contract. `appgen.validate-generate-cli-audit.v1`
+  now proves warning-only sources can generate with `--allow-warnings`, while
+  lint-error sources still exit `1`, report `lint_errors`, and write no output
+  directory even when warnings are allowed. Verification passed: Python compile
+  for touched tooling entrypoints, direct CLI lint-error/`--allow-warnings`
+  probe, focused generation tests (`2 passed`), scoped diff whitespace check,
+  and restricted-name scan outside archive, Git internals, and active PBC
+  paths. Commit: pending.
 - Current parallel PBC implementation pass delivered executable code for six
   PBCs rather than plan-only artifacts: `actuarial_pricing_reserving`,
   `advertising_campaign_operations`, `agri_supply_chain_traceability`,

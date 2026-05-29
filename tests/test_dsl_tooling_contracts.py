@@ -2368,6 +2368,7 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
         "generate_writes_artifacts",
         "generate_blocks_warnings",
         "generate_allows_warnings_when_requested",
+        "generate_blocks_errors_even_when_warnings_allowed",
     } <= {case["case"] for case in cli_check["detail"]["validate_generate_cli"]["cases"]}
     validate_cases = {case["case"]: case for case in cli_check["detail"]["validate_generate_cli"]["cases"]}
     assert validate_cases["validate_rejects_undeclared_targets"]["exit_code"] == 1
@@ -2376,6 +2377,10 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert "AGX0802" in validate_cases["validate_rejects_undeclared_targets"]["diagnostic_codes"]
     assert validate_cases["validate_rejects_unknown_targets"]["exit_code"] == 1
     assert "AGX0802" in validate_cases["validate_rejects_unknown_targets"]["diagnostic_codes"]
+    assert validate_cases["generate_blocks_errors_even_when_warnings_allowed"]["exit_code"] == 1
+    assert validate_cases["generate_blocks_errors_even_when_warnings_allowed"]["allow_warnings"] is True
+    assert "lint_errors" in validate_cases["generate_blocks_errors_even_when_warnings_allowed"]["blocking_gaps"]
+    assert validate_cases["generate_blocks_errors_even_when_warnings_allowed"]["output_exists"] is False
     assert cli_check["detail"]["format_write"]["format"] == "appgen.format-write-audit.v1"
     assert cli_check["detail"]["format_write"]["ok"] is True
     assert cli_check["detail"]["format_write"]["check_exit_code"] == 1
