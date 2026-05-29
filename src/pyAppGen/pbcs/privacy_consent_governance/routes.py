@@ -1,49 +1,147 @@
 """API route contracts for the privacy_consent_governance PBC."""
-PBC_KEY = 'privacy_consent_governance'
-ROUTES = tuple({'method': api.split()[0], 'path': api.split(maxsplit=1)[1], 'operation': api.lower().replace(' ', '_').replace('/', '_'), 'idempotency_key': f'{PBC_KEY}:{api}'} for api in ('POST /privacy-requests', 'POST /consents', 'POST /processing-purposes', 'POST /retention-policies', 'GET /privacy-governance-workbench'))
 
+from __future__ import annotations
 
-def api_route_contracts():
-    contracts = tuple({
-        **route,
-        'pbc': PBC_KEY,
-        'event_contract': 'AppGen-X',
-        'stream_engine_picker_visible': False,
+from .services import PrivacyConsentGovernanceService, service_operation_contracts
+
+API_ROUTE_CONTRACTS = tuple(
+    {
+        'method': contract['method'],
+        'path': contract['path'],
+        'handler': contract['handler'],
+        'permission': contract['permission'],
+        'operation': contract['operation'],
+        'operation_kind': contract['operation_kind'],
+        'owned_tables': contract['owned_tables'],
+        'read_tables': contract['read_tables'],
+        'emitted_event': contract['emitted_event'],
+        'event_contract': contract['event_contract'],
+        'transaction_boundary': contract['transaction_boundary'],
+        'idempotency_required': contract['operation_kind'] == 'command',
+        'idempotency_key': contract['idempotency_key'],
         'shared_table_access': False,
-        'required_permission': f'{PBC_KEY}.operate',
-    } for route in ROUTES)
-    return {
-        'ok': True,
-        'pbc': PBC_KEY,
-        'contracts': contracts,
-        'routes': ROUTES,
         'stream_engine_picker_visible': False,
+    }
+    for contract in service_operation_contracts()['contracts']
+)
+ROUTES = tuple(
+    {
+        'method': contract['method'],
+        'path': contract['path'],
+        'handler': contract['handler'],
+        'permission': contract['permission'],
+    }
+    for contract in API_ROUTE_CONTRACTS
+)
+
+
+def register_routes(app=None):
+    return ROUTES
+
+
+def api_route_contracts() -> dict:
+    contracts = tuple({**contract, 'route_id': f"{contract['method']} {contract['path']}"} for contract in API_ROUTE_CONTRACTS)
+    return {
+        'ok': bool(contracts)
+        and all(item['event_contract'] == 'AppGen-X' for item in contracts)
+        and all(item['transaction_boundary'] == 'owned_datastore_plus_outbox' for item in contracts)
+        and all(item['stream_engine_picker_visible'] is False for item in contracts)
+        and all(item['shared_table_access'] is False for item in contracts),
+        'pbc': 'privacy_consent_governance',
+        'contracts': contracts,
+        'routes': tuple(item['route_id'] for item in contracts),
         'side_effects': (),
     }
 
 
-def validate_api_route_contracts():
-    route_contract = api_route_contracts()
-    contracts = route_contract['contracts']
-    missing_idempotency = tuple(item for item in contracts if not item.get('idempotency_key'))
-    invalid_table_scope = tuple(item for item in contracts if item.get('shared_table_access') is not False)
-    service_mismatches = ()
+def validate_api_route_contracts() -> dict:
+    manifest = api_route_contracts()
+    contracts = manifest['contracts']
+    operation_index = {item['operation']: item for item in service_operation_contracts()['contracts']}
+    service_mismatches = tuple(
+        item['route_id']
+        for item in contracts
+        if item['operation'] not in operation_index
+        or operation_index[item['operation']]['method'] != item['method']
+        or operation_index[item['operation']]['path'] != item['path']
+        or operation_index[item['operation']]['permission'] != item['permission']
+    )
+    missing_idempotency = tuple(
+        item['route_id']
+        for item in contracts
+        if item['idempotency_required'] and not item['idempotency_key']
+    )
+    invalid_table_scope = tuple(
+        item['route_id']
+        for item in contracts
+        for table in item['owned_tables'] + item['read_tables']
+        if table and not table.startswith('privacy_consent_governance_')
+    )
     return {
-        'ok': route_contract['ok'] and not missing_idempotency and not invalid_table_scope,
-        'pbc': PBC_KEY,
-        'contracts': route_contract,
+        'ok': manifest['ok']
+        and not service_mismatches
+        and not missing_idempotency
+        and not invalid_table_scope,
+        'pbc': 'privacy_consent_governance',
+        'contracts': contracts,
         'service_mismatches': service_mismatches,
         'missing_idempotency': missing_idempotency,
         'invalid_table_scope': invalid_table_scope,
         'side_effects': (),
     }
 
-def dispatch_route(path, payload=None):
-    route = next((item for item in ROUTES if item['path'] == path), None)
-    return {'ok': route is not None, 'route': route, 'payload': dict(payload or {}), 'side_effects': ()}
+
+def dispatch_route(method: str, path: str, payload: dict | None = None, *, service: PrivacyConsentGovernanceService | None = None) -> dict:
+    route = next((item for item in ROUTES if item['method'] == method and item['path'] == path), None)
+    if route is None:
+        return {'ok': False, 'handled': False, 'reason': 'route_not_found', 'side_effects': ()}
+    service = service or PrivacyConsentGovernanceService()
+    handler = getattr(service, route['handler'])
+    result = handler(payload or {})
+    return {
+        'ok': result.get('ok') is True,
+        'handled': True,
+        'route': route,
+        'result': result,
+        'side_effects': (),
+    }
 
 
-def smoke_test():
-    first = ROUTES[0]
-    dispatched = dispatch_route(first['path'], {'tenant': 'tenant-smoke'})
-    return {'ok': validate_api_route_contracts()['ok'] and dispatched['ok'], 'side_effects': ()}
+def smoke_test() -> dict:
+    service = PrivacyConsentGovernanceService()
+    dispatch_route(
+        'POST',
+        '/api/pbc/privacy_consent_governance/runtime/configuration',
+        {
+            'configuration': {
+                'database_backend': 'postgresql',
+                'event_topic': 'appgen.privacy_consent_governance.events',
+                'retry_limit': 5,
+                'default_policy_family': 'global-privacy',
+            }
+        },
+        service=service,
+    )
+    dispatched = dispatch_route(
+        'POST',
+        '/api/pbc/privacy_consent_governance/consents/capture',
+        {
+            'record': {
+                'id': 'consent-route-smoke',
+                'tenant': 'tenant-route-smoke',
+                'code': 'CONSENT-ROUTE-SMOKE',
+                'data_subject_id': 'subject-route-smoke',
+                'purpose_code': 'MARKETING_EMAIL',
+                'lawful_basis_code': 'CONSENT',
+                'channel': 'email',
+            }
+        },
+        service=service,
+    )
+    validation = validate_api_route_contracts()
+    return {
+        'ok': validation['ok'] and dispatched['ok'],
+        'validation': validation,
+        'dispatch': dispatched,
+        'side_effects': (),
+    }
