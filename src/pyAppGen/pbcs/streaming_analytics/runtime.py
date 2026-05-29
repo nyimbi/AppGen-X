@@ -755,24 +755,46 @@ def streaming_analytics_build_workbench_view(state: dict, *, tenant: str) -> dic
     windows = tuple(item for item in state.get("aggregation_windows", {}).values() if item["tenant"] == tenant)
     snapshots = tuple(item for item in state.get("kpi_snapshots", {}).values() if item["tenant"] == tenant)
     projections = tuple(item for item in state.get("dashboard_projections", {}).values() if item["tenant"] == tenant)
+    events = tuple(item for item in state.get("metric_events", {}).values() if item["tenant"] == tenant)
+    quality_results = tuple(item for item in state.get("data_quality_results", {}).values() if item["tenant"] == tenant)
+    replay_jobs = tuple(item for item in state.get("replay_jobs", {}).values() if item["tenant"] == tenant)
+    watermarks = tuple(item for item in state.get("watermark_states", {}).values() if item["tenant"] == tenant)
+    alerts = tuple(item for item in state.get("threshold_alerts", {}).values() if item["tenant"] == tenant)
+    forecasts = tuple(item for item in state.get("metric_forecasts", {}).values() if item["tenant"] == tenant)
+    governed_models = tuple(item for item in state.get("analytics_governed_models", {}).values() if item["tenant"] == tenant)
+    federation_views = tuple(item for item in state.get("analytics_federation_views", {}).values() if item["tenant"] == tenant)
+    configuration = state.get("configuration", {})
     return {
-        "format": "appgen.streaming-analytics-workbench-view.v1",
+        "format": "appgen.streaming-analytics-workbench-view.v2",
+        "ok": True,
         "tenant": tenant,
         "stream_count": len(streams),
         "window_count": len(windows),
         "snapshot_count": len(snapshots),
         "projection_count": len(projections),
-        "event_count": len(tuple(item for item in state.get("metric_events", {}).values() if item["tenant"] == tenant)),
+        "event_count": len(events),
+        "quality_result_count": len(quality_results),
+        "replay_job_count": len(replay_jobs),
+        "watermark_count": len(watermarks),
+        "alert_count": len(alerts),
+        "forecast_count": len(forecasts),
+        "governed_model_count": len(governed_models),
+        "federation_view_count": len(federation_views),
         "outbox_count": len(state.get("outbox", ())),
+        "inbox_count": len(state.get("inbox", ())),
         "dead_letter_count": len(state.get("dead_letter", ())),
-        "configuration_bound": bool(state.get("configuration", {}).get("ok")),
-        "rule_count": len(state.get("rules", {})),
-        "parameter_count": len(state.get("parameters", {})),
+        "configuration_bound": bool(configuration.get("ok")),
+        "configuration_hash": _digest(configuration) if configuration else None,
+        "rules_bound": tuple(sorted(state.get("rules", {}))),
+        "parameters_bound": tuple(sorted(state.get("parameters", {}))),
+        "event_contract": configuration.get("event_contract", "AppGen-X"),
         "binding_evidence": {
             "owned_tables": STREAMING_ANALYTICS_OWNED_TABLES,
+            "runtime_tables": STREAMING_ANALYTICS_RUNTIME_TABLES,
             "outbox_table": STREAMING_ANALYTICS_RUNTIME_TABLES[0],
             "inbox_table": STREAMING_ANALYTICS_RUNTIME_TABLES[1],
             "dead_letter_table": STREAMING_ANALYTICS_RUNTIME_TABLES[2],
+            "shared_table_access": False,
         },
     }
 
@@ -915,175 +937,33 @@ def streaming_analytics_build_schema_contract() -> dict:
 
 def streaming_analytics_build_api_contract() -> dict:
     return {
-        "format": "appgen.streaming-analytics-api-contract.v1",
+        "format": "appgen.streaming-analytics-api-contract.v2",
         "ok": True,
         "routes": (
-            {
-                "route": "POST /metric-streams",
-                "command": "register_metric_stream",
-                "owned_tables": ("metric_stream",),
-                "requires_permission": "streaming_analytics.stream.write",
-                "idempotency_key": "stream_id",
-            },
-            {
-                "route": "POST /aggregation-windows",
-                "command": "define_window",
-                "owned_tables": ("aggregation_window",),
-                "requires_permission": "streaming_analytics.window.write",
-                "idempotency_key": "window_id",
-            },
-            {
-                "route": "POST /metric-events",
-                "command": "ingest_metric_event",
-                "owned_tables": ("metric_event", "kpi_snapshot"),
-                "emits": STREAMING_ANALYTICS_EMITTED_EVENT_TYPES,
-                "requires_permission": "streaming_analytics.event.write",
-                "idempotency_key": "event_id",
-            },
-            {
-                "route": "POST /ingestion-checkpoints",
-                "command": "record_ingestion_checkpoint",
-                "owned_tables": ("ingestion_checkpoint",),
-                "requires_permission": "streaming_analytics.operations.write",
-                "idempotency_key": "checkpoint_id",
-            },
-            {
-                "route": "POST /quality/evaluations",
-                "command": "evaluate_data_quality",
-                "owned_tables": ("data_quality_result", "metric_event"),
-                "requires_permission": "streaming_analytics.quality.write",
-                "idempotency_key": "event_id",
-            },
-            {
-                "route": "POST /replay-jobs",
-                "command": "open_replay_job",
-                "owned_tables": ("replay_job",),
-                "requires_permission": "streaming_analytics.operations.write",
-                "idempotency_key": "replay_job_id",
-            },
-            {
-                "route": "POST /watermarks",
-                "command": "advance_watermark",
-                "owned_tables": ("watermark_state", "metric_stream"),
-                "requires_permission": "streaming_analytics.operations.write",
-                "idempotency_key": "watermark_id",
-            },
-            {
-                "route": "POST /retention-policies",
-                "command": "apply_retention_policy",
-                "owned_tables": ("retention_policy", "metric_event"),
-                "requires_permission": "streaming_analytics.configure",
-                "idempotency_key": "policy_id",
-            },
-            {
-                "route": "POST /threshold-alerts",
-                "command": "evaluate_threshold_alert",
-                "owned_tables": ("threshold_alert", "kpi_snapshot"),
-                "emits": ("OperationalKpiChanged",),
-                "requires_permission": "streaming_analytics.alert.write",
-                "idempotency_key": "alert_id",
-            },
-            {
-                "route": "POST /forecasts",
-                "command": "forecast_metric",
-                "owned_tables": ("metric_forecast", "kpi_snapshot"),
-                "emits": ("ForecastUpdated",),
-                "requires_permission": "streaming_analytics.intelligence.write",
-                "idempotency_key": "forecast_id",
-            },
-            {
-                "route": "POST /risk-scores",
-                "command": "score_operational_risk",
-                "owned_tables": ("operational_risk_score", "kpi_snapshot"),
-                "requires_permission": "streaming_analytics.intelligence.write",
-                "idempotency_key": "risk_id",
-            },
-            {
-                "route": "POST /exceptions/resolutions",
-                "command": "resolve_metric_exception",
-                "owned_tables": ("metric_exception", "analytics_audit_entry"),
-                "requires_permission": "streaming_analytics.operations.write",
-                "idempotency_key": "exception_id",
-            },
-            {
-                "route": "POST /windows/recomputations",
-                "command": "recompute_window",
-                "owned_tables": ("window_recomputation", "aggregation_window", "kpi_snapshot"),
-                "emits": STREAMING_ANALYTICS_EMITTED_EVENT_TYPES,
-                "requires_permission": "streaming_analytics.operations.write",
-                "idempotency_key": "recomputation_id",
-            },
-            {
-                "route": "POST /kpi-controls",
-                "command": "run_kpi_controls",
-                "owned_tables": ("kpi_control_assertion", "kpi_snapshot"),
-                "requires_permission": "streaming_analytics.quality.write",
-                "idempotency_key": "assertion_id",
-            },
-            {
-                "route": "POST /snapshot-proofs",
-                "command": "generate_snapshot_proof",
-                "owned_tables": ("kpi_snapshot_proof", "analytics_audit_entry", "kpi_snapshot", "metric_event"),
-                "requires_permission": "streaming_analytics.audit",
-                "idempotency_key": "proof_id",
-            },
-            {
-                "route": "POST /policy-screenings",
-                "command": "screen_metric_policy",
-                "owned_tables": ("metric_policy_screening",),
-                "requires_permission": "streaming_analytics.quality.write",
-                "idempotency_key": "screening_id",
-            },
-            {
-                "route": "POST /federation-views",
-                "command": "build_analytics_federation_view",
-                "owned_tables": ("analytics_federation_view", "metric_stream", "kpi_snapshot"),
-                "requires_permission": "streaming_analytics.audit",
-                "idempotency_key": "view_id",
-            },
-            {
-                "route": "POST /governed-models",
-                "command": "register_governed_model",
-                "owned_tables": ("analytics_governed_model",),
-                "requires_permission": "streaming_analytics.intelligence.write",
-                "idempotency_key": "model_id",
-            },
-            {
-                "route": "GET /kpis",
-                "query": "kpi_snapshot",
-                "owned_tables": ("kpi_snapshot",),
-                "requires_permission": "streaming_analytics.audit",
-            },
-            {
-                "route": "GET /projections",
-                "query": "dashboard_projection",
-                "owned_tables": ("dashboard_projection",),
-                "requires_permission": "streaming_analytics.audit",
-            },
-            {
-                "route": "GET /streaming-analytics/workbench",
-                "query": "build_workbench_view",
-                "owned_tables": STREAMING_ANALYTICS_OWNED_TABLES,
-                "requires_permission": "streaming_analytics.audit",
-            },
-            {
-                "route": "GET /streaming-analytics/schema-contract",
-                "query": "build_schema_contract",
-                "owned_tables": STREAMING_ANALYTICS_OWNED_TABLES,
-                "requires_permission": "streaming_analytics.audit",
-            },
-            {
-                "route": "GET /streaming-analytics/service-contract",
-                "query": "build_service_contract",
-                "owned_tables": STREAMING_ANALYTICS_OWNED_TABLES,
-                "requires_permission": "streaming_analytics.audit",
-            },
-            {
-                "route": "GET /streaming-analytics/release-evidence",
-                "query": "build_release_evidence",
-                "owned_tables": STREAMING_ANALYTICS_OWNED_TABLES,
-                "requires_permission": "streaming_analytics.audit",
-            },
+            {"route": "POST /metric-streams", "command": "register_metric_stream", "owned_tables": ("metric_stream",), "requires_permission": "streaming_analytics.stream.write", "idempotency_key": "stream_id"},
+            {"route": "POST /aggregation-windows", "command": "define_window", "owned_tables": ("aggregation_window",), "requires_permission": "streaming_analytics.window.write", "idempotency_key": "window_id"},
+            {"route": "POST /metric-events", "command": "ingest_metric_event", "owned_tables": ("metric_event", "kpi_snapshot"), "emits": STREAMING_ANALYTICS_EMITTED_EVENT_TYPES, "requires_permission": "streaming_analytics.event.write", "idempotency_key": "event_id"},
+            {"route": "POST /ingestion-checkpoints", "command": "record_ingestion_checkpoint", "owned_tables": ("ingestion_checkpoint",), "requires_permission": "streaming_analytics.operations.write", "idempotency_key": "checkpoint_id"},
+            {"route": "POST /quality/evaluations", "command": "evaluate_data_quality", "owned_tables": ("data_quality_result", "metric_event"), "requires_permission": "streaming_analytics.quality.write", "idempotency_key": "event_id"},
+            {"route": "POST /replay-jobs", "command": "open_replay_job", "owned_tables": ("replay_job",), "requires_permission": "streaming_analytics.operations.write", "idempotency_key": "replay_job_id"},
+            {"route": "POST /watermarks", "command": "advance_watermark", "owned_tables": ("watermark_state", "metric_stream"), "requires_permission": "streaming_analytics.operations.write", "idempotency_key": "watermark_id"},
+            {"route": "POST /retention-policies", "command": "apply_retention_policy", "owned_tables": ("retention_policy", "metric_event"), "requires_permission": "streaming_analytics.configure", "idempotency_key": "policy_id"},
+            {"route": "POST /threshold-alerts", "command": "evaluate_threshold_alert", "owned_tables": ("threshold_alert", "kpi_snapshot"), "emits": ("OperationalKpiChanged",), "requires_permission": "streaming_analytics.alert.write", "idempotency_key": "alert_id"},
+            {"route": "POST /forecasts", "command": "forecast_metric", "owned_tables": ("metric_forecast", "kpi_snapshot"), "emits": ("ForecastUpdated",), "requires_permission": "streaming_analytics.intelligence.write", "idempotency_key": "forecast_id"},
+            {"route": "POST /risk-scores", "command": "score_operational_risk", "owned_tables": ("operational_risk_score", "kpi_snapshot"), "requires_permission": "streaming_analytics.intelligence.write", "idempotency_key": "risk_id"},
+            {"route": "POST /exceptions/resolutions", "command": "resolve_metric_exception", "owned_tables": ("metric_exception", "analytics_audit_entry"), "requires_permission": "streaming_analytics.operations.write", "idempotency_key": "exception_id"},
+            {"route": "POST /windows/recomputations", "command": "recompute_window", "owned_tables": ("window_recomputation", "aggregation_window", "kpi_snapshot"), "emits": STREAMING_ANALYTICS_EMITTED_EVENT_TYPES, "requires_permission": "streaming_analytics.operations.write", "idempotency_key": "recomputation_id"},
+            {"route": "POST /kpi-controls", "command": "run_kpi_controls", "owned_tables": ("kpi_control_assertion", "kpi_snapshot"), "requires_permission": "streaming_analytics.quality.write", "idempotency_key": "assertion_id"},
+            {"route": "POST /snapshot-proofs", "command": "generate_snapshot_proof", "owned_tables": ("kpi_snapshot_proof", "analytics_audit_entry", "kpi_snapshot", "metric_event"), "requires_permission": "streaming_analytics.audit", "idempotency_key": "proof_id"},
+            {"route": "POST /policy-screenings", "command": "screen_metric_policy", "owned_tables": ("metric_policy_screening",), "requires_permission": "streaming_analytics.quality.write", "idempotency_key": "screening_id"},
+            {"route": "POST /federation-views", "command": "build_analytics_federation_view", "owned_tables": ("analytics_federation_view", "metric_stream", "kpi_snapshot"), "requires_permission": "streaming_analytics.audit", "idempotency_key": "view_id"},
+            {"route": "POST /governed-models", "command": "register_governed_model", "owned_tables": ("analytics_governed_model",), "requires_permission": "streaming_analytics.intelligence.write", "idempotency_key": "model_id"},
+            {"route": "GET /kpis", "query": "kpi_snapshot", "owned_tables": ("kpi_snapshot",), "requires_permission": "streaming_analytics.audit"},
+            {"route": "GET /projections", "query": "dashboard_projection", "owned_tables": ("dashboard_projection",), "requires_permission": "streaming_analytics.audit"},
+            {"route": "GET /streaming-analytics/workbench", "query": "build_workbench_view", "owned_tables": STREAMING_ANALYTICS_OWNED_TABLES, "requires_permission": "streaming_analytics.audit"},
+            {"route": "GET /streaming-analytics/schema-contract", "query": "build_schema_contract", "owned_tables": STREAMING_ANALYTICS_OWNED_TABLES, "requires_permission": "streaming_analytics.audit"},
+            {"route": "GET /streaming-analytics/service-contract", "query": "build_service_contract", "owned_tables": STREAMING_ANALYTICS_OWNED_TABLES, "requires_permission": "streaming_analytics.audit"},
+            {"route": "GET /streaming-analytics/release-evidence", "query": "build_release_evidence", "owned_tables": STREAMING_ANALYTICS_OWNED_TABLES, "requires_permission": "streaming_analytics.audit"},
         ),
         "declared_catalog_routes": STREAMING_ANALYTICS_DECLARED_API_DEPENDENCIES,
         "shared_table_access": False,
@@ -1096,6 +976,7 @@ def streaming_analytics_build_api_contract() -> dict:
         "user_eventing_choice": False,
         "database_backends": STREAMING_ANALYTICS_ALLOWED_DATABASE_BACKENDS,
     }
+
 
 
 def streaming_analytics_build_service_contract() -> dict:
@@ -1130,17 +1011,20 @@ def streaming_analytics_build_service_contract() -> dict:
         "register_governed_model",
     )
     query_methods = (
+        "kpi_snapshot",
+        "dashboard_projection",
         "build_workbench_view",
         "build_api_contract",
         "build_schema_contract",
         "build_service_contract",
         "build_release_evidence",
+        "permissions_contract",
         "verify_owned_table_boundary",
     )
     return {
-        "format": "appgen.streaming-analytics-service-contract.v1",
-        "ok": len(command_methods) >= 9
-        and {"build_schema_contract", "build_service_contract", "build_release_evidence"} <= set(query_methods),
+        "format": "appgen.streaming-analytics-service-contract.v2",
+        "ok": len(command_methods) >= 12
+        and {"build_schema_contract", "build_service_contract", "build_release_evidence", "permissions_contract"} <= set(query_methods),
         "pbc": "streaming_analytics",
         "transaction_boundary": "streaming_analytics_owned_datastore_plus_appgen_outbox",
         "shared_table_access": False,
