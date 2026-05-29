@@ -3901,6 +3901,23 @@ def test_component_publish_text_renderer_contract_proves_catalog_log_markers() -
     } <= set(report["required_fragments"])
 
 
+def test_diagnostics_text_renderer_contract_proves_catalog_and_fixture_log_markers() -> None:
+    report = appgen_dsl._diagnostics_text_renderer_contract()
+
+    assert report["format"] == "appgen.diagnostics-text-renderer.v1"
+    assert report["ok"] is True
+    assert report["missing_fragments"] == ()
+    assert report["json_fallback"] is False
+    assert report["text_prefix"].startswith(
+        "diagnostics ok: format=appgen.diagnostic-catalog.v1 covered=3 required=3"
+    )
+    assert {
+        "diagnostics-audit failed: format=appgen.diagnostic-fixture-audit.v1 covered=2 required=3 missing=1",
+        "missing-code AGX9000",
+        "fail AGX9000: missing fixture",
+    } <= set(report["required_fragments"])
+
+
 def test_tooling_audit_text_summary_exposes_sections_gaps_and_formats() -> None:
     payload = {
         "format": "appgen.tooling-audit.v1",

@@ -2363,6 +2363,52 @@ def _emit_diagnostic_fixture_audit_text(payload: dict) -> None:
         print(f"fail {gap.get('name')}: {','.join(gap.get('shape_gaps', ()) or gap.get('severity_gaps', ()))}")
 
 
+def _diagnostics_text_renderer_contract() -> dict:
+    """Prove diagnostic catalog and fixture-audit text logs expose coverage evidence."""
+    catalog_payload = {
+        "format": "appgen.diagnostic-catalog.v1",
+        "ok": True,
+        "required_codes": ("AGX0201", "AGX0303", "AGX9000"),
+        "covered_fixture_codes": ("AGX0201", "AGX0303", "AGX9000"),
+        "fixture_count": 3,
+        "missing_fixtures": (),
+    }
+    fixture_payload = {
+        "format": "appgen.diagnostic-fixture-audit.v1",
+        "ok": False,
+        "required_codes": ("AGX0201", "AGX0303", "AGX9000"),
+        "covered_codes": ("AGX0201", "AGX0303"),
+        "missing_codes": ("AGX9000",),
+        "blocking_gaps": (
+            {
+                "name": "AGX9000",
+                "shape_gaps": ("missing fixture",),
+                "severity_gaps": (),
+            },
+        ),
+    }
+    output = io.StringIO()
+    with contextlib.redirect_stdout(output):
+        _emit_tooling_payload(catalog_payload, as_json=False)
+        _emit_tooling_payload(fixture_payload, as_json=False)
+    text = output.getvalue()
+    required_fragments = (
+        "diagnostics ok: format=appgen.diagnostic-catalog.v1 covered=3 required=3 fixtures=3 missing=0",
+        "diagnostics-audit failed: format=appgen.diagnostic-fixture-audit.v1 covered=2 required=3 missing=1",
+        "missing-code AGX9000",
+        "fail AGX9000: missing fixture",
+    )
+    missing = tuple(fragment for fragment in required_fragments if fragment not in text)
+    return {
+        "format": "appgen.diagnostics-text-renderer.v1",
+        "ok": not missing and not text.lstrip().startswith("{"),
+        "required_fragments": required_fragments,
+        "missing_fragments": missing,
+        "json_fallback": text.lstrip().startswith("{"),
+        "text_prefix": text[:240],
+    }
+
+
 def _emit_semantic_drift_text(payload: dict) -> None:
     status = "ok" if payload.get("ok") else "failed"
     surfaces = tuple(payload.get("surfaces", ()))
@@ -2987,6 +3033,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
 
     diagnostics = diagnostic_catalog_dsl()
     diagnostic_fixtures = diagnostic_fixture_audit_dsl()
+    diagnostics_text_renderer = _diagnostics_text_renderer_contract()
     parser_golden = parser_golden_audit_dsl()
     drift = semantic_drift_audit_dsl(source, source_name="tooling-audit.appgen")
     doctor = doctor_report_dsl()
@@ -3070,12 +3117,13 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
         ),
         _tooling_audit_check(
             "diagnostic_registry_and_fixtures",
-            diagnostics["ok"] and diagnostic_fixtures["ok"],
-            "Diagnostic registry and golden fixture audit cover required AGX codes.",
+            diagnostics["ok"] and diagnostic_fixtures["ok"] and diagnostics_text_renderer["ok"],
+            "Diagnostic registry, golden fixture audit, and text summaries cover required AGX codes.",
             "docs/tooling.md#diagnostic-specification",
             {
                 "catalog": diagnostics.get("format"),
                 "fixtures": diagnostic_fixtures.get("format"),
+                "text_renderer": diagnostics_text_renderer,
                 "docs_urls": tuple(
                     sorted(
                         {

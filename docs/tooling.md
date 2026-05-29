@@ -607,7 +607,10 @@ detected migration families. `appgen diagnostics`
 text output summarizes the `appgen.diagnostic-catalog.v1` format in the header,
 registry coverage, and fixture gaps; `appgen diagnostics --audit-fixtures`
 summarizes the `appgen.diagnostic-fixture-audit.v1` format in the header plus covered and missing
-diagnostic codes; and `appgen drift` summarizes the
+diagnostic codes. `appgen.diagnostics-text-renderer.v1` is embedded in the
+tooling audit to prove both diagnostic text summaries keep coverage, missing
+code, and blocking-gap evidence visible without JSON parsing. `appgen drift`
+summarizes the
 `appgen.semantic-drift-audit.v1` format, semantic-model format as
 `semantic_format=...`, drift surfaces,
 evidence formats, blocking gap count, digest, and per-surface checks.
