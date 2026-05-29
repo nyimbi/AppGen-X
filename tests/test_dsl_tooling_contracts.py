@@ -3224,9 +3224,14 @@ view CustomerForm for Customer {
     )
 
     assert blocked.returncode == 1, blocked.stderr
-    assert "lint_warnings" in json.loads(blocked.stdout)["blocking_gaps"]
+    blocked_payload = json.loads(blocked.stdout)
+    assert "lint_warnings" in blocked_payload["blocking_gaps"]
     assert blocked_text.returncode == 1, blocked_text.stderr
     assert blocked_text.stdout.startswith("generate failed: generated=False")
+    assert f"targets={','.join(blocked_payload['targets'])}" in blocked_text.stdout
+    assert f"artifacts={len(blocked_payload['artifacts'])}" in blocked_text.stdout
+    assert f"semantic={blocked_payload['validation']['semantic_model']['format']}" in blocked_text.stdout
+    assert f"output_dir {tmp_path / 'blocked-text'}" in blocked_text.stdout
     assert "gap lint_warnings" in blocked_text.stdout
     assert "warning AGX0404:" in blocked_text.stdout
     assert allowed.returncode == 0, allowed.stderr
