@@ -4752,6 +4752,46 @@ def _tooling_audit_cli_help_surface(root: Path) -> dict:
     help_text = help_output.getvalue()
     help_has_subcommands = all(command in entrypoint for command in required_subcommands)
     help_lists_subcommands = all(command in help_text for command in required_subcommands)
+    required_option_help = {
+        ("lint",): ("--json", "--strict", "--catalog", "--previous-semantic", "--backend"),
+        ("format",): ("--check", "--write", "--organize", "--json"),
+        ("validate",): ("--targets", "--json"),
+        ("generate",): ("--out", "--target", "--allow-warnings", "--json"),
+        ("graph",): ("--kind", "--format"),
+        ("graph-suite",): ("--json",),
+        ("explain",): ("--symbol", "--diagnostic", "--handler", "--json"),
+        ("migration-plan",): ("--backend", "--rename-hint", "--json"),
+        ("nl-plan",): ("--prompt", "--backend", "--json"),
+        ("lsp",): ("--position", "--prefix", "--rename", "--apply-code-action", "--stdio", "--json"),
+        ("verify",): ("--target", "--json"),
+        ("package",): ("--target", "--out", "--json"),
+        ("pbc",): ("list", "verify", "publish"),
+        ("pbc", "publish"): ("--catalog", "--catalog-path", "--json"),
+        ("designer-sync",): ("--edit-json", "--json"),
+        ("diagnostics",): ("--audit-fixtures", "--json"),
+        ("parser-golden",): ("--json",),
+        ("drift",): ("--json",),
+        ("doctor",): ("--json",),
+        ("tooling-audit",): ("--json",),
+    }
+    option_help = {}
+    for command_path, required_options in required_option_help.items():
+        command_help_output = io.StringIO()
+        command_help_error = io.StringIO()
+        command_help_exit_code = 0
+        with contextlib.redirect_stdout(command_help_output), contextlib.redirect_stderr(command_help_error):
+            try:
+                command_help_exit_code = dsl_tooling_cli((*command_path, "--help"))
+            except SystemExit as exc:
+                command_help_exit_code = int(exc.code or 0)
+        command_help_text = command_help_output.getvalue()
+        command_name = " ".join(command_path)
+        option_help[command_name] = {
+            "ok": command_help_exit_code == 0 and all(option in command_help_text for option in required_options),
+            "exit_code": command_help_exit_code,
+            "missing": tuple(option for option in required_options if option not in command_help_text),
+        }
+    subcommand_option_help_ok = all(item["ok"] for item in option_help.values())
     scripts = pyproject_data.get("project", {}).get("scripts", {})
     alias_declared = scripts.get("apg") == scripts.get("appgen") == "pyAppGen.__main__:main"
     with tempfile.TemporaryDirectory(prefix="appgen-entrypoint-audit-") as tmp:
@@ -4781,6 +4821,7 @@ def _tooling_audit_cli_help_surface(root: Path) -> dict:
         "ok": help_exit_code == 0
         and help_has_subcommands
         and help_lists_subcommands
+        and subcommand_option_help_ok
         and alias_declared
         and module_dispatches_tooling,
         "alias_declared": alias_declared,
@@ -4788,6 +4829,8 @@ def _tooling_audit_cli_help_surface(root: Path) -> dict:
         "help_exit_code": help_exit_code,
         "help_lists_subcommands": help_lists_subcommands,
         "help_missing_subcommands": tuple(command for command in required_subcommands if command not in help_text),
+        "subcommand_option_help_ok": subcommand_option_help_ok,
+        "subcommand_option_help": option_help,
         "module_entrypoint": {
             "ok": module_dispatches_tooling,
             "exit_code": module_lint.returncode,

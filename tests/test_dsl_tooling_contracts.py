@@ -3111,6 +3111,13 @@ def test_top_level_help_exposes_tooling_subcommands_and_apg_alias() -> None:
     assert audit["help_exit_code"] == 0
     assert audit["help_lists_subcommands"] is True
     assert audit["help_missing_subcommands"] == ()
+    assert audit["subcommand_option_help_ok"] is True
+    assert audit["subcommand_option_help"]["lint"]["missing"] == ()
+    assert audit["subcommand_option_help"]["lint"]["exit_code"] == 0
+    assert audit["subcommand_option_help"]["migration-plan"]["missing"] == ()
+    assert audit["subcommand_option_help"]["lsp"]["missing"] == ()
+    assert audit["subcommand_option_help"]["pbc publish"]["missing"] == ()
+    assert audit["subcommand_option_help"]["designer-sync"]["missing"] == ()
     assert audit["module_entrypoint"]["ok"] is True
     assert audit["module_entrypoint"]["exit_code"] == 0
     assert audit["module_entrypoint"]["payload_format"] == "appgen.lint-report.v1"

@@ -520,7 +520,11 @@ directives.
 
 The installed command should expose current compatibility flags and the newer
 subcommands below. `apg` is a supported short alias for the same command surface
-as `appgen`. Existing flags may remain as aliases.
+as `appgen`. Existing flags may remain as aliases. The executable
+`appgen.cli-help-surface-audit.v1` contract invokes top-level help, each
+important subcommand help surface, and nested package/component-publish help so
+new flags cannot be implemented without being discoverable by humans, scripts,
+and coding agents.
 
 ### `appgen lint`
 
@@ -556,7 +560,11 @@ database backend choices, are also rejected by argparse with exit code `2`.
 
 The executable CLI contract tests cover JSON schemas, default text summaries,
 success and failure exit codes, and argparse usage failures for invalid choices
-or missing required options.
+or missing required options. The help-surface audit also proves discoverability
+for linter semantic-baseline flags, generator target flags, graph formats,
+migration backends and rename hints, language-service rename/code-action flags,
+release package targets, designer-sync edits, and diagnostics/golden/drift
+audit commands.
 
 ### `appgen format`
 
