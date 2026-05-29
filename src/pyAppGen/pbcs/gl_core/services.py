@@ -1,10 +1,20 @@
-"""Command service layer for the gl_core PBC."""
+"""Executable service layer for the gl_core PBC."""
 
 from __future__ import annotations
 
 from .events import EVENT_CONTRACT
+from .runtime import gl_core_append_ledger_event
 from .runtime import gl_core_build_api_contract
+from .runtime import gl_core_build_projection
 from .runtime import gl_core_build_service_contract
+from .runtime import gl_core_build_workbench_view
+from .runtime import gl_core_create_continuous_close_snapshot
+from .runtime import gl_core_empty_state
+from .runtime import gl_core_generate_audit_proof
+from .runtime import gl_core_predict_posting_validation
+from .runtime import gl_core_receive_event
+from .runtime import gl_core_register_rule
+from .runtime import gl_core_suggest_reconciliation
 
 PBC_KEY = "gl_core"
 
@@ -24,7 +34,7 @@ def _route_to_contract(route: dict) -> dict:
         "operation": operation,
         "operation_kind": operation_kind,
         "method": method,
-        "path": path,
+        "path": f"/api/pbc/{PBC_KEY}{path}",
         "permission": route["requires_permission"],
         "owned_tables": owned_tables if is_command else (),
         "read_tables": () if is_command else owned_tables,
@@ -91,32 +101,88 @@ def operation_plan(operation_name: str, payload: dict | None = None) -> dict:
 
 
 class GlCoreService:
-    """Side-effect-free generated command facade."""
+    """Stateful package-local service facade over the GL runtime."""
+
+    def __init__(self, state: dict | None = None):
+        self.state = state or gl_core_empty_state()
+
+    def _apply_command(self, operation_name: str, payload: dict) -> dict:
+        if operation_name == "append_ledger_event":
+            event_type = payload.get("event_type", "JournalPosted")
+            command_payload = dict(payload.get("payload", payload))
+            command_payload.pop("event_type", None)
+            return gl_core_append_ledger_event(self.state, event_type, command_payload)
+        if operation_name == "predict_posting_validation":
+            return gl_core_predict_posting_validation(self.state, payload.get("payload", payload))
+        if operation_name == "create_continuous_close_snapshot":
+            result = gl_core_create_continuous_close_snapshot(self.state, tenant=payload.get("tenant"))
+            return {**result, "state": self.state}
+        if operation_name == "suggest_reconciliation":
+            source_items = tuple(payload.get("source_items", payload.get("items", ())))
+            result = gl_core_suggest_reconciliation(self.state, source_items)
+            next_state = {
+                **self.state,
+                "reconciliation_suggestions": tuple(self.state.get("reconciliation_suggestions", ())) + tuple(result.get("suggestions", ())),
+            }
+            return {**result, "state": next_state}
+        if operation_name == "register_rule":
+            return gl_core_register_rule(self.state, payload.get("rule", payload))
+        if operation_name == "receive_event":
+            return gl_core_receive_event(
+                self.state,
+                payload.get("envelope", payload),
+                simulate_failure=payload.get("simulate_failure", False),
+            )
+        raise ValueError(f"Unsupported GL Core command: {operation_name}")
+
+    def _apply_query(self, operation_name: str, payload: dict) -> dict:
+        if operation_name == "build_projection":
+            return gl_core_build_projection(self.state, tenant=payload.get("tenant"))
+        if operation_name == "generate_audit_proof":
+            return gl_core_generate_audit_proof(self.state, disclosure=tuple(payload.get("disclosure", ())))
+        if operation_name == "build_workbench_view":
+            result = gl_core_build_workbench_view(self.state, tenant=payload.get("tenant"))
+            return {"ok": True, **result}
+        raise ValueError(f"Unsupported GL Core query: {operation_name}")
 
     def execute_operation(self, operation_name: str, payload: dict | None = None) -> dict:
         plan = operation_plan(operation_name, payload)
-        result = {
-            "ok": plan["ok"],
+        if not plan["ok"]:
+            return plan
+        supplied = dict(payload or {})
+        if plan["operation_kind"] == "command":
+            result = self._apply_command(operation_name, supplied)
+            if "state" in result:
+                self.state = result["state"]
+            return {
+                "ok": result.get("ok") is True,
+                "pbc": PBC_KEY,
+                "operation": operation_name,
+                "operation_kind": "command",
+                "payload": supplied,
+                "operation_contract": plan,
+                "transaction_boundary": plan["transaction_boundary"],
+                "outbox_table": EVENT_CONTRACT["outbox_table"],
+                "emits": (plan.get("emitted_event"),) if plan.get("emitted_event") else (),
+                "result": result,
+                "state": self.state,
+                "side_effects": (),
+            }
+        result = self._apply_query(operation_name, supplied)
+        return {
+            "ok": result.get("ok") is True,
             "pbc": PBC_KEY,
             "operation": operation_name,
-            "operation_kind": plan.get("operation_kind"),
-            "payload": dict(payload or {}),
+            "operation_kind": "query",
+            "payload": supplied,
             "operation_contract": plan,
-            "transaction_boundary": plan.get("transaction_boundary"),
+            "transaction_boundary": plan["transaction_boundary"],
+            "outbox_table": None,
+            "emits": (),
+            "result": result,
+            "state": self.state,
             "side_effects": (),
         }
-        if plan.get("operation_kind") == "command":
-            result.update(
-                {
-                    "command": operation_name,
-                    "read_only": False,
-                    "outbox_table": EVENT_CONTRACT["outbox_table"],
-                    "emits": (plan.get("emitted_event"),) if plan.get("emitted_event") else (),
-                }
-            )
-        elif plan.get("operation_kind") == "query":
-            result.update({"query": operation_name, "read_only": True, "outbox_table": None, "emits": ()})
-        return result
 
     def __getattr__(self, operation_name: str):
         if operation_name in service_operation_contracts()["operations"]:
@@ -142,9 +208,27 @@ def service_operation_manifest() -> dict:
 
 
 def smoke_test() -> dict:
-    """Execute one side-effect-free service operation through the facade."""
-    manifest = service_operation_manifest()
+    """Exercise the stateful service facade without external side effects."""
     service = GlCoreService()
-    operation = manifest["operations"][0] if manifest["operations"] else None
-    result = service.execute_operation(operation, {"smoke": True}) if operation else {"ok": False}
-    return {"ok": manifest["ok"] and result.get("ok") is True, "manifest": manifest, "result": result, "side_effects": ()}
+    command = service.execute_operation(
+        "append_ledger_event",
+        {
+            "event_type": "JournalPosted",
+            "payload": {
+                "tenant": "tenant_service_smoke",
+                "lines": (
+                    {"account": "cash", "debit": 100.0, "credit": 0.0},
+                    {"account": "revenue", "debit": 0.0, "credit": 100.0},
+                ),
+            },
+        },
+    )
+    query = service.execute_operation("build_workbench_view", {"tenant": "tenant_service_smoke"})
+    manifest = service_operation_manifest()
+    return {
+        "ok": manifest["ok"] and command["ok"] and query["ok"],
+        "manifest": manifest,
+        "command": command,
+        "query": query,
+        "side_effects": (),
+    }

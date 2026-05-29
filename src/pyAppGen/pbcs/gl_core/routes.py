@@ -1,54 +1,47 @@
-"""API route contracts for the gl_core PBC."""
+"""Executable API route contracts for the gl_core PBC."""
 
 from __future__ import annotations
 
-from .runtime import gl_core_build_api_contract
 from .services import GlCoreService
 from .services import service_operation_contracts
 
 PBC_KEY = "gl_core"
 
 
-def _route_to_route(route: dict) -> dict:
-    method, path = route["route"].split(" ", 1)
-    return {
-        "method": method,
-        "path": f"/api/pbc/{PBC_KEY}{path}",
-        "handler": route.get("command") or route.get("query"),
-        "permission": route["requires_permission"],
-    }
-
-
-def _route_to_contract(route: dict) -> dict:
-    method, path = route["route"].split(" ", 1)
-    operation = route.get("command") or route.get("query")
-    operation_kind = "command" if route.get("command") else "query"
-    owned_tables = tuple(
-        table if table.startswith(f"{PBC_KEY}_") else f"{PBC_KEY}_{table}"
-        for table in route.get("owned_tables", ())
+def _route_contracts() -> tuple[dict, ...]:
+    return tuple(
+        {
+            "method": contract["method"],
+            "path": contract["path"],
+            "handler": contract["operation"],
+            "permission": contract["permission"],
+            "operation": contract["operation"],
+            "operation_kind": contract["operation_kind"],
+            "owned_tables": contract["owned_tables"],
+            "read_tables": contract["read_tables"],
+            "emitted_event": contract["emitted_event"],
+            "consumed_event": contract["consumed_event"],
+            "event_contract": contract["event_contract"],
+            "transaction_boundary": contract["transaction_boundary"],
+            "idempotency_required": contract["operation_kind"] == "command",
+            "idempotency_key": contract["idempotency_key"],
+            "shared_table_access": False,
+            "stream_engine_picker_visible": False,
+        }
+        for contract in service_operation_contracts()["contracts"]
     )
-    return {
-        "method": method,
-        "path": f"/api/pbc/{PBC_KEY}{path}",
-        "handler": operation,
-        "permission": route["requires_permission"],
-        "operation": operation,
-        "operation_kind": operation_kind,
-        "owned_tables": owned_tables if operation_kind == "command" else (),
-        "read_tables": () if operation_kind == "command" else owned_tables,
-        "emitted_event": tuple(route.get("emits", ())),
-        "consumed_event": tuple(route.get("consumes", ())),
-        "event_contract": "AppGen-X",
-        "transaction_boundary": "owned_datastore_plus_outbox",
-        "idempotency_required": operation_kind == "command",
-        "idempotency_key": route.get("idempotency_key"),
-        "shared_table_access": False,
-        "stream_engine_picker_visible": False,
+
+
+API_ROUTE_CONTRACTS = _route_contracts()
+ROUTES = tuple(
+    {
+        "method": contract["method"],
+        "path": contract["path"],
+        "handler": contract["handler"],
+        "permission": contract["permission"],
     }
-
-
-ROUTES = tuple(_route_to_route(route) for route in gl_core_build_api_contract()["routes"])
-API_ROUTE_CONTRACTS = tuple(_route_to_contract(route) for route in gl_core_build_api_contract()["routes"])
+    for contract in API_ROUTE_CONTRACTS
+)
 
 
 def register_routes(app=None):
@@ -58,20 +51,9 @@ def register_routes(app=None):
 
 def api_route_contracts() -> dict:
     """Return executable API route contracts with policy and boundary evidence."""
-    service_contracts = service_operation_contracts()["contracts"]
     contracts = tuple(
         {
             **contract,
-            "service_operation": next(
-                (
-                    item
-                    for item in service_contracts
-                    if item["operation"] == contract["operation"]
-                    and item["method"] == contract["method"]
-                    and f"/api/pbc/{PBC_KEY}{item['path']}" == contract["path"]
-                ),
-                None,
-            ),
             "route_id": f"{contract['method']} {contract['path']}",
         }
         for contract in API_ROUTE_CONTRACTS
@@ -93,15 +75,23 @@ def validate_api_route_contracts() -> dict:
     """Validate routes against service operations, permissions, idempotency, and table boundaries."""
     manifest = api_route_contracts()
     contracts = manifest["contracts"]
+    service_contracts = service_operation_contracts()["contracts"]
     service_mismatches = tuple(
         item["route_id"]
         for item in contracts
-        if not item["service_operation"]
-        or item["service_operation"]["method"] != item["method"]
-        or f"/api/pbc/{PBC_KEY}{item['service_operation']['path']}" != item["path"]
-        or item["service_operation"]["permission"] != item["permission"]
+        if not any(
+            contract["operation"] == item["operation"]
+            and contract["method"] == item["method"]
+            and contract["path"] == item["path"]
+            and contract["permission"] == item["permission"]
+            for contract in service_contracts
+        )
     )
-    missing_idempotency = tuple(item["route_id"] for item in contracts if item["idempotency_required"] and not item["idempotency_key"])
+    missing_idempotency = tuple(
+        item["route_id"]
+        for item in contracts
+        if item["idempotency_required"] and not item["idempotency_key"]
+    )
     invalid_table_scope = tuple(
         item["route_id"]
         for item in contracts
@@ -119,21 +109,52 @@ def validate_api_route_contracts() -> dict:
     }
 
 
-def dispatch_route(method: str, path: str, payload: dict | None = None) -> dict:
-    """Dispatch a route contract to its service command without side effects."""
+def dispatch_route(method: str, path: str, payload: dict | None = None, *, service: GlCoreService | None = None) -> dict:
+    """Dispatch a route contract to its service command without external side effects."""
     route = next((item for item in ROUTES if item["method"] == method and item["path"] == path), None)
     if route is None:
-        return {"ok": False, "handled": False, "reason": "route_not_found"}
-    service = GlCoreService()
-    result = service.execute_operation(route["handler"], payload or {})
-    return {"ok": result.get("ok") is True, "handled": True, "route": route, "result": result, "side_effects": ()}
+        return {"ok": False, "handled": False, "reason": "route_not_found", "side_effects": ()}
+    service = service or GlCoreService()
+    handler = getattr(service, route["handler"])
+    result = handler(payload or {})
+    return {
+        "ok": result.get("ok") is True,
+        "handled": True,
+        "route": route,
+        "result": result,
+        "side_effects": (),
+    }
 
 
 def smoke_test() -> dict:
-    """Execute the first route and validate the API contract surface."""
+    """Execute one route and validate the API contract surface."""
+    service = GlCoreService()
+    dispatched = dispatch_route(
+        "POST",
+        "/api/pbc/gl_core/gl/journal-events",
+        {
+            "event_type": "JournalPosted",
+            "payload": {
+                "tenant": "tenant_route_smoke",
+                "lines": (
+                    {"account": "cash", "debit": 75.0, "credit": 0.0},
+                    {"account": "revenue", "debit": 0.0, "credit": 75.0},
+                ),
+            },
+        },
+        service=service,
+    )
+    queried = dispatch_route(
+        "GET",
+        "/api/pbc/gl_core/gl/workbench",
+        {"tenant": "tenant_route_smoke"},
+        service=service,
+    )
     validation = validate_api_route_contracts()
-    if not ROUTES:
-        return {"ok": False, "reason": "no_routes"}
-    first = ROUTES[0]
-    dispatched = dispatch_route(first["method"], first["path"], {"smoke": True})
-    return {"ok": validation["ok"] and dispatched["ok"], "validation": validation, "dispatch": dispatched, "side_effects": ()}
+    return {
+        "ok": validation["ok"] and dispatched["ok"] and queried["ok"],
+        "validation": validation,
+        "dispatch": dispatched,
+        "query": queried,
+        "side_effects": (),
+    }
