@@ -5455,6 +5455,14 @@ def _tooling_audit_cli_help_surface(root: Path) -> dict:
     subcommand_option_help_ok = all(item["ok"] for item in option_help.values())
     scripts = pyproject_data.get("project", {}).get("scripts", {})
     alias_declared = scripts.get("apg") == scripts.get("appgen") == "pyAppGen.__main__:main"
+    alias_contract = {
+        "format": "appgen.cli-alias-contract.v1",
+        "ok": alias_declared,
+        "commands": ("appgen", "apg"),
+        "targets": {"appgen": scripts.get("appgen"), "apg": scripts.get("apg")},
+        "shared_target": scripts.get("appgen") if scripts.get("appgen") == scripts.get("apg") else None,
+        "entrypoint": "pyAppGen.__main__:main",
+    }
     with tempfile.TemporaryDirectory(prefix="appgen-entrypoint-audit-") as tmp:
         source_path = Path(tmp) / "entrypoint.appgen"
         source_path.write_text("app EntryPoint { targets: web }\ntable Thing { id: int pk }\n", encoding="utf-8")
@@ -5483,10 +5491,15 @@ def _tooling_audit_cli_help_surface(root: Path) -> dict:
         and help_has_subcommands
         and help_lists_subcommands
         and subcommand_option_help_ok
-        and alias_declared
+        and alias_contract["ok"]
         and module_dispatches_tooling,
         "alias_declared": alias_declared,
         "script_targets": {"appgen": scripts.get("appgen"), "apg": scripts.get("apg")},
+        "alias_contract": {
+            **alias_contract,
+            "module_dispatches_tooling": module_dispatches_tooling,
+            "module_payload_format": module_lint_payload.get("format"),
+        },
         "help_exit_code": help_exit_code,
         "help_lists_subcommands": help_lists_subcommands,
         "help_missing_subcommands": tuple(command for command in required_subcommands if command not in help_text),

@@ -3553,6 +3553,12 @@ def test_top_level_help_exposes_tooling_subcommands_and_apg_alias() -> None:
     assert audit["ok"] is True
     assert audit["script_targets"]["appgen"] == "pyAppGen.__main__:main"
     assert audit["script_targets"]["apg"] == audit["script_targets"]["appgen"]
+    assert audit["alias_contract"]["format"] == "appgen.cli-alias-contract.v1"
+    assert audit["alias_contract"]["ok"] is True
+    assert audit["alias_contract"]["commands"] == ("appgen", "apg")
+    assert audit["alias_contract"]["shared_target"] == "pyAppGen.__main__:main"
+    assert audit["alias_contract"]["module_dispatches_tooling"] is True
+    assert audit["alias_contract"]["module_payload_format"] == "appgen.lint-report.v1"
     assert audit["help_exit_code"] == 0
     assert audit["help_lists_subcommands"] is True
     assert audit["help_missing_subcommands"] == ()

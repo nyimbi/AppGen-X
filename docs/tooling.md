@@ -536,7 +536,9 @@ as `appgen`. Existing flags may remain as aliases. The executable
 `appgen.cli-help-surface-audit.v1` contract invokes top-level help, each
 important subcommand help surface, and nested package/component-publish help so
 new flags cannot be implemented without being discoverable by humans, scripts,
-and coding agents.
+and coding agents. It also embeds `appgen.cli-alias-contract.v1`, which proves
+that `appgen` and `apg` resolve to the same `pyAppGen.__main__:main` entrypoint
+and that the module entrypoint dispatches into the tooling CLI.
 
 ### `appgen lint`
 
