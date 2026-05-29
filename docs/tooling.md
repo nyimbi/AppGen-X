@@ -606,14 +606,15 @@ release package targets, designer-sync edits, and diagnostics/golden/drift
 audit commands. The default `appgen lint` text output renders the
 `appgen.lint-report.v1` envelope format and stage counts in the report's
 published `stage_names` order, currently syntax, semantic, and policy
-diagnostics, and when `--previous-semantic` is provided it also prints a
+diagnostics, source file names as `source-file ...`, and when
+`--previous-semantic` is provided it also prints a
 migration-preview summary with the embedded `appgen.migration-plan.v1` format
 as `format=...`, backend as `backend=...`, approval flag, change count, and
 detected migration families.
 `appgen.lint-text-renderer.v1` is embedded in the tooling audit to prove lint
-text logs preserve source mode, file count, ordered stage counts, migration
-preview metadata, detected migration families, and diagnostic lines without
-JSON parsing.
+text logs preserve source mode, file count, source file names, ordered stage
+counts, migration preview metadata, detected migration families, and diagnostic
+lines without JSON parsing.
 `appgen diagnostics`
 text output summarizes the `appgen.diagnostic-catalog.v1` format in the header,
 registry coverage, required registry codes as `required-code ...`, covered

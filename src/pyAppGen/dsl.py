@@ -1795,6 +1795,8 @@ def _emit_tooling_payload(payload: dict, *, as_json: bool) -> None:
         if payload.get("source_mode") or payload.get("files"):
             files = tuple(payload.get("files", ()))
             print(f"source {payload.get('source_mode', 'file')}: files={len(files)}")
+            for file_name in files:
+                print(f"source-file {file_name}")
         stages = payload.get("stages") or {}
         if stages:
             stage_names = tuple(payload.get("stage_names") or LINT_STAGE_NAMES)
@@ -2165,6 +2167,8 @@ def _lint_text_renderer_contract() -> dict:
     required_fragments = (
         "lint failed: format=appgen.lint-report.v1 {'error': 1, 'warning': 1}",
         "source directory: files=2",
+        "source-file apps/sales.appgen",
+        "source-file apps/inventory.appgen",
         "stages syntax=0 semantic=1 policy=1",
         "migration-preview format=appgen.migration-plan.v1 backend=postgresql: changes=1 requires_approval=True",
         "migration-detected relationships, tables",

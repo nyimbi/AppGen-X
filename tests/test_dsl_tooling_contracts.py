@@ -4057,6 +4057,8 @@ def test_lint_text_renderer_contract_proves_stage_and_migration_log_markers() ->
     assert report["text_prefix"].startswith("lint failed: format=appgen.lint-report.v1")
     assert {
         "source directory: files=2",
+        "source-file apps/sales.appgen",
+        "source-file apps/inventory.appgen",
         "stages syntax=0 semantic=1 policy=1",
         "migration-preview format=appgen.migration-plan.v1 backend=postgresql: changes=1 requires_approval=True",
         "migration-detected relationships, tables",
