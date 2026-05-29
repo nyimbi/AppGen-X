@@ -1,55 +1,33 @@
-# Airline Operations Control Implementation Plan
+# Airline Operations Control Standalone Implementation Plan
 
 ## Scope
 
-This increment implements one executable airline operations control slice from `improve1.md` inside the package-local code:
+Implement a one-PBC standalone app surface for `airline_operations_control` entirely inside the package directory. The slice must stay package-local, avoid shared generator or DSL changes, and make the existing timeline/rotation/turn logic executable through standalone runtime, services, routes, UI, assistant planning, and focused package tests.
 
-1. Canonical flight-leg operating timeline
-2. Tail rotation continuity graph
-3. Minimum-turn feasibility engine
+## Slice Goals
 
-The slice stays inside AppGen-X boundaries, keeps ordinary datastore assumptions limited to PostgreSQL/MySQL/MariaDB, and avoids shared-table behavior.
+1. Preserve and expose the current authoritative `flight_leg` timeline, tail rotation continuity graph, and minimum-turn feasibility engine.
+2. Wrap that planning core in executable package-local state, route dispatch, and standalone app bootstrap/render flows.
+3. Add package-local CRUD and planning support for `crew_pairing`, `disruption_event`, `reaccommodation_plan`, `operations_decision`, and `delay_code` records.
+4. Publish forms, wizards, controls, permissions, document-instruction planning, and release evidence in one coherent package surface.
+5. Verify with compile checks, package tests, and available PBC audits only for this package.
 
-## Backlog Slice
+## Concrete File Changes
 
-### Slice A: Authoritative leg timeline
+- Rewrite `runtime.py` as the stateful package core for contracts, commands, queries, permissions, and release evidence.
+- Rewrite `services.py` and `routes.py` to expose dispatchable package-local API operations.
+- Rewrite `ui.py` with standalone shell metadata, forms, wizards, controls, and rendered workbench output.
+- Rewrite `agent.py`, `permissions.py`, `config.py`, `release_evidence.py`, and `models.py` to align with the standalone surface.
+- Add `standalone.py` for bootstrap/demo/render/release flows.
+- Update `__init__.py`, `README.md`, `RELEASE_EVIDENCE.md`, and `implementation-status.md` for the standalone slice.
+- Replace package tests with focused standalone and contract coverage under `src/pyAppGen/pbcs/airline_operations_control/tests`.
 
-- Normalize one `flight_leg` into a single operating timeline from publication through closure.
-- Support branch handling for cancelled, diverted, return-to-gate, and ferry/reposition style legs.
-- Expose authoritative status, delay minutes, completion airport, and timeline milestones for workbench use.
+## Acceptance Shape
 
-### Slice B: Tail rotation continuity
+The slice is complete when the package can:
 
-- Link same-tail flight legs into one ordered operating-day sequence.
-- Compute previous-leg and next-leg continuity for each node in the sequence.
-- Surface broken-turn and downstream-risk signals on the tail graph.
-
-### Slice C: Minimum-turn feasibility
-
-- Evaluate the outbound turn using inbound arrival timing plus operational factors such as crew change, fueling, catering, bags, special assistance, and outstation padding.
-- Classify each turn as `feasible`, `marginal`, `impossible`, or `unknown`.
-- Push broken turns into a focused OCC attention queue.
-
-## Code Changes
-
-- Add a package-local planning module for timeline normalization, turn assessment, tail graph construction, and workbench projection.
-- Extend runtime state to store normalized `flight_leg` and `aircraft_rotation` records.
-- Extend runtime/service/UI/agent surfaces so the slice is executable from package-local APIs instead of existing only as documentation.
-- Add focused implementation tests in `tests/test_pbc_airline_operations_control_implementation.py`.
-
-## Deferred Backlog
-
-The following backlog items remain intentionally deferred after this slice:
-
-- Crew legality projection horizon
-- Maintenance overlays on aircraft availability
-- Slot and curfew protection
-- ATC/weather/NOTAM fusion
-- Reaccommodation boundary rules
-- Cancellation decision packs
-
-## Verification Plan
-
-- Run focused pytest coverage for the new implementation test file.
-- Re-run the existing airline operations control runtime and package contract tests.
-- Run Python compilation checks on the touched package files.
+- bootstrap one tenant-local standalone OCC workspace,
+- dispatch routes without external dependencies,
+- render a workbench showing an impossible outbound turn from a late inbound,
+- expose permissions, assistant CRUD planning, and release evidence,
+- pass focused compile/tests/audits without editing files outside the package.
