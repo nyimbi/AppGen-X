@@ -2658,10 +2658,16 @@ def _emit_release_verifier_text(payload: dict) -> None:
         print(f"release-evidence format={evidence.get('format')}: artifacts={len(evidence.get('artifacts', ()))}")
     graph = evidence.get("graph_suite", {})
     if graph.get("format"):
+        required_kinds = tuple(graph.get("required_kinds", ()))
+        graph_formats = tuple(graph.get("formats", ()))
         print(
             f"graph-suite format={graph.get('format')}: "
-            f"kinds={len(graph.get('required_kinds', ()))} formats={len(graph.get('formats', ()))}"
+            f"kinds={len(required_kinds)} formats={len(graph_formats)}"
         )
+        if required_kinds:
+            print(f"graph-kinds {', '.join(required_kinds)}")
+        if graph_formats:
+            print(f"graph-formats {', '.join(graph_formats)}")
     for check in payload.get("checks", ()):
         gaps = tuple(check.get("blocking_gaps", ()))
         gap_text = f" gaps={','.join(gaps)}" if gaps else ""
@@ -2708,6 +2714,8 @@ def _release_verifier_text_renderer_contract() -> dict:
         "release-verify failed: format=appgen.release-verifier-report.v1 targets=mobile,desktop written=2",
         "release-evidence format=appgen.release-evidence-bundle.v1: artifacts=1",
         "graph-suite format=appgen.graph-suite-report.v1: kinds=2 formats=3",
+        "graph-kinds workflow, package",
+        "graph-formats json, mermaid, dot",
         "fail mobile gaps=package_metadata_exists,smoke_launch_not_declared",
         "ok desktop",
         "artifact release_evidence: dist/appgen-release-evidence.json",

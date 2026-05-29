@@ -3982,6 +3982,8 @@ def test_release_verifier_text_renderer_contract_proves_handoff_log_markers() ->
     assert {
         "release-evidence format=appgen.release-evidence-bundle.v1: artifacts=1",
         "graph-suite format=appgen.graph-suite-report.v1: kinds=2 formats=3",
+        "graph-kinds workflow, package",
+        "graph-formats json, mermaid, dot",
         "fail mobile gaps=package_metadata_exists,smoke_launch_not_declared",
         "artifact mobile_package_manifest: dist/appgen-package-mobile.json",
     } <= set(report["required_fragments"])

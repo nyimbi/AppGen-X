@@ -851,12 +851,13 @@ The default text output for both `appgen verify` and `appgen package` summarizes
 the release verifier report format, selected targets, written artifacts,
 the `appgen.release-evidence-bundle.v1` bundle format and
 `appgen.graph-suite-report.v1` graph-suite evidence as `format=...` markers,
-per-target verifier status, blocking gaps, and artifact paths;
+graph-suite kinds as `graph-kinds ...`, graph-suite rendering formats as
+`graph-formats ...`, per-target verifier status, blocking gaps, and artifact paths;
 `--json` remains the complete machine-readable report.
 `appgen.release-verifier-text-renderer.v1` is embedded in the tooling audit to
 prove those human-readable handoff logs keep the envelope, evidence bundle,
-graph-suite, per-target status, blocking-gap, and artifact markers without
-depending on JSON parsing.
+graph-suite kind/format, per-target status, blocking-gap, and artifact markers
+without depending on JSON parsing.
 
 ### `appgen component-publish`
 
