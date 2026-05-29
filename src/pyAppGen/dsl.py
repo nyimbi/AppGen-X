@@ -3538,6 +3538,8 @@ def _tooling_audit_designer_sync_cli(tmp: Path, source: str) -> dict:
     with contextlib.redirect_stdout(output):
         valid_exit = dsl_tooling_cli(("designer-sync", str(source_path), "--edit-json", json.dumps(edit), "--json"))
     valid_payload = json.loads(output.getvalue())
+    valid_edit = valid_payload.get("visual_edit", {})
+    valid_projection = valid_edit.get("projections_after", {}).get("database_designer", {})
     invalid_output = io.StringIO()
     invalid_error = io.StringIO()
     invalid_exit = 0
@@ -3559,8 +3561,15 @@ def _tooling_audit_designer_sync_cli(tmp: Path, source: str) -> dict:
     return {
         "format": "appgen.designer-sync-cli-audit.v1",
         "ok": valid_exit == 0
-        and valid_payload.get("visual_edit", {}).get("accepted") is True
-        and "sync_note" in valid_payload.get("visual_edit", {}).get("patched_source", "")
+        and valid_payload.get("format") == "appgen.designer-sync-report.v1"
+        and valid_edit.get("accepted") is True
+        and valid_edit.get("round_trip_ok") is True
+        and "sync_note" in valid_edit.get("patched_source", "")
+        and "sync_note" in valid_edit.get("semantic_after", {}).get("tables", {}).get("Invoice", {}).get("fields", {})
+        and "database_designer" in valid_edit.get("changed_surfaces", ())
+        and any(str(line).startswith("+  sync_note: string") for line in valid_edit.get("dsl_diff", ()))
+        and valid_projection.get("semantic_model_format") == "appgen.semantic-model.v1"
+        and valid_projection.get("er_graph", {}).get("format") == "appgen.graph.er.v1"
         and invalid_exit == 2
         and "invalid JSON for --edit-json" in invalid_stderr
         and "Traceback" not in invalid_stderr
@@ -3569,7 +3578,12 @@ def _tooling_audit_designer_sync_cli(tmp: Path, source: str) -> dict:
         and "Traceback" not in non_object_stderr,
         "valid_exit": valid_exit,
         "valid_payload_format": valid_payload.get("format"),
-        "valid_round_trip": valid_payload.get("visual_edit", {}).get("round_trip_ok"),
+        "valid_round_trip": valid_edit.get("round_trip_ok"),
+        "valid_changed_surfaces": valid_edit.get("changed_surfaces", ()),
+        "valid_diff_lines": len(valid_edit.get("dsl_diff", ())),
+        "valid_semantic_model_format": valid_edit.get("semantic_model_format"),
+        "valid_projection_format": valid_projection.get("format"),
+        "valid_projection_semantic_model_format": valid_projection.get("semantic_model_format"),
         "invalid_exit": invalid_exit,
         "invalid_stderr": invalid_stderr.strip(),
         "non_object_exit": non_object_exit,

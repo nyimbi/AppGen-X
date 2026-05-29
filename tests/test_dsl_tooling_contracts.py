@@ -2072,6 +2072,21 @@ def test_appgen_designer_sync_subcommand_emits_json_contract(tmp_path: Path) -> 
     assert "Traceback" not in non_object_edit_result.stderr
 
 
+def test_designer_sync_cli_audit_proves_diff_semantic_and_projection_refresh(tmp_path: Path) -> None:
+    report = appgen_dsl._tooling_audit_designer_sync_cli(tmp_path, TOOLING_SAMPLE)
+
+    assert report["format"] == "appgen.designer-sync-cli-audit.v1"
+    assert report["ok"] is True
+    assert report["valid_exit"] == 0
+    assert report["valid_payload_format"] == "appgen.designer-sync-report.v1"
+    assert report["valid_round_trip"] is True
+    assert "database_designer" in report["valid_changed_surfaces"]
+    assert report["valid_diff_lines"] > 0
+    assert report["valid_semantic_model_format"] == "appgen.semantic-model.v1"
+    assert report["valid_projection_format"] == "appgen.designer-database-projection.v1"
+    assert report["valid_projection_semantic_model_format"] == "appgen.semantic-model.v1"
+
+
 def test_diagnostic_catalog_and_fixture_audit_cover_required_agx_codes() -> None:
     catalog = diagnostic_catalog_dsl()
     audit = diagnostic_fixture_audit_dsl()
@@ -2406,6 +2421,11 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     designer_check = next(check for check in report["checks"] if check["id"] == "ide_visual_designer_round_trip")
     assert designer_check["detail"]["cli"]["format"] == "appgen.designer-sync-cli-audit.v1"
     assert designer_check["detail"]["cli"]["ok"] is True
+    assert designer_check["detail"]["cli"]["valid_round_trip"] is True
+    assert "database_designer" in designer_check["detail"]["cli"]["valid_changed_surfaces"]
+    assert designer_check["detail"]["cli"]["valid_diff_lines"] > 0
+    assert designer_check["detail"]["cli"]["valid_semantic_model_format"] == "appgen.semantic-model.v1"
+    assert designer_check["detail"]["cli"]["valid_projection_semantic_model_format"] == "appgen.semantic-model.v1"
     assert designer_check["detail"]["cli"]["non_object_exit"] == 2
     assert "--edit-json must be a JSON object" in designer_check["detail"]["cli"]["non_object_stderr"]
     lsp_check = next(check for check in report["checks"] if check["id"] == "language_server_core_features")

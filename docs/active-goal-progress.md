@@ -3643,3 +3643,13 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   evidence, direct `python -m pyAppGen --help` smoke, focused non-PBC help/alias
   test (`1 passed`), scoped diff whitespace check, and restricted-name scan
   outside archive, Git internals, and active PBC paths.
+- Current designer-sync CLI audit hardening pass closes the gap between
+  accepted visual edits and the full Studio contract in `docs/tooling.md`.
+  `appgen.designer-sync-cli-audit.v1` now proves the CLI returns a DSL diff
+  preview, refreshed semantic-after model, changed designer surfaces, and a
+  database-designer projection rebound to `appgen.semantic-model.v1` after a
+  linted database-field edit. Verification passed: Python compile for the
+  touched tooling entrypoint, direct `appgen.designer-sync-cli-audit.v1` helper
+  probe with `ok=True`, focused non-PBC designer-sync audit test (`1 passed`),
+  scoped diff whitespace check, and restricted-name scan outside archive, Git
+  internals, and active PBC paths.
