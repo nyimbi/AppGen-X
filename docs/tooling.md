@@ -685,6 +685,11 @@ sources and does not permit errors. The default text output prints requested or
 resolved targets, artifact count, the `appgen.generate-report.v1` envelope
 format in the header, semantic-model format as `semantic_format=...`, output directory, manifest path,
 artifact paths, blocking gaps, and diagnostics.
+`appgen.validate-generate-cli-audit.v1` proves the successful generation path
+hands off resolved targets, output directory, semantic-model format, validation
+report format, manifest existence, manifest app name, artifact count, and
+artifact path existence, while still proving warning-only sources require
+`--allow-warnings` and lint errors block generation even with that flag.
 
 ### `appgen graph`
 

@@ -3388,6 +3388,23 @@ view CustomerForm for Customer {
     assert (allowed_dir / "appgen.json").exists()
 
 
+def test_validate_generate_cli_audit_proves_generated_artifact_handoff(tmp_path: Path) -> None:
+    audit = appgen_dsl._tooling_audit_validate_generate_cli(tmp_path, TOOLING_SAMPLE)
+    cases = {case["case"]: case for case in audit["cases"]}
+    generated = cases["generate_writes_artifacts"]
+
+    assert audit["format"] == "appgen.validate-generate-cli-audit.v1"
+    assert audit["ok"] is True
+    assert generated["ok"] is True
+    assert generated["targets"] == ("web",)
+    assert generated["semantic_model_format"] == "appgen.semantic-model.v1"
+    assert generated["validation_format"] == "appgen.validate-report.v1"
+    assert generated["artifact_count"] > 0
+    assert generated["artifact_paths_exist"] is True
+    assert generated["manifest_exists"] is True
+    assert generated["manifest_app_name"] == "FinanceOps"
+
+
 def test_tooling_implementation_phase_audit_maps_phase_exit_criteria_to_evidence() -> None:
     def ok(format_name: str) -> dict:
         return {"ok": True, "format": format_name}
@@ -3718,6 +3735,13 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert validate_cases["generate_blocks_errors_even_when_warnings_allowed"]["allow_warnings"] is True
     assert "lint_errors" in validate_cases["generate_blocks_errors_even_when_warnings_allowed"]["blocking_gaps"]
     assert validate_cases["generate_blocks_errors_even_when_warnings_allowed"]["output_exists"] is False
+    assert validate_cases["generate_writes_artifacts"]["targets"] == ("web",)
+    assert validate_cases["generate_writes_artifacts"]["semantic_model_format"] == "appgen.semantic-model.v1"
+    assert validate_cases["generate_writes_artifacts"]["validation_format"] == "appgen.validate-report.v1"
+    assert validate_cases["generate_writes_artifacts"]["artifact_count"] > 0
+    assert validate_cases["generate_writes_artifacts"]["artifact_paths_exist"] is True
+    assert validate_cases["generate_writes_artifacts"]["manifest_exists"] is True
+    assert validate_cases["generate_writes_artifacts"]["manifest_app_name"] == "ToolingAudit"
     assert cli_check["detail"]["format_write"]["format"] == "appgen.format-write-audit.v1"
     assert cli_check["detail"]["format_write"]["ok"] is True
     assert cli_check["detail"]["format_write"]["check_exit_code"] == 1

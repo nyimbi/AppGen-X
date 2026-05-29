@@ -6009,6 +6009,15 @@ def _tooling_audit_validate_generate_cli(tmp: Path, source: str) -> dict:
     generate_exit, generate_payload = run_json(
         ("generate", str(source_path), "--target", "web", "--out", str(output_dir), "--json")
     )
+    generate_artifacts = tuple(generate_payload.get("artifacts", ()))
+    generate_artifact_paths_exist = all(
+        (output_dir / str(artifact.get("path", ""))).exists() for artifact in generate_artifacts
+    )
+    generate_manifest_path = Path(str(generate_payload.get("manifest", "")))
+    try:
+        generate_manifest = json.loads(generate_manifest_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        generate_manifest = {}
     warning_blocked_exit, warning_blocked_payload = run_json(
         ("generate", str(warning_path), "--out", str(warning_blocked_dir), "--json")
     )
@@ -6072,12 +6081,25 @@ def _tooling_audit_validate_generate_cli(tmp: Path, source: str) -> dict:
             "ok": generate_exit == 0
             and generate_payload.get("format") == "appgen.generate-report.v1"
             and generate_payload.get("generated") is True
-            and Path(str(generate_payload.get("manifest", ""))).exists()
-            and bool(generate_payload.get("artifacts")),
+            and tuple(generate_payload.get("targets", ())) == ("web",)
+            and generate_payload.get("output_dir") == str(output_dir)
+            and generate_payload.get("semantic_model_format") == "appgen.semantic-model.v1"
+            and generate_payload.get("validation", {}).get("format") == "appgen.validate-report.v1"
+            and generate_manifest_path.exists()
+            and bool(generate_manifest.get("app_name"))
+            and bool(generate_artifacts)
+            and generate_artifact_paths_exist,
             "exit_code": generate_exit,
             "payload_format": generate_payload.get("format"),
-            "artifact_count": len(generate_payload.get("artifacts", ())),
+            "targets": tuple(generate_payload.get("targets", ())),
+            "output_dir": generate_payload.get("output_dir"),
+            "semantic_model_format": generate_payload.get("semantic_model_format"),
+            "validation_format": generate_payload.get("validation", {}).get("format"),
+            "artifact_count": len(generate_artifacts),
+            "artifact_paths_exist": generate_artifact_paths_exist,
             "manifest": generate_payload.get("manifest"),
+            "manifest_exists": generate_manifest_path.exists(),
+            "manifest_app_name": generate_manifest.get("app_name"),
         },
         {
             "case": "generate_blocks_warnings",
