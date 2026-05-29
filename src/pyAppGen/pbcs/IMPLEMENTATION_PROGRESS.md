@@ -40,12 +40,13 @@ This file tracks the branch-isolated implementation pass for standalone Packaged
 | procurement_sourcing | `pbc/procurement-sourcing-standalone` | `ed99321e` | Compile, 13 tests, spec/source/release/smoke true. |
 | personnel_identity | `pbc/personnel-identity-standalone` | `702e305c` | Compile, 10 tests, spec/source/release/smoke true. |
 | time_labor | `pbc/time-labor-standalone` | `cdadd9fc` | Compile, 10 tests, spec/source/release/smoke true. |
+| payroll_engine | `pbc/payroll-engine-standalone` | `91db28ac` | Compile, 10 tests, spec/source/release/smoke true. |
 | transportation_management | `pbc/transportation-management-standalone` | `17f7e4fe` | Compile, 13 tests, spec/source/release/smoke true. |
 | wms_core | `pbc/wms-core-standalone` | `7574fcc3` | Compile, 13 tests, spec/source/release/smoke true. |
 
 ## In Flight
 
-Supply-chain/HCM standalone pass is continuing. `wms_core`, `procurement_sourcing`, `transportation_management`, `personnel_identity`, and `time_labor` are pushed; `dom` and `global_inventory_visibility` are delegated in isolated worktrees for this batch.
+Supply-chain/HCM standalone pass is continuing. `wms_core`, `procurement_sourcing`, `transportation_management`, `personnel_identity`, `time_labor`, and `payroll_engine` are pushed; `global_inventory_visibility` is delegated in an isolated worktree and `dom` will be taken locally if needed.
 
 ## Next Selection Rule
 
