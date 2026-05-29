@@ -12,7 +12,7 @@ from .runtime import loyalty_rewards_runtime_capabilities
 from .ui import LOYALTY_REWARDS_UI_FRAGMENT_KEYS
 
 
-PBC_KEY = 'loyalty_rewards'
+PBC_KEY = "loyalty_rewards"
 
 PBC_MANIFEST = {
     "pbc": "loyalty_rewards",
@@ -28,7 +28,7 @@ PBC_MANIFEST = {
     "apis": tuple(route["route"] for route in loyalty_rewards_build_api_contract()["routes"]),
     "emits": LOYALTY_REWARDS_EMITTED_EVENT_TYPES,
     "consumes": LOYALTY_REWARDS_CONSUMED_EVENT_TYPES,
-    "template": None,
+    "template": "standalone_one_pbc_app",
     "ui_fragments": LOYALTY_REWARDS_UI_FRAGMENT_KEYS,
     "permissions": tuple(sorted(loyalty_rewards_build_api_contract()["permissions"])),
     "configuration": (
@@ -55,6 +55,6 @@ PBC_MANIFEST = {
     "advanced_capabilities": LOYALTY_REWARDS_RUNTIME_CAPABILITY_KEYS,
     "migrations": ("migrations/001_initial.sql",),
     "seed_data": ("seed_data.py",),
-    "tests": ("tests/test_contract.py",),
+    "tests": ("tests/test_contract.py", "tests/test_standalone.py"),
     "docs": ("RELEASE_EVIDENCE.md", "SPECIFICATION.md"),
 }
