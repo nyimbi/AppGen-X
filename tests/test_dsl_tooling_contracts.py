@@ -1057,6 +1057,41 @@ table Payment {
     assert "change add_relationship: Payment" in text_result.stdout
 
 
+def test_migration_plan_text_reports_safe_alternatives_for_destructive_changes(tmp_path: Path) -> None:
+    previous = tmp_path / "previous.appgen"
+    current = tmp_path / "current.appgen"
+    previous.write_text(
+        """
+app FinanceOps { targets: web }
+table Customer { id: int pk; name: string required }
+table Invoice { id: int pk; total: decimal default 0; note: string }
+""",
+        encoding="utf-8",
+    )
+    current.write_text(
+        """
+app FinanceOps { targets: web }
+table Customer { id: int pk; name: string required; segment: string required }
+table Invoice { id: int pk; total: string default 0 }
+table CreditMemo { id: int pk; amount: decimal default 0 }
+""",
+        encoding="utf-8",
+    )
+
+    text_result = subprocess.run(
+        [sys.executable, "-m", "pyAppGen", "migration-plan", str(previous), str(current)],
+        check=False,
+        cwd=Path(__file__).resolve().parents[1],
+        text=True,
+        capture_output=True,
+    )
+
+    assert text_result.returncode == 0, text_result.stderr
+    assert "requires_approval=True" in text_result.stdout
+    assert "safe-alternative drop_field" in text_result.stdout
+    assert "safe-alternative type_change" in text_result.stdout
+
+
 def test_lsp_service_uses_shared_semantic_model_for_core_editor_features() -> None:
     report = lsp_service_dsl(
         TOOLING_SAMPLE,

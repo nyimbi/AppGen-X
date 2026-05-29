@@ -2061,6 +2061,8 @@ def _emit_migration_plan_text(payload: dict) -> None:
     for change in changes:
         target = change.get("table") or change.get("field") or change.get("pbc") or change.get("contract") or ""
         print(f"change {change.get('kind')}: {target}".rstrip())
+        if change.get("safe_alternative"):
+            print(f"safe-alternative {change.get('kind')}: {change.get('safe_alternative')}")
     for diagnostic in payload.get("diagnostics", ()):
         print(f"{diagnostic['severity']} {diagnostic['code']}: {diagnostic['message']}")
 
@@ -9416,6 +9418,13 @@ def _field_migration_changes(
                         after=after.get(attr),
                         destructive=destructive,
                         requires_backfill=kind in {"type_change", "nullability_change"},
+                        safe_alternative=(
+                            "Add a new field with the target type, backfill it, then switch dependent forms and reports."
+                            if kind == "type_change"
+                            else "Backfill existing rows before enforcing the required constraint."
+                            if kind == "nullability_change" and destructive
+                            else None
+                        ),
                     )
                 )
         if before.get("relationship") != after.get("relationship"):
