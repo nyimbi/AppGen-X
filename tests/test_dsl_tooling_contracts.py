@@ -2985,6 +2985,8 @@ def test_appgen_parser_golden_subcommand_emits_json_and_text_contracts() -> None
     assert f"{payload['fixture_count']} fixtures" in text_result.stdout
     assert f"valid={payload['valid_fixture_count']}" in text_result.stdout
     assert f"invalid={payload['invalid_fixture_count']}" in text_result.stdout
+    assert f"format={payload['format']}" in text_result.stdout
+    assert f"required={len(payload['constructs_required'])}" in text_result.stdout
     assert f"constructs={len(payload['constructs_covered'])}" in text_result.stdout
     assert "missing=0" in text_result.stdout
     assert "missing-constructs " not in text_result.stdout

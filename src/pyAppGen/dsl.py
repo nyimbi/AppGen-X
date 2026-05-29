@@ -1920,6 +1920,8 @@ def _emit_tooling_payload(payload: dict, *, as_json: bool) -> None:
             f"{payload.get('fixture_count', 0)} fixtures, "
             f"valid={payload.get('valid_fixture_count', 0)} "
             f"invalid={payload.get('invalid_fixture_count', 0)} "
+            f"format={payload.get('format')} "
+            f"required={len(payload.get('constructs_required', ()))} "
             f"constructs={len(payload.get('constructs_covered', ()))} "
             f"missing={len(missing)}"
         )
