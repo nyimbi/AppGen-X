@@ -1146,15 +1146,23 @@ def diagnostic_catalog_dsl() -> dict:
         "format": "appgen.diagnostic-catalog.v1",
         "ok": all(item["fixture"] for item in specs) and not catalog_shape_gaps,
         "ranges": ranges,
+        "range_count": len(ranges),
         "diagnostics": specs,
+        "diagnostic_count": len(specs),
         "diagnostic_shape_fields": REQUIRED_DIAGNOSTIC_FIELDS,
+        "diagnostic_shape_field_count": len(REQUIRED_DIAGNOSTIC_FIELDS),
         "catalog_fields": DIAGNOSTIC_CATALOG_FIELDS,
+        "catalog_field_count": len(DIAGNOSTIC_CATALOG_FIELDS),
         "catalog_shape_gaps": catalog_shape_gaps,
+        "catalog_shape_gap_count": len(catalog_shape_gaps),
         "runtime_shape_enforced_by": "appgen.diagnostic-fixture-audit.v1",
         "required_codes": tuple(item["code"] for item in specs),
+        "required_code_count": len(specs),
         "covered_fixture_codes": covered,
+        "covered_fixture_code_count": len(covered),
         "fixture_count": len(DIAGNOSTIC_FIXTURES),
         "missing_fixtures": tuple(item["code"] for item in specs if not item["fixture"]),
+        "missing_fixture_count": sum(1 for item in specs if not item["fixture"]),
     }
 
 
@@ -1164,14 +1172,28 @@ def diagnostic_fixture_audit_dsl() -> dict:
     covered = {code for result in results for code in result["observed_codes"]}
     required = tuple(item["code"] for item in DIAGNOSTIC_SPECS)
     missing = tuple(code for code in required if code not in covered)
+    blocking_gaps = tuple(result for result in results if not result["ok"])
+    shape_gap_count = sum(len(result.get("shape_gaps", ())) for result in results)
+    severity_gap_count = sum(len(result.get("severity_gaps", ())) for result in results)
+    report_formats = tuple(sorted({result.get("report_format") for result in results if result.get("report_format")}))
     return {
         "format": "appgen.diagnostic-fixture-audit.v1",
         "ok": not missing and all(result["ok"] for result in results),
         "required_codes": required,
+        "required_code_count": len(required),
         "covered_codes": tuple(sorted(covered)),
+        "covered_code_count": len(covered),
         "missing_codes": missing,
+        "missing_code_count": len(missing),
         "fixtures": results,
-        "blocking_gaps": tuple(result for result in results if not result["ok"]),
+        "fixture_count": len(results),
+        "passing_fixture_count": sum(1 for result in results if result["ok"]),
+        "blocking_gap_count": len(blocking_gaps),
+        "shape_gap_count": shape_gap_count,
+        "severity_gap_count": severity_gap_count,
+        "report_formats": report_formats,
+        "report_format_count": len(report_formats),
+        "blocking_gaps": blocking_gaps,
     }
 
 

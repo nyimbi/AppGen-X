@@ -3028,7 +3028,13 @@ def test_diagnostic_catalog_and_fixture_audit_cover_required_agx_codes() -> None
     assert audit["format"] == "appgen.diagnostic-fixture-audit.v1"
     assert catalog["ok"] is True
     assert audit["ok"] is True
+    assert catalog["range_count"] == len(catalog["ranges"])
+    assert catalog["diagnostic_count"] == len(catalog["diagnostics"])
+    assert catalog["required_code_count"] == len(catalog["required_codes"])
+    assert catalog["covered_fixture_code_count"] == len(catalog["covered_fixture_codes"])
+    assert catalog["missing_fixture_count"] == 0
     assert catalog["catalog_shape_gaps"] == ()
+    assert catalog["catalog_shape_gap_count"] == 0
     assert catalog["runtime_shape_enforced_by"] == "appgen.diagnostic-fixture-audit.v1"
     assert set(catalog["diagnostic_shape_fields"]) == {
         "code",
@@ -3040,6 +3046,7 @@ def test_diagnostic_catalog_and_fixture_audit_cover_required_agx_codes() -> None
         "fixes",
         "docs_url",
     }
+    assert catalog["diagnostic_shape_field_count"] == len(catalog["diagnostic_shape_fields"])
     assert set(catalog["catalog_fields"]) == {
         "code",
         "severity",
@@ -3049,9 +3056,25 @@ def test_diagnostic_catalog_and_fixture_audit_cover_required_agx_codes() -> None
         "docs_url",
         "fixture",
     }
+    assert catalog["catalog_field_count"] == len(catalog["catalog_fields"])
     assert all(set(catalog["catalog_fields"]) <= set(item) for item in catalog["diagnostics"])
     assert set(catalog["required_codes"]) == set(catalog["covered_fixture_codes"])
     assert set(catalog["required_codes"]) <= set(audit["covered_codes"])
+    assert audit["required_code_count"] == len(audit["required_codes"])
+    assert audit["covered_code_count"] == len(audit["covered_codes"])
+    assert audit["missing_code_count"] == 0
+    assert audit["fixture_count"] == len(audit["fixtures"])
+    assert audit["passing_fixture_count"] == audit["fixture_count"]
+    assert audit["blocking_gap_count"] == 0
+    assert audit["shape_gap_count"] == 0
+    assert audit["severity_gap_count"] == 0
+    assert audit["report_format_count"] == len(audit["report_formats"])
+    assert {
+        "appgen.lint-report.v1",
+        "appgen.migration-plan.v1",
+        "appgen.nl-plan.v1",
+        "appgen.internal-error.v1",
+    } <= set(audit["report_formats"])
     assert "docs/tooling.md#linter-rules-by-domain" in appgen_dsl._tooling_audit_doc_refs(catalog["diagnostics"])
     assert all(not fixture["shape_gaps"] for fixture in audit["fixtures"])
     assert all(not fixture["severity_gaps"] for fixture in audit["fixtures"])

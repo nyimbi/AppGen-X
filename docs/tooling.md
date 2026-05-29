@@ -303,7 +303,13 @@ The diagnostic catalog publishes this required runtime shape as
 `diagnostic_shape_fields`, publishes the registry row shape as `catalog_fields`,
 and records `runtime_shape_enforced_by: appgen.diagnostic-fixture-audit.v1` so
 tools can distinguish catalog completeness from fixture-level diagnostic JSON
-validation.
+validation. The catalog reports range, diagnostic, required-code,
+covered-fixture-code, shape-field, catalog-field, catalog-shape-gap, and
+missing-fixture counts. The fixture audit reports required, covered, and missing
+code counts; fixture, passing-fixture, blocking-gap, shape-gap, severity-gap,
+and report-format counts; and the exact report formats exercised by the
+fixtures, so release evidence can prove diagnostic breadth without expanding
+every fixture payload.
 
 ### Diagnostic Code Ranges
 
