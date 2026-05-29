@@ -7,6 +7,8 @@ import hashlib
 from .manifest import PBC_MANIFEST
 from . import routes
 from . import services
+from .app_surface import document_instruction_service_ticketing_plan
+from .app_surface import single_pbc_service_ticketing_app_contract
 
 
 PBC_KEY = 'service_ticketing'
@@ -74,6 +76,7 @@ def chatbot_interface_contract():
             'task_guidance',
             'document_and_instruction_intake',
             'governed_datastore_crud',
+            'service_forms_wizards_and_controls',
             'policy_and_permission_explanation',
             'workbench_navigation',
         ),
@@ -93,13 +96,17 @@ def document_instruction_plan(document=None, instructions=None):
     document_text = str(document or '')
     instruction_text = str(instructions or '')
     digest = hashlib.sha256(f'{PBC_KEY}:{document_text}:{instruction_text}'.encode('utf-8')).hexdigest()
+    service_plan = document_instruction_service_ticketing_plan(document_text, instruction_text)
     return {
-        'ok': bool(document_text or instruction_text),
+        'ok': bool(document_text or instruction_text) and service_plan['ok'],
         'pbc': PBC_KEY,
         'document_digest': digest,
         'document_actions': _DOCUMENT_ACTIONS,
         'candidate_tables': _owned_tables(),
         'candidate_operations': _command_operations() + _query_operations(),
+        'service_plan': service_plan,
+        'target_table': service_plan['target_table'],
+        'proposed_operation': service_plan['proposed_operation'],
         'requires_human_confirmation': True,
         'side_effects': (),
     }
@@ -131,14 +138,16 @@ def composed_agent_contribution():
     """Return the package contribution to the application's single assistant."""
     skills = agent_skill_manifest()
     chatbot = chatbot_interface_contract()
+    standalone_app = single_pbc_service_ticketing_app_contract()
     return {
-        'ok': skills['ok'] and chatbot['ok'],
+        'ok': skills['ok'] and chatbot['ok'] and standalone_app['ok'],
         'pbc': PBC_KEY,
         'agent': AGENT_NAME,
         'single_agent_skill_namespace': f'{PBC_KEY}_skills',
         'dsl_tools': (f'{PBC_KEY}_skills', f'{PBC_KEY}_documents', f'{PBC_KEY}_crud'),
         'skills': tuple(item['name'] for item in skills['skills']),
         'chatbot': chatbot,
+        'standalone_app': standalone_app,
         'side_effects': (),
     }
 
@@ -147,7 +156,7 @@ def smoke_test():
     """Exercise guidance, document intake, CRUD planning, and composition contribution."""
     skills = agent_skill_manifest()
     chatbot = chatbot_interface_contract()
-    document = document_instruction_plan('sample instruction', 'create or update the primary record')
+    document = document_instruction_plan('site visit required', 'prepare field handoff')
     read_plan = datastore_crud_plan('read')
     create_plan = datastore_crud_plan('create', payload={'status': 'draft'})
     contribution = composed_agent_contribution()
@@ -155,6 +164,7 @@ def smoke_test():
         'ok': skills['ok']
         and chatbot['ok']
         and document['ok']
+        and document['target_table'].startswith('service_ticketing_')
         and read_plan['ok']
         and create_plan['ok']
         and contribution['ok']
