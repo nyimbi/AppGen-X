@@ -1149,8 +1149,8 @@ When a new keyword, block, nested item, or syntax form is added to `lang/appgen.
 - Identify duplicate semantic logic.
 - Define JSON schemas for diagnostics and semantic model.
 - Add fixture directories and built-in fixture catalogs for parser-golden,
-  diagnostic-golden, formatter, semantic drift, graph, migration, and verifier
-  tests.
+  diagnostic-golden, formatter, semantic drift, graph, migration, generator,
+  and verifier tests.
 
 Exit criteria:
 
@@ -1260,7 +1260,9 @@ Intermediate tasks:
 - graph output in Mermaid and JSON;
 - migration diff detection;
 - LSP completion and hover;
-- code action application for missing operations and lookup directives.
+- code action application for the full required quick-fix family;
+- generator drift evidence proving `appgen generate` validates from the same
+  semantic model as CLI, LSP, Studio, graph, and release-verifier surfaces.
 
 Advanced tasks:
 

@@ -2487,12 +2487,15 @@ def test_semantic_drift_audit_proves_tooling_surfaces_share_one_model() -> None:
         "lsp",
         "studio",
         "graph",
+        "generator",
         "generator_readiness",
         "release_verifier",
         "tests",
     } <= set(report["surfaces"])
     assert all(check["ok"] for check in report["checks"])
     assert any(check["check"] == "designer_graphs_match_semantic_graphs" for check in report["checks"])
+    assert any(check["check"] == "generator_validation_uses_semantic_model" for check in report["checks"])
+    assert report["surface_evidence"]["generate_report"] == "appgen.generate-report.v1"
 
 
 def test_appgen_drift_subcommand_emits_json_contract(tmp_path: Path) -> None:
@@ -2511,6 +2514,7 @@ def test_appgen_drift_subcommand_emits_json_contract(tmp_path: Path) -> None:
     payload = json.loads(result.stdout)
     assert payload["format"] == "appgen.semantic-drift-audit.v1"
     assert payload["surface_evidence"]["lsp_service"] == "appgen.lsp-service.v1"
+    assert payload["surface_evidence"]["generate_report"] == "appgen.generate-report.v1"
 
 
 def test_doctor_report_checks_parser_catalog_generator_and_ide_hooks() -> None:

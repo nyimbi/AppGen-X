@@ -973,6 +973,14 @@ def semantic_drift_audit_dsl(text: str, *, source_name: str | None = None) -> di
     lsp = lsp_service_dsl(source, source_name=source_name)
     designer = designer_sync_report_dsl(source, source_name=source_name)
     release = release_verifier_report_dsl(source, source_name=source_name, targets=("all",))
+    with tempfile.TemporaryDirectory(prefix="appgen-drift-generator-") as tmp:
+        generation = generate_report_dsl(
+            source,
+            source_name=source_name,
+            output_dir=Path(tmp) / "generated",
+            targets=semantic.get("app", {}).get("targets", ()),
+            allow_warnings=True,
+        )
     graph_reports = {
         kind: graph_report_dsl(source, source_name=source_name, kind=kind)
         for kind in sorted(semantic.get("graphs", {}))
@@ -1029,6 +1037,18 @@ def semantic_drift_audit_dsl(text: str, *, source_name: str | None = None) -> di
             {"surface": "release verifier", "format": release.get("format")},
         ),
         _drift_check(
+            "generator_validation_uses_semantic_model",
+            generation.get("semantic_model_format") == semantic.get("format")
+            and _semantic_drift_digest(generation.get("validation", {}).get("semantic_model", {})) == canonical,
+            "appgen generate validates and emits artifacts from the same semantic model as CLI/LSP/IDE surfaces.",
+            {
+                "surface": "generator",
+                "format": generation.get("format"),
+                "generated": generation.get("generated"),
+                "artifact_count": len(generation.get("artifacts", ())),
+            },
+        ),
+        _drift_check(
             "tests_share_canonical_fixture_contract",
             bool(semantic.get("symbols")) and bool(semantic.get("tables")) and bool(semantic.get("graphs")),
             "Fixture-driven tests can assert symbols, tables, and graphs from the same model.",
@@ -1046,6 +1066,7 @@ def semantic_drift_audit_dsl(text: str, *, source_name: str | None = None) -> di
             "lsp",
             "studio",
             "graph",
+            "generator",
             "generator_readiness",
             "release_verifier",
             "tests",
@@ -1056,6 +1077,7 @@ def semantic_drift_audit_dsl(text: str, *, source_name: str | None = None) -> di
             "validate_report": validate.get("format"),
             "lsp_service": lsp.get("format"),
             "designer_sync": designer.get("format"),
+            "generate_report": generation.get("format"),
             "release_verifier": release.get("format"),
             "graph_reports": tuple(report.get("format") for report in graph_reports.values()),
         },
