@@ -2553,6 +2553,33 @@ def test_test_strategy_cli_audit_requires_generator_drift_surface(tmp_path: Path
     assert drift_case["generate_report"] == "appgen.generate-report.v1"
 
 
+def test_module_boundary_audit_proves_documented_tooling_surfaces() -> None:
+    audit = appgen_dsl.module_boundary_audit_dsl()
+
+    assert audit["format"] == "appgen.module-boundary-audit.v1"
+    assert audit["ok"] is True
+    assert audit["missing_boundaries"] == ()
+    assert audit["core_runtime_gaps"] == ()
+    assert audit["layout_policy"] == "boundaries_visible_without_requiring_subpackage_layout"
+    assert {
+        "parser",
+        "ast",
+        "symbols",
+        "semantic",
+        "diagnostics",
+        "formatter",
+        "lsp",
+        "cli",
+        "graphs",
+        "migrations",
+        "nl_plan",
+        "release",
+    } <= {boundary["boundary"] for boundary in audit["boundaries"]}
+    assert all(boundary["missing_callables"] == () for boundary in audit["boundaries"])
+    assert {item["boundary"] for item in audit["core_runtime"]} == {"parser", "semantic", "diagnostics", "formatter"}
+    assert all(item["ok"] for item in audit["core_runtime"])
+
+
 def test_doctor_report_checks_parser_catalog_generator_and_ide_hooks() -> None:
     report = doctor_report_dsl()
 
@@ -2570,6 +2597,7 @@ def test_doctor_report_checks_parser_catalog_generator_and_ide_hooks() -> None:
         "lsp_semantic_service",
         "lsp_completion_coverage",
         "semantic_symbol_coverage",
+        "module_boundaries",
         "studio_semantic_service",
         "vscode_extension_surface",
     } <= {check["check"] for check in report["checks"]}
@@ -2773,6 +2801,7 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert report["blocking_gaps"] == ()
     assert {
         "shared_semantic_model",
+        "module_boundaries",
         "language_server_core_features",
         "ide_visual_designer_round_trip",
         "vscode_extension_surface",
@@ -2780,6 +2809,11 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
         "package_and_release_verifiers",
         "parser_golden_and_drift_gates",
     } <= {check["id"] for check in report["checks"]}
+    module_check = next(check for check in report["checks"] if check["id"] == "module_boundaries")
+    assert module_check["detail"]["format"] == "appgen.module-boundary-audit.v1"
+    assert module_check["detail"]["ok"] is True
+    assert module_check["detail"]["missing_boundaries"] == ()
+    assert module_check["detail"]["core_runtime_gaps"] == ()
     vscode_check = next(check for check in report["checks"] if check["id"] == "vscode_extension_surface")
     assert vscode_check["detail"]["checks"]["diagnostics_collection"] is True
     assert vscode_check["detail"]["checks"]["cli_command_contracts"] is True

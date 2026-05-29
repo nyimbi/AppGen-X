@@ -1995,6 +1995,7 @@ def doctor_report_dsl() -> dict:
     """Check parser generation, imports, catalog, templates, backends, and IDE hooks."""
     root = Path(__file__).resolve().parents[2]
     vscode = _tooling_audit_vscode_extension(root)
+    module_boundaries = module_boundary_audit_dsl()
     checks = (
         _doctor_check(
             "grammar_file",
@@ -2068,6 +2069,16 @@ def doctor_report_dsl() -> dict:
             symbol_coverage_dsl(_symbol_coverage_sample(), source_name="symbol-doctor.appgen")["missing"] == (),
             "Semantic model emits all required symbol kinds for CLI, IDE, tests, and agents.",
             {"report_format": "appgen.symbol-coverage.v1"},
+        ),
+        _doctor_check(
+            "module_boundaries",
+            module_boundaries["ok"],
+            "Documented DSL tooling responsibility boundaries are visible and callable.",
+            {
+                "report_format": module_boundaries["format"],
+                "missing_boundaries": module_boundaries["missing_boundaries"],
+                "core_runtime_gaps": module_boundaries["core_runtime_gaps"],
+            },
         ),
         _doctor_check(
             "studio_semantic_service",
@@ -2208,6 +2219,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
     parser_golden = parser_golden_audit_dsl()
     drift = semantic_drift_audit_dsl(source, source_name="tooling-audit.appgen")
     doctor = doctor_report_dsl()
+    module_boundaries = module_boundary_audit_dsl()
     pbc_catalog = pbc_verifier_catalog_report()
     vscode = _tooling_audit_vscode_extension(root)
     studio = _tooling_audit_studio_semantic_service(source)
@@ -2230,6 +2242,13 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                 "symbol_coverage": symbol_coverage.get("format"),
                 "symbol_coverage_missing": symbol_coverage.get("missing"),
             },
+        ),
+        _tooling_audit_check(
+            "module_boundaries",
+            module_boundaries["ok"],
+            "Documented parser, AST, symbols, semantic, diagnostics, formatter, LSP, CLI, graph, migration, NL planning, and release boundaries expose callable surfaces.",
+            "docs/tooling.md#proposed-modules",
+            module_boundaries,
         ),
         _tooling_audit_check(
             "diagnostic_registry_and_fixtures",
@@ -4845,6 +4864,87 @@ def _generated_artifact_summary(output_path: Path) -> tuple[dict, ...]:
             continue
         artifacts.append({"path": rel, "bytes": path.stat().st_size})
     return tuple(artifacts)
+
+
+def module_boundary_audit_dsl() -> dict:
+    """Prove docs/tooling.md responsibility boundaries have callable surfaces."""
+    current_globals = globals()
+    boundaries = (
+        (
+            "parser",
+            "pyAppGen.dsl.parser",
+            ("schema_from_dsl", "schema_from_dsl_file", "parser_golden_audit_dsl"),
+        ),
+        ("ast", "pyAppGen.dsl.ast", ("schema_from_dsl",)),
+        ("symbols", "pyAppGen.dsl.symbols", ("symbol_coverage_dsl", "semantic_model_dsl")),
+        ("semantic", "pyAppGen.dsl.semantic", ("semantic_model_dsl", "validate_report_dsl")),
+        (
+            "diagnostics",
+            "pyAppGen.dsl.diagnostics",
+            ("diagnostic_catalog_dsl", "diagnostic_fixture_audit_dsl"),
+        ),
+        ("formatter", "pyAppGen.dsl.formatter", ("format_report_dsl", "formatter_contract_audit_dsl")),
+        (
+            "lsp",
+            "pyAppGen.dsl.lsp",
+            ("lsp_service_dsl", "lsp_capabilities_dsl", "lsp_server_handle_message"),
+        ),
+        ("cli", "pyAppGen.dsl.cli", ("dsl_tooling_cli",)),
+        ("graphs", "pyAppGen.dsl.graphs", ("graph_suite_report_dsl", "graph_report_dsl", "explain_report_dsl")),
+        ("migrations", "pyAppGen.dsl.migrations", ("migration_plan_dsl", "migration_plan_dsl_files")),
+        ("nl_plan", "pyAppGen.dsl.nl_plan", ("nl_plan_dsl", "nl_plan_contract_audit_dsl")),
+        ("release", "pyAppGen.dsl.release", ("release_verifier_report_dsl", "semantic_drift_audit_dsl")),
+    )
+    boundary_reports = []
+    missing_boundaries = []
+    for key, documented_module, callables in boundaries:
+        missing_callables = tuple(name for name in callables if not callable(current_globals.get(name)))
+        boundary_reports.append(
+            {
+                "boundary": key,
+                "documented_module": documented_module,
+                "callables": callables,
+                "missing_callables": missing_callables,
+                "ok": not missing_callables,
+            }
+        )
+        if missing_callables:
+            missing_boundaries.append(key)
+
+    sample = "app BoundaryAudit { targets: web }\ntable Thing { id: int pk; name: string }\n"
+    core_runtime = (
+        _runtime_probe("parser", lambda: schema_from_dsl(sample).app_name == "BoundaryAudit"),
+        _runtime_probe(
+            "semantic",
+            lambda: semantic_model_dsl(sample, source_name="boundary.appgen")["format"] == "appgen.semantic-model.v1",
+        ),
+        _runtime_probe(
+            "diagnostics",
+            lambda: diagnostic_catalog_dsl()["format"] == "appgen.diagnostic-catalog.v1",
+        ),
+        _runtime_probe(
+            "formatter",
+            lambda: format_report_dsl(sample, source_name="boundary.appgen")["format"] == "appgen.format-result.v1",
+        ),
+    )
+    core_runtime_gaps = tuple(item["boundary"] for item in core_runtime if not item["ok"])
+    return {
+        "format": "appgen.module-boundary-audit.v1",
+        "ok": not missing_boundaries and not core_runtime_gaps,
+        "boundaries": tuple(boundary_reports),
+        "missing_boundaries": tuple(missing_boundaries),
+        "core_runtime": core_runtime,
+        "core_runtime_gaps": core_runtime_gaps,
+        "layout_policy": "boundaries_visible_without_requiring_subpackage_layout",
+    }
+
+
+def _runtime_probe(boundary: str, probe) -> dict:
+    try:
+        ok = bool(probe())
+    except Exception as exc:  # pragma: no cover - defensive audit detail
+        return {"boundary": boundary, "ok": False, "error": str(exc)}
+    return {"boundary": boundary, "ok": ok}
 
 
 def _doctor_check(check: str, ok: bool, message: str, detail: dict | None = None) -> dict:
