@@ -1900,11 +1900,17 @@ def _emit_tooling_payload(payload: dict, *, as_json: bool) -> None:
         return
     if payload.get("format") == "appgen.parser-golden-audit.v1":
         status = "ok" if payload.get("ok") else "failed"
+        missing = tuple(payload.get("missing_constructs", ()))
         print(
             f"parser-golden {status}: "
             f"{payload.get('fixture_count', 0)} fixtures, "
-            f"{len(payload.get('constructs_covered', ()))} constructs"
+            f"valid={payload.get('valid_fixture_count', 0)} "
+            f"invalid={payload.get('invalid_fixture_count', 0)} "
+            f"constructs={len(payload.get('constructs_covered', ()))} "
+            f"missing={len(missing)}"
         )
+        if missing:
+            print(f"missing-constructs {', '.join(missing)}")
         for gap in payload.get("blocking_gaps", ()):
             print(f"fail {gap['name']}: {gap.get('error', '')}")
         return

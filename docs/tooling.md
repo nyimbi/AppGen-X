@@ -1272,6 +1272,11 @@ The report contract is `appgen.parser-golden-audit.v1`:
 - `fixtures`: per-fixture parse outcome, validity expectation, construct tags, and syntax error text;
 - `blocking_gaps`: the exact fixture failures that should block CI.
 
+Without `--json`, `appgen parser-golden` prints the pass/fail status, total
+fixture count, valid and invalid fixture counts, covered construct count,
+missing construct count, missing construct names when present, and blocking
+fixture gaps. JSON remains the machine-readable source of truth.
+
 The required construct set includes application options, table fields, reusable field groups, spreads, derived fields, modifiers, relationships, relationship cardinality, table directives, enums, views, component placement, handlers, flows, workflow directives, roles, permissions, rules, rule expressions, LLM definitions, agents, PBCs, PBC composition include/require/expose/connect clauses, audit blocks, deployment units/scale/health/check/resource/env/directives, version blocks, operations, security, APIs, events, jobs, reports, menus, component contracts, packages, and tests.
 
 When a new keyword, block, nested item, or syntax form is added to `lang/appgen.g4`, the same change must add or extend a parser golden fixture before the grammar is considered release-ready. Diagnostic golden fixtures are still required for semantic behavior, but parser-golden fixtures prove that the grammar itself accepts and rejects the intended language forms.

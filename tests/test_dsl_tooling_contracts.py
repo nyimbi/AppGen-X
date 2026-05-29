@@ -2837,6 +2837,9 @@ def test_appgen_parser_golden_subcommand_emits_json_and_text_contracts() -> None
     assert text_result.returncode == 0, text_result.stderr
     assert json.loads(json_result.stdout)["format"] == "appgen.parser-golden-audit.v1"
     assert text_result.stdout.startswith("parser-golden ok:")
+    assert "valid=" in text_result.stdout
+    assert "invalid=" in text_result.stdout
+    assert "missing=0" in text_result.stdout
 
 
 def test_semantic_drift_audit_proves_tooling_surfaces_share_one_model() -> None:
