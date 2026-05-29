@@ -2509,8 +2509,10 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert graph_check["detail"]["explain_cli"]["ok"] is True
     assert {
         "field_symbol_text",
+        "field_symbol_json",
         "diagnostic_json",
         "qualified_handler_text",
+        "qualified_handler_json",
     } <= {case["case"] for case in graph_check["detail"]["explain_cli"]["cases"]}
     nl_check = next(check for check in report["checks"] if check["id"] == "natural_language_patch_planner")
     assert nl_check["detail"]["cli"]["format"] == "appgen.nl-plan-cli-audit.v1"
@@ -2710,6 +2712,22 @@ def test_missing_input_audit_covers_file_based_commands(tmp_path: Path) -> None:
     assert all(case["exit_code"] == 2 for case in cases.values())
     assert all("path does not exist" in case["stderr"] for case in cases.values())
     assert all("Traceback" not in case["stderr"] for case in cases.values())
+
+
+def test_explain_cli_audit_covers_text_and_json_modes(tmp_path: Path) -> None:
+    audit = appgen_dsl._tooling_audit_explain_cli_formats(tmp_path, TOOLING_SAMPLE)
+    cases = {case["case"]: case for case in audit["cases"]}
+
+    assert audit["format"] == "appgen.explain-cli-audit.v1"
+    assert audit["ok"] is True
+    assert {
+        "field_symbol_text",
+        "field_symbol_json",
+        "diagnostic_json",
+        "qualified_handler_text",
+        "qualified_handler_json",
+    } <= set(cases)
+    assert all(case["exit_code"] == 0 for case in cases.values())
 
 
 def test_invalid_choice_audit_covers_graph_formats_and_backend_choices(tmp_path: Path) -> None:

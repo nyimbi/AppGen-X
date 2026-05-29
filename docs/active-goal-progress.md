@@ -3588,3 +3588,12 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   `appgen.missing-input-exit-audit.v1` helper probe with `ok=True`, focused
   non-PBC missing-input test (`1 passed`), scoped diff whitespace check, and
   restricted-name scan outside archive, Git internals, and active PBC paths.
+  Commit: `1ebcba4c`.
+- Current explain CLI audit hardening pass closes the JSON-mode coverage gap
+  for symbol and handler explain queries. `appgen.explain-cli-audit.v1` now
+  proves human-readable symbol and handler output plus JSON payloads for
+  symbol, diagnostic, and qualified handler queries. Verification passed:
+  Python compile for the touched tooling entrypoint, direct
+  `appgen.explain-cli-audit.v1` helper probe with `ok=True`, focused non-PBC
+  explain audit test (`1 passed`), scoped diff whitespace check, and
+  restricted-name scan outside archive, Git internals, and active PBC paths.

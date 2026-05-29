@@ -3572,8 +3572,10 @@ def _tooling_audit_explain_cli_formats(tmp: Path, source: str) -> dict:
     source_path.write_text(source, encoding="utf-8")
     cases = (
         ("field_symbol_text", ("explain", str(source_path), "--symbol", "Invoice.customer_id")),
+        ("field_symbol_json", ("explain", str(source_path), "--symbol", "Invoice.customer_id", "--json")),
         ("diagnostic_json", ("explain", str(source_path), "--diagnostic", "AGX0303", "--json")),
         ("qualified_handler_text", ("explain", str(source_path), "--handler", "InvoiceForm.Save")),
+        ("qualified_handler_json", ("explain", str(source_path), "--handler", "InvoiceForm.Save", "--json")),
     )
     results = []
     for case_id, argv in cases:
@@ -3583,16 +3585,31 @@ def _tooling_audit_explain_cli_formats(tmp: Path, source: str) -> dict:
         stdout = output.getvalue().strip()
         json_ok = False
         text_ok = False
-        if case_id == "diagnostic_json":
+        if case_id in {"diagnostic_json", "field_symbol_json", "qualified_handler_json"}:
             try:
                 payload = json.loads(stdout)
             except json.JSONDecodeError:
                 payload = {}
-            json_ok = (
-                payload.get("format") == "appgen.explain-report.v1"
-                and payload.get("kind") == "diagnostic"
-                and payload.get("query") == "AGX0303"
-            )
+            if case_id == "diagnostic_json":
+                json_ok = (
+                    payload.get("format") == "appgen.explain-report.v1"
+                    and payload.get("kind") == "diagnostic"
+                    and payload.get("query") == "AGX0303"
+                )
+            elif case_id == "field_symbol_json":
+                json_ok = (
+                    payload.get("format") == "appgen.explain-report.v1"
+                    and payload.get("kind") == "symbol"
+                    and payload.get("query") == "Invoice.customer_id"
+                    and payload.get("symbol", {}).get("id") == "table.Invoice.customer_id"
+                )
+            elif case_id == "qualified_handler_json":
+                json_ok = (
+                    payload.get("format") == "appgen.explain-report.v1"
+                    and payload.get("kind") == "handler"
+                    and payload.get("query") == "InvoiceForm.Save"
+                    and bool(payload.get("matches"))
+                )
         elif case_id == "field_symbol_text":
             text_ok = (
                 stdout.startswith("explain symbol ok: Invoice.customer_id")
