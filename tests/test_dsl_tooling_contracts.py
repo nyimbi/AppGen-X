@@ -972,6 +972,38 @@ def test_lsp_hover_exposes_pbc_catalog_metadata_and_diagnostic_explanation() -> 
     assert any("database-backed form binding" in item for item in diagnostic_hover["contents"])
 
 
+def test_lsp_workspace_symbols_include_pbc_catalog_metadata_and_contracts() -> None:
+    direct = appgen_dsl.lsp_workspace_symbols_dsl(
+        "app WorkspaceCatalog { targets: web }\ntable CatalogProbe { id: int pk }\n",
+        source_name="workspace-catalog.appgen",
+        query="ledger",
+    )
+    pbc_symbols = [symbol for symbol in direct["symbols"] if symbol["data"].get("id") == "catalog.pbc.gl_core"]
+
+    assert direct["format"] == "appgen.lsp-workspace-symbols.v1"
+    assert direct["ok"] is True
+    assert pbc_symbols
+    assert pbc_symbols[0]["location"]["uri"] == "catalog://pbc/gl_core"
+    assert pbc_symbols[0]["data"]["catalog_resolved"] is True
+    assert pbc_symbols[0]["data"]["label"] == "General Ledger Core"
+
+    documents = {"memory://app.appgen": "app WorkspaceCatalog { targets: web }\ntable CatalogProbe { id: int pk }\n"}
+    rpc_responses, _ = appgen_dsl.lsp_server_handle_message(
+        {"jsonrpc": "2.0", "id": 11, "method": "workspace/symbol", "params": {"query": "JournalPosted"}},
+        documents,
+    )
+    contract_symbols = [
+        symbol
+        for symbol in rpc_responses[0]["result"]
+        if symbol["name"] == "JournalPosted" and symbol["data"].get("pbc") == "gl_core"
+    ]
+
+    assert contract_symbols
+    assert contract_symbols[0]["containerName"] == "gl_core"
+    assert contract_symbols[0]["data"]["kind"] == "event"
+    assert contract_symbols[0]["location"]["uri"].startswith("catalog://pbc/gl_core/event/")
+
+
 def test_lsp_json_rpc_audit_proves_advertised_provider_capabilities() -> None:
     broken_handler_source = """
 app Bad { targets: web }

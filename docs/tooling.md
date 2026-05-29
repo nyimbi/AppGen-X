@@ -745,6 +745,13 @@ returns the diagnostic code plus the same explanation object used by
 `appgen explain --diagnostic`, so IDEs and agents can show the cause and docs
 target without duplicating diagnostic registries.
 
+Workspace symbol search includes catalog-backed results. In addition to open
+DSL declarations, `workspace/symbol` returns `catalog://pbc/...` locations for
+registered PBCs and their API/event contracts when the query matches PBC names,
+labels, mesh metadata, descriptions, or contract names. This lets editors and
+agents discover selectable PBCs without hard-coding the catalog into grammar
+rules.
+
 Rename safety is an executable gate. The language service still returns the
 candidate workspace edit and migration preview, but `textDocument/rename`
 returns `ok: false` with an `AGX1101` blocker when the preview requires

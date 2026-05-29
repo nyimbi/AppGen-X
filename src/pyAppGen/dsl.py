@@ -16,6 +16,7 @@ import tempfile
 import tomllib
 from pathlib import Path
 from typing import Iterable
+from urllib.parse import quote
 
 from antlr4 import CommonTokenStream
 from antlr4 import InputStream
@@ -2692,6 +2693,16 @@ def _tooling_audit_lsp_json_rpc(source: str, *, broken_handler_source: str) -> d
             "workspace_symbol",
             {"jsonrpc": "2.0", "id": 8, "method": "workspace/symbol", "params": {"query": "Invoice"}},
             lambda result: any(item.get("name") == "Invoice" for item in result or ()),
+        ),
+        (
+            "workspace_symbol_catalog_metadata",
+            {"jsonrpc": "2.0", "id": 9, "method": "workspace/symbol", "params": {"query": "JournalPosted"}},
+            lambda result: any(
+                item.get("name") == "JournalPosted"
+                and item.get("data", {}).get("catalog_resolved") is True
+                and item.get("data", {}).get("pbc") == "gl_core"
+                for item in result or ()
+            ),
         ),
     )
     for name, message, predicate in request_checks:
@@ -5675,7 +5686,7 @@ def lsp_document_symbols_dsl(text: str, *, source_name: str | None = None) -> di
 def lsp_workspace_symbols_dsl(text: str, *, source_name: str | None = None, query: str = "") -> dict:
     semantic = semantic_model_dsl(text, source_name=source_name)
     needle = (query or "").lower()
-    symbols = tuple(
+    symbols = list(
         {
             "name": symbol["name"],
             "kind": _lsp_symbol_kind(symbol["kind"]),
@@ -5686,7 +5697,8 @@ def lsp_workspace_symbols_dsl(text: str, *, source_name: str | None = None, quer
         for symbol in semantic.get("symbols", {}).values()
         if not needle or needle in symbol["name"].lower() or needle in symbol["id"].lower()
     )
-    return {"format": "appgen.lsp-workspace-symbols.v1", "ok": semantic["ok"], "symbols": symbols}
+    symbols.extend(_lsp_catalog_workspace_symbols(needle))
+    return {"format": "appgen.lsp-workspace-symbols.v1", "ok": semantic["ok"], "symbols": tuple(symbols)}
 
 
 def lsp_workspace_symbols_dsl_documents(documents: dict[str, str], *, query: str = "") -> dict:
@@ -5707,12 +5719,69 @@ def lsp_workspace_symbols_dsl_documents(documents: dict[str, str], *, query: str
             for symbol in semantic.get("symbols", {}).values()
             if not needle or needle in symbol["name"].lower() or needle in symbol["id"].lower()
         )
+    symbols.extend(_lsp_catalog_workspace_symbols(needle))
     return {
         "format": "appgen.lsp-workspace-symbols.v1",
         "ok": all(model.get("ok") for model in models),
         "workspace": True,
         "symbols": tuple(symbols),
     }
+
+
+def _lsp_catalog_workspace_symbols(needle: str) -> tuple[dict, ...]:
+    catalog_symbols: list[dict] = []
+    for key, entry in sorted(_pbc_catalog_by_key().items()):
+        metadata_text = " ".join(
+            str(value or "")
+            for value in (
+                key,
+                entry.get("label"),
+                entry.get("mesh"),
+                entry.get("mesh_label"),
+                entry.get("description"),
+                entry.get("datastore_backend"),
+            )
+        ).lower()
+        if not needle or needle in metadata_text:
+            catalog_symbols.append(
+                {
+                    "name": key,
+                    "kind": _lsp_symbol_kind("pbc"),
+                    "location": _lsp_location(f"catalog://pbc/{key}", None),
+                    "containerName": entry.get("mesh"),
+                    "data": {
+                        "id": f"catalog.pbc.{key}",
+                        "kind": "pbc",
+                        "catalog_resolved": True,
+                        "label": entry.get("label"),
+                        "mesh": entry.get("mesh"),
+                        "description": entry.get("description"),
+                    },
+                }
+            )
+        contracts = (
+            tuple(("api", value) for value in entry.get("apis", ()))
+            + tuple(("event", value) for value in entry.get("emits", ()))
+            + tuple(("event", value) for value in entry.get("consumes", ()))
+        )
+        for contract_kind, contract_name in contracts:
+            if needle and needle not in str(contract_name).lower() and needle not in key.lower():
+                continue
+            catalog_symbols.append(
+                {
+                    "name": str(contract_name),
+                    "kind": _lsp_symbol_kind(contract_kind),
+                    "location": _lsp_location(f"catalog://pbc/{key}/{contract_kind}/{quote(str(contract_name), safe='')}", None),
+                    "containerName": key,
+                    "data": {
+                        "id": f"catalog.pbc.{key}.{contract_kind}.{contract_name}",
+                        "kind": contract_kind,
+                        "catalog_resolved": True,
+                        "pbc": key,
+                    },
+                }
+            )
+    return tuple(catalog_symbols)
 
 
 def lsp_code_actions_dsl(text: str, *, source_name: str | None = None) -> dict:
