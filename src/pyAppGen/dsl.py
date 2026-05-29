@@ -2108,6 +2108,64 @@ def _parser_golden_text_renderer_contract() -> dict:
     }
 
 
+def _lint_text_renderer_contract() -> dict:
+    """Prove lint text logs expose stages, source mode, migration preview, and diagnostics."""
+    payload = {
+        "format": "appgen.lint-report.v1",
+        "ok": False,
+        "severity_counts": {"error": 1, "warning": 1},
+        "source_mode": "directory",
+        "files": ("apps/sales.appgen", "apps/inventory.appgen"),
+        "stage_names": ("syntax", "semantic", "policy"),
+        "stages": {
+            "syntax": {"diagnostic_count": 0},
+            "semantic": {"diagnostic_count": 1},
+            "policy": {"diagnostic_count": 1},
+        },
+        "migration_preview": {
+            "format": "appgen.migration-plan.v1",
+            "backend": "postgresql",
+            "requires_approval": True,
+            "changes": ({"kind": "add_table", "name": "Invoice"},),
+            "coverage": {"detected": ("tables", "relationships")},
+        },
+        "diagnostics": (
+            {
+                "severity": "error",
+                "code": "AGX0402",
+                "message": "A database-backed form binding must resolve to a field.",
+            },
+            {
+                "severity": "warning",
+                "code": "AGX0701",
+                "message": "A generated package should declare a smoke test.",
+            },
+        ),
+    }
+    output = io.StringIO()
+    with contextlib.redirect_stdout(output):
+        _emit_tooling_payload(payload, as_json=False)
+    text = output.getvalue()
+    required_fragments = (
+        "lint failed: format=appgen.lint-report.v1 {'error': 1, 'warning': 1}",
+        "source directory: files=2",
+        "stages syntax=0 semantic=1 policy=1",
+        "migration-preview format=appgen.migration-plan.v1 backend=postgresql: changes=1 requires_approval=True",
+        "migration-detected relationships, tables",
+        "error AGX0402: A database-backed form binding must resolve to a field.",
+        "warning AGX0701: A generated package should declare a smoke test.",
+    )
+    missing = tuple(fragment for fragment in required_fragments if fragment not in text)
+    return {
+        "format": "appgen.lint-text-renderer.v1",
+        "ok": not missing and not text.lstrip().startswith("{"),
+        "required_fragments": required_fragments,
+        "missing_fragments": missing,
+        "json_fallback": text.lstrip().startswith("{"),
+        "text_prefix": text[:240],
+    }
+
+
 def _component_publish_text_renderer_contract() -> dict:
     """Prove component-publish text logs expose side-effect-free catalog evidence."""
     payload = {
@@ -3506,6 +3564,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
     diagnostics = diagnostic_catalog_dsl()
     diagnostic_fixtures = diagnostic_fixture_audit_dsl()
     diagnostics_text_renderer = _diagnostics_text_renderer_contract()
+    lint_text_renderer = _lint_text_renderer_contract()
     parser_golden = parser_golden_audit_dsl()
     parser_golden_text_renderer = _parser_golden_text_renderer_contract()
     drift = semantic_drift_audit_dsl(source, source_name="tooling-audit.appgen")
@@ -3624,14 +3683,16 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and strict_lint["ok"]
             and catalog_lint["ok"]
             and lint_report_dsl_sources({"a.appgen": source, "b.appgen": _doctor_sample_dsl()})["ok"]
-            and lint_directory_cli["ok"],
-            "Linter accepts files/source sets, strict profile reporting, and registered component catalogs.",
+            and lint_directory_cli["ok"]
+            and lint_text_renderer["ok"],
+            "Linter accepts files/source sets, strict profile reporting, registered component catalogs, and human-readable stage/migration summaries.",
             "docs/tooling.md#linter-specification",
             {
                 "format": lint.get("format"),
                 "strict": strict_lint.get("strict"),
                 "catalog": catalog_lint.get("component_catalog"),
                 "directory_cli": lint_directory_cli,
+                "text_renderer": lint_text_renderer,
             },
         ),
         _tooling_audit_check(

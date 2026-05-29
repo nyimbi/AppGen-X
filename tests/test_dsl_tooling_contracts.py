@@ -3918,6 +3918,23 @@ def test_diagnostics_text_renderer_contract_proves_catalog_and_fixture_log_marke
     } <= set(report["required_fragments"])
 
 
+def test_lint_text_renderer_contract_proves_stage_and_migration_log_markers() -> None:
+    report = appgen_dsl._lint_text_renderer_contract()
+
+    assert report["format"] == "appgen.lint-text-renderer.v1"
+    assert report["ok"] is True
+    assert report["missing_fragments"] == ()
+    assert report["json_fallback"] is False
+    assert report["text_prefix"].startswith("lint failed: format=appgen.lint-report.v1")
+    assert {
+        "source directory: files=2",
+        "stages syntax=0 semantic=1 policy=1",
+        "migration-preview format=appgen.migration-plan.v1 backend=postgresql: changes=1 requires_approval=True",
+        "migration-detected relationships, tables",
+        "error AGX0402: A database-backed form binding must resolve to a field.",
+    } <= set(report["required_fragments"])
+
+
 def test_semantic_drift_text_renderer_contract_proves_shared_model_log_markers() -> None:
     report = appgen_dsl._semantic_drift_text_renderer_contract()
 
