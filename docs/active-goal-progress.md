@@ -3568,3 +3568,13 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   `appgen.lsp-stdio-transport-audit.v1` helper probe with `ok=True`, focused
   non-PBC stdio audit test (`1 passed`), scoped diff whitespace check, and
   restricted-name scan outside archive, Git internals, and active PBC paths.
+  Commit: `9c2f9310`.
+- Current CLI help/alias audit hardening pass closes a command-surface evidence
+  gap. `appgen.cli-help-surface-audit.v1` now parses `pyproject.toml` to prove
+  `appgen` and `apg` point at the same entrypoint, runs the actual argparse
+  top-level help path, and verifies every required tooling subcommand appears in
+  help output as well as the compatibility entrypoint. Verification passed:
+  Python compile for the touched tooling entrypoint, direct
+  `appgen.cli-help-surface-audit.v1` helper probe with `ok=True`, focused
+  non-PBC help/alias test (`1 passed`), scoped diff whitespace check, and
+  restricted-name scan outside archive, Git internals, and active PBC paths.

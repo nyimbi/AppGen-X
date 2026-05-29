@@ -2529,6 +2529,7 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
 
 def test_top_level_help_exposes_tooling_subcommands_and_apg_alias() -> None:
     root = Path(__file__).resolve().parents[1]
+    audit = appgen_dsl._tooling_audit_cli_help_surface(root)
     help_result = subprocess.run(
         [sys.executable, "-m", "pyAppGen", "--help"],
         check=False,
@@ -2545,6 +2546,13 @@ def test_top_level_help_exposes_tooling_subcommands_and_apg_alias() -> None:
     assert "diagnostics, parser-golden, drift, doctor, and tooling-audit" in normalized_help
     assert "apg =" in pyproject
     assert "visual drag-and-drop form design" in normalized_help
+    assert audit["format"] == "appgen.cli-help-surface-audit.v1"
+    assert audit["ok"] is True
+    assert audit["script_targets"]["appgen"] == "pyAppGen.__main__:main"
+    assert audit["script_targets"]["apg"] == audit["script_targets"]["appgen"]
+    assert audit["help_exit_code"] == 0
+    assert audit["help_lists_subcommands"] is True
+    assert audit["help_missing_subcommands"] == ()
 
 
 def test_cli_contracts_cover_text_summaries_exit_codes_and_bad_arguments(tmp_path: Path) -> None:

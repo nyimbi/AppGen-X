@@ -12,6 +12,7 @@ import json
 import re
 import sys
 import tempfile
+import tomllib
 from pathlib import Path
 from typing import Iterable
 
@@ -3894,6 +3895,7 @@ def _tooling_audit_package_invalid_target(tmp: Path, source: str) -> dict:
 
 def _tooling_audit_cli_help_surface(root: Path) -> dict:
     pyproject = (root / "pyproject.toml").read_text(encoding="utf-8")
+    pyproject_data = tomllib.loads(pyproject)
     entrypoint = (root / "src/pyAppGen/gen.py").read_text(encoding="utf-8")
     required_subcommands = (
         "lint",
@@ -3916,12 +3918,27 @@ def _tooling_audit_cli_help_surface(root: Path) -> dict:
         "doctor",
         "tooling-audit",
     )
+    help_output = io.StringIO()
+    help_error = io.StringIO()
+    help_exit_code = 0
+    with contextlib.redirect_stdout(help_output), contextlib.redirect_stderr(help_error):
+        try:
+            help_exit_code = dsl_tooling_cli(("--help",))
+        except SystemExit as exc:
+            help_exit_code = int(exc.code or 0)
+    help_text = help_output.getvalue()
     help_has_subcommands = all(command in entrypoint for command in required_subcommands)
-    alias_declared = 'apg = "pyAppGen.__main__:main"' in pyproject
+    help_lists_subcommands = all(command in help_text for command in required_subcommands)
+    scripts = pyproject_data.get("project", {}).get("scripts", {})
+    alias_declared = scripts.get("apg") == scripts.get("appgen") == "pyAppGen.__main__:main"
     return {
         "format": "appgen.cli-help-surface-audit.v1",
-        "ok": help_has_subcommands and alias_declared,
+        "ok": help_exit_code == 0 and help_has_subcommands and help_lists_subcommands and alias_declared,
         "alias_declared": alias_declared,
+        "script_targets": {"appgen": scripts.get("appgen"), "apg": scripts.get("apg")},
+        "help_exit_code": help_exit_code,
+        "help_lists_subcommands": help_lists_subcommands,
+        "help_missing_subcommands": tuple(command for command in required_subcommands if command not in help_text),
         "subcommands_documented": required_subcommands if help_has_subcommands else tuple(command for command in required_subcommands if command in entrypoint),
         "required_subcommands": required_subcommands,
     }
