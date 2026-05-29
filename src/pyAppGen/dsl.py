@@ -108,6 +108,25 @@ REQUIRED_COMPLETION_SOURCES = (
     "llm_providers",
     "agent_skills",
 )
+REQUIRED_DIAGNOSTIC_FIELDS = (
+    "code",
+    "title",
+    "severity",
+    "message",
+    "range",
+    "related_locations",
+    "fixes",
+    "docs_url",
+)
+DIAGNOSTIC_CATALOG_FIELDS = (
+    "code",
+    "severity",
+    "title",
+    "trigger",
+    "example_fix",
+    "docs_url",
+    "fixture",
+)
 REQUIRED_SYMBOL_KINDS = (
     "app",
     "table",
@@ -1004,6 +1023,18 @@ def diagnostic_catalog_dsl() -> dict:
         }
         for spec in DIAGNOSTIC_SPECS
     )
+    catalog_shape_gaps = tuple(
+        {
+            "code": spec.get("code"),
+            "missing": tuple(
+                field
+                for field in DIAGNOSTIC_CATALOG_FIELDS
+                if field not in spec or spec.get(field) in (None, "")
+            ),
+        }
+        for spec in specs
+        if any(field not in spec or spec.get(field) in (None, "") for field in DIAGNOSTIC_CATALOG_FIELDS)
+    )
     ranges = tuple(
         {
             "range": item[0],
@@ -1013,9 +1044,13 @@ def diagnostic_catalog_dsl() -> dict:
     )
     return {
         "format": "appgen.diagnostic-catalog.v1",
-        "ok": all(item["fixture"] for item in specs),
+        "ok": all(item["fixture"] for item in specs) and not catalog_shape_gaps,
         "ranges": ranges,
         "diagnostics": specs,
+        "diagnostic_shape_fields": REQUIRED_DIAGNOSTIC_FIELDS,
+        "catalog_fields": DIAGNOSTIC_CATALOG_FIELDS,
+        "catalog_shape_gaps": catalog_shape_gaps,
+        "runtime_shape_enforced_by": "appgen.diagnostic-fixture-audit.v1",
         "required_codes": tuple(item["code"] for item in specs),
         "fixture_count": len(DIAGNOSTIC_FIXTURES),
         "missing_fixtures": tuple(item["code"] for item in specs if not item["fixture"]),

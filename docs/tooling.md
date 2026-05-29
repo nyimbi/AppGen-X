@@ -282,6 +282,12 @@ has:
 - `fixes`
 - `docs_url`
 
+The diagnostic catalog publishes this required runtime shape as
+`diagnostic_shape_fields`, publishes the registry row shape as `catalog_fields`,
+and records `runtime_shape_enforced_by: appgen.diagnostic-fixture-audit.v1` so
+tools can distinguish catalog completeness from fixture-level diagnostic JSON
+validation.
+
 ### Diagnostic Code Ranges
 
 | Range | Area |

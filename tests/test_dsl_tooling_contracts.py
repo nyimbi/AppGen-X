@@ -2598,6 +2598,28 @@ def test_diagnostic_catalog_and_fixture_audit_cover_required_agx_codes() -> None
     assert audit["format"] == "appgen.diagnostic-fixture-audit.v1"
     assert catalog["ok"] is True
     assert audit["ok"] is True
+    assert catalog["catalog_shape_gaps"] == ()
+    assert catalog["runtime_shape_enforced_by"] == "appgen.diagnostic-fixture-audit.v1"
+    assert set(catalog["diagnostic_shape_fields"]) == {
+        "code",
+        "title",
+        "severity",
+        "message",
+        "range",
+        "related_locations",
+        "fixes",
+        "docs_url",
+    }
+    assert set(catalog["catalog_fields"]) == {
+        "code",
+        "severity",
+        "title",
+        "trigger",
+        "example_fix",
+        "docs_url",
+        "fixture",
+    }
+    assert all(set(catalog["catalog_fields"]) <= set(item) for item in catalog["diagnostics"])
     assert set(catalog["required_codes"]) <= set(audit["covered_codes"])
     assert all(not fixture["shape_gaps"] for fixture in audit["fixtures"])
     assert all(not fixture["severity_gaps"] for fixture in audit["fixtures"])
