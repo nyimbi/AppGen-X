@@ -4030,6 +4030,7 @@ def test_missing_input_audit_covers_file_based_commands(tmp_path: Path) -> None:
     assert {
         "lint_missing_path",
         "lint_missing_previous_semantic",
+        "lint_missing_catalog",
         "format_missing_path",
         "validate_missing_path",
         "graph_missing_path",
@@ -4153,8 +4154,9 @@ def test_appgen_format_write_rewrites_file_and_reports_write_metadata(tmp_path: 
 
 def test_appgen_tooling_cli_returns_code_3_for_internal_errors(tmp_path: Path) -> None:
     source_path = tmp_path / "internal.appgen"
-    missing_catalog = tmp_path / "missing-components.json"
+    malformed_catalog = tmp_path / "malformed-components.json"
     source_path.write_text("app Internal { targets: web }\ntable Thing { id: int pk }\n", encoding="utf-8")
+    malformed_catalog.write_text("{not-json", encoding="utf-8")
     root = Path(__file__).resolve().parents[1]
 
     json_result = subprocess.run(
@@ -4165,7 +4167,7 @@ def test_appgen_tooling_cli_returns_code_3_for_internal_errors(tmp_path: Path) -
             "lint",
             str(source_path),
             "--catalog",
-            str(missing_catalog),
+            str(malformed_catalog),
             "--json",
         ],
         check=False,
@@ -4181,7 +4183,7 @@ def test_appgen_tooling_cli_returns_code_3_for_internal_errors(tmp_path: Path) -
             "lint",
             str(source_path),
             "--catalog",
-            str(missing_catalog),
+            str(malformed_catalog),
         ],
         check=False,
         cwd=root,

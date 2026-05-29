@@ -1761,6 +1761,10 @@ def _validate_tooling_cli_paths(parser: argparse.ArgumentParser, args: argparse.
             parser.error(f"{args.command}: path does not exist: {value}")
         if attr == "path" and args.command != "lint" and candidate.is_dir():
             parser.error(f"{args.command}: expected a file path, got directory: {value}")
+    if args.command == "lint" and getattr(args, "catalog", None):
+        catalog_path = Path(args.catalog)
+        if not catalog_path.exists():
+            parser.error(f"{args.command}: path does not exist: {args.catalog}")
 
 
 def _parse_tooling_json_argument(parser: argparse.ArgumentParser, args: argparse.Namespace, attr: str, option: str) -> dict | None:
@@ -4286,8 +4290,9 @@ table Customer {
 
 def _tooling_audit_internal_error_exit(tmp: Path) -> dict:
     source_path = tmp / "internal-error.appgen"
-    missing_catalog = tmp / "missing-components.json"
+    malformed_catalog = tmp / "malformed-components.json"
     source_path.write_text("app InternalError { targets: web }\ntable Thing { id: int pk }\n", encoding="utf-8")
+    malformed_catalog.write_text("{not-json", encoding="utf-8")
     json_output = io.StringIO()
     json_error = io.StringIO()
     with contextlib.redirect_stdout(json_output), contextlib.redirect_stderr(json_error):
@@ -4296,7 +4301,7 @@ def _tooling_audit_internal_error_exit(tmp: Path) -> dict:
                 "lint",
                 str(source_path),
                 "--catalog",
-                str(missing_catalog),
+                str(malformed_catalog),
                 "--json",
             )
         )
@@ -4304,7 +4309,7 @@ def _tooling_audit_internal_error_exit(tmp: Path) -> dict:
     text_output = io.StringIO()
     text_error = io.StringIO()
     with contextlib.redirect_stdout(text_output), contextlib.redirect_stderr(text_error):
-        text_exit_code = dsl_tooling_cli(("lint", str(source_path), "--catalog", str(missing_catalog)))
+        text_exit_code = dsl_tooling_cli(("lint", str(source_path), "--catalog", str(malformed_catalog)))
     json_stderr = json_error.getvalue()
     text_stdout = text_output.getvalue()
     text_stderr = text_error.getvalue()
@@ -4337,6 +4342,7 @@ def _tooling_audit_missing_input_exit(tmp: Path) -> dict:
     cases = (
         ("lint_missing_path", ("lint", str(missing_path))),
         ("lint_missing_previous_semantic", ("lint", str(current_path), "--previous-semantic", str(missing_path))),
+        ("lint_missing_catalog", ("lint", str(current_path), "--catalog", str(missing_path))),
         ("format_missing_path", ("format", str(missing_path), "--check")),
         ("validate_missing_path", ("validate", str(missing_path))),
         ("graph_missing_path", ("graph", str(missing_path), "--format", "json")),
