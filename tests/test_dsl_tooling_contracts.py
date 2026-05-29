@@ -3128,8 +3128,13 @@ def test_module_boundary_audit_proves_documented_tooling_surfaces() -> None:
 
     assert audit["format"] == "appgen.module-boundary-audit.v1"
     assert audit["ok"] is True
+    assert audit["boundary_count"] == len(audit["boundaries"])
+    assert audit["boundary_count"] >= 12
+    assert audit["callable_count"] == sum(len(boundary["callables"]) for boundary in audit["boundaries"])
+    assert audit["callable_count"] >= 20
     assert audit["missing_boundaries"] == ()
     assert audit["core_runtime_gaps"] == ()
+    assert audit["core_runtime_count"] == len(audit["core_runtime"])
     assert audit["layout_policy"] == "boundaries_visible_without_requiring_subpackage_layout"
     assert {
         "parser",

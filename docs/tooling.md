@@ -88,8 +88,10 @@ The parser, semantic model, diagnostics, and formatter must be usable without
 starting a web app or generator.
 `appgen.module-boundary-audit.v1` is the executable proof for this section. It
 maps each documented responsibility boundary to concrete callable surfaces and
-proves the parser, semantic model, diagnostic catalog, and formatter can run as
-core library services without starting Studio or a generated application.
+reports `boundary_count` and `callable_count` so release evidence captures the
+observed surface area. It also proves the parser, semantic model, diagnostic
+catalog, and formatter can run as core library services without starting Studio
+or a generated application.
 
 ## Semantic Model Contract
 

@@ -7685,12 +7685,16 @@ def module_boundary_audit_dsl() -> dict:
         ),
     )
     core_runtime_gaps = tuple(item["boundary"] for item in core_runtime if not item["ok"])
+    callable_count = sum(len(report["callables"]) for report in boundary_reports)
     return {
         "format": "appgen.module-boundary-audit.v1",
         "ok": not missing_boundaries and not core_runtime_gaps,
+        "boundary_count": len(boundary_reports),
+        "callable_count": callable_count,
         "boundaries": tuple(boundary_reports),
         "missing_boundaries": tuple(missing_boundaries),
         "core_runtime": core_runtime,
+        "core_runtime_count": len(core_runtime),
         "core_runtime_gaps": core_runtime_gaps,
         "layout_policy": "boundaries_visible_without_requiring_subpackage_layout",
     }
