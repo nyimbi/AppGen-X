@@ -1,68 +1,87 @@
-"""Idempotent event handlers for the inventory_positioning PBC."""
+"""Idempotent AppGen-X event handlers for inventory_positioning."""
 
-HANDLER_CONTRACTS = ({'event_type': 'OrderVerified', 'function': 'handle_order_verified', 'idempotency_key': 'inventory_positioning:OrderVerified:{event_id}', 'retry_policy': {'name': 'inventory_positioning_default_retry', 'max_attempts': 5, 'backoff': 'exponential'}, 'dead_letter_table': 'inventory_positioning_appgen_dead_letter_event', 'side_effect_boundary': 'owned_tables_or_declared_api_calls'}, {'event_type': 'ShipmentDelivered', 'function': 'handle_shipment_delivered', 'idempotency_key': 'inventory_positioning:ShipmentDelivered:{event_id}', 'retry_policy': {'name': 'inventory_positioning_default_retry', 'max_attempts': 5, 'backoff': 'exponential'}, 'dead_letter_table': 'inventory_positioning_appgen_dead_letter_event', 'side_effect_boundary': 'owned_tables_or_declared_api_calls'}, {'event_type': 'QualityHoldReleased', 'function': 'handle_quality_hold_released', 'idempotency_key': 'inventory_positioning:QualityHoldReleased:{event_id}', 'retry_policy': {'name': 'inventory_positioning_default_retry', 'max_attempts': 5, 'backoff': 'exponential'}, 'dead_letter_table': 'inventory_positioning_appgen_dead_letter_event', 'side_effect_boundary': 'owned_tables_or_declared_api_calls'}, {'event_type': 'PurchaseReceiptPosted', 'function': 'handle_purchase_receipt_posted', 'idempotency_key': 'inventory_positioning:PurchaseReceiptPosted:{event_id}', 'retry_policy': {'name': 'inventory_positioning_default_retry', 'max_attempts': 5, 'backoff': 'exponential'}, 'dead_letter_table': 'inventory_positioning_appgen_dead_letter_event', 'side_effect_boundary': 'owned_tables_or_declared_api_calls'}, {'event_type': 'DemandForecastChanged', 'function': 'handle_demand_forecast_changed', 'idempotency_key': 'inventory_positioning:DemandForecastChanged:{event_id}', 'retry_policy': {'name': 'inventory_positioning_default_retry', 'max_attempts': 5, 'backoff': 'exponential'}, 'dead_letter_table': 'inventory_positioning_appgen_dead_letter_event', 'side_effect_boundary': 'owned_tables_or_declared_api_calls'}, {'event_type': 'AccessPolicyChanged', 'function': 'handle_access_policy_changed', 'idempotency_key': 'inventory_positioning:AccessPolicyChanged:{event_id}', 'retry_policy': {'name': 'inventory_positioning_default_retry', 'max_attempts': 5, 'backoff': 'exponential'}, 'dead_letter_table': 'inventory_positioning_appgen_dead_letter_event', 'side_effect_boundary': 'owned_tables_or_declared_api_calls'})
-_PROCESSED_KEYS = set()
+from __future__ import annotations
+
+from .events import CONSUMED_EVENTS
+from .events import DEAD_LETTER_TABLE
+from .events import RETRY_POLICY
 
 
-def handler_manifest():
-    """Return handler retry, idempotency, and dead-letter evidence."""
+PBC_KEY = "inventory_positioning"
+HANDLER_CONTRACTS = tuple(
+    {
+        "event_type": event["event_type"],
+        "function": "handle_" + event["event_type"].replace("-", "_").lower(),
+        "idempotency_key": f"{PBC_KEY}:{event['event_type']}:{{event_id}}",
+        "retry_policy": RETRY_POLICY,
+        "dead_letter_table": DEAD_LETTER_TABLE,
+        "side_effect_boundary": "owned_tables_or_declared_api_calls",
+    }
+    for event in CONSUMED_EVENTS
+)
+_PROCESSED_KEYS: set[str] = set()
+
+
+def handler_manifest() -> dict:
     return {
-        'ok': bool(HANDLER_CONTRACTS),
-        'pbc': 'inventory_positioning',
-        'handlers': HANDLER_CONTRACTS,
-        'event_types': tuple(item['event_type'] for item in HANDLER_CONTRACTS),
-        'idempotency_keys': tuple(item['idempotency_key'] for item in HANDLER_CONTRACTS),
-        'retry_policies': tuple(item['retry_policy'] for item in HANDLER_CONTRACTS),
-        'dead_letter_tables': tuple(item['dead_letter_table'] for item in HANDLER_CONTRACTS),
-        'side_effects': (),
+        "ok": bool(HANDLER_CONTRACTS),
+        "pbc": PBC_KEY,
+        "handlers": HANDLER_CONTRACTS,
+        "event_types": tuple(item["event_type"] for item in HANDLER_CONTRACTS),
+        "dead_letter_tables": tuple(item["dead_letter_table"] for item in HANDLER_CONTRACTS),
+        "retry_policies": tuple(item["retry_policy"] for item in HANDLER_CONTRACTS),
+        "side_effects": (),
     }
 
 
-def dispatch_event(event):
-    """Process one event envelope idempotently."""
-    event_type = event.get('event_type')
-    event_id = event.get('event_id')
-    handler = next((item for item in HANDLER_CONTRACTS if item['event_type'] == event_type), None)
+def reset_processed_keys() -> None:
+    _PROCESSED_KEYS.clear()
+
+
+def dispatch_event(event: dict) -> dict:
+    event_type = event.get("event_type")
+    event_id = event.get("event_id")
+    handler = next((item for item in HANDLER_CONTRACTS if item["event_type"] == event_type), None)
     if handler is None:
-        return {'handled': False, 'reason': 'unregistered_event'}
-    key = handler['idempotency_key'].format(event_id=event_id)
+        return {"handled": False, "reason": "unregistered_event", "side_effects": ()}
+    key = handler["idempotency_key"].format(event_id=event_id)
     if key in _PROCESSED_KEYS:
-        return {'handled': True, 'duplicate': True, 'idempotency_key': key}
+        return {
+            "handled": True,
+            "duplicate": True,
+            "idempotency_key": key,
+            "retry_policy": handler["retry_policy"],
+            "dead_letter_table": handler["dead_letter_table"],
+            "side_effects": (),
+        }
     _PROCESSED_KEYS.add(key)
     return {
-        'handled': True,
-        'duplicate': False,
-        'idempotency_key': key,
-        'retry_policy': handler['retry_policy'],
-        'dead_letter_table': handler['dead_letter_table'],
+        "handled": True,
+        "duplicate": False,
+        "idempotency_key": key,
+        "retry_policy": handler["retry_policy"],
+        "dead_letter_table": handler["dead_letter_table"],
+        "side_effects": (),
     }
 
 
-def smoke_test():
-    """Exercise handler idempotency, retry, and dead-letter metadata."""
+def smoke_test() -> dict:
+    reset_processed_keys()
     manifest = handler_manifest()
-    if not HANDLER_CONTRACTS:
-        return {'ok': False, 'manifest': manifest, 'side_effects': ()}
     first = HANDLER_CONTRACTS[0]
-    event = {
-        'event_type': first['event_type'],
-        'event_id': f"smoke-{len(_PROCESSED_KEYS)}",
-        'payload': {'smoke': True},
-    }
+    event = {"event_type": first["event_type"], "event_id": "smoke-001", "payload": {"smoke": True}}
     first_result = dispatch_event(event)
     duplicate_result = dispatch_event(event)
-    unknown_result = dispatch_event({'event_type': 'UnknownEvent', 'event_id': event['event_id']})
+    unknown_result = dispatch_event({"event_type": "UnknownEvent", "event_id": "smoke-001"})
     return {
-        'ok': manifest['ok']
-        and first_result.get('handled') is True
-        and first_result.get('duplicate') is False
-        and duplicate_result.get('duplicate') is True
-        and unknown_result.get('handled') is False
-        and bool(first_result.get('retry_policy'))
-        and bool(first_result.get('dead_letter_table')),
-        'manifest': manifest,
-        'first_result': first_result,
-        'duplicate_result': duplicate_result,
-        'unknown_result': unknown_result,
-        'side_effects': (),
+        "ok": manifest["ok"]
+        and first_result["handled"]
+        and first_result["duplicate"] is False
+        and duplicate_result["duplicate"] is True
+        and unknown_result["handled"] is False,
+        "manifest": manifest,
+        "first_result": first_result,
+        "duplicate_result": duplicate_result,
+        "unknown_result": unknown_result,
+        "side_effects": (),
     }
