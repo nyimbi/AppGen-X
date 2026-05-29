@@ -579,8 +579,9 @@ Exit codes:
 - `3`: internal tool error.
 
 Internal tool errors emit `appgen.internal-error.v1` with `AGX9000`
-diagnostics instead of a Python traceback; text mode prints the same
-`appgen.internal-error.v1` format marker before the error type and message.
+diagnostics instead of a Python traceback; text mode prints
+`internal-error failed: format=appgen.internal-error.v1` with the `AGX9000`
+code, error type, and message.
 Argparse usage/configuration failures remain exit code `2`. Missing
 user-supplied input paths are treated as configuration errors and return exit
 code `2` before the tooling engine reads or generates artifacts; the executable

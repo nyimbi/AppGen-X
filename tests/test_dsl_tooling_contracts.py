@@ -4346,7 +4346,8 @@ def test_appgen_tooling_cli_returns_code_3_for_internal_errors(tmp_path: Path) -
     assert payload["ok"] is False
     assert "Traceback" not in json_result.stderr
     assert text_result.returncode == 3
-    assert text_result.stdout.startswith("internal-error format=appgen.internal-error.v1")
+    assert text_result.stdout.startswith("internal-error failed: format=appgen.internal-error.v1")
+    assert "code=AGX9000" in text_result.stdout
     assert "Traceback" not in text_result.stderr
 
 
@@ -4361,4 +4362,5 @@ def test_internal_error_audit_covers_json_and_text_modes(tmp_path: Path) -> None
     assert report["code"] == "AGX9000"
     assert report["json_traceback_free"] is True
     assert report["text_traceback_free"] is True
-    assert report["text_stdout"].startswith("internal-error format=appgen.internal-error.v1")
+    assert report["text_stdout"].startswith("internal-error failed: format=appgen.internal-error.v1")
+    assert "code=AGX9000" in report["text_stdout"]
