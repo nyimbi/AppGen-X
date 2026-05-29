@@ -3152,7 +3152,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             implementation_phases,
         ),
     )
-    doc_anchor_integrity = _tooling_audit_doc_anchor_integrity(root, tuple(check["section"] for check in checks))
+    doc_anchor_integrity = _tooling_audit_doc_anchor_integrity(root, _tooling_audit_doc_refs(checks))
     checks = checks + (
         _tooling_audit_check(
             "tooling_doc_anchor_integrity",
@@ -3204,6 +3204,23 @@ def _tooling_audit_doc_anchor_integrity(root: Path, section_refs: Iterable[str])
         "referenced_sections": referenced,
         "missing_sections": missing,
     }
+
+
+def _tooling_audit_doc_refs(value: object) -> tuple[str, ...]:
+    refs: list[str] = []
+
+    def collect(item: object) -> None:
+        if isinstance(item, str):
+            refs.extend(re.findall(r"docs/tooling\.md#[A-Za-z0-9_-]+", item))
+        elif isinstance(item, dict):
+            for nested in item.values():
+                collect(nested)
+        elif isinstance(item, (list, tuple, set)):
+            for nested in item:
+                collect(nested)
+
+    collect(value)
+    return tuple(dict.fromkeys(refs))
 
 
 def _markdown_heading_anchors(markdown: str) -> tuple[str, ...]:

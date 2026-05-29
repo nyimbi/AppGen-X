@@ -3499,7 +3499,15 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert report["doc_anchor_integrity"]["ok"] is True
     assert report["doc_anchor_integrity"]["missing_sections"] == ()
     assert "docs/tooling.md#cli-contracts" in report["doc_anchor_integrity"]["referenced_sections"]
+    assert "docs/tooling.md#diagnostic-specification" in report["doc_anchor_integrity"]["referenced_sections"]
+    assert "docs/tooling.md#linter-rules-by-domain" in report["doc_anchor_integrity"]["referenced_sections"]
     assert "docs/tooling.md#command-line-interface" not in report["doc_anchor_integrity"]["referenced_sections"]
+    assert appgen_dsl._tooling_audit_doc_refs(
+        {
+            "section": "docs/tooling.md#cli-contracts",
+            "detail": {"docs_url": "docs/tooling.md#diagnostic-specification"},
+        }
+    ) == ("docs/tooling.md#cli-contracts", "docs/tooling.md#diagnostic-specification")
     anchor_check = next(check for check in report["checks"] if check["id"] == "tooling_doc_anchor_integrity")
     assert anchor_check["detail"]["ok"] is True
     assert anchor_check["detail"]["missing_sections"] == ()
