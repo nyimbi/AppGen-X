@@ -4113,7 +4113,7 @@ def test_cli_contracts_cover_text_summaries_exit_codes_and_bad_arguments(tmp_pat
     assert "format=appgen.lint-report.v1" in lint_text.stdout
     assert "stages syntax=0 semantic=1 policy=0" in lint_text.stdout
     assert lint_migration_text.returncode == 0, lint_migration_text.stderr
-    assert "migration-preview appgen.migration-plan.v1 postgresql: changes=1 requires_approval=False" in lint_migration_text.stdout
+    assert "migration-preview format=appgen.migration-plan.v1 backend=postgresql: changes=1 requires_approval=False" in lint_migration_text.stdout
     assert "migration-detected added_field" in lint_migration_text.stdout
     assert format_check.returncode == 1
     assert "format changed: idempotent" in format_check.stdout
