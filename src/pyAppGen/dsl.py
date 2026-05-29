@@ -4470,6 +4470,7 @@ view InvoiceForm for Invoice {
 
 def _tooling_audit_format_write(tmp: Path) -> dict:
     path = tmp / "format-write.appgen"
+    text_path = tmp / "format-write-text.appgen"
     check_path = tmp / "format-check.appgen"
     clean_check_path = tmp / "format-check-clean.appgen"
     organize_path = tmp / "format-organize.appgen"
@@ -4493,6 +4494,7 @@ table Customer {
 }
 """
     path.write_text(source, encoding="utf-8")
+    text_path.write_text(source, encoding="utf-8")
     check_path.write_text(source, encoding="utf-8")
     clean_source = format_report_dsl(source, include_text=True)["text"]
     clean_check_path.write_text(clean_source, encoding="utf-8")
@@ -4528,6 +4530,17 @@ table Customer {
         exit_code = dsl_tooling_cli(("format", str(path), "--write", "--json"))
     payload = json.loads(output.getvalue())
     after = path.read_text(encoding="utf-8")
+
+    text_output = io.StringIO()
+    with contextlib.redirect_stdout(text_output):
+        text_exit_code = dsl_tooling_cli(("format", str(text_path), "--write"))
+    text_stdout = text_output.getvalue().strip()
+    text_after = text_path.read_text(encoding="utf-8")
+    text_has_report_format = text_stdout.startswith("format changed: format=appgen.format-result.v1")
+    text_has_write_metadata = (
+        "write_requested=True written=True" in text_stdout
+        and f"write_path {text_path}" in text_stdout
+    )
     return {
         "format": "appgen.format-write-audit.v1",
         "ok": exit_code == 0
@@ -4549,9 +4562,17 @@ table Customer {
         and payload.get("write_requested") is True
         and payload.get("written") is True
         and after == payload.get("text")
-        and after != source,
+        and after != source
+        and text_exit_code == 0
+        and text_has_report_format
+        and text_has_write_metadata
+        and text_after != source,
         "exit_code": exit_code,
         "payload_format": payload.get("format"),
+        "text_exit_code": text_exit_code,
+        "text_has_report_format": text_has_report_format,
+        "text_has_write_metadata": text_has_write_metadata,
+        "text_stdout_prefix": text_stdout[:160],
         "check_exit_code": check_exit,
         "check_changed": check_payload.get("changed"),
         "check_write_requested": check_payload.get("write_requested"),

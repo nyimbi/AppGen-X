@@ -3677,6 +3677,9 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert cli_check["detail"]["format_write"]["check_changed"] is True
     assert cli_check["detail"]["format_write"]["check_write_requested"] is False
     assert cli_check["detail"]["format_write"]["check_written"] is False
+    assert cli_check["detail"]["format_write"]["text_exit_code"] == 0
+    assert cli_check["detail"]["format_write"]["text_has_report_format"] is True
+    assert cli_check["detail"]["format_write"]["text_has_write_metadata"] is True
     assert cli_check["detail"]["format_write"]["clean_check_exit_code"] == 0
     assert cli_check["detail"]["format_write"]["clean_check_changed"] is False
     assert cli_check["detail"]["format_write"]["organize_exit_code"] == 0
@@ -4270,6 +4273,22 @@ def test_missing_required_option_audit_covers_required_cli_options(tmp_path: Pat
     assert all(case["exit_code"] == 2 for case in cases.values())
     assert all("the following arguments are required" in case["stderr"] for case in cases.values())
     assert all("Traceback" not in case["stderr"] for case in cases.values())
+
+
+def test_format_write_audit_covers_json_check_and_text_write_contracts(tmp_path: Path) -> None:
+    audit = appgen_dsl._tooling_audit_format_write(tmp_path)
+
+    assert audit["format"] == "appgen.format-write-audit.v1"
+    assert audit["ok"] is True
+    assert audit["payload_format"] == "appgen.format-result.v1"
+    assert audit["check_exit_code"] == 1
+    assert audit["check_changed"] is True
+    assert audit["check_write_requested"] is False
+    assert audit["check_written"] is False
+    assert audit["text_exit_code"] == 0
+    assert audit["text_has_report_format"] is True
+    assert audit["text_has_write_metadata"] is True
+    assert audit["text_stdout_prefix"].startswith("format changed: format=appgen.format-result.v1")
 
 
 def test_appgen_format_write_rewrites_file_and_reports_write_metadata(tmp_path: Path) -> None:
