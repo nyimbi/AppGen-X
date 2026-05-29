@@ -669,6 +669,13 @@ pipelines, desktop installer/startup packaging, PBC publication, and deployment
 verification. Generated installers and app-store bundles remain downstream
 builders' responsibility, but the package command now materializes the stable
 contract those builders consume.
+`appgen.package-verify-cli-audit.v1` exercises `appgen verify --target all` and
+`appgen package --target all --out ...`, then proves that release evidence and
+per-target manifests exist for web, mobile, desktop, PBC, and deployment
+handoffs. The audit checks target-specific handoff metadata rather than only
+successful command exit codes, so downstream builders receive stable contracts
+for routes/forms/handlers, mobile signing/offline launch, desktop installer and
+startup assets, PBC publication, and deployment topology verification.
 
 ### `appgen pbc`
 

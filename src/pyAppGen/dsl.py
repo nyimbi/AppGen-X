@@ -4125,29 +4125,32 @@ def _tooling_audit_package_verify_cli(tmp: Path, source: str) -> dict:
             payload = {}
         return exit_code, payload
 
-    verify_exit, verify_payload = run_json(
-        ("verify", str(source_path), "--target", "mobile", "--target", "desktop", "--json")
-    )
+    verify_exit, verify_payload = run_json(("verify", str(source_path), "--target", "all", "--json"))
     package_exit, package_payload = run_json(
         (
             "package",
             str(source_path),
             "--target",
-            "mobile",
-            "--target",
-            "desktop",
+            "all",
             "--out",
             str(package_dir),
             "--json",
         )
     )
     evidence_path = package_dir / "appgen-release-evidence.json"
+    web_manifest_path = package_dir / "appgen-package-web.json"
     mobile_manifest_path = package_dir / "appgen-package-mobile.json"
     desktop_manifest_path = package_dir / "appgen-package-desktop.json"
+    pbc_manifest_path = package_dir / "appgen-package-pbc.json"
+    deployment_manifest_path = package_dir / "appgen-package-deployment.json"
     try:
         evidence_payload = json.loads(evidence_path.read_text(encoding="utf-8"))
     except (FileNotFoundError, json.JSONDecodeError):
         evidence_payload = {}
+    try:
+        web_manifest = json.loads(web_manifest_path.read_text(encoding="utf-8"))
+    except (FileNotFoundError, json.JSONDecodeError):
+        web_manifest = {}
     try:
         mobile_manifest = json.loads(mobile_manifest_path.read_text(encoding="utf-8"))
     except (FileNotFoundError, json.JSONDecodeError):
@@ -4156,14 +4159,26 @@ def _tooling_audit_package_verify_cli(tmp: Path, source: str) -> dict:
         desktop_manifest = json.loads(desktop_manifest_path.read_text(encoding="utf-8"))
     except (FileNotFoundError, json.JSONDecodeError):
         desktop_manifest = {}
+    try:
+        pbc_manifest = json.loads(pbc_manifest_path.read_text(encoding="utf-8"))
+    except (FileNotFoundError, json.JSONDecodeError):
+        pbc_manifest = {}
+    try:
+        deployment_manifest = json.loads(deployment_manifest_path.read_text(encoding="utf-8"))
+    except (FileNotFoundError, json.JSONDecodeError):
+        deployment_manifest = {}
+    expected_targets = ("web", "mobile", "desktop", "pbc", "deployment")
+    web_handoff = tuple(web_manifest.get("handoff_artifacts", ()))
     mobile_handoff = tuple(mobile_manifest.get("handoff_artifacts", ()))
     desktop_handoff = tuple(desktop_manifest.get("handoff_artifacts", ()))
+    pbc_handoff = tuple(pbc_manifest.get("handoff_artifacts", ()))
+    deployment_handoff = tuple(deployment_manifest.get("handoff_artifacts", ()))
     cases = (
         {
             "case": "verify_all_targets",
             "ok": verify_exit == 0
             and verify_payload.get("format") == "appgen.release-verifier-report.v1"
-            and tuple(verify_payload.get("targets", ())) == ("mobile", "desktop")
+            and tuple(verify_payload.get("targets", ())) == expected_targets
             and all(check.get("ok") for check in verify_payload.get("checks", ())),
             "exit_code": verify_exit,
             "payload_format": verify_payload.get("format"),
@@ -4173,13 +4188,21 @@ def _tooling_audit_package_verify_cli(tmp: Path, source: str) -> dict:
             "case": "package_writes_target_manifests",
             "ok": package_exit == 0
             and package_payload.get("format") == "appgen.release-verifier-report.v1"
-            and tuple(package_payload.get("targets", ())) == ("mobile", "desktop")
+            and tuple(package_payload.get("targets", ())) == expected_targets
             and evidence_payload.get("format") == "appgen.release-evidence-file.v1"
-            and set(evidence_payload.get("reports", {})) == {"mobile", "desktop"}
+            and set(evidence_payload.get("reports", {})) == set(expected_targets)
+            and web_manifest.get("format") == "appgen.package-manifest.v1"
             and mobile_manifest.get("format") == "appgen.package-manifest.v1"
             and desktop_manifest.get("format") == "appgen.package-manifest.v1"
+            and pbc_manifest.get("format") == "appgen.package-manifest.v1"
+            and deployment_manifest.get("format") == "appgen.package-manifest.v1"
+            and web_manifest.get("target") == "web"
             and mobile_manifest.get("target") == "mobile"
             and desktop_manifest.get("target") == "desktop"
+            and pbc_manifest.get("target") == "pbc"
+            and deployment_manifest.get("target") == "deployment"
+            and web_manifest.get("artifact_class") == "web_application"
+            and {"routes", "forms", "handlers", "smoke_tests"} <= set(web_handoff)
             and mobile_manifest.get("artifact_class") == "mobile_application"
             and mobile_manifest.get("signing_posture_declared") is True
             and mobile_manifest.get("offline_policy_declared") is True
@@ -4189,14 +4212,27 @@ def _tooling_audit_package_verify_cli(tmp: Path, source: str) -> dict:
             and desktop_manifest.get("installer_posture_declared") is True
             and desktop_manifest.get("startup_assets_declared") is True
             and desktop_manifest.get("smoke_entrypoint") == "desktop.launch"
-            and {"desktop_metadata", "installer_profile", "startup_assets", "menus", "smoke_launch"} <= set(desktop_handoff),
+            and {"desktop_metadata", "installer_profile", "startup_assets", "menus", "smoke_launch"} <= set(desktop_handoff)
+            and pbc_manifest.get("artifact_class") == "packaged_business_capability"
+            and {"manifest", "contracts", "owned_schema", "registration", "release_evidence"} <= set(pbc_handoff)
+            and pbc_manifest.get("side_effect_free_registration") is True
+            and deployment_manifest.get("artifact_class") == "deployment_plan"
+            and {"units", "health_checks", "environment", "resource_hints", "topology_graph"} <= set(deployment_handoff)
+            and deployment_manifest.get("topology_declared") is True,
             "exit_code": package_exit,
             "payload_format": package_payload.get("format"),
             "targets": tuple(package_payload.get("targets", ())),
             "artifacts": tuple(Path(item.get("path", "")).name for item in package_payload.get("written_artifacts", ())),
-            "mobile_manifest": mobile_manifest.get("format"),
-            "desktop_manifest": desktop_manifest.get("format"),
+            "manifest_formats": {
+                "web": web_manifest.get("format"),
+                "mobile": mobile_manifest.get("format"),
+                "desktop": desktop_manifest.get("format"),
+                "pbc": pbc_manifest.get("format"),
+                "deployment": deployment_manifest.get("format"),
+            },
             "release_evidence_reports": tuple(evidence_payload.get("reports", {}).keys()),
+            "web_artifact_class": web_manifest.get("artifact_class"),
+            "web_handoff_artifacts": web_handoff,
             "mobile_artifact_class": mobile_manifest.get("artifact_class"),
             "mobile_handoff_artifacts": mobile_handoff,
             "mobile_signing_posture_declared": mobile_manifest.get("signing_posture_declared"),
@@ -4207,6 +4243,12 @@ def _tooling_audit_package_verify_cli(tmp: Path, source: str) -> dict:
             "desktop_installer_posture_declared": desktop_manifest.get("installer_posture_declared"),
             "desktop_startup_assets_declared": desktop_manifest.get("startup_assets_declared"),
             "desktop_smoke_entrypoint": desktop_manifest.get("smoke_entrypoint"),
+            "pbc_artifact_class": pbc_manifest.get("artifact_class"),
+            "pbc_handoff_artifacts": pbc_handoff,
+            "pbc_side_effect_free_registration": pbc_manifest.get("side_effect_free_registration"),
+            "deployment_artifact_class": deployment_manifest.get("artifact_class"),
+            "deployment_handoff_artifacts": deployment_handoff,
+            "deployment_topology_declared": deployment_manifest.get("topology_declared"),
         },
     )
     return {
@@ -4218,7 +4260,7 @@ def _tooling_audit_package_verify_cli(tmp: Path, source: str) -> dict:
 
 def _tooling_audit_package_verify_sample() -> str:
     return """
-app PackageCliAudit { targets: mobile, desktop }
+app PackageCliAudit { targets: web, mobile, desktop }
 
 table Invoice {
   id: int pk
@@ -4251,6 +4293,17 @@ package ReleaseDesktop {
   splash: declared
   menu_ref: MainMenu
   smoke: launch
+}
+
+test ReleaseSmoke {
+  run happy_path -> SubmitInvoice
+}
+
+deploy Production {
+  unit SubmitInvoice as worker
+  health SubmitInvoice "/health"
+  resource SubmitInvoice cpu 1
+  env SubmitInvoice DATABASE_URL
 }
 """
 
