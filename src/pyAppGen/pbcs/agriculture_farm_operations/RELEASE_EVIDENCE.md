@@ -1,12 +1,22 @@
 # Release Evidence - Agriculture Farm Operations
 
-Package directory: `pbcs/agriculture_farm_operations`.
+Package directory: `src/pyAppGen/pbcs/agriculture_farm_operations`.
 
-This PBC includes owned schema, migration DDL, models, services, routes, events, handlers, UI workbench surfaces, agent skills, permissions, configuration, seed data, package metadata, side-effect-free registration, and focused package tests.
+This standalone slice ships executable evidence for runtime contracts, schema/models, service and route dispatch, AppGen-X events and handlers, assistant planning, UI/forms/wizards/controls, package-local workflows, and a one-PBC standalone app shell.
 
-## Evidence
+## Evidence areas
 
-- Release Evidence: schema, service, route, event, handler, UI, agent, and governance contracts are materialized.
-- Owned datastore boundary: every owned table starts with `agriculture_farm_operations_` and cross-PBC collaboration uses AppGen-X events or declared APIs.
-- Event contract: AppGen-X outbox/inbox with retry and dead-letter evidence.
-- Package tests: `tests/test_contract.py` validates schema/service/release, event contracts, side-effect-free registration, routes, governance, and idempotent handlers.
+- Standalone app: package-local bootstrap, route dispatch, workbench rendering, assistant workspace, and release snapshot.
+- Crop planning: season-aware plans, planting-window classification, pre-plant readiness checks, replant handling, and blocked-operation exceptions.
+- Service and API contracts: explicit command/query route metadata with owned-table boundaries and AppGen-X event guarantees.
+- UI contract: workbench fragments, forms, wizards, controls, navigation, and workflow catalog for the one-PBC surface.
+- Assistant planning: document-instruction intake and governed CRUD previews limited to owned tables with human confirmation.
+- Release assurance: capability assurance, route validation, and package-local focused tests.
+
+## Verified results
+
+- Compile: `python3 -m compileall src/pyAppGen/pbcs/agriculture_farm_operations` completed successfully.
+- Focused tests: `20 passed` for the package contract tests, standalone tests, and focused agriculture farm operations runtime/implementation tests.
+- PBC audits:
+  - `pbc_implementation_release_audit(("agriculture_farm_operations",))` returned `ok=True`.
+  - `pbc_implemented_capability_audit(("agriculture_farm_operations",))` returned `ok=True`.
