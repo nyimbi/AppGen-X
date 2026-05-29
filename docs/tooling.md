@@ -702,10 +702,10 @@ paths, generator backends, and optional IDE/LSP dependencies. The doctor report
 also embeds the CLI alias contract and a VS Code extension surface check so the
 short command alias, editor scaffold, command palette entries, language
 configuration, syntax grammar, and LSP provider registrations are verified from
-the same command used in CI. The default text output prints total check count,
-blocking gap count, each check status, and embedded report formats such as
-parser-golden, completion coverage, symbol coverage, CLI alias contract, module
-boundaries, designer sync, and extension audits.
+the same command used in CI. The default text output prints the doctor report
+format, total check count, blocking gap count, each check status, and embedded
+report formats such as parser-golden, completion coverage, symbol coverage, CLI
+alias contract, module boundaries, designer sync, and extension audits.
 
 ### `appgen tooling-audit`
 

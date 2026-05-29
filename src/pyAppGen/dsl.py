@@ -1937,7 +1937,7 @@ def _emit_tooling_payload(payload: dict, *, as_json: bool) -> None:
         status = "ok" if payload.get("ok") else "failed"
         checks = tuple(payload.get("checks", ()))
         gaps = tuple(payload.get("blocking_gaps", ()))
-        print(f"doctor {status}: checks={len(checks)} blocking_gaps={len(gaps)}")
+        print(f"doctor {status}: format={payload.get('format')} checks={len(checks)} blocking_gaps={len(gaps)}")
         for check in payload.get("checks", ()):
             detail = check.get("detail", {})
             report_format = detail.get("report_format")

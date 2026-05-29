@@ -4117,7 +4117,7 @@ def test_cli_contracts_cover_text_summaries_exit_codes_and_bad_arguments(tmp_pat
     assert "AGX0303: Unresolved lookup path" in explain_diagnostic_text.stdout
     assert "docs: docs/tooling.md#diagnostic-specification" in explain_diagnostic_text.stdout
     assert doctor_text.returncode == 0, doctor_text.stderr
-    assert doctor_text.stdout.startswith("doctor ok: checks=")
+    assert doctor_text.stdout.startswith("doctor ok: format=appgen.doctor-report.v1 checks=")
     assert "blocking_gaps=0" in doctor_text.stdout
     assert "report=appgen.parser-golden-audit.v1" in doctor_text.stdout
     assert "report=appgen.cli-alias-contract.v1" in doctor_text.stdout
