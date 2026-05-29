@@ -1,5 +1,7 @@
 """Package manifest for the federated_iam PBC."""
 
+from __future__ import annotations
+
 from .runtime import FEDERATED_IAM_CONSUMED_EVENT_TYPES
 from .runtime import FEDERATED_IAM_EMITTED_EVENT_TYPES
 from .runtime import FEDERATED_IAM_OWNED_TABLES
@@ -7,31 +9,23 @@ from .runtime import FEDERATED_IAM_RUNTIME_CAPABILITY_KEYS
 from .runtime import FEDERATED_IAM_RUNTIME_TABLES
 from .runtime import FEDERATED_IAM_STANDARD_FEATURE_KEYS
 from .runtime import federated_iam_build_api_contract
+from .ui import FEDERATED_IAM_UI_FRAGMENT_KEYS
 
+
+_API_CONTRACT = federated_iam_build_api_contract()
 
 PBC_MANIFEST = {
-    "pbc": 'federated_iam',
+    "pbc": "federated_iam",
     "label": "Federated Identity and Access Management",
     "mesh": "platform",
-    "description": "Tenant, principal, identity provider, identity link, role, policy, token, session, credential verification, privileged access, rules, parameters, configuration, and AppGen-X identity event orchestration.",
+    "description": "Tenant, principal, identity provider, identity link, role, policy, token, session, credential verification, privileged access, standalone workbench, agent/chatbot, and AppGen-X identity event orchestration.",
     "datastore_backend": "postgresql",
     "tables": FEDERATED_IAM_OWNED_TABLES + FEDERATED_IAM_RUNTIME_TABLES,
-    "apis": tuple(route["route"] for route in federated_iam_build_api_contract()["routes"]),
+    "apis": tuple(route["route"] for route in _API_CONTRACT["routes"]),
     "emits": FEDERATED_IAM_EMITTED_EVENT_TYPES,
     "consumes": FEDERATED_IAM_CONSUMED_EVENT_TYPES,
     "template": None,
-    "ui_fragments": (
-        "FederatedIamWorkbench",
-        "TenantRegistryConsole",
-        "PrincipalRegistryPanel",
-        "IdentityProviderConsole",
-        "AccessPolicyDecisionConsole",
-        "TokenGrantConsole",
-        "SessionGovernancePanel",
-        "CredentialVerificationPanel",
-        "PrivilegedAccessBoard",
-        "IamConfigurationPanel",
-    ),
+    "ui_fragments": FEDERATED_IAM_UI_FRAGMENT_KEYS,
     "permissions": (
         "federated_iam.read",
         "federated_iam.tenant",
@@ -55,17 +49,16 @@ PBC_MANIFEST = {
     "capabilities": tuple(f"federated_iam.{table}" for table in FEDERATED_IAM_OWNED_TABLES + FEDERATED_IAM_RUNTIME_TABLES),
     "standard_features": FEDERATED_IAM_STANDARD_FEATURE_KEYS,
     "workflows": (
-        "command_tenants",
-        "command_principals",
-        "command_identity_providers",
-        "command_identity_links",
-        "command_credential_verifications",
-        "command_role_assignments",
-        "command_policy_decisions",
-        "command_token_grants",
-        "command_privileged_access",
-        "command_event_inbox",
-        "query_federated_iam_workbench",
+        "tenant_onboarding",
+        "provider_linking",
+        "credential_verification",
+        "role_assignment",
+        "policy_decisioning",
+        "token_grant",
+        "privileged_access_approval",
+        "event_inbox_processing",
+        "workbench_query",
+        "assistant_document_planning",
     ),
     "analytics": (
         "policy_latency",
@@ -79,6 +72,16 @@ PBC_MANIFEST = {
     "advanced_capabilities": FEDERATED_IAM_RUNTIME_CAPABILITY_KEYS,
     "migrations": ("migrations/001_initial.sql",),
     "seed_data": ("seed_data.py",),
-    "tests": ("tests/test_contract.py",),
-    "docs": ("RELEASE_EVIDENCE.md", "SPECIFICATION.md"),
+    "tests": (
+        "tests/test_contract.py",
+        "tests/test_runtime_capabilities.py",
+        "tests/test_standalone.py",
+    ),
+    "docs": (
+        "README.md",
+        "RELEASE_EVIDENCE.md",
+        "SPECIFICATION.md",
+        "implementation-plan.md",
+        "implementation-status.md",
+    ),
 }

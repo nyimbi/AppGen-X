@@ -1,8 +1,24 @@
 """Generated service evidence for the federated_iam PBC."""
 
-SERVICE_CONTRACT = {'format': 'appgen.federated-iam-service-contract.v1', 'ok': True, 'transaction_boundary': 'federated_iam_owned_datastore_plus_appgen_outbox', 'command_methods': ('configure_runtime', 'set_parameter', 'register_rule', 'register_schema_extension', 'receive_event', 'provision_tenant', 'register_principal', 'register_identity_provider', 'link_identity', 'verify_credential', 'assign_role', 'evaluate_policy', 'grant_token', 'approve_privileged_access', 'run_control_tests', 'verify_owned_table_boundary'), 'query_methods': ('build_workbench_view', 'simulate_policy_change', 'forecast_access_risk', 'parse_access_request', 'score_access_risk', 'recommend_exception_resolution', 'route_authorization', 'generate_policy_proof', 'screen_access_policy', 'build_api_contract', 'build_schema_contract', 'build_service_contract', 'build_release_evidence'), 'idempotent_handlers': ('receive_event',), 'retry_dead_letter_evidence': {'outbox_table': 'federated_iam_appgen_outbox_event', 'inbox_table': 'federated_iam_appgen_inbox_event', 'dead_letter_table': 'federated_iam_dead_letter_event', 'retry_limit_source': 'iam_configuration.retry_limit'}, 'eventing': {'contract': 'AppGen-X', 'topic': 'appgen.identity.events', 'stream_engine_picker_visible': False, 'user_selectable_event_contract': False}, 'mutates_only': ('tenant', 'principal', 'identity_provider', 'principal_identity', 'role_assignment', 'access_policy', 'policy_decision', 'token_grant', 'session', 'credential_verification', 'privileged_access_request', 'iam_rule', 'iam_parameter', 'iam_configuration'), 'external_dependencies': {'apis': ('GET /schemas/identity-events', 'POST /audit/access-events', 'POST /gateway/token-projections'), 'events': ('RoleChanged', 'TenantLifecycleChanged', 'CustomerUpdated', 'EmployeeProvisioned', 'ServiceAccountRequested'), 'api_projections': ('gateway_token_projection', 'audit_access_projection', 'principal_session_projection', 'tenant_lifecycle_projection', 'customer_identity_projection', 'employee_identity_projection', 'service_account_request_projection'), 'shared_tables': ()}, 'rules_parameters_configuration': ('register_rule', 'set_parameter', 'configure_runtime'), 'pbc': 'federated_iam', 'shared_table_access': False}
+from __future__ import annotations
+
+from . import services
+from .runtime import federated_iam_build_service_contract as runtime_service_contract
 
 
-def build_service_contract():
-    """Return generated command, eventing, and handler evidence."""
-    return dict(SERVICE_CONTRACT)
+def build_service_contract() -> dict:
+    """Return command, query, eventing, and handler evidence."""
+    runtime_contract = runtime_service_contract()
+    manifest = services.service_operation_manifest()
+    return {
+        **runtime_contract,
+        "ok": runtime_contract["ok"] and manifest["ok"],
+        "pbc": "federated_iam",
+        "command_methods": manifest["command_operations"],
+        "query_methods": manifest["query_operations"],
+        "operation_contracts": manifest["operation_contracts"],
+        "shared_table_access": False,
+    }
+
+
+SERVICE_CONTRACT = build_service_contract()
