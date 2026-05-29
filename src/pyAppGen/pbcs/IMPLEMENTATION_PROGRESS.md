@@ -25,6 +25,7 @@ This file tracks the branch-isolated implementation pass for standalone Packaged
 | schema_registry | `pbc/schema-registry-standalone` | `4ef03c66` | Compile, 13 tests, spec/source/release/smoke true. |
 | workflow_orchestration | `pbc/workflow-orchestration-standalone` | `d51b6db5` | Compile, 20 tests, spec/source/release/smoke true. |
 | data_product_catalog | `pbc/data-product-catalog-standalone` | `0a93b815` | Previously pushed. |
+| dom | `pbc/dom-standalone` | `2c21573a` | Compile, 19 tests, spec/source/release/smoke true. |
 | eam | `pbc/eam-standalone` | `27a1665f` | Compile, 9 tests, spec/source/release/smoke true. |
 | education_student_lifecycle | `pbc/education-student-lifecycle-standalone` | `dd0b0a6c` | Compile, 15 tests, spec/source/release/smoke true. |
 | electronic_health_records_core | `pbc/electronic-health-records-core-standalone` | `390e70a8` | Compile, 11 tests, spec/source/release/smoke true. |
@@ -46,7 +47,7 @@ This file tracks the branch-isolated implementation pass for standalone Packaged
 
 ## In Flight
 
-Supply-chain/HCM standalone pass is continuing. `wms_core`, `procurement_sourcing`, `transportation_management`, `personnel_identity`, `time_labor`, and `payroll_engine` are pushed; `global_inventory_visibility` is delegated in an isolated worktree and `dom` will be taken locally if needed.
+Supply-chain/HCM standalone pass is continuing. `wms_core`, `procurement_sourcing`, `transportation_management`, `dom`, `personnel_identity`, `time_labor`, and `payroll_engine` are pushed; `global_inventory_visibility` is delegated in an isolated worktree and will be taken locally if needed.
 
 ## Next Selection Rule
 
