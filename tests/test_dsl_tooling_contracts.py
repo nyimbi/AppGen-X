@@ -2641,6 +2641,10 @@ def test_appgen_designer_sync_subcommand_emits_json_and_text_contracts(tmp_path:
     assert "surfaces=10" in text_result.stdout
     assert "form_designer" in text_result.stdout
     assert "visual-edit-matrix ok=True" in text_result.stdout
+    assert "visual-edit-operations add_field, add_component, add_flow_transition" in text_result.stdout
+    assert "add_pbc_include" in text_result.stdout
+    assert "add_package" in text_result.stdout
+    assert "add_deployment_unit" in text_result.stdout
     assert edit_result.returncode == 0, edit_result.stderr
     edit_payload = json.loads(edit_result.stdout)
     assert edit_payload["visual_edit"]["accepted"] is True

@@ -995,7 +995,8 @@ workflow, PBC composition, and package/deployment edit paths must validate the
 patched DSL before the Studio accepts the visual operation.
 Without `--json`, `appgen designer-sync` prints the semantic-model format,
 surface count and names, visual edit acceptance, round-trip status, changed
-surfaces, DSL diff line count, visual-edit matrix coverage, and sync checks.
+surfaces, DSL diff line count, visual-edit matrix coverage, required visual
+edit operation names, and sync checks.
 `--edit-json` must be a JSON object; malformed edit payloads are CLI
 configuration errors and return exit code `2` before any designer mutation is
 accepted.

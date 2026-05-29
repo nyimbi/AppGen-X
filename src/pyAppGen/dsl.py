@@ -2129,6 +2129,9 @@ def _emit_designer_sync_text(payload: dict) -> None:
             f"visual-edit-matrix ok={matrix.get('ok')} "
             f"cases={len(matrix.get('cases', ()))} gaps={len(matrix.get('blocking_gaps', ()))}"
         )
+        required_operations = tuple(matrix.get("required_operations", ()))
+        if required_operations:
+            print(f"visual-edit-operations {', '.join(required_operations)}")
     for check in payload.get("checks", ()):
         print(f"{'ok' if check.get('ok') else 'fail'} {check.get('check')}")
 
