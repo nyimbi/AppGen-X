@@ -855,7 +855,8 @@ and verifies initialize, diagnostics publication, shutdown, and exit handling.
 Without `--json`, `appgen lsp <file>` prints a concise service summary with
 semantic-model format, diagnostic count, completion count, code-action count,
 document-symbol count, workspace-symbol count, source-of-truth contract, hover
-evidence, and rename status when a rename is requested. Rename text output
+evidence, completion coverage format and missing-source count, and rename status
+when a rename is requested. Rename text output
 includes whether the rename was blocked, blocker count, and whether the
 underlying migration preview requires explicit approval.
 

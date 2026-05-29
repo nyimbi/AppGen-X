@@ -2270,6 +2270,10 @@ def _emit_lsp_service_text(payload: dict) -> None:
     capabilities = payload.get("capabilities", {})
     if capabilities:
         print(f"source_of_truth={capabilities.get('source_of_truth')}")
+    coverage = payload.get("completionCoverage", {})
+    if coverage:
+        missing = tuple(coverage.get("missing", ()))
+        print(f"completion_coverage={coverage.get('format')} missing={len(missing)}")
     rename = payload.get("rename")
     if rename:
         diagnostics = tuple(rename.get("diagnostics", ()))
