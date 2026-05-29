@@ -1362,6 +1362,9 @@ def _run_diagnostic_fixture(fixture: dict) -> dict:
             prompt=fixture["prompt"],
         )
         diagnostics = report["diagnostics"]
+    elif runner == "internal-error":
+        report = _internal_tooling_error_report(RuntimeError(fixture.get("message", "internal fixture failure")))
+        diagnostics = report["diagnostics"]
     else:
         report = {"format": "appgen.unknown-diagnostic-fixture.v1", "ok": False}
         diagnostics = ()
@@ -2075,7 +2078,10 @@ def _internal_tooling_error_report(exc: Exception) -> dict:
                 "severity": "error",
                 "title": "Internal tooling error",
                 "message": message,
-                "range": None,
+                "range": {
+                    "start": {"line": 1, "column": 1},
+                    "end": {"line": 1, "column": 1},
+                },
                 "related_locations": (),
                 "fixes": (),
                 "docs_url": "docs/tooling.md#cli-contracts",
@@ -13077,6 +13083,7 @@ DIAGNOSTIC_SPECS = (
     {"code": "AGX1002", "severity": "error", "title": "Write-capable agent skill lacks permission", "trigger": "Agent has write-capable skill with no permission.", "example_fix": "Add permission or remove skill."},
     {"code": "AGX1101", "severity": "warning", "title": "Destructive migration", "trigger": "Migration plan contains destructive drop.", "example_fix": "Require explicit migration approval."},
     {"code": "AGX1201", "severity": "error", "title": "Unsupported natural-language plan", "trigger": "Natural-language plan cannot be represented as DSL diff.", "example_fix": "Ask for narrower DSL-scoped change."},
+    {"code": "AGX9000", "severity": "error", "title": "Internal tooling error", "trigger": "Internal tooling error occurred.", "example_fix": "Report traceback-free internal error evidence."},
 )
 _DIAGNOSTIC_BASE_SOURCE = """
 app DiagnosticDemo { targets: web }
@@ -13128,6 +13135,7 @@ DIAGNOSTIC_FIXTURES = (
     {"name": "agx1002_agent_permission.appgen", "runner": "lint", "expected_codes": ("AGX1002",), "source": "app D { targets: web } table Customer { id: int pk } llm LocalModel { provider: ollama; mode: local } agent Assistant { provider: LocalModel; tools: write }"},
     {"name": "agx1101_migration.appgen", "runner": "migration", "expected_codes": ("AGX1101",), "previous_source": _DIAGNOSTIC_BASE_SOURCE, "source": "app DiagnosticDemo { targets: web }\n\ntable Customer { id: int pk; name: string }\n"},
     {"name": "agx1201_nl.appgen", "runner": "nl-plan", "expected_codes": ("AGX1201",), "prompt": "Replace the runtime with hand-written generated code outside the DSL", "source": _DIAGNOSTIC_BASE_SOURCE},
+    {"name": "agx9000_internal_error.appgen", "runner": "internal-error", "expected_codes": ("AGX9000",), "message": "internal fixture failure"},
 )
 LEGACY_CONTEXTUAL_TOKENS = ("ref", "include", "require", "expose", "connect")
 KEYWORD_FREE_SYNTAX = (

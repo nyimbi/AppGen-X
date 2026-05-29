@@ -345,6 +345,7 @@ validation.
 | `AGX1002` | error | Agent has write-capable skill with no permission. | Add permission or remove skill. |
 | `AGX1101` | warning | Migration plan contains destructive drop. | Require explicit migration approval. |
 | `AGX1201` | error | Natural-language plan cannot be represented as DSL diff. | Ask for narrower DSL-scoped change. |
+| `AGX9000` | error | Internal tooling error occurred. | Report traceback-free internal error evidence. |
 
 ### Diagnostic Example
 

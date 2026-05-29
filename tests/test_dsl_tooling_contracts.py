@@ -2902,6 +2902,7 @@ def test_diagnostic_catalog_and_fixture_audit_cover_required_agx_codes() -> None
         "AGX1002",
         "AGX1101",
         "AGX1201",
+        "AGX9000",
     } <= set(audit["covered_codes"])
 
 
