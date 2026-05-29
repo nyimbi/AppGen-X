@@ -2005,6 +2005,11 @@ def _emit_tooling_payload(payload: dict, *, as_json: bool) -> None:
                 f"implementation-phases {len(phases)} "
                 f"missing={len(missing_phases)} format={phase_detail.get('format')}"
             )
+        for gap in gaps:
+            if isinstance(gap, dict):
+                print(f"blocking-gap {gap.get('id')} section={gap.get('section')}")
+            else:
+                print(f"blocking-gap {gap}")
         for section in sections:
             print(f"section {section}")
         for check in payload.get("checks", ()):
@@ -4247,10 +4252,26 @@ def _tooling_audit_text_renderer_contract() -> dict:
     output = io.StringIO()
     with contextlib.redirect_stdout(output):
         _emit_tooling_payload(payload, as_json=False)
+        failed_payload = {
+            **payload,
+            "ok": False,
+            "passed": 5,
+            "required": 6,
+            "blocking_gaps": (
+                {
+                    "id": "studio_semantic_service",
+                    "section": "docs/tooling.md#appgen-x-studio-monaco",
+                    "evidence": "Studio semantic service is missing.",
+                },
+            ),
+        }
+        _emit_tooling_payload(failed_payload, as_json=False)
     text = output.getvalue()
     required_fragments = (
         "tooling-audit ok: format=appgen.tooling-audit.v1",
         "blocking_gaps=0",
+        "tooling-audit failed: format=appgen.tooling-audit.v1",
+        "blocking-gap studio_semantic_service section=docs/tooling.md#appgen-x-studio-monaco",
         "source=docs/tooling.md",
         "section docs/tooling.md#cli-contracts",
         "section docs/tooling.md#appgen-tooling-audit",

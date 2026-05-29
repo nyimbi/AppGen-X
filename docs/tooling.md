@@ -793,9 +793,9 @@ rename, and workspace symbol search. A passing report means every audited
 requirement section has a concrete machine-readable proof instead of relying on
 prose or scattered manual checks. The default text output reports pass count,
 the top-level `appgen.tooling-audit.v1` envelope format, blocking gap count,
-covered documentation sections, source-of-truth document, and embedded report
-formats for each check so release logs remain useful without requiring JSON
-parsing. The report embeds
+named blocking gaps as `blocking-gap ...`, covered documentation sections,
+source-of-truth document, and embedded report formats for each check so release
+logs remain useful without requiring JSON parsing. The report embeds
 `appgen.tooling-doc-anchor-audit.v1`, which proves every emitted
 `docs/tooling.md#...` section reference resolves to a real heading anchor in
 this document. The same audit extracts every `appgen.*.v1` contract format
@@ -806,7 +806,8 @@ renderer must include embedded audit format names such as
 `appgen.tooling-doc-anchor-audit.v1` so policy and documentation-link gates are
 visible in human release logs. `appgen.tooling-audit-text-renderer.v1` proves
 the human-readable renderer itself keeps the top-level envelope, sections,
-embedded report formats, source document, blocking-gap count, and
+embedded report formats, source document, blocking-gap count, named blocking
+gaps, and
 implementation-phase marker visible without requiring the full audit to run,
 including the explicitly called-out non-goal policy and documentation-anchor
 audit format markers.

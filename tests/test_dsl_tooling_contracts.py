@@ -3959,6 +3959,8 @@ def test_tooling_audit_text_renderer_contract_proves_human_log_markers() -> None
     assert report["json_fallback"] is False
     assert report["text_prefix"].startswith("tooling-audit ok: format=appgen.tooling-audit.v1")
     assert {
+        "tooling-audit failed: format=appgen.tooling-audit.v1",
+        "blocking-gap studio_semantic_service section=docs/tooling.md#appgen-x-studio-monaco",
         "formats=appgen.cli-help-surface-audit.v1",
         "formats=appgen.lsp-json-rpc-audit.v1",
         "formats=appgen.non-goal-policy-audit.v1",
