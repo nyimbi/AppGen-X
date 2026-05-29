@@ -1257,13 +1257,14 @@ safe alternatives when possible. Without `--json`, `appgen migration-plan`
 prints the `appgen.migration-plan.v1` format, backend, change count,
 destructive change count, approval requirement, the
 `appgen.migration-coverage.v1` nested coverage format as a `format=...` marker,
-missing-family count, detected migration families, each change kind, safe
+missing-family count, detected migration families as `migration-detected ...`,
+missing migration families as `migration-missing ...`, each change kind, safe
 alternatives when present, and diagnostics; JSON remains the machine-readable
 source of truth.
 `appgen.migration-plan-text-renderer.v1` is embedded in the tooling audit to
 prove migration text logs keep backend, destructive-count, approval, coverage,
-detected-family, change, safe-alternative, and diagnostic markers visible
-without JSON parsing.
+detected-family, missing-family, change, safe-alternative, and diagnostic
+markers visible without JSON parsing.
 
 ## Natural-Language Change Planner
 

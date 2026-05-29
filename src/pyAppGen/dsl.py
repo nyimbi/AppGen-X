@@ -2524,6 +2524,8 @@ def _emit_migration_plan_text(payload: dict) -> None:
         print(f"migration-coverage format={coverage.get('format')}: detected={len(detected)} missing={len(missing)}")
     if detected:
         print(f"migration-detected {', '.join(sorted(detected))}")
+    if missing:
+        print(f"migration-missing {', '.join(sorted(missing))}")
     for change in changes:
         target = change.get("table") or change.get("field") or change.get("pbc") or change.get("contract") or ""
         print(f"change {change.get('kind')}: {target}".rstrip())
@@ -2576,6 +2578,7 @@ def _migration_plan_text_renderer_contract() -> dict:
         "migration-plan failed: format=appgen.migration-plan.v1 backend=postgresql changes=3 destructive=2 requires_approval=True",
         "migration-coverage format=appgen.migration-coverage.v1: detected=3 missing=1",
         "migration-detected added_table, dropped_field, type_change",
+        "migration-missing relationship_change",
         "change add_table: CreditMemo",
         "change drop_field: Invoice.legacy_code",
         "safe-alternative drop_field: Mark Invoice.legacy_code deprecated before dropping it.",

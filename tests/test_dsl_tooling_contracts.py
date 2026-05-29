@@ -4138,6 +4138,7 @@ def test_migration_plan_text_renderer_contract_proves_safety_log_markers() -> No
     assert {
         "migration-coverage format=appgen.migration-coverage.v1: detected=3 missing=1",
         "migration-detected added_table, dropped_field, type_change",
+        "migration-missing relationship_change",
         "safe-alternative drop_field: Mark Invoice.legacy_code deprecated before dropping it.",
         "warning AGX1101: Destructive migration changes require approval.",
     } <= set(report["required_fragments"])
