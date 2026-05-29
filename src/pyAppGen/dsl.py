@@ -3748,6 +3748,7 @@ def _tooling_audit_test_strategy_cli(tmp: Path, source: str) -> dict:
     parser_exit, parser_payload = run_json(("parser-golden", "--json"))
     drift_exit, drift_payload = run_json(("drift", str(source_path), "--json"))
     doctor_exit, doctor_payload = run_json(("doctor", "--json"))
+    drift_required_surfaces = ("cli", "lsp", "studio", "graph", "generator", "release_verifier")
     cases = (
         {
             "case": "diagnostics_audit_fixtures",
@@ -3774,10 +3775,13 @@ def _tooling_audit_test_strategy_cli(tmp: Path, source: str) -> dict:
             "ok": drift_exit == 0
             and drift_payload.get("format") == "appgen.semantic-drift-audit.v1"
             and drift_payload.get("ok") is True
-            and {"cli", "lsp", "studio", "graph", "release_verifier"} <= set(drift_payload.get("surfaces", ())),
+            and set(drift_required_surfaces) <= set(drift_payload.get("surfaces", ()))
+            and drift_payload.get("surface_evidence", {}).get("generate_report") == "appgen.generate-report.v1",
             "exit_code": drift_exit,
             "payload_format": drift_payload.get("format"),
             "surfaces": tuple(drift_payload.get("surfaces", ())),
+            "required_surfaces": drift_required_surfaces,
+            "generate_report": drift_payload.get("surface_evidence", {}).get("generate_report"),
         },
         {
             "case": "doctor",

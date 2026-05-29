@@ -2517,6 +2517,19 @@ def test_appgen_drift_subcommand_emits_json_contract(tmp_path: Path) -> None:
     assert payload["surface_evidence"]["generate_report"] == "appgen.generate-report.v1"
 
 
+def test_test_strategy_cli_audit_requires_generator_drift_surface(tmp_path: Path) -> None:
+    report = appgen_dsl._tooling_audit_test_strategy_cli(tmp_path, TOOLING_SAMPLE)
+    drift_case = next(case for case in report["cases"] if case["case"] == "semantic_drift")
+
+    assert report["format"] == "appgen.test-strategy-cli-audit.v1"
+    assert report["ok"] is True
+    assert {"cli", "lsp", "studio", "graph", "generator", "release_verifier"} <= set(
+        drift_case["required_surfaces"]
+    )
+    assert set(drift_case["required_surfaces"]) <= set(drift_case["surfaces"])
+    assert drift_case["generate_report"] == "appgen.generate-report.v1"
+
+
 def test_doctor_report_checks_parser_catalog_generator_and_ide_hooks() -> None:
     report = doctor_report_dsl()
 
@@ -2857,6 +2870,11 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
         "semantic_drift",
         "doctor",
     } <= {case["case"] for case in test_strategy_check["detail"]["cli"]["cases"]}
+    drift_case = next(case for case in test_strategy_check["detail"]["cli"]["cases"] if case["case"] == "semantic_drift")
+    assert {"cli", "lsp", "studio", "graph", "generator", "release_verifier"} <= set(
+        drift_case["required_surfaces"]
+    )
+    assert drift_case["generate_report"] == "appgen.generate-report.v1"
     package_check = next(check for check in report["checks"] if check["id"] == "package_and_release_verifiers")
     assert package_check["detail"]["cli"]["format"] == "appgen.package-verify-cli-audit.v1"
     assert package_check["detail"]["cli"]["ok"] is True

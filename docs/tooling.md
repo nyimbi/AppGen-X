@@ -1158,6 +1158,9 @@ Exit criteria:
 - No new generator behavior required.
 - Tooling fixtures can run in CI, including `appgen parser-golden --json`,
   `appgen diagnostics --audit-fixtures --json`, and `appgen drift <file> --json`.
+- The test-strategy CLI audit requires `appgen drift` to prove CLI, LSP,
+  Studio, graph, generator, and release-verifier surfaces share one semantic
+  model, including `appgen.generate-report.v1` evidence.
 
 ### Phase 1: Shared Semantic Model MVP
 
