@@ -1943,6 +1943,9 @@ def _emit_tooling_payload(payload: dict, *, as_json: bool) -> None:
             f"constructs={len(payload.get('constructs_covered', ()))} "
             f"missing={len(missing)}"
         )
+        covered = tuple(payload.get("constructs_covered", ()))
+        if covered:
+            print(f"covered-constructs {', '.join(covered)}")
         if missing:
             print(f"missing-constructs {', '.join(missing)}")
         for gap in payload.get("blocking_gaps", ()):
@@ -2101,6 +2104,7 @@ def _parser_golden_text_renderer_contract() -> dict:
     text = output.getvalue()
     required_fragments = (
         "parser-golden failed: format=appgen.parser-golden-audit.v1 fixtures=4 valid=3 invalid=1 required=4 constructs=3 missing=1",
+        "covered-constructs apps, tables, agents",
         "missing-constructs packages",
         "fail packages_valid_fixture: Missing valid fixture for package declarations.",
     )

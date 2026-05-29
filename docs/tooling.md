@@ -1438,11 +1438,12 @@ The report contract is `appgen.parser-golden-audit.v1`:
 
 Without `--json`, `appgen parser-golden` prints the pass/fail status, report
 format in the header, total fixture count, valid and invalid fixture counts, required
-construct count, covered construct count, missing construct count, missing
-construct names when present, and blocking fixture gaps. JSON remains the
+construct count, covered construct count, covered construct names as
+`covered-constructs ...`, missing construct count, missing construct names when
+present, and blocking fixture gaps. JSON remains the
 machine-readable source of truth.
 
-`appgen.parser-golden-text-renderer.v1` is embedded in the tooling audit to prove parser-golden text logs keep fixture counts, construct coverage, missing construct names, and blocking gap evidence visible without JSON parsing.
+`appgen.parser-golden-text-renderer.v1` is embedded in the tooling audit to prove parser-golden text logs keep fixture counts, covered construct names, missing construct names, and blocking gap evidence visible without JSON parsing.
 
 The required construct set includes application options, table fields, reusable field groups, spreads, derived fields, modifiers, relationships, relationship cardinality, table directives, enums, views, component placement, handlers, flows, workflow directives, roles, permissions, rules, rule expressions, LLM definitions, agents, PBCs, PBC composition include/require/expose/connect clauses, audit blocks, deployment units/scale/health/check/resource/env/directives, version blocks, operations, security, APIs, events, jobs, reports, menus, component contracts, packages, and tests.
 

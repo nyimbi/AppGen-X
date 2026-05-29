@@ -4219,6 +4219,7 @@ def test_parser_golden_text_renderer_contract_proves_fixture_log_markers() -> No
         "parser-golden failed: format=appgen.parser-golden-audit.v1 fixtures=4"
     )
     assert {
+        "covered-constructs apps, tables, agents",
         "missing-constructs packages",
         "fail packages_valid_fixture: Missing valid fixture for package declarations.",
     } <= set(report["required_fragments"])
