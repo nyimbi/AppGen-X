@@ -8750,6 +8750,7 @@ def migration_plan_from_semantic_models(
     changes.extend(_pbc_migration_changes(previous, current))
 
     destructive = any(change.get("destructive") for change in changes)
+    destructive_changes = tuple(change for change in changes if change.get("destructive"))
     if destructive:
         diagnostics.append(
             _spec_diagnostic(
@@ -8764,13 +8765,18 @@ def migration_plan_from_semantic_models(
         "ok": not any(item["severity"] == "error" for item in diagnostics),
         "backend": normalized_backend,
         "allowed_backends": tuple(sorted(allowed_backends)),
+        "allowed_backend_count": len(allowed_backends),
         "source_files": tuple(item for item in (previous_name, current_name) if item),
         "changes": tuple(changes),
+        "change_count": len(changes),
+        "destructive_change_count": len(destructive_changes),
         "coverage": _migration_coverage(changes),
         "destructive": destructive,
         "requires_approval": destructive,
         "diagnostics": tuple(diagnostics),
+        "diagnostic_count": len(diagnostics),
         "rename_hints": tuple(hints.values()),
+        "rename_hint_count": len(hints),
     }
 
 

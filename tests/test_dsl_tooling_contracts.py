@@ -876,6 +876,11 @@ def test_migration_plan_detects_add_drop_type_and_backfill_changes() -> None:
     assert plan["ok"] is True
     assert plan["destructive"] is True
     assert plan["requires_approval"] is True
+    assert plan["allowed_backend_count"] == len(plan["allowed_backends"])
+    assert plan["change_count"] == len(plan["changes"])
+    assert plan["destructive_change_count"] == sum(1 for change in plan["changes"] if change.get("destructive"))
+    assert plan["diagnostic_count"] == len(plan["diagnostics"])
+    assert plan["rename_hint_count"] == len(plan["rename_hints"])
     assert {change["kind"] for change in plan["changes"]} >= {
         "add_table",
         "add_field",
@@ -968,6 +973,11 @@ def test_migration_plan_coverage_tracks_required_detection_families() -> None:
     )
     detected = set(plan["coverage"]["detected"])
 
+    assert plan["allowed_backend_count"] == len(plan["allowed_backends"])
+    assert plan["change_count"] == len(plan["changes"])
+    assert plan["destructive_change_count"] == sum(1 for change in plan["changes"] if change.get("destructive"))
+    assert plan["diagnostic_count"] == len(plan["diagnostics"])
+    assert plan["rename_hint_count"] == 2
     assert plan["coverage"]["required"] == (
         "added_table",
         "dropped_table",

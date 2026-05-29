@@ -1415,7 +1415,10 @@ required detection families, the families detected by the current comparison,
 and the missing families. CI, IDE previews, and agents should use this coverage
 object to prove that a fixture or migration scenario exercises the required
 table, field, relationship, directive, calculated-field, PBC ownership, and
-backfill cases instead of inferring coverage from prose.
+backfill cases instead of inferring coverage from prose. The top-level
+`appgen.migration-plan.v1` report also publishes allowed-backend,
+change, destructive-change, diagnostic, and rename-hint counts so agents can
+review migration risk without expanding every change object.
 
 Destructive changes must require explicit approval and should include suggested
 safe alternatives when possible. Without `--json`, `appgen migration-plan`
