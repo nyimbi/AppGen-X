@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Callable
 
-from .domain_depth import DOMAIN_OPERATIONS, execute_domain_operation
+from .domain_depth import execute_domain_operation
 from .runtime import (
     CYBERSECURITY_OPERATIONS_CENTER_CONSUMED_EVENT_TYPES,
     CYBERSECURITY_OPERATIONS_CENTER_EMITTED_EVENT_TYPES,
@@ -79,10 +79,38 @@ QUERY_HANDLERS: dict[str, Callable[..., dict[str, Any]]] = {
 COMMAND_OPERATIONS = tuple(COMMAND_HANDLERS)
 QUERY_OPERATIONS = tuple(QUERY_HANDLERS)
 OWNED_TABLES = CYBERSECURITY_OPERATIONS_CENTER_RUNTIME_TABLES
+SERVICE_TO_DOMAIN_OPERATION = {
+    "set_parameter": "approve_runtime_parameter",
+    "register_rule": "review_policy_rule",
+    "register_schema_extension": "simulate_schema_extension",
+    "command_security_alert": "create_security_alert",
+    "transition_alert": "triage_security_alert",
+    "enrich_security_alert": "enrich_security_alert",
+    "suppress_security_alert": "suppress_security_alert",
+    "record_security_incident": "record_security_incident",
+    "review_asset_exposure": "review_asset_exposure",
+    "approve_threat_intel": "approve_threat_intel",
+    "simulate_playbook_run": "simulate_playbook_run",
+    "create_containment_action": "create_containment_action",
+    "record_response_evidence": "record_response_evidence",
+    "create_control_assertion": "create_control_assertion",
+    "record_governed_model": "record_governed_model",
+    "generate_handoff_packet": "generate_handoff_packet",
+}
 
 
-def _operation_contract(name: str, kind: str) -> dict[str, Any]:
-    domain = execute_domain_operation(name if name in DOMAIN_OPERATIONS else "create_security_alert")
+def service_operation_contract(name: str) -> dict[str, Any]:
+    kind = "query" if name in QUERY_HANDLERS else "command"
+    mapped_operation = SERVICE_TO_DOMAIN_OPERATION.get(name)
+    if mapped_operation:
+        domain = execute_domain_operation(mapped_operation)
+    else:
+        domain = {
+            "owned_tables": (),
+            "read_tables": OWNED_TABLES if kind == "query" else (),
+            "emitted_event": None,
+            "event_contract": "AppGen-X",
+        }
     return {
         "operation": name,
         "operation_kind": kind,
@@ -115,7 +143,7 @@ class CybersecurityOperationsCenterService:
             "operation_kind": "command",
             "read_only": False,
             "payload": args[0] if args else kwargs,
-            "operation_contract": _operation_contract(name, "command"),
+            "operation_contract": service_operation_contract(name),
             "outbox_table": EVENT_CONTRACT["outbox_table"],
             "emits": CYBERSECURITY_OPERATIONS_CENTER_EMITTED_EVENT_TYPES,
             "consumes": CYBERSECURITY_OPERATIONS_CENTER_CONSUMED_EVENT_TYPES,
@@ -133,7 +161,7 @@ class CybersecurityOperationsCenterService:
             "operation_kind": "query",
             "read_only": True,
             "payload": args[0] if args else kwargs,
-            "operation_contract": _operation_contract(name, "query"),
+            "operation_contract": service_operation_contract(name),
             "outbox_table": None,
             "emits": (),
             "result": result,
@@ -154,8 +182,8 @@ def service_operation_manifest() -> dict[str, Any]:
 
 
 def service_operation_contracts() -> dict[str, Any]:
-    contracts = tuple(_operation_contract(name, "command") for name in COMMAND_OPERATIONS) + tuple(
-        _operation_contract(name, "query") for name in QUERY_OPERATIONS
+    contracts = tuple(service_operation_contract(name) for name in COMMAND_OPERATIONS) + tuple(
+        service_operation_contract(name) for name in QUERY_OPERATIONS
     )
     return {
         "ok": True,
@@ -169,12 +197,13 @@ def service_operation_contracts() -> dict[str, Any]:
 def operation_plan(operation: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
     manifest = service_operation_manifest()
     kind = "query" if operation in manifest["query_operations"] else "command"
+    mapped_operation = SERVICE_TO_DOMAIN_OPERATION.get(operation)
     return {
         "ok": operation in manifest["query_operations"] + manifest["command_operations"],
         "operation": operation,
         "operation_kind": kind,
         "payload": dict(payload or {}),
-        "domain_plan": execute_domain_operation(operation, payload or {}) if operation in DOMAIN_OPERATIONS else None,
+        "domain_plan": execute_domain_operation(mapped_operation, payload or {}) if mapped_operation else None,
         "side_effects": (),
     }
 

@@ -30,7 +30,8 @@ Package-local standalone PBC for SOC workflows inside `src/pyAppGen/pbcs/cyberse
 - `ui.py` — workbench/detail/forms/wizards/controls contracts
 - `events.py` / `handlers.py` — AppGen-X event envelopes and consumed-event handling
 - `agent.py` — governed assistant and CRUD/document planning
-- `tests/` — focused contract and workflow tests
+- `standalone.py` — executable one-PBC app manifest, bootstrap, and demo workspace
+- `tests/` — focused contract, workflow, and standalone tests
 
 ## Local Validation
 
@@ -38,7 +39,7 @@ Use package-local validation from this directory:
 
 ```bash
 python3 -m compileall .
-PYTHONPATH=/Volumes/Media/src/pjs/appgen/src python3 -m unittest tests.test_contract tests.test_workflows
+PYTHONPATH=/Volumes/Media/src/pjs/appgen/src python3 -m unittest tests.test_contract tests.test_workflows tests.test_standalone
 ```
 
 ## Requested Gate Coverage

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from .services import CybersecurityOperationsCenterService, service_operation_contracts
+from .services import CybersecurityOperationsCenterService, service_operation_contract
 
 PBC_KEY = "cybersecurity_operations_center"
 ROUTE_TO_OPERATION = {
@@ -22,25 +22,41 @@ ROUTE_TO_OPERATION = {
     "GET /cybersecurity-operations-center-workbench": "query_workbench",
     "GET /cybersecurity-operations-center/case-detail": "build_case_detail",
 }
+ROUTE_PERMISSIONS = {
+    "POST /security-alerts": f"{PBC_KEY}.create",
+    "POST /security-alerts/triage": f"{PBC_KEY}.update",
+    "POST /security-alerts/enrich": f"{PBC_KEY}.update",
+    "POST /security-alerts/suppress": f"{PBC_KEY}.approve",
+    "POST /security-incidents": f"{PBC_KEY}.create",
+    "POST /security-incidents/promote": f"{PBC_KEY}.create",
+    "POST /asset-exposures": f"{PBC_KEY}.create",
+    "POST /threat-intels": f"{PBC_KEY}.approve",
+    "POST /playbook-runs": f"{PBC_KEY}.update",
+    "POST /containment-actions": f"{PBC_KEY}.approve",
+    "POST /response-evidence": f"{PBC_KEY}.update",
+    "GET /cybersecurity-operations-center-workbench": f"{PBC_KEY}.read",
+    "GET /cybersecurity-operations-center/case-detail": f"{PBC_KEY}.read",
+}
 ROUTES = tuple(ROUTE_TO_OPERATION)
 
 
+def _route_contract(route: str, operation: str) -> dict[str, Any]:
+    return {
+        "route": route,
+        "method": route.split()[0],
+        "path": route.split()[1],
+        "pbc": PBC_KEY,
+        "operation": operation,
+        "idempotency_key": f"{PBC_KEY}:{route}",
+        "event_contract": "AppGen-X",
+        "stream_engine_picker_visible": False,
+        "shared_table_access": False,
+        "required_permission": ROUTE_PERMISSIONS[route],
+    }
+
+
 def api_route_contracts() -> dict[str, Any]:
-    contracts = tuple(
-        {
-            "route": route,
-            "method": route.split()[0],
-            "path": route.split()[1],
-            "pbc": PBC_KEY,
-            "operation": operation,
-            "idempotency_key": f"{PBC_KEY}:{route}",
-            "event_contract": "AppGen-X",
-            "stream_engine_picker_visible": False,
-            "shared_table_access": False,
-            "required_permission": f"{PBC_KEY}.operate",
-        }
-        for route, operation in ROUTE_TO_OPERATION.items()
-    )
+    contracts = tuple(_route_contract(route, operation) for route, operation in ROUTE_TO_OPERATION.items())
     return {"ok": True, "pbc": PBC_KEY, "contracts": contracts, "routes": ROUTES, "side_effects": ()}
 
 
@@ -48,11 +64,13 @@ def validate_api_route_contracts() -> dict[str, Any]:
     contracts = api_route_contracts()["contracts"]
     missing_ops = tuple(contract["route"] for contract in contracts if not contract["operation"])
     missing_idempotency = tuple(contract for contract in contracts if not contract["idempotency_key"])
+    missing_permissions = tuple(contract["route"] for contract in contracts if not contract["required_permission"])
     return {
-        "ok": not missing_ops and not missing_idempotency,
+        "ok": not missing_ops and not missing_idempotency and not missing_permissions,
         "pbc": PBC_KEY,
         "service_mismatches": missing_ops,
         "missing_idempotency": missing_idempotency,
+        "missing_permissions": missing_permissions,
         "invalid_table_scope": (),
         "side_effects": (),
     }
@@ -95,7 +113,8 @@ def dispatch_route(
         "ok": result["ok"],
         "route": route,
         "payload": payload,
-        "operation_contract": service_operation_contracts()["operation_contract"],
+        "required_permission": ROUTE_PERMISSIONS[route],
+        "operation_contract": service_operation_contract(operation),
         "result": result,
         "side_effects": (),
     }

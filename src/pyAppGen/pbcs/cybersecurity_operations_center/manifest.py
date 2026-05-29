@@ -131,13 +131,13 @@ PBC_MANIFEST = {
         "cybersecurity_operations_center_governed_model",
     ),
     "template": None,
-    "tests": ("tests/test_contract.py", "tests/test_workflows.py"),
+    "tests": ("tests/test_contract.py", "tests/test_workflows.py", "tests/test_standalone.py"),
     "ui_fragments": (
         "CybersecurityOperationsCenterWorkbench",
         "CybersecurityOperationsCenterDetail",
         "CybersecurityOperationsCenterAssistantPanel",
     ),
-    "version": "1.1.0",
+    "version": "1.2.0",
     "workflows": (
         "cybersecurity_operations_center_create_security_alert_workflow",
         "cybersecurity_operations_center_triage_security_alert_workflow",

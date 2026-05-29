@@ -14,6 +14,7 @@ Satisfied by package-local source artifacts:
 - AppGen-X events and handlers in `events.py` and `handlers.py`
 - UI/workbench/forms/wizards/controls in `ui.py`
 - governed assistant CRUD/document planning in `agent.py`
+- standalone app composition and demo bootstrap in `standalone.py`
 - package docs:
   - `README.md`
   - `SPECIFICATION.md`
@@ -60,13 +61,13 @@ Result:
 Command:
 
 ```bash
-PYTHONPATH=/Volumes/Media/src/pjs/appgen/src python3 -m unittest tests.test_contract tests.test_workflows
+PYTHONPATH=/Volumes/Media/src/pjs/appgen/src python3 -m unittest tests.test_contract tests.test_workflows tests.test_standalone
 ```
 
 Result:
 
 - passed
-- `Ran 11 tests in 0.369s`
+- `Ran 13 tests in 0.877s`
 
 ### Diagnostics
 
@@ -89,6 +90,7 @@ Result:
 - containment actions classify approval paths
 - playbook runs expose staged checkpoints and breakpoints
 - workbench metadata now includes forms, wizards, controls, supervisor lane, and evidence-review lane
+- standalone app bootstrap now produces a tenant-scoped SOC demo workspace with workbench and case-detail rendering
 - case detail exposes relationship graph and AppGen-X lineage
 - assistant planning is limited to owned tables and human-confirmed mutations
 
