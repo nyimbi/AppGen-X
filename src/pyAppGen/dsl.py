@@ -2249,6 +2249,56 @@ def _component_publish_text_renderer_contract() -> dict:
     }
 
 
+def _pbc_publish_text_renderer_contract() -> dict:
+    """Prove PBC publish text logs expose side-effect-free catalog publication evidence."""
+    payload = {
+        "format": "appgen.pbc-publish-report.v1",
+        "ok": True,
+        "pbc": "gl_core",
+        "target": {
+            "mode": "local",
+            "catalog_path": "catalog/pbcs.json",
+            "side_effect_free": True,
+            "write_performed": False,
+        },
+        "catalog_patch": {
+            "gl_core": {
+                "pbc": "gl_core",
+                "label": "General Ledger Core",
+                "datastore_backend": "postgresql",
+            },
+        },
+        "checks": (
+            {"check": "package_loads", "ok": True},
+            {"check": "manifest_validates", "ok": True},
+            {"check": "catalog_patch_available", "ok": True},
+            {"check": "publish_is_side_effect_free", "ok": True},
+        ),
+        "blocking_gaps": (),
+    }
+    output = io.StringIO()
+    with contextlib.redirect_stdout(output):
+        _emit_tooling_payload(payload, as_json=False)
+    text = output.getvalue()
+    required_fragments = (
+        "pbc publish ok: gl_core -> local",
+        "side_effect_free=True write_performed=False",
+        "ok package_loads",
+        "ok manifest_validates",
+        "ok catalog_patch_available",
+        "ok publish_is_side_effect_free",
+    )
+    missing = tuple(fragment for fragment in required_fragments if fragment not in text)
+    return {
+        "format": "appgen.pbc-publish-text-renderer.v1",
+        "ok": not missing and not text.lstrip().startswith("{"),
+        "required_fragments": required_fragments,
+        "missing_fragments": missing,
+        "json_fallback": text.lstrip().startswith("{"),
+        "text_prefix": text[:240],
+    }
+
+
 def _validate_generate_text_renderer_contract() -> dict:
     """Prove validate and generate text logs expose readiness and artifact evidence."""
     validate_payload = {
@@ -3630,6 +3680,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
     component_publish_text_renderer = _component_publish_text_renderer_contract()
     validate_generate_text_renderer = _validate_generate_text_renderer_contract()
     release_text_renderer = _release_verifier_text_renderer_contract()
+    pbc_publish_text_renderer = _pbc_publish_text_renderer_contract()
     pbc_catalog = pbc_verifier_catalog_report()
     pbc_cli_text = _tooling_audit_pbc_cli_text()
     vscode = _tooling_audit_vscode_extension(root)
@@ -3957,13 +4008,17 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
         ),
         _tooling_audit_check(
             "pbc_manifest_catalog_commands",
-            pbc_catalog["ok"] and pbc_catalog["count"] > 0 and pbc_cli_text["ok"],
-            "PBC tooling lists and verifies manifest-backed package catalog entries without grammar-specific PBC names and exposes text summaries for agent logs.",
+            pbc_catalog["ok"]
+            and pbc_catalog["count"] > 0
+            and pbc_cli_text["ok"]
+            and pbc_publish_text_renderer["ok"],
+            "PBC tooling lists, verifies, and publishes manifest-backed package catalog entries without grammar-specific PBC names and exposes side-effect-free text summaries for agent logs.",
             "docs/tooling.md#appgen-pbc",
             {
                 "format": pbc_catalog.get("format"),
                 "count": pbc_catalog.get("count"),
                 "text_cli": pbc_cli_text,
+                "publish_text_renderer": pbc_publish_text_renderer,
             },
         ),
         _tooling_audit_check(

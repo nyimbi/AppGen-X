@@ -863,6 +863,10 @@ catalog report format, total count, mesh counts, and each selectable PBC key;
 count, catalog metadata, and per-check status. `appgen.pbc-cli-text-audit.v1`
 is embedded in the tooling audit to prove the text output is not a raw JSON
 fallback.
+`appgen.pbc-publish-text-renderer.v1` is also embedded in the tooling audit to
+prove publish text logs expose the target catalog mode, side-effect-free flag,
+write-performed flag, and per-check publication status without loading a
+package during renderer verification or parsing JSON.
 
 ### `appgen nl-plan`
 

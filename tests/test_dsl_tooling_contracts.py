@@ -3903,6 +3903,23 @@ def test_component_publish_text_renderer_contract_proves_catalog_log_markers() -
     } <= set(report["required_fragments"])
 
 
+def test_pbc_publish_text_renderer_contract_proves_side_effect_free_log_markers() -> None:
+    report = appgen_dsl._pbc_publish_text_renderer_contract()
+
+    assert report["format"] == "appgen.pbc-publish-text-renderer.v1"
+    assert report["ok"] is True
+    assert report["missing_fragments"] == ()
+    assert report["json_fallback"] is False
+    assert report["text_prefix"].startswith("pbc publish ok: gl_core -> local")
+    assert {
+        "side_effect_free=True write_performed=False",
+        "ok package_loads",
+        "ok manifest_validates",
+        "ok catalog_patch_available",
+        "ok publish_is_side_effect_free",
+    } <= set(report["required_fragments"])
+
+
 def test_diagnostics_text_renderer_contract_proves_catalog_and_fixture_log_markers() -> None:
     report = appgen_dsl._diagnostics_text_renderer_contract()
 
