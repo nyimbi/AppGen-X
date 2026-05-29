@@ -1700,7 +1700,14 @@ def _emit_tooling_payload(payload: dict, *, as_json: bool) -> None:
         status = "changed" if payload.get("changed") else "ok"
         idempotent = "idempotent" if payload.get("idempotent") else "not-idempotent"
         write_status = " written" if payload.get("written") else ""
-        print(f"format {status}: {idempotent}{write_status}")
+        print(
+            f"format {status}: {idempotent}{write_status} "
+            f"organize={payload.get('organize', False)} "
+            f"write_requested={payload.get('write_requested', False)} "
+            f"written={payload.get('written', False)}"
+        )
+        if payload.get("write_path"):
+            print(f"write_path {payload.get('write_path')}")
         for diagnostic in payload.get("diagnostics", ()):
             print(f"{diagnostic['severity']} {diagnostic['code']}: {diagnostic['message']}")
         return

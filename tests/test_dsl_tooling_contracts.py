@@ -3445,6 +3445,7 @@ def test_cli_contracts_cover_text_summaries_exit_codes_and_bad_arguments(tmp_pat
     assert "migration-detected added_field" in lint_migration_text.stdout
     assert format_check.returncode == 1
     assert "format changed: idempotent" in format_check.stdout
+    assert "organize=False write_requested=False written=False" in format_check.stdout
     assert graph_suite_text.returncode == 0, graph_suite_text.stderr
     assert "graph-suite ok: 9 kinds, 3 formats" in graph_suite_text.stdout
     assert validate_text.returncode == 0, validate_text.stderr
