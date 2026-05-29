@@ -3796,6 +3796,7 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     }
     assert tuple(graph_check["detail"]["suite_cli"]["formats"]) == ("json", "mermaid", "dot")
     assert graph_check["detail"]["suite_cli"]["rendering_kind_count"] == 9
+    assert graph_check["detail"]["suite_cli"]["text_has_report_format"] is True
     assert graph_check["detail"]["suite_cli"]["text_has_kinds"] is True
     assert graph_check["detail"]["suite_cli"]["text_has_formats"] is True
     assert graph_check["detail"]["explain_cli"]["format"] == "appgen.explain-cli-audit.v1"
