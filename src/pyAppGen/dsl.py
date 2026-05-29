@@ -1716,9 +1716,10 @@ def _emit_tooling_payload(payload: dict, *, as_json: bool) -> None:
         print(f"lint {status}: {counts}")
         stages = payload.get("stages") or {}
         if stages:
+            stage_names = tuple(payload.get("stage_names") or LINT_STAGE_NAMES)
             stage_counts = " ".join(
                 f"{name}={stages.get(name, {}).get('diagnostic_count', 0)}"
-                for name in ("syntax", "semantic", "policy")
+                for name in stage_names
             )
             print(f"stages {stage_counts}")
         migration = payload.get("migration_preview") or {}

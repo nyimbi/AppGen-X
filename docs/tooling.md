@@ -579,13 +579,14 @@ or missing required options. The help-surface audit also proves discoverability
 for linter semantic-baseline flags, generator target flags, graph formats,
 migration backends and rename hints, language-service rename/code-action flags,
 release package targets, designer-sync edits, and diagnostics/golden/drift
-audit commands. The default `appgen lint` text output includes stage counts for
-syntax, semantic, and policy diagnostics, and when `--previous-semantic` is
-provided it also prints a migration-preview summary and detected migration
-families. `appgen diagnostics` text output summarizes registry coverage and
-fixture gaps, `appgen diagnostics --audit-fixtures` summarizes covered and
-missing diagnostic codes, and `appgen drift` summarizes semantic-model drift
-surfaces, evidence formats, digest, and per-surface checks.
+audit commands. The default `appgen lint` text output renders stage counts in
+the report's published `stage_names` order, currently syntax, semantic, and
+policy diagnostics, and when `--previous-semantic` is provided it also prints a
+migration-preview summary and detected migration families. `appgen diagnostics`
+text output summarizes registry coverage and fixture gaps, `appgen diagnostics
+--audit-fixtures` summarizes covered and missing diagnostic codes, and
+`appgen drift` summarizes semantic-model drift surfaces, evidence formats,
+digest, and per-surface checks.
 
 ### `appgen format`
 

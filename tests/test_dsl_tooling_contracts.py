@@ -643,6 +643,27 @@ def test_appgen_lint_subcommand_emits_json_contract(tmp_path: Path) -> None:
     assert payload["ok"] is True
 
 
+def test_lint_text_output_uses_report_stage_order() -> None:
+    payload = {
+        "format": "appgen.lint-report.v1",
+        "ok": True,
+        "severity_counts": {"error": 0, "warning": 1, "info": 0, "hint": 0},
+        "stage_names": ("policy", "syntax", "semantic"),
+        "stages": {
+            "syntax": {"diagnostic_count": 0},
+            "semantic": {"diagnostic_count": 1},
+            "policy": {"diagnostic_count": 2},
+        },
+        "diagnostics": (),
+    }
+    output = StringIO()
+
+    with redirect_stdout(output):
+        appgen_dsl._emit_tooling_payload(payload, as_json=False)
+
+    assert "stages policy=2 syntax=0 semantic=1" in output.getvalue()
+
+
 def test_appgen_graph_suite_subcommand_emits_json_contract(tmp_path: Path) -> None:
     path = tmp_path / "release.appgen"
     path.write_text(RELEASE_SAMPLE, encoding="utf-8")
