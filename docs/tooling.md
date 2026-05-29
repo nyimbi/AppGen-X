@@ -39,6 +39,13 @@ The tooling must not:
 - accept direct secret literals in DSL files;
 - let agents bypass linting, semantic validation, or release evidence.
 
+`appgen.non-goal-policy-audit.v1` is embedded in `appgen.tooling-audit.v1` and
+proves these guards with executable lint and planning evidence: secret literals
+must emit `AGX0702` with an environment-binding fix, unsupported
+backend/runtime/stream picker fields must emit policy diagnostics with a removal
+fix, and natural-language prompts that try to bypass the DSL source of truth
+must be rejected before any patch is produced.
+
 ## Core Architecture
 
 All tooling should consume the same pipeline.

@@ -3494,7 +3494,17 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
         "package_and_release_verifiers",
         "parser_golden_and_drift_gates",
         "tooling_doc_anchor_integrity",
+        "non_goal_policy_guards",
     } <= {check["id"] for check in report["checks"]}
+    non_goal_check = next(check for check in report["checks"] if check["id"] == "non_goal_policy_guards")
+    assert non_goal_check["detail"]["format"] == "appgen.non-goal-policy-audit.v1"
+    assert non_goal_check["detail"]["ok"] is True
+    non_goal_cases = {case["case"]: case for case in non_goal_check["detail"]["cases"]}
+    assert non_goal_cases["reject_secret_literal"]["secret_removed"] is True
+    assert non_goal_cases["reject_secret_literal"]["fixed_contains_env_binding"] is True
+    assert non_goal_cases["reject_runtime_picker_fields"]["picker_fields_removed"] is True
+    assert non_goal_cases["reject_generated_code_bypass_prompt"]["accepted"] is False
+    assert non_goal_cases["reject_generated_code_bypass_prompt"]["patch_bytes"] == 0
     assert report["doc_anchor_integrity"]["format"] == "appgen.tooling-doc-anchor-audit.v1"
     assert report["doc_anchor_integrity"]["ok"] is True
     assert report["doc_anchor_integrity"]["missing_sections"] == ()

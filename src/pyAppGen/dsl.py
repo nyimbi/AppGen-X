@@ -2847,6 +2847,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
     drift = semantic_drift_audit_dsl(source, source_name="tooling-audit.appgen")
     doctor = doctor_report_dsl()
     module_boundaries = module_boundary_audit_dsl()
+    non_goal_policy = _tooling_audit_non_goal_policy()
     pbc_catalog = pbc_verifier_catalog_report()
     pbc_cli_text = _tooling_audit_pbc_cli_text()
     vscode = _tooling_audit_vscode_extension(root)
@@ -2927,6 +2928,13 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             "Diagnostic registry and golden fixture audit cover required AGX codes.",
             "docs/tooling.md#diagnostic-specification",
             {"catalog": diagnostics.get("format"), "fixtures": diagnostic_fixtures.get("format")},
+        ),
+        _tooling_audit_check(
+            "non_goal_policy_guards",
+            non_goal_policy["ok"],
+            "Non-goal policy guards reject secret literals, arbitrary runtime picker fields, and direct generated-code bypass prompts.",
+            "docs/tooling.md#non-goals",
+            non_goal_policy,
         ),
         _tooling_audit_check(
             "lint_directory_and_strict_profiles",
@@ -3184,6 +3192,92 @@ def _tooling_audit_check(check_id: str, ok: bool, evidence: str, section: str, d
         "section": section,
         "evidence": evidence,
         "detail": detail or {},
+    }
+
+
+def _tooling_audit_non_goal_policy() -> dict:
+    secret_source = "\n".join(
+        (
+            "app SecretPolicy { targets: web }",
+            "table Customer { id: int pk }",
+            "view CustomerForm for Customer { Main: id }",
+            'llm ApiModel { provider: openai; api_key: "sk-secret" }',
+            "",
+        )
+    )
+    runtime_picker_source = "\n".join(
+        (
+            "app RuntimePolicy { targets: web; backend: sqlite; runtime: node; stream: kafka }",
+            "table Customer { id: int pk }",
+            "view CustomerForm for Customer { Main: id }",
+            "",
+        )
+    )
+    source_of_truth_source = "\n".join(
+        (
+            "app SourceTruth { targets: web }",
+            "table Customer { id: int pk; name: string }",
+            "view CustomerForm for Customer { Main: name }",
+            "",
+        )
+    )
+    secret_lint = lint_report_dsl(secret_source, source_name="non-goal-secret.appgen")
+    secret_fix = apply_lint_fixes(secret_source, fix_ids=("use_api_key_env",), source_name="non-goal-secret.appgen")
+    runtime_lint = lint_report_dsl(runtime_picker_source, source_name="non-goal-runtime.appgen")
+    runtime_fix = apply_lint_fixes(
+        runtime_picker_source,
+        fix_ids=("remove_invalid_runtime_picker_fields",),
+        source_name="non-goal-runtime.appgen",
+    )
+    bypass_plan = nl_plan_dsl(
+        source_of_truth_source,
+        source_name="non-goal-bypass.appgen",
+        prompt="Replace the runtime with hand-written generated code outside the DSL",
+    )
+    bypass_accepted = bypass_plan.get("accepted", False)
+    runtime_messages = tuple(item.get("message", "") for item in runtime_lint.get("diagnostics", ()))
+    cases = (
+        {
+            "case": "reject_secret_literal",
+            "ok": secret_lint.get("ok") is False
+            and _has_diagnostic(secret_lint, {"AGX0702"})
+            and secret_fix.get("changed") is True
+            and "api_key: OPENAI_API_KEY" in secret_fix.get("fixed", "")
+            and "sk-secret" not in secret_fix.get("fixed", ""),
+            "diagnostic_codes": tuple(item.get("code") for item in secret_lint.get("diagnostics", ())),
+            "fix_ids": tuple(item.get("id") for item in secret_lint.get("fixes", ())),
+            "fixed_contains_env_binding": "api_key: OPENAI_API_KEY" in secret_fix.get("fixed", ""),
+            "secret_removed": "sk-secret" not in secret_fix.get("fixed", ""),
+        },
+        {
+            "case": "reject_runtime_picker_fields",
+            "ok": runtime_lint.get("ok") is False
+            and sum(1 for item in runtime_lint.get("diagnostics", ()) if item.get("code") == "AGX0801") == 3
+            and runtime_fix.get("changed") is True
+            and all(token not in runtime_fix.get("fixed", "") for token in ("backend:", "runtime:", "stream:")),
+            "diagnostic_codes": tuple(item.get("code") for item in runtime_lint.get("diagnostics", ())),
+            "messages": runtime_messages,
+            "fix_ids": tuple(item.get("id") for item in runtime_lint.get("fixes", ())),
+            "picker_fields_removed": all(
+                token not in runtime_fix.get("fixed", "") for token in ("backend:", "runtime:", "stream:")
+            ),
+        },
+        {
+            "case": "reject_generated_code_bypass_prompt",
+            "ok": bypass_plan.get("ok") is False
+            and bypass_accepted is False
+            and any(item.get("code") == "AGX1201" for item in bypass_plan.get("diagnostics", ()))
+            and not bypass_plan.get("dsl_patch"),
+            "diagnostic_codes": tuple(item.get("code") for item in bypass_plan.get("diagnostics", ())),
+            "accepted": bypass_accepted,
+            "patch_bytes": len(bypass_plan.get("dsl_patch", "")),
+        },
+    )
+    return {
+        "format": "appgen.non-goal-policy-audit.v1",
+        "ok": all(case["ok"] for case in cases),
+        "cases": cases,
+        "source_of_truth": "docs/tooling.md#non-goals",
     }
 
 
