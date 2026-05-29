@@ -560,8 +560,10 @@ guarantees. It also verifies that the organize profile preserves top-level
 declaration order while ordering table bodies by identity, business keys,
 relationships, editable fields, calculated fields, audit fields, and
 directives. The formatter contract reports check, passing-check,
-comment-check, ordering-check, and report counts so release evidence captures
-both formatting scenarios and the breadth of formatter guarantees.
+failed-check, comment-check, ordering-check, report, idempotent-report,
+changed-report, diagnostic, diagnostic-error, diagnostic-severity, and output
+byte counts so release evidence captures both formatting scenarios and the
+breadth of formatter guarantees without hiding non-blocking lint hints.
 
 ## CLI Contracts
 

@@ -712,9 +712,16 @@ def test_formatter_contract_audit_proves_documented_formatter_guarantees() -> No
     assert audit["ok"] is True
     assert audit["check_count"] == len(audit["checks"])
     assert audit["passing_check_count"] == audit["check_count"]
+    assert audit["failed_check_count"] == 0
     assert audit["comment_check_count"] >= 3
     assert audit["ordering_check_count"] >= 3
     assert audit["report_count"] == 2
+    assert audit["idempotent_report_count"] == audit["report_count"]
+    assert audit["changed_report_count"] == audit["report_count"]
+    assert audit["diagnostic_count"] >= 0
+    assert audit["diagnostic_error_count"] == 0
+    assert audit["diagnostic_severity_counts"]["hint"] == audit["diagnostic_count"]
+    assert audit["text_byte_count"] > 0
     assert {
         "idempotent",
         "file_level_comments_preserved",

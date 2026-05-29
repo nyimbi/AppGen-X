@@ -3526,6 +3526,12 @@ table Customer {
 """
     comment_report = format_report_dsl(comment_source, source_name="formatter-comments.appgen")
     organize_report = format_report_dsl(organize_source, source_name="formatter-organize.appgen", organize=True)
+    reports = (comment_report, organize_report)
+    diagnostics = tuple(diagnostic for report in reports for diagnostic in report["diagnostics"])
+    diagnostic_severity_counts = {
+        severity: sum(1 for diagnostic in diagnostics if diagnostic.get("severity") == severity)
+        for severity in ("error", "warning", "info", "hint")
+    }
     comment_text = comment_report["text"]
     organize_text = organize_report["text"]
     checks = (
@@ -3567,9 +3573,16 @@ table Customer {
         "ok": all(check["ok"] for check in checks),
         "check_count": len(checks),
         "passing_check_count": sum(1 for check in checks if check["ok"]),
+        "failed_check_count": sum(1 for check in checks if not check["ok"]),
         "comment_check_count": sum(1 for check in checks if "comment" in check["check"]),
         "ordering_check_count": sum(1 for check in checks if "ordering" in check["check"] or "order" in check["check"]),
-        "report_count": 2,
+        "report_count": len(reports),
+        "idempotent_report_count": sum(1 for report in reports if report["idempotent"]),
+        "changed_report_count": sum(1 for report in reports if report["changed"]),
+        "diagnostic_count": len(diagnostics),
+        "diagnostic_error_count": diagnostic_severity_counts["error"],
+        "diagnostic_severity_counts": diagnostic_severity_counts,
+        "text_byte_count": sum(len(report.get("text", "").encode("utf-8")) for report in reports),
         "checks": checks,
         "comment_report": comment_report["format"],
         "organize_report": organize_report["format"],
