@@ -39,6 +39,7 @@ This file tracks the branch-isolated implementation pass for standalone Packaged
 | expense_management | `pbc/expense-management-standalone` | `d9abfac1` | Compile, 7 tests, spec/source/release/smoke true. |
 | facilities_space_management | `pbc/facilities-space-management-standalone` | `eace636f` | Compile, 7 tests, spec/source/release true; generation smoke hung and is documented in branch evidence. |
 | federated_iam | `pbc/federated-iam-standalone` | `8e57b2f4` | Compile, 14 tests, spec/source/release/smoke true. |
+| field_service_management | `pbc/field-service-management-standalone` | `00658b71` | Compile, 11 tests, spec/source/release/smoke true. |
 | inventory_positioning | `pbc/inventory-positioning-standalone` | `5fa432ae` | Compile, 8 tests, spec/source/release/smoke true. |
 | quality_assurance | `pbc/quality-assurance-standalone` | `63171cb9` | Compile, 11 tests, spec/source/release/smoke true. |
 | production_control | `pbc/production-control-standalone` | `29677a7b` | Compile, 12 tests, spec/source/release/smoke true. |
@@ -71,7 +72,7 @@ This file tracks the branch-isolated implementation pass for standalone Packaged
 
 ## In Flight
 
-Supply-chain/HCM standalone pass is continuing. `wms_core`, `procurement_sourcing`, `transportation_management`, `dom`, `global_inventory_visibility`, `personnel_identity`, `time_labor`, and `payroll_engine` are pushed; quality_assurance is pushed; mrp_engine is pushed; asset_lifecycle, production_control, talent_onboarding, product_catalog_pim, price_promotion_engine, checkout_processing, payment_orchestration, subscription_billing, returns_reverse_logistics, cross_border_trade, order_routing_optimization, customer_360, lead_opportunity, loyalty_rewards, service_ticketing, notifications, predictive_demand, fraud_anomaly_detection, dam_core, multi_sided_market, and vendor_supplier_360 are pushed; next slices continue through content, relationship, intelligence, and industry PBCs.
+Supply-chain/HCM standalone pass is continuing. `wms_core`, `procurement_sourcing`, `transportation_management`, `dom`, `global_inventory_visibility`, `personnel_identity`, `time_labor`, and `payroll_engine` are pushed; quality_assurance is pushed; mrp_engine is pushed; asset_lifecycle, production_control, talent_onboarding, product_catalog_pim, price_promotion_engine, checkout_processing, payment_orchestration, subscription_billing, returns_reverse_logistics, cross_border_trade, order_routing_optimization, customer_360, lead_opportunity, loyalty_rewards, service_ticketing, notifications, predictive_demand, fraud_anomaly_detection, dam_core, multi_sided_market, vendor_supplier_360, and field_service_management are pushed; next slices continue through content, relationship, intelligence, and industry PBCs.
 
 ## Next Selection Rule
 
