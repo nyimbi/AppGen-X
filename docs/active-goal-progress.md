@@ -3617,4 +3617,4 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   helper probe with `ok=True` and exit-code shape `0/1/0`, focused non-PBC
   lint audit test (`1 passed`), scoped diff whitespace check, and restricted-name
   scan outside archive, Git internals, and active PBC paths. Commit:
-  `9722b606`.
+  `9801bc98`.
