@@ -3884,6 +3884,10 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert graph_check["detail"]["explain_cli"]["format"] == "appgen.explain-cli-audit.v1"
     assert graph_check["detail"]["explain_cli"]["ok"] is True
     assert all(case["has_report_format"] is True for case in graph_check["detail"]["explain_cli"]["cases"])
+    explain_cases = {case["case"]: case for case in graph_check["detail"]["explain_cli"]["cases"]}
+    assert explain_cases["field_symbol_json"]["symbol_id"] == "table.Invoice.customer_id"
+    assert explain_cases["diagnostic_json"]["diagnostic_docs_url"] == "docs/tooling.md#diagnostic-specification"
+    assert explain_cases["qualified_handler_json"]["handler_edges"] == ("InvoiceForm.Save->SubmitInvoice",)
     assert {
         "field_symbol_text",
         "field_symbol_json",
@@ -4574,6 +4578,14 @@ def test_explain_cli_audit_covers_text_and_json_modes(tmp_path: Path) -> None:
     assert cases["qualified_handler_text"]["stdout_prefix"].startswith(
         "explain handler ok: format=appgen.explain-report.v1 InvoiceForm.Save"
     )
+    assert cases["field_symbol_json"]["symbol_id"] == "table.Invoice.customer_id"
+    assert cases["field_symbol_json"]["symbol_kind"] == "field"
+    assert cases["field_symbol_json"]["symbol_parent"] == "table.Invoice"
+    assert cases["field_symbol_json"]["symbol_reference_count"] == 0
+    assert cases["diagnostic_json"]["diagnostic_title"] == "Unresolved lookup path"
+    assert cases["diagnostic_json"]["diagnostic_docs_url"] == "docs/tooling.md#diagnostic-specification"
+    assert cases["qualified_handler_json"]["handler_match_count"] == 1
+    assert cases["qualified_handler_json"]["handler_edges"] == ("InvoiceForm.Save->SubmitInvoice",)
 
 
 def test_graph_cli_audit_covers_documented_graph_examples(tmp_path: Path) -> None:

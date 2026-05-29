@@ -6525,6 +6525,9 @@ def _tooling_audit_explain_cli_formats(tmp: Path, source: str) -> dict:
                 and "matches:" in stdout
                 and "InvoiceForm.Save ->" in stdout
             )
+        symbol = payload.get("symbol", {}) if case_id == "field_symbol_json" else {}
+        explanation = payload.get("explanation", {}) if case_id == "diagnostic_json" else {}
+        matches = tuple(payload.get("matches", ())) if case_id == "qualified_handler_json" else ()
         results.append(
             {
                 "case": case_id,
@@ -6532,6 +6535,14 @@ def _tooling_audit_explain_cli_formats(tmp: Path, source: str) -> dict:
                 "exit_code": exit_code,
                 "has_report_format": "format=appgen.explain-report.v1" in stdout
                 or payload.get("format") == "appgen.explain-report.v1",
+                "symbol_id": symbol.get("id"),
+                "symbol_kind": symbol.get("kind"),
+                "symbol_parent": symbol.get("parent"),
+                "symbol_reference_count": len(symbol.get("references", ())) if symbol else None,
+                "diagnostic_title": explanation.get("title"),
+                "diagnostic_docs_url": explanation.get("docs_url"),
+                "handler_match_count": len(matches) if matches else None,
+                "handler_edges": tuple(f"{match.get('from')}->{match.get('to')}" for match in matches),
                 "stdout_prefix": stdout[:120],
             }
         )

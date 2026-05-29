@@ -747,7 +747,11 @@ title, summary, and documentation anchor. Default handler explanations print
 matching handler edges. `appgen.explain-cli-audit.v1` proves the symbol,
 diagnostic, and handler text modes all include the same `format=...` envelope
 marker as JSON mode, so release logs and agents can identify explain contracts
-without parsing prose.
+without parsing prose. The audit also reports `symbol_id`, `symbol_kind`,
+`symbol_parent`, `symbol_reference_count`, `diagnostic_title`,
+`diagnostic_docs_url`, `handler_match_count`, and `handler_edges` from JSON
+mode so CLI release evidence carries the same navigational details as IDE
+integrations.
 
 ### `appgen doctor`
 
