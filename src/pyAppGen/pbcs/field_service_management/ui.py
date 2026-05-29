@@ -1,5 +1,6 @@
 """UI fragments for the field_service_management PBC."""
 PBC_KEY = 'field_service_management'
+from .app_surface import single_pbc_field_service_management_app_contract
 UI_FRAGMENTS = ('FieldServiceManagementWorkbench', 'FieldServiceManagementDetail', 'FieldServiceManagementAssistantPanel')
 
 
@@ -23,6 +24,19 @@ _BASE_FIELD_SERVICE_MANAGEMENT_UI_CONTRACT = field_service_management_ui_contrac
 _BASE_FIELD_SERVICE_MANAGEMENT_RENDER_WORKBENCH = field_service_management_render_workbench
 
 
+def field_service_management_forms_contract():
+    from .app_surface import field_service_management_forms_contract as _forms
+    return _forms()
+
+def field_service_management_wizards_contract():
+    from .app_surface import field_service_management_wizards_contract as _wizards
+    return _wizards()
+
+def field_service_management_controls_contract():
+    from .app_surface import field_service_management_controls_contract as _controls
+    return _controls()
+
+
 def field_service_management_ui_contract():
     base = dict(_BASE_FIELD_SERVICE_MANAGEMENT_UI_CONTRACT())
     full = field_service_management_ui_capability_surface_contract()
@@ -31,7 +45,7 @@ def field_service_management_ui_contract():
         **base,
         'ok': base.get('ok') is True and full['ok'] and workforce['ok'],
         'full_capability_surface': full,
-        'workforce_capability_surface': workforce,
+        'workforce_capability_surface': workforce, 'forms': field_service_management_forms_contract()['forms'], 'wizards': field_service_management_wizards_contract()['wizards'], 'controls': field_service_management_controls_contract()['controls'], 'single_pbc_app': single_pbc_field_service_management_app_contract(),
         'operation_actions': full['operation_actions'],
         'rule_editors': full['rule_editors'],
         'parameter_editors': full['parameter_editors'],
@@ -43,7 +57,7 @@ def field_service_management_ui_contract():
         'route_optimizer': True,
         'skill_assignment_console': True,
         'job_tool_requirement_planner': True,
-        'task_dependency_board': True,
+        'task_dependency_board': True, 'forms': field_service_management_forms_contract()['forms'], 'wizards': field_service_management_wizards_contract()['wizards'], 'controls': field_service_management_controls_contract()['controls'], 'single_pbc_app': single_pbc_field_service_management_app_contract(),
     }
 
 
@@ -60,5 +74,11 @@ def field_service_management_render_workbench(state=None):
         'edge_case_queues': full['edge_case_queues'],
         'table_browsers': full['table_browsers'],
         'agent_tools': full['agent_tools'],
-        'workforce_capability_surface': workforce,
+        'workforce_capability_surface': workforce, 'forms': field_service_management_forms_contract()['forms'], 'wizards': field_service_management_wizards_contract()['wizards'], 'controls': field_service_management_controls_contract()['controls'], 'single_pbc_app': single_pbc_field_service_management_app_contract(),
     }
+
+
+def standalone_ui_smoke_test():
+    contract = field_service_management_ui_contract()
+    rendered = field_service_management_render_workbench()
+    return {'ok': contract['ok'] and rendered['ok'] and bool(contract['forms']) and bool(contract['wizards']) and bool(contract['controls']) and contract['single_pbc_app']['ok'], 'contract': contract, 'rendered': rendered, 'side_effects': ()}
