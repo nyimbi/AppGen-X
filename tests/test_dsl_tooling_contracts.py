@@ -4072,6 +4072,7 @@ def test_semantic_drift_text_renderer_contract_proves_shared_model_log_markers()
     )
     assert {
         "surfaces cli, lsp, studio, generator",
+        "gap studio_missing_surface",
         "evidence generate_report: appgen.generate-report.v1",
         "evidence studio_surfaces: database_designer,form_designer",
         "fail studio_uses_semantic_model",

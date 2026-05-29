@@ -627,10 +627,11 @@ parsing. `appgen drift`
 summarizes the
 `appgen.semantic-drift-audit.v1` format, semantic-model format as
 `semantic_format=...`, drift surfaces,
-evidence formats, blocking gap count, digest, and per-surface checks.
+evidence formats, blocking gap count, named blocking gaps as `gap ...`, digest,
+and per-surface checks.
 `appgen.semantic-drift-text-renderer.v1` is embedded in the tooling audit to
-prove those shared-model drift summaries keep surface, evidence, digest, and
-check-result markers visible without JSON parsing.
+prove those shared-model drift summaries keep surface, evidence, named-gap,
+digest, and check-result markers visible without JSON parsing.
 
 ### `appgen format`
 

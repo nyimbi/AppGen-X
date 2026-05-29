@@ -2912,6 +2912,8 @@ def _emit_semantic_drift_text(payload: dict) -> None:
     )
     if surfaces:
         print(f"surfaces {', '.join(surfaces)}")
+    for gap in gaps:
+        print(f"gap {gap}")
     evidence = payload.get("surface_evidence", {})
     for name in sorted(evidence):
         value = evidence[name]
@@ -2948,6 +2950,7 @@ def _semantic_drift_text_renderer_contract() -> dict:
     required_fragments = (
         "drift failed: format=appgen.semantic-drift-audit.v1 semantic_format=appgen.semantic-model.v1 surfaces=4 blocking_gaps=1 digest=sha256:semantic-fixture",
         "surfaces cli, lsp, studio, generator",
+        "gap studio_missing_surface",
         "evidence generate_report: appgen.generate-report.v1",
         "evidence lsp_service: appgen.lsp-service.v1",
         "evidence studio_surfaces: database_designer,form_designer",
