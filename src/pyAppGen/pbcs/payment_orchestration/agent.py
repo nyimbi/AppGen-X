@@ -167,3 +167,36 @@ def smoke_test():
         'contribution': contribution,
         'side_effects': (),
     }
+
+
+
+def _standalone_operations():
+    from .services import standalone_service_operation_contracts
+    return standalone_service_operation_contracts()['operations']
+
+def standalone_agent_workspace_contract():
+    from .routes import standalone_route_contracts
+    from .ui import payment_orchestration_standalone_workbench_blueprint
+    routes_contract=standalone_route_contracts(); workbench=payment_orchestration_standalone_workbench_blueprint()
+    return {'format':'appgen.payment-orchestration-agent-workspace.v1','ok':routes_contract['ok'] and workbench['ok'],'pbc':PBC_KEY,'agent':AGENT_NAME,'entrypoint':'/app/payment-orchestration/assistant/sessions','skill_namespace':f'{PBC_KEY}_skills','dsl_tools':(f'{PBC_KEY}_skills',f'{PBC_KEY}_documents',f'{PBC_KEY}_crud',f'{PBC_KEY}_workflows'),'standalone_operations':_standalone_operations(),'standalone_routes':routes_contract['routes'],'forms':tuple(f['form_id'] for f in workbench['forms']),'wizards':tuple(w['wizard_id'] for w in workbench['wizards']),'controls':tuple(c['control_id'] for c in workbench['controls']),'professional_controls':chatbot_interface_contract()['professional_controls'],'side_effects':()}
+
+_BASE_DOCUMENT_INSTRUCTION_PLAN=document_instruction_plan
+_BASE_DATASTORE_CRUD_PLAN=datastore_crud_plan
+
+def document_instruction_plan(document=None, instructions=None):
+    plan=_BASE_DOCUMENT_INSTRUCTION_PLAN(document,instructions)
+    from .wizards import payment_orchestration_wizard_catalog
+    from .routes import standalone_route_contracts
+    text=f"{document or ''} {instructions or ''}".lower()
+    target='payment_orchestration_payment_intent'
+    if 'refund' in text: target='payment_orchestration_payment_refund'
+    elif 'dispute' in text: target='payment_orchestration_payment_dispute'
+    elif 'gateway' in text: target='payment_orchestration_payment_gateway'
+    return {**plan,'candidate_table':target,'wizard_candidates':payment_orchestration_wizard_catalog()['wizard_ids'],'standalone_routes':standalone_route_contracts()['routes'],'workspace':'payment_orchestration_standalone_app'}
+
+def datastore_crud_plan(action='read', table=None, payload=None):
+    base=_BASE_DATASTORE_CRUD_PLAN(action,table,payload)
+    standalone_tables=('payment_orchestration_runtime_state','payment_orchestration_form_submission','payment_orchestration_workflow_run','payment_orchestration_control_execution','payment_orchestration_agent_session','payment_orchestration_workbench_read_model')
+    selected=base.get('table') or table
+    allowed=base.get('ok') is True or (str(action).lower() in _CRUD_ACTIONS and selected in standalone_tables)
+    return {**base,'ok':allowed,'owned_tables':tuple(dict.fromkeys(tuple(base.get('owned_tables',()))+standalone_tables)),'standalone_tables':standalone_tables,'standalone_operations':_standalone_operations(),'event_contract':'AppGen-X','stream_engine_picker_visible':False}

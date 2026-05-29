@@ -168,3 +168,42 @@ def smoke_test():
         'result': result,
         'side_effects': (),
     }
+
+
+
+STANDALONE_OPERATION_CONTRACTS = (
+    {"operation":"seed_demo_workspace","operation_kind":"command","method":"POST","path":"/app/payment-orchestration/demo-workspace","permission":"payment_orchestration.configure","owned_tables":("payment_orchestration_runtime_state","payment_orchestration_form_submission","payment_orchestration_workflow_run","payment_orchestration_control_execution","payment_orchestration_agent_session","payment_orchestration_workbench_read_model"),"read_tables":(),"emitted_event":"PaymentDisputeResolved"},
+    {"operation":"build_workbench","operation_kind":"query","method":"GET","path":"/app/payment-orchestration/workbench","permission":"payment_orchestration.audit","owned_tables":(),"read_tables":("payment_orchestration_workbench_read_model",),"emitted_event":None},
+    {"operation":"create_payment_intent","operation_kind":"command","method":"POST","path":"/app/payment-orchestration/intents","permission":"payment_orchestration.intent","owned_tables":("payment_orchestration_runtime_state","payment_orchestration_form_submission"),"read_tables":(),"emitted_event":"PaymentIntentCreated"},
+    {"operation":"capture_payment","operation_kind":"command","method":"POST","path":"/app/payment-orchestration/captures","permission":"payment_orchestration.capture","owned_tables":("payment_orchestration_runtime_state","payment_orchestration_workflow_run"),"read_tables":(),"emitted_event":"PaymentCaptured"},
+    {"operation":"settle_payment","operation_kind":"command","method":"POST","path":"/app/payment-orchestration/settlements","permission":"payment_orchestration.settlement","owned_tables":("payment_orchestration_runtime_state","payment_orchestration_workflow_run"),"read_tables":(),"emitted_event":"PaymentSettled"},
+    {"operation":"refund_payment","operation_kind":"command","method":"POST","path":"/app/payment-orchestration/refunds","permission":"payment_orchestration.refund","owned_tables":("payment_orchestration_runtime_state","payment_orchestration_workflow_run"),"read_tables":(),"emitted_event":"PaymentRefunded"},
+    {"operation":"open_dispute","operation_kind":"command","method":"POST","path":"/app/payment-orchestration/disputes","permission":"payment_orchestration.dispute","owned_tables":("payment_orchestration_runtime_state","payment_orchestration_workflow_run"),"read_tables":(),"emitted_event":"PaymentDisputeOpened"},
+    {"operation":"generate_payment_proof","operation_kind":"command","method":"POST","path":"/app/payment-orchestration/proofs","permission":"payment_orchestration.audit","owned_tables":("payment_orchestration_control_execution",),"read_tables":(),"emitted_event":"PaymentProofGenerated"},
+    {"operation":"run_agent_skill","operation_kind":"command","method":"POST","path":"/app/payment-orchestration/assistant/sessions","permission":"payment_orchestration.audit","owned_tables":("payment_orchestration_agent_session",),"read_tables":(),"emitted_event":"PaymentAssistantSessionRecorded"},
+)
+
+def standalone_service_operation_contracts():
+    commands=tuple(i for i in STANDALONE_OPERATION_CONTRACTS if i['operation_kind']=='command'); queries=tuple(i for i in STANDALONE_OPERATION_CONTRACTS if i['operation_kind']=='query')
+    tables=tuple(t for i in STANDALONE_OPERATION_CONTRACTS for t in i['owned_tables']+i['read_tables'])
+    return {'format':'appgen.payment-orchestration-standalone-services.v1','ok':bool(STANDALONE_OPERATION_CONTRACTS) and all(t.startswith('payment_orchestration_') for t in tables) and all(i['emitted_event'] for i in commands) and all(i['emitted_event'] is None for i in queries),'pbc':'payment_orchestration','service_class':'PaymentOrchestrationStandaloneService','operations':tuple(i['operation'] for i in STANDALONE_OPERATION_CONTRACTS),'command_operations':tuple(i['operation'] for i in commands),'query_operations':tuple(i['operation'] for i in queries),'contracts':STANDALONE_OPERATION_CONTRACTS,'event_contract':'AppGen-X','stream_engine_picker_visible':False,'side_effects':()}
+
+class PaymentOrchestrationStandaloneService:
+    def __init__(self, repository=None, *, database_path=':memory:'):
+        if repository is None:
+            from .repository import PaymentOrchestrationStandaloneRepository
+            repository=PaymentOrchestrationStandaloneRepository(database_path=database_path)
+        self.repository=repository
+    def close(self):
+        close=getattr(self.repository,'close',None)
+        if callable(close): close()
+    def seed_demo_workspace(self, tenant='tenant_demo'): return self.repository.seed_demo_workspace(tenant=tenant)
+    def build_workbench(self, tenant='tenant_demo'): return self.repository.build_workbench(tenant)
+    def create_payment_intent(self,payload=None,*,tenant='tenant_demo'): supplied=dict(payload or {}); return self.repository.create_payment_intent(supplied.get('tenant',tenant), supplied)
+    def capture_payment(self,intent_id,amount,*,tenant='tenant_demo'): return self.repository.capture_payment(tenant,intent_id,amount)
+    def settle_payment(self,intent_id,settlement_reference,*,tenant='tenant_demo'): return self.repository.settle_payment(tenant,intent_id,settlement_reference)
+    def refund_payment(self,intent_id,amount,reason,*,tenant='tenant_demo'): return self.repository.refund_payment(tenant,intent_id,amount,reason)
+    def open_dispute(self,intent_id,amount,reason,evidence=(),*,tenant='tenant_demo'): return self.repository.open_dispute(tenant,intent_id,amount,reason,evidence)
+    def generate_payment_proof(self,intent_id,disclosure=('intent_id','amount','currency','status'),*,tenant='tenant_demo'): return self.repository.generate_payment_proof(tenant,intent_id,tuple(disclosure))
+    def run_agent_skill(self,payload=None,*,skill='payment_orchestration.document_instruction_intake',tenant='tenant_demo'):
+        supplied=dict(payload or {}); return self.repository.run_agent_skill(supplied.get('tenant',tenant), supplied.get('skill',skill), supplied)
