@@ -2,35 +2,35 @@
 
 ## Status
 
-Implemented an executable one-PBC court operations slice inside `src/pyAppGen/pbcs/court_case_management`.
+Implemented a standalone executable one-PBC court operations slice inside `src/pyAppGen/pbcs/court_case_management`.
 
 ## Delivered
 
-- Added `court_operations_app.py` for case numbering, party representation, filing deficiency review, docket sequence enforcement, hearing scheduling, order entry, workbench queues, forms, wizards, controls, document-instruction planning, and smoke tests.
-- Extended runtime capabilities with forms, wizards, controls, and single-PBC app evidence.
-- Extended services and routes to execute real court operations commands.
-- Extended UI with court forms, wizards, controls, queue names, and app metadata.
-- Updated the assistant document-instruction plan to produce stable digests and domain-specific CRUD previews.
-- Updated release readiness evidence to include forms, wizards, controls, and the single-PBC app contract.
-- Added focused package tests proving the executable behavior.
-- Added this status file and a descriptive README.
+- Added `standalone.py` with `CourtCaseManagementStandaloneApplication`, runtime default registration, documentation checks, and package-local implementation and generation audits.
+- Expanded `court_operations_app.py` to cover case numbering, party representation, filing deficiency review, evidence intake, docket sequence enforcement, hearing scheduling, order entry, operational tasks, workbench queues, detail timelines, forms, wizards, controls, and smoke tests.
+- Extended `services.py` with executable evidence, task, and detail operations plus a standalone service wrapper.
+- Extended `routes.py` with standalone dispatch for evidence, task, and order operations.
+- Extended `ui.py` with evidence and task queues plus case-detail sections.
+- Extended `agent.py` with filing triage, hearing preparation, and order follow-up skills.
+- Updated runtime, manifest, migration, release evidence, README, and implementation-plan/status docs to describe the standalone slice accurately.
+- Added `audit.py` and focused package tests covering the executable behavior.
 
 ## Review Findings Resolved
 
-- Replaced nondeterministic assistant document hashing with SHA-256.
-- Added route operation mapping instead of generic route acknowledgements.
-- Added service state so package-local commands are executable across a realistic one-PBC app flow.
-- Added guard tests for duplicate case numbers, docket sequence gaps, courtroom conflicts, and unsigned order entry.
+- Closed the previous gap where the slice had no package-local standalone composition entrypoint.
+- Added real executable evidence and task handling instead of leaving those concerns in docs only.
+- Added focused standalone audits so the slice can be validated without depending only on repo-wide audits.
+- Aligned package docs and release evidence with the actual slice implementation.
 
 ## Validation
 
 Validation commands for this slice:
 
-- `python3 -m py_compile src/pyAppGen/pbcs/court_case_management/court_operations_app.py src/pyAppGen/pbcs/court_case_management/runtime.py src/pyAppGen/pbcs/court_case_management/services.py src/pyAppGen/pbcs/court_case_management/routes.py src/pyAppGen/pbcs/court_case_management/ui.py src/pyAppGen/pbcs/court_case_management/agent.py src/pyAppGen/pbcs/court_case_management/release_evidence.py`
-- `./.venv/bin/pytest -q src/pyAppGen/pbcs/court_case_management/tests`
-- `pbc_implementation_release_audit(("court_case_management",))`
-- `pbc_generation_smoke_audit(("court_case_management",))`
+- `python3 -m py_compile src/pyAppGen/pbcs/court_case_management/*.py src/pyAppGen/pbcs/court_case_management/tests/*.py`
+- `PYTHONPATH=src pytest -q src/pyAppGen/pbcs/court_case_management/tests`
+- `PYTHONPATH=src python3 -c "from pyAppGen.pbcs.court_case_management.audit import run_court_case_management_pbc_audit; print(run_court_case_management_pbc_audit()['ok'])"`
+- `PYTHONPATH=src python3 -c "from pyAppGen.pbc import pbc_implementation_release_audit, pbc_generation_smoke_audit; keys=('court_case_management',); print(pbc_implementation_release_audit(keys)['ok']); print(pbc_generation_smoke_audit(keys)['ok'])"`
 
 ## Remaining Risks
 
-This pass implements the core executable app foundation. Future work should add deeper service-of-process, continuance, appeals, exhibit custody, public/internal docket projection, transcript, subpoena, and judge reassignment workflows.
+This pass implements the standalone app foundation and main operational controls. Future work should add deeper service-of-process, continuance, appeals, transcript, subpoena, public/internal docket projection, and judge reassignment workflows.
