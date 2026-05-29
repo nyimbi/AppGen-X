@@ -1089,6 +1089,9 @@ Mobile verifier:
 - permissions are explained;
 - generated screens fit target density;
 - smoke launch path exists.
+  Mobile package manifests must carry the same evidence as handoff metadata:
+  signing posture, offline policy, permissions, screen-density fit, and smoke
+  launch entrypoint.
 
 Desktop verifier:
 
@@ -1097,6 +1100,9 @@ Desktop verifier:
 - splash/startup assets declared where used;
 - menus and context menus bind to handlers;
 - smoke launch path exists.
+  Desktop package manifests must carry installer posture, startup assets,
+  menu/context-menu handler binding, and smoke launch entrypoint as handoff
+  metadata.
 
 PBC verifier:
 

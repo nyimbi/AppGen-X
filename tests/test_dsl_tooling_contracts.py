@@ -2029,10 +2029,13 @@ def test_package_report_writes_release_evidence_bundle_when_output_dir_is_given(
     assert mobile_manifest["artifact_class"] == "mobile_application"
     assert mobile_manifest["signing_posture_declared"] is True
     assert mobile_manifest["offline_policy_declared"] is True
+    assert mobile_manifest["permissions_explained"] is True
+    assert mobile_manifest["screens_fit_target_density"] is True
     assert desktop_manifest["target"] == "desktop"
     assert desktop_manifest["artifact_class"] == "desktop_application"
     assert desktop_manifest["installer_posture_declared"] is True
     assert desktop_manifest["startup_assets_declared"] is True
+    assert desktop_manifest["menus_bind_to_handlers"] is True
 
 
 def test_package_cli_audit_proves_all_target_handoff_contracts(tmp_path: Path) -> None:
@@ -2045,18 +2048,31 @@ def test_package_cli_audit_proves_all_target_handoff_contracts(tmp_path: Path) -
     assert manifest_case["web_artifact_class"] == "web_application"
     assert {"routes", "forms", "handlers", "smoke_tests"} <= set(manifest_case["web_handoff_artifacts"])
     assert manifest_case["mobile_artifact_class"] == "mobile_application"
-    assert {"mobile_metadata", "signing_posture", "offline_policy", "permissions", "smoke_launch"} <= set(
-        manifest_case["mobile_handoff_artifacts"]
-    )
+    assert {
+        "mobile_metadata",
+        "signing_posture",
+        "offline_policy",
+        "permissions",
+        "screen_density",
+        "smoke_launch",
+    } <= set(manifest_case["mobile_handoff_artifacts"])
     assert manifest_case["mobile_signing_posture_declared"] is True
     assert manifest_case["mobile_offline_policy_declared"] is True
+    assert manifest_case["mobile_permissions_explained"] is True
+    assert manifest_case["mobile_screens_fit_target_density"] is True
     assert manifest_case["mobile_smoke_entrypoint"] == "mobile.launch"
     assert manifest_case["desktop_artifact_class"] == "desktop_application"
-    assert {"desktop_metadata", "installer_profile", "startup_assets", "menus", "smoke_launch"} <= set(
-        manifest_case["desktop_handoff_artifacts"]
-    )
+    assert {
+        "desktop_metadata",
+        "installer_profile",
+        "startup_assets",
+        "menus",
+        "context_menus",
+        "smoke_launch",
+    } <= set(manifest_case["desktop_handoff_artifacts"])
     assert manifest_case["desktop_installer_posture_declared"] is True
     assert manifest_case["desktop_startup_assets_declared"] is True
+    assert manifest_case["desktop_menus_bind_to_handlers"] is True
     assert manifest_case["desktop_smoke_entrypoint"] == "desktop.launch"
     assert manifest_case["pbc_artifact_class"] == "packaged_business_capability"
     assert {"manifest", "contracts", "owned_schema", "registration", "release_evidence"} <= set(
@@ -2932,16 +2948,21 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert set(manifest_case["release_evidence_reports"]) == {"web", "mobile", "desktop", "pbc", "deployment"}
     assert manifest_case["web_artifact_class"] == "web_application"
     assert manifest_case["mobile_artifact_class"] == "mobile_application"
-    assert {"signing_posture", "offline_policy", "smoke_launch"} <= set(manifest_case["mobile_handoff_artifacts"])
+    assert {"signing_posture", "offline_policy", "permissions", "screen_density", "smoke_launch"} <= set(
+        manifest_case["mobile_handoff_artifacts"]
+    )
     assert manifest_case["mobile_signing_posture_declared"] is True
     assert manifest_case["mobile_offline_policy_declared"] is True
+    assert manifest_case["mobile_permissions_explained"] is True
+    assert manifest_case["mobile_screens_fit_target_density"] is True
     assert manifest_case["mobile_smoke_entrypoint"] == "mobile.launch"
     assert manifest_case["desktop_artifact_class"] == "desktop_application"
-    assert {"installer_profile", "startup_assets", "menus", "smoke_launch"} <= set(
+    assert {"installer_profile", "startup_assets", "menus", "context_menus", "smoke_launch"} <= set(
         manifest_case["desktop_handoff_artifacts"]
     )
     assert manifest_case["desktop_installer_posture_declared"] is True
     assert manifest_case["desktop_startup_assets_declared"] is True
+    assert manifest_case["desktop_menus_bind_to_handlers"] is True
     assert manifest_case["desktop_smoke_entrypoint"] == "desktop.launch"
     assert manifest_case["pbc_artifact_class"] == "packaged_business_capability"
     assert manifest_case["deployment_artifact_class"] == "deployment_plan"
