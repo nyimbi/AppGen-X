@@ -1490,6 +1490,21 @@ def test_lsp_code_action_apply_patches_missing_operation_and_lookup_directive(tm
         text=True,
         capture_output=True,
     )
+    unknown_text_result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pyAppGen",
+            "lsp",
+            str(source_path),
+            "--apply-code-action",
+            "missing_action",
+        ],
+        check=False,
+        cwd=Path(__file__).resolve().parents[1],
+        text=True,
+        capture_output=True,
+    )
     payload = json.loads(result.stdout)
 
     assert result.returncode == 0, result.stderr
@@ -1499,6 +1514,11 @@ def test_lsp_code_action_apply_patches_missing_operation_and_lookup_directive(tm
     assert text_result.stdout.startswith("lsp-code-action ok: action=create_operation_from_handler")
     assert "changed=True" in text_result.stdout
     assert "lint_ok=True" in text_result.stdout
+    assert unknown_text_result.returncode == 1
+    assert unknown_text_result.stdout.startswith("lsp-code-action failed: action=missing_action")
+    assert "available-actions " in unknown_text_result.stdout
+    assert "create_operation_from_handler" in unknown_text_result.stdout
+    assert "error AGX0100: Unknown code action: missing_action" in unknown_text_result.stdout
 
 
 def test_lsp_code_actions_cover_required_tooling_quick_fixes() -> None:
