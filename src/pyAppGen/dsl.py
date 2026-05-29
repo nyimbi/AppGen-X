@@ -2409,6 +2409,65 @@ def _emit_designer_sync_text(payload: dict) -> None:
         print(f"{'ok' if check.get('ok') else 'fail'} {check.get('check')}")
 
 
+def _designer_sync_text_renderer_contract() -> dict:
+    """Prove designer-sync text logs expose round-trip and matrix evidence."""
+    payload = {
+        "format": "appgen.designer-sync-report.v1",
+        "ok": True,
+        "semantic_model_format": "appgen.semantic-model.v1",
+        "surfaces": (
+            "form_designer",
+            "database_designer",
+            "workflow_designer",
+            "package_designer",
+        ),
+        "visual_edit": {
+            "accepted": True,
+            "round_trip_ok": True,
+            "changed_surfaces": ("database_designer", "form_designer"),
+            "dsl_diff": ("+  sync_note: string", "+  Main: sync_note"),
+            "diagnostics": (),
+        },
+        "visual_edit_matrix": {
+            "format": "appgen.designer-visual-edit-matrix.v1",
+            "ok": True,
+            "cases": (
+                {"id": "database_add_field"},
+                {"id": "form_add_component"},
+                {"id": "workflow_add_transition"},
+            ),
+            "blocking_gaps": (),
+            "required_operations": ("add_field", "add_component", "add_flow_transition"),
+        },
+        "checks": (
+            {"check": "semantic_round_trip", "ok": True},
+            {"check": "projection_refresh", "ok": True},
+        ),
+    }
+    output = io.StringIO()
+    with contextlib.redirect_stdout(output):
+        _emit_tooling_payload(payload, as_json=False)
+    text = output.getvalue()
+    required_fragments = (
+        "designer-sync ok: format=appgen.designer-sync-report.v1 semantic_format=appgen.semantic-model.v1 surfaces=4",
+        "surfaces form_designer, database_designer, workflow_designer, package_designer",
+        "visual-edit accepted=True round_trip=True changed=database_designer,form_designer diff_lines=2",
+        "visual-edit-matrix ok=True cases=3 gaps=0",
+        "visual-edit-operations add_field, add_component, add_flow_transition",
+        "ok semantic_round_trip",
+        "ok projection_refresh",
+    )
+    missing = tuple(fragment for fragment in required_fragments if fragment not in text)
+    return {
+        "format": "appgen.designer-sync-text-renderer.v1",
+        "ok": not missing and not text.lstrip().startswith("{"),
+        "required_fragments": required_fragments,
+        "missing_fragments": missing,
+        "json_fallback": text.lstrip().startswith("{"),
+        "text_prefix": text[:240],
+    }
+
+
 def _emit_diagnostic_catalog_text(payload: dict) -> None:
     status = "ok" if payload.get("ok") else "failed"
     required = tuple(payload.get("required_codes", ()))
@@ -3082,6 +3141,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
         },
     )
     designer_visual_edit_matrix = designer_visual_edit_matrix_dsl(source, source_name="tooling-audit.appgen")
+    designer_sync_text_renderer = _designer_sync_text_renderer_contract()
     migration_reports = _tooling_audit_migration_reports()
     migration_detected = tuple(
         sorted(
@@ -3389,13 +3449,15 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and designer["semantic_model_format"] == "appgen.semantic-model.v1"
             and designer["visual_edit"]["round_trip_ok"]
             and designer_visual_edit_matrix["ok"]
+            and designer_sync_text_renderer["ok"]
             and designer_sync_cli["ok"],
-            "Studio designer projections and visual edits round-trip through linted DSL patches.",
+            "Studio designer projections, visual edits, and text summaries round-trip through linted DSL patches.",
             "docs/tooling.md#ide-integration",
             {
                 "format": designer.get("format"),
                 "surfaces": designer.get("surfaces"),
                 "visual_edit_matrix": designer_visual_edit_matrix,
+                "text_renderer": designer_sync_text_renderer,
                 "cli": designer_sync_cli,
             },
         ),

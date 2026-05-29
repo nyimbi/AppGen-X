@@ -1078,6 +1078,9 @@ Without `--json`, `appgen designer-sync` prints the
 round-trip status, changed surfaces, DSL diff line count, visual-edit matrix
 coverage, required visual
 edit operation names, and sync checks.
+`appgen.designer-sync-text-renderer.v1` is embedded in the tooling audit to
+prove those designer handoff logs keep round-trip, projection, matrix, and
+required-operation evidence visible without JSON parsing.
 `--edit-json` must be a JSON object; malformed edit payloads are CLI
 configuration errors and return exit code `2` before any designer mutation is
 accepted.

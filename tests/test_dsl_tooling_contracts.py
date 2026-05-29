@@ -3955,6 +3955,24 @@ def test_validate_generate_text_renderer_contract_proves_readiness_log_markers()
     } <= set(report["required_fragments"])
 
 
+def test_designer_sync_text_renderer_contract_proves_round_trip_log_markers() -> None:
+    report = appgen_dsl._designer_sync_text_renderer_contract()
+
+    assert report["format"] == "appgen.designer-sync-text-renderer.v1"
+    assert report["ok"] is True
+    assert report["missing_fragments"] == ()
+    assert report["json_fallback"] is False
+    assert report["text_prefix"].startswith(
+        "designer-sync ok: format=appgen.designer-sync-report.v1 semantic_format=appgen.semantic-model.v1"
+    )
+    assert {
+        "visual-edit accepted=True round_trip=True changed=database_designer,form_designer diff_lines=2",
+        "visual-edit-matrix ok=True cases=3 gaps=0",
+        "visual-edit-operations add_field, add_component, add_flow_transition",
+        "ok projection_refresh",
+    } <= set(report["required_fragments"])
+
+
 def test_tooling_audit_text_summary_exposes_sections_gaps_and_formats() -> None:
     payload = {
         "format": "appgen.tooling-audit.v1",
