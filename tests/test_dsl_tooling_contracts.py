@@ -2881,11 +2881,16 @@ def test_appgen_parser_golden_subcommand_emits_json_and_text_contracts() -> None
 
     assert json_result.returncode == 0, json_result.stderr
     assert text_result.returncode == 0, text_result.stderr
-    assert json.loads(json_result.stdout)["format"] == "appgen.parser-golden-audit.v1"
+    payload = json.loads(json_result.stdout)
+    assert payload["format"] == "appgen.parser-golden-audit.v1"
     assert text_result.stdout.startswith("parser-golden ok:")
-    assert "valid=" in text_result.stdout
-    assert "invalid=" in text_result.stdout
+    assert f"{payload['fixture_count']} fixtures" in text_result.stdout
+    assert f"valid={payload['valid_fixture_count']}" in text_result.stdout
+    assert f"invalid={payload['invalid_fixture_count']}" in text_result.stdout
+    assert f"constructs={len(payload['constructs_covered'])}" in text_result.stdout
     assert "missing=0" in text_result.stdout
+    assert "missing-constructs " not in text_result.stdout
+    assert "fail " not in text_result.stdout
 
 
 def test_semantic_drift_audit_proves_tooling_surfaces_share_one_model() -> None:
