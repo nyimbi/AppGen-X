@@ -1935,7 +1935,13 @@ def _emit_tooling_payload(payload: dict, *, as_json: bool) -> None:
         print(
             f"component-publish {status}: component={payload.get('component')} "
             f"catalog={catalog.get('source') or 'inline'} already_registered={patch.get('already_registered')} "
-            f"write_performed={patch.get('write_performed')}"
+            f"write_performed={patch.get('write_performed')} "
+            f"patch={patch.get('format')}"
+        )
+        print(
+            f"catalog-count before={patch.get('before_count', catalog.get('count', 0))} "
+            f"after={patch.get('after_count', catalog.get('count', 0))} "
+            f"existing={catalog.get('count', 0)}"
         )
         for gap in payload.get("blocking_gaps", ()):
             print(f"gap {gap}")

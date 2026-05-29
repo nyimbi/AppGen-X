@@ -769,6 +769,9 @@ side-effect-free `appgen.component-catalog-patch.v1`, existing catalog component
 names when a catalog path is supplied, the upsert target, and explicit
 `side_effect_free`/`write_performed` evidence. This command is the non-PBC
 publication lane for components used by strict linting and visual designers.
+Without `--json`, the command prints the component name, catalog source,
+registration state, write-performed flag, catalog patch format, and before/after
+catalog counts.
 
 ### `appgen pbc`
 

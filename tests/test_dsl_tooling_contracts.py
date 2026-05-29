@@ -466,6 +466,8 @@ def test_appgen_component_publish_subcommand_emits_side_effect_free_catalog_patc
     assert text_result.returncode == 0, text_result.stderr
     assert text_result.stdout.startswith("component-publish ok: component=CustomGauge")
     assert "write_performed=False" in text_result.stdout
+    assert "patch=appgen.component-catalog-patch.v1" in text_result.stdout
+    assert "catalog-count before=1 after=2 existing=1" in text_result.stdout
 
 
 def test_lint_directory_audit_covers_strict_component_cli_gate(tmp_path: Path) -> None:
