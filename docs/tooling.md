@@ -870,8 +870,9 @@ document-symbol count, workspace-symbol count, source-of-truth contract, hover
 evidence, completion coverage format and missing-source count, definition
 contract status, reference contract location count, formatting contract edit
 count, and rename status when a rename is requested. Rename text output includes
-whether the rename was blocked, blocker count, and whether the underlying
-migration preview requires explicit approval.
+the `appgen.lsp-rename.v1` contract format, whether the rename was blocked,
+blocker count, the nested `appgen.migration-plan.v1` migration-preview format,
+and whether that migration preview requires explicit approval.
 
 ### Capabilities
 

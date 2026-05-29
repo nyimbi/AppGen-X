@@ -2313,9 +2313,11 @@ def _emit_lsp_service_text(payload: dict) -> None:
         blockers = tuple(rename.get("blockers", ()))
         migration = rename.get("migration_preview", {})
         print(
-            f"rename ok={rename.get('ok')} changed={rename.get('changed')} "
+            f"rename ok={rename.get('ok')} format={rename.get('format')} "
+            f"changed={rename.get('changed')} "
             f"blocked={rename.get('blocked', False)} diagnostics={len(diagnostics)} "
-            f"blockers={len(blockers)} requires_approval={migration.get('requires_approval', False)}"
+            f"blockers={len(blockers)} migration={migration.get('format')} "
+            f"requires_approval={migration.get('requires_approval', False)}"
         )
     hover = payload.get("hover") or {}
     print(f"hover_items={len(hover.get('contents', ()))}")
@@ -4410,8 +4412,10 @@ view InvoiceForm for Invoice {
     blocked_text_ok = (
         risk_text_exit == 0
         and "rename ok=False" in blocked_text
+        and "format=appgen.lsp-rename.v1" in blocked_text
         and "blocked=True" in blocked_text
         and "requires_approval=True" in blocked_text
+        and "migration=appgen.migration-plan.v1" in blocked_text
         and "blockers=1" in blocked_text
     )
 
