@@ -3081,7 +3081,10 @@ def _emit_lsp_service_text(payload: dict) -> None:
             fix_text = f" fixes={','.join(fixes)}" if fixes else ""
             print(f"rename-blocker {blocker.get('code')}: {blocker.get('message')}{fix_text}")
     hover = payload.get("hover") or {}
-    print(f"hover_items={len(hover.get('contents', ()))}")
+    hover_contents = tuple(hover.get("contents", ()))
+    print(f"hover_items={len(hover_contents)}")
+    for content in hover_contents:
+        print(f"hover {content}")
 
 
 def _lsp_service_text_renderer_contract() -> dict:
@@ -3141,6 +3144,8 @@ def _lsp_service_text_renderer_contract() -> dict:
         "rename ok=False format=appgen.lsp-rename.v1 changed=False blocked=True diagnostics=1 blockers=1 migration_format=appgen.migration-plan.v1 requires_approval=True",
         "rename-blocker AGX1101: Destructive migration changes require approval. fixes=add_rename_hint",
         "hover_items=2",
+        "hover table Invoice",
+        "hover field total",
     )
     missing = tuple(fragment for fragment in required_fragments if fragment not in text)
     return {

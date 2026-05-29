@@ -4190,6 +4190,8 @@ def test_lsp_service_text_renderer_contract_proves_editor_log_markers() -> None:
         "references format=appgen.lsp-references.v1 locations=2",
         "rename ok=False format=appgen.lsp-rename.v1 changed=False blocked=True diagnostics=1 blockers=1 migration_format=appgen.migration-plan.v1 requires_approval=True",
         "rename-blocker AGX1101: Destructive migration changes require approval. fixes=add_rename_hint",
+        "hover table Invoice",
+        "hover field total",
     } <= set(report["required_fragments"])
 
 
