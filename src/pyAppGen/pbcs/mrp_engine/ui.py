@@ -252,3 +252,52 @@ def smoke_test():
         "cards": cards,
         "side_effects": (),
     }
+
+
+
+def mrp_engine_form_contracts() -> dict:
+    contracts = (
+        {'key': 'MrpConfigurationForm', 'operation': 'configure_runtime', 'table': 'mrp_engine_mrp_configuration', 'fields': ('database_backend', 'event_topic', 'retry_limit', 'allowed_sites', 'default_planning_bucket'), 'permission': 'mrp_engine.configure', 'keywords': ('configure', 'planning bucket', 'backend')},
+        {'key': 'MrpRuleForm', 'operation': 'register_rule', 'table': 'mrp_engine_mrp_rule', 'fields': ('rule_id', 'tenant', 'rule_type', 'allowed_sites', 'allowed_bom_statuses', 'demand_sources', 'release_routes', 'status'), 'permission': 'mrp_engine.configure', 'keywords': ('rule', 'substitution', 'release route')},
+        {'key': 'BomForm', 'operation': 'register_bom', 'table': 'mrp_engine_bill_of_material', 'fields': ('bom_id', 'tenant', 'parent_item', 'component_item', 'component_qty', 'scrap_percent', 'revision', 'status', 'site'), 'permission': 'mrp_engine.master', 'keywords': ('bom', 'component', 'scrap')},
+        {'key': 'DemandProjectionForm', 'operation': 'ingest_demand_projection', 'table': 'mrp_engine_material_demand', 'fields': ('demand_id', 'tenant', 'item', 'site', 'quantity', 'source', 'need_date'), 'permission': 'mrp_engine.plan', 'keywords': ('demand', 'forecast', 'sales order')},
+        {'key': 'InventoryProjectionForm', 'operation': 'ingest_inventory_projection', 'table': 'mrp_engine_inventory_projection', 'fields': ('inventory_id', 'tenant', 'item', 'site', 'available_qty', 'quality_status'), 'permission': 'mrp_engine.plan', 'keywords': ('inventory', 'released stock', 'quality status')},
+        {'key': 'MrpRunForm', 'operation': 'create_mrp_run', 'table': 'mrp_engine_mrp_run', 'fields': ('run_id', 'tenant', 'site', 'horizon_days', 'scenario', 'planner'), 'permission': 'mrp_engine.plan', 'keywords': ('run', 'netting', 'scenario')},
+    )
+    return {'format': 'appgen.mrp-engine-standalone-forms.v1', 'ok': all(item['table'].startswith('mrp_engine_') for item in contracts), 'pbc': 'mrp_engine', 'contracts': contracts, 'side_effects': ()}
+
+
+def mrp_engine_wizard_contracts() -> dict:
+    contracts = (
+        {'key': 'PlanningDocumentIntakeWizard', 'steps': ('parse_document', 'map_bom_demand_inventory', 'preview_mutations', 'require_confirmation'), 'forms': ('BomForm', 'DemandProjectionForm', 'InventoryProjectionForm'), 'keywords': ('document', 'instruction', 'demand', 'bom')},
+        {'key': 'MrpRunWizard', 'steps': ('validate_configuration', 'create_run', 'explode_bom', 'net_supply_demand'), 'forms': ('MrpRunForm',), 'keywords': ('run', 'mrp', 'planning')},
+        {'key': 'NettingAndPeggingWizard', 'steps': ('explode_bom', 'calculate_shortage', 'peg_shortage', 'create_planned_orders'), 'forms': ('DemandProjectionForm', 'InventoryProjectionForm'), 'keywords': ('netting', 'pegging', 'shortage')},
+        {'key': 'PlannedOrderReleaseWizard', 'steps': ('screen_policy', 'generate_supply_proof', 'release_order', 'publish_appgen_event'), 'forms': ('MrpRunForm',), 'keywords': ('release', 'planned order', 'purchase suggestion')},
+    )
+    return {'format': 'appgen.mrp-engine-standalone-wizards.v1', 'ok': all(item['steps'] for item in contracts), 'pbc': 'mrp_engine', 'contracts': contracts, 'side_effects': ()}
+
+
+def mrp_engine_control_catalog() -> dict:
+    contracts = (
+        {'key': 'mrp_backend_event_contract', 'operation': 'run_control_tests', 'table': 'mrp_engine_mrp_control_assertion', 'permission': 'mrp_engine.audit'},
+        {'key': 'mrp_shortage_netting_control', 'operation': 'run_control_tests', 'table': 'mrp_engine_mrp_control_assertion', 'permission': 'mrp_engine.audit'},
+        {'key': 'supply_availability_proof', 'operation': 'generate_supply_proof', 'table': 'mrp_engine_supply_availability_proof', 'permission': 'mrp_engine.audit'},
+    )
+    return {'format': 'appgen.mrp-engine-standalone-controls.v1', 'ok': all(item['table'].startswith('mrp_engine_') for item in contracts), 'pbc': 'mrp_engine', 'contracts': contracts, 'side_effects': ()}
+
+
+def mrp_engine_standalone_workbench_blueprint() -> dict:
+    forms = mrp_engine_form_contracts(); wizards = mrp_engine_wizard_contracts(); controls = mrp_engine_control_catalog()
+    return {'format': 'appgen.mrp-engine-standalone-workbench.v1', 'ok': forms['ok'] and wizards['ok'] and controls['ok'], 'pbc': 'mrp_engine', 'forms': forms['contracts'], 'wizards': wizards['contracts'], 'controls': controls['contracts'], 'panels': mrp_engine_ui_contract()['panels'], 'side_effects': ()}
+
+
+def mrp_engine_render_standalone_workbench(workbench: dict) -> dict:
+    blueprint = mrp_engine_standalone_workbench_blueprint()
+    cards = (
+        {'key': 'boms', 'value': workbench.get('bom_count', workbench.get('bom_edge_count', 0)), 'fragment': 'BomGraphExplorer'},
+        {'key': 'demands', 'value': workbench.get('demand_count', 0), 'fragment': 'DemandConsole'},
+        {'key': 'runs', 'value': workbench.get('run_count', workbench.get('mrp_run_count', 0)), 'fragment': 'MrpRunControl'},
+        {'key': 'planned_orders', 'value': workbench.get('planned_order_count', 0), 'fragment': 'PlannedOrderBoard'},
+        {'key': 'shortage_total', 'value': workbench.get('shortage_total', 0), 'fragment': 'ShortageBoard'},
+    )
+    return {'format': 'appgen.mrp-engine-standalone-render.v1', 'ok': blueprint['ok'] and bool(cards), 'pbc': 'mrp_engine', 'tenant': workbench.get('tenant'), 'cards': cards, 'forms': tuple(item['key'] for item in blueprint['forms']), 'wizards': tuple(item['key'] for item in blueprint['wizards']), 'controls': tuple(item['key'] for item in blueprint['controls']), 'side_effects': ()}
