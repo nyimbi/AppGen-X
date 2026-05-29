@@ -2195,6 +2195,12 @@ def test_package_cli_audit_proves_all_target_handoff_contracts(tmp_path: Path) -
     assert {"units", "health_checks", "environment", "resource_hints", "topology_graph"} <= set(
         manifest_case["deployment_handoff_artifacts"]
     )
+    assert manifest_case["deployment_units_declared"] is True
+    assert manifest_case["deployment_health_checks_declared"] is True
+    assert manifest_case["deployment_environment_variables_named"] is True
+    assert manifest_case["deployment_secret_values_absent"] is True
+    assert manifest_case["deployment_resource_hints_present"] is True
+    assert manifest_case["deployment_topology_graph_connected"] is True
     assert manifest_case["deployment_topology_declared"] is True
 
 
@@ -3084,6 +3090,25 @@ def test_package_verify_cli_audit_exposes_web_manifest_readiness_metadata(tmp_pa
     assert manifest_case["web_handler_targets_resolve"] is True
     assert manifest_case["web_smoke_tests_declared"] is True
     assert manifest_case["web_smoke_entrypoint"] == "web.smoke"
+
+
+def test_package_verify_cli_audit_exposes_deployment_manifest_readiness_metadata(tmp_path: Path) -> None:
+    report = appgen_dsl._tooling_audit_package_verify_cli(tmp_path, TOOLING_SAMPLE)
+    manifest_case = next(case for case in report["cases"] if case["case"] == "package_writes_target_manifests")
+
+    assert report["format"] == "appgen.package-verify-cli-audit.v1"
+    assert report["ok"] is True
+    assert manifest_case["deployment_artifact_class"] == "deployment_plan"
+    assert {"units", "health_checks", "environment", "resource_hints", "topology_graph"} <= set(
+        manifest_case["deployment_handoff_artifacts"]
+    )
+    assert manifest_case["deployment_units_declared"] is True
+    assert manifest_case["deployment_health_checks_declared"] is True
+    assert manifest_case["deployment_environment_variables_named"] is True
+    assert manifest_case["deployment_secret_values_absent"] is True
+    assert manifest_case["deployment_resource_hints_present"] is True
+    assert manifest_case["deployment_topology_graph_connected"] is True
+    assert manifest_case["deployment_topology_declared"] is True
 
 
 def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:

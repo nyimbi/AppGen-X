@@ -5191,6 +5191,12 @@ def _tooling_audit_package_verify_cli(tmp: Path, source: str) -> dict:
             and pbc_manifest.get("side_effect_free_registration") is True
             and deployment_manifest.get("artifact_class") == "deployment_plan"
             and {"units", "health_checks", "environment", "resource_hints", "topology_graph"} <= set(deployment_handoff)
+            and deployment_manifest.get("units_declared") is True
+            and deployment_manifest.get("health_checks_declared") is True
+            and deployment_manifest.get("environment_variables_named") is True
+            and deployment_manifest.get("secret_values_absent") is True
+            and deployment_manifest.get("resource_hints_present") is True
+            and deployment_manifest.get("topology_graph_connected") is True
             and deployment_manifest.get("topology_declared") is True,
             "exit_code": package_exit,
             "payload_format": package_payload.get("format"),
@@ -5233,6 +5239,12 @@ def _tooling_audit_package_verify_cli(tmp: Path, source: str) -> dict:
             "pbc_side_effect_free_registration": pbc_manifest.get("side_effect_free_registration"),
             "deployment_artifact_class": deployment_manifest.get("artifact_class"),
             "deployment_handoff_artifacts": deployment_handoff,
+            "deployment_units_declared": deployment_manifest.get("units_declared"),
+            "deployment_health_checks_declared": deployment_manifest.get("health_checks_declared"),
+            "deployment_environment_variables_named": deployment_manifest.get("environment_variables_named"),
+            "deployment_secret_values_absent": deployment_manifest.get("secret_values_absent"),
+            "deployment_resource_hints_present": deployment_manifest.get("resource_hints_present"),
+            "deployment_topology_graph_connected": deployment_manifest.get("topology_graph_connected"),
             "deployment_topology_declared": deployment_manifest.get("topology_declared"),
         },
     )
@@ -8527,7 +8539,14 @@ def _target_package_manifest(
         "deployment": {
             "artifact_class": "deployment_plan",
             "handoff_artifacts": ("units", "health_checks", "environment", "resource_hints", "topology_graph"),
-            "topology_declared": check_map.get("units_declared", False),
+            "units_declared": check_map.get("units_declared", False),
+            "health_checks_declared": check_map.get("health_checks_declared", False),
+            "environment_variables_named": check_map.get("environment_variables_named", False),
+            "secret_values_absent": check_map.get("secret_values_absent", False),
+            "resource_hints_present": check_map.get("resource_hints_present_for_production_units", False),
+            "topology_graph_connected": check_map.get("topology_graph_connected_and_explainable", False),
+            "topology_declared": check_map.get("units_declared", False)
+            and check_map.get("topology_graph_connected_and_explainable", False),
             "smoke_entrypoint": "deployment.verify",
         },
     }

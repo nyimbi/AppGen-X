@@ -1199,6 +1199,9 @@ Deployment verifier:
 - secret values absent;
 - resource hints present for production units;
 - topology graph is connected and explainable.
+  Deployment package manifests must carry the same readiness booleans as
+  handoff metadata: units, health checks, environment variable names,
+  secret-value absence, resource hints, and connected topology graph evidence.
 
 ## Test Strategy
 
