@@ -2393,21 +2393,37 @@ def test_vscode_extension_contract_wires_appgen_language_server_and_commands() -
     assert audit["checks"]["command_palette"] is True
     assert audit["checks"]["cli_command_configuration"] is True
     assert {".appgen", ".ag", ".ags"} <= set(audit["language_extensions"])
+    assert audit["language_extension_count"] == len(audit["language_extensions"])
+    assert audit["command_count"] == len(audit["commands"])
     assert audit["required_command_count"] == len(audit["required_commands"])
     assert audit["required_command_count"] >= 10
+    assert audit["missing_command_count"] == 0
+    assert audit["missing_commands"] == ()
     assert audit["command_palette_count"] >= audit["required_command_count"]
+    assert audit["missing_command_palette_count"] == 0
+    assert audit["missing_command_palette"] == ()
     assert audit["activation_event_count"] == len(audit["activation_events"])
+    assert audit["required_activation_event_count"] == len(audit["required_activation_events"])
+    assert audit["missing_activation_event_count"] == 0
+    assert audit["missing_activation_events"] == ()
     assert "onLanguage:appgen" in audit["activation_events"]
     assert {f"onCommand:{command}" for command in audit["required_commands"]} <= set(audit["activation_events"])
     assert set(audit["required_commands"]) <= set(audit["command_palette"])
     assert "appgen.command" in audit["configuration_properties"]
+    assert audit["configuration_property_count"] == len(audit["configuration_properties"])
     assert audit["checks"]["diagnostics_collection"] is True
     assert audit["checks"]["cli_command_contracts"] is True
     assert audit["checks"]["webview_renderers"] is True
     assert audit["provider_marker_count"] == len(audit["provider_markers"])
     assert audit["provider_marker_count"] >= 10
+    assert audit["missing_provider_marker_count"] == 0
+    assert audit["missing_provider_markers"] == ()
     assert audit["command_cli_marker_count"] == len(audit["command_cli_markers"])
+    assert audit["missing_command_cli_marker_count"] == 0
+    assert audit["missing_command_cli_markers"] == ()
     assert audit["webview_marker_count"] == len(audit["webview_markers"])
+    assert audit["missing_webview_marker_count"] == 0
+    assert audit["missing_webview_markers"] == ()
     assert '["generate", file, "--out", out, "--allow-warnings", "--json"]' in audit["command_cli_markers"]
 
 
@@ -4482,7 +4498,7 @@ def test_doctor_text_renderer_contract_proves_check_and_detail_format_markers() 
         "ok cli_alias_contract detail_format=appgen.cli-alias-contract.v1: appgen and apg resolve to the same tooling entrypoint.",
         "fail module_boundaries detail_format=appgen.module-boundary-audit.v1: Documented DSL tooling boundaries are incomplete.",
         "ok studio_semantic_service detail_format=appgen.designer-sync-report.v1: Studio designer service is bound to the shared semantic model.",
-        "ok vscode_extension_surface detail_format=appgen.vscode-extension-surface.v1: VS Code extension scaffold declares the AppGen-X language, commands, and LSP providers.",
+        "ok vscode_extension_surface detail_format=appgen.vscode-extension-audit.v1: VS Code extension scaffold declares the AppGen-X language, commands, and LSP providers.",
     } <= set(report["required_fragments"])
 
 

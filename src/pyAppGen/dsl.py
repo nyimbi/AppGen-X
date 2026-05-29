@@ -3166,7 +3166,7 @@ def _doctor_text_renderer_contract() -> dict:
                 "check": "vscode_extension_surface",
                 "ok": True,
                 "message": "VS Code extension scaffold declares the AppGen-X language, commands, and LSP providers.",
-                "detail": {"report_format": "appgen.vscode-extension-surface.v1"},
+                "detail": {"report_format": "appgen.vscode-extension-audit.v1"},
             },
         ),
         "blocking_gaps": ("module_boundaries",),
@@ -3184,7 +3184,7 @@ def _doctor_text_renderer_contract() -> dict:
         "ok cli_alias_contract detail_format=appgen.cli-alias-contract.v1: appgen and apg resolve to the same tooling entrypoint.",
         "fail module_boundaries detail_format=appgen.module-boundary-audit.v1: Documented DSL tooling boundaries are incomplete.",
         "ok studio_semantic_service detail_format=appgen.designer-sync-report.v1: Studio designer service is bound to the shared semantic model.",
-        "ok vscode_extension_surface detail_format=appgen.vscode-extension-surface.v1: VS Code extension scaffold declares the AppGen-X language, commands, and LSP providers.",
+        "ok vscode_extension_surface detail_format=appgen.vscode-extension-audit.v1: VS Code extension scaffold declares the AppGen-X language, commands, and LSP providers.",
     )
     missing = tuple(fragment for fragment in required_fragments if fragment not in text)
     counts = _text_renderer_contract_counts(
@@ -5035,6 +5035,13 @@ def _tooling_audit_vscode_extension(root: Path) -> dict:
         "renderPbcCatalog",
         "showJsonPreview",
     )
+    required_activation_events = {f"onCommand:{command}" for command in required_commands}
+    missing_commands = tuple(sorted(required_commands - commands))
+    missing_activation_events = tuple(sorted(required_activation_events - set(activation_events)))
+    missing_command_palette = tuple(sorted(required_commands - command_palette))
+    missing_provider_markers = tuple(marker for marker in provider_markers if marker not in source)
+    missing_command_cli_markers = tuple(marker for marker in command_cli_markers if marker not in source)
+    missing_webview_markers = tuple(marker for marker in webview_markers if marker not in source)
     checks = {
         "package_json": package_path.exists(),
         "language_configuration": language_config.exists(),
@@ -5042,35 +5049,52 @@ def _tooling_audit_vscode_extension(root: Path) -> dict:
         "language_metadata": any(language.get("id") == "appgen" for language in languages)
         and {".appgen", ".ag", ".ags"} <= set(language_extensions)
         and "onLanguage:appgen" in activation_events,
-        "commands": required_commands <= commands,
-        "command_activation_events": {f"onCommand:{command}" for command in required_commands} <= set(activation_events),
-        "command_palette": required_commands <= command_palette,
+        "commands": not missing_commands,
+        "command_activation_events": not missing_activation_events,
+        "command_palette": not missing_command_palette,
         "cli_command_configuration": configuration_properties.get("appgen.command", {}).get("default") == "appgen",
-        "providers": all(marker in source for marker in provider_markers),
+        "providers": not missing_provider_markers,
         "diagnostics_collection": 'createDiagnosticCollection("appgen")' in source
         and "textDocument/publishDiagnostics" in source,
-        "cli_command_contracts": all(marker in source for marker in command_cli_markers),
-        "webview_renderers": all(marker in source for marker in webview_markers),
+        "cli_command_contracts": not missing_command_cli_markers,
+        "webview_renderers": not missing_webview_markers,
     }
     return {
         "format": "appgen.vscode-extension-audit.v1",
         "ok": all(checks.values()),
         "checks": checks,
         "commands": tuple(sorted(commands)),
+        "command_count": len(commands),
         "required_commands": tuple(sorted(required_commands)),
         "required_command_count": len(required_commands),
+        "missing_commands": missing_commands,
+        "missing_command_count": len(missing_commands),
         "command_palette_count": len(command_palette),
         "command_palette": tuple(sorted(command_palette)),
+        "missing_command_palette": missing_command_palette,
+        "missing_command_palette_count": len(missing_command_palette),
         "configuration_properties": tuple(sorted(configuration_properties)),
+        "configuration_property_count": len(configuration_properties),
         "language_extensions": language_extensions,
+        "language_extension_count": len(language_extensions),
         "activation_events": activation_events,
         "activation_event_count": len(activation_events),
+        "required_activation_events": tuple(sorted(required_activation_events)),
+        "required_activation_event_count": len(required_activation_events),
+        "missing_activation_events": missing_activation_events,
+        "missing_activation_event_count": len(missing_activation_events),
         "provider_markers": provider_markers,
         "provider_marker_count": len(provider_markers),
+        "missing_provider_markers": missing_provider_markers,
+        "missing_provider_marker_count": len(missing_provider_markers),
         "command_cli_markers": command_cli_markers,
         "command_cli_marker_count": len(command_cli_markers),
+        "missing_command_cli_markers": missing_command_cli_markers,
+        "missing_command_cli_marker_count": len(missing_command_cli_markers),
         "webview_markers": webview_markers,
         "webview_marker_count": len(webview_markers),
+        "missing_webview_markers": missing_webview_markers,
+        "missing_webview_marker_count": len(missing_webview_markers),
     }
 
 

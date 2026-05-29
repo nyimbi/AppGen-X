@@ -1216,7 +1216,11 @@ configuration, CLI-backed command argument contracts, and graph/artifact/PBC
 webview renderers must all be present before the extension is counted as
 tooling-complete. The audit also reports command, activation-event,
 provider-marker, CLI-contract-marker, and webview-marker counts so release
-evidence captures the editor surface breadth, not only pass/fail booleans.
+evidence captures the editor surface breadth, not only pass/fail booleans. It
+also reports missing-command, missing-activation-event, missing-palette-entry,
+missing-provider-marker, missing-CLI-contract-marker, and
+missing-webview-marker counts, which must all be zero for the extension gate to
+pass.
 
 ### AppGen-X Studio / Monaco
 
