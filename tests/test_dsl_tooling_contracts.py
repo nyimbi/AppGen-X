@@ -977,9 +977,9 @@ def test_appgen_nl_plan_subcommand_emits_json_and_text_contracts(tmp_path: Path)
     assert f"token_notes={len(payload['token_budget_notes'])}" in text_result.stdout
     assert f"token-budget-notes {len(payload['token_budget_notes'])}" in text_result.stdout
     assert "operation-kinds add_table" in text_result.stdout
-    assert f"lint {payload['lint']['format']}: ok={payload['lint']['ok']}" in text_result.stdout
+    assert f"lint format={payload['lint']['format']}: ok={payload['lint']['ok']}" in text_result.stdout
     assert (
-        f"migration-preview {payload['migration_preview']['format']} postgresql: "
+        f"migration-preview format={payload['migration_preview']['format']} backend=postgresql: "
         f"changes={len(payload['migration_preview']['changes'])} "
         f"requires_approval={payload['migration_preview']['requires_approval']}"
     ) in text_result.stdout

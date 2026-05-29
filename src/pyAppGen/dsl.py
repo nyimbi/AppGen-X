@@ -2168,10 +2168,10 @@ def _emit_nl_plan_text(payload: dict) -> None:
         print(f"token-budget-notes {len(token_budget_notes)}")
     lint = payload.get("lint", {})
     if lint.get("format") == "appgen.lint-report.v1":
-        print(f"lint {lint.get('format')}: ok={lint.get('ok')}")
+        print(f"lint format={lint.get('format')}: ok={lint.get('ok')}")
     if migration.get("format") == "appgen.migration-plan.v1":
         print(
-            f"migration-preview {migration.get('format')} {migration.get('backend', 'unknown')}: "
+            f"migration-preview format={migration.get('format')} backend={migration.get('backend', 'unknown')}: "
             f"changes={len(migration.get('changes', ()))} "
             f"requires_approval={migration.get('requires_approval', False)}"
         )
