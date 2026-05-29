@@ -2117,7 +2117,7 @@ def _emit_migration_plan_text(payload: dict) -> None:
     missing = tuple(coverage.get("missing", ()))
     destructive_count = sum(1 for change in changes if change.get("destructive"))
     print(
-        f"migration-plan {status}: backend={payload.get('backend', 'unknown')} "
+        f"migration-plan {status}: format={payload.get('format')} backend={payload.get('backend', 'unknown')} "
         f"changes={len(changes)} destructive={destructive_count} "
         f"requires_approval={payload.get('requires_approval', False)}"
     )
@@ -2141,7 +2141,7 @@ def _emit_nl_plan_text(payload: dict) -> None:
     migration = payload.get("migration_preview") or {}
     token_budget_notes = tuple(payload.get("token_budget_notes", ()))
     print(
-        f"nl-plan {status}: intent={payload.get('intent', 'unknown')} "
+        f"nl-plan {status}: format={payload.get('format')} intent={payload.get('intent', 'unknown')} "
         f"operations={len(operations)} patch_bytes={len(payload.get('dsl_patch', ''))} "
         f"tests={len(payload.get('test_plan', ()))} "
         f"token_notes={len(token_budget_notes)}"

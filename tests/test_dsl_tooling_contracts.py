@@ -961,7 +961,7 @@ def test_appgen_nl_plan_subcommand_emits_json_and_text_contracts(tmp_path: Path)
     assert payload["format"] == "appgen.nl-plan.v1"
     assert payload["migration_preview"]["format"] == "appgen.migration-plan.v1"
     assert text_result.returncode == 0, text_result.stderr
-    assert text_result.stdout.startswith("nl-plan ok:")
+    assert text_result.stdout.startswith("nl-plan ok: format=appgen.nl-plan.v1")
     assert f"intent={payload['intent']}" in text_result.stdout
     assert f"operations={len(payload['edit_operations'])}" in text_result.stdout
     assert f"patch_bytes={len(payload['dsl_patch'])}" in text_result.stdout
@@ -1084,7 +1084,7 @@ table Payment {
     assert payload["format"] == "appgen.migration-plan.v1"
     assert any(change["kind"] == "add_table" and change["table"] == "Payment" for change in payload["changes"])
     assert text_result.returncode == 0, text_result.stderr
-    assert text_result.stdout.startswith("migration-plan ok: backend=postgresql")
+    assert text_result.stdout.startswith("migration-plan ok: format=appgen.migration-plan.v1 backend=postgresql")
     assert "changes=2" in text_result.stdout
     assert f"migration-coverage {payload['coverage']['format']}" in text_result.stdout
     assert f"detected={len(payload['coverage']['detected'])}" in text_result.stdout

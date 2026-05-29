@@ -825,9 +825,10 @@ appgen nl-plan app.appgen --prompt "Add credit memos to accounts receivable" --j
 Produces a proposed DSL diff, lint report, migration preview, and test plan. It
 must not write generated code unless the DSL diff validates. Without `--json`,
 the command prints a concise text summary with intent, operation count, patch
-size, generated test count, token-budget note count, operation kinds, lint
-report format and status, and migration-preview format and status so agents can
-inspect the plan without parsing the full JSON payload.
+size, generated test count, token-budget note count, operation kinds,
+`appgen.nl-plan.v1` format, lint report format and status, and
+migration-preview format and status so agents can inspect the plan without
+parsing the full JSON payload.
 
 ## Language Server Specification
 
@@ -1145,10 +1146,11 @@ backfill cases instead of inferring coverage from prose.
 
 Destructive changes must require explicit approval and should include suggested
 safe alternatives when possible. Without `--json`, `appgen migration-plan`
-prints backend, change count, destructive change count, approval requirement,
-migration coverage format and missing-family count, detected migration families,
-each change kind, safe alternatives when present, and diagnostics; JSON remains
-the machine-readable source of truth.
+prints the `appgen.migration-plan.v1` format, backend, change count,
+destructive change count, approval requirement, migration coverage format and
+missing-family count, detected migration families, each change kind, safe
+alternatives when present, and diagnostics; JSON remains the machine-readable
+source of truth.
 
 ## Natural-Language Change Planner
 
