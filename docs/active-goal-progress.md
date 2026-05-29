@@ -3618,3 +3618,16 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   lint audit test (`1 passed`), scoped diff whitespace check, and restricted-name
   scan outside archive, Git internals, and active PBC paths. Commit:
   `9801bc98`.
+- Current internal-error CLI audit hardening pass closes the evidence gap
+  behind the documented `appgen.internal-error.v1` fallback. The
+  `appgen.internal-error-exit-audit.v1` proof now covers both JSON and text
+  modes, verifies exit code `3`, confirms `AGX9000`, and records traceback-free
+  stderr/stdout behavior without traversing active PBC implementation paths.
+  The module entrypoint now dispatches tooling subcommands before importing the
+  legacy generator path, so `python -m pyAppGen lint ...` reaches the tooling
+  error boundary deterministically. Verification passed: Python compile for the
+  touched entrypoints, direct `appgen.internal-error-exit-audit.v1` helper probe
+  with `ok=True`, module-entrypoint subprocess probe for JSON and text modes,
+  focused non-PBC internal-error CLI tests (`2 passed`), scoped diff whitespace
+  check, and restricted-name scan outside archive, Git internals, and active PBC
+  paths.

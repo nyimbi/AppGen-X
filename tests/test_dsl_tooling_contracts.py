@@ -2468,6 +2468,12 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert cli_check["detail"]["format_write"]["organize_order"] == tuple(
         sorted(cli_check["detail"]["format_write"]["organize_order"])
     )
+    assert cli_check["detail"]["internal_error_exit"]["format"] == "appgen.internal-error-exit-audit.v1"
+    assert cli_check["detail"]["internal_error_exit"]["ok"] is True
+    assert cli_check["detail"]["internal_error_exit"]["json_exit_code"] == 3
+    assert cli_check["detail"]["internal_error_exit"]["text_exit_code"] == 3
+    assert cli_check["detail"]["internal_error_exit"]["json_traceback_free"] is True
+    assert cli_check["detail"]["internal_error_exit"]["text_traceback_free"] is True
     assert cli_check["detail"]["missing_required_option_exit"]["format"] == (
         "appgen.missing-required-option-exit-audit.v1"
     )
@@ -2870,3 +2876,17 @@ def test_appgen_tooling_cli_returns_code_3_for_internal_errors(tmp_path: Path) -
     assert text_result.returncode == 3
     assert text_result.stdout.startswith("internal-error")
     assert "Traceback" not in text_result.stderr
+
+
+def test_internal_error_audit_covers_json_and_text_modes(tmp_path: Path) -> None:
+    report = appgen_dsl._tooling_audit_internal_error_exit(tmp_path)
+
+    assert report["format"] == "appgen.internal-error-exit-audit.v1"
+    assert report["ok"] is True
+    assert report["json_exit_code"] == 3
+    assert report["text_exit_code"] == 3
+    assert report["payload_format"] == "appgen.internal-error.v1"
+    assert report["code"] == "AGX9000"
+    assert report["json_traceback_free"] is True
+    assert report["text_traceback_free"] is True
+    assert report["text_stdout"].startswith("internal-error")

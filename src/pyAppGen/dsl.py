@@ -3018,9 +3018,10 @@ def _tooling_audit_internal_error_exit(tmp: Path) -> dict:
     source_path = tmp / "internal-error.appgen"
     missing_catalog = tmp / "missing-components.json"
     source_path.write_text("app InternalError { targets: web }\ntable Thing { id: int pk }\n", encoding="utf-8")
-    output = io.StringIO()
-    with contextlib.redirect_stdout(output):
-        exit_code = dsl_tooling_cli(
+    json_output = io.StringIO()
+    json_error = io.StringIO()
+    with contextlib.redirect_stdout(json_output), contextlib.redirect_stderr(json_error):
+        json_exit_code = dsl_tooling_cli(
             (
                 "lint",
                 str(source_path),
@@ -3029,17 +3030,33 @@ def _tooling_audit_internal_error_exit(tmp: Path) -> dict:
                 "--json",
             )
         )
-    payload = json.loads(output.getvalue())
+    payload = json.loads(json_output.getvalue())
+    text_output = io.StringIO()
+    text_error = io.StringIO()
+    with contextlib.redirect_stdout(text_output), contextlib.redirect_stderr(text_error):
+        text_exit_code = dsl_tooling_cli(("lint", str(source_path), "--catalog", str(missing_catalog)))
+    json_stderr = json_error.getvalue()
+    text_stdout = text_output.getvalue()
+    text_stderr = text_error.getvalue()
     return {
         "format": "appgen.internal-error-exit-audit.v1",
-        "ok": exit_code == 3
+        "ok": json_exit_code == 3
+        and text_exit_code == 3
         and payload.get("format") == "appgen.internal-error.v1"
         and payload.get("code") == "AGX9000"
-        and payload.get("ok") is False,
-        "exit_code": exit_code,
+        and payload.get("ok") is False
+        and text_stdout.startswith("internal-error")
+        and "Traceback" not in json_stderr
+        and "Traceback" not in text_stderr
+        and "Traceback" not in text_stdout,
+        "json_exit_code": json_exit_code,
+        "text_exit_code": text_exit_code,
         "payload_format": payload.get("format"),
         "code": payload.get("code"),
         "error_type": payload.get("error_type"),
+        "json_traceback_free": "Traceback" not in json_stderr,
+        "text_traceback_free": "Traceback" not in text_stderr and "Traceback" not in text_stdout,
+        "text_stdout": text_stdout.strip(),
     }
 
 
