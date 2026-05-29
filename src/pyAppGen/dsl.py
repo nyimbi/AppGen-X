@@ -2070,6 +2070,51 @@ def _tooling_text_phase_detail(payload: dict) -> dict | None:
     return None
 
 
+def _component_publish_text_renderer_contract() -> dict:
+    """Prove component-publish text logs expose side-effect-free catalog evidence."""
+    payload = {
+        "format": "appgen.component-publish-report.v1",
+        "ok": True,
+        "component": "CustomGauge",
+        "catalog": {
+            "source": "components.json",
+            "components": ("ExistingBox",),
+            "count": 1,
+        },
+        "catalog_patch": {
+            "format": "appgen.component-catalog-patch.v1",
+            "already_registered": False,
+            "side_effect_free": True,
+            "write_performed": False,
+            "before_count": 1,
+            "after_count": 2,
+        },
+        "blocking_gaps": (),
+    }
+    output = io.StringIO()
+    with contextlib.redirect_stdout(output):
+        _emit_tooling_payload(payload, as_json=False)
+    text = output.getvalue()
+    required_fragments = (
+        "component-publish ok: format=appgen.component-publish-report.v1 component=CustomGauge",
+        "catalog=components.json",
+        "already_registered=False",
+        "side_effect_free=True",
+        "write_performed=False",
+        "patch_format=appgen.component-catalog-patch.v1",
+        "catalog-count before=1 after=2 existing=1",
+    )
+    missing = tuple(fragment for fragment in required_fragments if fragment not in text)
+    return {
+        "format": "appgen.component-publish-text-renderer.v1",
+        "ok": not missing and not text.lstrip().startswith("{"),
+        "required_fragments": required_fragments,
+        "missing_fragments": missing,
+        "json_fallback": text.lstrip().startswith("{"),
+        "text_prefix": text[:240],
+    }
+
+
 def _internal_tooling_error_report(exc: Exception) -> dict:
     message = str(exc) or exc.__class__.__name__
     return {
@@ -2947,6 +2992,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
     doctor = doctor_report_dsl()
     module_boundaries = module_boundary_audit_dsl()
     non_goal_policy = _tooling_audit_non_goal_policy()
+    component_publish_text_renderer = _component_publish_text_renderer_contract()
     release_text_renderer = _release_verifier_text_renderer_contract()
     pbc_catalog = pbc_verifier_catalog_report()
     pbc_cli_text = _tooling_audit_pbc_cli_text()
@@ -3063,6 +3109,13 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                 "catalog": catalog_lint.get("component_catalog"),
                 "directory_cli": lint_directory_cli,
             },
+        ),
+        _tooling_audit_check(
+            "component_publish_text_renderer",
+            component_publish_text_renderer["ok"],
+            "Component publication text mode exposes side-effect-free catalog patch evidence for reusable visual components.",
+            "docs/tooling.md#appgen-component-publish",
+            component_publish_text_renderer,
         ),
         _tooling_audit_check(
             "formatter_idempotent",

@@ -3882,6 +3882,25 @@ def test_release_verifier_text_renderer_contract_proves_handoff_log_markers() ->
     } <= set(report["required_fragments"])
 
 
+def test_component_publish_text_renderer_contract_proves_catalog_log_markers() -> None:
+    report = appgen_dsl._component_publish_text_renderer_contract()
+
+    assert report["format"] == "appgen.component-publish-text-renderer.v1"
+    assert report["ok"] is True
+    assert report["missing_fragments"] == ()
+    assert report["json_fallback"] is False
+    assert report["text_prefix"].startswith(
+        "component-publish ok: format=appgen.component-publish-report.v1 component=CustomGauge"
+    )
+    assert {
+        "already_registered=False",
+        "side_effect_free=True",
+        "write_performed=False",
+        "patch_format=appgen.component-catalog-patch.v1",
+        "catalog-count before=1 after=2 existing=1",
+    } <= set(report["required_fragments"])
+
+
 def test_tooling_audit_text_summary_exposes_sections_gaps_and_formats() -> None:
     payload = {
         "format": "appgen.tooling-audit.v1",

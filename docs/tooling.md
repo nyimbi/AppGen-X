@@ -820,6 +820,9 @@ Without `--json`, the command prints the component name, catalog source,
 registration state, side-effect-free flag, write-performed flag, the
 `appgen.component-publish-report.v1` envelope format, catalog patch format, and
 before/after catalog counts.
+`appgen.component-publish-text-renderer.v1` is embedded in the tooling audit to
+prove this human-readable component publication log remains side-effect-aware
+and exposes the catalog patch contract without parsing JSON.
 
 ### `appgen pbc`
 
