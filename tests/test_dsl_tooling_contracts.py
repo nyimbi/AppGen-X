@@ -938,6 +938,28 @@ def test_lsp_service_uses_shared_semantic_model_for_core_editor_features() -> No
     assert "PostInvoice" in report["rename"]["workspace_edit"]["changes"]["finance.appgen"][0]["newText"]
 
 
+def test_lsp_document_symbols_include_view_sections_components_and_handlers() -> None:
+    source = """
+    app OutlineDemo { targets: web }
+    table Invoice { id: int pk; customer_id: int }
+    view InvoiceForm for Invoice {
+      Header: id, customer_id
+      @ customer_id Lookup 0 0 4 1
+      on Save -> SubmitInvoice
+    }
+    operation SubmitInvoice { draft -> done }
+    """
+    report = appgen_dsl.lsp_document_symbols_dsl(source, source_name="outline.appgen")
+    view_symbol = next(symbol for symbol in report["symbols"] if symbol["name"] == "InvoiceForm")
+    child_details = {(child["name"], child["detail"]) for child in view_symbol["children"]}
+
+    assert report["format"] == "appgen.lsp-document-symbols.v1"
+    assert report["ok"] is True
+    assert ("Header", "view_section") in child_details
+    assert ("customer_id", "component_binding") in child_details
+    assert ("Save", "handler") in child_details
+
+
 def test_lsp_hover_exposes_pbc_catalog_metadata_and_diagnostic_explanation() -> None:
     pbc_source = """
     app HoverDemo { targets: web }

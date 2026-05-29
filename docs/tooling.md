@@ -738,6 +738,11 @@ and verifies initialize, diagnostics publication, shutdown, and exit handling.
 | `textDocument/formatting` | Call the shared formatter. |
 | `workspace/symbol` | Search declarations by name, kind, and catalog metadata. |
 
+Document-symbol outline depth is executable. View symbols include child
+`view_section`, `component_binding`, and `handler` entries so IDE outline trees
+can navigate form layout sections, dropped components, and event wiring without
+reparsing view bodies.
+
 Hover depth is executable. Hovering a registered PBC key returns
 `appgen.lsp-pbc-hover.v1` metadata with label, mesh, datastore profile, and
 sample API/event contracts. Hovering a symbol that participates in a diagnostic

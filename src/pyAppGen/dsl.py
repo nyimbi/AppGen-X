@@ -8615,6 +8615,8 @@ def _semantic_symbols(source: str, schema: AppSchema) -> dict:
             add("enum_value", value, parent=f"enum.{enum.name}")
     for view in schema.views:
         add("view", view.name, detail={"table": view.table})
+        for section in view.sections:
+            add("view_section", section.name, parent=f"view.{view.name}", detail={"fields": section.fields})
         for component in view.components:
             binding = component.field or component.component
             add(
