@@ -1,6 +1,8 @@
 import json
 import subprocess
 import sys
+from contextlib import redirect_stdout
+from io import StringIO
 from pathlib import Path
 
 from pyAppGen import dsl as appgen_dsl
@@ -3253,6 +3255,44 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert json.loads(cli_json.stdout)["format"] == "appgen.tooling-audit.v1"
     assert cli_text.returncode == 0, cli_text.stderr
     assert cli_text.stdout.startswith("tooling-audit ok:")
+
+
+def test_tooling_audit_text_summary_exposes_sections_gaps_and_formats() -> None:
+    payload = {
+        "format": "appgen.tooling-audit.v1",
+        "ok": True,
+        "passed": 2,
+        "required": 2,
+        "sections": ("docs/tooling.md#cli-contracts", "docs/tooling.md#language-server-specification"),
+        "source_of_truth": "docs/tooling.md",
+        "blocking_gaps": (),
+        "checks": (
+            {
+                "id": "cli_contracts",
+                "ok": True,
+                "section": "docs/tooling.md#cli-contracts",
+                "evidence": "CLI contracts are executable.",
+                "detail": {"format": "appgen.cli-help-surface-audit.v1"},
+            },
+            {
+                "id": "language_server_core_features",
+                "ok": True,
+                "section": "docs/tooling.md#language-server-specification",
+                "evidence": "LSP features are executable.",
+                "detail": {"rpc": {"format": "appgen.lsp-json-rpc-audit.v1"}},
+            },
+        ),
+    }
+    output = StringIO()
+
+    with redirect_stdout(output):
+        appgen_dsl._emit_tooling_payload(payload, as_json=False)
+
+    text = output.getvalue()
+    assert text.startswith("tooling-audit ok: 2/2 checks blocking_gaps=0 sections=2 source=docs/tooling.md")
+    assert "section docs/tooling.md#cli-contracts" in text
+    assert "formats=appgen.cli-help-surface-audit.v1" in text
+    assert "formats=appgen.lsp-json-rpc-audit.v1" in text
 
 
 def test_top_level_help_exposes_tooling_subcommands_and_apg_alias() -> None:

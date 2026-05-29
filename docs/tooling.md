@@ -688,7 +688,10 @@ portion exercises the JSON-RPC request handlers for open/change diagnostics,
 completion, hover, definition, references, symbols, code actions, formatting,
 rename, and workspace symbol search. A passing report means every audited
 requirement section has a concrete machine-readable proof instead of relying on
-prose or scattered manual checks.
+prose or scattered manual checks. The default text output reports pass count,
+blocking gap count, covered documentation sections, source-of-truth document,
+and embedded report formats for each check so release logs remain useful without
+requiring JSON parsing.
 
 ### `appgen package`
 

@@ -1810,9 +1810,18 @@ def _emit_tooling_payload(payload: dict, *, as_json: bool) -> None:
         return
     if payload.get("format") == "appgen.tooling-audit.v1":
         status = "ok" if payload.get("ok") else "failed"
-        print(f"tooling-audit {status}: {payload.get('passed', 0)}/{payload.get('required', 0)} checks")
+        gaps = tuple(payload.get("blocking_gaps", ()))
+        sections = tuple(payload.get("sections", ()))
+        print(
+            f"tooling-audit {status}: {payload.get('passed', 0)}/{payload.get('required', 0)} checks "
+            f"blocking_gaps={len(gaps)} sections={len(sections)} source={payload.get('source_of_truth')}"
+        )
+        for section in sections:
+            print(f"section {section}")
         for check in payload.get("checks", ()):
-            print(f"{'ok' if check['ok'] else 'fail'} {check['id']}: {check.get('evidence', '')}")
+            formats = _tooling_text_detail_formats(check.get("detail", {}))
+            suffix = f" formats={','.join(formats)}" if formats else ""
+            print(f"{'ok' if check['ok'] else 'fail'} {check['id']} section={check.get('section')}{suffix}: {check.get('evidence', '')}")
         return
     if payload.get("format") == "appgen.pbc-publish-report.v1":
         status = "ok" if payload.get("ok") else "failed"
@@ -1823,6 +1832,24 @@ def _emit_tooling_payload(payload: dict, *, as_json: bool) -> None:
             print(f"{'ok' if check['ok'] else 'fail'} {check['check']}")
         return
     print(json.dumps(payload, indent=2, sort_keys=True, default=list))
+
+
+def _tooling_text_detail_formats(value: object) -> tuple[str, ...]:
+    formats: set[str] = set()
+
+    def collect(item: object) -> None:
+        if isinstance(item, dict):
+            fmt = item.get("format") or item.get("report_format")
+            if isinstance(fmt, str) and fmt.startswith("appgen."):
+                formats.add(fmt)
+            for nested in item.values():
+                collect(nested)
+        elif isinstance(item, (list, tuple)):
+            for nested in item:
+                collect(nested)
+
+    collect(value)
+    return tuple(sorted(formats))
 
 
 def _internal_tooling_error_report(exc: Exception) -> dict:
