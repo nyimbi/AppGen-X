@@ -1766,7 +1766,9 @@ def test_lsp_rename_cli_audit_covers_safe_and_blocked_renames(tmp_path: Path) ->
     assert report["blocked_rename_ok"] is False
     assert report["blocked"] is True
     assert report["blocked_text_ok"] is True
+    assert "rename ok=False" in report["blocked_text"]
     assert "blocked=True" in report["blocked_text"]
+    assert "blockers=1" in report["blocked_text"]
     assert "requires_approval=True" in report["blocked_text"]
     assert report["blocked_code"] == "AGX1101"
     assert report["blocked_fix"] == "add_rename_hint"
