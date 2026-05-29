@@ -2166,6 +2166,44 @@ def _lint_text_renderer_contract() -> dict:
     }
 
 
+def _format_text_renderer_contract() -> dict:
+    """Prove format text logs expose idempotence, write posture, organize mode, and diagnostics."""
+    payload = {
+        "format": "appgen.format-result.v1",
+        "changed": True,
+        "idempotent": False,
+        "organize": True,
+        "write_requested": True,
+        "written": True,
+        "write_path": "apps/sales.appgen",
+        "diagnostics": (
+            {
+                "severity": "warning",
+                "code": "AGX0201",
+                "message": "Formatter normalized field modifier order.",
+            },
+        ),
+    }
+    output = io.StringIO()
+    with contextlib.redirect_stdout(output):
+        _emit_tooling_payload(payload, as_json=False)
+    text = output.getvalue()
+    required_fragments = (
+        "format changed: format=appgen.format-result.v1 not-idempotent written organize=True write_requested=True written=True",
+        "write_path apps/sales.appgen",
+        "warning AGX0201: Formatter normalized field modifier order.",
+    )
+    missing = tuple(fragment for fragment in required_fragments if fragment not in text)
+    return {
+        "format": "appgen.format-text-renderer.v1",
+        "ok": not missing and not text.lstrip().startswith("{"),
+        "required_fragments": required_fragments,
+        "missing_fragments": missing,
+        "json_fallback": text.lstrip().startswith("{"),
+        "text_prefix": text[:240],
+    }
+
+
 def _component_publish_text_renderer_contract() -> dict:
     """Prove component-publish text logs expose side-effect-free catalog evidence."""
     payload = {
@@ -3471,6 +3509,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
     )
     formatted = format_report_dsl(source, source_name="tooling-audit.appgen")
     formatter_contract = formatter_contract_audit_dsl()
+    format_text_renderer = _format_text_renderer_contract()
     validation = validate_report_dsl(source, source_name="tooling-audit.appgen", targets=("web", "mobile", "desktop"))
     graphs = graph_suite_report_dsl(source, source_name="tooling-audit.appgen")
     lsp = lsp_service_dsl(source, source_name="tooling-audit.appgen", prefix="cu")
@@ -3704,13 +3743,17 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
         ),
         _tooling_audit_check(
             "formatter_idempotent",
-            formatted["format"] == "appgen.format-result.v1" and formatted["idempotent"] and formatter_contract["ok"],
-            "Formatter is deterministic, idempotent, preserves comments, orders modifiers, and supports the organize profile.",
+            formatted["format"] == "appgen.format-result.v1"
+            and formatted["idempotent"]
+            and formatter_contract["ok"]
+            and format_text_renderer["ok"],
+            "Formatter is deterministic, idempotent, preserves comments, orders modifiers, supports the organize profile, and exposes write/idempotence text evidence.",
             "docs/tooling.md#formatter-specification",
             {
                 "changed": formatted.get("changed"),
                 "idempotent": formatted.get("idempotent"),
                 "formatter_contract": formatter_contract,
+                "text_renderer": format_text_renderer,
             },
         ),
         _tooling_audit_check(

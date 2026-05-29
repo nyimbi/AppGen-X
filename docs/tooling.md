@@ -637,6 +637,9 @@ payload reports `write_requested`, `written`, and `write_path` so IDEs and CI ca
 distinguish a preview from an actual file mutation. The default text output
 also reports the formatter report format in the header, `organize`, `write_requested`,
 `written`, and `write_path` when a write occurs.
+`appgen.format-text-renderer.v1` is embedded in the tooling audit to prove
+format text logs preserve the formatter envelope, idempotence state,
+organize/write flags, write path, and diagnostic lines without JSON parsing.
 `--organize` enables the optional table-body organization profile: identity
 fields and spreads, business keys, relationships, editable scalar fields,
 calculated fields, audit fields, and directives are ordered inside each table

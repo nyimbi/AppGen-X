@@ -3972,6 +3972,21 @@ def test_validate_generate_text_renderer_contract_proves_readiness_log_markers()
     } <= set(report["required_fragments"])
 
 
+def test_format_text_renderer_contract_proves_write_and_idempotence_log_markers() -> None:
+    report = appgen_dsl._format_text_renderer_contract()
+
+    assert report["format"] == "appgen.format-text-renderer.v1"
+    assert report["ok"] is True
+    assert report["missing_fragments"] == ()
+    assert report["json_fallback"] is False
+    assert report["text_prefix"].startswith("format changed: format=appgen.format-result.v1")
+    assert {
+        "format changed: format=appgen.format-result.v1 not-idempotent written organize=True write_requested=True written=True",
+        "write_path apps/sales.appgen",
+        "warning AGX0201: Formatter normalized field modifier order.",
+    } <= set(report["required_fragments"])
+
+
 def test_designer_sync_text_renderer_contract_proves_round_trip_log_markers() -> None:
     report = appgen_dsl._designer_sync_text_renderer_contract()
 
