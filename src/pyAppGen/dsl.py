@@ -2632,6 +2632,11 @@ def _emit_nl_plan_text(payload: dict) -> None:
     )
     if operation_kinds:
         print(f"operation-kinds {', '.join(operation_kinds)}")
+    for test in payload.get("test_plan", ()):
+        if not isinstance(test, dict):
+            continue
+        test_detail = test.get("command") or test.get("assertion") or ""
+        print(f"test-plan {test.get('id')}: {test_detail}")
     if token_budget_notes:
         print(f"token-budget-notes {len(token_budget_notes)}")
         for note in token_budget_notes:
@@ -6916,6 +6921,7 @@ def _tooling_audit_nl_plan_cli(tmp: Path, source: str) -> dict:
     accepted_text_has_report_format = accepted_text.startswith("nl-plan ok: format=appgen.nl-plan.v1")
     accepted_text_has_lint_format = "lint format=appgen.lint-report.v1: ok=True" in accepted_text
     accepted_text_has_migration_format = "migration-preview format=appgen.migration-plan.v1 backend=postgresql:" in accepted_text
+    accepted_text_test_plan_lines = tuple(line for line in accepted_text_lines if line.startswith("test-plan "))
     accepted_text_has_token_notes = any(line.startswith("token-budget-notes ") for line in accepted_text_lines)
     accepted_text_token_note_lines = tuple(line for line in accepted_text_lines if line.startswith("token-budget-note "))
     accepted_patch_bytes = sum(case["patch_bytes"] for case in accepted_cases)
@@ -6931,6 +6937,7 @@ def _tooling_audit_nl_plan_cli(tmp: Path, source: str) -> dict:
         and accepted_text_has_report_format
         and accepted_text_has_lint_format
         and accepted_text_has_migration_format
+        and bool(accepted_text_test_plan_lines)
         and accepted_text_has_token_notes
         and bool(accepted_text_token_note_lines)
         and rejected_exit == 1
@@ -6948,6 +6955,7 @@ def _tooling_audit_nl_plan_cli(tmp: Path, source: str) -> dict:
         "accepted_text_has_report_format": accepted_text_has_report_format,
         "accepted_text_has_lint_format": accepted_text_has_lint_format,
         "accepted_text_has_migration_format": accepted_text_has_migration_format,
+        "accepted_text_test_plan_lines": accepted_text_test_plan_lines,
         "accepted_text_has_token_notes": accepted_text_has_token_notes,
         "accepted_text_token_note_lines": accepted_text_token_note_lines,
         "rejected_exit_code": rejected_exit,

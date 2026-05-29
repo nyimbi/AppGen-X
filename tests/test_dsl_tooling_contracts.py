@@ -1044,6 +1044,9 @@ def test_nl_plan_cli_audit_covers_all_supported_edit_operations(tmp_path: Path) 
     assert audit["accepted_text_has_report_format"] is True
     assert audit["accepted_text_has_lint_format"] is True
     assert audit["accepted_text_has_migration_format"] is True
+    assert audit["accepted_text_test_plan_lines"]
+    assert all(line.startswith("test-plan ") for line in audit["accepted_text_test_plan_lines"])
+    assert any("lint_patched_dsl" in line for line in audit["accepted_text_test_plan_lines"])
     assert audit["accepted_text_has_token_notes"] is True
     assert audit["accepted_text_token_note_lines"]
     assert all(line.startswith("token-budget-note ") for line in audit["accepted_text_token_note_lines"])

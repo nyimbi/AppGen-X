@@ -1351,10 +1351,12 @@ through `appgen nl-plan --json`, then checked for the expected operation kind,
 linted patch, migration preview, generated test plan, and token-budget notes.
 It also runs an accepted request without `--json` and requires the text output
 to expose the `appgen.nl-plan.v1` envelope, nested lint and migration-preview
-format markers, PostgreSQL backend marker, and token-budget notes marker.
+format markers, PostgreSQL backend marker, generated test-plan entries as
+`test-plan ...`, and token-budget notes marker.
 The text output also emits each individual small-model guidance item as
 `token-budget-note ...` so agent logs retain the specific token-efficiency
-instructions without parsing JSON.
+instructions without parsing JSON. Generated test-plan entries keep the
+agent-facing verification path visible without parsing JSON.
 This keeps agent-facing development paths honest; a capability is not counted
 as available just because an in-process helper can produce it.
 
