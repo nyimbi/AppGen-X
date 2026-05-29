@@ -3207,6 +3207,10 @@ def test_studio_semantic_service_audit_proves_panel_contracts() -> None:
         "appgen.graph-suite-report.v1",
         "appgen.nl-plan.v1",
     } <= set(report["observed_service_formats"])
+    assert report["service_count"] == len(report["services"])
+    assert report["required_service_format_count"] == len(report["required_service_formats"])
+    assert report["observed_service_format_count"] == len(report["observed_service_formats"])
+    assert report["missing_service_format_count"] == 0
     assert tuple(report["required_service_formats"]) == (
         "appgen.studio-semantic-service.v1",
         "appgen.lsp-service.v1",
@@ -3222,6 +3226,11 @@ def test_studio_semantic_service_audit_proves_panel_contracts() -> None:
         "graph_suite": "appgen.graph-suite-report.v1",
         "natural_language_planner": "appgen.nl-plan.v1",
     }
+    assert report["surface_count"] == len(report["surfaces"])
+    assert report["required_surface_count"] == len(report["required_surfaces"])
+    assert report["surface_format_count"] == len(report["surface_formats"])
+    assert report["semantic_surface_format_count"] == len(report["semantic_surface_formats"])
+    assert report["panel_count"] == len(report["panel_counts"])
     assert set(report["required_surfaces"]) <= set(report["surfaces"])
     assert report["surface_formats"]["diagnostics_panel"] == "appgen.lsp-diagnostics.v1"
     assert report["surface_formats"]["graph_explain_panel"] == "appgen.designer-graph-explain-panel.v1"
