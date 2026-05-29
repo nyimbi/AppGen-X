@@ -4618,6 +4618,15 @@ def test_format_write_audit_covers_json_check_and_text_write_contracts(tmp_path:
     assert audit["text_has_report_format"] is True
     assert audit["text_has_write_metadata"] is True
     assert audit["text_stdout_prefix"].startswith("format changed: format=appgen.format-result.v1")
+    assert audit["organize_table_body_order"] == (
+        "identity:id",
+        "business_key:invoice_number",
+        "relationship:customer_id",
+        "editable:subtotal",
+        "calculated:total",
+        "audit:updated_at",
+        "directive:index",
+    )
 
 
 def test_appgen_format_write_rewrites_file_and_reports_write_metadata(tmp_path: Path) -> None:

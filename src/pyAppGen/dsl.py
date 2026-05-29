@@ -5498,14 +5498,26 @@ table Customer {
         organize_exit = dsl_tooling_cli(("format", str(organize_path), "--organize", "--json"))
     organize_payload = json.loads(organize_output.getvalue())
     organize_text = organize_payload.get("text", "")
-    organized_table_index_order = (
-        organize_text.find("  id: int pk"),
-        organize_text.find("  invoice_number: string unique"),
-        organize_text.find("  customer_id: int -> Customer.id"),
-        organize_text.find("  subtotal: decimal"),
-        organize_text.find("  total: decimal = subtotal + tax"),
-        organize_text.find("  updated_at: string"),
-        organize_text.find("  index(total)"),
+    organized_table_markers = (
+        ("identity:id", "  id: int pk"),
+        ("business_key:invoice_number", "  invoice_number: string unique"),
+        ("relationship:customer_id", "  customer_id: int -> Customer.id"),
+        ("editable:subtotal", "  subtotal: decimal"),
+        ("calculated:total", "  total: decimal = subtotal + tax"),
+        ("audit:updated_at", "  updated_at: string"),
+        ("directive:index", "  index(total)"),
+    )
+    organized_table_index_order = tuple(organize_text.find(marker) for _, marker in organized_table_markers)
+    organized_table_body_order = (
+        tuple(
+            label
+            for label, _ in sorted(
+                zip((label for label, _ in organized_table_markers), organized_table_index_order),
+                key=lambda item: item[1],
+            )
+        )
+        if -1 not in organized_table_index_order
+        else ()
     )
 
     output = io.StringIO()
@@ -5542,6 +5554,16 @@ table Customer {
         and organize_payload.get("idempotent") is True
         and -1 not in organized_table_index_order
         and organized_table_index_order == tuple(sorted(organized_table_index_order))
+        and organized_table_body_order
+        == (
+            "identity:id",
+            "business_key:invoice_number",
+            "relationship:customer_id",
+            "editable:subtotal",
+            "calculated:total",
+            "audit:updated_at",
+            "directive:index",
+        )
         and payload.get("write_requested") is True
         and payload.get("written") is True
         and after == payload.get("text")
@@ -5566,6 +5588,7 @@ table Customer {
         "organize": organize_payload.get("organize"),
         "organize_idempotent": organize_payload.get("idempotent"),
         "organize_order": organized_table_index_order,
+        "organize_table_body_order": organized_table_body_order,
         "written": payload.get("written"),
         "write_path": payload.get("write_path"),
     }

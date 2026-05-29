@@ -649,7 +649,9 @@ organize/write flags, write path, and diagnostic lines without JSON parsing.
 `--organize` enables the optional table-body organization profile: identity
 fields and spreads, business keys, relationships, editable scalar fields,
 calculated fields, audit fields, and directives are ordered inside each table
-without reordering top-level declarations.
+without reordering top-level declarations. The format write audit reports this
+as `organize_table_body_order` so the release evidence names the applied
+categories instead of only recording byte offsets.
 
 ### `appgen validate`
 
