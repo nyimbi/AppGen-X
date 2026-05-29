@@ -3289,11 +3289,16 @@ def test_module_boundary_audit_proves_documented_tooling_surfaces() -> None:
     assert audit["ok"] is True
     assert audit["boundary_count"] == len(audit["boundaries"])
     assert audit["boundary_count"] >= 12
+    assert audit["passing_boundary_count"] == audit["boundary_count"]
+    assert audit["missing_boundary_count"] == 0
     assert audit["callable_count"] == sum(len(boundary["callables"]) for boundary in audit["boundaries"])
     assert audit["callable_count"] >= 20
+    assert audit["missing_callable_count"] == 0
     assert audit["missing_boundaries"] == ()
     assert audit["core_runtime_gaps"] == ()
     assert audit["core_runtime_count"] == len(audit["core_runtime"])
+    assert audit["passing_core_runtime_count"] == audit["core_runtime_count"]
+    assert audit["core_runtime_gap_count"] == 0
     assert audit["layout_policy"] == "boundaries_visible_without_requiring_subpackage_layout"
     assert {
         "parser",
@@ -3309,7 +3314,9 @@ def test_module_boundary_audit_proves_documented_tooling_surfaces() -> None:
         "nl_plan",
         "release",
     } <= {boundary["boundary"] for boundary in audit["boundaries"]}
+    assert all(boundary["callable_count"] == len(boundary["callables"]) for boundary in audit["boundaries"])
     assert all(boundary["missing_callables"] == () for boundary in audit["boundaries"])
+    assert all(boundary["missing_callable_count"] == 0 for boundary in audit["boundaries"])
     assert {item["boundary"] for item in audit["core_runtime"]} == {"parser", "semantic", "diagnostics", "formatter"}
     assert all(item["ok"] for item in audit["core_runtime"])
 
