@@ -3474,6 +3474,10 @@ def test_studio_semantic_service_audit_proves_panel_contracts() -> None:
 
     assert report["format"] == "appgen.studio-semantic-service-audit.v1"
     assert report["ok"] is True
+    assert report["check_count"] == len(report["checks"])
+    assert report["passing_check_count"] == report["check_count"]
+    assert report["failing_check_count"] == 0
+    assert report["blocking_gap_count"] == 0
     assert report["blocking_gaps"] == ()
     assert report["service_format"] == "appgen.studio-semantic-service.v1"
     assert report["missing_service_formats"] == ()
@@ -3505,8 +3509,14 @@ def test_studio_semantic_service_audit_proves_panel_contracts() -> None:
     }
     assert report["surface_count"] == len(report["surfaces"])
     assert report["required_surface_count"] == len(report["required_surfaces"])
+    assert report["missing_required_surface_count"] == 0
+    assert report["missing_required_surfaces"] == ()
     assert report["surface_format_count"] == len(report["surface_formats"])
+    assert report["surface_format_gap_count"] == 0
+    assert report["surface_format_gaps"] == ()
     assert report["semantic_surface_format_count"] == len(report["semantic_surface_formats"])
+    assert report["semantic_surface_format_gap_count"] == 0
+    assert report["semantic_surface_format_gaps"] == ()
     assert report["panel_count"] == len(report["panel_counts"])
     assert set(report["required_surfaces"]) <= set(report["surfaces"])
     assert report["surface_formats"]["diagnostics_panel"] == "appgen.lsp-diagnostics.v1"

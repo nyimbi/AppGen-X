@@ -5297,6 +5297,17 @@ def _tooling_audit_studio_semantic_service(source: str) -> dict:
         for name in required_surfaces
         if isinstance(surfaces.get(name), dict) and "semantic_model_format" in surfaces.get(name, {})
     }
+    missing_required_surfaces = tuple(surface for surface in required_surfaces if surface not in surfaces)
+    surface_format_gaps = tuple(
+        surface
+        for surface, expected in expected_surface_formats.items()
+        if surface_formats.get(surface) != expected
+    )
+    semantic_surface_format_gaps = tuple(
+        surface
+        for surface, surface_format in semantic_surface_formats.items()
+        if surface_format != "appgen.semantic-model.v1"
+    )
     checks = {
         "bridge_format": report.get("format") == "appgen.studio-semantic-service.v1",
         "bridge_ok": report.get("ok") is True,
@@ -5350,9 +5361,10 @@ def _tooling_audit_studio_semantic_service(source: str) -> dict:
         and frontend_interaction.get("format") == "appgen.frontend-interaction-audit.v1"
         and frontend_interaction.get("ok") is True,
     }
+    blocking_gaps = tuple(name for name, ok in checks.items() if not ok)
     return {
         "format": "appgen.studio-semantic-service-audit.v1",
-        "ok": all(checks.values()),
+        "ok": not blocking_gaps,
         "service_format": report.get("format"),
         "services": services,
         "service_count": len(services),
@@ -5363,15 +5375,24 @@ def _tooling_audit_studio_semantic_service(source: str) -> dict:
         "missing_service_formats": missing_service_formats,
         "missing_service_format_count": len(missing_service_formats),
         "checks": checks,
+        "check_count": len(checks),
+        "passing_check_count": sum(1 for ok in checks.values() if ok),
+        "failing_check_count": len(blocking_gaps),
         "surfaces": tuple(surfaces),
         "surface_count": len(surfaces),
         "required_surfaces": required_surfaces,
         "required_surface_count": len(required_surfaces),
+        "missing_required_surfaces": missing_required_surfaces,
+        "missing_required_surface_count": len(missing_required_surfaces),
         "surface_formats": surface_formats,
         "surface_format_count": len(surface_formats),
         "expected_surface_formats": expected_surface_formats,
+        "surface_format_gap_count": len(surface_format_gaps),
+        "surface_format_gaps": surface_format_gaps,
         "semantic_surface_formats": semantic_surface_formats,
         "semantic_surface_format_count": len(semantic_surface_formats),
+        "semantic_surface_format_gap_count": len(semantic_surface_format_gaps),
+        "semantic_surface_format_gaps": semantic_surface_format_gaps,
         "panel_counts": panel_counts,
         "panel_count": len(panel_counts),
         "browser_smoke_format": browser_smoke.get("format"),
@@ -5390,7 +5411,8 @@ def _tooling_audit_studio_semantic_service(source: str) -> dict:
         "frontend_interaction_missing_scenario_count": frontend_interaction.get("missing_scenario_count"),
         "frontend_interaction_missing_audit_input_count": frontend_interaction.get("missing_audit_input_count"),
         "frontend_interaction_missing_helper_count": frontend_interaction.get("missing_helper_count"),
-        "blocking_gaps": tuple(name for name, ok in checks.items() if not ok),
+        "blocking_gap_count": len(blocking_gaps),
+        "blocking_gaps": blocking_gaps,
     }
 
 

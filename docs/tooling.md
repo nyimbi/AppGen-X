@@ -1334,8 +1334,10 @@ through `appgen designer-sync`. The audit reports `required_service_formats`,
 service-format counts so release evidence proves the Studio bridge is not only
 present but composed from the documented LSP, designer-sync, graph-suite, and
 natural-language planner contracts. It also reports required/present surface
-counts, surface-format counts, semantic-surface-format counts, and panel-count
-totals before verifying panel payload depth: component
+counts, missing required surface names/counts, surface-format counts,
+surface-format gap names/counts, semantic-surface-format counts,
+semantic-surface-format gap names/counts, check/pass/fail counts, blocking-gap
+counts, and panel-count totals before verifying panel payload depth: component
 palette entries, form views, database tables, workflows, PBC composition
 entries, package/deployment counts, diagnostic rows, graph/explain graphs, and
 natural-language edit operations must be exposed, so a panel cannot pass with
