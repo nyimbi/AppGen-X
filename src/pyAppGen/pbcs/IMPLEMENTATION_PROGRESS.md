@@ -63,6 +63,7 @@ This file tracks the branch-isolated implementation pass for standalone Packaged
 | lead_opportunity | `pbc/lead-opportunity-standalone` | `1d0b2cc4` | Compile, 12 tests, spec/source/release/smoke true. |
 | loyalty_rewards | `pbc/loyalty-rewards-standalone` | `b6b54f69` | Compile, 13 harness tests, source/release/generation smoke true. |
 | service_ticketing | `pbc/service-ticketing-standalone` | `6952f1e9` | Compile, 12 tests, spec/source/release/smoke true. |
+| streaming_analytics | `pbc/streaming-analytics-standalone` | `53608606` | Compile, 13 tests, spec/source/release/generation audits true. |
 | notifications | `pbc/notifications-standalone` | `4f48b505` | Compile, 12 tests, spec/source/release/smoke true. |
 | predictive_demand | `pbc/predictive-demand-standalone` | `226a460e` | Compile, 12 tests, spec/source/release/smoke true. |
 | fraud_anomaly_detection | `pbc/fraud-anomaly-detection-standalone` | `bb6fedf7` | Compile, 12 tests, spec/source/release/smoke true. |
@@ -79,7 +80,7 @@ This file tracks the branch-isolated implementation pass for standalone Packaged
 
 ## In Flight
 
-Supply-chain/HCM standalone pass is continuing. `wms_core`, `procurement_sourcing`, `transportation_management`, `dom`, `global_inventory_visibility`, `personnel_identity`, `time_labor`, and `payroll_engine` are pushed; quality_assurance is pushed; mrp_engine is pushed; asset_lifecycle, production_control, talent_onboarding, product_catalog_pim, price_promotion_engine, checkout_processing, payment_orchestration, subscription_billing, returns_reverse_logistics, cross_border_trade, order_routing_optimization, customer_360, cdp_segmentation, lead_opportunity, loyalty_rewards, service_ticketing, notifications, predictive_demand, fraud_anomaly_detection, dam_core, multi_sided_market, vendor_supplier_360, field_service_management, privacy_consent_governance, and the EAM improve1 standalone surface are pushed; next slices continue through content, relationship, intelligence, finance, governance, and industry PBCs.
+Supply-chain/HCM standalone pass is continuing. `wms_core`, `procurement_sourcing`, `transportation_management`, `dom`, `global_inventory_visibility`, `personnel_identity`, `time_labor`, and `payroll_engine` are pushed; quality_assurance is pushed; mrp_engine is pushed; asset_lifecycle, production_control, talent_onboarding, product_catalog_pim, price_promotion_engine, checkout_processing, payment_orchestration, subscription_billing, returns_reverse_logistics, cross_border_trade, order_routing_optimization, customer_360, cdp_segmentation, lead_opportunity, loyalty_rewards, service_ticketing, notifications, predictive_demand, fraud_anomaly_detection, dam_core, multi_sided_market, vendor_supplier_360, field_service_management, privacy_consent_governance, streaming_analytics, and the EAM improve1 standalone surface are pushed; next slices continue through content, relationship, intelligence, finance, governance, and industry PBCs.
 
 ## Next Selection Rule
 
