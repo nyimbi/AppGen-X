@@ -38,6 +38,27 @@ def validate_seed_data():
     }
 
 
+def standalone_seed_bundle():
+    """Return seed rows that make a one-PBC notification app immediately usable."""
+    rows = (
+        {"table": "notifications_notification_template", "rows": ({"code": "WELCOME-EMAIL", "status": "active", "message_type": "transactional", "locale": "en-US"},)},
+        {"table": "notifications_delivery_channel", "rows": ({"code": "EMAIL-PRIMARY", "status": "active", "channel_type": "email", "provider": "primary"}, {"code": "SMS-PRIMARY", "status": "active", "channel_type": "sms", "provider": "primary"})},
+        {"table": "notifications_notification_rule", "rows": ({"code": "CONSENT-FIRST", "status": "active", "scope": "consent"},)},
+        {"table": "notifications_notification_parameter", "rows": ({"code": "MAX-DAILY-MESSAGES", "status": "active", "value": "5"},)},
+        {"table": "notifications_notification_configuration", "rows": ({"code": "DEFAULT-CONFIG", "status": "active", "database_backend": "postgresql", "event_contract": "AppGen-X"},)},
+    )
+    invalid_tables = tuple(item["table"] for item in rows if not item["table"].startswith(f"{PBC_KEY}_"))
+    return {
+        "ok": bool(rows) and not invalid_tables,
+        "pbc": PBC_KEY,
+        "rows": rows,
+        "invalid_tables": invalid_tables,
+        "side_effects": (),
+    }
+
+
 def smoke_test():
     """Exercise seed validation without writing rows."""
-    return validate_seed_data()
+    validation = validate_seed_data()
+    standalone = standalone_seed_bundle()
+    return {**validation, "ok": validation["ok"] and standalone["ok"], "standalone_seed_bundle": standalone}
