@@ -651,7 +651,10 @@ unknown or is not declared by `app ... { targets: ... }`, and the
 and a `target_compatibility` check. The default text output prints requested
 targets, app-declared targets, the `appgen.validate-report.v1` envelope format
 in the header, semantic-model format as `semantic_format=...`, checks, missing or unknown target details,
-and diagnostics.
+and diagnostics. `appgen.validate-generate-text-renderer.v1` is embedded in
+the tooling audit to prove validation and generation text logs keep target,
+semantic-model, diagnostic, artifact, manifest, and blocking-gap evidence
+visible without JSON parsing.
 
 ### `appgen generate`
 

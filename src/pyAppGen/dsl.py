@@ -2115,6 +2115,79 @@ def _component_publish_text_renderer_contract() -> dict:
     }
 
 
+def _validate_generate_text_renderer_contract() -> dict:
+    """Prove validate and generate text logs expose readiness and artifact evidence."""
+    validate_payload = {
+        "format": "appgen.validate-report.v1",
+        "ok": False,
+        "requested_targets": ("web", "mobile"),
+        "app_targets": ("web",),
+        "semantic_model": {"format": "appgen.semantic-model.v1"},
+        "checks": (
+            {"check": "syntax", "ok": True},
+            {
+                "check": "target_compatibility",
+                "ok": False,
+                "unknown_targets": ("mobile",),
+                "missing_targets": ("mobile",),
+            },
+        ),
+        "diagnostics": (
+            {
+                "severity": "error",
+                "code": "AGX0802",
+                "message": "Requested target mobile is not declared by the app.",
+            },
+        ),
+    }
+    generate_payload = {
+        "format": "appgen.generate-report.v1",
+        "ok": False,
+        "generated": False,
+        "targets": ("web",),
+        "semantic_model_format": "appgen.semantic-model.v1",
+        "output_dir": "generated/app",
+        "manifest": "generated/app/appgen-manifest.json",
+        "artifacts": ({"path": "generated/app/web/routes.json"},),
+        "blocking_gaps": ("lint_warnings",),
+        "diagnostics": (
+            {
+                "severity": "warning",
+                "code": "AGX0404",
+                "message": "Unknown visual component CustomGauge.",
+            },
+        ),
+    }
+    output = io.StringIO()
+    with contextlib.redirect_stdout(output):
+        _emit_tooling_payload(validate_payload, as_json=False)
+        _emit_tooling_payload(generate_payload, as_json=False)
+    text = output.getvalue()
+    required_fragments = (
+        "validate failed: format=appgen.validate-report.v1 requested=web,mobile app_targets=web semantic_format=appgen.semantic-model.v1",
+        "ok syntax",
+        "fail target_compatibility",
+        "unknown-targets mobile",
+        "missing-targets mobile",
+        "error AGX0802: Requested target mobile is not declared by the app.",
+        "generate failed: format=appgen.generate-report.v1 generated=False targets=web artifacts=1 semantic_format=appgen.semantic-model.v1",
+        "output_dir generated/app",
+        "manifest generated/app/appgen-manifest.json",
+        "artifact generated/app/web/routes.json",
+        "gap lint_warnings",
+        "warning AGX0404: Unknown visual component CustomGauge.",
+    )
+    missing = tuple(fragment for fragment in required_fragments if fragment not in text)
+    return {
+        "format": "appgen.validate-generate-text-renderer.v1",
+        "ok": not missing and not text.lstrip().startswith("{"),
+        "required_fragments": required_fragments,
+        "missing_fragments": missing,
+        "json_fallback": text.lstrip().startswith("{"),
+        "text_prefix": text[:240],
+    }
+
+
 def _internal_tooling_error_report(exc: Exception) -> dict:
     message = str(exc) or exc.__class__.__name__
     return {
@@ -3084,6 +3157,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
     module_boundaries = module_boundary_audit_dsl()
     non_goal_policy = _tooling_audit_non_goal_policy()
     component_publish_text_renderer = _component_publish_text_renderer_contract()
+    validate_generate_text_renderer = _validate_generate_text_renderer_contract()
     release_text_renderer = _release_verifier_text_renderer_contract()
     pbc_catalog = pbc_verifier_catalog_report()
     pbc_cli_text = _tooling_audit_pbc_cli_text()
@@ -3229,6 +3303,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and missing_required_option_exit["ok"]
             and invalid_choice_exit["ok"]
             and validate_generate_cli["ok"]
+            and validate_generate_text_renderer["ok"]
             and cli_help_surface["ok"]
             and generation["ok"]
             and generation["generated"]
@@ -3245,6 +3320,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                 "missing_required_option_exit": missing_required_option_exit,
                 "invalid_choice_exit": invalid_choice_exit,
                 "validate_generate_cli": validate_generate_cli,
+                "validate_generate_text_renderer": validate_generate_text_renderer,
                 "cli_help_surface": cli_help_surface,
                 "generate": generation.get("format"),
                 "warning_block": warning_generation_blocked.get("blocking_gaps"),

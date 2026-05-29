@@ -3936,6 +3936,25 @@ def test_semantic_drift_text_renderer_contract_proves_shared_model_log_markers()
     } <= set(report["required_fragments"])
 
 
+def test_validate_generate_text_renderer_contract_proves_readiness_log_markers() -> None:
+    report = appgen_dsl._validate_generate_text_renderer_contract()
+
+    assert report["format"] == "appgen.validate-generate-text-renderer.v1"
+    assert report["ok"] is True
+    assert report["missing_fragments"] == ()
+    assert report["json_fallback"] is False
+    assert report["text_prefix"].startswith(
+        "validate failed: format=appgen.validate-report.v1 requested=web,mobile"
+    )
+    assert {
+        "unknown-targets mobile",
+        "missing-targets mobile",
+        "generate failed: format=appgen.generate-report.v1 generated=False targets=web artifacts=1 semantic_format=appgen.semantic-model.v1",
+        "artifact generated/app/web/routes.json",
+        "gap lint_warnings",
+    } <= set(report["required_fragments"])
+
+
 def test_tooling_audit_text_summary_exposes_sections_gaps_and_formats() -> None:
     payload = {
         "format": "appgen.tooling-audit.v1",
