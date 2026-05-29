@@ -3397,6 +3397,14 @@ def _tooling_audit_vscode_extension(root: Path) -> dict:
     source_path = extension / "src" / "extension.js"
     package = json.loads(package_path.read_text(encoding="utf-8")) if package_path.exists() else {}
     source = source_path.read_text(encoding="utf-8") if source_path.exists() else ""
+    languages = tuple(package.get("contributes", {}).get("languages", ()))
+    language_extensions = tuple(
+        extension_name
+        for language in languages
+        if language.get("id") == "appgen"
+        for extension_name in language.get("extensions", ())
+    )
+    activation_events = tuple(package.get("activationEvents", ()))
     commands = {item.get("command") for item in package.get("contributes", {}).get("commands", ())}
     required_commands = {
         "appgen.lint",
@@ -3445,6 +3453,9 @@ def _tooling_audit_vscode_extension(root: Path) -> dict:
         "package_json": package_path.exists(),
         "language_configuration": language_config.exists(),
         "grammar": grammar.exists(),
+        "language_metadata": any(language.get("id") == "appgen" for language in languages)
+        and {".appgen", ".ag", ".ags"} <= set(language_extensions)
+        and "onLanguage:appgen" in activation_events,
         "commands": required_commands <= commands,
         "providers": all(marker in source for marker in provider_markers),
         "diagnostics_collection": 'createDiagnosticCollection("appgen")' in source
@@ -3458,6 +3469,8 @@ def _tooling_audit_vscode_extension(root: Path) -> dict:
         "checks": checks,
         "commands": tuple(sorted(commands)),
         "required_commands": tuple(sorted(required_commands)),
+        "language_extensions": language_extensions,
+        "activation_events": activation_events,
         "provider_markers": provider_markers,
         "command_cli_markers": command_cli_markers,
         "webview_markers": webview_markers,

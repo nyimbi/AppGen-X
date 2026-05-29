@@ -2240,6 +2240,9 @@ def test_vscode_extension_contract_wires_appgen_language_server_and_commands() -
     audit = appgen_dsl._tooling_audit_vscode_extension(Path(__file__).resolve().parents[1])
     assert audit["format"] == "appgen.vscode-extension-audit.v1"
     assert audit["ok"] is True
+    assert audit["checks"]["language_metadata"] is True
+    assert {".appgen", ".ag", ".ags"} <= set(audit["language_extensions"])
+    assert "onLanguage:appgen" in audit["activation_events"]
     assert audit["checks"]["diagnostics_collection"] is True
     assert audit["checks"]["cli_command_contracts"] is True
     assert audit["checks"]["webview_renderers"] is True
