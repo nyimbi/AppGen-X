@@ -5028,15 +5028,34 @@ def _tooling_audit_implementation_phases(**evidence: dict) -> dict:
         ),
     )
     missing = tuple(item["id"] for item in phases if not item["ok"])
+    phase_ids = tuple(item["id"] for item in phases)
+    exit_criterion_ids = tuple(
+        criterion["id"] for item in phases for criterion in item["exit_criteria"]
+    )
+    missing_exit_criteria_by_phase = {
+        item["id"]: item["missing_exit_criteria"]
+        for item in phases
+        if item["missing_exit_criteria"]
+    }
+    missing_exit_criteria = tuple(
+        criterion_id
+        for item in phases
+        for criterion_id in item["missing_exit_criteria"]
+    )
     return {
         "format": "appgen.tooling-implementation-phase-audit.v1",
         "ok": not missing,
         "phase_count": len(phases),
         "passing_phase_count": sum(1 for item in phases if item["ok"]),
+        "phase_ids": phase_ids,
         "exit_criterion_count": sum(len(item["exit_criteria"]) for item in phases),
         "passing_exit_criterion_count": sum(
             1 for item in phases for criterion in item["exit_criteria"] if criterion["ok"]
         ),
+        "exit_criterion_ids": exit_criterion_ids,
+        "missing_exit_criterion_count": len(missing_exit_criteria),
+        "missing_exit_criteria": missing_exit_criteria,
+        "missing_exit_criteria_by_phase": missing_exit_criteria_by_phase,
         "missing_phase_count": len(missing),
         "phases": phases,
         "missing_phases": missing,

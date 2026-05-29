@@ -3776,8 +3776,15 @@ def test_tooling_implementation_phase_audit_maps_phase_exit_criteria_to_evidence
     assert report["ok"] is True
     assert report["phase_count"] == len(report["phases"])
     assert report["passing_phase_count"] == report["phase_count"]
+    assert report["phase_ids"] == tuple(phase["id"] for phase in report["phases"])
     assert report["exit_criterion_count"] == sum(len(phase["exit_criteria"]) for phase in report["phases"])
     assert report["passing_exit_criterion_count"] == report["exit_criterion_count"]
+    assert report["exit_criterion_ids"] == tuple(
+        criterion["id"] for phase in report["phases"] for criterion in phase["exit_criteria"]
+    )
+    assert report["missing_exit_criterion_count"] == 0
+    assert report["missing_exit_criteria"] == ()
+    assert report["missing_exit_criteria_by_phase"] == {}
     assert report["missing_phase_count"] == 0
     assert report["missing_phases"] == ()
     assert len(report["phases"]) == 7

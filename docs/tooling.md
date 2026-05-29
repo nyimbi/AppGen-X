@@ -898,9 +898,11 @@ implementation-phase evidence.
 When implementation-phase evidence is present, the text output also reports the
 number of audited phases, missing phase count, and the
 `appgen.tooling-implementation-phase-audit.v1` format marker.
-The implementation-phase audit reports phase, passing-phase, exit-criterion,
-passing-exit-criterion, and missing-phase counts so completion claims can be
-reviewed without expanding every nested criterion.
+The implementation-phase audit reports phase ids, phase counts, passing-phase
+counts, exit-criterion ids, exit-criterion counts, passing-exit-criterion
+counts, missing-phase counts, missing-exit-criterion counts, and
+missing-exit-criteria grouped by phase so completion claims can be reviewed
+without expanding every nested criterion.
 
 ### `appgen package`
 
