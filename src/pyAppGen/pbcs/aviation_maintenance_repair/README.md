@@ -1,49 +1,49 @@
 # Aviation Maintenance and Repair PBC
 
-This PBC owns aircraft maintenance, serialized components, work cards,
-maintenance visits, airworthiness directives, deferred defects, compliance
-release evidence, workbench surfaces, and governed agent assistance for
-maintenance repair operations.
+`aviation_maintenance_repair` now exposes a standalone one-PBC maintenance
+release-planning slice for AppGen-X. The package stays inside its owned
+boundary and executes a full release-to-service workflow using package-local
+records, workflow contracts, UI metadata, assistant planning, and release
+readiness evidence.
 
-## Implemented Executable Slice
+## Standalone Slice
 
-The current implementation adds a release-to-service governance engine in
-`maintenance_release.py`. It evaluates whether an aircraft or component can be
-released using executable evidence rather than generic status text.
+The executable slice covers:
 
-Implemented behavior includes:
+- aircraft intake with tail, type, and subtype release context;
+- serialized component eligibility with life limits, release certificate,
+  quarantine, and effectivity checks;
+- work-card closeout with required signoffs, duplicate inspection,
+  authorization, tooling, and consumable checks;
+- deferred-defect and AD gating before release;
+- document-instruction planning that previews owned-table CRUD mutations;
+- human-certifier-only release authorization;
+- package-local workbench forms, wizards, controls, and release queues.
 
-- component remaining-life checks for hours and cycles;
-- release certificate and shelf-life validation;
-- quarantine and effectivity lockout before installation or release;
-- work-card closeout validation with required signoff roles;
-- duplicate inspection enforcement that blocks self-inspection;
-- technician authorization checks by task family and aircraft type;
-- controlled tooling return and calibration checks;
-- consumable shelf-life and mix-life checks;
-- deferred defect countdown and expiry blocking;
-- airworthiness directive compliance blocking;
-- human certifier requirement for release-to-service;
-- AppGen-X outbox events for approved and blocked release packs;
-- workbench release queue projection;
-- service/UI/agent/release-evidence exposure.
+## Main Entry Points
 
-## Runtime Boundary
+- `runtime.py`: package-local state, record intake, document planning, release
+  assessment, workbench queries, and release evidence.
+- `models.py`: domain-specific model and table contracts for the standalone
+  slice.
+- `workflows.py`: `release_to_service` and
+  `document_instruction_planning` workflow definitions.
+- `services.py` and `routes.py`: standalone service and API contracts for the
+  slice.
+- `ui.py`: workbench fragments, forms, wizards, and controls.
+- `agent.py`: governed assistant planning, CRUD previews, and release
+  guardrails.
+- `release_evidence.py`: executable release-readiness gates and validation.
 
-All state is held inside package-local runtime structures and maps to
-`aviation_maintenance_repair_*` owned tables. The PBC does not read or mutate
-external inventory, dispatch, audit, or identity tables. Eventing uses the
-AppGen-X event contract only.
+## Guardrails
 
-## Agent Guardrails
-
-The assistant can intake documents, preview release evidence, and explain
-blockers, but it cannot certify maintenance release. Final release evidence
-requires a human certifier with release authorization.
+All writes and projections stay inside `aviation_maintenance_repair_*` owned
+structures. Cross-PBC behavior is limited to declared AppGen-X events only.
+The assistant can preview mutations and explain release blockers, but it cannot
+certify return-to-service. A human certifier with release authorization is
+required for approval.
 
 ## Verification
 
-Focused tests cover complete release approval, blocked safety and authorization
-gaps, standalone component and work-card evaluators, and service/UI/agent/release
-evidence exposure.
-
+The standalone slice is validated with package-local compile, `unittest`, and
+smoke/audit commands from this directory.

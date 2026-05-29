@@ -8,7 +8,7 @@ systems.
 from __future__ import annotations
 
 from datetime import date
-from typing import Iterable, Mapping, Sequence
+from typing import Mapping, Sequence
 
 PBC_KEY = "aviation_maintenance_repair"
 EVENT_CONTRACT = "AppGen-X"
@@ -63,7 +63,7 @@ def evaluate_component_installation(component: Mapping[str, object], aircraft: M
     if remaining_hours is not None and float(remaining_hours) <= 0:
         blockers.append(_blocker("life_limit_hours_exhausted", "Component has no remaining hour life.", {"remaining_hours": remaining_hours}))
 
-    if component.get("quarantine_state") in {"active", "hold", "suspect"}:
+    if component.get("quarantine_state") in {"active", "hold", "suspect", "quarantined"}:
         blockers.append(_blocker("component_quarantined", "Quarantined or suspect material cannot be released.", {"quarantine_state": component.get("quarantine_state")}))
     if not component.get("release_certificate"):
         blockers.append(_blocker("missing_release_certificate", "Installation requires authorized release certificate evidence.", {"component_id": component.get("component_id")}))
@@ -109,6 +109,8 @@ def evaluate_work_card_closeout(work_card: Mapping[str, object], technician_auth
     required_roles = tuple(card.get("required_signoff_roles") or ("performer",))
     signed_roles = {item.get("role") for item in signoffs}
     missing_roles = tuple(role for role in required_roles if role not in signed_roles)
+    if card.get("status", "open") not in {"closed", "signed", "complete"}:
+        blockers.append(_blocker("work_card_not_closed", "Work card must be closed before release.", {"status": card.get("status")}))
     if missing_roles:
         blockers.append(_blocker("missing_required_signoff", "Work card is missing required signoff roles.", {"missing_roles": missing_roles}))
 
@@ -147,7 +149,7 @@ def evaluate_work_card_closeout(work_card: Mapping[str, object], technician_auth
         blockers.append(_blocker("open_non_routine_work", "Originating non-routine work remains open.", {"open_non_routine_count": card.get("open_non_routine_count")}))
 
     return {
-        "ok": not blockers and card.get("status", "closed") in {"closed", "signed", "complete"},
+        "ok": not blockers,
         "pbc": PBC_KEY,
         "work_card_id": card.get("work_card_id") or card.get("id"),
         "status": "closed" if not blockers else "blocked",
@@ -168,6 +170,9 @@ def build_release_to_service_pack(payload: Mapping[str, object], *, as_of: objec
     authorizations = tuple(dict(item) for item in _tupled(source.get("technician_authorizations")))
     blockers = []
     passed = []
+
+    if not aircraft:
+        blockers.append(_blocker("missing_aircraft", "Release pack requires an aircraft selection.", {"release_id": source.get("release_id")}))
 
     work_card_results = tuple(
         evaluate_work_card_closeout(card, authorizations, as_of=as_of_date)
@@ -215,18 +220,25 @@ def build_release_to_service_pack(payload: Mapping[str, object], *, as_of: objec
         blockers.append(_blocker("human_certifier_required", "Release-to-service requires a human certifier with release authorization.", {"certifier": certifier.get("technician_id")}))
 
     passed = tuple(check for check in RELEASE_CHECKS if check in set(passed))
+    readiness_score = round(len(passed) / len(RELEASE_CHECKS), 2)
     return {
         "ok": not blockers,
         "pbc": PBC_KEY,
         "release_id": source.get("release_id") or f"release-{aircraft.get('tail_number', 'unknown')}",
         "tail_number": aircraft.get("tail_number"),
         "status": "release_ready" if not blockers else "blocked",
+        "readiness_score": readiness_score,
         "passed_checks": passed,
         "pending_checks": tuple(check for check in RELEASE_CHECKS if check not in set(passed)),
         "blockers": tuple(blockers),
         "work_card_results": work_card_results,
         "component_results": component_results,
         "certifier": certifier,
+        "summary": {
+            "blocker_count": len(blockers),
+            "passed_count": len(passed),
+            "pending_count": len(RELEASE_CHECKS) - len(passed),
+        },
         "event_contract": EVENT_CONTRACT,
         "side_effects": (),
     }
@@ -253,4 +265,3 @@ def maintenance_release_evidence() -> dict:
         "shared_table_access": False,
         "side_effects": (),
     }
-
