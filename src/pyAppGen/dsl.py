@@ -4567,6 +4567,12 @@ def _tooling_audit_vscode_extension(root: Path) -> dict:
     )
     activation_events = tuple(package.get("activationEvents", ()))
     commands = {item.get("command") for item in package.get("contributes", {}).get("commands", ())}
+    command_palette = {
+        item.get("command")
+        for item in package.get("contributes", {}).get("menus", {}).get("commandPalette", ())
+    }
+    configuration = package.get("contributes", {}).get("configuration", {})
+    configuration_properties = configuration.get("properties", {})
     required_commands = {
         "appgen.lint",
         "appgen.format",
@@ -4618,6 +4624,9 @@ def _tooling_audit_vscode_extension(root: Path) -> dict:
         and {".appgen", ".ag", ".ags"} <= set(language_extensions)
         and "onLanguage:appgen" in activation_events,
         "commands": required_commands <= commands,
+        "command_activation_events": {f"onCommand:{command}" for command in required_commands} <= set(activation_events),
+        "command_palette": required_commands <= command_palette,
+        "cli_command_configuration": configuration_properties.get("appgen.command", {}).get("default") == "appgen",
         "providers": all(marker in source for marker in provider_markers),
         "diagnostics_collection": 'createDiagnosticCollection("appgen")' in source
         and "textDocument/publishDiagnostics" in source,
@@ -4630,6 +4639,8 @@ def _tooling_audit_vscode_extension(root: Path) -> dict:
         "checks": checks,
         "commands": tuple(sorted(commands)),
         "required_commands": tuple(sorted(required_commands)),
+        "command_palette": tuple(sorted(command_palette)),
+        "configuration_properties": tuple(sorted(configuration_properties)),
         "language_extensions": language_extensions,
         "activation_events": activation_events,
         "provider_markers": provider_markers,

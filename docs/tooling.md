@@ -1069,7 +1069,8 @@ artifact previews, and the PBC catalog browser render CLI JSON reports in
 webview panels rather than relying on editor-specific state.
 `appgen.vscode-extension-audit.v1` checks this surface explicitly: language
 metadata, syntax grammar, command contributions, LSP providers, diagnostics
-collection, CLI-backed command argument contracts, and graph/artifact/PBC
+collection, command activation events, command palette membership, CLI command
+configuration, CLI-backed command argument contracts, and graph/artifact/PBC
 webview renderers must all be present before the extension is counted as
 tooling-complete.
 

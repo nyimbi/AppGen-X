@@ -2233,6 +2233,7 @@ def test_vscode_extension_contract_wires_appgen_language_server_and_commands() -
 
     assert package["main"] == "./src/extension.js"
     assert package["activationEvents"][0] == "onLanguage:appgen"
+    assert {f"onCommand:{command}" for command in commands} <= set(package["activationEvents"])
     assert languages[0]["id"] == "appgen"
     assert {".appgen", ".ag", ".ags"} <= set(languages[0]["extensions"])
     assert package["contributes"]["grammars"][0]["path"] == "./syntaxes/appgen.tmLanguage.json"
@@ -2248,6 +2249,9 @@ def test_vscode_extension_contract_wires_appgen_language_server_and_commands() -
         "appgen.pbcCatalog",
         "appgen.restartLanguageServer",
     } <= commands
+    command_palette = {item["command"] for item in package["contributes"]["menus"]["commandPalette"]}
+    assert commands <= command_palette
+    assert package["contributes"]["configuration"]["properties"]["appgen.command"]["default"] == "appgen"
     assert language_config["comments"]["lineComment"] == "//"
     assert grammar["scopeName"] == "source.appgen"
     assert '["lsp", "--stdio"]' in source
@@ -2271,8 +2275,14 @@ def test_vscode_extension_contract_wires_appgen_language_server_and_commands() -
     assert audit["format"] == "appgen.vscode-extension-audit.v1"
     assert audit["ok"] is True
     assert audit["checks"]["language_metadata"] is True
+    assert audit["checks"]["command_activation_events"] is True
+    assert audit["checks"]["command_palette"] is True
+    assert audit["checks"]["cli_command_configuration"] is True
     assert {".appgen", ".ag", ".ags"} <= set(audit["language_extensions"])
     assert "onLanguage:appgen" in audit["activation_events"]
+    assert {f"onCommand:{command}" for command in audit["required_commands"]} <= set(audit["activation_events"])
+    assert set(audit["required_commands"]) <= set(audit["command_palette"])
+    assert "appgen.command" in audit["configuration_properties"]
     assert audit["checks"]["diagnostics_collection"] is True
     assert audit["checks"]["cli_command_contracts"] is True
     assert audit["checks"]["webview_renderers"] is True
