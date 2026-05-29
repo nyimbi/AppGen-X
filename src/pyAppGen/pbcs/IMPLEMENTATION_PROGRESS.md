@@ -16,6 +16,7 @@ This file tracks the branch-isolated implementation pass for standalone Packaged
 | --- | --- | --- | --- |
 | ap_automation | `pbc/ap-automation-standalone` | `4fcec336` | Compile, 16 tests, spec/source/release/smoke true. |
 | ar_credit | `pbc/ar-credit-standalone` | `72ea8fe9` | Compile, 8 tests, spec/source/release/smoke true. |
+| asset_lifecycle | `pbc/asset-lifecycle-standalone` | `3cbc4a4b` | Compile, 11 tests, spec/source/release/smoke true. |
 | global_inventory_visibility | `pbc/global-inventory-visibility-standalone` | `705516f6` | Compile, 14 tests, spec/source/release/smoke true. |
 | gl_core | `pbc/gl-core-standalone` | `d59473d4` | Compile, 11 tests, spec/source/release/smoke true. |
 | tax_localization | `pbc/tax-localization-standalone` | `8e7035ad` | Compile, 13 tests, spec/source/release/smoke true. |
@@ -53,7 +54,7 @@ This file tracks the branch-isolated implementation pass for standalone Packaged
 
 ## In Flight
 
-Supply-chain/HCM standalone pass is continuing. `wms_core`, `procurement_sourcing`, `transportation_management`, `dom`, `global_inventory_visibility`, `personnel_identity`, `time_labor`, and `payroll_engine` are pushed; quality_assurance is pushed; mrp_engine is pushed; production_control, talent_onboarding, and product_catalog_pim are pushed; next slices continue through commerce/content/relationship and intelligence PBCs.
+Supply-chain/HCM standalone pass is continuing. `wms_core`, `procurement_sourcing`, `transportation_management`, `dom`, `global_inventory_visibility`, `personnel_identity`, `time_labor`, and `payroll_engine` are pushed; quality_assurance is pushed; mrp_engine is pushed; asset_lifecycle, production_control, talent_onboarding, and product_catalog_pim are pushed; next slices continue through commerce/content/relationship and intelligence PBCs.
 
 ## Next Selection Rule
 
