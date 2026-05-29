@@ -3578,3 +3578,13 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   `appgen.cli-help-surface-audit.v1` helper probe with `ok=True`, focused
   non-PBC help/alias test (`1 passed`), scoped diff whitespace check, and
   restricted-name scan outside archive, Git internals, and active PBC paths.
+  Commit: `48707585`.
+- Current missing-input CLI audit hardening pass closes the gap between the
+  documented missing user path policy and single-command evidence. The
+  `appgen.missing-input-exit-audit.v1` proof now covers graph, generate,
+  migration previous-path, and migration current-path failures, all returning
+  exit code `2` with no traceback before artifacts are read or generated.
+  Verification passed: Python compile for the touched tooling entrypoint, direct
+  `appgen.missing-input-exit-audit.v1` helper probe with `ok=True`, focused
+  non-PBC missing-input test (`1 passed`), scoped diff whitespace check, and
+  restricted-name scan outside archive, Git internals, and active PBC paths.

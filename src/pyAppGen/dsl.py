@@ -3045,21 +3045,38 @@ def _tooling_audit_internal_error_exit(tmp: Path) -> dict:
 
 def _tooling_audit_missing_input_exit(tmp: Path) -> dict:
     missing_path = tmp / "missing.appgen"
-    output = io.StringIO()
-    error = io.StringIO()
-    exit_code = 0
-    with contextlib.redirect_stdout(output), contextlib.redirect_stderr(error):
-        try:
-            exit_code = dsl_tooling_cli(("graph", str(missing_path), "--format", "json"))
-        except SystemExit as exc:
-            exit_code = int(exc.code or 0)
-    stderr = error.getvalue()
+    current_path = tmp / "current.appgen"
+    current_path.write_text("app Current { targets: web }\ntable Thing { id: int pk }\n", encoding="utf-8")
+    cases = (
+        ("graph_missing_path", ("graph", str(missing_path), "--format", "json")),
+        ("generate_missing_path", ("generate", str(missing_path), "--out", str(tmp / "generated"))),
+        ("migration_missing_previous", ("migration-plan", str(missing_path), str(current_path))),
+        ("migration_missing_current", ("migration-plan", str(current_path), str(missing_path))),
+    )
+    results = []
+    for name, argv in cases:
+        output = io.StringIO()
+        error = io.StringIO()
+        exit_code = 0
+        with contextlib.redirect_stdout(output), contextlib.redirect_stderr(error):
+            try:
+                exit_code = dsl_tooling_cli(argv)
+            except SystemExit as exc:
+                exit_code = int(exc.code or 0)
+        stderr = error.getvalue()
+        results.append(
+            {
+                "name": name,
+                "ok": exit_code == 2 and "path does not exist" in stderr and "Traceback" not in stderr,
+                "exit_code": exit_code,
+                "stderr": stderr.strip(),
+                "stdout": output.getvalue().strip(),
+            }
+        )
     return {
         "format": "appgen.missing-input-exit-audit.v1",
-        "ok": exit_code == 2 and "path does not exist" in stderr and "Traceback" not in stderr,
-        "exit_code": exit_code,
-        "stderr": stderr.strip(),
-        "stdout": output.getvalue().strip(),
+        "ok": all(result["ok"] for result in results),
+        "cases": tuple(results),
     }
 
 

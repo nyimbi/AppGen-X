@@ -2695,6 +2695,23 @@ def test_cli_contracts_cover_text_summaries_exit_codes_and_bad_arguments(tmp_pat
     assert "--out" in missing_required_arg.stderr
 
 
+def test_missing_input_audit_covers_file_based_commands(tmp_path: Path) -> None:
+    audit = appgen_dsl._tooling_audit_missing_input_exit(tmp_path)
+    cases = {case["name"]: case for case in audit["cases"]}
+
+    assert audit["format"] == "appgen.missing-input-exit-audit.v1"
+    assert audit["ok"] is True
+    assert {
+        "graph_missing_path",
+        "generate_missing_path",
+        "migration_missing_previous",
+        "migration_missing_current",
+    } <= set(cases)
+    assert all(case["exit_code"] == 2 for case in cases.values())
+    assert all("path does not exist" in case["stderr"] for case in cases.values())
+    assert all("Traceback" not in case["stderr"] for case in cases.values())
+
+
 def test_invalid_choice_audit_covers_graph_formats_and_backend_choices(tmp_path: Path) -> None:
     audit = appgen_dsl._tooling_audit_invalid_choice_exit(tmp_path)
     cases = {case["name"]: case for case in audit["cases"]}
