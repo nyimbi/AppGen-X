@@ -737,6 +737,8 @@ Mermaid, and DOT renderings rather than relying on a count alone.
 `appgen.graph-explain-text-renderer.v1` is embedded in the tooling audit to
 prove graph-suite and explain logs keep graph kind, graph format, check,
 symbol, diagnostic-doc, and handler-edge evidence visible without JSON parsing.
+Its contract reports required-fragment, missing-fragment, output-line, and
+marker-line counts across graph-suite, symbol, diagnostic, and handler summaries.
 
 Supported graph kinds:
 
@@ -830,6 +832,9 @@ gaps, and
 implementation-phase marker visible without requiring the full audit to run,
 including the explicitly called-out non-goal policy and documentation-anchor
 audit format markers.
+Its contract reports fragment and marker counts for top-level summaries, source
+markers, section markers, embedded format markers, blocking gaps, and
+implementation-phase evidence.
 When implementation-phase evidence is present, the text output also reports the
 number of audited phases, missing phase count, and the
 `appgen.tooling-implementation-phase-audit.v1` format marker.
@@ -877,6 +882,8 @@ graph-suite kinds as `graph-kinds ...`, graph-suite rendering formats as
 prove those human-readable handoff logs keep the envelope, evidence bundle,
 graph-suite kind/format, per-target status, blocking-gap, and artifact markers
 without depending on JSON parsing.
+The renderer contract reports fragment and marker counts for release, graph,
+verifier, blocking-gap, and artifact lines.
 
 ### `appgen component-publish`
 
@@ -899,6 +906,8 @@ before/after catalog counts.
 prove this human-readable component publication log remains side-effect-aware
 and exposes the catalog patch contract plus existing-catalog context without
 parsing JSON.
+The renderer contract reports fragment and marker counts for the component
+summary, catalog metadata, side-effect posture, and patch contract.
 
 ### `appgen pbc`
 
@@ -980,6 +989,8 @@ those editor-service summaries keep diagnostics, completions, actions, symbols,
 source-of-truth, navigation, formatting, hover content as `hover ...`,
 completion coverage gaps as `completion-missing ...`, and rename safety markers
 visible without JSON parsing.
+The renderer contract reports fragment and marker counts for service, coverage,
+navigation, formatting, rename, blocker, and hover lines.
 Rename text output includes the `appgen.lsp-rename.v1` contract format, whether
 the rename was blocked, blocker count, the nested `appgen.migration-plan.v1`
 migration-preview as `migration_format=...`, and whether that migration preview
@@ -1088,6 +1099,8 @@ unknown ids, and diagnostics.
 `appgen.lsp-code-action-text-renderer.v1` is embedded in the tooling audit to
 prove quick-fix logs keep success, failure, title, available-action, lint, edit
 text, and diagnostic evidence visible without JSON parsing.
+Its renderer contract reports fragment and marker counts for success/failure
+summaries, titles, edits, available-action lists, and diagnostics.
 This is the evidence path for missing-operation, lookup-directive,
 event-contract, relationship, typo, secret-literal replacement, invalid
 runtime/stream/backend picker removal, PBC manifest, agent-permission, package
@@ -1305,6 +1318,8 @@ source of truth.
 prove migration text logs keep backend, destructive-count, approval, coverage,
 detected-family, missing-family, change, safe-alternative, and diagnostic
 markers visible without JSON parsing.
+The renderer contract reports fragment and marker counts across coverage,
+detected/missing families, changes, safe-alternatives, and diagnostics.
 
 ## Natural-Language Change Planner
 
@@ -1480,7 +1495,7 @@ construct count, covered construct count, covered construct names as
 present, and blocking fixture gaps. JSON remains the
 machine-readable source of truth.
 
-`appgen.parser-golden-text-renderer.v1` is embedded in the tooling audit to prove parser-golden text logs keep fixture counts, covered construct names, missing construct names, and blocking gap evidence visible without JSON parsing.
+`appgen.parser-golden-text-renderer.v1` is embedded in the tooling audit to prove parser-golden text logs keep fixture counts, covered construct names, missing construct names, and blocking gap evidence visible without JSON parsing. The parser-golden renderer contract reports fragment and marker counts for the header, covered/missing construct lines, and blocking fixture gaps.
 
 The required construct set includes application options, table fields, reusable field groups, spreads, derived fields, modifiers, relationships, relationship cardinality, table directives, enums, views, component placement, handlers, flows, workflow directives, roles, permissions, rules, rule expressions, LLM definitions, agents, PBCs, PBC composition include/require/expose/connect clauses, audit blocks, deployment units/scale/health/check/resource/env/directives, version blocks, operations, security, APIs, events, jobs, reports, menus, component contracts, packages, and tests.
 

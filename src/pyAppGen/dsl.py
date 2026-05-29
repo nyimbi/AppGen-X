@@ -2147,6 +2147,11 @@ def _parser_golden_text_renderer_contract() -> dict:
     return {
         "format": "appgen.parser-golden-text-renderer.v1",
         "ok": not missing and not text.lstrip().startswith("{"),
+        **_text_renderer_contract_counts(
+            text,
+            required_fragments,
+            marker_prefixes=("parser-golden ", "covered-constructs ", "missing-constructs ", "fail "),
+        ),
         "required_fragments": required_fragments,
         "missing_fragments": missing,
         "json_fallback": text.lstrip().startswith("{"),
@@ -2301,6 +2306,11 @@ def _component_publish_text_renderer_contract() -> dict:
     return {
         "format": "appgen.component-publish-text-renderer.v1",
         "ok": not missing and not text.lstrip().startswith("{"),
+        **_text_renderer_contract_counts(
+            text,
+            required_fragments,
+            marker_prefixes=("component-publish ", "catalog", "already_", "side_effect_free", "write_performed", "patch_format"),
+        ),
         "required_fragments": required_fragments,
         "missing_fragments": missing,
         "json_fallback": text.lstrip().startswith("{"),
@@ -2567,6 +2577,11 @@ def _graph_explain_text_renderer_contract() -> dict:
     return {
         "format": "appgen.graph-explain-text-renderer.v1",
         "ok": not missing and not text.lstrip().startswith("{"),
+        **_text_renderer_contract_counts(
+            text,
+            required_fragments,
+            marker_prefixes=("graph-suite ", "graph-", "ok ", "fail ", "explain ", "parent:", "references:", "matches:"),
+        ),
         "required_fragments": required_fragments,
         "missing_fragments": missing,
         "json_fallback": text.lstrip().startswith("{"),
@@ -2656,6 +2671,11 @@ def _migration_plan_text_renderer_contract() -> dict:
     return {
         "format": "appgen.migration-plan-text-renderer.v1",
         "ok": not missing and not text.lstrip().startswith("{"),
+        **_text_renderer_contract_counts(
+            text,
+            required_fragments,
+            marker_prefixes=("migration-", "change ", "safe-alternative ", "warning ", "error "),
+        ),
         "required_fragments": required_fragments,
         "missing_fragments": missing,
         "json_fallback": text.lstrip().startswith("{"),
@@ -2779,6 +2799,11 @@ def _release_verifier_text_renderer_contract() -> dict:
     return {
         "format": "appgen.release-verifier-text-renderer.v1",
         "ok": not missing and not text.lstrip().startswith("{"),
+        **_text_renderer_contract_counts(
+            text,
+            required_fragments,
+            marker_prefixes=("release-", "graph-", "ok ", "fail ", "artifact "),
+        ),
         "required_fragments": required_fragments,
         "missing_fragments": missing,
         "json_fallback": text.lstrip().startswith("{"),
@@ -3233,6 +3258,11 @@ def _lsp_service_text_renderer_contract() -> dict:
     return {
         "format": "appgen.lsp-service-text-renderer.v1",
         "ok": not missing and not text.lstrip().startswith("{"),
+        **_text_renderer_contract_counts(
+            text,
+            required_fragments,
+            marker_prefixes=("lsp ", "source_of_truth", "completion_", "definition ", "references ", "formatting ", "rename ", "rename-blocker ", "hover"),
+        ),
         "required_fragments": required_fragments,
         "missing_fragments": missing,
         "json_fallback": text.lstrip().startswith("{"),
@@ -3308,6 +3338,11 @@ def _lsp_code_action_text_renderer_contract() -> dict:
     return {
         "format": "appgen.lsp-code-action-text-renderer.v1",
         "ok": not missing and not text.lstrip().startswith("{"),
+        **_text_renderer_contract_counts(
+            text,
+            required_fragments,
+            marker_prefixes=("lsp-code-action ", "title ", "edit ", "available-actions ", "warning ", "error "),
+        ),
         "required_fragments": required_fragments,
         "missing_fragments": missing,
         "json_fallback": text.lstrip().startswith("{"),
@@ -4385,6 +4420,11 @@ def _tooling_audit_text_renderer_contract() -> dict:
     return {
         "format": "appgen.tooling-audit-text-renderer.v1",
         "ok": not missing and not text.lstrip().startswith("{"),
+        **_text_renderer_contract_counts(
+            text,
+            required_fragments,
+            marker_prefixes=("tooling-audit ", "blocking-gap ", "source=", "section ", "formats=", "implementation-phases "),
+        ),
         "required_fragments": required_fragments,
         "missing_fragments": missing,
         "json_fallback": text.lstrip().startswith("{"),

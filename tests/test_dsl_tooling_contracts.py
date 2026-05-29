@@ -3980,6 +3980,9 @@ def test_tooling_audit_text_renderer_contract_proves_human_log_markers() -> None
 
     assert report["format"] == "appgen.tooling-audit-text-renderer.v1"
     assert report["ok"] is True
+    assert report["required_fragment_count"] == len(report["required_fragments"])
+    assert report["missing_fragment_count"] == 0
+    assert report["marker_line_count"] >= 10
     assert report["missing_fragments"] == ()
     assert report["json_fallback"] is False
     assert report["text_prefix"].startswith("tooling-audit ok: format=appgen.tooling-audit.v1")
@@ -3999,6 +4002,9 @@ def test_release_verifier_text_renderer_contract_proves_handoff_log_markers() ->
 
     assert report["format"] == "appgen.release-verifier-text-renderer.v1"
     assert report["ok"] is True
+    assert report["required_fragment_count"] == len(report["required_fragments"])
+    assert report["missing_fragment_count"] == 0
+    assert report["marker_line_count"] >= 9
     assert report["missing_fragments"] == ()
     assert report["json_fallback"] is False
     assert report["text_prefix"].startswith(
@@ -4019,6 +4025,9 @@ def test_component_publish_text_renderer_contract_proves_catalog_log_markers() -
 
     assert report["format"] == "appgen.component-publish-text-renderer.v1"
     assert report["ok"] is True
+    assert report["required_fragment_count"] == len(report["required_fragments"])
+    assert report["missing_fragment_count"] == 0
+    assert report["marker_line_count"] == report["output_line_count"] == 3
     assert report["missing_fragments"] == ()
     assert report["json_fallback"] is False
     assert report["text_prefix"].startswith(
@@ -4212,6 +4221,9 @@ def test_migration_plan_text_renderer_contract_proves_safety_log_markers() -> No
 
     assert report["format"] == "appgen.migration-plan-text-renderer.v1"
     assert report["ok"] is True
+    assert report["required_fragment_count"] == len(report["required_fragments"])
+    assert report["missing_fragment_count"] == 0
+    assert report["marker_line_count"] >= 10
     assert report["missing_fragments"] == ()
     assert report["json_fallback"] is False
     assert report["text_prefix"].startswith(
@@ -4231,6 +4243,9 @@ def test_lsp_service_text_renderer_contract_proves_editor_log_markers() -> None:
 
     assert report["format"] == "appgen.lsp-service-text-renderer.v1"
     assert report["ok"] is True
+    assert report["required_fragment_count"] == len(report["required_fragments"])
+    assert report["missing_fragment_count"] == 0
+    assert report["marker_line_count"] >= 11
     assert report["missing_fragments"] == ()
     assert report["json_fallback"] is False
     assert report["text_prefix"].startswith(
@@ -4254,6 +4269,9 @@ def test_lsp_code_action_text_renderer_contract_proves_quick_fix_log_markers() -
 
     assert report["format"] == "appgen.lsp-code-action-text-renderer.v1"
     assert report["ok"] is True
+    assert report["required_fragment_count"] == len(report["required_fragments"])
+    assert report["missing_fragment_count"] == 0
+    assert report["marker_line_count"] >= 6
     assert report["missing_fragments"] == ()
     assert report["json_fallback"] is False
     assert report["text_prefix"].startswith(
@@ -4273,6 +4291,9 @@ def test_graph_explain_text_renderer_contract_proves_review_log_markers() -> Non
 
     assert report["format"] == "appgen.graph-explain-text-renderer.v1"
     assert report["ok"] is True
+    assert report["required_fragment_count"] == len(report["required_fragments"])
+    assert report["missing_fragment_count"] == 0
+    assert report["marker_line_count"] >= 11
     assert report["missing_fragments"] == ()
     assert report["json_fallback"] is False
     assert report["text_prefix"].startswith(
@@ -4292,6 +4313,9 @@ def test_parser_golden_text_renderer_contract_proves_fixture_log_markers() -> No
 
     assert report["format"] == "appgen.parser-golden-text-renderer.v1"
     assert report["ok"] is True
+    assert report["required_fragment_count"] == len(report["required_fragments"])
+    assert report["missing_fragment_count"] == 0
+    assert report["marker_line_count"] >= 4
     assert report["missing_fragments"] == ()
     assert report["json_fallback"] is False
     assert report["text_prefix"].startswith(
