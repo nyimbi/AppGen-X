@@ -2710,6 +2710,67 @@ def _emit_lsp_service_text(payload: dict) -> None:
     print(f"hover_items={len(hover.get('contents', ()))}")
 
 
+def _lsp_service_text_renderer_contract() -> dict:
+    """Prove LSP service text logs expose editor-service evidence."""
+    payload = {
+        "format": "appgen.lsp-service.v1",
+        "ok": True,
+        "semantic_model_format": "appgen.semantic-model.v1",
+        "publishDiagnostics": {"diagnostics": ({"code": "AGX0303"}, {"code": "AGX0403"})},
+        "completion": {"items": ({"label": "Customer"}, {"label": "Invoice"})},
+        "codeAction": {"actions": ({"title": "Create operation"},)},
+        "documentSymbol": {"symbols": ({"name": "Invoice"}, {"name": "InvoiceForm"})},
+        "workspaceSymbol": {"symbols": ({"name": "Customer"},)},
+        "capabilities": {"source_of_truth": "appgen.semantic-model.v1"},
+        "completionCoverage": {
+            "format": "appgen.completion-coverage.v1",
+            "missing": ("agent_actions",),
+        },
+        "definition": {"format": "appgen.lsp-definition.v1", "ok": True},
+        "references": {
+            "format": "appgen.lsp-references.v1",
+            "locations": ({"uri": "memory://invoice.appgen"}, {"uri": "memory://customer.appgen"}),
+        },
+        "formatting": {"format": "appgen.lsp-formatting.v1", "edits": ({"newText": "app Invoice"},)},
+        "rename": {
+            "format": "appgen.lsp-rename.v1",
+            "ok": False,
+            "changed": False,
+            "blocked": True,
+            "diagnostics": ({"code": "AGX1101"},),
+            "blockers": ("requires_approval",),
+            "migration_preview": {
+                "format": "appgen.migration-plan.v1",
+                "requires_approval": True,
+            },
+        },
+        "hover": {"contents": ("table Invoice", "field total")},
+    }
+    output = io.StringIO()
+    with contextlib.redirect_stdout(output):
+        _emit_tooling_payload(payload, as_json=False)
+    text = output.getvalue()
+    required_fragments = (
+        "lsp ok: format=appgen.lsp-service.v1 semantic_format=appgen.semantic-model.v1 diagnostics=2 completions=2 actions=1 symbols=2 workspace_symbols=1",
+        "source_of_truth=appgen.semantic-model.v1",
+        "completion_coverage format=appgen.completion-coverage.v1 missing=1",
+        "definition format=appgen.lsp-definition.v1 ok=True",
+        "references format=appgen.lsp-references.v1 locations=2",
+        "formatting format=appgen.lsp-formatting.v1 edits=1",
+        "rename ok=False format=appgen.lsp-rename.v1 changed=False blocked=True diagnostics=1 blockers=1 migration_format=appgen.migration-plan.v1 requires_approval=True",
+        "hover_items=2",
+    )
+    missing = tuple(fragment for fragment in required_fragments if fragment not in text)
+    return {
+        "format": "appgen.lsp-service-text-renderer.v1",
+        "ok": not missing and not text.lstrip().startswith("{"),
+        "required_fragments": required_fragments,
+        "missing_fragments": missing,
+        "json_fallback": text.lstrip().startswith("{"),
+        "text_prefix": text[:240],
+    }
+
+
 def _emit_lsp_code_action_apply_text(payload: dict) -> None:
     status = "ok" if payload.get("ok") else "failed"
     edits = tuple(payload.get("applied_edits", ()))
@@ -3275,6 +3336,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
     parser_golden = parser_golden_audit_dsl()
     drift = semantic_drift_audit_dsl(source, source_name="tooling-audit.appgen")
     drift_text_renderer = _semantic_drift_text_renderer_contract()
+    lsp_text_renderer = _lsp_service_text_renderer_contract()
     doctor = doctor_report_dsl()
     module_boundaries = module_boundary_audit_dsl()
     non_goal_policy = _tooling_audit_non_goal_policy()
@@ -3476,6 +3538,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and lsp["capabilities"]["source_of_truth"] == "appgen.semantic-model.v1"
             and lsp["completionCoverage"]["missing"] == ()
             and lsp["formatting"]["format"] == "appgen.lsp-formatting.v1"
+            and lsp_text_renderer["ok"]
             and lsp_rpc["ok"]
             and lsp_stdio["ok"]
             and lsp_rename_cli["ok"],
@@ -3484,6 +3547,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             {
                 "format": lsp.get("format"),
                 "coverage": lsp.get("completionCoverage", {}).get("format"),
+                "text_renderer": lsp_text_renderer,
                 "rpc": lsp_rpc,
                 "stdio": lsp_stdio,
                 "rename_cli": lsp_rename_cli,

@@ -3991,6 +3991,25 @@ def test_migration_plan_text_renderer_contract_proves_safety_log_markers() -> No
     } <= set(report["required_fragments"])
 
 
+def test_lsp_service_text_renderer_contract_proves_editor_log_markers() -> None:
+    report = appgen_dsl._lsp_service_text_renderer_contract()
+
+    assert report["format"] == "appgen.lsp-service-text-renderer.v1"
+    assert report["ok"] is True
+    assert report["missing_fragments"] == ()
+    assert report["json_fallback"] is False
+    assert report["text_prefix"].startswith(
+        "lsp ok: format=appgen.lsp-service.v1 semantic_format=appgen.semantic-model.v1"
+    )
+    assert {
+        "source_of_truth=appgen.semantic-model.v1",
+        "completion_coverage format=appgen.completion-coverage.v1 missing=1",
+        "definition format=appgen.lsp-definition.v1 ok=True",
+        "references format=appgen.lsp-references.v1 locations=2",
+        "rename ok=False format=appgen.lsp-rename.v1 changed=False blocked=True diagnostics=1 blockers=1 migration_format=appgen.migration-plan.v1 requires_approval=True",
+    } <= set(report["required_fragments"])
+
+
 def test_tooling_audit_text_summary_exposes_sections_gaps_and_formats() -> None:
     payload = {
         "format": "appgen.tooling-audit.v1",

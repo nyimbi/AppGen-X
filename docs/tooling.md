@@ -903,6 +903,10 @@ workspace-symbol count, source-of-truth contract, hover evidence, completion
 coverage format as a `format=...` marker and missing-source count, definition
 contract format/status, reference contract format/location count, formatting
 contract format/edit count, and rename status when a rename is requested.
+`appgen.lsp-service-text-renderer.v1` is embedded in the tooling audit to prove
+those editor-service summaries keep diagnostics, completions, actions, symbols,
+source-of-truth, navigation, formatting, hover, and rename safety markers
+visible without JSON parsing.
 Rename text output includes the `appgen.lsp-rename.v1` contract format, whether
 the rename was blocked, blocker count, the nested `appgen.migration-plan.v1`
 migration-preview as `migration_format=...`, and whether that migration preview
