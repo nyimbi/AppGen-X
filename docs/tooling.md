@@ -45,7 +45,9 @@ must emit `AGX0702` with an environment-binding fix, unsupported
 backend/runtime/stream picker fields must emit policy diagnostics with a removal
 fix, and natural-language prompts that try to bypass the DSL source of truth
 or skip linting, semantic validation, or release evidence must be rejected
-before any patch is produced.
+before any patch is produced. The policy audit reports case, passing-case,
+diagnostic-code, fix, rejected-prompt, and zero-patch-rejection counts so these
+non-goals remain measurable release gates rather than prose warnings.
 
 ## Core Architecture
 
@@ -860,6 +862,9 @@ implementation-phase evidence.
 When implementation-phase evidence is present, the text output also reports the
 number of audited phases, missing phase count, and the
 `appgen.tooling-implementation-phase-audit.v1` format marker.
+The implementation-phase audit reports phase, passing-phase, exit-criterion,
+passing-exit-criterion, and missing-phase counts so completion claims can be
+reviewed without expanding every nested criterion.
 
 ### `appgen package`
 
@@ -1509,6 +1514,11 @@ Deployment verifier:
   Deployment package manifests must carry the same readiness booleans as
   handoff metadata: units, health checks, environment variable names,
   secret-value absence, resource hints, and connected topology graph evidence.
+
+The package invalid-target audit reports case, passing-case,
+invalid-choice-message, and traceback-free counts for unsupported target
+handling, so package tooling has explicit failure-path evidence in addition to
+successful target manifests.
 
 ## Test Strategy
 

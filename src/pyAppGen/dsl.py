@@ -4544,6 +4544,18 @@ def _tooling_audit_non_goal_policy() -> dict:
     return {
         "format": "appgen.non-goal-policy-audit.v1",
         "ok": all(case["ok"] for case in cases),
+        "case_count": len(cases),
+        "passing_case_count": sum(1 for case in cases if case["ok"]),
+        "diagnostic_code_count": len({code for case in cases for code in case.get("diagnostic_codes", ())}),
+        "fix_count": sum(
+            1
+            for case in cases
+            if case.get("fixed_contains_env_binding") is True or case.get("picker_fields_removed") is True
+        ),
+        "rejected_prompt_count": sum(1 for case in cases if case["case"].endswith("_prompt")),
+        "zero_patch_rejection_count": sum(
+            1 for case in cases if case["case"].endswith("_prompt") and case.get("patch_bytes") == 0
+        ),
         "cases": cases,
         "source_of_truth": "docs/tooling.md#non-goals",
     }
@@ -4856,6 +4868,13 @@ def _tooling_audit_implementation_phases(**evidence: dict) -> dict:
     return {
         "format": "appgen.tooling-implementation-phase-audit.v1",
         "ok": not missing,
+        "phase_count": len(phases),
+        "passing_phase_count": sum(1 for item in phases if item["ok"]),
+        "exit_criterion_count": sum(len(item["exit_criteria"]) for item in phases),
+        "passing_exit_criterion_count": sum(
+            1 for item in phases for criterion in item["exit_criteria"] if criterion["ok"]
+        ),
+        "missing_phase_count": len(missing),
         "phases": phases,
         "missing_phases": missing,
         "source_of_truth": "docs/tooling.md#implementation-phases",
@@ -7499,6 +7518,10 @@ def _tooling_audit_package_invalid_target(tmp: Path, source: str) -> dict:
     return {
         "format": "appgen.package-invalid-target-audit.v1",
         "ok": exit_code == 2 and "invalid choice" in stderr and "Traceback" not in stderr,
+        "case_count": 1,
+        "passing_case_count": 1 if exit_code == 2 and "invalid choice" in stderr and "Traceback" not in stderr else 0,
+        "invalid_choice_message_count": 1 if "invalid choice" in stderr else 0,
+        "traceback_free_count": 1 if "Traceback" not in stderr else 0,
         "exit_code": exit_code,
         "stderr": stderr.strip(),
         "stdout": output.getvalue().strip(),

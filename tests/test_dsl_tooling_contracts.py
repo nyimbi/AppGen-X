@@ -3587,6 +3587,11 @@ def test_tooling_implementation_phase_audit_maps_phase_exit_criteria_to_evidence
 
     assert report["format"] == "appgen.tooling-implementation-phase-audit.v1"
     assert report["ok"] is True
+    assert report["phase_count"] == len(report["phases"])
+    assert report["passing_phase_count"] == report["phase_count"]
+    assert report["exit_criterion_count"] == sum(len(phase["exit_criteria"]) for phase in report["phases"])
+    assert report["passing_exit_criterion_count"] == report["exit_criterion_count"]
+    assert report["missing_phase_count"] == 0
     assert report["missing_phases"] == ()
     assert len(report["phases"]) == 7
     assert all(phase["missing_exit_criteria"] == () for phase in report["phases"])
@@ -3603,6 +3608,19 @@ def test_tooling_implementation_phase_audit_maps_phase_exit_criteria_to_evidence
         "studio_semantic_bridge",
         "release_and_package_verifiers",
     }
+
+
+def test_non_goal_policy_audit_reports_guard_counts() -> None:
+    report = appgen_dsl._tooling_audit_non_goal_policy()
+
+    assert report["format"] == "appgen.non-goal-policy-audit.v1"
+    assert report["ok"] is True
+    assert report["case_count"] == len(report["cases"])
+    assert report["passing_case_count"] == report["case_count"]
+    assert report["diagnostic_code_count"] >= 3
+    assert report["fix_count"] >= 2
+    assert report["rejected_prompt_count"] == 3
+    assert report["zero_patch_rejection_count"] == 3
 
 
 def test_package_verify_cli_audit_exposes_web_manifest_readiness_metadata(tmp_path: Path) -> None:
@@ -3624,6 +3642,18 @@ def test_package_verify_cli_audit_exposes_web_manifest_readiness_metadata(tmp_pa
     assert manifest_case["web_handler_targets_resolve"] is True
     assert manifest_case["web_smoke_tests_declared"] is True
     assert manifest_case["web_smoke_entrypoint"] == "web.smoke"
+
+
+def test_package_invalid_target_audit_reports_failure_counts(tmp_path: Path) -> None:
+    report = appgen_dsl._tooling_audit_package_invalid_target(tmp_path, TOOLING_SAMPLE)
+
+    assert report["format"] == "appgen.package-invalid-target-audit.v1"
+    assert report["ok"] is True
+    assert report["case_count"] == 1
+    assert report["passing_case_count"] == 1
+    assert report["invalid_choice_message_count"] == 1
+    assert report["traceback_free_count"] == 1
+    assert report["exit_code"] == 2
 
 
 def test_package_verify_cli_audit_exposes_deployment_manifest_readiness_metadata(tmp_path: Path) -> None:
@@ -3698,6 +3728,12 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     non_goal_check = next(check for check in report["checks"] if check["id"] == "non_goal_policy_guards")
     assert non_goal_check["detail"]["format"] == "appgen.non-goal-policy-audit.v1"
     assert non_goal_check["detail"]["ok"] is True
+    assert non_goal_check["detail"]["case_count"] == len(non_goal_check["detail"]["cases"])
+    assert non_goal_check["detail"]["passing_case_count"] == non_goal_check["detail"]["case_count"]
+    assert non_goal_check["detail"]["diagnostic_code_count"] >= 3
+    assert non_goal_check["detail"]["fix_count"] >= 2
+    assert non_goal_check["detail"]["rejected_prompt_count"] == 3
+    assert non_goal_check["detail"]["zero_patch_rejection_count"] == 3
     non_goal_cases = {case["case"]: case for case in non_goal_check["detail"]["cases"]}
     assert non_goal_cases["reject_secret_literal"]["secret_removed"] is True
     assert non_goal_cases["reject_secret_literal"]["fixed_contains_env_binding"] is True
@@ -4023,6 +4059,12 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     package_check = next(check for check in report["checks"] if check["id"] == "package_and_release_verifiers")
     assert package_check["detail"]["cli"]["format"] == "appgen.package-verify-cli-audit.v1"
     assert package_check["detail"]["cli"]["ok"] is True
+    assert package_check["detail"]["invalid_target"]["format"] == "appgen.package-invalid-target-audit.v1"
+    assert package_check["detail"]["invalid_target"]["ok"] is True
+    assert package_check["detail"]["invalid_target"]["case_count"] == 1
+    assert package_check["detail"]["invalid_target"]["passing_case_count"] == 1
+    assert package_check["detail"]["invalid_target"]["invalid_choice_message_count"] == 1
+    assert package_check["detail"]["invalid_target"]["traceback_free_count"] == 1
     assert package_check["detail"]["cli"]["case_count"] == 2
     assert package_check["detail"]["cli"]["passing_case_count"] == 2
     assert package_check["detail"]["cli"]["target_count"] == 5
