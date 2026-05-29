@@ -4315,6 +4315,7 @@ def _tooling_audit_missing_required_option_exit(tmp: Path) -> dict:
     cases = (
         ("generate_missing_out", ("generate", str(source_path))),
         ("nl_plan_missing_prompt", ("nl-plan", str(source_path))),
+        ("component_publish_missing_component", ("component-publish",)),
     )
     results = []
     for name, argv in cases:

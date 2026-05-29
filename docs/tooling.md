@@ -539,6 +539,9 @@ new flags cannot be implemented without being discoverable by humans, scripts,
 and coding agents. It also embeds `appgen.cli-alias-contract.v1`, which proves
 that `appgen` and `apg` resolve to the same `pyAppGen.__main__:main` entrypoint
 and that the module entrypoint dispatches into the tooling CLI.
+`appgen.missing-required-option-exit-audit.v1` covers required command options,
+including generator output directories, natural-language prompts, and component
+publication names.
 
 ### `appgen lint`
 
