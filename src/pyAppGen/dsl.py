@@ -7286,6 +7286,7 @@ def _tooling_audit_cli_help_surface(root: Path) -> dict:
     help_text = help_output.getvalue()
     help_has_subcommands = all(command in entrypoint for command in required_subcommands)
     help_lists_subcommands = all(command in help_text for command in required_subcommands)
+    help_missing_subcommands = tuple(command for command in required_subcommands if command not in help_text)
     required_option_help = {
         ("lint",): ("--json", "--strict", "--catalog", "--previous-semantic", "--backend"),
         ("format",): ("--check", "--write", "--organize", "--json"),
@@ -7325,8 +7326,11 @@ def _tooling_audit_cli_help_surface(root: Path) -> dict:
             "ok": command_help_exit_code == 0 and all(option in command_help_text for option in required_options),
             "exit_code": command_help_exit_code,
             "missing": tuple(option for option in required_options if option not in command_help_text),
+            "required_option_count": len(required_options),
         }
     subcommand_option_help_ok = all(item["ok"] for item in option_help.values())
+    required_option_count = sum(len(options) for options in required_option_help.values())
+    missing_option_count = sum(len(item["missing"]) for item in option_help.values())
     scripts = pyproject_data.get("project", {}).get("scripts", {})
     alias_declared = scripts.get("apg") == scripts.get("appgen") == "pyAppGen.__main__:main"
     alias_contract = {
@@ -7376,8 +7380,15 @@ def _tooling_audit_cli_help_surface(root: Path) -> dict:
         },
         "help_exit_code": help_exit_code,
         "help_lists_subcommands": help_lists_subcommands,
-        "help_missing_subcommands": tuple(command for command in required_subcommands if command not in help_text),
+        "required_subcommand_count": len(required_subcommands),
+        "documented_subcommand_count": sum(1 for command in required_subcommands if command in entrypoint),
+        "help_listed_subcommand_count": len(required_subcommands) - len(help_missing_subcommands),
+        "help_missing_subcommand_count": len(help_missing_subcommands),
+        "help_missing_subcommands": help_missing_subcommands,
         "subcommand_option_help_ok": subcommand_option_help_ok,
+        "subcommand_option_surface_count": len(required_option_help),
+        "required_option_count": required_option_count,
+        "missing_option_count": missing_option_count,
         "subcommand_option_help": option_help,
         "module_entrypoint": {
             "ok": module_dispatches_tooling,

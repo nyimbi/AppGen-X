@@ -4402,11 +4402,20 @@ def test_top_level_help_exposes_tooling_subcommands_and_apg_alias() -> None:
     assert audit["alias_contract"]["module_payload_format"] == "appgen.lint-report.v1"
     assert audit["help_exit_code"] == 0
     assert audit["help_lists_subcommands"] is True
+    assert audit["required_subcommand_count"] == len(audit["required_subcommands"])
+    assert audit["required_subcommand_count"] >= 20
+    assert audit["documented_subcommand_count"] == audit["required_subcommand_count"]
+    assert audit["help_listed_subcommand_count"] == audit["required_subcommand_count"]
+    assert audit["help_missing_subcommand_count"] == 0
     assert audit["help_missing_subcommands"] == ()
     assert audit["subcommand_option_help_ok"] is True
+    assert audit["subcommand_option_surface_count"] == len(audit["subcommand_option_help"])
+    assert audit["required_option_count"] >= 50
+    assert audit["missing_option_count"] == 0
     assert audit["subcommand_option_help"]["component-publish"]["missing"] == ()
     assert audit["subcommand_option_help"]["lint"]["missing"] == ()
     assert audit["subcommand_option_help"]["lint"]["exit_code"] == 0
+    assert audit["subcommand_option_help"]["lint"]["required_option_count"] >= 5
     assert audit["subcommand_option_help"]["migration-plan"]["missing"] == ()
     assert audit["subcommand_option_help"]["lsp"]["missing"] == ()
     assert audit["subcommand_option_help"]["pbc publish"]["missing"] == ()
