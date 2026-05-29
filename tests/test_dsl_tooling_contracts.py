@@ -2178,6 +2178,30 @@ def test_appgen_package_subcommand_materializes_release_evidence(tmp_path: Path)
         text=True,
         capture_output=True,
     )
+    text_result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pyAppGen",
+            "package",
+            str(source_path),
+            "--target",
+            "mobile",
+            "--out",
+            str(output_dir / "text"),
+        ],
+        check=False,
+        cwd=Path(__file__).resolve().parents[1],
+        text=True,
+        capture_output=True,
+    )
+    verify_text = subprocess.run(
+        [sys.executable, "-m", "pyAppGen", "verify", str(source_path), "--target", "mobile"],
+        check=False,
+        cwd=Path(__file__).resolve().parents[1],
+        text=True,
+        capture_output=True,
+    )
     invalid_target = subprocess.run(
         [
             sys.executable,
@@ -2205,6 +2229,16 @@ def test_appgen_package_subcommand_materializes_release_evidence(tmp_path: Path)
     assert mobile_manifest_path.exists()
     assert json.loads(evidence_path.read_text(encoding="utf-8"))["reports"]["mobile"]["format"] == "appgen.mobile-verifier.v1"
     assert json.loads(mobile_manifest_path.read_text(encoding="utf-8"))["smoke_entrypoint"] == "mobile.launch"
+    assert text_result.returncode == 0, text_result.stderr
+    assert text_result.stdout.startswith("release-verify ok: targets=mobile")
+    assert "written=2" in text_result.stdout
+    assert "graph-suite appgen.graph-suite-report.v1: kinds=9 formats=3" in text_result.stdout
+    assert "ok mobile" in text_result.stdout
+    assert "artifact release_evidence:" in text_result.stdout
+    assert "artifact mobile_package_manifest:" in text_result.stdout
+    assert verify_text.returncode == 0, verify_text.stderr
+    assert verify_text.stdout.startswith("release-verify ok: targets=mobile written=0")
+    assert "ok mobile" in verify_text.stdout
     assert invalid_target.returncode == 2
     assert "invalid choice" in invalid_target.stderr
     assert "Traceback" not in invalid_target.stderr

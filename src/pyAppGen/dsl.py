@@ -1735,6 +1735,9 @@ def _emit_tooling_payload(payload: dict, *, as_json: bool) -> None:
     if payload.get("format") == "appgen.nl-plan.v1":
         _emit_nl_plan_text(payload)
         return
+    if payload.get("format") == "appgen.release-verifier-report.v1":
+        _emit_release_verifier_text(payload)
+        return
     if payload.get("format") == "appgen.parser-golden-audit.v1":
         status = "ok" if payload.get("ok") else "failed"
         print(
@@ -1862,6 +1865,27 @@ def _emit_nl_plan_text(payload: dict) -> None:
             f"changes={len(migration.get('changes', ()))} "
             f"requires_approval={migration.get('requires_approval', False)}"
         )
+    for diagnostic in payload.get("diagnostics", ()):
+        print(f"{diagnostic['severity']} {diagnostic['code']}: {diagnostic['message']}")
+
+
+def _emit_release_verifier_text(payload: dict) -> None:
+    status = "ok" if payload.get("ok") else "failed"
+    targets = tuple(payload.get("targets", ()))
+    written = tuple(payload.get("written_artifacts", ()))
+    print(f"release-verify {status}: targets={','.join(targets)} written={len(written)}")
+    graph = payload.get("evidence_bundle", {}).get("graph_suite", {})
+    if graph.get("format"):
+        print(
+            f"graph-suite {graph.get('format')}: "
+            f"kinds={len(graph.get('required_kinds', ()))} formats={len(graph.get('formats', ()))}"
+        )
+    for check in payload.get("checks", ()):
+        gaps = tuple(check.get("blocking_gaps", ()))
+        gap_text = f" gaps={','.join(gaps)}" if gaps else ""
+        print(f"{'ok' if check.get('ok') else 'fail'} {check.get('verifier')}{gap_text}")
+    for artifact in written:
+        print(f"artifact {artifact.get('kind')}: {artifact.get('path')}")
     for diagnostic in payload.get("diagnostics", ()):
         print(f"{diagnostic['severity']} {diagnostic['code']}: {diagnostic['message']}")
 
