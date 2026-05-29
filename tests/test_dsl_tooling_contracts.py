@@ -1464,7 +1464,7 @@ def test_lsp_code_action_apply_audit_proves_required_quick_fixes() -> None:
     } <= set(audit["required_actions"])
 
 
-def test_lsp_code_action_cli_audit_covers_missing_operation_and_lookup_directive(tmp_path: Path) -> None:
+def test_lsp_code_action_cli_audit_covers_required_agent_facing_quick_fixes(tmp_path: Path) -> None:
     report = appgen_dsl._tooling_audit_lsp_apply_code_action_cli(tmp_path)
     cases = {case["case"]: case for case in report["cases"]}
 
@@ -1475,6 +1475,8 @@ def test_lsp_code_action_cli_audit_covers_missing_operation_and_lookup_directive
         "add_lookup_directive",
         "replace_secret_literal_with_env",
         "remove_invalid_runtime_picker_fields",
+        "add_package_for_app_target",
+        "create_smoke_test_declaration",
     } <= set(report["required_cli_actions"])
     assert cases["create_operation_from_handler"]["ok"] is True
     assert cases["create_operation_from_handler"]["changed"] is True
@@ -1483,6 +1485,10 @@ def test_lsp_code_action_cli_audit_covers_missing_operation_and_lookup_directive
     assert cases["add_lookup_directive"]["ok"] is True
     assert cases["add_lookup_directive"]["changed"] is True
     assert cases["add_lookup_directive"]["applied_edit_count"] > 0
+    assert cases["add_package_for_app_target"]["ok"] is True
+    assert cases["add_package_for_app_target"]["expected_text"] == "package WebPackage"
+    assert cases["create_smoke_test_declaration"]["ok"] is True
+    assert cases["create_smoke_test_declaration"]["expected_text"] == "test PublishSmoke"
     assert cases["add_lookup_directive"]["lint_ok"] is True
     assert cases["replace_secret_literal_with_env"]["ok"] is True
     assert cases["replace_secret_literal_with_env"]["forbidden_removed"] is True
@@ -2723,6 +2729,8 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
         "add_lookup_directive",
         "replace_secret_literal_with_env",
         "remove_invalid_runtime_picker_fields",
+        "add_package_for_app_target",
+        "create_smoke_test_declaration",
     } <= set(quick_fix_check["detail"]["cli"]["required_cli_actions"])
     assert all(case["changed"] for case in quick_fix_check["detail"]["cli"]["cases"])
     assert all(case["applied_edit_count"] > 0 for case in quick_fix_check["detail"]["cli"]["cases"])

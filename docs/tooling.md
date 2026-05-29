@@ -817,8 +817,9 @@ Code-action application is executable through
 `appgen lsp app.appgen --apply-code-action <id> --json`, returning patched DSL,
 applied text edits, and the lint result after applying the selected quick fix.
 This is the evidence path for missing-operation, lookup-directive,
-secret-literal replacement, and invalid runtime/stream/backend picker removal
-quick fixes used by IDEs and agents.
+secret-literal replacement, invalid runtime/stream/backend picker removal,
+package creation for app targets, and smoke-test declaration quick fixes used
+by IDEs and agents.
 
 ## IDE Integration
 

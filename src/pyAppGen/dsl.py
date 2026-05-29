@@ -2891,6 +2891,30 @@ view TForm for T { Main: id }
             "targets: web",
             ("runtime:", "stream:", "backend:"),
         ),
+        (
+            "add_package_for_app_target",
+            "lsp-apply-package.appgen",
+            """
+app PackageFix { targets: web }
+table T { id: int pk }
+view TForm for T { Main: id }
+""",
+            "package WebPackage",
+            (),
+        ),
+        (
+            "create_smoke_test_declaration",
+            "lsp-apply-smoke.appgen",
+            """
+app SmokeFix { targets: web }
+table T { id: int pk }
+view TForm for T { Main: id }
+flow Publish { draft -> live }
+package WebPackage { target: web; smoke: launch }
+""",
+            "test PublishSmoke",
+            (),
+        ),
     )
 
     def run_apply(path: Path, action_id: str) -> tuple[int, dict]:
