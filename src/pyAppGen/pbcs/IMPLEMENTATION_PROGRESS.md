@@ -37,10 +37,12 @@ This file tracks the branch-isolated implementation pass for standalone Packaged
 | facilities_space_management | `pbc/facilities-space-management-standalone` | `eace636f` | Compile, 7 tests, spec/source/release true; generation smoke hung and is documented in branch evidence. |
 | federated_iam | `pbc/federated-iam-standalone` | `8e57b2f4` | Compile, 14 tests, spec/source/release/smoke true. |
 | inventory_positioning | `pbc/inventory-positioning-standalone` | `5fa432ae` | Compile, 8 tests, spec/source/release/smoke true. |
+| procurement_sourcing | `pbc/procurement-sourcing-standalone` | `ed99321e` | Compile, 13 tests, spec/source/release/smoke true. |
+| wms_core | `pbc/wms-core-standalone` | `7574fcc3` | Compile, 13 tests, spec/source/release/smoke true. |
 
 ## In Flight
 
-No active child-agent batch is running after the platform-fabric branch push.
+Supply-chain standalone pass is continuing. `wms_core` and `procurement_sourcing` are pushed; `transportation_management`, `dom`, and `global_inventory_visibility` remain in isolated worktrees for this batch.
 
 ## Next Selection Rule
 
