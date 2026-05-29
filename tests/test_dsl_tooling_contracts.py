@@ -4090,7 +4090,7 @@ def test_validate_generate_text_renderer_contract_proves_readiness_log_markers()
         "unknown-targets mobile",
         "missing-targets mobile",
         "generate failed: format=appgen.generate-report.v1 generated=False targets=web artifacts=1 semantic_format=appgen.semantic-model.v1",
-        "artifact generated/app/web/routes.json",
+        "artifact generated/app/web/routes.json bytes=512",
         "gap lint_warnings",
     } <= set(report["required_fragments"])
 

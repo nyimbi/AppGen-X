@@ -1873,7 +1873,11 @@ def _emit_tooling_payload(payload: dict, *, as_json: bool) -> None:
         if manifest:
             print(f"manifest {manifest}")
         for artifact in payload.get("artifacts", ()):
-            print(f"artifact {artifact['path']}")
+            path = artifact["path"]
+            if "bytes" in artifact:
+                print(f"artifact {path} bytes={artifact['bytes']}")
+            else:
+                print(f"artifact {path}")
         for gap in payload.get("blocking_gaps", ()):
             print(f"gap {gap}")
         for diagnostic in payload.get("diagnostics", ()):
@@ -2336,7 +2340,7 @@ def _validate_generate_text_renderer_contract() -> dict:
         "semantic_model_format": "appgen.semantic-model.v1",
         "output_dir": "generated/app",
         "manifest": "generated/app/appgen-manifest.json",
-        "artifacts": ({"path": "generated/app/web/routes.json"},),
+        "artifacts": ({"path": "generated/app/web/routes.json", "bytes": 512},),
         "blocking_gaps": ("lint_warnings",),
         "diagnostics": (
             {
@@ -2361,7 +2365,7 @@ def _validate_generate_text_renderer_contract() -> dict:
         "generate failed: format=appgen.generate-report.v1 generated=False targets=web artifacts=1 semantic_format=appgen.semantic-model.v1",
         "output_dir generated/app",
         "manifest generated/app/appgen-manifest.json",
-        "artifact generated/app/web/routes.json",
+        "artifact generated/app/web/routes.json bytes=512",
         "gap lint_warnings",
         "warning AGX0404: Unknown visual component CustomGauge.",
     )
