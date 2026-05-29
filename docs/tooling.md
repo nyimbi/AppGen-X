@@ -908,6 +908,13 @@ shared web IDE bridge. That contract composes `appgen.lsp-service.v1`,
 database designer, workflow designer, PBC composition designer,
 package/deployment designer, diagnostics panel, graph/explain panel, and
 natural-language planner all prove they are reading the same semantic source.
+`appgen.studio-semantic-service-audit.v1` is the executable audit for that
+bridge. It verifies every required Studio panel is present, every panel emits
+the expected contract format, semantic-bound panels report
+`appgen.semantic-model.v1`, diagnostics and quick fixes come from the LSP
+contracts, graph/explain comes from the graph-suite and designer explain-panel
+contracts, and natural-language evolution requires a DSL diff preview applied
+through `appgen designer-sync`.
 The frontend renders the same bridge through a dedicated semantic-service
 panel, and the browser smoke contract includes that panel as a required
 scenario.

@@ -2585,7 +2585,7 @@ def _tooling_audit_studio_semantic_service(source: str) -> dict:
             "error": str(exc),
         }
     report = studio_semantic_service_workspace(source)
-    required_surfaces = {
+    required_surfaces = (
         "dsl_editor",
         "component_palette",
         "form_designer",
@@ -2596,13 +2596,78 @@ def _tooling_audit_studio_semantic_service(source: str) -> dict:
         "diagnostics_panel",
         "graph_explain_panel",
         "natural_language_planner",
+    )
+    expected_surface_formats = {
+        "dsl_editor": "appgen.designer-dsl-editor.v1",
+        "component_palette": "appgen.designer-component-palette.v1",
+        "form_designer": "appgen.designer-form-projection.v1",
+        "database_designer": "appgen.designer-database-projection.v1",
+        "workflow_designer": "appgen.designer-workflow-projection.v1",
+        "pbc_composition_designer": "appgen.designer-pbc-composition-projection.v1",
+        "package_deployment_designer": "appgen.designer-package-deployment-projection.v1",
+        "diagnostics_panel": "appgen.lsp-diagnostics.v1",
+        "graph_explain_panel": "appgen.designer-graph-explain-panel.v1",
+        "natural_language_planner": "appgen.designer-nl-planner-panel.v1",
+    }
+    surfaces = report.get("designer_surfaces", {})
+    services = report.get("services", {})
+    diagnostics = report.get("diagnostics_quick_fixes", {})
+    diagnostics_report = diagnostics.get("diagnostics", {})
+    code_actions = diagnostics.get("code_actions", {})
+    graph_explain = report.get("graph_explain", {})
+    graph_suite = graph_explain.get("graph_suite", {})
+    graph_panel = graph_explain.get("panel", {})
+    nl = report.get("natural_language_evolution", {})
+    nl_plan = nl.get("plan", {})
+    surface_formats = {
+        name: surfaces.get(name, {}).get("format")
+        for name in required_surfaces
+        if isinstance(surfaces.get(name), dict)
+    }
+    semantic_surface_formats = {
+        name: surfaces.get(name, {}).get("semantic_model_format")
+        for name in required_surfaces
+        if isinstance(surfaces.get(name), dict) and "semantic_model_format" in surfaces.get(name, {})
+    }
+    checks = {
+        "bridge_format": report.get("format") == "appgen.studio-semantic-service.v1",
+        "bridge_ok": report.get("ok") is True,
+        "services": services
+        == {
+            "lsp": "appgen.lsp-service.v1",
+            "designer_sync": "appgen.designer-sync-report.v1",
+            "graph_suite": "appgen.graph-suite-report.v1",
+            "natural_language_planner": "appgen.nl-plan.v1",
+        },
+        "required_surfaces": set(required_surfaces) <= set(surfaces),
+        "surface_formats": all(
+            surface_formats.get(name) == expected for name, expected in expected_surface_formats.items()
+        ),
+        "semantic_surface_formats": bool(semantic_surface_formats)
+        and all(value == "appgen.semantic-model.v1" for value in semantic_surface_formats.values()),
+        "diagnostics_quick_fixes": diagnostics.get("format") == "appgen.studio-diagnostics-quick-fixes.v1"
+        and diagnostics_report.get("format") == "appgen.lsp-diagnostics.v1"
+        and code_actions.get("format") == "appgen.lsp-code-actions.v1",
+        "graph_explain": graph_explain.get("format") == "appgen.studio-graph-explain.v1"
+        and graph_suite.get("format") == "appgen.graph-suite-report.v1"
+        and graph_panel.get("format") == "appgen.designer-graph-explain-panel.v1",
+        "natural_language_evolution": nl.get("format") == "appgen.studio-natural-language-evolution.v1"
+        and nl_plan.get("format") == "appgen.nl-plan.v1"
+        and nl.get("requires_dsl_diff_preview") is True
+        and nl.get("applies_through") == "appgen designer-sync",
     }
     return {
         "format": "appgen.studio-semantic-service-audit.v1",
-        "ok": report.get("ok") and required_surfaces <= set(report.get("designer_surfaces", {})),
+        "ok": all(checks.values()),
         "service_format": report.get("format"),
-        "surfaces": tuple(report.get("designer_surfaces", {})),
-        "required_surfaces": tuple(sorted(required_surfaces)),
+        "services": services,
+        "checks": checks,
+        "surfaces": tuple(surfaces),
+        "required_surfaces": required_surfaces,
+        "surface_formats": surface_formats,
+        "expected_surface_formats": expected_surface_formats,
+        "semantic_surface_formats": semantic_surface_formats,
+        "blocking_gaps": tuple(name for name, ok in checks.items() if not ok),
     }
 
 

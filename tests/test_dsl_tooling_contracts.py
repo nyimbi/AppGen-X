@@ -2559,6 +2559,26 @@ def test_doctor_report_checks_parser_catalog_generator_and_ide_hooks() -> None:
     } <= {check["check"] for check in report["checks"]}
 
 
+def test_studio_semantic_service_audit_proves_panel_contracts() -> None:
+    report = appgen_dsl._tooling_audit_studio_semantic_service(TOOLING_SAMPLE)
+
+    assert report["format"] == "appgen.studio-semantic-service-audit.v1"
+    assert report["ok"] is True
+    assert report["blocking_gaps"] == ()
+    assert all(report["checks"].values())
+    assert report["services"] == {
+        "lsp": "appgen.lsp-service.v1",
+        "designer_sync": "appgen.designer-sync-report.v1",
+        "graph_suite": "appgen.graph-suite-report.v1",
+        "natural_language_planner": "appgen.nl-plan.v1",
+    }
+    assert set(report["required_surfaces"]) <= set(report["surfaces"])
+    assert report["surface_formats"]["diagnostics_panel"] == "appgen.lsp-diagnostics.v1"
+    assert report["surface_formats"]["graph_explain_panel"] == "appgen.designer-graph-explain-panel.v1"
+    assert report["surface_formats"]["natural_language_planner"] == "appgen.designer-nl-planner-panel.v1"
+    assert all(value == "appgen.semantic-model.v1" for value in report["semantic_surface_formats"].values())
+
+
 def test_generate_report_writes_validated_dsl_app_and_blocks_lint_errors(tmp_path: Path) -> None:
     output_dir = tmp_path / "generated_app"
     report = generate_report_dsl(RELEASE_SAMPLE, source_name="release.appgen", output_dir=output_dir, targets=("web",))
@@ -2758,6 +2778,19 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert designer_check["detail"]["cli"]["valid_projection_semantic_model_format"] == "appgen.semantic-model.v1"
     assert designer_check["detail"]["cli"]["non_object_exit"] == 2
     assert "--edit-json must be a JSON object" in designer_check["detail"]["cli"]["non_object_stderr"]
+    studio_check = next(check for check in report["checks"] if check["id"] == "studio_semantic_service")
+    assert studio_check["detail"]["format"] == "appgen.studio-semantic-service-audit.v1"
+    assert studio_check["detail"]["ok"] is True
+    assert studio_check["detail"]["blocking_gaps"] == ()
+    assert studio_check["detail"]["checks"]["surface_formats"] is True
+    assert studio_check["detail"]["checks"]["semantic_surface_formats"] is True
+    assert studio_check["detail"]["checks"]["diagnostics_quick_fixes"] is True
+    assert studio_check["detail"]["checks"]["graph_explain"] is True
+    assert studio_check["detail"]["checks"]["natural_language_evolution"] is True
+    assert set(studio_check["detail"]["required_surfaces"]) <= set(studio_check["detail"]["surfaces"])
+    assert studio_check["detail"]["surface_formats"]["diagnostics_panel"] == "appgen.lsp-diagnostics.v1"
+    assert studio_check["detail"]["surface_formats"]["graph_explain_panel"] == "appgen.designer-graph-explain-panel.v1"
+    assert studio_check["detail"]["surface_formats"]["natural_language_planner"] == "appgen.designer-nl-planner-panel.v1"
     lsp_check = next(check for check in report["checks"] if check["id"] == "language_server_core_features")
     assert lsp_check["detail"]["rpc"]["format"] == "appgen.lsp-json-rpc-audit.v1"
     assert lsp_check["detail"]["rpc"]["blocking_gaps"] == ()

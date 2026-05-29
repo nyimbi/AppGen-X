@@ -133,6 +133,7 @@ def studio_semantic_service_workspace(source: str = SAMPLE_DSL) -> dict:
         "ok": all(check["ok"] for check in checks),
         "source": "studio.dsl",
         "shared_source": "semantic_model",
+        "required_surfaces": required_surfaces,
         "services": {
             "lsp": lsp["format"],
             "designer_sync": designer["format"],
