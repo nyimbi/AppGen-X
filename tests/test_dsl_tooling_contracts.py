@@ -3809,12 +3809,14 @@ def test_tooling_audit_text_summary_exposes_sections_gaps_and_formats() -> None:
     payload = {
         "format": "appgen.tooling-audit.v1",
         "ok": True,
-        "passed": 3,
-        "required": 3,
+        "passed": 5,
+        "required": 5,
         "sections": (
             "docs/tooling.md#cli-contracts",
             "docs/tooling.md#implementation-phases",
             "docs/tooling.md#language-server-specification",
+            "docs/tooling.md#non-goals",
+            "docs/tooling.md#appgen-tooling-audit",
         ),
         "source_of_truth": "docs/tooling.md",
         "blocking_gaps": (),
@@ -3844,6 +3846,20 @@ def test_tooling_audit_text_summary_exposes_sections_gaps_and_formats() -> None:
                     "missing_phases": (),
                 },
             },
+            {
+                "id": "non_goal_policy_guards",
+                "ok": True,
+                "section": "docs/tooling.md#non-goals",
+                "evidence": "Non-goal policy guards are executable.",
+                "detail": {"format": "appgen.non-goal-policy-audit.v1"},
+            },
+            {
+                "id": "tooling_doc_anchor_integrity",
+                "ok": True,
+                "section": "docs/tooling.md#appgen-tooling-audit",
+                "evidence": "Tooling audit section references resolve.",
+                "detail": {"format": "appgen.tooling-doc-anchor-audit.v1"},
+            },
         ),
     }
     output = StringIO()
@@ -3852,12 +3868,16 @@ def test_tooling_audit_text_summary_exposes_sections_gaps_and_formats() -> None:
         appgen_dsl._emit_tooling_payload(payload, as_json=False)
 
     text = output.getvalue()
-    assert text.startswith("tooling-audit ok: 3/3 checks blocking_gaps=0 sections=3 source=docs/tooling.md")
+    assert text.startswith("tooling-audit ok: 5/5 checks blocking_gaps=0 sections=5 source=docs/tooling.md")
     assert "implementation-phases 1 missing=0 format=appgen.tooling-implementation-phase-audit.v1" in text
     assert "section docs/tooling.md#cli-contracts" in text
+    assert "section docs/tooling.md#non-goals" in text
+    assert "section docs/tooling.md#appgen-tooling-audit" in text
     assert "formats=appgen.cli-help-surface-audit.v1" in text
     assert "formats=appgen.lsp-json-rpc-audit.v1" in text
     assert "formats=appgen.tooling-implementation-phase-audit.v1" in text
+    assert "formats=appgen.non-goal-policy-audit.v1" in text
+    assert "formats=appgen.tooling-doc-anchor-audit.v1" in text
 
 
 def test_top_level_help_exposes_tooling_subcommands_and_apg_alias() -> None:
