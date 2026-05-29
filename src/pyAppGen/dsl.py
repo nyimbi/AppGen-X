@@ -3786,6 +3786,12 @@ def doctor_report_dsl() -> dict:
             {"report_format": "appgen.symbol-coverage.v1"},
         ),
         _doctor_check(
+            "lsp_symbol_coverage",
+            lsp_symbol_coverage_dsl(_symbol_coverage_sample(), source_name="symbol-doctor.appgen")["ok"] is True,
+            "Language-server document and workspace symbol surfaces expose every required semantic symbol kind.",
+            {"report_format": "appgen.lsp-symbol-coverage.v1"},
+        ),
+        _doctor_check(
             "module_boundaries",
             module_boundaries["ok"],
             "Documented DSL tooling responsibility boundaries are visible and callable.",
@@ -3847,6 +3853,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
     validation = validate_report_dsl(source, source_name="tooling-audit.appgen", targets=("web", "mobile", "desktop"))
     graphs = graph_suite_report_dsl(source, source_name="tooling-audit.appgen")
     lsp = lsp_service_dsl(source, source_name="tooling-audit.appgen", prefix="cu")
+    lsp_symbol_coverage = lsp_symbol_coverage_dsl(_symbol_coverage_sample(), source_name="lsp-symbol-tooling-audit.appgen")
     quick_fix = apply_lsp_code_action_dsl(
         broken_handler_source,
         source_name="bad-handler.appgen",
@@ -4161,6 +4168,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             lsp["ok"]
             and lsp["capabilities"]["source_of_truth"] == "appgen.semantic-model.v1"
             and lsp["completionCoverage"]["missing"] == ()
+            and lsp_symbol_coverage["ok"] is True
             and lsp["formatting"]["format"] == "appgen.lsp-formatting.v1"
             and lsp_text_renderer["ok"]
             and lsp_rpc["ok"]
@@ -4171,6 +4179,8 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             {
                 "format": lsp.get("format"),
                 "coverage": lsp.get("completionCoverage", {}).get("format"),
+                "symbol_coverage": lsp_symbol_coverage,
+                "service_symbol_coverage": lsp.get("symbolCoverage"),
                 "text_renderer": lsp_text_renderer,
                 "rpc": lsp_rpc,
                 "stdio": lsp_stdio,
@@ -8759,6 +8769,7 @@ def lsp_service_dsl(
     definition = lsp_definition_dsl(source, source_name=source_name, position=active_position)
     references = lsp_references_dsl(source, source_name=source_name, position=active_position)
     document_symbols = lsp_document_symbols_dsl(source, source_name=source_name)
+    symbol_coverage = lsp_symbol_coverage_dsl(source, source_name=source_name)
     code_actions = lsp_code_actions_dsl(source, source_name=source_name)
     formatting = lsp_formatting_dsl(source, source_name=source_name)
     rename = (
@@ -8783,6 +8794,11 @@ def lsp_service_dsl(
             "hover_content_count": len(hover.get("contents", ())),
             "reference_count": len(references.get("locations", ())),
             "document_symbol_count": len(document_symbols.get("symbols", ())),
+            "symbol_required_kind_count": symbol_coverage.get("required_kind_count"),
+            "document_symbol_detected_kind_count": symbol_coverage.get("document_detected_kind_count"),
+            "workspace_symbol_detected_kind_count": symbol_coverage.get("workspace_detected_kind_count"),
+            "document_symbol_missing_kind_count": symbol_coverage.get("document_missing_kind_count"),
+            "workspace_symbol_missing_kind_count": symbol_coverage.get("workspace_missing_kind_count"),
             "code_action_count": len(code_actions.get("actions", ())),
             "formatting_edit_count": len(formatting.get("edits", ())),
             "workspace_symbol_count": len(workspace_symbols.get("symbols", ())),
@@ -8795,6 +8811,7 @@ def lsp_service_dsl(
         "definition": definition,
         "references": references,
         "documentSymbol": document_symbols,
+        "symbolCoverage": symbol_coverage,
         "codeAction": code_actions,
         "formatting": formatting,
         "rename": rename,
@@ -9374,6 +9391,59 @@ def lsp_workspace_symbols_dsl_documents(documents: dict[str, str], *, query: str
     }
 
 
+def lsp_symbol_coverage_dsl(text: str, *, source_name: str | None = None) -> dict:
+    """Return evidence that semantic symbols project into LSP symbol surfaces."""
+    document_symbols = lsp_document_symbols_dsl(text, source_name=source_name)
+    workspace_symbols = lsp_workspace_symbols_dsl(text, source_name=source_name)
+    document_kinds = {
+        symbol.get("detail")
+        for symbol in _lsp_flatten_document_symbols(document_symbols.get("symbols", ()))
+        if symbol.get("detail")
+    }
+    workspace_kinds = {
+        (symbol.get("data") or {}).get("kind")
+        for symbol in workspace_symbols.get("symbols", ())
+        if (symbol.get("data") or {}).get("kind")
+    }
+    document_missing = tuple(kind for kind in REQUIRED_SYMBOL_KINDS if kind not in document_kinds)
+    workspace_missing = tuple(kind for kind in REQUIRED_SYMBOL_KINDS if kind not in workspace_kinds)
+    return {
+        "format": "appgen.lsp-symbol-coverage.v1",
+        "source": source_name,
+        "ok": document_symbols.get("ok") is True and workspace_symbols.get("ok") is True and not document_missing and not workspace_missing,
+        "required": REQUIRED_SYMBOL_KINDS,
+        "document_detected": tuple(kind for kind in REQUIRED_SYMBOL_KINDS if kind in document_kinds),
+        "workspace_detected": tuple(kind for kind in REQUIRED_SYMBOL_KINDS if kind in workspace_kinds),
+        "document_missing": document_missing,
+        "workspace_missing": workspace_missing,
+        "required_kind_count": len(REQUIRED_SYMBOL_KINDS),
+        "document_detected_kind_count": sum(1 for kind in REQUIRED_SYMBOL_KINDS if kind in document_kinds),
+        "workspace_detected_kind_count": sum(1 for kind in REQUIRED_SYMBOL_KINDS if kind in workspace_kinds),
+        "document_missing_kind_count": len(document_missing),
+        "workspace_missing_kind_count": len(workspace_missing),
+        "document_symbol_count": len(tuple(_lsp_flatten_document_symbols(document_symbols.get("symbols", ())))),
+        "workspace_symbol_count": len(workspace_symbols.get("symbols", ())),
+        "document_kind_counts": {
+            kind: sum(1 for symbol in _lsp_flatten_document_symbols(document_symbols.get("symbols", ())) if symbol.get("detail") == kind)
+            for kind in REQUIRED_SYMBOL_KINDS
+            if kind in document_kinds
+        },
+        "workspace_kind_counts": {
+            kind: sum(1 for symbol in workspace_symbols.get("symbols", ()) if (symbol.get("data") or {}).get("kind") == kind)
+            for kind in REQUIRED_SYMBOL_KINDS
+            if kind in workspace_kinds
+        },
+    }
+
+
+def _lsp_flatten_document_symbols(symbols: Iterable[dict]) -> tuple[dict, ...]:
+    flattened: list[dict] = []
+    for symbol in symbols:
+        flattened.append(symbol)
+        flattened.extend(_lsp_flatten_document_symbols(symbol.get("children", ())))
+    return tuple(flattened)
+
+
 def _lsp_catalog_workspace_symbols(needle: str) -> tuple[dict, ...]:
     catalog_symbols: list[dict] = []
     for key, entry in sorted(_pbc_catalog_by_key().items()):
@@ -9863,24 +9933,37 @@ def _lsp_completion_kind(kind: str) -> int:
 def _lsp_symbol_kind(kind: str) -> int:
     return {
         "app": 2,
+        "group": 23,
         "table": 5,
         "field": 8,
         "enum": 10,
         "enum_value": 22,
         "view": 5,
+        "view_section": 3,
+        "component_binding": 7,
         "handler": 12,
         "flow": 12,
         "flow_state": 13,
         "operation": 12,
         "role": 5,
+        "permission": 20,
         "rule": 12,
         "llm": 13,
         "agent": 5,
+        "agent_skill": 6,
         "pbc": 5,
         "composition": 5,
         "api": 12,
-        "event": 12,
+        "event": 24,
+        "job": 12,
+        "report": 19,
+        "menu": 3,
+        "component": 5,
         "package": 5,
+        "deployment_unit": 6,
+        "audit": 19,
+        "version": 14,
+        "security": 11,
     }.get(kind, 13)
 
 

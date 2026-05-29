@@ -1034,11 +1034,14 @@ completion coverage gaps as `completion-missing ...`, and rename safety markers
 visible without JSON parsing.
 The JSON service payload also carries `service_counts` with diagnostic,
 completion, required/detected/missing completion-source, hover-content,
-reference, document-symbol, code-action, formatting-edit, workspace-symbol, and
-rename-edit counts. `appgen.completion-coverage.v1` carries matching
-required/detected/missing source counts, total completion label count, and
-label counts by source so agents can prove completion breadth without walking
-every nested completion item.
+reference, document-symbol, LSP symbol-coverage, code-action, formatting-edit,
+workspace-symbol, and rename-edit counts. `appgen.completion-coverage.v1`
+carries matching required/detected/missing source counts, total completion label
+count, and label counts by source so agents can prove completion breadth
+without walking every nested completion item. `appgen.lsp-symbol-coverage.v1`
+proves every required semantic symbol kind also appears in both document-symbol
+and workspace-symbol LSP surfaces, so editor navigation cannot silently lag
+behind the semantic model.
 The renderer contract reports fragment and marker counts for service, coverage,
 navigation, formatting, rename, blocker, and hover lines.
 Rename text output includes the `appgen.lsp-rename.v1` contract format, whether
@@ -1068,6 +1071,13 @@ Document-symbol outline depth is executable. View symbols include child
 `view_section`, `component_binding`, and `handler` entries so IDE outline trees
 can navigate form layout sections, dropped components, and event wiring without
 reparsing view bodies.
+Symbol-surface coverage is executable through `appgen.lsp-symbol-coverage.v1`.
+The language service includes this report as `symbolCoverage`, and
+`appgen doctor --json` checks `lsp_symbol_coverage` against a fixture that
+exercises tables, fields, groups, enums, views, handlers, flows, roles,
+permissions, rules, LLMs, agents, PBCs, composition, APIs, events, jobs,
+reports, menus, component contracts, packages, tests, deployments, audits,
+versions, and security blocks.
 
 Hover depth is executable. Hovering a registered PBC key returns
 `appgen.lsp-pbc-hover.v1` metadata with label, mesh, datastore profile, and

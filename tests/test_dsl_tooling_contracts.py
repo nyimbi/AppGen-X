@@ -238,6 +238,25 @@ def test_semantic_symbol_coverage_proves_required_nested_symbol_kinds() -> None:
     assert any(symbol["kind"] == "deployment_unit" and symbol["name"] == "SubmitInvoice" for symbol in model["symbols"].values())
 
 
+def test_lsp_symbol_coverage_projects_required_symbol_kinds_to_editor_surfaces() -> None:
+    source = appgen_dsl._symbol_coverage_sample()
+    coverage = appgen_dsl.lsp_symbol_coverage_dsl(source, source_name="lsp-symbols.appgen")
+
+    assert coverage["format"] == "appgen.lsp-symbol-coverage.v1"
+    assert coverage["ok"] is True
+    assert coverage["required_kind_count"] == len(coverage["required"])
+    assert coverage["document_detected_kind_count"] == coverage["required_kind_count"]
+    assert coverage["workspace_detected_kind_count"] == coverage["required_kind_count"]
+    assert coverage["document_missing_kind_count"] == 0
+    assert coverage["workspace_missing_kind_count"] == 0
+    assert coverage["document_missing"] == ()
+    assert coverage["workspace_missing"] == ()
+    assert coverage["document_symbol_count"] >= coverage["required_kind_count"]
+    assert coverage["workspace_symbol_count"] >= coverage["required_kind_count"]
+    assert coverage["document_kind_counts"]["deployment_unit"] >= 1
+    assert coverage["workspace_kind_counts"]["agent_skill"] >= 1
+
+
 def test_lint_report_maps_existing_linter_errors_to_stable_agx_diagnostics() -> None:
     source = """
     app Bad { targets: web }
@@ -1198,6 +1217,10 @@ def test_lsp_service_uses_shared_semantic_model_for_core_editor_features() -> No
     assert report["service_counts"]["completion_missing_source_count"] == report["completionCoverage"]["missing_source_count"]
     assert report["service_counts"]["reference_count"] == len(report["references"]["locations"])
     assert report["service_counts"]["document_symbol_count"] == len(report["documentSymbol"]["symbols"])
+    assert report["symbolCoverage"]["format"] == "appgen.lsp-symbol-coverage.v1"
+    assert report["service_counts"]["symbol_required_kind_count"] == report["symbolCoverage"]["required_kind_count"]
+    assert report["service_counts"]["document_symbol_missing_kind_count"] == len(report["symbolCoverage"]["document_missing"])
+    assert report["service_counts"]["workspace_symbol_missing_kind_count"] == len(report["symbolCoverage"]["workspace_missing"])
     assert report["service_counts"]["code_action_count"] == len(report["codeAction"]["actions"])
     assert report["service_counts"]["workspace_symbol_count"] == len(report["workspaceSymbol"]["symbols"])
     assert report["service_counts"]["rename_edit_count"] >= 1
@@ -3434,7 +3457,11 @@ def test_appgen_doctor_and_generate_subcommands_emit_json_contracts(tmp_path: Pa
 
     assert doctor_result.returncode == 0, doctor_result.stderr
     assert generate_result.returncode == 0, generate_result.stderr
-    assert json.loads(doctor_result.stdout)["format"] == "appgen.doctor-report.v1"
+    doctor_payload = json.loads(doctor_result.stdout)
+    doctor_checks = {check["check"]: check for check in doctor_payload["checks"]}
+    assert doctor_payload["format"] == "appgen.doctor-report.v1"
+    assert doctor_checks["lsp_symbol_coverage"]["ok"] is True
+    assert doctor_checks["lsp_symbol_coverage"]["detail"]["report_format"] == "appgen.lsp-symbol-coverage.v1"
     assert json.loads(generate_result.stdout)["format"] == "appgen.generate-report.v1"
     assert (output_dir / "appgen.json").exists()
 
@@ -3857,6 +3884,10 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert studio_check["detail"]["surface_formats"]["graph_explain_panel"] == "appgen.designer-graph-explain-panel.v1"
     assert studio_check["detail"]["surface_formats"]["natural_language_planner"] == "appgen.designer-nl-planner-panel.v1"
     lsp_check = next(check for check in report["checks"] if check["id"] == "language_server_core_features")
+    assert lsp_check["detail"]["symbol_coverage"]["format"] == "appgen.lsp-symbol-coverage.v1"
+    assert lsp_check["detail"]["symbol_coverage"]["ok"] is True
+    assert lsp_check["detail"]["symbol_coverage"]["document_missing_kind_count"] == 0
+    assert lsp_check["detail"]["symbol_coverage"]["workspace_missing_kind_count"] == 0
     assert lsp_check["detail"]["rpc"]["format"] == "appgen.lsp-json-rpc-audit.v1"
     assert lsp_check["detail"]["rpc"]["blocking_gaps"] == ()
     assert lsp_check["detail"]["rpc"]["check_count"] == len(lsp_check["detail"]["rpc"]["checks"])
