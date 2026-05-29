@@ -4119,7 +4119,7 @@ def test_cli_contracts_cover_text_summaries_exit_codes_and_bad_arguments(tmp_pat
     assert "migration-preview format=appgen.migration-plan.v1 backend=postgresql: changes=1 requires_approval=False" in lint_migration_text.stdout
     assert "migration-detected added_field" in lint_migration_text.stdout
     assert format_check.returncode == 1
-    assert "format changed: idempotent" in format_check.stdout
+    assert "format changed: format=appgen.format-result.v1 idempotent" in format_check.stdout
     assert "format=appgen.format-result.v1" in format_check.stdout
     assert "organize=False write_requested=False written=False" in format_check.stdout
     assert graph_suite_text.returncode == 0, graph_suite_text.stderr
@@ -4307,7 +4307,7 @@ def test_appgen_format_write_rewrites_file_and_reports_write_metadata(tmp_path: 
     assert source_path.read_text(encoding="utf-8") == payload["text"]
     assert source_path.read_text(encoding="utf-8") != unformatted
     assert text_result.returncode == 0, text_result.stderr
-    assert text_result.stdout.startswith("format changed: idempotent written")
+    assert text_result.stdout.startswith("format changed: format=appgen.format-result.v1 idempotent written")
     assert "organize=False write_requested=True written=True" in text_result.stdout
     assert f"write_path {text_source_path}" in text_result.stdout
     assert text_source_path.read_text(encoding="utf-8") != unformatted

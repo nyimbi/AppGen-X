@@ -624,7 +624,7 @@ appgen format app.appgen --json
 `--write` rewrites the source file when the formatted text differs and the JSON
 payload reports `write_requested`, `written`, and `write_path` so IDEs and CI can
 distinguish a preview from an actual file mutation. The default text output
-also reports the formatter report format, `organize`, `write_requested`,
+also reports the formatter report format in the header, `organize`, `write_requested`,
 `written`, and `write_path` when a write occurs.
 `--organize` enables the optional table-body organization profile: identity
 fields and spreads, business keys, relationships, editable scalar fields,

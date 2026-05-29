@@ -1823,8 +1823,8 @@ def _emit_tooling_payload(payload: dict, *, as_json: bool) -> None:
         idempotent = "idempotent" if payload.get("idempotent") else "not-idempotent"
         write_status = " written" if payload.get("written") else ""
         print(
-            f"format {status}: {idempotent}{write_status} "
-            f"format={payload.get('format')} "
+            f"format {status}: format={payload.get('format')} "
+            f"{idempotent}{write_status} "
             f"organize={payload.get('organize', False)} "
             f"write_requested={payload.get('write_requested', False)} "
             f"written={payload.get('written', False)}"
