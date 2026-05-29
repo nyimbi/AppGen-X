@@ -938,6 +938,40 @@ def test_lsp_service_uses_shared_semantic_model_for_core_editor_features() -> No
     assert "PostInvoice" in report["rename"]["workspace_edit"]["changes"]["finance.appgen"][0]["newText"]
 
 
+def test_lsp_hover_exposes_pbc_catalog_metadata_and_diagnostic_explanation() -> None:
+    pbc_source = """
+    app HoverDemo { targets: web }
+    composition Suite { include pbc gl_core version 1.0.0 }
+    """
+    pbc_hover = appgen_dsl.lsp_hover_dsl(
+        pbc_source,
+        source_name="hover-pbc.appgen",
+        position=_position_of(pbc_source, "gl_core"),
+    )
+
+    assert pbc_hover["format"] == "appgen.lsp-hover.v1"
+    assert pbc_hover["ok"] is True
+    assert any("PBC `gl_core`: General Ledger Core" in item for item in pbc_hover["contents"])
+    assert any('"format": "appgen.lsp-pbc-hover.v1"' in item for item in pbc_hover["contents"])
+    assert any('"api_count":' in item and '"event_count":' in item for item in pbc_hover["contents"])
+
+    diagnostic_source = """
+    app BadHover { targets: web }
+    table Customer { id: int pk }
+    view CustomerForm for Customer { Main: missing }
+    """
+    diagnostic_hover = appgen_dsl.lsp_hover_dsl(
+        diagnostic_source,
+        source_name="hover-diagnostic.appgen",
+        position=_position_of(diagnostic_source, "missing"),
+    )
+
+    assert diagnostic_hover["ok"] is True
+    assert any("AGX0402:" in item for item in diagnostic_hover["contents"])
+    assert any('"code": "AGX0402"' in item for item in diagnostic_hover["contents"])
+    assert any("database-backed form binding" in item for item in diagnostic_hover["contents"])
+
+
 def test_lsp_json_rpc_audit_proves_advertised_provider_capabilities() -> None:
     broken_handler_source = """
 app Bad { targets: web }

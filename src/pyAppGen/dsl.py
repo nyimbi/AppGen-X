@@ -5549,8 +5549,13 @@ def lsp_hover_dsl(text: str, *, source_name: str | None = None, position: dict |
         contents.append(f"{symbol['kind']} `{symbol['name']}`")
         if symbol.get("detail"):
             contents.append(json.dumps(symbol["detail"], sort_keys=True, default=list))
+    pbc_metadata = _lsp_pbc_catalog_metadata_for_token(token)
+    if pbc_metadata:
+        contents.append(f"PBC `{token}`: {pbc_metadata['label']}")
+        contents.append(json.dumps(pbc_metadata, sort_keys=True, default=list))
     if diagnostic:
         contents.append(f"{diagnostic['code']}: {diagnostic['message']}")
+        contents.append(json.dumps(_diagnostic_explanation(diagnostic["code"]), sort_keys=True))
     if token in CORE_KEYWORDS:
         contents.append(f"AppGen-X keyword `{token}`")
     return {
@@ -5559,6 +5564,24 @@ def lsp_hover_dsl(text: str, *, source_name: str | None = None, position: dict |
         "token": token,
         "contents": tuple(contents),
         "range": _lsp_token_range(text, position, token),
+    }
+
+
+def _lsp_pbc_catalog_metadata_for_token(token: str) -> dict | None:
+    catalog_entry = _pbc_catalog_by_key().get(token)
+    if not catalog_entry:
+        return None
+    return {
+        "format": "appgen.lsp-pbc-hover.v1",
+        "pbc": catalog_entry.get("pbc"),
+        "label": catalog_entry.get("label") or catalog_entry.get("pbc"),
+        "mesh": catalog_entry.get("mesh"),
+        "description": catalog_entry.get("description"),
+        "datastore_backend": catalog_entry.get("datastore_backend"),
+        "api_count": len(catalog_entry.get("apis", ())),
+        "event_count": len(catalog_entry.get("emits", ())) + len(catalog_entry.get("consumes", ())),
+        "sample_apis": tuple(catalog_entry.get("apis", ())[:3]),
+        "sample_events": tuple((tuple(catalog_entry.get("emits", ())) + tuple(catalog_entry.get("consumes", ())))[:3]),
     }
 
 

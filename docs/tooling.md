@@ -738,6 +738,13 @@ and verifies initialize, diagnostics publication, shutdown, and exit handling.
 | `textDocument/formatting` | Call the shared formatter. |
 | `workspace/symbol` | Search declarations by name, kind, and catalog metadata. |
 
+Hover depth is executable. Hovering a registered PBC key returns
+`appgen.lsp-pbc-hover.v1` metadata with label, mesh, datastore profile, and
+sample API/event contracts. Hovering a symbol that participates in a diagnostic
+returns the diagnostic code plus the same explanation object used by
+`appgen explain --diagnostic`, so IDEs and agents can show the cause and docs
+target without duplicating diagnostic registries.
+
 Rename safety is an executable gate. The language service still returns the
 candidate workspace edit and migration preview, but `textDocument/rename`
 returns `ok: false` with an `AGX1101` blocker when the preview requires
