@@ -111,3 +111,11 @@ def smoke_test() -> dict:
         "side_effects": (),
     }
 
+
+
+from .repository import ProcurementSourcingRepository
+from .repository import procurement_sourcing_repository_contract
+from .standalone import ProcurementSourcingStandaloneApp
+from .standalone import standalone_app_manifest
+from .ui import procurement_sourcing_render_standalone_app
+from .ui import procurement_sourcing_standalone_app_contract
