@@ -5672,12 +5672,13 @@ def _tooling_audit_missing_required_option_exit(tmp: Path) -> dict:
     source_path = tmp / "missing-required-option.appgen"
     source_path.write_text("app MissingRequiredOption { targets: web }\ntable Thing { id: int pk }\n", encoding="utf-8")
     cases = (
-        ("generate_missing_out", ("generate", str(source_path))),
-        ("nl_plan_missing_prompt", ("nl-plan", str(source_path))),
-        ("component_publish_missing_component", ("component-publish",)),
+        ("generate_missing_out", ("generate", str(source_path)), "the following arguments are required"),
+        ("nl_plan_missing_prompt", ("nl-plan", str(source_path)), "the following arguments are required"),
+        ("component_publish_missing_component", ("component-publish",), "the following arguments are required"),
+        ("explain_missing_selector", ("explain", str(source_path)), "one of the arguments"),
     )
     results = []
-    for name, argv in cases:
+    for name, argv, expected_message in cases:
         output = io.StringIO()
         error = io.StringIO()
         exit_code = 0
@@ -5690,8 +5691,9 @@ def _tooling_audit_missing_required_option_exit(tmp: Path) -> dict:
         results.append(
             {
                 "name": name,
-                "ok": exit_code == 2 and "the following arguments are required" in stderr and "Traceback" not in stderr,
+                "ok": exit_code == 2 and expected_message in stderr and "Traceback" not in stderr,
                 "exit_code": exit_code,
+                "expected_message": expected_message,
                 "stderr": stderr.strip(),
                 "stdout": output.getvalue().strip(),
             }

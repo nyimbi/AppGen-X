@@ -4578,9 +4578,14 @@ def test_missing_required_option_audit_covers_required_cli_options(tmp_path: Pat
 
     assert audit["format"] == "appgen.missing-required-option-exit-audit.v1"
     assert audit["ok"] is True
-    assert {"generate_missing_out", "nl_plan_missing_prompt", "component_publish_missing_component"} <= set(cases)
+    assert {
+        "generate_missing_out",
+        "nl_plan_missing_prompt",
+        "component_publish_missing_component",
+        "explain_missing_selector",
+    } <= set(cases)
     assert all(case["exit_code"] == 2 for case in cases.values())
-    assert all("the following arguments are required" in case["stderr"] for case in cases.values())
+    assert all(case["expected_message"] in case["stderr"] for case in cases.values())
     assert all("Traceback" not in case["stderr"] for case in cases.values())
 
 
