@@ -1036,7 +1036,12 @@ def test_nl_plan_cli_audit_covers_all_supported_edit_operations(tmp_path: Path) 
 
     assert audit["format"] == "appgen.nl-plan-cli-audit.v1"
     assert audit["ok"] is True
+    assert audit["case_count"] == audit["accepted_case_count"] + audit["rejected_case_count"] + audit["text_case_count"]
+    assert audit["accepted_passing_case_count"] == audit["accepted_case_count"]
+    assert audit["rejected_case_count"] == 1
+    assert audit["text_case_count"] == 1
     assert set(audit["accepted_operation_kinds"]) >= set(contract["required_edit_operations"])
+    assert audit["accepted_operation_kind_count"] == len(audit["accepted_operation_kinds"])
     assert audit["accepted_case_count"] == len(contract["required_edit_operations"])
     assert audit["blocking_cases"] == ()
     assert audit["accepted_patch_bytes"] > 0
@@ -1360,6 +1365,13 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
 
     assert audit["format"] == "appgen.lsp-json-rpc-audit.v1"
     assert audit["ok"] is True
+    assert audit["check_count"] == len(audit["checks"])
+    assert audit["passing_check_count"] == audit["check_count"]
+    assert audit["provider_count"] == 9
+    assert audit["enabled_provider_count"] == audit["provider_count"]
+    assert audit["request_check_count"] == 8
+    assert audit["code_action_count"] >= 1
+    assert audit["formatting_edit_count"] >= 1
     assert audit["blocking_gaps"] == ()
     assert capabilities["completionProvider"]["triggerCharacters"]
     assert capabilities["hoverProvider"] is True
@@ -2900,6 +2912,12 @@ def test_designer_sync_cli_audit_proves_diff_semantic_and_projection_refresh(tmp
 
     assert report["format"] == "appgen.designer-sync-cli-audit.v1"
     assert report["ok"] is True
+    assert report["scenario_count"] == 3
+    assert report["passing_scenario_count"] == report["scenario_count"]
+    assert report["valid_changed_surface_count"] >= 1
+    assert report["projection_count"] >= 1
+    assert report["invalid_case_count"] == 2
+    assert report["traceback_free_count"] == report["invalid_case_count"]
     assert report["valid_exit"] == 0
     assert report["valid_payload_format"] == "appgen.designer-sync-report.v1"
     assert report["valid_round_trip"] is True
@@ -3125,6 +3143,11 @@ def test_test_strategy_cli_audit_requires_generator_drift_surface(tmp_path: Path
 
     assert report["format"] == "appgen.test-strategy-cli-audit.v1"
     assert report["ok"] is True
+    assert report["case_count"] == len(report["cases"])
+    assert report["passing_case_count"] == report["case_count"]
+    assert report["required_surface_count"] == 6
+    assert report["observed_surface_count"] >= report["required_surface_count"]
+    assert report["doctor_check_count"] > 0
     assert catalog_case["payload_format"] == "appgen.diagnostic-catalog.v1"
     assert catalog_case["required_count"] == catalog_case["covered_count"]
     assert catalog_case["fixture_count"] >= catalog_case["required_count"]
@@ -3709,6 +3732,12 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     designer_check = next(check for check in report["checks"] if check["id"] == "ide_visual_designer_round_trip")
     assert designer_check["detail"]["cli"]["format"] == "appgen.designer-sync-cli-audit.v1"
     assert designer_check["detail"]["cli"]["ok"] is True
+    assert designer_check["detail"]["cli"]["scenario_count"] == 3
+    assert designer_check["detail"]["cli"]["passing_scenario_count"] == 3
+    assert designer_check["detail"]["cli"]["valid_changed_surface_count"] >= 1
+    assert designer_check["detail"]["cli"]["projection_count"] >= 1
+    assert designer_check["detail"]["cli"]["invalid_case_count"] == 2
+    assert designer_check["detail"]["cli"]["traceback_free_count"] == 2
     assert designer_check["detail"]["cli"]["valid_round_trip"] is True
     assert "database_designer" in designer_check["detail"]["cli"]["valid_changed_surfaces"]
     assert designer_check["detail"]["cli"]["valid_diff_lines"] > 0
@@ -3732,6 +3761,13 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     lsp_check = next(check for check in report["checks"] if check["id"] == "language_server_core_features")
     assert lsp_check["detail"]["rpc"]["format"] == "appgen.lsp-json-rpc-audit.v1"
     assert lsp_check["detail"]["rpc"]["blocking_gaps"] == ()
+    assert lsp_check["detail"]["rpc"]["check_count"] == len(lsp_check["detail"]["rpc"]["checks"])
+    assert lsp_check["detail"]["rpc"]["passing_check_count"] == lsp_check["detail"]["rpc"]["check_count"]
+    assert lsp_check["detail"]["rpc"]["provider_count"] == 9
+    assert lsp_check["detail"]["rpc"]["enabled_provider_count"] == 9
+    assert lsp_check["detail"]["rpc"]["request_check_count"] == 8
+    assert lsp_check["detail"]["rpc"]["code_action_count"] >= 1
+    assert lsp_check["detail"]["rpc"]["formatting_edit_count"] >= 1
     assert lsp_check["detail"]["rename_cli"]["format"] == "appgen.lsp-rename-cli-audit.v1"
     assert lsp_check["detail"]["rename_cli"]["ok"] is True
     assert lsp_check["detail"]["rename_cli"]["rename_format"] == "appgen.lsp-rename.v1"
@@ -3918,6 +3954,11 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     test_strategy_check = next(check for check in report["checks"] if check["id"] == "parser_golden_and_drift_gates")
     assert test_strategy_check["detail"]["cli"]["format"] == "appgen.test-strategy-cli-audit.v1"
     assert test_strategy_check["detail"]["cli"]["ok"] is True
+    assert test_strategy_check["detail"]["cli"]["case_count"] == len(test_strategy_check["detail"]["cli"]["cases"])
+    assert test_strategy_check["detail"]["cli"]["passing_case_count"] == test_strategy_check["detail"]["cli"]["case_count"]
+    assert test_strategy_check["detail"]["cli"]["required_surface_count"] == 6
+    assert test_strategy_check["detail"]["cli"]["observed_surface_count"] >= 6
+    assert test_strategy_check["detail"]["cli"]["doctor_check_count"] > 0
     assert {
         "diagnostics_catalog",
         "diagnostics_audit_fixtures",
@@ -4037,6 +4078,15 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     nl_check = next(check for check in report["checks"] if check["id"] == "natural_language_patch_planner")
     assert nl_check["detail"]["cli"]["format"] == "appgen.nl-plan-cli-audit.v1"
     assert nl_check["detail"]["cli"]["ok"] is True
+    assert nl_check["detail"]["cli"]["case_count"] == (
+        nl_check["detail"]["cli"]["accepted_case_count"]
+        + nl_check["detail"]["cli"]["rejected_case_count"]
+        + nl_check["detail"]["cli"]["text_case_count"]
+    )
+    assert nl_check["detail"]["cli"]["accepted_passing_case_count"] == nl_check["detail"]["cli"]["accepted_case_count"]
+    assert nl_check["detail"]["cli"]["accepted_operation_kind_count"] == len(
+        nl_check["detail"]["cli"]["accepted_operation_kinds"]
+    )
     assert set(nl_check["detail"]["cli"]["accepted_operation_kinds"]) >= set(
         nl_check["detail"]["contract"]["required_edit_operations"]
     )

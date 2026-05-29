@@ -5330,10 +5330,28 @@ def _tooling_audit_lsp_json_rpc(source: str, *, broken_handler_source: str) -> d
             bool(formatting_edits) and "table Invoice" in formatting_edits[0].get("newText", ""),
         )
     )
+    provider_flags = (
+        bool(capabilities.get("completionProvider", {}).get("triggerCharacters")),
+        capabilities.get("hoverProvider") is True,
+        capabilities.get("definitionProvider") is True,
+        capabilities.get("referencesProvider") is True,
+        capabilities.get("documentSymbolProvider") is True,
+        bool(capabilities.get("renameProvider")),
+        capabilities.get("codeActionProvider") is True,
+        capabilities.get("documentFormattingProvider") is True,
+        bool(capabilities.get("workspaceSymbolProvider")),
+    )
 
     return {
         "format": "appgen.lsp-json-rpc-audit.v1",
         "ok": all(check["ok"] for check in checks),
+        "check_count": len(checks),
+        "passing_check_count": sum(1 for check in checks if check["ok"]),
+        "provider_count": len(provider_flags),
+        "enabled_provider_count": sum(1 for enabled in provider_flags if enabled),
+        "request_check_count": len(request_checks),
+        "code_action_count": len(code_actions),
+        "formatting_edit_count": len(formatting_edits),
         "checks": checks,
         "initialize_capabilities": capabilities,
         "blocking_gaps": tuple(check["check"] for check in checks if not check["ok"]),
@@ -6666,6 +6684,11 @@ def _tooling_audit_test_strategy_cli(tmp: Path, source: str) -> dict:
     return {
         "format": "appgen.test-strategy-cli-audit.v1",
         "ok": all(case["ok"] for case in cases),
+        "case_count": len(cases),
+        "passing_case_count": sum(1 for case in cases if case["ok"]),
+        "required_surface_count": len(drift_required_surfaces),
+        "observed_surface_count": len(drift_payload.get("surfaces", ())),
+        "doctor_check_count": len(doctor_payload.get("checks", ())),
         "cases": cases,
     }
 
@@ -6703,9 +6726,8 @@ def _tooling_audit_designer_sync_cli(tmp: Path, source: str) -> dict:
         except SystemExit as exc:
             non_object_exit = int(exc.code or 0)
     non_object_stderr = non_object_error.getvalue()
-    return {
-        "format": "appgen.designer-sync-cli-audit.v1",
-        "ok": valid_exit == 0
+    valid_ok = (
+        valid_exit == 0
         and valid_payload.get("format") == "appgen.designer-sync-report.v1"
         and valid_edit.get("accepted") is True
         and valid_edit.get("round_trip_ok") is True
@@ -6715,12 +6737,29 @@ def _tooling_audit_designer_sync_cli(tmp: Path, source: str) -> dict:
         and any(str(line).startswith("+  sync_note: string") for line in valid_edit.get("dsl_diff", ()))
         and valid_projection.get("semantic_model_format") == "appgen.semantic-model.v1"
         and valid_projection.get("er_graph", {}).get("format") == "appgen.graph.er.v1"
-        and invalid_exit == 2
-        and "invalid JSON for --edit-json" in invalid_stderr
-        and "Traceback" not in invalid_stderr
-        and non_object_exit == 2
+    )
+    invalid_ok = invalid_exit == 2 and "invalid JSON for --edit-json" in invalid_stderr and "Traceback" not in invalid_stderr
+    non_object_ok = (
+        non_object_exit == 2
         and "--edit-json must be a JSON object" in non_object_stderr
-        and "Traceback" not in non_object_stderr,
+        and "Traceback" not in non_object_stderr
+    )
+    return {
+        "format": "appgen.designer-sync-cli-audit.v1",
+        "ok": valid_ok and invalid_ok and non_object_ok,
+        "scenario_count": 3,
+        "passing_scenario_count": sum(1 for ok in (valid_ok, invalid_ok, non_object_ok) if ok),
+        "valid_changed_surface_count": len(valid_edit.get("changed_surfaces", ())),
+        "projection_count": len(valid_edit.get("projections_after", {})),
+        "invalid_case_count": 2,
+        "traceback_free_count": sum(
+            1
+            for ok in (
+                "Traceback" not in invalid_stderr,
+                "Traceback" not in non_object_stderr,
+            )
+            if ok
+        ),
         "valid_exit": valid_exit,
         "valid_payload_format": valid_payload.get("format"),
         "valid_round_trip": valid_edit.get("round_trip_ok"),
@@ -7150,9 +7189,14 @@ def _tooling_audit_nl_plan_cli(tmp: Path, source: str) -> dict:
         and rejected_payload.get("ok") is False
         and rejected_payload.get("dsl_patch") == ""
         and "AGX1201" in rejected_codes,
+        "case_count": len(accepted_cases) + 2,
         "accepted_case_count": len(accepted_cases),
+        "accepted_passing_case_count": sum(1 for case in accepted_cases if case["passed"]),
+        "rejected_case_count": 1,
+        "text_case_count": 1,
         "accepted_cases": tuple(accepted_cases),
         "accepted_operation_kinds": accepted_operation_kinds,
+        "accepted_operation_kind_count": len(accepted_operation_kinds),
         "blocking_cases": tuple(case["expected_kind"] for case in accepted_cases if not case["passed"]),
         "accepted_exit_code": accepted_cases[0]["exit_code"] if accepted_cases else None,
         "accepted_text_exit_code": accepted_text_exit,

@@ -999,6 +999,10 @@ document.
 The executable tooling audit includes `appgen.lsp-stdio-transport-audit.v1`,
 which sends real `Content-Length` JSON-RPC frames through the stdio transport
 and verifies initialize, diagnostics publication, shutdown, and exit handling.
+The JSON-RPC audit reports check, passing-check, provider, enabled-provider,
+request-check, code-action, and formatting-edit counts so release evidence
+proves the language server surface is broad enough for editor and agent
+workflows rather than merely returning an initialize response.
 Without `--json`, `appgen lsp <file>` prints a concise service summary with
 the `appgen.lsp-service.v1` envelope format, semantic-model format as
 `semantic_format=...`, diagnostic
@@ -1202,6 +1206,9 @@ diff previews, patched source, the after-edit semantic model, changed designer
 surfaces, and refreshed projections for accepted visual edits. Form, database,
 workflow, PBC composition, and package/deployment edit paths must validate the
 patched DSL before the Studio accepts the visual operation.
+The designer-sync audit reports scenario, passing-scenario, changed-surface,
+projection, invalid-case, and traceback-free counts across accepted edits,
+malformed JSON, and non-object edit payloads.
 Without `--json`, `appgen designer-sync` prints the
 `appgen.designer-sync-report.v1` format, semantic-model format as
 `semantic_format=...`, surface count and names, visual edit acceptance,
@@ -1421,11 +1428,16 @@ linted patch, migration preview, generated test plan, and token-budget notes.
 It also runs an accepted request without `--json` and requires the text output
 to expose the `appgen.nl-plan.v1` envelope, nested lint and migration-preview
 format markers, PostgreSQL backend marker, generated test-plan entries as
-`test-plan ...`, and token-budget notes marker.
-The text output also emits each individual small-model guidance item as
-`token-budget-note ...` so agent logs retain the specific token-efficiency
-instructions without parsing JSON. Generated test-plan entries keep the
-agent-facing verification path visible without parsing JSON.
+`test-plan ...`, token-budget notes marker, and individual
+`token-budget-note ...` guidance lines. The audit reports total,
+accepted, accepted-passing, rejected, text-case, and accepted-operation-kind
+counts so token-efficient agent workflows can verify breadth without expanding
+every generated patch.
+
+The test-strategy CLI audit reports case, passing-case, required-surface,
+observed-surface, and doctor-check counts across diagnostics, parser golden,
+semantic drift, and doctor gates, so release evidence proves the generator,
+IDE, LSP, graph, and release-verifier surfaces share the same semantic model.
 This keeps agent-facing development paths honest; a capability is not counted
 as available just because an in-process helper can produce it.
 
