@@ -2828,12 +2828,20 @@ def test_appgen_diagnostics_subcommand_emits_catalog_fixture_audit_and_text() ->
     assert audit_result.returncode == 0, audit_result.stderr
     assert catalog_text.returncode == 0, catalog_text.stderr
     assert audit_text.returncode == 0, audit_text.stderr
-    assert json.loads(catalog_result.stdout)["format"] == "appgen.diagnostic-catalog.v1"
-    assert json.loads(audit_result.stdout)["format"] == "appgen.diagnostic-fixture-audit.v1"
+    catalog_payload = json.loads(catalog_result.stdout)
+    audit_payload = json.loads(audit_result.stdout)
+    assert catalog_payload["format"] == "appgen.diagnostic-catalog.v1"
+    assert audit_payload["format"] == "appgen.diagnostic-fixture-audit.v1"
     assert catalog_text.stdout.startswith("diagnostics ok:")
+    assert f"required={len(catalog_payload['required_codes'])}" in catalog_text.stdout
+    assert f"fixtures={catalog_payload['fixture_count']}" in catalog_text.stdout
     assert "missing=0" in catalog_text.stdout
+    assert "missing-fixture " not in catalog_text.stdout
     assert audit_text.stdout.startswith("diagnostics-audit ok:")
+    assert f"covered={len(audit_payload['covered_codes'])}" in audit_text.stdout
+    assert f"required={len(audit_payload['required_codes'])}" in audit_text.stdout
     assert "missing=0" in audit_text.stdout
+    assert "missing-code " not in audit_text.stdout
 
 
 def test_parser_golden_audit_covers_required_grammar_constructs() -> None:
