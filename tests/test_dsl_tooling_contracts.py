@@ -4047,6 +4047,22 @@ def test_graph_explain_text_renderer_contract_proves_review_log_markers() -> Non
     } <= set(report["required_fragments"])
 
 
+def test_parser_golden_text_renderer_contract_proves_fixture_log_markers() -> None:
+    report = appgen_dsl._parser_golden_text_renderer_contract()
+
+    assert report["format"] == "appgen.parser-golden-text-renderer.v1"
+    assert report["ok"] is True
+    assert report["missing_fragments"] == ()
+    assert report["json_fallback"] is False
+    assert report["text_prefix"].startswith(
+        "parser-golden failed: format=appgen.parser-golden-audit.v1 fixtures=4"
+    )
+    assert {
+        "missing-constructs packages",
+        "fail packages_valid_fixture: Missing valid fixture for package declarations.",
+    } <= set(report["required_fragments"])
+
+
 def test_tooling_audit_text_summary_exposes_sections_gaps_and_formats() -> None:
     payload = {
         "format": "appgen.tooling-audit.v1",

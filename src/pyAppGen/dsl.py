@@ -2070,6 +2070,44 @@ def _tooling_text_phase_detail(payload: dict) -> dict | None:
     return None
 
 
+def _parser_golden_text_renderer_contract() -> dict:
+    """Prove parser-golden text logs expose fixture and construct coverage evidence."""
+    payload = {
+        "format": "appgen.parser-golden-audit.v1",
+        "ok": False,
+        "fixture_count": 4,
+        "valid_fixture_count": 3,
+        "invalid_fixture_count": 1,
+        "constructs_required": ("apps", "tables", "agents", "packages"),
+        "constructs_covered": ("apps", "tables", "agents"),
+        "missing_constructs": ("packages",),
+        "blocking_gaps": (
+            {
+                "name": "packages_valid_fixture",
+                "error": "Missing valid fixture for package declarations.",
+            },
+        ),
+    }
+    output = io.StringIO()
+    with contextlib.redirect_stdout(output):
+        _emit_tooling_payload(payload, as_json=False)
+    text = output.getvalue()
+    required_fragments = (
+        "parser-golden failed: format=appgen.parser-golden-audit.v1 fixtures=4 valid=3 invalid=1 required=4 constructs=3 missing=1",
+        "missing-constructs packages",
+        "fail packages_valid_fixture: Missing valid fixture for package declarations.",
+    )
+    missing = tuple(fragment for fragment in required_fragments if fragment not in text)
+    return {
+        "format": "appgen.parser-golden-text-renderer.v1",
+        "ok": not missing and not text.lstrip().startswith("{"),
+        "required_fragments": required_fragments,
+        "missing_fragments": missing,
+        "json_fallback": text.lstrip().startswith("{"),
+        "text_prefix": text[:240],
+    }
+
+
 def _component_publish_text_renderer_contract() -> dict:
     """Prove component-publish text logs expose side-effect-free catalog evidence."""
     payload = {
@@ -3469,6 +3507,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
     diagnostic_fixtures = diagnostic_fixture_audit_dsl()
     diagnostics_text_renderer = _diagnostics_text_renderer_contract()
     parser_golden = parser_golden_audit_dsl()
+    parser_golden_text_renderer = _parser_golden_text_renderer_contract()
     drift = semantic_drift_audit_dsl(source, source_name="tooling-audit.appgen")
     drift_text_renderer = _semantic_drift_text_renderer_contract()
     lsp_text_renderer = _lsp_service_text_renderer_contract()
@@ -3810,11 +3849,17 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
         ),
         _tooling_audit_check(
             "parser_golden_and_drift_gates",
-            parser_golden["ok"] and drift["ok"] and drift_text_renderer["ok"] and doctor["ok"] and test_strategy_cli["ok"],
-            "Parser golden, diagnostic fixture, semantic drift, drift text summaries, and doctor gates prove grammar coverage and shared-model alignment across tooling surfaces.",
+            parser_golden["ok"]
+            and parser_golden_text_renderer["ok"]
+            and drift["ok"]
+            and drift_text_renderer["ok"]
+            and doctor["ok"]
+            and test_strategy_cli["ok"],
+            "Parser golden, parser text summaries, diagnostic fixture, semantic drift, drift text summaries, and doctor gates prove grammar coverage and shared-model alignment across tooling surfaces.",
             "docs/tooling.md#test-strategy",
             {
                 "parser": parser_golden.get("format"),
+                "parser_text_renderer": parser_golden_text_renderer,
                 "drift": drift.get("format"),
                 "drift_text_renderer": drift_text_renderer,
                 "doctor": doctor.get("format"),
