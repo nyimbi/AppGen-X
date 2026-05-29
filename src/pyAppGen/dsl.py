@@ -5012,6 +5012,7 @@ def _tooling_audit_explain_cli_formats(tmp: Path, source: str) -> dict:
     cases = (
         ("field_symbol_text", ("explain", str(source_path), "--symbol", "Invoice.customer_id")),
         ("field_symbol_json", ("explain", str(source_path), "--symbol", "Invoice.customer_id", "--json")),
+        ("diagnostic_text", ("explain", str(source_path), "--diagnostic", "AGX0303")),
         ("diagnostic_json", ("explain", str(source_path), "--diagnostic", "AGX0303", "--json")),
         ("qualified_handler_text", ("explain", str(source_path), "--handler", "InvoiceForm.Save")),
         ("qualified_handler_json", ("explain", str(source_path), "--handler", "InvoiceForm.Save", "--json")),
@@ -5054,6 +5055,13 @@ def _tooling_audit_explain_cli_formats(tmp: Path, source: str) -> dict:
                 stdout.startswith("explain symbol ok: Invoice.customer_id")
                 and "table.Invoice.customer_id: field customer_id" in stdout
                 and "parent: table.Invoice" in stdout
+            )
+        elif case_id == "diagnostic_text":
+            text_ok = (
+                stdout.startswith("explain diagnostic ok: AGX0303")
+                and "AGX0303: Unresolved lookup path" in stdout
+                and "A lookup path must resolve through declared relationships." in stdout
+                and "docs: docs/tooling.md#diagnostic-specification" in stdout
             )
         elif case_id == "qualified_handler_text":
             text_ok = (

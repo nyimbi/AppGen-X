@@ -3764,6 +3764,13 @@ def test_cli_contracts_cover_text_summaries_exit_codes_and_bad_arguments(tmp_pat
         text=True,
         capture_output=True,
     )
+    explain_diagnostic_text = subprocess.run(
+        [sys.executable, "-m", "pyAppGen", "explain", str(source_path), "--diagnostic", "AGX0303"],
+        check=False,
+        cwd=root,
+        text=True,
+        capture_output=True,
+    )
     doctor_text = subprocess.run(
         [sys.executable, "-m", "pyAppGen", "doctor"],
         check=False,
@@ -3856,6 +3863,10 @@ def test_cli_contracts_cover_text_summaries_exit_codes_and_bad_arguments(tmp_pat
     assert not explain_text.stdout.lstrip().startswith("{")
     assert explain_json.returncode == 0, explain_json.stderr
     assert json.loads(explain_json.stdout)["format"] == "appgen.explain-report.v1"
+    assert explain_diagnostic_text.returncode == 0, explain_diagnostic_text.stderr
+    assert explain_diagnostic_text.stdout.startswith("explain diagnostic ok: AGX0303")
+    assert "AGX0303: Unresolved lookup path" in explain_diagnostic_text.stdout
+    assert "docs: docs/tooling.md#diagnostic-specification" in explain_diagnostic_text.stdout
     assert doctor_text.returncode == 0, doctor_text.stderr
     assert doctor_text.stdout.startswith("doctor ok: checks=")
     assert "blocking_gaps=0" in doctor_text.stdout
@@ -3920,6 +3931,7 @@ def test_explain_cli_audit_covers_text_and_json_modes(tmp_path: Path) -> None:
     assert {
         "field_symbol_text",
         "field_symbol_json",
+        "diagnostic_text",
         "diagnostic_json",
         "qualified_handler_text",
         "qualified_handler_json",

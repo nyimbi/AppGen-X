@@ -682,6 +682,10 @@ appgen explain app.appgen --handler InvoiceForm.Save
 ```
 
 Explain output should be human-readable by default and JSON with `--json`.
+Default symbol explanations print the resolved symbol id, kind, parent, and
+reference count. Default diagnostic explanations print the diagnostic code,
+title, summary, and documentation anchor. Default handler explanations print
+matching handler edges.
 
 ### `appgen doctor`
 
