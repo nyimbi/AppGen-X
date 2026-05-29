@@ -14,6 +14,11 @@ This file tracks the branch-isolated implementation pass for standalone Packaged
 
 | PBC | Branch | Commit | Validation |
 | --- | --- | --- | --- |
+| ap_automation | `pbc/ap-automation-standalone` | `4fcec336` | Compile, 16 tests, spec/source/release/smoke true. |
+| ar_credit | `pbc/ar-credit-standalone` | `72ea8fe9` | Compile, 8 tests, spec/source/release/smoke true. |
+| gl_core | `pbc/gl-core-standalone` | `d59473d4` | Compile, 11 tests, spec/source/release/smoke true. |
+| tax_localization | `pbc/tax-localization-standalone` | `8e7035ad` | Compile, 13 tests, spec/source/release/smoke true. |
+| treasury_cash | `pbc/treasury-cash-standalone` | `85904689` | Compile, 13 tests, spec/source/release/smoke true. |
 | api_gateway_mesh | `pbc/api-gateway-mesh-standalone` | `2b87e526` | Compile, 16 tests, spec/source/release/smoke true. |
 | audit_ledger | `pbc/audit-ledger-standalone` | `fd33958c` | Compile, 14 tests, spec/source/release/smoke true. |
 | composition_engine | `pbc/composition-engine-standalone` | `15b94ed2` | Compile, 16 tests, spec/source/release/smoke true. |
