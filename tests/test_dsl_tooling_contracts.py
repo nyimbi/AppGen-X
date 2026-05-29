@@ -4021,7 +4021,9 @@ def test_pbc_publish_text_renderer_contract_proves_side_effect_free_log_markers(
     assert report["json_fallback"] is False
     assert report["text_prefix"].startswith("pbc publish ok: gl_core -> local")
     assert {
+        "catalog_path catalog/pbcs.json",
         "side_effect_free=True write_performed=False",
+        "catalog-patch gl_core: General Ledger Core",
         "ok package_loads",
         "ok manifest_validates",
         "ok catalog_patch_available",

@@ -2023,7 +2023,12 @@ def _emit_tooling_payload(payload: dict, *, as_json: bool) -> None:
         status = "ok" if payload.get("ok") else "failed"
         target = payload.get("target", {})
         print(f"pbc publish {status}: {payload.get('pbc')} -> {target.get('mode')}")
+        if target.get("catalog_path"):
+            print(f"catalog_path {target.get('catalog_path')}")
         print(f"side_effect_free={target.get('side_effect_free')} write_performed={target.get('write_performed')}")
+        for key, item in sorted((payload.get("catalog_patch") or {}).items()):
+            label = item.get("label") if isinstance(item, dict) else ""
+            print(f"catalog-patch {key}: {label}")
         for check in payload.get("checks", ()):
             print(f"{'ok' if check['ok'] else 'fail'} {check['check']}")
         return
@@ -2303,7 +2308,9 @@ def _pbc_publish_text_renderer_contract() -> dict:
     text = output.getvalue()
     required_fragments = (
         "pbc publish ok: gl_core -> local",
+        "catalog_path catalog/pbcs.json",
         "side_effect_free=True write_performed=False",
+        "catalog-patch gl_core: General Ledger Core",
         "ok package_loads",
         "ok manifest_validates",
         "ok catalog_patch_available",
