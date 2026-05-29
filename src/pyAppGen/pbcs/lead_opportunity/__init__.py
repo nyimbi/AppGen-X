@@ -40,8 +40,14 @@ from .runtime import lead_opportunity_set_parameter
 from .runtime import lead_opportunity_verify_owned_table_boundary
 from .runtime import lead_opportunity_win_opportunity
 from .ui import LEAD_OPPORTUNITY_UI_FRAGMENT_KEYS
+from .ui import lead_opportunity_controls_contract
+from .ui import lead_opportunity_forms_contract
 from .ui import lead_opportunity_render_workbench
 from .ui import lead_opportunity_ui_contract
+from .ui import lead_opportunity_wizards_contract
+from .app_surface import app_surface_smoke_test
+from .app_surface import document_instruction_lead_opportunity_plan
+from .app_surface import single_pbc_lead_opportunity_app_contract
 
 PBC_KEY = "lead_opportunity"
 
@@ -54,6 +60,8 @@ def implementation_contract() -> dict:
         "standard_features": runtime["standard_features"],
         "advanced_runtime": runtime,
         "ui_contract": lead_opportunity_ui_contract(),
+        "single_pbc_app": single_pbc_lead_opportunity_app_contract(),
+        "app_surface_smoke": app_surface_smoke_test(),
         "api_contract": lead_opportunity_build_api_contract(),
         "schema_contract": lead_opportunity_build_schema_contract(),
         "service_contract": lead_opportunity_build_service_contract(),
