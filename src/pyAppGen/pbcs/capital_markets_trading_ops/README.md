@@ -1,47 +1,42 @@
 # Capital Markets Trading Operations
 
-This package now implements an executable one-PBC trading-operations slice centered on pre-trade trade-order intake. The slice is database-backed, uses owned tables and package-local migrations only, keeps AppGen-X as the only eventing contract, and exposes the domain as a self-contained app surface inside this directory.
+`capital_markets_trading_ops` is an executable standalone AppGen-X PBC for middle-office trading operations. It owns trade-order intake, execution capture, allocation review, confirmation matching, settlement-instruction governance, settlement fail tracking, trade-break classification, position snapshot provenance, workbench UI contracts, agent guidance, and release evidence inside its own PBC directory.
 
-## What Is Usable Now
+## Usable Domain Surface
 
-- Database-backed owned-table persistence through `CapitalMarketsTradingOpsRepository`.
-- One-PBC app shell through `CapitalMarketsTradingOpsApp`.
-- Executable trade-order intake validation with reference-data checks and operational risk gates.
-- Package-local form contract: `trade_order_intake`.
-- Package-local wizard contract: `trade_order_release_wizard`.
-- Package-local controls: `reference_data_checklist`, `risk_gate_panel`, `release_decision_card`.
-- Stateful service surface through `CapitalMarketsTradingOpsService`.
-- Route dispatch for `POST /trade-orders` and `GET /capital-markets-trading-ops-workbench`.
-- Agent help topics for intake, wizard use, controls, and exception triage.
+The PBC now supports a one-PBC application that can run an order-to-settlement workflow without shared tables:
 
-## Improvement Slice
+- trade-order intake with reference-data completeness checks, asset-class required fields, duplicate-window detection, restricted books, blocked counterparties, quantity/notional thresholds, and four-eyes approval gates
+- lifecycle evidence for draft, validated, risk-passed, release-blocked, and release-ready order states
+- execution capture with partial-fill fields, venue/broker timestamps, price/quantity validation, fee capture, and correction-type evidence for busts, price corrections, quantity corrections, and duplicate suppression
+- allocation splitting with account eligibility, mandate gates, residual policy handling, block-to-child lineage, and allocation evidence hashes
+- broker/counterparty confirmation normalization with API/file/document channels, economic affirmation, price/quantity/commission tolerances, and mismatch classes
+- settlement-instruction governance with effective-date, approval, market/currency/custodian/place-of-settlement fields, and market-enrichment completeness checks
+- settlement status tracking through failed settlement, penalty, buy-in, owner, and remediation context
+- trade-break taxonomy across booking, allocation, confirmation, settlement, position, cash, fee, corporate action, and external reference-data breaks
+- position snapshot provenance over executions, allocations, and settlements with provisional/final state
+- agent document-instruction planning, governed CRUD previews, operator guidance, and single-agent skill namespace contribution
 
-Implemented backlog coverage:
+## One-PBC Application
 
-- Item 3: pre-trade reference-data completeness checks.
-- Item 4: pre-trade operational risk gates.
-- Narrow lifecycle visibility from item 1: `draft`, `validated`, `risk_passed`, and `release_blocked`.
+`standalone.py` exposes `CapitalMarketsTradingOpsStandaloneApp`. The demo workspace creates a valid trade order, records an execution, allocates the fill, matches a confirmation, governs an SSI, records a failed settlement with buy-in exposure, opens a settlement break, builds a position snapshot, and renders a workbench summary. The standalone contract surfaces forms, wizards, controls, workbench views, DSL exposure, and agent tools for the composed application.
 
-Current behavior:
+## Main Modules
 
-- Clean orders move to `risk_passed` and emit `CapitalMarketsTradingOpsCreated` plus `CapitalMarketsTradingOpsApproved`.
-- Incomplete or blocked orders stay visible in the workbench queue `trade_order_exceptions`.
-- Duplicate-window detection is package-local and does not rely on shared-table access.
+- `trade_order_intake.py`: trade-order validation, lifecycle state, duplicate detection, policy gates, remediation, and workbench summary logic
+- `post_trade.py`: execution, allocation, confirmation, settlement, break, and position logic
+- `workflows.py`: package-local create-order and execution-review workflow contracts
+- `application.py`: database-backed one-PBC order intake shell using package-owned migrations
+- `standalone.py`: order-to-settlement standalone app wrapper and smoke test
+- `repository.py`: owned-table SQLite harness for package tests and app demonstration
+- `services.py`, `routes.py`, `ui.py`, `agent.py`: service, API, UI, and assistant surfaces
 
-## Key Modules
+## Boundaries
 
-- `trade_order_intake.py`: validation, lifecycle, remediation, and queue logic.
-- `repository.py`: owned-table migrations and SQLite-backed persistence used by tests and the app wrapper.
-- `application.py`: one-PBC app entrypoint for intake, workbench, and app contract retrieval.
-- `services.py`: stateful service surface for commands, queries, forms, wizards, controls, and agent help.
-- `ui.py`: form, wizard, controls, workbench, and app-shell contracts.
-- `tests/`: release tests covering contracts, runtime behavior, and one-PBC app usability.
+All persistence contracts remain owned by `capital_markets_trading_ops_*` tables. Cross-PBC concerns such as market data, surveillance, custody, accounting, corporate actions, and policy/audit signals are represented through AppGen-X event/API boundaries rather than shared table access. Ordinary backend declarations remain PostgreSQL, MySQL, and MariaDB only, and no stream-engine picker is visible to users.
 
 ## Validation
 
-Validated locally with:
-
-- `python3 -m unittest discover -s src/pyAppGen/pbcs/capital_markets_trading_ops/tests -t src -v`
-- `python3 -m compileall src/pyAppGen/pbcs/capital_markets_trading_ops`
-
-Exact outcomes are captured in `implementation-status.md`.
+- `PYTHONPATH=src python3 -m compileall -q src/pyAppGen/pbcs/capital_markets_trading_ops`
+- `PYTHONPATH=src ./.venv/bin/pytest -q src/pyAppGen/pbcs/capital_markets_trading_ops/tests`
+- focused AppGen-X audits for source artifact, package-local assurance, specification, agent capability, implementation, implemented capability, and generation smoke
