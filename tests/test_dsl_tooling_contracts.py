@@ -1457,6 +1457,7 @@ def test_lsp_code_action_apply_audit_proves_required_quick_fixes() -> None:
         "replace_typo_with_nearest_symbol",
         "replace_secret_literal_with_env",
         "remove_invalid_runtime_picker_fields",
+        "create_event_contract",
         "register_or_import_pbc_manifest",
         "add_missing_permission_for_agent_skill",
         "add_package_for_app_target",
@@ -1471,20 +1472,35 @@ def test_lsp_code_action_cli_audit_covers_required_agent_facing_quick_fixes(tmp_
     assert report["format"] == "appgen.lsp-code-action-cli-audit.v1"
     assert report["ok"] is True
     assert {
+        "create_missing_table",
+        "create_missing_field",
+        "create_calculated_field_for_binding",
         "create_operation_from_handler",
+        "create_flow_from_handler",
         "add_lookup_directive",
+        "add_relationship_for_lookup_path",
+        "replace_typo_with_nearest_symbol",
         "replace_secret_literal_with_env",
         "remove_invalid_runtime_picker_fields",
+        "create_event_contract",
+        "register_or_import_pbc_manifest",
+        "add_missing_permission_for_agent_skill",
         "add_package_for_app_target",
         "create_smoke_test_declaration",
     } <= set(report["required_cli_actions"])
+    assert cases["create_missing_table"]["ok"] is True
+    assert cases["create_missing_field"]["ok"] is True
+    assert cases["create_calculated_field_for_binding"]["ok"] is True
     assert cases["create_operation_from_handler"]["ok"] is True
     assert cases["create_operation_from_handler"]["changed"] is True
     assert cases["create_operation_from_handler"]["applied_edit_count"] > 0
     assert cases["create_operation_from_handler"]["lint_ok"] is True
+    assert cases["create_flow_from_handler"]["ok"] is True
     assert cases["add_lookup_directive"]["ok"] is True
     assert cases["add_lookup_directive"]["changed"] is True
     assert cases["add_lookup_directive"]["applied_edit_count"] > 0
+    assert cases["add_relationship_for_lookup_path"]["ok"] is True
+    assert cases["replace_typo_with_nearest_symbol"]["ok"] is True
     assert cases["add_package_for_app_target"]["ok"] is True
     assert cases["add_package_for_app_target"]["expected_text"] == "package WebPackage"
     assert cases["create_smoke_test_declaration"]["ok"] is True
@@ -1496,6 +1512,9 @@ def test_lsp_code_action_cli_audit_covers_required_agent_facing_quick_fixes(tmp_
     assert cases["remove_invalid_runtime_picker_fields"]["ok"] is True
     assert cases["remove_invalid_runtime_picker_fields"]["forbidden_removed"] is True
     assert cases["remove_invalid_runtime_picker_fields"]["expected_text"] == "targets: web"
+    assert cases["create_event_contract"]["ok"] is True
+    assert cases["register_or_import_pbc_manifest"]["ok"] is True
+    assert cases["add_missing_permission_for_agent_skill"]["ok"] is True
 
 
 def test_lsp_rename_cli_audit_covers_safe_and_blocked_renames(tmp_path: Path) -> None:
@@ -2737,10 +2756,19 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert quick_fix_check["detail"]["cli"]["format"] == "appgen.lsp-code-action-cli-audit.v1"
     assert quick_fix_check["detail"]["cli"]["ok"] is True
     assert {
+        "create_missing_table",
+        "create_missing_field",
+        "create_calculated_field_for_binding",
         "create_operation_from_handler",
+        "create_flow_from_handler",
         "add_lookup_directive",
+        "add_relationship_for_lookup_path",
+        "replace_typo_with_nearest_symbol",
         "replace_secret_literal_with_env",
         "remove_invalid_runtime_picker_fields",
+        "create_event_contract",
+        "register_or_import_pbc_manifest",
+        "add_missing_permission_for_agent_skill",
         "add_package_for_app_target",
         "create_smoke_test_declaration",
     } <= set(quick_fix_check["detail"]["cli"]["required_cli_actions"])

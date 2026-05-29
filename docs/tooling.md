@@ -824,9 +824,13 @@ Code-action application is executable through
 `appgen lsp app.appgen --apply-code-action <id> --json`, returning patched DSL,
 applied text edits, and the lint result after applying the selected quick fix.
 This is the evidence path for missing-operation, lookup-directive,
-secret-literal replacement, invalid runtime/stream/backend picker removal,
-package creation for app targets, and smoke-test declaration quick fixes used
-by IDEs and agents.
+event-contract, relationship, typo, secret-literal replacement, invalid
+runtime/stream/backend picker removal, PBC manifest, agent-permission, package
+creation for app targets, and smoke-test declaration quick fixes used by IDEs
+and agents. `appgen.lsp-code-action-cli-audit.v1` must cover the same required
+action ids as the in-process `appgen.lsp-code-action-apply-audit.v1` release
+gate so external agents and editor integrations are not weaker than library
+callers.
 
 ## IDE Integration
 

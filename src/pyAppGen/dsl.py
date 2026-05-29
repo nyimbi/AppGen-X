@@ -2846,6 +2846,27 @@ def _tooling_audit_lsp_stdio_transport(source: str) -> dict:
 def _tooling_audit_lsp_apply_code_action_cli(tmp: Path) -> dict:
     case_specs = (
         (
+            "create_missing_table",
+            "lsp-apply-missing-table.appgen",
+            "app MissingTableFix { targets: web }\ntable Invoice { id: int pk }\nview MissingForm for Missing { Main: id }\n",
+            "table Missing",
+            (),
+        ),
+        (
+            "create_missing_field",
+            "lsp-apply-missing-field.appgen",
+            "app MissingFieldFix { targets: web }\ntable Invoice { id: int pk }\nview InvoiceForm for Invoice { Main: total }\n",
+            "total: string",
+            (),
+        ),
+        (
+            "create_calculated_field_for_binding",
+            "lsp-apply-calculated-field.appgen",
+            "app CalculatedFix { targets: web }\ntable Customer { id: int pk; name: string }\ntable Invoice { id: int pk; customer_id: int -> Customer.id }\nview InvoiceForm for Invoice { Main: customer.missing_name }\n",
+            "missing_name: string = name",
+            (),
+        ),
+        (
             "create_operation_from_handler",
             "lsp-apply-operation.appgen",
             """
@@ -2854,6 +2875,13 @@ table Invoice { id: int pk }
 view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
 """,
             "operation SubmitInvoice",
+            (),
+        ),
+        (
+            "create_flow_from_handler",
+            "lsp-apply-flow.appgen",
+            "app FlowFix { targets: web }\ntable Invoice { id: int pk }\nview InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }\n",
+            "flow SubmitInvoice",
             (),
         ),
         (
@@ -2867,6 +2895,20 @@ view InvoiceForm for Invoice { Main: customer_name }
 """,
             "lookup customer_name (customer.name)",
             (),
+        ),
+        (
+            "add_relationship_for_lookup_path",
+            "lsp-apply-relationship.appgen",
+            "app RelationshipFix { targets: web }\ntable Customer { id: int pk; name: string }\ntable Invoice { id: int pk }\nview InvoiceForm for Invoice { Main: customer.name }\n",
+            "customer_id: int -> Customer.id",
+            (),
+        ),
+        (
+            "replace_typo_with_nearest_symbol",
+            "lsp-apply-typo.appgen",
+            "app TypoFix { targets: web }\ntable Invoice { id: int pk; total: decimal }\nview InvoiceForm for Invoice { Main: totl }\n",
+            "Main: total",
+            ("Main: totl",),
         ),
         (
             "replace_secret_literal_with_env",
@@ -2890,6 +2932,36 @@ view TForm for T { Main: id }
 """,
             "targets: web",
             ("runtime:", "stream:", "backend:"),
+        ),
+        (
+            "create_event_contract",
+            "lsp-apply-event-contract.appgen",
+            """
+app EventContractFix { targets: web }
+table T { id: int pk }
+view TForm for T { Main: id }
+composition Suite {
+  include pbc gl_core version 1.0.0
+  include pbc ap_automation version 1.0.0
+  connect ap_automation domain_event MissingEvent -> gl_core domain_event MissingCommand
+}
+""",
+            "event MissingEvent",
+            (),
+        ),
+        (
+            "register_or_import_pbc_manifest",
+            "lsp-apply-pbc-manifest.appgen",
+            "app PbcManifestFix { targets: web }\ntable T { id: int pk }\nview TForm for T { Main: id }\ncomposition Suite { include pbc missing_pbc version 1.0.0 }\n",
+            "pbc missing_pbc",
+            (),
+        ),
+        (
+            "add_missing_permission_for_agent_skill",
+            "lsp-apply-agent-permission.appgen",
+            "app AgentPermissionFix { targets: web }\ntable T { id: int pk }\nview TForm for T { Main: id }\nllm LocalModel { provider: ollama; mode: local }\nagent Writer { provider: LocalModel; tools: write }\n",
+            "GeneratedResource: write",
+            (),
         ),
         (
             "add_package_for_app_target",
@@ -6083,6 +6155,12 @@ def lsp_code_action_apply_audit_dsl() -> dict:
             "remove_invalid_runtime_picker_fields",
             "app A { targets: web; runtime: node; stream: bytewax; backend: oracle }\ntable T { id: int pk }\nview TForm for T { Main: id }\n",
             "targets: web",
+        ),
+        (
+            "create_event_contract",
+            "create_event_contract",
+            "app A { targets: web }\ntable T { id: int pk }\nview TForm for T { Main: id }\ncomposition Suite { include pbc gl_core version 1.0.0 include pbc ap_automation version 1.0.0 connect ap_automation domain_event MissingEvent -> gl_core domain_event MissingCommand }\n",
+            "event MissingEvent",
         ),
         (
             "register_or_import_pbc_manifest",
