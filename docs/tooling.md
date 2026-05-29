@@ -545,7 +545,9 @@ and relationship arrows.
 guarantees. It also verifies that the organize profile preserves top-level
 declaration order while ordering table bodies by identity, business keys,
 relationships, editable fields, calculated fields, audit fields, and
-directives.
+directives. The formatter contract reports check, passing-check,
+comment-check, ordering-check, and report counts so release evidence captures
+both formatting scenarios and the breadth of formatter guarantees.
 
 ## CLI Contracts
 
@@ -1003,6 +1005,9 @@ The JSON-RPC audit reports check, passing-check, provider, enabled-provider,
 request-check, code-action, and formatting-edit counts so release evidence
 proves the language server surface is broad enough for editor and agent
 workflows rather than merely returning an initialize response.
+The stdio audit reports request-message, response, id-response, notification,
+method, and diagnostic-publication counts so framed transport coverage remains
+measurable separately from in-process JSON-RPC handling.
 Without `--json`, `appgen lsp <file>` prints a concise service summary with
 the `appgen.lsp-service.v1` envelope format, semantic-model format as
 `semantic_format=...`, diagnostic
@@ -1138,7 +1143,10 @@ gate so external agents and editor integrations are not weaker than library
 callers. Both audits report `required_action_ids`, `observed_action_ids`, and
 `missing_required_action_ids`; the top-level tooling audit fails when the CLI
 quick-fix surface is missing an action required by the in-process patch
-contract.
+contract. The in-process apply audit reports case, passing-case,
+required-action, observed-action, missing-required-action, applied-edit, and
+lint-passing-case counts so library consumers get the same measurable quick-fix
+breadth as the CLI.
 The CLI audit also reports case, passing-case, required-action, observed-action,
 missing-action, and applied-edit counts so quick-fix coverage is measurable.
 `appgen.lsp-rename-cli-audit.v1` reports safe, blocked JSON, and blocked text
@@ -1420,7 +1428,10 @@ Supported edit operations:
 runs a fixture prompt for each supported operation, verifies that accepted
 requests produce DSL patches, lint results, migration previews, generated test
 plans, and token-budget notes, and verifies that out-of-DSL requests are
-rejected with `AGX1201` instead of generating code.
+rejected with `AGX1201` instead of generating code. The contract audit reports
+case, passing-case, accepted-case, rejected-case, required-operation,
+observed-operation-kind, and token-budget-case counts so the natural-language
+development vector stays measurable before the CLI layer is involved.
 The CLI proof mirrors the same operation family through
 `appgen.nl-plan-cli-audit.v1`: each supported edit operation is exercised
 through `appgen nl-plan --json`, then checked for the expected operation kind,

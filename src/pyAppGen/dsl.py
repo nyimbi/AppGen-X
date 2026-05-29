@@ -3473,6 +3473,11 @@ table Customer {
     return {
         "format": "appgen.formatter-contract-audit.v1",
         "ok": all(check["ok"] for check in checks),
+        "check_count": len(checks),
+        "passing_check_count": sum(1 for check in checks if check["ok"]),
+        "comment_check_count": sum(1 for check in checks if "comment" in check["check"]),
+        "ordering_check_count": sum(1 for check in checks if "ordering" in check["check"] or "order" in check["check"]),
+        "report_count": 2,
         "checks": checks,
         "comment_report": comment_report["format"],
         "organize_report": organize_report["format"],
@@ -5423,7 +5428,11 @@ def _tooling_audit_lsp_stdio_transport(source: str) -> dict:
         )
         and any(response.get("id") == 4 and response.get("result") is None for response in responses),
         "exit_code": exit_code,
+        "request_message_count": 4,
         "response_count": len(responses),
+        "id_response_count": sum(1 for response in responses if "id" in response),
+        "notification_count": sum(1 for response in responses if response.get("method")),
+        "method_count": len({response.get("method") for response in responses if response.get("method")}),
         "methods": tuple(response.get("method") for response in responses if response.get("method")),
         "ids": tuple(response.get("id") for response in responses if "id" in response),
         "diagnostic_publication_count": sum(
@@ -8574,11 +8583,21 @@ def nl_plan_contract_audit_dsl(text: str, *, source_name: str | None = None) -> 
                 "lint_ok": plan.get("lint", {}).get("ok"),
                 "migration_format": plan.get("migration_preview", {}).get("format"),
                 "test_count": len(plan.get("test_plan", ())),
+                "token_budget_note_count": len(plan.get("token_budget_notes", ())),
             }
         )
     return {
         "format": "appgen.nl-plan-contract-audit.v1",
         "ok": all(case["ok"] for case in cases),
+        "case_count": len(cases),
+        "passing_case_count": sum(1 for case in cases if case["ok"]),
+        "accepted_case_count": sum(1 for case in cases if case["accepted"]),
+        "rejected_case_count": sum(1 for case in cases if not case["accepted"]),
+        "required_operation_count": 13,
+        "observed_operation_kind_count": len(
+            {operation_kind for case in cases for operation_kind in case["operation_kinds"]}
+        ),
+        "token_budget_case_count": sum(1 for case in cases if case["token_budget_note_count"] > 0),
         "cases": tuple(cases),
         "required_edit_operations": (
             "add_table",
@@ -9478,6 +9497,13 @@ def lsp_code_action_apply_audit_dsl() -> dict:
     return {
         "format": "appgen.lsp-code-action-apply-audit.v1",
         "ok": all(case["ok"] for case in cases) and not missing_required_action_ids,
+        "case_count": len(cases),
+        "passing_case_count": sum(1 for case in cases if case["ok"]),
+        "required_action_count": len(required_action_ids),
+        "observed_action_count": len(observed_action_ids),
+        "missing_required_action_count": len(missing_required_action_ids),
+        "applied_edit_count": sum(case["applied_edit_count"] for case in cases),
+        "lint_passing_case_count": sum(1 for case in cases if case["lint_ok"]),
         "cases": tuple(cases),
         "required_action_ids": required_action_ids,
         "observed_action_ids": observed_action_ids,

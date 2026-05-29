@@ -681,6 +681,11 @@ def test_formatter_contract_audit_proves_documented_formatter_guarantees() -> No
 
     assert audit["format"] == "appgen.formatter-contract-audit.v1"
     assert audit["ok"] is True
+    assert audit["check_count"] == len(audit["checks"])
+    assert audit["passing_check_count"] == audit["check_count"]
+    assert audit["comment_check_count"] >= 3
+    assert audit["ordering_check_count"] >= 3
+    assert audit["report_count"] == 2
     assert {
         "idempotent",
         "file_level_comments_preserved",
@@ -996,6 +1001,13 @@ def test_nl_plan_contract_audit_covers_supported_edit_operations_and_rejections(
 
     assert audit["format"] == "appgen.nl-plan-contract-audit.v1"
     assert audit["ok"] is True
+    assert audit["case_count"] == len(audit["cases"])
+    assert audit["passing_case_count"] == audit["case_count"]
+    assert audit["accepted_case_count"] == len(audit["required_edit_operations"])
+    assert audit["rejected_case_count"] == 1
+    assert audit["required_operation_count"] == len(audit["required_edit_operations"])
+    assert audit["observed_operation_kind_count"] >= audit["required_operation_count"]
+    assert audit["token_budget_case_count"] == audit["case_count"]
     assert set(audit["required_edit_operations"]) <= {
         "add_table",
         "add_field",
@@ -1724,6 +1736,13 @@ def test_lsp_code_action_apply_audit_proves_required_quick_fixes() -> None:
 
     assert audit["format"] == "appgen.lsp-code-action-apply-audit.v1"
     assert audit["ok"] is True
+    assert audit["case_count"] == len(audit["cases"])
+    assert audit["passing_case_count"] == audit["case_count"]
+    assert audit["required_action_count"] == len(audit["required_action_ids"])
+    assert audit["observed_action_count"] == len(audit["observed_action_ids"])
+    assert audit["missing_required_action_count"] == 0
+    assert audit["applied_edit_count"] >= audit["case_count"]
+    assert audit["lint_passing_case_count"] == audit["case_count"]
     assert audit["blocking_gaps"] == ()
     assert audit["missing_required_action_ids"] == ()
     assert set(audit["required_action_ids"]) == set(audit["observed_action_ids"])
@@ -2025,6 +2044,11 @@ def test_lsp_stdio_transport_audit_exercises_editor_requests() -> None:
     assert audit["format"] == "appgen.lsp-stdio-transport-audit.v1"
     assert audit["ok"] is True
     assert audit["exit_code"] == 0
+    assert audit["request_message_count"] == 4
+    assert audit["response_count"] >= audit["request_message_count"]
+    assert audit["id_response_count"] >= audit["request_message_count"]
+    assert audit["notification_count"] >= 2
+    assert audit["method_count"] >= 1
     assert audit["diagnostic_publication_count"] >= 2
     assert {1, 2, 3, 4} <= set(audit["ids"])
     assert "textDocument/publishDiagnostics" in audit["methods"]
@@ -3768,6 +3792,12 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert lsp_check["detail"]["rpc"]["request_check_count"] == 8
     assert lsp_check["detail"]["rpc"]["code_action_count"] >= 1
     assert lsp_check["detail"]["rpc"]["formatting_edit_count"] >= 1
+    assert lsp_check["detail"]["stdio"]["format"] == "appgen.lsp-stdio-transport-audit.v1"
+    assert lsp_check["detail"]["stdio"]["request_message_count"] == 4
+    assert lsp_check["detail"]["stdio"]["response_count"] >= lsp_check["detail"]["stdio"]["request_message_count"]
+    assert lsp_check["detail"]["stdio"]["id_response_count"] >= lsp_check["detail"]["stdio"]["request_message_count"]
+    assert lsp_check["detail"]["stdio"]["notification_count"] >= 2
+    assert lsp_check["detail"]["stdio"]["method_count"] >= 1
     assert lsp_check["detail"]["rename_cli"]["format"] == "appgen.lsp-rename-cli-audit.v1"
     assert lsp_check["detail"]["rename_cli"]["ok"] is True
     assert lsp_check["detail"]["rename_cli"]["rename_format"] == "appgen.lsp-rename.v1"
@@ -3794,6 +3824,25 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     quick_fix_check = next(check for check in report["checks"] if check["id"] == "lsp_quick_fix_application")
     assert quick_fix_check["detail"]["cli"]["format"] == "appgen.lsp-code-action-cli-audit.v1"
     assert quick_fix_check["detail"]["cli"]["ok"] is True
+    assert quick_fix_check["detail"]["application_audit"]["case_count"] == len(
+        quick_fix_check["detail"]["application_audit"]["cases"]
+    )
+    assert quick_fix_check["detail"]["application_audit"]["passing_case_count"] == (
+        quick_fix_check["detail"]["application_audit"]["case_count"]
+    )
+    assert quick_fix_check["detail"]["application_audit"]["required_action_count"] == len(
+        quick_fix_check["detail"]["application_audit"]["required_action_ids"]
+    )
+    assert quick_fix_check["detail"]["application_audit"]["observed_action_count"] == len(
+        quick_fix_check["detail"]["application_audit"]["observed_action_ids"]
+    )
+    assert quick_fix_check["detail"]["application_audit"]["missing_required_action_count"] == 0
+    assert quick_fix_check["detail"]["application_audit"]["applied_edit_count"] >= (
+        quick_fix_check["detail"]["application_audit"]["case_count"]
+    )
+    assert quick_fix_check["detail"]["application_audit"]["lint_passing_case_count"] == (
+        quick_fix_check["detail"]["application_audit"]["case_count"]
+    )
     assert quick_fix_check["detail"]["cli"]["missing_required_action_ids"] == ()
     assert tuple(quick_fix_check["detail"]["cli"]["required_action_ids"]) == tuple(
         quick_fix_check["detail"]["application_audit"]["required_action_ids"]
@@ -4078,6 +4127,19 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     nl_check = next(check for check in report["checks"] if check["id"] == "natural_language_patch_planner")
     assert nl_check["detail"]["cli"]["format"] == "appgen.nl-plan-cli-audit.v1"
     assert nl_check["detail"]["cli"]["ok"] is True
+    assert nl_check["detail"]["contract"]["case_count"] == len(nl_check["detail"]["contract"]["cases"])
+    assert nl_check["detail"]["contract"]["passing_case_count"] == nl_check["detail"]["contract"]["case_count"]
+    assert nl_check["detail"]["contract"]["accepted_case_count"] == len(
+        nl_check["detail"]["contract"]["required_edit_operations"]
+    )
+    assert nl_check["detail"]["contract"]["rejected_case_count"] == 1
+    assert nl_check["detail"]["contract"]["required_operation_count"] == len(
+        nl_check["detail"]["contract"]["required_edit_operations"]
+    )
+    assert nl_check["detail"]["contract"]["observed_operation_kind_count"] >= (
+        nl_check["detail"]["contract"]["required_operation_count"]
+    )
+    assert nl_check["detail"]["contract"]["token_budget_case_count"] == nl_check["detail"]["contract"]["case_count"]
     assert nl_check["detail"]["cli"]["case_count"] == (
         nl_check["detail"]["cli"]["accepted_case_count"]
         + nl_check["detail"]["cli"]["rejected_case_count"]
