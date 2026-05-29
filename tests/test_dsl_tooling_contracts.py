@@ -4001,6 +4001,7 @@ def test_component_publish_text_renderer_contract_proves_catalog_log_markers() -
         "write_performed=False",
         "patch_format=appgen.component-catalog-patch.v1",
         "catalog-count before=1 after=2 existing=1",
+        "catalog-existing ExistingBox",
     } <= set(report["required_fragments"])
 
 

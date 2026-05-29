@@ -863,12 +863,14 @@ names when a catalog path is supplied, the upsert target, and explicit
 `side_effect_free`/`write_performed` evidence. This command is the non-PBC
 publication lane for components used by strict linting and visual designers.
 Without `--json`, the command prints the component name, catalog source,
-registration state, side-effect-free flag, write-performed flag, the
+registration state, side-effect-free flag, write-performed flag, existing
+catalog component names as `catalog-existing ...`, the
 `appgen.component-publish-report.v1` envelope format, catalog patch format, and
 before/after catalog counts.
 `appgen.component-publish-text-renderer.v1` is embedded in the tooling audit to
 prove this human-readable component publication log remains side-effect-aware
-and exposes the catalog patch contract without parsing JSON.
+and exposes the catalog patch contract plus existing-catalog context without
+parsing JSON.
 
 ### `appgen pbc`
 

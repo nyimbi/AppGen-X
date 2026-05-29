@@ -1975,6 +1975,9 @@ def _emit_tooling_payload(payload: dict, *, as_json: bool) -> None:
             f"after={patch.get('after_count', catalog.get('count', 0))} "
             f"existing={catalog.get('count', 0)}"
         )
+        existing_components = tuple(catalog.get("components", ()))
+        if existing_components:
+            print(f"catalog-existing {', '.join(sorted(existing_components))}")
         for gap in payload.get("blocking_gaps", ()):
             print(f"gap {gap}")
         return
@@ -2237,6 +2240,7 @@ def _component_publish_text_renderer_contract() -> dict:
         "write_performed=False",
         "patch_format=appgen.component-catalog-patch.v1",
         "catalog-count before=1 after=2 existing=1",
+        "catalog-existing ExistingBox",
     )
     missing = tuple(fragment for fragment in required_fragments if fragment not in text)
     return {
