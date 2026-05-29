@@ -3816,6 +3816,11 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert validate_cases["generate_writes_artifacts"]["manifest_app_name"] == "ToolingAudit"
     assert cli_check["detail"]["format_write"]["format"] == "appgen.format-write-audit.v1"
     assert cli_check["detail"]["format_write"]["ok"] is True
+    assert cli_check["detail"]["format_write"]["scenario_count"] == 5
+    assert cli_check["detail"]["format_write"]["passing_scenario_count"] == 5
+    assert cli_check["detail"]["format_write"]["write_mode_count"] == 2
+    assert cli_check["detail"]["format_write"]["check_mode_count"] == 2
+    assert cli_check["detail"]["format_write"]["organize_category_count"] == 7
     assert cli_check["detail"]["format_write"]["check_exit_code"] == 1
     assert cli_check["detail"]["format_write"]["check_changed"] is True
     assert cli_check["detail"]["format_write"]["check_write_requested"] is False
@@ -3833,14 +3838,46 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     )
     assert cli_check["detail"]["internal_error_exit"]["format"] == "appgen.internal-error-exit-audit.v1"
     assert cli_check["detail"]["internal_error_exit"]["ok"] is True
+    assert cli_check["detail"]["internal_error_exit"]["mode_count"] == 2
+    assert cli_check["detail"]["internal_error_exit"]["passing_mode_count"] == 2
+    assert cli_check["detail"]["internal_error_exit"]["traceback_free_mode_count"] == 2
     assert cli_check["detail"]["internal_error_exit"]["json_exit_code"] == 3
     assert cli_check["detail"]["internal_error_exit"]["text_exit_code"] == 3
     assert cli_check["detail"]["internal_error_exit"]["json_traceback_free"] is True
     assert cli_check["detail"]["internal_error_exit"]["text_traceback_free"] is True
+    assert cli_check["detail"]["missing_input_exit"]["format"] == "appgen.missing-input-exit-audit.v1"
+    assert cli_check["detail"]["missing_input_exit"]["ok"] is True
+    assert cli_check["detail"]["missing_input_exit"]["case_count"] == len(
+        cli_check["detail"]["missing_input_exit"]["cases"]
+    )
+    assert cli_check["detail"]["missing_input_exit"]["passing_case_count"] == (
+        cli_check["detail"]["missing_input_exit"]["case_count"]
+    )
+    assert cli_check["detail"]["missing_input_exit"]["missing_path_message_count"] == (
+        cli_check["detail"]["missing_input_exit"]["case_count"]
+    )
+    assert cli_check["detail"]["missing_input_exit"]["stdout_empty_count"] == (
+        cli_check["detail"]["missing_input_exit"]["case_count"]
+    )
+    assert cli_check["detail"]["missing_input_exit"]["traceback_free_count"] == (
+        cli_check["detail"]["missing_input_exit"]["case_count"]
+    )
     assert cli_check["detail"]["missing_required_option_exit"]["format"] == (
         "appgen.missing-required-option-exit-audit.v1"
     )
     assert cli_check["detail"]["missing_required_option_exit"]["ok"] is True
+    assert cli_check["detail"]["missing_required_option_exit"]["case_count"] == len(
+        cli_check["detail"]["missing_required_option_exit"]["cases"]
+    )
+    assert cli_check["detail"]["missing_required_option_exit"]["passing_case_count"] == (
+        cli_check["detail"]["missing_required_option_exit"]["case_count"]
+    )
+    assert cli_check["detail"]["missing_required_option_exit"]["expected_message_count"] == (
+        cli_check["detail"]["missing_required_option_exit"]["case_count"]
+    )
+    assert cli_check["detail"]["missing_required_option_exit"]["traceback_free_count"] == (
+        cli_check["detail"]["missing_required_option_exit"]["case_count"]
+    )
     assert {
         "generate_missing_out",
         "nl_plan_missing_prompt",
@@ -3856,6 +3893,18 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
         "package_target",
         "pbc_publish_catalog",
     } <= {case["name"] for case in cli_check["detail"]["invalid_choice_exit"]["cases"]}
+    assert cli_check["detail"]["invalid_choice_exit"]["case_count"] == len(
+        cli_check["detail"]["invalid_choice_exit"]["cases"]
+    )
+    assert cli_check["detail"]["invalid_choice_exit"]["passing_case_count"] == (
+        cli_check["detail"]["invalid_choice_exit"]["case_count"]
+    )
+    assert cli_check["detail"]["invalid_choice_exit"]["invalid_choice_message_count"] == (
+        cli_check["detail"]["invalid_choice_exit"]["case_count"]
+    )
+    assert cli_check["detail"]["invalid_choice_exit"]["traceback_free_count"] == (
+        cli_check["detail"]["invalid_choice_exit"]["case_count"]
+    )
     lint_check = next(check for check in report["checks"] if check["id"] == "lint_directory_and_strict_profiles")
     assert lint_check["detail"]["directory_cli"]["format"] == "appgen.lint-directory-cli-audit.v1"
     assert lint_check["detail"]["directory_cli"]["ok"] is True
@@ -4739,6 +4788,11 @@ def test_missing_input_audit_covers_file_based_commands(tmp_path: Path) -> None:
 
     assert audit["format"] == "appgen.missing-input-exit-audit.v1"
     assert audit["ok"] is True
+    assert audit["case_count"] == len(audit["cases"])
+    assert audit["passing_case_count"] == audit["case_count"]
+    assert audit["missing_path_message_count"] == audit["case_count"]
+    assert audit["stdout_empty_count"] == audit["case_count"]
+    assert audit["traceback_free_count"] == audit["case_count"]
     assert {
         "lint_missing_path",
         "lint_missing_previous_semantic",
@@ -4850,6 +4904,10 @@ def test_invalid_choice_audit_covers_graph_formats_and_backend_choices(tmp_path:
 
     assert audit["format"] == "appgen.invalid-choice-exit-audit.v1"
     assert audit["ok"] is True
+    assert audit["case_count"] == len(audit["cases"])
+    assert audit["passing_case_count"] == audit["case_count"]
+    assert audit["invalid_choice_message_count"] == audit["case_count"]
+    assert audit["traceback_free_count"] == audit["case_count"]
     assert {
         "lint_backend",
         "graph_kind",
@@ -4871,6 +4929,10 @@ def test_missing_required_option_audit_covers_required_cli_options(tmp_path: Pat
 
     assert audit["format"] == "appgen.missing-required-option-exit-audit.v1"
     assert audit["ok"] is True
+    assert audit["case_count"] == len(audit["cases"])
+    assert audit["passing_case_count"] == audit["case_count"]
+    assert audit["expected_message_count"] == audit["case_count"]
+    assert audit["traceback_free_count"] == audit["case_count"]
     assert {
         "generate_missing_out",
         "nl_plan_missing_prompt",
@@ -4887,6 +4949,11 @@ def test_format_write_audit_covers_json_check_and_text_write_contracts(tmp_path:
 
     assert audit["format"] == "appgen.format-write-audit.v1"
     assert audit["ok"] is True
+    assert audit["scenario_count"] == 5
+    assert audit["passing_scenario_count"] == audit["scenario_count"]
+    assert audit["write_mode_count"] == 2
+    assert audit["check_mode_count"] == 2
+    assert audit["organize_category_count"] == 7
     assert audit["payload_format"] == "appgen.format-result.v1"
     assert audit["check_exit_code"] == 1
     assert audit["check_changed"] is True
@@ -5004,6 +5071,9 @@ def test_internal_error_audit_covers_json_and_text_modes(tmp_path: Path) -> None
 
     assert report["format"] == "appgen.internal-error-exit-audit.v1"
     assert report["ok"] is True
+    assert report["mode_count"] == 2
+    assert report["passing_mode_count"] == report["mode_count"]
+    assert report["traceback_free_mode_count"] == report["mode_count"]
     assert report["json_exit_code"] == 3
     assert report["text_exit_code"] == 3
     assert report["payload_format"] == "appgen.internal-error.v1"

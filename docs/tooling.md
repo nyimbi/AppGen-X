@@ -565,6 +565,12 @@ discoverability breadth without scraping nested help payloads.
 including generator output directories, natural-language prompts, and component
 publication names, plus the required `appgen explain` selector family
 (`--symbol`, `--diagnostic`, or `--handler`).
+`appgen.missing-input-exit-audit.v1`, `appgen.invalid-choice-exit-audit.v1`,
+and `appgen.internal-error-exit-audit.v1` cover file-not-found, unsupported
+choice, and controlled internal-error paths. These audits report case or mode
+counts, passing counts, expected-message counts, stdout-empty counts where
+required, and traceback-free counts so release evidence proves failure behavior
+across the CLI surface instead of only recording exit codes.
 
 ### `appgen lint`
 
@@ -671,7 +677,10 @@ fields and spreads, business keys, relationships, editable scalar fields,
 calculated fields, audit fields, and directives are ordered inside each table
 without reordering top-level declarations. The format write audit reports this
 as `organize_table_body_order` so the release evidence names the applied
-categories instead of only recording byte offsets.
+categories instead of only recording byte offsets. It also reports total and
+passing scenario counts, write-mode counts, check-mode counts, and organize
+category counts across dirty-check, clean-check, organize, JSON-write, and
+text-write scenarios.
 
 ### `appgen validate`
 

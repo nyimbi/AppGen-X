@@ -5865,19 +5865,16 @@ table Customer {
         "write_requested=True written=True" in text_stdout
         and f"write_path {text_path}" in text_stdout
     )
-    return {
-        "format": "appgen.format-write-audit.v1",
-        "ok": exit_code == 0
-        and payload.get("format") == "appgen.format-result.v1"
-        and check_exit == 1
+    scenario_results = (
+        check_exit == 1
         and check_payload.get("format") == "appgen.format-result.v1"
         and check_payload.get("changed") is True
         and check_payload.get("write_requested") is False
-        and check_payload.get("written") is False
-        and clean_check_exit == 0
+        and check_payload.get("written") is False,
+        clean_check_exit == 0
         and clean_check_payload.get("format") == "appgen.format-result.v1"
-        and clean_check_payload.get("changed") is False
-        and organize_exit == 0
+        and clean_check_payload.get("changed") is False,
+        organize_exit == 0
         and organize_payload.get("format") == "appgen.format-result.v1"
         and organize_payload.get("organize") is True
         and organize_payload.get("idempotent") is True
@@ -5892,15 +5889,26 @@ table Customer {
             "calculated:total",
             "audit:updated_at",
             "directive:index",
-        )
+        ),
+        exit_code == 0
+        and payload.get("format") == "appgen.format-result.v1"
         and payload.get("write_requested") is True
         and payload.get("written") is True
         and after == payload.get("text")
-        and after != source
-        and text_exit_code == 0
+        and after != source,
+        text_exit_code == 0
         and text_has_report_format
         and text_has_write_metadata
         and text_after != source,
+    )
+    return {
+        "format": "appgen.format-write-audit.v1",
+        "ok": all(scenario_results),
+        "scenario_count": len(scenario_results),
+        "passing_scenario_count": sum(1 for ok in scenario_results if ok),
+        "write_mode_count": 2,
+        "check_mode_count": 2,
+        "organize_category_count": len(organized_table_body_order),
         "exit_code": exit_code,
         "payload_format": payload.get("format"),
         "text_exit_code": text_exit_code,
@@ -5948,17 +5956,32 @@ def _tooling_audit_internal_error_exit(tmp: Path) -> dict:
     json_stderr = json_error.getvalue()
     text_stdout = text_output.getvalue()
     text_stderr = text_error.getvalue()
-    return {
-        "format": "appgen.internal-error-exit-audit.v1",
-        "ok": json_exit_code == 3
-        and text_exit_code == 3
+    json_ok = (
+        json_exit_code == 3
         and payload.get("format") == "appgen.internal-error.v1"
         and payload.get("code") == "AGX9000"
         and payload.get("ok") is False
-        and text_stdout.startswith("internal-error failed: format=appgen.internal-error.v1")
         and "Traceback" not in json_stderr
+    )
+    text_ok = (
+        text_exit_code == 3
+        and text_stdout.startswith("internal-error failed: format=appgen.internal-error.v1")
         and "Traceback" not in text_stderr
-        and "Traceback" not in text_stdout,
+        and "Traceback" not in text_stdout
+    )
+    return {
+        "format": "appgen.internal-error-exit-audit.v1",
+        "ok": json_ok and text_ok,
+        "mode_count": 2,
+        "passing_mode_count": sum(1 for ok in (json_ok, text_ok) if ok),
+        "traceback_free_mode_count": sum(
+            1
+            for ok in (
+                "Traceback" not in json_stderr,
+                "Traceback" not in text_stderr and "Traceback" not in text_stdout,
+            )
+            if ok
+        ),
         "json_exit_code": json_exit_code,
         "text_exit_code": text_exit_code,
         "payload_format": payload.get("format"),
@@ -6022,6 +6045,11 @@ def _tooling_audit_missing_input_exit(tmp: Path) -> dict:
     return {
         "format": "appgen.missing-input-exit-audit.v1",
         "ok": all(result["ok"] for result in results),
+        "case_count": len(results),
+        "passing_case_count": sum(1 for result in results if result["ok"]),
+        "missing_path_message_count": sum(1 for result in results if "path does not exist" in result["stderr"]),
+        "stdout_empty_count": sum(1 for result in results if result["stdout_empty"]),
+        "traceback_free_count": sum(1 for result in results if "Traceback" not in result["stderr"]),
         "cases": tuple(results),
     }
 
@@ -6059,6 +6087,10 @@ def _tooling_audit_missing_required_option_exit(tmp: Path) -> dict:
     return {
         "format": "appgen.missing-required-option-exit-audit.v1",
         "ok": all(result["ok"] for result in results),
+        "case_count": len(results),
+        "passing_case_count": sum(1 for result in results if result["ok"]),
+        "expected_message_count": sum(1 for result in results if result["expected_message"] in result["stderr"]),
+        "traceback_free_count": sum(1 for result in results if "Traceback" not in result["stderr"]),
         "cases": tuple(results),
     }
 
@@ -6099,6 +6131,10 @@ def _tooling_audit_invalid_choice_exit(tmp: Path) -> dict:
     return {
         "format": "appgen.invalid-choice-exit-audit.v1",
         "ok": all(result["ok"] for result in results),
+        "case_count": len(results),
+        "passing_case_count": sum(1 for result in results if result["ok"]),
+        "invalid_choice_message_count": sum(1 for result in results if "invalid choice" in result["stderr"]),
+        "traceback_free_count": sum(1 for result in results if "Traceback" not in result["stderr"]),
         "cases": tuple(results),
     }
 
