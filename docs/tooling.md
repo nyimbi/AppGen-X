@@ -801,8 +801,9 @@ appgen nl-plan app.appgen --prompt "Add credit memos to accounts receivable" --j
 Produces a proposed DSL diff, lint report, migration preview, and test plan. It
 must not write generated code unless the DSL diff validates. Without `--json`,
 the command prints a concise text summary with intent, operation count, patch
-size, generated test count, operation kinds, lint status, and migration-preview
-status so agents can inspect the plan without parsing the full JSON payload.
+size, generated test count, token-budget note count, operation kinds, lint
+status, and migration-preview status so agents can inspect the plan without
+parsing the full JSON payload.
 
 ## Language Server Specification
 

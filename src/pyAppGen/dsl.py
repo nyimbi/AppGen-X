@@ -2084,13 +2084,17 @@ def _emit_nl_plan_text(payload: dict) -> None:
     operations = tuple(payload.get("edit_operations", ()))
     operation_kinds = tuple(operation.get("kind") for operation in operations if operation.get("kind"))
     migration = payload.get("migration_preview") or {}
+    token_budget_notes = tuple(payload.get("token_budget_notes", ()))
     print(
         f"nl-plan {status}: intent={payload.get('intent', 'unknown')} "
         f"operations={len(operations)} patch_bytes={len(payload.get('dsl_patch', ''))} "
-        f"tests={len(payload.get('test_plan', ()))}"
+        f"tests={len(payload.get('test_plan', ()))} "
+        f"token_notes={len(token_budget_notes)}"
     )
     if operation_kinds:
         print(f"operation-kinds {', '.join(operation_kinds)}")
+    if token_budget_notes:
+        print(f"token-budget-notes {len(token_budget_notes)}")
     if payload.get("lint", {}).get("format") == "appgen.lint-report.v1":
         print(f"lint_ok={payload.get('lint', {}).get('ok')}")
     if migration.get("format") == "appgen.migration-plan.v1":
