@@ -2828,6 +2828,10 @@ def _emit_diagnostic_catalog_text(payload: dict) -> None:
         f"diagnostics {status}: format={payload.get('format')} covered={len(covered)} required={len(required)} "
         f"fixtures={payload.get('fixture_count', 0)} missing={len(missing)}"
     )
+    for code in required:
+        print(f"required-code {code}")
+    for code in covered:
+        print(f"covered-fixture-code {code}")
     for code in missing:
         print(f"missing-fixture {code}")
 
@@ -2880,6 +2884,8 @@ def _diagnostics_text_renderer_contract() -> dict:
     required_fragments = (
         "diagnostics ok: format=appgen.diagnostic-catalog.v1 covered=3 required=3 fixtures=3 missing=0",
         "diagnostics-audit failed: format=appgen.diagnostic-fixture-audit.v1 covered=2 required=3 missing=1",
+        "required-code AGX9000",
+        "covered-fixture-code AGX0303",
         "covered-code AGX0201",
         "covered-code AGX0303",
         "missing-code AGX9000",
