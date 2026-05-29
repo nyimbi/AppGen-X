@@ -5640,9 +5640,27 @@ def _lsp_catalog_definition_location(token: str) -> dict | None:
     return None
 
 
+def _lsp_catalog_reference_locations(token: str) -> tuple[dict, ...]:
+    if token in _pbc_catalog_by_key():
+        return (_lsp_location(f"catalog://pbc/{token}", None),)
+    locations = []
+    for key, entry in _pbc_catalog_by_key().items():
+        for contract_kind, contract_name in (
+            tuple(("api", value) for value in entry.get("apis", ()))
+            + tuple(("event", value) for value in entry.get("emits", ()))
+            + tuple(("event", value) for value in entry.get("consumes", ()))
+        ):
+            if token == str(contract_name):
+                locations.append(
+                    _lsp_location(f"catalog://pbc/{key}/{contract_kind}/{quote(str(contract_name), safe='')}", None)
+                )
+    return tuple(locations)
+
+
 def lsp_references_dsl(text: str, *, source_name: str | None = None, position: dict | None = None) -> dict:
     token = _lsp_token_at_position(text, position)
     locations = tuple(_lsp_location(source_name, item) for item in _lsp_occurrence_ranges(text, token))
+    locations += _lsp_catalog_reference_locations(token)
     return {
         "format": "appgen.lsp-references.v1",
         "ok": bool(locations),
@@ -5686,6 +5704,7 @@ def lsp_references_dsl_documents(
     locations: list[dict] = []
     for uri, document_source in documents.items():
         locations.extend(_lsp_location(uri, item) for item in _lsp_occurrence_ranges(document_source, token))
+    locations.extend(_lsp_catalog_reference_locations(token))
     return {
         "format": "appgen.lsp-references.v1",
         "ok": bool(locations),

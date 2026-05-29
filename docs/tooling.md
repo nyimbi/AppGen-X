@@ -760,6 +760,11 @@ Definition navigation uses the same catalog location scheme for registered PBC
 keys and API/event contract tokens, so `textDocument/definition` can jump from
 composition references to read-only catalog declarations as well as to ordinary
 DSL declarations.
+Reference search also includes those read-only catalog indexes. When a user or
+agent asks for references to a PBC key or catalog API/event contract,
+`textDocument/references` returns ordinary workspace occurrences plus the
+matching `catalog://pbc/...` index location, which keeps generated PBC contracts
+discoverable without making catalog entries look like editable DSL source.
 
 Rename safety is an executable gate. The language service still returns the
 candidate workspace edit and migration preview, but `textDocument/rename`

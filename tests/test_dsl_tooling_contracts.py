@@ -1065,6 +1065,51 @@ def test_lsp_definition_resolves_pbc_catalog_keys_and_contracts() -> None:
     assert rpc_responses[0]["result"]["uri"] == "catalog://pbc/gl_core/event/JournalPosted"
 
 
+def test_lsp_references_include_pbc_catalog_contract_indexes() -> None:
+    pbc_source = """
+    app ReferenceCatalog { targets: web }
+    composition Suite {
+      include pbc gl_core version 1.0.0
+      connect ap_automation event InvoiceApproved -> gl_core event JournalPosted
+    }
+    """
+    pbc_references = appgen_dsl.lsp_references_dsl(
+        pbc_source,
+        source_name="references-catalog.appgen",
+        position=_position_of(pbc_source, "gl_core"),
+    )
+    event_references = appgen_dsl.lsp_references_dsl(
+        pbc_source,
+        source_name="references-catalog.appgen",
+        position=_position_of(pbc_source, "JournalPosted"),
+    )
+    documents = {"memory://references-catalog.appgen": pbc_source}
+    rpc_responses, _ = appgen_dsl.lsp_server_handle_message(
+        {
+            "jsonrpc": "2.0",
+            "id": 13,
+            "method": "textDocument/references",
+            "params": {
+                "textDocument": {"uri": "memory://references-catalog.appgen"},
+                "position": _position_of(pbc_source, "JournalPosted"),
+            },
+        },
+        documents,
+    )
+
+    assert pbc_references["ok"] is True
+    assert any(location["uri"] == "catalog://pbc/gl_core" for location in pbc_references["locations"])
+    assert event_references["ok"] is True
+    assert any(
+        location["uri"] == "catalog://pbc/gl_core/event/JournalPosted"
+        for location in event_references["locations"]
+    )
+    assert any(
+        location["uri"] == "catalog://pbc/gl_core/event/JournalPosted"
+        for location in rpc_responses[0]["result"]
+    )
+
+
 def test_lsp_json_rpc_audit_proves_advertised_provider_capabilities() -> None:
     broken_handler_source = """
 app Bad { targets: web }
