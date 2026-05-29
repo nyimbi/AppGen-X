@@ -3026,6 +3026,7 @@ def _tooling_audit_invalid_choice_exit(tmp: Path) -> dict:
     source_path.write_text("app InvalidChoice { targets: web }\ntable Thing { id: int pk }\n", encoding="utf-8")
     cases = (
         ("graph_kind", ("graph", str(source_path), "--kind", "unknown", "--format", "json")),
+        ("graph_format", ("graph", str(source_path), "--kind", "er", "--format", "svg")),
         ("migration_backend", ("migration-plan", str(source_path), str(source_path), "--backend", "oracle")),
         ("nl_backend", ("nl-plan", str(source_path), "--prompt", "Add memo", "--backend", "oracle")),
     )

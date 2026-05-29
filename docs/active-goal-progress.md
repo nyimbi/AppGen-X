@@ -3527,4 +3527,13 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   the touched tooling entrypoint, focused designer-sync CLI test (`1 passed`),
   direct `appgen.designer-sync-cli-audit.v1` helper probe with `ok=True`, scoped
   diff whitespace check, and restricted-name scan outside archive, Git internals,
-  and active PBC paths.
+  and active PBC paths. Commit: `5d58d24d`.
+- Current invalid-choice CLI audit hardening pass closes a command-boundary gap
+  for enumerated graph output formats. `appgen.invalid-choice-exit-audit.v1`
+  now proves invalid graph kind, invalid graph format, invalid migration backend,
+  and invalid natural-language planner backend all fail as argparse
+  configuration errors with exit code `2` and no traceback. Verification passed:
+  Python compile for the touched tooling entrypoint, direct
+  `appgen.invalid-choice-exit-audit.v1` helper probe with `ok=True`, focused
+  non-PBC CLI/audit tests (`2 passed`), scoped diff whitespace check, and
+  restricted-name scan outside archive, Git internals, and active PBC paths.

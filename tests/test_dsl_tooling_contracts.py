@@ -3,6 +3,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+from pyAppGen import dsl as appgen_dsl
 from pyAppGen.dsl import format_report_dsl
 from pyAppGen.dsl import formatter_contract_audit_dsl
 from pyAppGen.dsl import designer_visual_edit_matrix_dsl
@@ -2417,6 +2418,12 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert cli_check["detail"]["format_write"]["organize_order"] == tuple(
         sorted(cli_check["detail"]["format_write"]["organize_order"])
     )
+    assert {
+        "graph_kind",
+        "graph_format",
+        "migration_backend",
+        "nl_backend",
+    } <= {case["name"] for case in cli_check["detail"]["invalid_choice_exit"]["cases"]}
     lint_check = next(check for check in report["checks"] if check["id"] == "lint_directory_and_strict_profiles")
     assert lint_check["detail"]["directory_cli"]["format"] == "appgen.lint-directory-cli-audit.v1"
     assert lint_check["detail"]["directory_cli"]["ok"] is True
@@ -2636,6 +2643,18 @@ def test_cli_contracts_cover_text_summaries_exit_codes_and_bad_arguments(tmp_pat
     assert "Traceback" not in missing_input_path.stderr
     assert missing_required_arg.returncode == 2
     assert "--out" in missing_required_arg.stderr
+
+
+def test_invalid_choice_audit_covers_graph_formats_and_backend_choices(tmp_path: Path) -> None:
+    audit = appgen_dsl._tooling_audit_invalid_choice_exit(tmp_path)
+    cases = {case["name"]: case for case in audit["cases"]}
+
+    assert audit["format"] == "appgen.invalid-choice-exit-audit.v1"
+    assert audit["ok"] is True
+    assert {"graph_kind", "graph_format", "migration_backend", "nl_backend"} <= set(cases)
+    assert all(case["exit_code"] == 2 for case in cases.values())
+    assert all("invalid choice" in case["stderr"] for case in cases.values())
+    assert all("Traceback" not in case["stderr"] for case in cases.values())
 
 
 def test_appgen_format_write_rewrites_file_and_reports_write_metadata(tmp_path: Path) -> None:
