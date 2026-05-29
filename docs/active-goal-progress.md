@@ -3297,6 +3297,15 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   tooling entrypoints, direct NL planner CLI audit helper probe, focused NL
   planner tests (`3 passed`), scoped diff whitespace check, and restricted-name
   scan outside archive, Git internals, and active PBC paths. Commit: `eb550f25`.
+- Current format check CLI audit pass closes the gap between write-mode
+  formatter evidence and the documented `appgen format app.appgen --check`
+  contract. `appgen.format-write-audit.v1` now proves check-mode exits `1`
+  for sources needing formatting without writing, exits `0` for already
+  formatted sources, and keeps the existing `--write --json` mutation evidence.
+  Verification passed: Python compile for touched tooling entrypoints, direct
+  formatter CLI audit helper probe, focused formatter tests (`2 passed`),
+  scoped diff whitespace check, and restricted-name scan outside archive, Git
+  internals, and active PBC paths. Commit: pending.
 - Current parallel PBC implementation pass delivered executable code for six
   PBCs rather than plan-only artifacts: `actuarial_pricing_reserving`,
   `advertising_campaign_operations`, `agri_supply_chain_traceability`,

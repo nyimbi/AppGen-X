@@ -2359,6 +2359,14 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
         "generate_blocks_warnings",
         "generate_allows_warnings_when_requested",
     } <= {case["case"] for case in cli_check["detail"]["validate_generate_cli"]["cases"]}
+    assert cli_check["detail"]["format_write"]["format"] == "appgen.format-write-audit.v1"
+    assert cli_check["detail"]["format_write"]["ok"] is True
+    assert cli_check["detail"]["format_write"]["check_exit_code"] == 1
+    assert cli_check["detail"]["format_write"]["check_changed"] is True
+    assert cli_check["detail"]["format_write"]["check_write_requested"] is False
+    assert cli_check["detail"]["format_write"]["check_written"] is False
+    assert cli_check["detail"]["format_write"]["clean_check_exit_code"] == 0
+    assert cli_check["detail"]["format_write"]["clean_check_changed"] is False
     lint_check = next(check for check in report["checks"] if check["id"] == "lint_directory_and_strict_profiles")
     assert lint_check["detail"]["directory_cli"]["format"] == "appgen.lint-directory-cli-audit.v1"
     assert lint_check["detail"]["directory_cli"]["ok"] is True

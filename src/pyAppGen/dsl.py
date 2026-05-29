@@ -2776,8 +2776,24 @@ def _tooling_audit_lsp_stdio_transport(source: str) -> dict:
 
 def _tooling_audit_format_write(tmp: Path) -> dict:
     path = tmp / "format-write.appgen"
+    check_path = tmp / "format-check.appgen"
+    clean_check_path = tmp / "format-check-clean.appgen"
     source = "app FormatWrite { targets: web }\ntable Invoice { total: decimal; id: int pk }\n"
     path.write_text(source, encoding="utf-8")
+    check_path.write_text(source, encoding="utf-8")
+    clean_source = format_report_dsl(source, include_text=True)["text"]
+    clean_check_path.write_text(clean_source, encoding="utf-8")
+
+    check_output = io.StringIO()
+    with contextlib.redirect_stdout(check_output):
+        check_exit = dsl_tooling_cli(("format", str(check_path), "--check", "--json"))
+    check_payload = json.loads(check_output.getvalue())
+
+    clean_check_output = io.StringIO()
+    with contextlib.redirect_stdout(clean_check_output):
+        clean_check_exit = dsl_tooling_cli(("format", str(clean_check_path), "--check", "--json"))
+    clean_check_payload = json.loads(clean_check_output.getvalue())
+
     output = io.StringIO()
     with contextlib.redirect_stdout(output):
         exit_code = dsl_tooling_cli(("format", str(path), "--write", "--json"))
@@ -2787,12 +2803,26 @@ def _tooling_audit_format_write(tmp: Path) -> dict:
         "format": "appgen.format-write-audit.v1",
         "ok": exit_code == 0
         and payload.get("format") == "appgen.format-result.v1"
+        and check_exit == 1
+        and check_payload.get("format") == "appgen.format-result.v1"
+        and check_payload.get("changed") is True
+        and check_payload.get("write_requested") is False
+        and check_payload.get("written") is False
+        and clean_check_exit == 0
+        and clean_check_payload.get("format") == "appgen.format-result.v1"
+        and clean_check_payload.get("changed") is False
         and payload.get("write_requested") is True
         and payload.get("written") is True
         and after == payload.get("text")
         and after != source,
         "exit_code": exit_code,
         "payload_format": payload.get("format"),
+        "check_exit_code": check_exit,
+        "check_changed": check_payload.get("changed"),
+        "check_write_requested": check_payload.get("write_requested"),
+        "check_written": check_payload.get("written"),
+        "clean_check_exit_code": clean_check_exit,
+        "clean_check_changed": clean_check_payload.get("changed"),
         "written": payload.get("written"),
         "write_path": payload.get("write_path"),
     }
