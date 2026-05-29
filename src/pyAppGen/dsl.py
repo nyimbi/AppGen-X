@@ -4696,6 +4696,19 @@ def _tooling_audit_studio_semantic_service(source: str) -> dict:
     nl = report.get("natural_language_evolution", {})
     nl_plan = nl.get("plan", {})
     browser_smoke_checks = {check.get("id"): check.get("ok") for check in browser_smoke.get("checks", ())}
+    panel_counts = {
+        "component_palette_components": len(surfaces.get("component_palette", {}).get("components", ())),
+        "form_designer_views": len(surfaces.get("form_designer", {}).get("views", ())),
+        "database_designer_tables": len(surfaces.get("database_designer", {}).get("tables", ())),
+        "workflow_designer_flows": len(surfaces.get("workflow_designer", {}).get("flows", ())),
+        "pbc_composition_designer_pbcs": len(surfaces.get("pbc_composition_designer", {}).get("pbcs", ())),
+        "package_deployment_designer_packages": len(surfaces.get("package_deployment_designer", {}).get("packages", ())),
+        "diagnostics_panel_diagnostics": len(diagnostics_report.get("diagnostics", ())),
+        "graph_explain_panel_graphs": len(graph_panel.get("graphs", ())),
+        "graph_suite_reports": len(graph_suite.get("graph_reports", {})),
+        "natural_language_operations": len(nl_plan.get("edit_operations", ())),
+        "natural_language_patch_bytes": len(nl_plan.get("dsl_patch", "")),
+    }
     surface_formats = {
         name: surfaces.get(name, {}).get("format")
         for name in required_surfaces
@@ -4732,6 +4745,21 @@ def _tooling_audit_studio_semantic_service(source: str) -> dict:
         and nl_plan.get("format") == "appgen.nl-plan.v1"
         and nl.get("requires_dsl_diff_preview") is True
         and nl.get("applies_through") == "appgen designer-sync",
+        "panel_payload_depth": all(
+            panel_counts[name] > 0
+            for name in (
+                "component_palette_components",
+                "form_designer_views",
+                "database_designer_tables",
+                "workflow_designer_flows",
+                "pbc_composition_designer_pbcs",
+                "diagnostics_panel_diagnostics",
+                "natural_language_operations",
+                "natural_language_patch_bytes",
+            )
+        )
+        and panel_counts["graph_explain_panel_graphs"] >= len(REQUIRED_GRAPH_KINDS)
+        and panel_counts["graph_suite_reports"] >= len(REQUIRED_GRAPH_KINDS),
         "frontend_browser_smoke_bridge": browser_smoke.get("format") == "appgen.studio-browser-smoke-ci-contract.v1"
         and browser_smoke.get("ok") is True
         and "semantic_service_bridge" in browser_smoke.get("scenarios", ())
@@ -4748,6 +4776,7 @@ def _tooling_audit_studio_semantic_service(source: str) -> dict:
         "surface_formats": surface_formats,
         "expected_surface_formats": expected_surface_formats,
         "semantic_surface_formats": semantic_surface_formats,
+        "panel_counts": panel_counts,
         "browser_smoke_format": browser_smoke.get("format"),
         "browser_smoke_scenarios": tuple(browser_smoke.get("scenarios", ())),
         "browser_smoke_checks": browser_smoke_checks,

@@ -3184,6 +3184,18 @@ def test_studio_semantic_service_audit_proves_panel_contracts() -> None:
     assert report["surface_formats"]["graph_explain_panel"] == "appgen.designer-graph-explain-panel.v1"
     assert report["surface_formats"]["natural_language_planner"] == "appgen.designer-nl-planner-panel.v1"
     assert all(value == "appgen.semantic-model.v1" for value in report["semantic_surface_formats"].values())
+    assert report["checks"]["panel_payload_depth"] is True
+    assert report["panel_counts"]["component_palette_components"] > 0
+    assert report["panel_counts"]["form_designer_views"] > 0
+    assert report["panel_counts"]["database_designer_tables"] > 0
+    assert report["panel_counts"]["workflow_designer_flows"] > 0
+    assert report["panel_counts"]["pbc_composition_designer_pbcs"] > 0
+    assert report["panel_counts"]["package_deployment_designer_packages"] >= 0
+    assert report["panel_counts"]["diagnostics_panel_diagnostics"] > 0
+    assert report["panel_counts"]["graph_explain_panel_graphs"] >= len(appgen_dsl.REQUIRED_GRAPH_KINDS)
+    assert report["panel_counts"]["graph_suite_reports"] >= len(appgen_dsl.REQUIRED_GRAPH_KINDS)
+    assert report["panel_counts"]["natural_language_operations"] > 0
+    assert report["panel_counts"]["natural_language_patch_bytes"] > 0
     assert report["checks"]["frontend_browser_smoke_bridge"] is True
     assert report["browser_smoke_format"] == "appgen.studio-browser-smoke-ci-contract.v1"
     assert "semantic_service_bridge" in report["browser_smoke_scenarios"]

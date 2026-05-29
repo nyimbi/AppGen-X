@@ -1130,7 +1130,11 @@ the expected contract format, semantic-bound panels report
 `appgen.semantic-model.v1`, diagnostics and quick fixes come from the LSP
 contracts, graph/explain comes from the graph-suite and designer explain-panel
 contracts, and natural-language evolution requires a DSL diff preview applied
-through `appgen designer-sync`.
+through `appgen designer-sync`. It also verifies panel payload depth: component
+palette entries, form views, database tables, workflows, PBC composition
+entries, package/deployment counts, diagnostic rows, graph/explain graphs, and
+natural-language edit operations must be exposed, so a panel cannot pass with
+only an empty format envelope.
 The frontend renders the same bridge through a dedicated semantic-service
 panel, and the browser smoke contract includes that panel as a required
 scenario.
