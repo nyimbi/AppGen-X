@@ -608,7 +608,8 @@ text output summarizes the `appgen.diagnostic-catalog.v1` format, registry
 coverage, and fixture gaps; `appgen diagnostics --audit-fixtures` summarizes
 the `appgen.diagnostic-fixture-audit.v1` format plus covered and missing
 diagnostic codes; and `appgen drift` summarizes the
-`appgen.semantic-drift-audit.v1` format, semantic-model drift surfaces,
+`appgen.semantic-drift-audit.v1` format, semantic-model format as
+`semantic_format=...`, drift surfaces,
 evidence formats, blocking gap count, digest, and per-surface checks.
 
 ### `appgen format`
@@ -873,7 +874,8 @@ The executable tooling audit includes `appgen.lsp-stdio-transport-audit.v1`,
 which sends real `Content-Length` JSON-RPC frames through the stdio transport
 and verifies initialize, diagnostics publication, shutdown, and exit handling.
 Without `--json`, `appgen lsp <file>` prints a concise service summary with
-the `appgen.lsp-service.v1` envelope format, semantic-model format, diagnostic
+the `appgen.lsp-service.v1` envelope format, semantic-model format as
+`semantic_format=...`, diagnostic
 count, completion count, code-action count, document-symbol count,
 workspace-symbol count, source-of-truth contract, hover evidence, completion
 coverage format as a `format=...` marker and missing-source count, definition

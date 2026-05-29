@@ -2271,7 +2271,7 @@ def _emit_semantic_drift_text(payload: dict) -> None:
     surfaces = tuple(payload.get("surfaces", ()))
     gaps = tuple(payload.get("blocking_gaps", ()))
     print(
-        f"drift {status}: format={payload.get('format')} semantic={payload.get('semantic_model_format')} "
+        f"drift {status}: format={payload.get('format')} semantic_format={payload.get('semantic_model_format')} "
         f"surfaces={len(surfaces)} blocking_gaps={len(gaps)} digest={payload.get('semantic_digest')}"
     )
     if surfaces:
@@ -2295,7 +2295,7 @@ def _emit_lsp_service_text(payload: dict) -> None:
     workspace_symbols = payload.get("workspaceSymbol", {}).get("symbols", ())
     print(
         f"lsp {status}: format={payload.get('format')} "
-        f"semantic={payload.get('semantic_model_format')} "
+        f"semantic_format={payload.get('semantic_model_format')} "
         f"diagnostics={len(diagnostics)} completions={len(completions)} "
         f"actions={len(code_actions)} symbols={len(symbols)} workspace_symbols={len(workspace_symbols)}"
     )

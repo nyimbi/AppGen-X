@@ -1842,7 +1842,7 @@ def test_appgen_lsp_subcommand_emits_json_and_text_contracts(tmp_path: Path) -> 
     payload = json.loads(result.stdout)
     assert payload["format"] == "appgen.lsp-service.v1"
     assert payload["capabilities"]["source_of_truth"] == "appgen.semantic-model.v1"
-    assert text_result.stdout.startswith("lsp ok: format=appgen.lsp-service.v1 semantic=appgen.semantic-model.v1")
+    assert text_result.stdout.startswith("lsp ok: format=appgen.lsp-service.v1 semantic_format=appgen.semantic-model.v1")
     assert f"diagnostics={len(payload['publishDiagnostics']['diagnostics'])}" in text_result.stdout
     assert f"completions={len(payload['completion']['items'])}" in text_result.stdout
     assert f"actions={len(payload['codeAction']['actions'])}" in text_result.stdout
@@ -3059,7 +3059,7 @@ def test_appgen_drift_subcommand_emits_json_and_text_contracts(tmp_path: Path) -
     assert payload["format"] == "appgen.semantic-drift-audit.v1"
     assert payload["surface_evidence"]["lsp_service"] == "appgen.lsp-service.v1"
     assert payload["surface_evidence"]["generate_report"] == "appgen.generate-report.v1"
-    assert text_result.stdout.startswith("drift ok: format=appgen.semantic-drift-audit.v1 semantic=appgen.semantic-model.v1")
+    assert text_result.stdout.startswith("drift ok: format=appgen.semantic-drift-audit.v1 semantic_format=appgen.semantic-model.v1")
     assert "surfaces=8" in text_result.stdout
     assert "blocking_gaps=0" in text_result.stdout
     assert "evidence lsp_service: appgen.lsp-service.v1" in text_result.stdout
