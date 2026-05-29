@@ -58,7 +58,7 @@ PBC_MANIFEST = {'advanced_capabilities': ('facility_energy_management_event_sour
  'datastore_backend': 'postgresql',
  'description': 'Facility meters, loads, equipment schedules, demand response, optimization, '
                 'tariffs, and energy performance',
- 'docs': ('SPECIFICATION.md', 'RELEASE_EVIDENCE.md'),
+ 'docs': ('SPECIFICATION.md', 'RELEASE_EVIDENCE.md', 'README.md', 'implementation-plan.md', 'implementation-status.md'),
  'emits': ('FacilityEnergyManagementCreated',
            'FacilityEnergyManagementUpdated',
            'FacilityEnergyManagementApproved',
@@ -104,10 +104,14 @@ PBC_MANIFEST = {'advanced_capabilities': ('facility_energy_management_event_sour
             'facility_energy_management_control_assertion',
             'facility_energy_management_governed_model'),
  'template': 'asset',
- 'tests': ('tests/test_contract.py',),
+ 'tests': ('tests/test_contract.py', 'tests/test_standalone.py'),
  'ui_fragments': ('FacilityEnergyManagementWorkbench',
                   'FacilityEnergyManagementDetail',
                   'FacilityEnergyManagementAssistantPanel'),
  'version': '1.0.0',
  'workflows': ('facility_energy_management_create_energy_meter_workflow',
-               'facility_energy_management_record_load_profile_workflow')}
+               'facility_energy_management_record_load_profile_workflow',
+               'facility_energy_management_commission_meter_hierarchy_workflow',
+               'facility_energy_management_compare_tariff_scenarios_workflow',
+               'facility_energy_management_dispatch_demand_response_workflow',
+               'facility_energy_management_investigate_energy_anomaly_workflow')}
