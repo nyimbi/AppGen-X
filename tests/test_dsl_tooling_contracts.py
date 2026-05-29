@@ -491,6 +491,9 @@ def test_lint_directory_audit_covers_strict_component_cli_gate(tmp_path: Path) -
 
     assert report["format"] == "appgen.lint-directory-cli-audit.v1"
     assert report["ok"] is True
+    assert report["scenario_count"] == 8
+    assert report["passing_scenario_count"] == report["scenario_count"]
+    assert report["stage_profile_count"] == 3
     assert report["file_order_sorted"] is True
     assert report["file_relative_order"] == ("a.appgen", "nested/b.appgen")
     assert report["normal_unknown_component_warning"]["ok"] is True
@@ -1737,6 +1740,12 @@ def test_lsp_code_action_cli_audit_covers_required_agent_facing_quick_fixes(tmp_
 
     assert report["format"] == "appgen.lsp-code-action-cli-audit.v1"
     assert report["ok"] is True
+    assert report["case_count"] == len(report["cases"])
+    assert report["passing_case_count"] == report["case_count"]
+    assert report["required_action_count"] == len(report["required_action_ids"])
+    assert report["observed_action_count"] == len(report["observed_action_ids"])
+    assert report["missing_required_action_count"] == 0
+    assert report["applied_edit_count"] >= report["case_count"]
     assert report["missing_required_action_ids"] == ()
     assert tuple(report["required_action_ids"]) == tuple(report["required_cli_actions"])
     assert set(report["required_action_ids"]) == set(report["observed_action_ids"])
@@ -1792,6 +1801,10 @@ def test_lsp_rename_cli_audit_covers_safe_and_blocked_renames(tmp_path: Path) ->
 
     assert report["format"] == "appgen.lsp-rename-cli-audit.v1"
     assert report["ok"] is True
+    assert report["scenario_count"] == 3
+    assert report["passing_scenario_count"] == 3
+    assert report["blocked_code_count"] >= 1
+    assert report["blocked_fix_count"] >= 1
     assert report["safe_ok"] is True
     assert report["rename_format"] == "appgen.lsp-rename.v1"
     assert report["token"] == "SubmitInvoice"
@@ -3439,6 +3452,10 @@ def test_validate_generate_cli_audit_proves_generated_artifact_handoff(tmp_path:
 
     assert audit["format"] == "appgen.validate-generate-cli-audit.v1"
     assert audit["ok"] is True
+    assert audit["case_count"] == len(audit["cases"])
+    assert audit["passing_case_count"] == audit["case_count"]
+    assert audit["generated_case_count"] == 4
+    assert audit["validation_case_count"] == 3
     assert generated["ok"] is True
     assert generated["targets"] == ("web",)
     assert generated["semantic_model_format"] == "appgen.semantic-model.v1"
@@ -3547,6 +3564,11 @@ def test_package_verify_cli_audit_exposes_web_manifest_readiness_metadata(tmp_pa
 
     assert report["format"] == "appgen.package-verify-cli-audit.v1"
     assert report["ok"] is True
+    assert report["case_count"] == len(report["cases"])
+    assert report["passing_case_count"] == report["case_count"]
+    assert report["target_count"] == 5
+    assert report["manifest_count"] == 5
+    assert report["handoff_artifact_count"] >= 25
     assert manifest_case["web_artifact_class"] == "web_application"
     assert {"routes", "forms", "handlers", "smoke_tests"} <= set(manifest_case["web_handoff_artifacts"])
     assert manifest_case["web_app_build_contract"] is True
@@ -3862,6 +3884,11 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     package_check = next(check for check in report["checks"] if check["id"] == "package_and_release_verifiers")
     assert package_check["detail"]["cli"]["format"] == "appgen.package-verify-cli-audit.v1"
     assert package_check["detail"]["cli"]["ok"] is True
+    assert package_check["detail"]["cli"]["case_count"] == 2
+    assert package_check["detail"]["cli"]["passing_case_count"] == 2
+    assert package_check["detail"]["cli"]["target_count"] == 5
+    assert package_check["detail"]["cli"]["manifest_count"] == 5
+    assert package_check["detail"]["cli"]["handoff_artifact_count"] >= 25
     assert {
         "verify_all_targets",
         "package_writes_target_manifests",
@@ -3899,9 +3926,19 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert manifest_case["desktop_smoke_entrypoint"] == "desktop.launch"
     assert manifest_case["pbc_artifact_class"] == "packaged_business_capability"
     assert manifest_case["deployment_artifact_class"] == "deployment_plan"
+    migration_check = next(check for check in report["checks"] if check["id"] == "migration_detection_coverage")
+    assert migration_check["detail"]["cli"]["format"] == "appgen.migration-cli-audit.v1"
+    assert migration_check["detail"]["cli"]["ok"] is True
+    assert migration_check["detail"]["cli"]["case_count"] == migration_check["detail"]["cli"]["allowed_backend_count"]
+    assert migration_check["detail"]["cli"]["passing_case_count"] == migration_check["detail"]["cli"]["case_count"]
+    assert migration_check["detail"]["cli"]["change_kind_count"] >= 3
     graph_check = next(check for check in report["checks"] if check["id"] == "graph_and_explain_tooling")
     assert graph_check["detail"]["cli"]["format"] == "appgen.graph-cli-format-audit.v1"
     assert graph_check["detail"]["cli"]["ok"] is True
+    assert graph_check["detail"]["cli"]["case_count"] == 4
+    assert graph_check["detail"]["cli"]["passing_case_count"] == 4
+    assert graph_check["detail"]["cli"]["graph_kind_count"] >= 3
+    assert graph_check["detail"]["cli"]["output_format_count"] == 3
     assert {
         "er_mermaid",
         "workflow_json",
@@ -3910,6 +3947,9 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     } <= {case["case"] for case in graph_check["detail"]["cli"]["cases"]}
     assert graph_check["detail"]["suite_cli"]["format"] == "appgen.graph-suite-cli-audit.v1"
     assert graph_check["detail"]["suite_cli"]["ok"] is True
+    assert graph_check["detail"]["suite_cli"]["required_kind_count"] == len(graph_check["detail"]["suite_cli"]["required_kinds"])
+    assert graph_check["detail"]["suite_cli"]["output_format_count"] == len(graph_check["detail"]["suite_cli"]["formats"])
+    assert graph_check["detail"]["suite_cli"]["missing_rendering_count"] == 0
     assert set(graph_check["detail"]["suite_cli"]["required_kinds"]) >= {
         "er",
         "lookup",
@@ -4770,6 +4810,10 @@ def test_graph_cli_audit_covers_documented_graph_examples(tmp_path: Path) -> Non
 
     assert audit["format"] == "appgen.graph-cli-format-audit.v1"
     assert audit["ok"] is True
+    assert audit["case_count"] == len(audit["cases"])
+    assert audit["passing_case_count"] == audit["case_count"]
+    assert audit["graph_kind_count"] >= 3
+    assert audit["output_format_count"] == 3
     assert {"er_mermaid", "workflow_json", "workflow_mermaid", "pbc_dot"} <= set(cases)
     assert cases["er_mermaid"]["kind"] == "er"
     assert cases["er_mermaid"]["format"] == "mermaid"
@@ -4788,6 +4832,9 @@ def test_graph_suite_cli_audit_proves_all_required_renderings(tmp_path: Path) ->
 
     assert audit["format"] == "appgen.graph-suite-cli-audit.v1"
     assert audit["ok"] is True
+    assert audit["required_kind_count"] == len(audit["required_kinds"])
+    assert audit["output_format_count"] == len(audit["formats"])
+    assert audit["missing_rendering_count"] == 0
     assert set(audit["required_kinds"]) == set(appgen_dsl.REQUIRED_GRAPH_KINDS)
     assert tuple(audit["formats"]) == ("json", "mermaid", "dot")
     assert audit["missing_renderings"] == ()

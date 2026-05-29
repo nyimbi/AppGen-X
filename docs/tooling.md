@@ -421,6 +421,10 @@ semantic diagnostics. The lint CLI audit exercises this path through
 `appgen.lint-directory-cli-audit.v1`, which reports `file_order_sorted` and
 `file_relative_order` so release evidence proves deterministic recursive
 discovery rather than only reporting a file count.
+The same audit reports scenario, passing-scenario, and stage-profile counts so
+release evidence proves strict component gating, catalog success, migration
+preview, stage separation, warning diagnostics, and deterministic file ordering
+were all exercised.
 
 ### Linter Outputs
 
@@ -708,7 +712,10 @@ artifact paths, artifact byte counts when summaries provide them as
 hands off resolved targets, output directory, semantic-model format, validation
 report format, manifest existence, manifest app name, artifact count, and
 artifact path existence, while still proving warning-only sources require
-`--allow-warnings` and lint errors block generation even with that flag.
+`--allow-warnings` and lint errors block generation even with that flag. The
+audit reports total, passing, validation, and generation case counts so release
+evidence can distinguish target-validation coverage from artifact-generation
+coverage.
 
 ### `appgen graph`
 
@@ -734,6 +741,10 @@ envelope format, so release logs remain reviewable without parsing JSON.
 `appgen.graph-suite-cli-audit.v1` reports `rendering_formats_by_kind` and
 `missing_renderings` so CI can prove every required graph kind has JSON,
 Mermaid, and DOT renderings rather than relying on a count alone.
+`appgen.graph-cli-format-audit.v1` reports case, passing-case, graph-kind, and
+output-format counts, and the graph-suite CLI audit reports required-kind,
+output-format, and missing-rendering counts, so graph release evidence captures
+both individual examples and full suite coverage.
 `appgen.graph-explain-text-renderer.v1` is embedded in the tooling audit to
 prove graph-suite and explain logs keep graph kind, graph format, check,
 symbol, diagnostic-doc, and handler-edge evidence visible without JSON parsing.
@@ -871,6 +882,9 @@ handoffs. The audit checks target-specific handoff metadata rather than only
 successful command exit codes, so downstream builders receive stable contracts
 for routes/forms/handlers, mobile signing/offline launch, desktop installer and
 startup assets, PBC publication, and deployment topology verification.
+It reports case, passing-case, target, manifest, and handoff-artifact counts so
+release evidence captures breadth across all package targets instead of only a
+single success boolean.
 The default text output for both `appgen verify` and `appgen package` summarizes
 the release verifier report format, selected targets, written artifacts,
 the `appgen.release-evidence-bundle.v1` bundle format and
@@ -1112,6 +1126,10 @@ callers. Both audits report `required_action_ids`, `observed_action_ids`, and
 `missing_required_action_ids`; the top-level tooling audit fails when the CLI
 quick-fix surface is missing an action required by the in-process patch
 contract.
+The CLI audit also reports case, passing-case, required-action, observed-action,
+missing-action, and applied-edit counts so quick-fix coverage is measurable.
+`appgen.lsp-rename-cli-audit.v1` reports safe, blocked JSON, and blocked text
+scenario counts plus blocker-code and suggested-fix counts for rename safety.
 
 ## IDE Integration
 
@@ -1320,6 +1338,9 @@ detected-family, missing-family, change, safe-alternative, and diagnostic
 markers visible without JSON parsing.
 The renderer contract reports fragment and marker counts across coverage,
 detected/missing families, changes, safe-alternatives, and diagnostics.
+`appgen.migration-cli-audit.v1` reports case, passing-case, allowed-backend,
+and change-kind counts so supported database profiles and rename-hint behavior
+are visible in release evidence.
 
 ## Natural-Language Change Planner
 

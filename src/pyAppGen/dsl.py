@@ -5615,6 +5615,12 @@ package WebPackage { target: web; smoke: launch }
     return {
         "format": "appgen.lsp-code-action-cli-audit.v1",
         "ok": all(case["ok"] for case in cases) and not missing_required_action_ids,
+        "case_count": len(cases),
+        "passing_case_count": sum(1 for case in cases if case["ok"]),
+        "required_action_count": len(required_action_ids),
+        "observed_action_count": len(observed_action_ids),
+        "missing_required_action_count": len(missing_required_action_ids),
+        "applied_edit_count": sum(case["applied_edit_count"] for case in cases),
         "cases": tuple(cases),
         "required_action_ids": required_action_ids,
         "observed_action_ids": observed_action_ids,
@@ -5744,6 +5750,10 @@ view InvoiceForm for Invoice {
     return {
         "format": "appgen.lsp-rename-cli-audit.v1",
         "ok": safe_ok and blocked_ok and blocked_text_ok,
+        "scenario_count": 3,
+        "passing_scenario_count": sum(1 for ok in (safe_ok, blocked_ok, blocked_text_ok) if ok),
+        "blocked_code_count": len(blocked_codes),
+        "blocked_fix_count": len(blocked_fixes),
         "exit_code": exit_code,
         "payload_format": payload.get("format"),
         "rename_format": rename.get("format"),
@@ -6241,6 +6251,22 @@ view CustomerForm for Customer {
         and strict_catalog_component_success
         and migration_lint_success
         and all(stage_separation.values()),
+        "scenario_count": 8,
+        "passing_scenario_count": sum(
+            1
+            for ok in (
+                exit_code == 0 and payload.get("format") == "appgen.lint-report.v1",
+                warning_diagnostics_have_files,
+                normal_unknown_component_warning,
+                strict_unknown_component_error,
+                strict_catalog_component_success,
+                migration_lint_success,
+                all(stage_separation.values()),
+                file_order_sorted and len(file_reports) == 2,
+            )
+            if ok
+        ),
+        "stage_profile_count": len(stage_separation),
         "exit_code": exit_code,
         "payload_format": payload.get("format"),
         "source_mode": payload.get("source_mode"),
@@ -6460,6 +6486,10 @@ def _tooling_audit_validate_generate_cli(tmp: Path, source: str) -> dict:
     return {
         "format": "appgen.validate-generate-cli-audit.v1",
         "ok": all(case["ok"] for case in cases),
+        "case_count": len(cases),
+        "passing_case_count": sum(1 for case in cases if case["ok"]),
+        "generated_case_count": sum(1 for case in cases if case.get("case", "").startswith("generate_")),
+        "validation_case_count": sum(1 for case in cases if case.get("case", "").startswith("validate_")),
         "cases": cases,
     }
 
@@ -6716,6 +6746,10 @@ def _tooling_audit_graph_cli_formats(tmp: Path, source: str) -> dict:
     return {
         "format": "appgen.graph-cli-format-audit.v1",
         "ok": all(result["ok"] for result in results),
+        "case_count": len(results),
+        "passing_case_count": sum(1 for result in results if result["ok"]),
+        "graph_kind_count": len({result["kind"] for result in results}),
+        "output_format_count": len({result["format"] for result in results}),
         "cases": tuple(results),
     }
 
@@ -6765,6 +6799,9 @@ def _tooling_audit_graph_suite_cli(tmp: Path, source: str) -> dict:
         and text_stdout.startswith("graph-suite ok: format=appgen.graph-suite-report.v1")
         and "graph-kinds " in text_stdout
         and "graph-formats json, mermaid, dot" in text_stdout,
+        "required_kind_count": len(required_kinds),
+        "output_format_count": len(output_formats),
+        "missing_rendering_count": len(missing_renderings),
         "json_exit_code": json_exit_code,
         "text_exit_code": text_exit_code,
         "payload_format": json_payload.get("format"),
@@ -6958,6 +6995,10 @@ table Invoice {
     return {
         "format": "appgen.migration-cli-audit.v1",
         "ok": all(case["ok"] for case in cases),
+        "case_count": len(cases),
+        "passing_case_count": sum(1 for case in cases if case["ok"]),
+        "allowed_backend_count": len(SUPPORTED_DATABASE_BACKENDS),
+        "change_kind_count": len({kind for case in cases for kind in case["change_kinds"]}),
         "allowed_backends": SUPPORTED_DATABASE_BACKENDS,
         "cases": tuple(cases),
     }
@@ -7288,6 +7329,18 @@ def _tooling_audit_package_verify_cli(tmp: Path, source: str) -> dict:
     return {
         "format": "appgen.package-verify-cli-audit.v1",
         "ok": all(case["ok"] for case in cases),
+        "case_count": len(cases),
+        "passing_case_count": sum(1 for case in cases if case["ok"]),
+        "target_count": len(expected_targets),
+        "manifest_count": sum(
+            1
+            for manifest in (web_manifest, mobile_manifest, desktop_manifest, pbc_manifest, deployment_manifest)
+            if manifest.get("format") == "appgen.package-manifest.v1"
+        ),
+        "handoff_artifact_count": sum(
+            len(items)
+            for items in (web_handoff, mobile_handoff, desktop_handoff, pbc_handoff, deployment_handoff)
+        ),
         "cases": cases,
     }
 
