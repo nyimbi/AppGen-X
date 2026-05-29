@@ -164,3 +164,23 @@ The following exact catalog values are retained so release audits can prove the 
 - configuration: MASTER_DATA_GOVERNANCE_DATABASE_URL, MASTER_DATA_GOVERNANCE_EVENT_TOPIC, MASTER_DATA_GOVERNANCE_RETRY_LIMIT, MASTER_DATA_GOVERNANCE_DEFAULT_POLICY
 - standard_features: master_record_management, master_data_governance_workflow, master_data_governance_analytics, configuration_schema, rule_engine, parameter_engine, owned_schema_migrations_models, appgen_x_outbox_inbox_eventing, idempotent_handlers, retry_dead_letter_evidence, permissions, seed_data, workbench, agentic_document_instruction_intake, governed_datastore_crud, ai_agent_task_assistance, configuration_workbench, continuous_release_assurance
 - advanced_capabilities: master_data_governance_event_sourced_operational_history, master_data_governance_multi_tenant_policy_isolation, master_data_governance_schema_evolution_resilience, master_data_governance_autonomous_anomaly_detection, master_data_governance_semantic_document_instruction_understanding, master_data_governance_predictive_risk_scoring, master_data_governance_counterfactual_scenario_simulation, master_data_governance_cryptographic_audit_proofs, master_data_governance_continuous_control_testing, master_data_governance_carbon_and_sustainability_awareness, master_data_governance_cross_pbc_event_federation, master_data_governance_governed_ai_agent_execution
+
+## Standalone One-PBC App Surface
+
+This package now ships a **standalone** executable slice in `standalone.py` that can run as a one-PBC app with package-local SQLite persistence for focused audits and smoke execution. The standalone surface includes:
+
+- domain registry setup and stewardship ownership.
+- golden records publication with lineage capture.
+- survivorship policy definition and review.
+- match/merge resolution with steward approval.
+- stewardship workflow queues and task assignment.
+- data quality rules and threshold governance.
+- hierarchy management for governed relationships.
+- reference data registration for controlled vocabularies.
+- dedupe candidate handling and merge evidence.
+- lineage evidence linking source records to golden records.
+- policy approvals before sensitive publication actions.
+- remediation queue management for quality exceptions.
+- audit proof capture for release and operational attestations.
+
+The package-local routes, forms, wizards, controls, seed bundle, AI planning surface, and release evidence all point to the same standalone implementation so source, release, and generation smoke audits can exercise the exact one-PBC app path.
