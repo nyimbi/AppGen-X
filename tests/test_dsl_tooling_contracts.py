@@ -4124,6 +4124,9 @@ def test_designer_sync_text_renderer_contract_proves_round_trip_log_markers() ->
         "visual-edit accepted=True round_trip=True changed=database_designer,form_designer diff_lines=2",
         "visual-edit-matrix ok=True cases=3 gaps=0",
         "visual-edit-operations add_field, add_component, add_flow_transition",
+        "visual-edit-case database_add_field",
+        "visual-edit-case form_add_component",
+        "visual-edit-case workflow_add_transition",
         "ok projection_refresh",
     } <= set(report["required_fragments"])
 

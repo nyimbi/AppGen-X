@@ -2740,6 +2740,11 @@ def _emit_designer_sync_text(payload: dict) -> None:
         required_operations = tuple(matrix.get("required_operations", ()))
         if required_operations:
             print(f"visual-edit-operations {', '.join(required_operations)}")
+        case_ids = tuple(
+            case.get("id") for case in matrix.get("cases", ()) if isinstance(case, dict) and case.get("id")
+        )
+        for case_id in case_ids:
+            print(f"visual-edit-case {case_id}")
     for check in payload.get("checks", ()):
         print(f"{'ok' if check.get('ok') else 'fail'} {check.get('check')}")
 
@@ -2789,6 +2794,9 @@ def _designer_sync_text_renderer_contract() -> dict:
         "visual-edit accepted=True round_trip=True changed=database_designer,form_designer diff_lines=2",
         "visual-edit-matrix ok=True cases=3 gaps=0",
         "visual-edit-operations add_field, add_component, add_flow_transition",
+        "visual-edit-case database_add_field",
+        "visual-edit-case form_add_component",
+        "visual-edit-case workflow_add_transition",
         "ok semantic_round_trip",
         "ok projection_refresh",
     )
