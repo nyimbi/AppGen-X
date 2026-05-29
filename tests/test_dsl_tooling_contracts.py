@@ -570,6 +570,14 @@ def test_format_validate_and_graph_reports_follow_tooling_contracts() -> None:
     assert validation["format"] == "appgen.validate-report.v1"
     assert validation["ok"] is True
     assert validation["requested_targets"] == ("web", "mobile")
+    assert validation["requested_target_count"] == 2
+    assert validation["app_target_count"] == len(validation["app_targets"])
+    assert validation["check_count"] == len(validation["checks"])
+    assert validation["passing_check_count"] == validation["check_count"]
+    assert validation["blocking_check_count"] == 0
+    assert validation["blocking_checks"] == ()
+    assert validation["diagnostic_count"] == len(validation["diagnostics"])
+    assert validation["target_diagnostic_count"] == 0
     assert any(check["check"] == "target_compatibility" and check["ok"] for check in validation["checks"])
     assert graph["format"] == "appgen.graph-report.v1"
     assert graph["graph"]["edges"][0]["from"] == "Invoice"
@@ -583,9 +591,15 @@ def test_validate_report_rejects_unknown_or_undeclared_targets() -> None:
 
     assert missing["ok"] is False
     assert missing["checks"][-1]["missing_targets"] == ("mobile",)
+    assert missing["requested_target_count"] == 1
+    assert missing["blocking_check_count"] >= 1
+    assert "target_compatibility" in missing["blocking_checks"]
+    assert missing["diagnostic_count"] == len(missing["diagnostics"])
+    assert missing["target_diagnostic_count"] >= 1
     assert any(item["code"] == "AGX0802" for item in missing["diagnostics"])
     assert unknown["ok"] is False
     assert unknown["checks"][-1]["unknown_targets"] == ("satellite",)
+    assert unknown["target_diagnostic_count"] >= 1
     assert any("Unknown validation targets" in item["message"] for item in unknown["diagnostics"])
 
 
@@ -3464,10 +3478,18 @@ def test_generate_report_writes_validated_dsl_app_and_blocks_lint_errors(tmp_pat
     assert report["format"] == "appgen.generate-report.v1"
     assert report["ok"] is True
     assert report["generated"] is True
+    assert report["artifact_count"] == len(report["artifacts"])
+    assert report["artifact_count"] > 0
+    assert report["manifest_exists"] is True
+    assert report["diagnostic_count"] == len(report["diagnostics"])
+    assert report["blocking_gap_count"] == 0
     assert (output_dir / "appgen.json").exists()
     assert {"appgen.json", "models.py", "views.py"} <= {item["path"] for item in report["artifacts"]}
     assert blocked["ok"] is False
     assert blocked["generated"] is False
+    assert blocked["artifact_count"] == 0
+    assert blocked["diagnostic_count"] == len(blocked["diagnostics"])
+    assert blocked["blocking_gap_count"] == len(blocked["blocking_gaps"]) == 1
     assert "lint_errors" in blocked["blocking_gaps"]
 
 

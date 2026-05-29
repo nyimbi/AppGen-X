@@ -3641,14 +3641,24 @@ def validate_report_dsl(
             "missing_targets": missing_targets,
         },
     )
+    diagnostics = tuple(lint["diagnostics"]) + target_diagnostics
+    blocking_checks = tuple(check["check"] for check in checks if not check["ok"])
     return {
         "format": "appgen.validate-report.v1",
         "source": source_name,
         "ok": all(check["ok"] for check in checks),
         "requested_targets": requested_targets,
+        "requested_target_count": len(requested_targets),
         "app_targets": app_targets,
+        "app_target_count": len(app_targets),
         "checks": checks,
-        "diagnostics": tuple(lint["diagnostics"]) + target_diagnostics,
+        "check_count": len(checks),
+        "passing_check_count": sum(1 for check in checks if check["ok"]),
+        "blocking_check_count": len(blocking_checks),
+        "blocking_checks": blocking_checks,
+        "diagnostics": diagnostics,
+        "diagnostic_count": len(diagnostics),
+        "target_diagnostic_count": len(target_diagnostics),
         "lint": lint,
         "semantic_model": semantic,
     }
@@ -3681,7 +3691,10 @@ def generate_report_dsl(
             "validation": validation,
             "generated": False,
             "artifacts": (),
+            "artifact_count": 0,
             "diagnostics": tuple(lint["diagnostics"]),
+            "diagnostic_count": len(tuple(lint["diagnostics"])),
+            "blocking_gap_count": 1,
             "blocking_gaps": ("lint_errors",),
         }
     if warnings and not allow_warnings:
@@ -3695,7 +3708,10 @@ def generate_report_dsl(
             "validation": validation,
             "generated": False,
             "artifacts": (),
+            "artifact_count": 0,
             "diagnostics": tuple(lint["diagnostics"]),
+            "diagnostic_count": len(tuple(lint["diagnostics"])),
+            "blocking_gap_count": 1,
             "blocking_gaps": ("lint_warnings",),
         }
     try:
@@ -3719,7 +3735,10 @@ def generate_report_dsl(
             "validation": validation,
             "generated": False,
             "artifacts": (),
+            "artifact_count": 0,
             "diagnostics": (diagnostic,),
+            "diagnostic_count": 1,
+            "blocking_gap_count": 1,
             "blocking_gaps": ("generation_error",),
         }
     artifacts = _generated_artifact_summary(generated_path)
@@ -3735,8 +3754,12 @@ def generate_report_dsl(
         "semantic_model_format": validation["semantic_model"].get("format"),
         "generated": True,
         "artifacts": artifacts,
+        "artifact_count": len(artifacts),
         "manifest": str(manifest_path) if manifest_path.exists() else None,
+        "manifest_exists": manifest_path.exists(),
         "diagnostics": tuple(lint["diagnostics"]),
+        "diagnostic_count": len(tuple(lint["diagnostics"])),
+        "blocking_gap_count": 0 if manifest_path.exists() else 1,
         "blocking_gaps": () if manifest_path.exists() else ("manifest_missing",),
     }
 

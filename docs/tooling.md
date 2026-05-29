@@ -720,7 +720,9 @@ Requested `--targets` are normalized with the same platform target policy as
 the app declaration. Validation fails with `AGX0802` when a requested target is
 unknown or is not declared by `app ... { targets: ... }`, and the
 `appgen.validate-report.v1` payload includes `requested_targets`, `app_targets`,
-and a `target_compatibility` check. The default text output prints requested
+requested/app target counts, check and passing-check counts, blocking-check
+counts, diagnostic counts, target-diagnostic counts, and a
+`target_compatibility` check. The default text output prints requested
 targets, app-declared targets, the `appgen.validate-report.v1` envelope format
 in the header, semantic-model format as `semantic_format=...`, checks, missing or unknown target details,
 and diagnostics. `appgen.validate-generate-text-renderer.v1` is embedded in
@@ -744,6 +746,10 @@ resolved targets, artifact count, the `appgen.generate-report.v1` envelope
 format in the header, semantic-model format as `semantic_format=...`, output directory, manifest path,
 artifact paths, artifact byte counts when summaries provide them as
 `artifact ... bytes=...`, blocking gaps, and diagnostics.
+Generated reports publish `artifact_count`, `manifest_exists`,
+`diagnostic_count`, and `blocking_gap_count` at the top level so release
+evidence can prove generation readiness without expanding artifact arrays or
+nested validation payloads.
 `appgen.validate-generate-cli-audit.v1` proves the successful generation path
 hands off resolved targets, output directory, semantic-model format, validation
 report format, manifest existence, manifest app name, artifact count, and
