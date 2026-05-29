@@ -596,10 +596,12 @@ audit commands. The default `appgen lint` text output renders the
 published `stage_names` order, currently syntax, semantic, and policy
 diagnostics, and when `--previous-semantic` is provided it also prints a
 migration-preview summary and detected migration families. `appgen diagnostics`
-text output summarizes registry coverage and fixture gaps, `appgen diagnostics
---audit-fixtures` summarizes covered and missing diagnostic codes, and
-`appgen drift` summarizes semantic-model drift surfaces, evidence formats,
-blocking gap count, digest, and per-surface checks.
+text output summarizes the `appgen.diagnostic-catalog.v1` format, registry
+coverage, and fixture gaps; `appgen diagnostics --audit-fixtures` summarizes
+the `appgen.diagnostic-fixture-audit.v1` format plus covered and missing
+diagnostic codes; and `appgen drift` summarizes the
+`appgen.semantic-drift-audit.v1` format, semantic-model drift surfaces,
+evidence formats, blocking gap count, digest, and per-surface checks.
 
 ### `appgen format`
 

@@ -2228,7 +2228,7 @@ def _emit_diagnostic_catalog_text(payload: dict) -> None:
     covered = tuple(payload.get("covered_fixture_codes", ()))
     missing = tuple(payload.get("missing_fixtures", ()))
     print(
-        f"diagnostics {status}: covered={len(covered)} required={len(required)} "
+        f"diagnostics {status}: format={payload.get('format')} covered={len(covered)} required={len(required)} "
         f"fixtures={payload.get('fixture_count', 0)} missing={len(missing)}"
     )
     for code in missing:
@@ -2240,7 +2240,7 @@ def _emit_diagnostic_fixture_audit_text(payload: dict) -> None:
     covered = tuple(payload.get("covered_codes", ()))
     missing = tuple(payload.get("missing_codes", ()))
     print(
-        f"diagnostics-audit {status}: covered={len(covered)} "
+        f"diagnostics-audit {status}: format={payload.get('format')} covered={len(covered)} "
         f"required={len(payload.get('required_codes', ()))} missing={len(missing)}"
     )
     for code in missing:
@@ -2254,7 +2254,7 @@ def _emit_semantic_drift_text(payload: dict) -> None:
     surfaces = tuple(payload.get("surfaces", ()))
     gaps = tuple(payload.get("blocking_gaps", ()))
     print(
-        f"drift {status}: semantic={payload.get('semantic_model_format')} "
+        f"drift {status}: format={payload.get('format')} semantic={payload.get('semantic_model_format')} "
         f"surfaces={len(surfaces)} blocking_gaps={len(gaps)} digest={payload.get('semantic_digest')}"
     )
     if surfaces:

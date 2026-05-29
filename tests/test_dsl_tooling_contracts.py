@@ -2930,12 +2930,14 @@ def test_appgen_diagnostics_subcommand_emits_catalog_fixture_audit_and_text() ->
     assert catalog_payload["format"] == "appgen.diagnostic-catalog.v1"
     assert audit_payload["format"] == "appgen.diagnostic-fixture-audit.v1"
     assert catalog_text.stdout.startswith("diagnostics ok:")
+    assert f"format={catalog_payload['format']}" in catalog_text.stdout
     assert f"covered={len(catalog_payload['covered_fixture_codes'])}" in catalog_text.stdout
     assert f"required={len(catalog_payload['required_codes'])}" in catalog_text.stdout
     assert f"fixtures={catalog_payload['fixture_count']}" in catalog_text.stdout
     assert "missing=0" in catalog_text.stdout
     assert "missing-fixture " not in catalog_text.stdout
     assert audit_text.stdout.startswith("diagnostics-audit ok:")
+    assert f"format={audit_payload['format']}" in audit_text.stdout
     assert f"covered={len(audit_payload['covered_codes'])}" in audit_text.stdout
     assert f"required={len(audit_payload['required_codes'])}" in audit_text.stdout
     assert "missing=0" in audit_text.stdout
@@ -3040,7 +3042,7 @@ def test_appgen_drift_subcommand_emits_json_and_text_contracts(tmp_path: Path) -
     assert payload["format"] == "appgen.semantic-drift-audit.v1"
     assert payload["surface_evidence"]["lsp_service"] == "appgen.lsp-service.v1"
     assert payload["surface_evidence"]["generate_report"] == "appgen.generate-report.v1"
-    assert text_result.stdout.startswith("drift ok: semantic=appgen.semantic-model.v1")
+    assert text_result.stdout.startswith("drift ok: format=appgen.semantic-drift-audit.v1 semantic=appgen.semantic-model.v1")
     assert "surfaces=8" in text_result.stdout
     assert "blocking_gaps=0" in text_result.stdout
     assert "evidence lsp_service: appgen.lsp-service.v1" in text_result.stdout
