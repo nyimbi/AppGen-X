@@ -571,6 +571,11 @@ into the tooling CLI. The audit also reports required/documented/listed
 subcommand counts plus option-surface, required-option, missing-option, module
 entrypoint, and repo-alias execution evidence, so release evidence can prove CLI
 discoverability breadth without scraping nested help payloads.
+The audit also emits missing documented-subcommand details, option help
+exit-failure details, and per-command missing-option details. These detail
+lists must be empty, and `passing_option_surface_count` must equal
+`subcommand_option_surface_count`, before the CLI help surface is considered
+tooling-complete.
 `appgen.missing-required-option-exit-audit.v1` covers required command options,
 including generator output directories, natural-language prompts, and component
 publication names, plus the required `appgen explain` selector family
