@@ -52,3 +52,33 @@ def revenue_recognition_render_workbench(state=None):
         'table_browsers': full['table_browsers'],
         'agent_tools': full['agent_tools'],
     }
+
+
+from .app_surface import (
+    revenue_recognition_controls_contract,
+    revenue_recognition_forms_contract,
+    revenue_recognition_wizards_contract,
+    single_pbc_revenue_recognition_app_contract,
+)
+
+_BASE_REVENUE_RECOGNITION_UI_CONTRACT_WITH_DEPTH = revenue_recognition_ui_contract
+_BASE_REVENUE_RECOGNITION_RENDER_WORKBENCH_WITH_DEPTH = revenue_recognition_render_workbench
+
+def revenue_recognition_ui_contract():
+    base = dict(_BASE_REVENUE_RECOGNITION_UI_CONTRACT_WITH_DEPTH())
+    return {
+        **base,
+        'forms_contract': revenue_recognition_forms_contract(),
+        'wizards_contract': revenue_recognition_wizards_contract(),
+        'controls_contract': revenue_recognition_controls_contract(),
+        'single_pbc_app': single_pbc_revenue_recognition_app_contract(),
+    }
+
+def revenue_recognition_render_workbench(state=None):
+    base = dict(_BASE_REVENUE_RECOGNITION_RENDER_WORKBENCH_WITH_DEPTH(state=state))
+    return {**base, 'single_pbc_app': single_pbc_revenue_recognition_app_contract(state=state)}
+
+def smoke_test():
+    contract = revenue_recognition_ui_contract()
+    workbench = revenue_recognition_render_workbench()
+    return {'ok': contract['ok'] and workbench['ok'] and contract['single_pbc_app']['ok'], 'contract': contract, 'workbench': workbench, 'side_effects': ()}

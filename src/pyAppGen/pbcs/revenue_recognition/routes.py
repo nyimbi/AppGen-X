@@ -1,5 +1,6 @@
 """API route contracts for the revenue_recognition PBC."""
 PBC_KEY = 'revenue_recognition'
+from .app_surface import standalone_route_contracts
 ROUTES = tuple({'method': api.split()[0], 'path': api.split(maxsplit=1)[1], 'operation': api.lower().replace(' ', '_').replace('/', '_'), 'idempotency_key': f'{PBC_KEY}:{api}'} for api in ('POST /revenue-contracts', 'POST /performance-obligations', 'POST /revenue-schedules', 'POST /recognition-runs', 'GET /revenue-recognition-workbench'))
 
 
@@ -17,6 +18,7 @@ def api_route_contracts():
         'pbc': PBC_KEY,
         'contracts': contracts,
         'routes': ROUTES,
+        'standalone_routes': standalone_route_contracts(),
         'stream_engine_picker_visible': False,
         'side_effects': (),
     }
@@ -46,4 +48,4 @@ def dispatch_route(path, payload=None):
 def smoke_test():
     first = ROUTES[0]
     dispatched = dispatch_route(first['path'], {'tenant': 'tenant-smoke'})
-    return {'ok': validate_api_route_contracts()['ok'] and dispatched['ok'], 'side_effects': ()}
+    return {'ok': validate_api_route_contracts()['ok'] and dispatched['ok'] and any(route['path'] == '/revenue-recognition/app' for route in standalone_route_contracts()), 'side_effects': ()}

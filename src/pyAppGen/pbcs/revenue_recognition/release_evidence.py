@@ -41,3 +41,21 @@ def build_release_evidence():
 
 def revenue_recognition_build_release_evidence():
     return build_release_evidence()
+
+
+from .app_surface import app_surface_smoke_test, single_pbc_revenue_recognition_app_contract
+
+_BASE_RELEASE_EVIDENCE_WITH_DOMAIN = build_release_evidence
+
+def build_release_evidence():
+    base = dict(_BASE_RELEASE_EVIDENCE_WITH_DOMAIN())
+    app_surface = app_surface_smoke_test()
+    standalone = single_pbc_revenue_recognition_app_contract()
+    checks = tuple(base.get('checks', ())) + (
+        {'id': 'standalone_app_surface', 'ok': app_surface['ok']},
+        {'id': 'standalone_forms_wizards_controls', 'ok': standalone['forms']['ok'] and standalone['wizards']['ok'] and standalone['controls']['ok']},
+    )
+    return {**base, 'ok': base.get('ok') is True and all(check['ok'] for check in checks), 'checks': checks, 'standalone_app': standalone, 'standalone_app_smoke': app_surface, 'blocking_gaps': tuple(check for check in checks if not check['ok'])}
+
+def revenue_recognition_build_release_evidence():
+    return build_release_evidence()

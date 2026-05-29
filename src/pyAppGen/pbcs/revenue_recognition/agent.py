@@ -13,7 +13,8 @@ def chatbot_interface_contract():
 
 
 def document_instruction_plan(document, instruction):
-    return {'ok': True, 'pbc': PBC_KEY, 'document_digest': str(abs(hash(document))), 'instruction': instruction, 'candidate_tables': OWNED_TABLES[:3], 'requires_human_confirmation': True, 'crud_preview': {'operation': 'create', 'event_contract': 'AppGen-X'}, 'side_effects': ()}
+    from .app_surface import document_instruction_revenue_recognition_plan
+    return document_instruction_revenue_recognition_plan(document, instruction)
 
 
 def datastore_crud_plan(action, table=None, payload=None):
@@ -25,8 +26,9 @@ def datastore_crud_plan(action, table=None, payload=None):
 
 
 def composed_agent_contribution():
+    from .app_surface import single_pbc_revenue_recognition_app_contract
     namespace = f'{PBC_KEY}_skills'
-    return {'ok': True, 'pbc': PBC_KEY, 'single_agent_skill_namespace': namespace, 'dsl_tools': (namespace, f'{PBC_KEY}_crud', f'{PBC_KEY}_documents'), 'side_effects': ()}
+    return {'ok': True, 'pbc': PBC_KEY, 'single_agent_skill_namespace': namespace, 'dsl_tools': (namespace, f'{PBC_KEY}_crud', f'{PBC_KEY}_documents'), 'standalone_app': single_pbc_revenue_recognition_app_contract(), 'side_effects': ()}
 
 
 def smoke_test():
