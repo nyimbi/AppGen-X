@@ -1820,9 +1820,13 @@ def test_appgen_lsp_subcommand_emits_json_and_text_contracts(tmp_path: Path) -> 
     assert payload["format"] == "appgen.lsp-service.v1"
     assert payload["capabilities"]["source_of_truth"] == "appgen.semantic-model.v1"
     assert text_result.stdout.startswith("lsp ok: semantic=appgen.semantic-model.v1")
+    assert f"diagnostics={len(payload['publishDiagnostics']['diagnostics'])}" in text_result.stdout
+    assert f"completions={len(payload['completion']['items'])}" in text_result.stdout
+    assert f"actions={len(payload['codeAction']['actions'])}" in text_result.stdout
+    assert f"symbols={len(payload['documentSymbol']['symbols'])}" in text_result.stdout
+    assert f"workspace_symbols={len(payload['workspaceSymbol']['symbols'])}" in text_result.stdout
     assert "source_of_truth=appgen.semantic-model.v1" in text_result.stdout
-    assert "completions=" in text_result.stdout
-    assert "actions=" in text_result.stdout
+    assert f"hover_items={len(payload['hover']['contents'])}" in text_result.stdout
 
 
 def test_lsp_json_rpc_server_handles_editor_lifecycle_from_shared_semantics() -> None:

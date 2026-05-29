@@ -2242,8 +2242,7 @@ def _emit_lsp_service_text(payload: dict) -> None:
             f"blockers={len(blockers)} requires_approval={migration.get('requires_approval', False)}"
         )
     hover = payload.get("hover") or {}
-    if hover.get("contents"):
-        print(f"hover_items={len(hover.get('contents', ()))}")
+    print(f"hover_items={len(hover.get('contents', ()))}")
 
 
 def _emit_lsp_code_action_apply_text(payload: dict) -> None:
