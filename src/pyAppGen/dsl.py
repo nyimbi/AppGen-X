@@ -3219,6 +3219,16 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             implementation_phases,
         ),
     )
+    text_renderer = _tooling_audit_text_renderer_contract()
+    checks = checks + (
+        _tooling_audit_check(
+            "tooling_audit_text_renderer",
+            text_renderer["ok"],
+            "Tooling-audit text mode exposes the top-level envelope, sections, embedded report formats, and implementation-phase marker.",
+            "docs/tooling.md#appgen-tooling-audit",
+            text_renderer,
+        ),
+    )
     doc_anchor_integrity = _tooling_audit_doc_anchor_integrity(root, _tooling_audit_doc_refs(checks))
     checks = checks + (
         _tooling_audit_check(
@@ -3251,6 +3261,74 @@ def _tooling_audit_check(check_id: str, ok: bool, evidence: str, section: str, d
         "section": section,
         "evidence": evidence,
         "detail": detail or {},
+    }
+
+
+def _tooling_audit_text_renderer_contract() -> dict:
+    """Prove tooling-audit text logs stay useful without parsing JSON."""
+    payload = {
+        "format": "appgen.tooling-audit.v1",
+        "ok": True,
+        "passed": 5,
+        "required": 5,
+        "sections": (
+            "docs/tooling.md#appgen-tooling-audit",
+            "docs/tooling.md#cli-contracts",
+            "docs/tooling.md#implementation-phases",
+            "docs/tooling.md#language-server-specification",
+        ),
+        "source_of_truth": "docs/tooling.md",
+        "blocking_gaps": (),
+        "checks": (
+            {
+                "id": "cli_contracts",
+                "ok": True,
+                "section": "docs/tooling.md#cli-contracts",
+                "evidence": "CLI contracts are executable.",
+                "detail": {"format": "appgen.cli-help-surface-audit.v1"},
+            },
+            {
+                "id": "language_server_core_features",
+                "ok": True,
+                "section": "docs/tooling.md#language-server-specification",
+                "evidence": "LSP features are executable.",
+                "detail": {"rpc": {"format": "appgen.lsp-json-rpc-audit.v1"}},
+            },
+            {
+                "id": "implementation_phase_exit_criteria",
+                "ok": True,
+                "section": "docs/tooling.md#implementation-phases",
+                "evidence": "Implementation phases are executable.",
+                "detail": {
+                    "format": "appgen.tooling-implementation-phase-audit.v1",
+                    "phases": ({"id": "phase_0_inventory_and_stabilization"},),
+                    "missing_phases": (),
+                },
+            },
+        ),
+    }
+    output = io.StringIO()
+    with contextlib.redirect_stdout(output):
+        _emit_tooling_payload(payload, as_json=False)
+    text = output.getvalue()
+    required_fragments = (
+        "tooling-audit ok: format=appgen.tooling-audit.v1",
+        "blocking_gaps=0",
+        "source=docs/tooling.md",
+        "section docs/tooling.md#cli-contracts",
+        "section docs/tooling.md#appgen-tooling-audit",
+        "formats=appgen.cli-help-surface-audit.v1",
+        "formats=appgen.lsp-json-rpc-audit.v1",
+        "implementation-phases 1 missing=0 format=appgen.tooling-implementation-phase-audit.v1",
+    )
+    missing = tuple(fragment for fragment in required_fragments if fragment not in text)
+    return {
+        "format": "appgen.tooling-audit-text-renderer.v1",
+        "ok": not missing and not text.lstrip().startswith("{"),
+        "required_fragments": required_fragments,
+        "missing_fragments": missing,
+        "json_fallback": text.lstrip().startswith("{"),
+        "text_prefix": text[:240],
     }
 
 

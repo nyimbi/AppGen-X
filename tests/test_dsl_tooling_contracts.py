@@ -3527,6 +3527,7 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
         "parser_golden_and_drift_gates",
         "tooling_doc_anchor_integrity",
         "non_goal_policy_guards",
+        "tooling_audit_text_renderer",
     } <= {check["id"] for check in report["checks"]}
     non_goal_check = next(check for check in report["checks"] if check["id"] == "non_goal_policy_guards")
     assert non_goal_check["detail"]["format"] == "appgen.non-goal-policy-audit.v1"
@@ -3840,6 +3841,21 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert "appgen.designer-sync-cli-audit.v1" in cli_text.stdout
     assert "appgen.studio-semantic-service-audit.v1" in cli_text.stdout
     assert "appgen.tooling-implementation-phase-audit.v1" in cli_text.stdout
+
+
+def test_tooling_audit_text_renderer_contract_proves_human_log_markers() -> None:
+    report = appgen_dsl._tooling_audit_text_renderer_contract()
+
+    assert report["format"] == "appgen.tooling-audit-text-renderer.v1"
+    assert report["ok"] is True
+    assert report["missing_fragments"] == ()
+    assert report["json_fallback"] is False
+    assert report["text_prefix"].startswith("tooling-audit ok: format=appgen.tooling-audit.v1")
+    assert {
+        "formats=appgen.cli-help-surface-audit.v1",
+        "formats=appgen.lsp-json-rpc-audit.v1",
+        "implementation-phases 1 missing=0 format=appgen.tooling-implementation-phase-audit.v1",
+    } <= set(report["required_fragments"])
 
 
 def test_tooling_audit_text_summary_exposes_sections_gaps_and_formats() -> None:

@@ -753,7 +753,10 @@ parsing. The report embeds
 this document. The text renderer must include embedded audit format names such
 as `appgen.non-goal-policy-audit.v1` and
 `appgen.tooling-doc-anchor-audit.v1` so policy and documentation-link gates are
-visible in human release logs.
+visible in human release logs. `appgen.tooling-audit-text-renderer.v1` proves
+the human-readable renderer itself keeps the top-level envelope, sections,
+embedded report formats, source document, blocking-gap count, and
+implementation-phase marker visible without requiring the full audit to run.
 When implementation-phase evidence is present, the text output also reports the
 number of audited phases, missing phase count, and the
 `appgen.tooling-implementation-phase-audit.v1` format marker.
