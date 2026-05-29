@@ -1848,11 +1848,16 @@ def test_lsp_code_action_apply_audit_proves_required_quick_fixes() -> None:
     assert audit["ok"] is True
     assert audit["case_count"] == len(audit["cases"])
     assert audit["passing_case_count"] == audit["case_count"]
+    assert audit["failing_case_count"] == 0
     assert audit["required_action_count"] == len(audit["required_action_ids"])
     assert audit["observed_action_count"] == len(audit["observed_action_ids"])
     assert audit["missing_required_action_count"] == 0
     assert audit["applied_edit_count"] >= audit["case_count"]
     assert audit["lint_passing_case_count"] == audit["case_count"]
+    assert audit["lint_failing_case_count"] == 0
+    assert audit["diagnostic_code_count"] == len(audit["diagnostic_codes"])
+    assert audit["diagnostic_code_count"] >= audit["case_count"] - 2
+    assert audit["blocking_gap_count"] == 0
     assert audit["blocking_gaps"] == ()
     assert audit["missing_required_action_ids"] == ()
     assert set(audit["required_action_ids"]) == set(audit["observed_action_ids"])
@@ -1883,10 +1888,17 @@ def test_lsp_code_action_cli_audit_covers_required_agent_facing_quick_fixes(tmp_
     assert report["ok"] is True
     assert report["case_count"] == len(report["cases"])
     assert report["passing_case_count"] == report["case_count"]
+    assert report["failing_case_count"] == 0
     assert report["required_action_count"] == len(report["required_action_ids"])
     assert report["observed_action_count"] == len(report["observed_action_ids"])
     assert report["missing_required_action_count"] == 0
     assert report["applied_edit_count"] >= report["case_count"]
+    assert report["lint_passing_case_count"] == report["case_count"]
+    assert report["lint_failing_case_count"] == 0
+    assert report["changed_case_count"] == report["case_count"]
+    assert report["unchanged_case_count"] == 0
+    assert report["blocking_gap_count"] == 0
+    assert report["blocking_gaps"] == ()
     assert report["missing_required_action_ids"] == ()
     assert tuple(report["required_action_ids"]) == tuple(report["required_cli_actions"])
     assert set(report["required_action_ids"]) == set(report["observed_action_ids"])

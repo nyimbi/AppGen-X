@@ -5897,20 +5897,28 @@ package WebPackage { target: web; smoke: launch }
         )
     observed_action_ids = tuple(case["case"] for case in cases)
     missing_required_action_ids = tuple(action_id for action_id in required_action_ids if action_id not in observed_action_ids)
+    failing_cases = tuple(case for case in cases if not case["ok"])
     return {
         "format": "appgen.lsp-code-action-cli-audit.v1",
         "ok": all(case["ok"] for case in cases) and not missing_required_action_ids,
         "case_count": len(cases),
         "passing_case_count": sum(1 for case in cases if case["ok"]),
+        "failing_case_count": len(failing_cases),
         "required_action_count": len(required_action_ids),
         "observed_action_count": len(observed_action_ids),
         "missing_required_action_count": len(missing_required_action_ids),
         "applied_edit_count": sum(case["applied_edit_count"] for case in cases),
+        "lint_passing_case_count": sum(1 for case in cases if case["lint_ok"]),
+        "lint_failing_case_count": sum(1 for case in cases if not case["lint_ok"]),
+        "changed_case_count": sum(1 for case in cases if case["changed"]),
+        "unchanged_case_count": sum(1 for case in cases if not case["changed"]),
         "cases": tuple(cases),
         "required_action_ids": required_action_ids,
         "observed_action_ids": observed_action_ids,
         "missing_required_action_ids": missing_required_action_ids,
         "required_cli_actions": required_action_ids,
+        "blocking_gap_count": len(failing_cases),
+        "blocking_gaps": tuple(case["case"] for case in failing_cases),
     }
 
 
@@ -9946,22 +9954,31 @@ def lsp_code_action_apply_audit_dsl() -> dict:
     required_action_ids = tuple(case[1] for case in case_specs)
     observed_action_ids = tuple(case["action_id"] for case in cases)
     missing_required_action_ids = tuple(action_id for action_id in required_action_ids if action_id not in observed_action_ids)
+    failing_cases = tuple(case for case in cases if not case["ok"])
+    diagnostic_codes = tuple(
+        code for case in cases for code in case.get("diagnostic_codes", ()) if code
+    )
     return {
         "format": "appgen.lsp-code-action-apply-audit.v1",
         "ok": all(case["ok"] for case in cases) and not missing_required_action_ids,
         "case_count": len(cases),
         "passing_case_count": sum(1 for case in cases if case["ok"]),
+        "failing_case_count": len(failing_cases),
         "required_action_count": len(required_action_ids),
         "observed_action_count": len(observed_action_ids),
         "missing_required_action_count": len(missing_required_action_ids),
         "applied_edit_count": sum(case["applied_edit_count"] for case in cases),
         "lint_passing_case_count": sum(1 for case in cases if case["lint_ok"]),
+        "lint_failing_case_count": sum(1 for case in cases if not case["lint_ok"]),
+        "diagnostic_code_count": len(diagnostic_codes),
+        "diagnostic_codes": diagnostic_codes,
         "cases": tuple(cases),
         "required_action_ids": required_action_ids,
         "observed_action_ids": observed_action_ids,
         "missing_required_action_ids": missing_required_action_ids,
         "required_actions": required_action_ids,
-        "blocking_gaps": tuple(case["id"] for case in cases if not case["ok"]),
+        "blocking_gap_count": len(failing_cases),
+        "blocking_gaps": tuple(case["id"] for case in failing_cases),
     }
 
 

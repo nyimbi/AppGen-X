@@ -1210,11 +1210,14 @@ callers. Both audits report `required_action_ids`, `observed_action_ids`, and
 `missing_required_action_ids`; the top-level tooling audit fails when the CLI
 quick-fix surface is missing an action required by the in-process patch
 contract. The in-process apply audit reports case, passing-case,
-required-action, observed-action, missing-required-action, applied-edit, and
-lint-passing-case counts so library consumers get the same measurable quick-fix
-breadth as the CLI.
+failing-case, required-action, observed-action, missing-required-action,
+applied-edit, lint-passing-case, lint-failing-case, diagnostic-code, and
+blocking-gap counts so library consumers get measurable quick-fix breadth and
+failure evidence from the top-level report.
 The CLI audit also reports case, passing-case, required-action, observed-action,
-missing-action, and applied-edit counts so quick-fix coverage is measurable.
+missing-action, applied-edit, lint-passing-case, lint-failing-case,
+changed-case, unchanged-case, and blocking-gap counts so external agents can
+verify quick-fix coverage without expanding every case.
 `appgen.lsp-rename-cli-audit.v1` reports safe, blocked JSON, and blocked text
 scenario counts plus blocker-code and suggested-fix counts for rename safety.
 
