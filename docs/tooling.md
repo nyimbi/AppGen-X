@@ -921,7 +921,10 @@ visible without JSON parsing.
 Rename text output includes the `appgen.lsp-rename.v1` contract format, whether
 the rename was blocked, blocker count, the nested `appgen.migration-plan.v1`
 migration-preview as `migration_format=...`, and whether that migration preview
-requires explicit approval.
+requires explicit approval. When a rename is blocked, text output also prints
+each blocker code and available fix id, including `AGX1101` and
+`add_rename_hint`, so agents and editor logs can surface the exact safe next
+step without parsing JSON.
 
 ### Capabilities
 

@@ -3622,6 +3622,8 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert lsp_check["detail"]["rename_cli"]["blocked"] is True
     assert lsp_check["detail"]["rename_cli"]["blocked_text_ok"] is True
     assert "requires_approval=True" in lsp_check["detail"]["rename_cli"]["blocked_text"]
+    assert "rename-blocker AGX1101:" in lsp_check["detail"]["rename_cli"]["blocked_text"]
+    assert "fixes=add_rename_hint" in lsp_check["detail"]["rename_cli"]["blocked_text"]
     assert lsp_check["detail"]["rename_cli"]["blocked_code"] == "AGX1101"
     assert lsp_check["detail"]["rename_cli"]["blocked_fix"] == "add_rename_hint"
     assert lsp_check["detail"]["rename_cli"]["blocked_requires_approval"] is True
@@ -4039,6 +4041,7 @@ def test_lsp_service_text_renderer_contract_proves_editor_log_markers() -> None:
         "definition format=appgen.lsp-definition.v1 ok=True",
         "references format=appgen.lsp-references.v1 locations=2",
         "rename ok=False format=appgen.lsp-rename.v1 changed=False blocked=True diagnostics=1 blockers=1 migration_format=appgen.migration-plan.v1 requires_approval=True",
+        "rename-blocker AGX1101: Destructive migration changes require approval. fixes=add_rename_hint",
     } <= set(report["required_fragments"])
 
 

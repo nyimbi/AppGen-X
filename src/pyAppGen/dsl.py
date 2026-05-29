@@ -2921,6 +2921,14 @@ def _emit_lsp_service_text(payload: dict) -> None:
             f"blockers={len(blockers)} migration_format={migration.get('format')} "
             f"requires_approval={migration.get('requires_approval', False)}"
         )
+        for blocker in blockers:
+            fixes = tuple(
+                fix.get("id")
+                for fix in blocker.get("fixes", ())
+                if isinstance(fix, dict) and fix.get("id")
+            )
+            fix_text = f" fixes={','.join(fixes)}" if fixes else ""
+            print(f"rename-blocker {blocker.get('code')}: {blocker.get('message')}{fix_text}")
     hover = payload.get("hover") or {}
     print(f"hover_items={len(hover.get('contents', ()))}")
 
@@ -2953,7 +2961,13 @@ def _lsp_service_text_renderer_contract() -> dict:
             "changed": False,
             "blocked": True,
             "diagnostics": ({"code": "AGX1101"},),
-            "blockers": ("requires_approval",),
+            "blockers": (
+                {
+                    "code": "AGX1101",
+                    "message": "Destructive migration changes require approval.",
+                    "fixes": ({"id": "add_rename_hint"},),
+                },
+            ),
             "migration_preview": {
                 "format": "appgen.migration-plan.v1",
                 "requires_approval": True,
@@ -2973,6 +2987,7 @@ def _lsp_service_text_renderer_contract() -> dict:
         "references format=appgen.lsp-references.v1 locations=2",
         "formatting format=appgen.lsp-formatting.v1 edits=1",
         "rename ok=False format=appgen.lsp-rename.v1 changed=False blocked=True diagnostics=1 blockers=1 migration_format=appgen.migration-plan.v1 requires_approval=True",
+        "rename-blocker AGX1101: Destructive migration changes require approval. fixes=add_rename_hint",
         "hover_items=2",
     )
     missing = tuple(fragment for fragment in required_fragments if fragment not in text)
@@ -5274,6 +5289,8 @@ view InvoiceForm for Invoice {
         and "requires_approval=True" in blocked_text
         and "migration_format=appgen.migration-plan.v1" in blocked_text
         and "blockers=1" in blocked_text
+        and "rename-blocker AGX1101:" in blocked_text
+        and "fixes=add_rename_hint" in blocked_text
     )
 
     return {
