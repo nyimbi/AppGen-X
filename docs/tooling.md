@@ -600,7 +600,8 @@ Requested `--targets` are normalized with the same platform target policy as
 the app declaration. Validation fails with `AGX0802` when a requested target is
 unknown or is not declared by `app ... { targets: ... }`, and the
 `appgen.validate-report.v1` payload includes `requested_targets`, `app_targets`,
-and a `target_compatibility` check.
+and a `target_compatibility` check. The default text output prints requested
+targets, app-declared targets, semantic-model format, checks, and diagnostics.
 
 ### `appgen generate`
 
@@ -611,7 +612,9 @@ appgen generate app.appgen --target web --target mobile --out generated/app
 
 Generation fails before writing artifacts when lint has errors. Lint warnings
 also block generation by default; `--allow-warnings` permits warning-only
-sources and does not permit errors.
+sources and does not permit errors. The default text output prints requested or
+resolved targets, artifact count, semantic-model format, output directory,
+manifest path, artifact paths, blocking gaps, and diagnostics.
 
 ### `appgen graph`
 

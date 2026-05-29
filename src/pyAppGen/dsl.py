@@ -1706,17 +1706,38 @@ def _emit_tooling_payload(payload: dict, *, as_json: bool) -> None:
         return
     if payload.get("format") == "appgen.validate-report.v1":
         status = "ok" if payload.get("ok") else "failed"
-        print(f"validate {status}")
+        requested = tuple(payload.get("requested_targets", ()))
+        app_targets = tuple(payload.get("app_targets", ()))
+        semantic = payload.get("semantic_model", {})
+        print(
+            f"validate {status}: requested={','.join(requested) or 'default'} "
+            f"app_targets={','.join(app_targets) or 'none'} semantic={semantic.get('format')}"
+        )
         for check in payload.get("checks", ()):
             print(f"{'ok' if check['ok'] else 'fail'} {check['check']}")
+        for diagnostic in payload.get("diagnostics", ()):
+            print(f"{diagnostic['severity']} {diagnostic['code']}: {diagnostic['message']}")
         return
     if payload.get("format") == "appgen.generate-report.v1":
         status = "ok" if payload.get("ok") else "failed"
-        print(f"generate {status}: generated={payload.get('generated', False)}")
+        targets = tuple(payload.get("targets", ()))
+        print(
+            f"generate {status}: generated={payload.get('generated', False)} "
+            f"targets={','.join(targets) or 'default'} artifacts={len(payload.get('artifacts', ()))} "
+            f"semantic={payload.get('semantic_model_format') or payload.get('validation', {}).get('semantic_model', {}).get('format')}"
+        )
+        output_dir = payload.get("output_dir")
+        if output_dir:
+            print(f"output_dir {output_dir}")
+        manifest = payload.get("manifest")
+        if manifest:
+            print(f"manifest {manifest}")
         for artifact in payload.get("artifacts", ()):
             print(f"artifact {artifact['path']}")
         for gap in payload.get("blocking_gaps", ()):
             print(f"gap {gap}")
+        for diagnostic in payload.get("diagnostics", ()):
+            print(f"{diagnostic['severity']} {diagnostic['code']}: {diagnostic['message']}")
         return
     if payload.get("format") == "appgen.internal-error.v1":
         print(f"internal-error {payload.get('error_type')}: {payload.get('message')}")

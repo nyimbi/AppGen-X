@@ -3347,6 +3347,13 @@ def test_cli_contracts_cover_text_summaries_exit_codes_and_bad_arguments(tmp_pat
         text=True,
         capture_output=True,
     )
+    validate_text = subprocess.run(
+        [sys.executable, "-m", "pyAppGen", "validate", str(source_path), "--targets", "web"],
+        check=False,
+        cwd=root,
+        text=True,
+        capture_output=True,
+    )
     explain_text = subprocess.run(
         [sys.executable, "-m", "pyAppGen", "explain", str(source_path), "--symbol", "table.Invoice"],
         check=False,
@@ -3440,6 +3447,10 @@ def test_cli_contracts_cover_text_summaries_exit_codes_and_bad_arguments(tmp_pat
     assert "format changed: idempotent" in format_check.stdout
     assert graph_suite_text.returncode == 0, graph_suite_text.stderr
     assert "graph-suite ok: 9 kinds, 3 formats" in graph_suite_text.stdout
+    assert validate_text.returncode == 0, validate_text.stderr
+    assert validate_text.stdout.startswith("validate ok: requested=web")
+    assert "app_targets=web,mobile,desktop" in validate_text.stdout
+    assert "semantic=appgen.semantic-model.v1" in validate_text.stdout
     assert explain_text.returncode == 0, explain_text.stderr
     assert explain_text.stdout.startswith("explain symbol ok: table.Invoice")
     assert "table.Invoice: table Invoice" in explain_text.stdout
@@ -3450,6 +3461,10 @@ def test_cli_contracts_cover_text_summaries_exit_codes_and_bad_arguments(tmp_pat
     assert doctor_text.stdout.startswith("doctor ok")
     assert generate_text.returncode == 0, generate_text.stderr
     assert "generate ok: generated=True" in generate_text.stdout
+    assert "targets=web" in generate_text.stdout
+    assert "semantic=appgen.semantic-model.v1" in generate_text.stdout
+    assert "output_dir " in generate_text.stdout
+    assert "manifest " in generate_text.stdout
     assert "artifact appgen.json" in generate_text.stdout
     assert invalid_graph_format.returncode == 2
     assert "invalid choice" in invalid_graph_format.stderr
