@@ -2,11 +2,18 @@
 
 Package directory: `pbcs/environment_health_safety`.
 
-This PBC includes owned schema, migration DDL, models, services, routes, events, handlers, UI workbench surfaces, agent skills, permissions, configuration, seed data, package metadata, side-effect-free registration, and focused package tests.
+## Included evidence
 
-## Evidence
+- Standalone domain engine: `standalone.py` derives contracts, services, handlers, UI, and release checks from one package-local source.
+- Schema alignment: owned table metadata, migration DDL, and model contracts describe the same owned boundary.
+- Operational evidence: seeded workbench queues demonstrate severity, recordability, notification clocks, hazard promotion, permit issue, and corrective action evidence.
+- Governance evidence: policy change, audit sealing, KPI reprioritization, and dead-letter handling are idempotent and package-owned.
+- Release docs: `SPECIFICATION.md`, `README.md`, and `implementation-status.md` are part of release readiness.
 
-- Release Evidence: schema, service, route, event, handler, UI, agent, and governance contracts are materialized.
-- Owned datastore boundary: every owned table starts with `environment_health_safety_` and cross-PBC collaboration uses AppGen-X events or declared APIs.
-- Event contract: AppGen-X outbox/inbox with retry and dead-letter evidence.
-- Package tests: `tests/test_contract.py` validates schema/service/release, event contracts, side-effect-free registration, routes, governance, and idempotent handlers.
+## Focused verification targets
+
+- Incident closure gate blocks invalid closure.
+- Serious notification clocks and acknowledgements are tracked.
+- Near-miss cluster promotion creates hazard lineage.
+- Permit conflict matrix blocks overlapping conflicting permits.
+- Consumed events remain idempotent and domain-specific.
