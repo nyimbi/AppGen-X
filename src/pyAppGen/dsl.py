@@ -1675,6 +1675,24 @@ def _emit_tooling_payload(payload: dict, *, as_json: bool) -> None:
         status = "ok" if payload.get("ok") else "failed"
         counts = payload.get("severity_counts", {})
         print(f"lint {status}: {counts}")
+        stages = payload.get("stages") or {}
+        if stages:
+            stage_counts = " ".join(
+                f"{name}={stages.get(name, {}).get('diagnostic_count', 0)}"
+                for name in ("syntax", "semantic", "policy")
+            )
+            print(f"stages {stage_counts}")
+        migration = payload.get("migration_preview") or {}
+        if migration.get("format") == "appgen.migration-plan.v1":
+            changes = migration.get("changes", ())
+            detected = tuple(migration.get("coverage", {}).get("detected", ()))
+            print(
+                "migration-preview "
+                f"{migration.get('backend', 'unknown')}: changes={len(changes)} "
+                f"requires_approval={migration.get('requires_approval', False)}"
+            )
+            if detected:
+                print(f"migration-detected {', '.join(sorted(detected))}")
         for diagnostic in payload.get("diagnostics", ()):
             print(f"{diagnostic['severity']} {diagnostic['code']}: {diagnostic['message']}")
         return

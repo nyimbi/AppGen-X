@@ -3128,10 +3128,36 @@ def test_cli_contracts_cover_text_summaries_exit_codes_and_bad_arguments(tmp_pat
     source_path = tmp_path / "release.appgen"
     output_dir = tmp_path / "generated"
     source_path.write_text(RELEASE_SAMPLE, encoding="utf-8")
+    lint_current_path = tmp_path / "lint-current.appgen"
+    lint_previous_path = tmp_path / "lint-previous-semantic.json"
+    lint_previous_source = "app LintText { targets: web }\ntable Customer { id: int pk }\n"
+    lint_current_path.write_text(
+        "app LintText { targets: web }\ntable Customer { id: int pk; name: string }\n",
+        encoding="utf-8",
+    )
+    lint_previous_path.write_text(
+        json.dumps(semantic_model_dsl(lint_previous_source, source_name="lint-previous.appgen"), indent=2, default=list),
+        encoding="utf-8",
+    )
     root = Path(__file__).resolve().parents[1]
 
     lint_text = subprocess.run(
         [sys.executable, "-m", "pyAppGen", "lint", str(source_path)],
+        check=False,
+        cwd=root,
+        text=True,
+        capture_output=True,
+    )
+    lint_migration_text = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pyAppGen",
+            "lint",
+            str(lint_current_path),
+            "--previous-semantic",
+            str(lint_previous_path),
+        ],
         check=False,
         cwd=root,
         text=True,
@@ -3236,6 +3262,10 @@ def test_cli_contracts_cover_text_summaries_exit_codes_and_bad_arguments(tmp_pat
 
     assert lint_text.returncode == 0, lint_text.stderr
     assert "lint ok:" in lint_text.stdout
+    assert "stages syntax=0 semantic=1 policy=0" in lint_text.stdout
+    assert lint_migration_text.returncode == 0, lint_migration_text.stderr
+    assert "migration-preview postgresql: changes=1 requires_approval=False" in lint_migration_text.stdout
+    assert "migration-detected added_field" in lint_migration_text.stdout
     assert format_check.returncode == 1
     assert "format changed: idempotent" in format_check.stdout
     assert graph_suite_text.returncode == 0, graph_suite_text.stderr
