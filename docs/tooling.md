@@ -407,7 +407,9 @@ Directory input is an executable contract, not just a planned mode:
 sorts them for deterministic output, runs the same single-file lint contract for
 each file, aggregates diagnostics with a `file` field, and returns one
 `appgen.lint-report.v1` payload with `source_mode: "directory"` and nested
-`file_reports`.
+`file_reports`. Without `--json`, directory lint also prints source mode and
+discovered file count so CI and agent logs can distinguish directory source-set
+linting from a single-file lint pass.
 `--previous-semantic` loads a previous `appgen.semantic-model.v1` JSON payload
 and attaches an `appgen.migration-plan.v1` migration preview to the lint report,
 so CI, IDEs, and agents can see schema drift while they are already reviewing

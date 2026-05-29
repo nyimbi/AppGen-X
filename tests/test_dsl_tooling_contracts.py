@@ -331,12 +331,21 @@ def test_appgen_lint_subcommand_accepts_directory_input(tmp_path: Path) -> None:
         text=True,
         capture_output=True,
     )
+    text_result = subprocess.run(
+        [sys.executable, "-m", "pyAppGen", "lint", str(source_dir)],
+        check=False,
+        cwd=Path(__file__).resolve().parents[1],
+        text=True,
+        capture_output=True,
+    )
 
     assert result.returncode == 0, result.stderr
+    assert text_result.returncode == 0, text_result.stderr
     payload = json.loads(result.stdout)
     assert payload["format"] == "appgen.lint-report.v1"
     assert payload["source_mode"] == "directory"
     assert {Path(item).name for item in payload["files"]} == {"one.appgen", "two.appgen"}
+    assert "source directory: files=2" in text_result.stdout
 
 
 def test_appgen_lint_subcommand_enforces_strict_component_mode(tmp_path: Path) -> None:

@@ -1789,6 +1789,9 @@ def _emit_tooling_payload(payload: dict, *, as_json: bool) -> None:
         status = "ok" if payload.get("ok") else "failed"
         counts = payload.get("severity_counts", {})
         print(f"lint {status}: format={payload.get('format')} {counts}")
+        if payload.get("source_mode") or payload.get("files"):
+            files = tuple(payload.get("files", ()))
+            print(f"source {payload.get('source_mode', 'file')}: files={len(files)}")
         stages = payload.get("stages") or {}
         if stages:
             stage_names = tuple(payload.get("stage_names") or LINT_STAGE_NAMES)
