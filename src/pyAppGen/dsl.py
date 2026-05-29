@@ -4293,20 +4293,30 @@ def _tooling_audit_non_goal_policy() -> dict:
 
 def _tooling_audit_doc_anchor_integrity(root: Path, section_refs: Iterable[str]) -> dict:
     docs_path = root / "docs" / "tooling.md"
-    anchors = _markdown_heading_anchors(docs_path.read_text(encoding="utf-8"))
+    docs_text = docs_path.read_text(encoding="utf-8")
+    runtime_text = (root / "src" / "pyAppGen" / "dsl.py").read_text(encoding="utf-8")
+    tooling_tests_text = (root / "tests" / "test_dsl_tooling_contracts.py").read_text(encoding="utf-8")
+    anchors = _markdown_heading_anchors(docs_text)
+    documented_formats = tuple(dict.fromkeys(re.findall(r"appgen\.[a-z0-9.-]+\.v1", docs_text)))
     referenced = tuple(dict.fromkeys(str(ref) for ref in section_refs))
     missing = tuple(
         ref
         for ref in referenced
         if ref.startswith("docs/tooling.md#") and ref.rsplit("#", 1)[-1] not in anchors
     )
+    missing_runtime_formats = tuple(format_name for format_name in documented_formats if format_name not in runtime_text)
+    missing_test_formats = tuple(format_name for format_name in documented_formats if format_name not in tooling_tests_text)
     return {
         "format": "appgen.tooling-doc-anchor-audit.v1",
-        "ok": not missing,
+        "ok": not missing and not missing_runtime_formats and not missing_test_formats,
         "source": "docs/tooling.md",
         "heading_count": len(anchors),
         "referenced_sections": referenced,
         "missing_sections": missing,
+        "documented_contract_formats": documented_formats,
+        "documented_contract_format_count": len(documented_formats),
+        "missing_runtime_formats": missing_runtime_formats,
+        "missing_test_formats": missing_test_formats,
     }
 
 

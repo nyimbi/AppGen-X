@@ -790,8 +790,11 @@ formats for each check so release logs remain useful without requiring JSON
 parsing. The report embeds
 `appgen.tooling-doc-anchor-audit.v1`, which proves every emitted
 `docs/tooling.md#...` section reference resolves to a real heading anchor in
-this document. The text renderer must include embedded audit format names such
-as `appgen.non-goal-policy-audit.v1` and
+this document. The same audit extracts every `appgen.*.v1` contract format
+named in this document and reports missing runtime or test references, so a
+documented contract cannot silently drift into prose-only status. The text
+renderer must include embedded audit format names such as
+`appgen.non-goal-policy-audit.v1` and
 `appgen.tooling-doc-anchor-audit.v1` so policy and documentation-link gates are
 visible in human release logs. `appgen.tooling-audit-text-renderer.v1` proves
 the human-readable renderer itself keeps the top-level envelope, sections,

@@ -3615,6 +3615,10 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert report["doc_anchor_integrity"]["format"] == "appgen.tooling-doc-anchor-audit.v1"
     assert report["doc_anchor_integrity"]["ok"] is True
     assert report["doc_anchor_integrity"]["missing_sections"] == ()
+    assert report["doc_anchor_integrity"]["documented_contract_format_count"] >= 50
+    assert report["doc_anchor_integrity"]["missing_runtime_formats"] == ()
+    assert report["doc_anchor_integrity"]["missing_test_formats"] == ()
+    assert "appgen.studio-semantic-service.v1" in report["doc_anchor_integrity"]["documented_contract_formats"]
     assert "docs/tooling.md#cli-contracts" in report["doc_anchor_integrity"]["referenced_sections"]
     assert "docs/tooling.md#diagnostic-specification" in report["doc_anchor_integrity"]["referenced_sections"]
     assert "docs/tooling.md#linter-rules-by-domain" in report["doc_anchor_integrity"]["referenced_sections"]
@@ -3628,6 +3632,8 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     anchor_check = next(check for check in report["checks"] if check["id"] == "tooling_doc_anchor_integrity")
     assert anchor_check["detail"]["ok"] is True
     assert anchor_check["detail"]["missing_sections"] == ()
+    assert anchor_check["detail"]["missing_runtime_formats"] == ()
+    assert anchor_check["detail"]["missing_test_formats"] == ()
     module_check = next(check for check in report["checks"] if check["id"] == "module_boundaries")
     assert module_check["detail"]["format"] == "appgen.module-boundary-audit.v1"
     assert module_check["detail"]["ok"] is True
@@ -4281,6 +4287,29 @@ def test_tooling_audit_text_summary_exposes_sections_gaps_and_formats() -> None:
     assert "formats=appgen.tooling-implementation-phase-audit.v1" in text
     assert "formats=appgen.non-goal-policy-audit.v1" in text
     assert "formats=appgen.tooling-doc-anchor-audit.v1" in text
+
+
+def test_tooling_doc_anchor_audit_proves_documented_contract_formats() -> None:
+    root = Path(__file__).resolve().parents[1]
+    report = appgen_dsl._tooling_audit_doc_anchor_integrity(
+        root,
+        (
+            "docs/tooling.md#appgen-tooling-audit",
+            "docs/tooling.md#cli-contracts",
+        ),
+    )
+
+    assert report["format"] == "appgen.tooling-doc-anchor-audit.v1"
+    assert report["ok"] is True
+    assert report["missing_sections"] == ()
+    assert report["documented_contract_format_count"] >= 50
+    assert report["missing_runtime_formats"] == ()
+    assert report["missing_test_formats"] == ()
+    assert {
+        "appgen.tooling-audit.v1",
+        "appgen.tooling-doc-anchor-audit.v1",
+        "appgen.studio-semantic-service.v1",
+    } <= set(report["documented_contract_formats"])
 
 
 def test_top_level_help_exposes_tooling_subcommands_and_apg_alias() -> None:
