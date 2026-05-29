@@ -10,8 +10,9 @@ This release evidence covers the executable deposit-account lifecycle slice deli
 - Eventing preserved: AppGen-X only
 - Stream-engine picker: not exposed
 - Shared-table access: not used
-- Single-PBC app surface present: forms, wizards, controls, workbench, detail query, assistant help
+- Single-PBC app surface present: forms, wizards, controls, workflows, workbench, detail query, assistant help
 - Lifecycle state machine exercised through package-local tests and runtime smoke
+- Assistant document instructions produce governed CRUD previews with route and permission metadata
 
 ## Scenario Evidence
 
@@ -32,8 +33,10 @@ This release evidence covers the executable deposit-account lifecycle slice deli
 ### Usability evidence
 
 - app surface exposes 3 forms, 2 wizards, and 5 controls
+- app surface exposes 3 executable workflows for opening, lifecycle servicing, and document intake
 - workbench summary returns lifecycle counts for filtered accounts
-- assistant help manifest points operators to the correct form, wizard, and controls
+- assistant help manifest points operators to the correct form, wizard, workflow, and controls
+- document instruction planning identifies the route, required permission, and confirmation gate before mutation
 
 ## Validation Commands
 
