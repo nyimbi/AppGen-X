@@ -3906,7 +3906,9 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and "operation SubmitInvoice" in quick_fix["patched_source"]
             and code_action_apply_audit["ok"]
             and code_action_text_renderer["ok"]
-            and lsp_apply_cli["ok"],
+            and lsp_apply_cli["ok"]
+            and tuple(lsp_apply_cli.get("required_action_ids", ()))
+            == tuple(code_action_apply_audit.get("required_action_ids", ())),
             "LSP code actions are executable through deterministic DSL patch application contracts, text evidence, and the appgen lsp CLI.",
             "docs/tooling.md#code-actions",
             {
@@ -5257,6 +5259,7 @@ package WebPackage { target: web; smoke: launch }
             payload = {}
         return exit_code, payload
 
+    required_action_ids = tuple(case[0] for case in case_specs)
     cases = []
     for action_id, filename, source, expected_text, forbidden_text in case_specs:
         path = tmp / filename
@@ -5288,11 +5291,16 @@ package WebPackage { target: web; smoke: launch }
                 "forbidden_removed": forbidden_removed,
             }
         )
+    observed_action_ids = tuple(case["case"] for case in cases)
+    missing_required_action_ids = tuple(action_id for action_id in required_action_ids if action_id not in observed_action_ids)
     return {
         "format": "appgen.lsp-code-action-cli-audit.v1",
-        "ok": all(case["ok"] for case in cases),
+        "ok": all(case["ok"] for case in cases) and not missing_required_action_ids,
         "cases": tuple(cases),
-        "required_cli_actions": tuple(case["case"] for case in cases),
+        "required_action_ids": required_action_ids,
+        "observed_action_ids": observed_action_ids,
+        "missing_required_action_ids": missing_required_action_ids,
+        "required_cli_actions": required_action_ids,
     }
 
 
@@ -8900,11 +8908,17 @@ def lsp_code_action_apply_audit_dsl() -> dict:
                 "lint_ok": result.get("lint", {}).get("ok"),
             }
         )
+    required_action_ids = tuple(case[1] for case in case_specs)
+    observed_action_ids = tuple(case["action_id"] for case in cases)
+    missing_required_action_ids = tuple(action_id for action_id in required_action_ids if action_id not in observed_action_ids)
     return {
         "format": "appgen.lsp-code-action-apply-audit.v1",
-        "ok": all(case["ok"] for case in cases),
+        "ok": all(case["ok"] for case in cases) and not missing_required_action_ids,
         "cases": tuple(cases),
-        "required_actions": tuple(case[1] for case in case_specs),
+        "required_action_ids": required_action_ids,
+        "observed_action_ids": observed_action_ids,
+        "missing_required_action_ids": missing_required_action_ids,
+        "required_actions": required_action_ids,
         "blocking_gaps": tuple(case["id"] for case in cases if not case["ok"]),
     }
 

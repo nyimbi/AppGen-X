@@ -1703,6 +1703,8 @@ def test_lsp_code_action_apply_audit_proves_required_quick_fixes() -> None:
     assert audit["format"] == "appgen.lsp-code-action-apply-audit.v1"
     assert audit["ok"] is True
     assert audit["blocking_gaps"] == ()
+    assert audit["missing_required_action_ids"] == ()
+    assert set(audit["required_action_ids"]) == set(audit["observed_action_ids"])
     assert {
         "create_missing_table",
         "create_missing_field",
@@ -1728,6 +1730,10 @@ def test_lsp_code_action_cli_audit_covers_required_agent_facing_quick_fixes(tmp_
 
     assert report["format"] == "appgen.lsp-code-action-cli-audit.v1"
     assert report["ok"] is True
+    assert report["missing_required_action_ids"] == ()
+    assert tuple(report["required_action_ids"]) == tuple(report["required_cli_actions"])
+    assert set(report["required_action_ids"]) == set(report["observed_action_ids"])
+    assert tuple(report["required_action_ids"]) == tuple(lsp_code_action_apply_audit_dsl()["required_action_ids"])
     assert {
         "create_missing_table",
         "create_missing_field",
@@ -3661,6 +3667,10 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     quick_fix_check = next(check for check in report["checks"] if check["id"] == "lsp_quick_fix_application")
     assert quick_fix_check["detail"]["cli"]["format"] == "appgen.lsp-code-action-cli-audit.v1"
     assert quick_fix_check["detail"]["cli"]["ok"] is True
+    assert quick_fix_check["detail"]["cli"]["missing_required_action_ids"] == ()
+    assert tuple(quick_fix_check["detail"]["cli"]["required_action_ids"]) == tuple(
+        quick_fix_check["detail"]["application_audit"]["required_action_ids"]
+    )
     assert {
         "create_missing_table",
         "create_missing_field",

@@ -1037,7 +1037,10 @@ creation for app targets, and smoke-test declaration quick fixes used by IDEs
 and agents. `appgen.lsp-code-action-cli-audit.v1` must cover the same required
 action ids as the in-process `appgen.lsp-code-action-apply-audit.v1` release
 gate so external agents and editor integrations are not weaker than library
-callers.
+callers. Both audits report `required_action_ids`, `observed_action_ids`, and
+`missing_required_action_ids`; the top-level tooling audit fails when the CLI
+quick-fix surface is missing an action required by the in-process patch
+contract.
 
 ## IDE Integration
 
