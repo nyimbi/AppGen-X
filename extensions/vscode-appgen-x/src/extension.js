@@ -248,7 +248,7 @@ function registerProviders(context) {
   }));
   context.subscriptions.push(vscode.languages.registerRenameProvider(selector, {
     provideRenameEdits(document, position, newName) {
-      return client.request("textDocument/rename", { ...textParams(document, position), newName }).then(asWorkspaceEdit);
+      return client.request("textDocument/rename", { ...textParams(document, position), newName }).then(asRenameWorkspaceEdit);
     }
   }));
   context.subscriptions.push(vscode.languages.registerWorkspaceSymbolProvider({
@@ -286,6 +286,18 @@ function asWorkspaceEdit(edit) {
     }
   }
   return workspaceEdit;
+}
+
+function asRenameWorkspaceEdit(result) {
+  if (result && result.blocked) {
+    const diagnostics = result.diagnostics || [];
+    const message = diagnostics.map((diagnostic) => {
+      return diagnostic.code ? `${diagnostic.code}: ${diagnostic.message}` : diagnostic.message;
+    }).filter(Boolean).join("; ") || "Rename requires explicit migration approval.";
+    vscode.window.showWarningMessage(`AppGen-X rename blocked: ${message}`);
+    throw new Error(`AppGen-X rename blocked: ${message}`);
+  }
+  return asWorkspaceEdit(result || { changes: {} });
 }
 
 function asCodeAction(action) {

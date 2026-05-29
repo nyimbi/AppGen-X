@@ -2499,6 +2499,8 @@ def _tooling_audit_vscode_extension(root: Path) -> dict:
         "registerDocumentSymbolProvider",
         "registerWorkspaceSymbolProvider",
         "registerRenameProvider",
+        "asRenameWorkspaceEdit",
+        "AppGen-X rename blocked",
         "registerCodeActionsProvider",
         "registerDocumentFormattingEditProvider",
         '["lsp", "--stdio"]',

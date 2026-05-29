@@ -1737,6 +1737,8 @@ def test_vscode_extension_contract_wires_appgen_language_server_and_commands() -
     assert "registerDocumentSymbolProvider" in source
     assert "registerWorkspaceSymbolProvider" in source
     assert "registerRenameProvider" in source
+    assert "asRenameWorkspaceEdit" in source
+    assert "AppGen-X rename blocked" in source
     assert "registerCodeActionsProvider" in source
     assert "registerDocumentFormattingEditProvider" in source
     assert '["pbc", "list", "--json"]' in source
