@@ -214,6 +214,7 @@ PBC_MANIFEST = {
     "tests": (
         "tests/test_contract.py",
         "tests/test_runtime_capabilities.py",
+        "tests/test_standalone.py",
         "tests/test_standalone_dom.py",
     ),
     "docs": (

@@ -8,6 +8,7 @@ from . import agent
 from . import audit
 from . import events
 from . import schema_contract
+from . import seed_data
 from . import services
 from . import standalone
 from . import ui
@@ -24,19 +25,23 @@ def build_release_evidence():
         for name in ("README.md", "implementation-plan.md", "implementation-status.md", "RELEASE_EVIDENCE.md")
     )
     standalone_manifest = standalone.standalone_manifest()
-    service = services.standalone_service_manifest()
-    service_contract = services.service_operation_manifest()["standalone_service"]
+    standalone_snapshot = standalone.standalone_release_snapshot()
+    service_manifest = services.standalone_service_manifest()
+    service_descriptor = services.service_operation_manifest()
     event_manifest = events.event_contract_manifest()
     permission_contract = ui.dom_ui_contract()["binding_evidence"]["rbac_permissions"]
+    seed_validation = seed_data.validate_seed_data()
     checks = (
         {"id": "owned_schema_depth", "ok": schema_contract.SCHEMA_CONTRACT.get("ok") is True},
         {"id": "standalone_application", "ok": standalone_manifest["ok"]},
-        {"id": "standalone_service_methods", "ok": service["ok"] and len(service["service_methods"]) >= 12},
+        {"id": "standalone_service_methods", "ok": service_manifest["ok"] and len(service_manifest["service_methods"]) >= 12},
         {"id": "ui_forms_wizards_controls", "ok": bool(ui.dom_ui_contract().get("forms")) and bool(ui.dom_ui_contract().get("wizards")) and bool(ui.dom_ui_contract().get("controls"))},
         {"id": "agent_document_intake", "ok": agent.smoke_test()["ok"]},
         {"id": "api_event_contract", "ok": event_manifest["ok"] and event_manifest["topic"] == standalone_manifest["event_topic"]},
-        {"id": "permissions_cover_commands", "ok": {"dom.create", "dom.verify", "dom.plan", "dom.cancel"} <= set(permission_contract)},
+        {"id": "permissions_cover_commands", "ok": {"dom.create", "dom.verify", "dom.plan", "dom.cancel", "dom.audit"} <= set(permission_contract)},
         {"id": "documentation_present", "ok": all(item["exists"] for item in documentation)},
+        {"id": "repository_read_models", "ok": standalone_snapshot["ok"] and standalone_snapshot["repository"]["dashboard"]["counts"]["orders"] >= 2 and len(standalone_snapshot["read_models"]["orders"]) >= 2},
+        {"id": "realistic_seed_bundle", "ok": seed_validation["ok"] and seed_validation["plan"]["standalone_bundle"]["order_count"] >= 2},
         {"id": "package_audit", "ok": audit.run_dom_pbc_audit()["ok"]},
     )
     return {
@@ -45,17 +50,17 @@ def build_release_evidence():
         "checks": checks,
         "schema": schema_contract.build_schema_contract(),
         "service": {
-            **service,
+            **service_manifest,
             "command_methods": tuple(
                 method
-                for method in service.get("service_methods", ())
-                if method not in set(service.get("query_methods", ()))
+                for method in service_manifest.get("service_methods", ())
+                if method not in set(service_manifest.get("query_methods", ()))
             ),
-            "query_methods": tuple(service.get("query_methods", ())),
+            "query_methods": tuple(service_manifest.get("query_methods", ())),
             "shared_table_access": False,
             "transaction_boundary": "owned_datastore_plus_outbox",
-            "operation_contracts": service_contract.get("operation_contracts", ()),
-            "descriptor_surface": services.service_operation_manifest(),
+            "operation_contracts": service_descriptor.get("operation_contracts", ()),
+            "descriptor_surface": service_descriptor,
         },
         "api": {
             "routes": tuple(item["path"] for item in services.service_operation_contracts()["contracts"]),
@@ -73,7 +78,11 @@ def build_release_evidence():
             "skill_manifest": agent.agent_skill_manifest(),
             "chatbot": agent.chatbot_interface_contract(),
         },
-        "standalone": standalone_manifest,
+        "standalone": {
+            **standalone_manifest,
+            "release_snapshot": standalone_snapshot,
+        },
+        "seed_data": seed_validation,
         "documentation": documentation,
         "audit": audit.run_dom_pbc_audit(),
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
@@ -89,7 +98,7 @@ def release_readiness_manifest():
     evidence = build_release_evidence()
     sections = tuple(
         name
-        for name in ("schema", "service", "api", "permissions", "ui", "events", "agent", "standalone", "documentation", "audit")
+        for name in ("schema", "service", "api", "permissions", "ui", "events", "agent", "standalone", "seed_data", "documentation", "audit")
         if isinstance(evidence.get(name), (dict, tuple))
     )
     checks = tuple(evidence.get("checks", ()))
@@ -100,7 +109,7 @@ def release_readiness_manifest():
         "sections": sections,
         "checks": checks,
         "blocking_gaps": tuple(evidence.get("blocking_gaps", ())),
-        "required_sections": ("schema", "service", "api", "ui", "agent", "standalone"),
+        "required_sections": ("schema", "service", "api", "ui", "agent", "standalone", "seed_data"),
         "side_effects": (),
     }
 
@@ -119,6 +128,7 @@ def validate_release_evidence():
             ("missing_controls", not bool(evidence.get("ui", {}).get("controls"))),
             ("missing_service_methods", not bool(evidence.get("service", {}).get("service_methods"))),
             ("bad_event_topic", evidence.get("events", {}).get("topic") != standalone.standalone_manifest()["event_topic"]),
+            ("missing_read_models", len(evidence.get("standalone", {}).get("release_snapshot", {}).get("read_models", {}).get("orders", ())) < 2),
         )
         if failed
     )
