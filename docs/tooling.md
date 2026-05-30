@@ -584,8 +584,10 @@ subcommand counts plus option-surface, required-option, missing-option, module
 entrypoint, and repo-alias execution evidence, so release evidence can prove CLI
 discoverability breadth without scraping nested help payloads.
 The audit also emits missing documented-subcommand details, option help
-exit-failure details, and per-command missing-option details. These detail
-lists must be empty, and `passing_option_surface_count` must equal
+exit-failure details, per-command missing-option details, command-alias counts,
+entrypoint-dispatch counts, failing-option-surface counts, and top-level help
+byte counts. These detail lists must be empty, `entrypoint_dispatch_count` must
+prove both module and repo-local alias dispatch, and `passing_option_surface_count` must equal
 `subcommand_option_surface_count`, before the CLI help surface is considered
 tooling-complete.
 `appgen.missing-required-option-exit-audit.v1` covers required command options,

@@ -8027,6 +8027,7 @@ def _tooling_audit_cli_help_surface(root: Path) -> dict:
         for command, item in option_help.items()
         if item["missing"] or item["exit_code"] != 0
     )
+    failing_option_surfaces = tuple(command for command, item in option_help.items() if not item["ok"])
     scripts = pyproject_data.get("project", {}).get("scripts", {})
     alias_declared = scripts.get("apg") == scripts.get("appgen") == "pyAppGen.__main__:main"
     alias_contract = {
@@ -8088,6 +8089,8 @@ def _tooling_audit_cli_help_surface(root: Path) -> dict:
         and module_dispatches_tooling
         and repo_alias_dispatches_tooling,
         "alias_declared": alias_declared,
+        "command_alias_count": len(alias_contract["commands"]),
+        "entrypoint_dispatch_count": sum(1 for ok in (module_dispatches_tooling, repo_alias_dispatches_tooling) if ok),
         "script_targets": {"appgen": scripts.get("appgen"), "apg": scripts.get("apg")},
         "alias_contract": {
             **alias_contract,
@@ -8111,10 +8114,13 @@ def _tooling_audit_cli_help_surface(root: Path) -> dict:
         "subcommand_option_surface_count": len(required_option_help),
         "subcommand_option_surfaces": tuple(option_help),
         "passing_option_surface_count": sum(1 for item in option_help.values() if item["ok"]),
+        "failing_option_surface_count": len(failing_option_surfaces),
+        "failing_option_surfaces": failing_option_surfaces,
         "option_help_exit_failure_count": len(option_help_exit_failures),
         "option_help_exit_failures": option_help_exit_failures,
         "required_option_count": required_option_count,
         "missing_option_count": missing_option_count,
+        "top_level_help_byte_count": len(help_text.encode("utf-8")),
         "subcommand_option_missing_details": subcommand_option_missing_details,
         "subcommand_option_help": option_help,
         "module_entrypoint": {

@@ -5004,6 +5004,8 @@ def test_top_level_help_exposes_tooling_subcommands_and_apg_alias() -> None:
     assert audit["ok"] is True
     assert audit["script_targets"]["appgen"] == "pyAppGen.__main__:main"
     assert audit["script_targets"]["apg"] == audit["script_targets"]["appgen"]
+    assert audit["command_alias_count"] == 2
+    assert audit["entrypoint_dispatch_count"] == 2
     assert audit["alias_contract"]["format"] == "appgen.cli-alias-contract.v1"
     assert audit["alias_contract"]["ok"] is True
     assert audit["alias_contract"]["commands"] == ("appgen", "apg")
@@ -5032,10 +5034,13 @@ def test_top_level_help_exposes_tooling_subcommands_and_apg_alias() -> None:
     assert audit["subcommand_option_surface_count"] == len(audit["subcommand_option_help"])
     assert audit["subcommand_option_surface_count"] == len(audit["subcommand_option_surfaces"])
     assert audit["passing_option_surface_count"] == audit["subcommand_option_surface_count"]
+    assert audit["failing_option_surface_count"] == 0
+    assert audit["failing_option_surfaces"] == ()
     assert audit["option_help_exit_failure_count"] == 0
     assert audit["option_help_exit_failures"] == ()
     assert audit["required_option_count"] >= 50
     assert audit["missing_option_count"] == 0
+    assert audit["top_level_help_byte_count"] > 400
     assert audit["subcommand_option_missing_details"] == ()
     assert audit["subcommand_option_help"]["component-publish"]["missing"] == ()
     assert audit["subcommand_option_help"]["lint"]["missing"] == ()
