@@ -5005,6 +5005,44 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             },
         ),
         _tooling_audit_check(
+            "cli_help_alias_contracts",
+            cli_help_surface["ok"]
+            and cli_help_surface.get("help_exit_code") == 0
+            and cli_help_surface.get("documented_missing_subcommand_count") == 0
+            and cli_help_surface.get("help_missing_subcommand_count") == 0
+            and cli_help_surface.get("passing_option_surface_count")
+            == cli_help_surface.get("subcommand_option_surface_count")
+            and cli_help_surface.get("failing_option_surface_count") == 0
+            and cli_help_surface.get("option_help_exit_failure_count") == 0
+            and cli_help_surface.get("missing_option_count") == 0
+            and cli_help_surface.get("command_alias_count") == 2
+            and cli_help_surface.get("entrypoint_dispatch_count") == 2
+            and cli_help_surface.get("alias_contract", {}).get("ok") is True
+            and cli_help_surface.get("alias_contract", {}).get("shared_target") == "pyAppGen.__main__:main"
+            and cli_help_surface.get("module_entrypoint", {}).get("ok") is True
+            and cli_help_surface.get("repo_alias_command", {}).get("ok") is True,
+            "CLI help, subcommand option surfaces, module dispatch, and the apg alias are independently discoverable and executable.",
+            "docs/tooling.md#cli-contracts",
+            {
+                "format": cli_help_surface.get("format"),
+                "help_exit_code": cli_help_surface.get("help_exit_code"),
+                "required_subcommand_count": cli_help_surface.get("required_subcommand_count"),
+                "documented_missing_subcommand_count": cli_help_surface.get("documented_missing_subcommand_count"),
+                "help_missing_subcommand_count": cli_help_surface.get("help_missing_subcommand_count"),
+                "subcommand_option_surface_count": cli_help_surface.get("subcommand_option_surface_count"),
+                "passing_option_surface_count": cli_help_surface.get("passing_option_surface_count"),
+                "failing_option_surface_count": cli_help_surface.get("failing_option_surface_count"),
+                "option_help_exit_failure_count": cli_help_surface.get("option_help_exit_failure_count"),
+                "required_option_count": cli_help_surface.get("required_option_count"),
+                "missing_option_count": cli_help_surface.get("missing_option_count"),
+                "command_alias_count": cli_help_surface.get("command_alias_count"),
+                "entrypoint_dispatch_count": cli_help_surface.get("entrypoint_dispatch_count"),
+                "alias_contract": cli_help_surface.get("alias_contract"),
+                "module_entrypoint": cli_help_surface.get("module_entrypoint"),
+                "repo_alias_command": cli_help_surface.get("repo_alias_command"),
+            },
+        ),
+        _tooling_audit_check(
             "graph_and_explain_tooling",
             graphs["ok"]
             and set(REQUIRED_GRAPH_KINDS) <= set(graphs["graph_reports"])
@@ -6541,6 +6579,20 @@ def _tooling_audit_implementation_phases(**evidence: dict) -> dict:
                         evidence["missing_required_option_exit"].get("format"),
                         evidence["invalid_choice_exit"].get("format"),
                     ),
+                },
+                {
+                    "id": "cli_help_alias_contracts",
+                    "ok": evidence["cli_help_surface"].get("ok") is True
+                    and evidence["cli_help_surface"].get("documented_missing_subcommand_count") == 0
+                    and evidence["cli_help_surface"].get("help_missing_subcommand_count") == 0
+                    and evidence["cli_help_surface"].get("passing_option_surface_count")
+                    == evidence["cli_help_surface"].get("subcommand_option_surface_count")
+                    and evidence["cli_help_surface"].get("failing_option_surface_count") == 0
+                    and evidence["cli_help_surface"].get("missing_option_count") == 0
+                    and evidence["cli_help_surface"].get("command_alias_count") == 2
+                    and evidence["cli_help_surface"].get("entrypoint_dispatch_count") == 2
+                    and evidence["cli_help_surface"].get("alias_contract", {}).get("ok") is True,
+                    "evidence_format": evidence["cli_help_surface"].get("format"),
                 },
                 {
                     "id": "graph_json_mermaid_and_dot",

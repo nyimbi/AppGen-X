@@ -618,6 +618,12 @@ The aggregate tooling audit exposes those failure paths as a separate
 missing-input case/stdout/traceback counts, missing-required-option case
 counts, invalid-choice message counts, and help-surface discovery counts, and
 it can fail independently from the validation/generation gate.
+The CLI help and alias surface is also a separate
+`cli_help_alias_contracts` gate. It fails independently when top-level help
+omits a documented subcommand, a subcommand help page omits a required option,
+`appgen` and `apg` stop sharing the same entrypoint, module execution via
+`python -m pyAppGen` stops dispatching to tooling, or the repo-local `./apg`
+command stops producing the same lint contract.
 DSL language-quality commands are first-class CLI contracts: `appgen
 dsl-quality`, `appgen dsl-antlr`, `appgen dsl-authoring-gate <file>`, and
 `appgen dsl-language-service <file>` expose the same grammar, parser, keyword,

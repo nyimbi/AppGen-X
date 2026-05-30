@@ -3936,7 +3936,18 @@ def test_tooling_implementation_phase_audit_maps_phase_exit_criteria_to_evidence
         missing_input_exit=ok("appgen.missing-input-exit-audit.v1"),
         missing_required_option_exit=ok("appgen.missing-required-option-exit-audit.v1"),
         invalid_choice_exit=ok("appgen.invalid-choice-exit-audit.v1"),
-        cli_help_surface=ok("appgen.cli-help-surface-audit.v1"),
+        cli_help_surface={
+            **ok("appgen.cli-help-surface-audit.v1"),
+            "documented_missing_subcommand_count": 0,
+            "help_missing_subcommand_count": 0,
+            "subcommand_option_surface_count": 24,
+            "passing_option_surface_count": 24,
+            "failing_option_surface_count": 0,
+            "missing_option_count": 0,
+            "command_alias_count": 2,
+            "entrypoint_dispatch_count": 2,
+            "alias_contract": {"ok": True},
+        },
         graphs={
             **ok("appgen.graph-suite-report.v1"),
             "missing_kind_count": 0,
@@ -4134,6 +4145,7 @@ def test_tooling_implementation_phase_audit_maps_phase_exit_criteria_to_evidence
         "validate_target_contracts",
         "generate_artifact_policy_contracts",
         "cli_usage_failure_modes",
+        "cli_help_alias_contracts",
         "graph_json_mermaid_and_dot",
         "graph_rendering_contracts",
         "explain_cli_contracts",
@@ -4719,6 +4731,24 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert cli_usage_check["detail"]["cli_help_surface"]["format"] == "appgen.cli-help-surface-audit.v1"
     assert cli_usage_check["detail"]["cli_help_surface"]["documented_missing_subcommands"] == ()
     assert cli_usage_check["detail"]["cli_help_surface"]["failing_option_surface_count"] == 0
+    cli_help_gate = next(check for check in report["checks"] if check["id"] == "cli_help_alias_contracts")
+    assert cli_help_gate["ok"] is True
+    assert cli_help_gate["detail"]["format"] == "appgen.cli-help-surface-audit.v1"
+    assert cli_help_gate["detail"]["help_exit_code"] == 0
+    assert cli_help_gate["detail"]["documented_missing_subcommand_count"] == 0
+    assert cli_help_gate["detail"]["help_missing_subcommand_count"] == 0
+    assert cli_help_gate["detail"]["passing_option_surface_count"] == (
+        cli_help_gate["detail"]["subcommand_option_surface_count"]
+    )
+    assert cli_help_gate["detail"]["failing_option_surface_count"] == 0
+    assert cli_help_gate["detail"]["option_help_exit_failure_count"] == 0
+    assert cli_help_gate["detail"]["missing_option_count"] == 0
+    assert cli_help_gate["detail"]["command_alias_count"] == 2
+    assert cli_help_gate["detail"]["entrypoint_dispatch_count"] == 2
+    assert cli_help_gate["detail"]["alias_contract"]["format"] == "appgen.cli-alias-contract.v1"
+    assert cli_help_gate["detail"]["alias_contract"]["shared_target"] == "pyAppGen.__main__:main"
+    assert cli_help_gate["detail"]["module_entrypoint"]["ok"] is True
+    assert cli_help_gate["detail"]["repo_alias_command"]["ok"] is True
     assert cli_check["detail"]["missing_input_exit"]["format"] == "appgen.missing-input-exit-audit.v1"
     assert cli_check["detail"]["missing_input_exit"]["ok"] is True
     assert cli_check["detail"]["missing_input_exit"]["case_count"] == len(
