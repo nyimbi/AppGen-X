@@ -6731,9 +6731,39 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert migration_safety_check["detail"]["cli"]["format"] == "appgen.migration-cli-audit.v1"
     assert migration_safety_check["detail"]["cli"]["case_count"] == migration_safety_check["detail"]["cli"]["allowed_backend_count"]
     assert migration_safety_check["detail"]["cli"]["passing_case_count"] == migration_safety_check["detail"]["cli"]["case_count"]
+    assert migration_safety_check["detail"]["cli"]["required_case_ids"] == tuple(
+        f"{backend}_json_rename_hints" for backend in appgen_dsl.SUPPORTED_DATABASE_BACKENDS
+    )
+    assert migration_safety_check["detail"]["cli"]["observed_case_ids"] == migration_safety_check["detail"]["cli"][
+        "required_case_ids"
+    ]
+    assert migration_safety_check["detail"]["cli"]["missing_case_count"] == 0
+    assert migration_safety_check["detail"]["cli"]["missing_case_ids"] == ()
     assert migration_safety_check["detail"]["cli"]["missing_allowed_backend_count"] == 0
+    assert migration_safety_check["detail"]["cli"]["backends_by_case"] == migration_safety_check["detail"]["cli"][
+        "expected_backends_by_case"
+    ]
+    assert migration_safety_check["detail"]["cli"]["missing_backend_case_count"] == 0
+    assert migration_safety_check["detail"]["cli"]["missing_backend_case_ids"] == ()
     assert migration_safety_check["detail"]["cli"]["change_kind_count"] >= 3
     assert migration_safety_check["detail"]["cli"]["missing_required_change_kind_count"] == 0
+    assert migration_safety_check["detail"]["cli"]["missing_change_kind_case_count"] == 0
+    assert migration_safety_check["detail"]["cli"]["missing_change_kinds_by_case"] == {}
+    assert migration_safety_check["detail"]["cli"]["approval_required_cases"] == migration_safety_check["detail"]["cli"][
+        "required_case_ids"
+    ]
+    assert migration_safety_check["detail"]["cli"]["missing_approval_required_case_count"] == 0
+    assert migration_safety_check["detail"]["cli"]["missing_approval_required_cases"] == ()
+    assert migration_safety_check["detail"]["cli"]["rename_hint_cases"] == migration_safety_check["detail"]["cli"][
+        "required_case_ids"
+    ]
+    assert migration_safety_check["detail"]["cli"]["missing_rename_hint_case_count"] == 0
+    assert migration_safety_check["detail"]["cli"]["missing_rename_hint_cases"] == ()
+    assert migration_safety_check["detail"]["cli"]["payload_formats_by_case"] == migration_safety_check["detail"][
+        "cli"
+    ]["expected_payload_formats_by_case"]
+    assert migration_safety_check["detail"]["cli"]["missing_payload_format_case_count"] == 0
+    assert migration_safety_check["detail"]["cli"]["missing_payload_format_cases"] == ()
     assert migration_safety_check["detail"]["text_renderer"]["format"] == "appgen.migration-plan-text-renderer.v1"
     assert migration_safety_check["detail"]["text_renderer"]["summary_line_count"] == 1
     assert migration_safety_check["detail"]["text_renderer"]["coverage_line_count"] == 1
@@ -7471,19 +7501,54 @@ def test_migration_cli_audit_covers_supported_backends_and_rename_hints(tmp_path
     assert report["case_count"] == report["allowed_backend_count"]
     assert report["passing_case_count"] == report["case_count"]
     assert report["failing_case_count"] == 0
+    expected_case_ids = tuple(f"{backend}_json_rename_hints" for backend in appgen_dsl.SUPPORTED_DATABASE_BACKENDS)
+    assert report["required_case_ids"] == expected_case_ids
+    assert report["observed_case_ids"] == expected_case_ids
+    assert report["missing_case_count"] == 0
+    assert report["missing_case_ids"] == ()
     assert report["allowed_backends"] == appgen_dsl.SUPPORTED_DATABASE_BACKENDS
     assert report["observed_backends"] == appgen_dsl.SUPPORTED_DATABASE_BACKENDS
     assert report["missing_allowed_backend_count"] == 0
     assert report["missing_allowed_backends"] == ()
+    assert report["expected_backends_by_case"] == {
+        f"{backend}_json_rename_hints": backend for backend in appgen_dsl.SUPPORTED_DATABASE_BACKENDS
+    }
+    assert report["backends_by_case"] == report["expected_backends_by_case"]
+    assert report["missing_backend_case_count"] == 0
+    assert report["missing_backend_case_ids"] == ()
     assert report["change_kind_count"] >= 3
     assert report["required_change_kind_count"] == 3
     assert report["missing_required_change_kind_count"] == 0
     assert report["missing_required_change_kinds"] == ()
     assert set(report["required_change_kinds"]) == {"rename_table", "rename_field", "add_field"}
     assert set(report["required_change_kinds"]) <= set(report["observed_change_kinds"])
+    assert report["required_change_kinds_by_case"] == {
+        case_id: ("rename_table", "rename_field", "add_field") for case_id in expected_case_ids
+    }
+    assert all(
+        set(report["required_change_kinds_by_case"][case_id]) <= set(report["change_kinds_by_case"][case_id])
+        for case_id in expected_case_ids
+    )
+    assert report["missing_change_kind_case_count"] == 0
+    assert report["missing_change_kinds_by_case"] == {}
     assert report["approval_required_count"] == report["case_count"]
+    assert report["approval_required_cases"] == expected_case_ids
+    assert report["missing_approval_required_case_count"] == 0
+    assert report["missing_approval_required_cases"] == ()
     assert report["rename_hint_case_count"] == report["case_count"]
+    assert report["expected_rename_hint_count_by_case"] == {case_id: 2 for case_id in expected_case_ids}
+    assert report["rename_hint_cases"] == expected_case_ids
+    assert report["missing_rename_hint_case_count"] == 0
+    assert report["missing_rename_hint_cases"] == ()
+    assert all(report["rename_hint_counts_by_case"][case_id] >= 2 for case_id in expected_case_ids)
+    assert report["expected_payload_formats_by_case"] == {
+        case_id: "appgen.migration-plan.v1" for case_id in expected_case_ids
+    }
+    assert report["payload_formats_by_case"] == report["expected_payload_formats_by_case"]
+    assert report["missing_payload_format_case_count"] == 0
+    assert report["missing_payload_format_cases"] == ()
     assert all(case["exit_code"] == 0 for case in report["cases"])
+    assert all(case["payload_format"] == "appgen.migration-plan.v1" for case in report["cases"])
     assert all(case["requires_approval"] is True for case in report["cases"])
     assert all(case["rename_hint_count"] >= 2 for case in report["cases"])
     assert all({"rename_table", "rename_field", "add_field"} <= set(case["change_kinds"]) for case in report["cases"])

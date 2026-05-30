@@ -1812,12 +1812,20 @@ change count, and mitigation guidance remain visible.
 allowed/observed/missing backend, required/observed/missing change-kind,
 approval-required, and rename-hint case counts so supported database profiles,
 required migration families, and rename-hint behavior are visible in release
-evidence without expanding every per-backend case.
+evidence without expanding every per-backend case. It also reports required,
+observed, and missing backend case ids; expected and observed backend names by
+case; required and missing change kinds by case; expected and observed
+`appgen.migration-plan.v1` payload formats by case; approval-required case ids;
+and expected versus observed rename-hint counts by case. This makes a missing
+backend profile, wrong backend payload, missing migration family, lost approval
+posture, lost rename hint, or report-envelope regression fail by named case
+rather than only changing an aggregate count.
 The aggregate tooling audit exposes migration safety and text evidence as
 `migration_safety_text_contracts`. This gate fails independently when required
 detection families are missing, supported backend profiles fail, destructive
-changes do not require approval, safe-alternative text disappears, or migration
-text output falls back to raw JSON.
+changes do not require approval, rename-hint evidence disappears,
+safe-alternative text disappears, report payload formats drift, or migration text
+output falls back to raw JSON.
 
 ## Natural-Language Change Planner
 

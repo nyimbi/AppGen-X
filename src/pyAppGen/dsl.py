@@ -5993,11 +5993,17 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and migration_cli["ok"]
             and migration_cli.get("case_count") == migration_cli.get("allowed_backend_count")
             and migration_cli.get("passing_case_count") == migration_cli.get("case_count")
+            and migration_cli.get("missing_case_count") == 0
             and migration_cli.get("missing_allowed_backend_count") == 0
+            and migration_cli.get("missing_backend_case_count") == 0
             and migration_cli.get("change_kind_count", 0) >= 3
             and migration_cli.get("missing_required_change_kind_count") == 0
+            and migration_cli.get("missing_change_kind_case_count") == 0
             and migration_cli.get("approval_required_count") == migration_cli.get("case_count")
+            and migration_cli.get("missing_approval_required_case_count") == 0
             and migration_cli.get("rename_hint_case_count") == migration_cli.get("case_count")
+            and migration_cli.get("missing_rename_hint_case_count") == 0
+            and migration_cli.get("missing_payload_format_case_count") == 0
             and all(case.get("requires_approval") is True for case in migration_cli.get("cases", ()))
             and migration_text_renderer["ok"]
             and migration_text_renderer.get("summary_line_count") == 1
@@ -6022,14 +6028,38 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                     "case_count": migration_cli.get("case_count"),
                     "passing_case_count": migration_cli.get("passing_case_count"),
                     "failing_case_count": migration_cli.get("failing_case_count"),
+                    "required_case_ids": migration_cli.get("required_case_ids"),
+                    "observed_case_ids": migration_cli.get("observed_case_ids"),
+                    "missing_case_count": migration_cli.get("missing_case_count"),
+                    "missing_case_ids": migration_cli.get("missing_case_ids"),
                     "allowed_backend_count": migration_cli.get("allowed_backend_count"),
                     "observed_backend_count": migration_cli.get("observed_backend_count"),
                     "missing_allowed_backend_count": migration_cli.get("missing_allowed_backend_count"),
+                    "expected_backends_by_case": migration_cli.get("expected_backends_by_case"),
+                    "backends_by_case": migration_cli.get("backends_by_case"),
+                    "missing_backend_case_count": migration_cli.get("missing_backend_case_count"),
+                    "missing_backend_case_ids": migration_cli.get("missing_backend_case_ids"),
                     "change_kind_count": migration_cli.get("change_kind_count"),
                     "required_change_kind_count": migration_cli.get("required_change_kind_count"),
                     "missing_required_change_kind_count": migration_cli.get("missing_required_change_kind_count"),
+                    "required_change_kinds_by_case": migration_cli.get("required_change_kinds_by_case"),
+                    "change_kinds_by_case": migration_cli.get("change_kinds_by_case"),
+                    "missing_change_kind_case_count": migration_cli.get("missing_change_kind_case_count"),
+                    "missing_change_kinds_by_case": migration_cli.get("missing_change_kinds_by_case"),
                     "approval_required_count": migration_cli.get("approval_required_count"),
+                    "approval_required_cases": migration_cli.get("approval_required_cases"),
+                    "missing_approval_required_case_count": migration_cli.get("missing_approval_required_case_count"),
+                    "missing_approval_required_cases": migration_cli.get("missing_approval_required_cases"),
                     "rename_hint_case_count": migration_cli.get("rename_hint_case_count"),
+                    "expected_rename_hint_count_by_case": migration_cli.get("expected_rename_hint_count_by_case"),
+                    "rename_hint_counts_by_case": migration_cli.get("rename_hint_counts_by_case"),
+                    "rename_hint_cases": migration_cli.get("rename_hint_cases"),
+                    "missing_rename_hint_case_count": migration_cli.get("missing_rename_hint_case_count"),
+                    "missing_rename_hint_cases": migration_cli.get("missing_rename_hint_cases"),
+                    "expected_payload_formats_by_case": migration_cli.get("expected_payload_formats_by_case"),
+                    "payload_formats_by_case": migration_cli.get("payload_formats_by_case"),
+                    "missing_payload_format_case_count": migration_cli.get("missing_payload_format_case_count"),
+                    "missing_payload_format_cases": migration_cli.get("missing_payload_format_cases"),
                     "allowed_backends": migration_cli.get("allowed_backends"),
                     "observed_backends": migration_cli.get("observed_backends"),
                     "missing_allowed_backends": migration_cli.get("missing_allowed_backends"),
@@ -13164,39 +13194,106 @@ table Invoice {
         )
         cases.append(
             {
+                "case": f"{backend}_json_rename_hints",
                 "backend": backend,
                 "ok": ok,
                 "exit_code": exit_code,
+                "payload_format": payload.get("format"),
                 "change_kinds": tuple(sorted(change_kinds)),
                 "requires_approval": payload.get("requires_approval"),
                 "rename_hint_count": len(payload.get("rename_hints", ())),
                 "diagnostic_codes": tuple(item.get("code") for item in payload.get("diagnostics", ())),
             }
         )
+    case_ids = tuple(case["case"] for case in cases)
+    required_case_ids = tuple(f"{backend}_json_rename_hints" for backend in SUPPORTED_DATABASE_BACKENDS)
+    missing_case_ids = tuple(case_id for case_id in required_case_ids if case_id not in case_ids)
     observed_backends = tuple(case["backend"] for case in cases)
+    expected_backends_by_case = {
+        f"{backend}_json_rename_hints": backend for backend in SUPPORTED_DATABASE_BACKENDS
+    }
+    backends_by_case = {case["case"]: case["backend"] for case in cases}
+    missing_backend_case_ids = tuple(
+        case_id
+        for case_id, expected_backend in expected_backends_by_case.items()
+        if backends_by_case.get(case_id) != expected_backend
+    )
     observed_change_kinds = tuple(sorted({kind for case in cases for kind in case["change_kinds"]}))
     missing_required_change_kinds = tuple(
         kind for kind in required_change_kinds if kind not in observed_change_kinds
     )
+    required_change_kinds_by_case = {case_id: required_change_kinds for case_id in required_case_ids}
+    change_kinds_by_case = {case["case"]: case["change_kinds"] for case in cases}
+    missing_change_kinds_by_case = {
+        case_id: tuple(kind for kind in required_change_kinds if kind not in set(change_kinds_by_case.get(case_id, ())))
+        for case_id in required_case_ids
+        if any(kind not in set(change_kinds_by_case.get(case_id, ())) for kind in required_change_kinds)
+    }
     missing_allowed_backends = tuple(
         backend for backend in SUPPORTED_DATABASE_BACKENDS if backend not in observed_backends
     )
+    expected_payload_formats_by_case = {case_id: "appgen.migration-plan.v1" for case_id in required_case_ids}
+    payload_formats_by_case = {case["case"]: case["payload_format"] for case in cases}
+    missing_payload_format_cases = tuple(
+        case_id
+        for case_id, expected_format in expected_payload_formats_by_case.items()
+        if payload_formats_by_case.get(case_id) != expected_format
+    )
+    approval_required_cases = tuple(case["case"] for case in cases if case["requires_approval"] is True)
+    missing_approval_required_cases = tuple(
+        case_id for case_id in required_case_ids if case_id not in approval_required_cases
+    )
+    expected_rename_hint_count_by_case = {case_id: 2 for case_id in required_case_ids}
+    rename_hint_counts_by_case = {case["case"]: case["rename_hint_count"] for case in cases}
+    rename_hint_cases = tuple(case["case"] for case in cases if case["rename_hint_count"] >= 2)
+    missing_rename_hint_cases = tuple(case_id for case_id in required_case_ids if case_id not in rename_hint_cases)
     return {
         "format": "appgen.migration-cli-audit.v1",
         "ok": all(case["ok"] for case in cases)
+        and not missing_case_ids
         and not missing_allowed_backends
-        and not missing_required_change_kinds,
+        and not missing_backend_case_ids
+        and not missing_required_change_kinds
+        and not missing_change_kinds_by_case
+        and not missing_payload_format_cases
+        and not missing_approval_required_cases
+        and not missing_rename_hint_cases,
         "case_count": len(cases),
         "passing_case_count": sum(1 for case in cases if case["ok"]),
         "failing_case_count": sum(1 for case in cases if not case["ok"]),
+        "case_ids": case_ids,
+        "required_case_ids": required_case_ids,
+        "observed_case_ids": case_ids,
+        "missing_case_count": len(missing_case_ids),
+        "missing_case_ids": missing_case_ids,
         "allowed_backend_count": len(SUPPORTED_DATABASE_BACKENDS),
         "observed_backend_count": len(observed_backends),
         "missing_allowed_backend_count": len(missing_allowed_backends),
+        "expected_backends_by_case": expected_backends_by_case,
+        "backends_by_case": backends_by_case,
+        "missing_backend_case_count": len(missing_backend_case_ids),
+        "missing_backend_case_ids": missing_backend_case_ids,
         "change_kind_count": len(observed_change_kinds),
         "required_change_kind_count": len(required_change_kinds),
         "missing_required_change_kind_count": len(missing_required_change_kinds),
+        "required_change_kinds_by_case": required_change_kinds_by_case,
+        "change_kinds_by_case": change_kinds_by_case,
+        "missing_change_kind_case_count": len(missing_change_kinds_by_case),
+        "missing_change_kinds_by_case": missing_change_kinds_by_case,
         "approval_required_count": sum(1 for case in cases if case["requires_approval"] is True),
+        "approval_required_cases": approval_required_cases,
+        "missing_approval_required_case_count": len(missing_approval_required_cases),
+        "missing_approval_required_cases": missing_approval_required_cases,
         "rename_hint_case_count": sum(1 for case in cases if case["rename_hint_count"] > 0),
+        "expected_rename_hint_count_by_case": expected_rename_hint_count_by_case,
+        "rename_hint_counts_by_case": rename_hint_counts_by_case,
+        "rename_hint_cases": rename_hint_cases,
+        "missing_rename_hint_case_count": len(missing_rename_hint_cases),
+        "missing_rename_hint_cases": missing_rename_hint_cases,
+        "expected_payload_formats_by_case": expected_payload_formats_by_case,
+        "payload_formats_by_case": payload_formats_by_case,
+        "missing_payload_format_case_count": len(missing_payload_format_cases),
+        "missing_payload_format_cases": missing_payload_format_cases,
         "allowed_backends": SUPPORTED_DATABASE_BACKENDS,
         "observed_backends": observed_backends,
         "missing_allowed_backends": missing_allowed_backends,
