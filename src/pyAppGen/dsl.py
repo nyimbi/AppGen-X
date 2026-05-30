@@ -3221,6 +3221,12 @@ def _semantic_drift_text_renderer_contract() -> dict:
         "fail studio_uses_semantic_model",
     )
     missing = tuple(fragment for fragment in required_fragments if fragment not in text)
+    lines = tuple(line for line in text.splitlines() if line.strip())
+    summary_lines = tuple(line for line in lines if line.startswith("drift "))
+    surface_lines = tuple(line for line in lines if line.startswith("surfaces "))
+    gap_lines = tuple(line for line in lines if line.startswith("gap "))
+    evidence_lines = tuple(line for line in lines if line.startswith("evidence "))
+    check_lines = tuple(line for line in lines if line.startswith(("ok ", "fail ")))
     return {
         "format": "appgen.semantic-drift-text-renderer.v1",
         "ok": not missing and not text.lstrip().startswith("{"),
@@ -3231,6 +3237,14 @@ def _semantic_drift_text_renderer_contract() -> dict:
         ),
         "required_fragments": required_fragments,
         "missing_fragments": missing,
+        "summary_line_count": len(summary_lines),
+        "surface_line_count": len(surface_lines),
+        "gap_line_count": len(gap_lines),
+        "evidence_line_count": len(evidence_lines),
+        "check_line_count": len(check_lines),
+        "passing_check_line_count": sum(1 for line in check_lines if line.startswith("ok ")),
+        "failing_check_line_count": sum(1 for line in check_lines if line.startswith("fail ")),
+        "digest_line_count": sum(1 for line in summary_lines if "digest=sha256:" in line),
         "json_fallback": text.lstrip().startswith("{"),
         "text_prefix": text[:240],
     }

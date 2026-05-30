@@ -4720,6 +4720,14 @@ def test_semantic_drift_text_renderer_contract_proves_shared_model_log_markers()
     assert report["required_fragment_count"] == len(report["required_fragments"])
     assert report["missing_fragment_count"] == 0
     assert report["marker_line_count"] >= 8
+    assert report["summary_line_count"] == 1
+    assert report["surface_line_count"] == 1
+    assert report["gap_line_count"] == 1
+    assert report["evidence_line_count"] == 3
+    assert report["check_line_count"] == 2
+    assert report["passing_check_line_count"] == 1
+    assert report["failing_check_line_count"] == 1
+    assert report["digest_line_count"] == 1
     assert report["missing_fragments"] == ()
     assert report["json_fallback"] is False
     assert report["text_prefix"].startswith(

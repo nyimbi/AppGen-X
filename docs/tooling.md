@@ -691,6 +691,10 @@ prove those shared-model drift summaries keep surface, evidence, named-gap,
 digest, and check-result markers visible without JSON parsing. The diagnostics
 and drift renderer contracts also report required-fragment, missing-fragment,
 output-line, and marker-line counts for their human-readable evidence.
+The drift renderer additionally reports summary-line, surface-line, gap-line,
+evidence-line, check-line, passing-check-line, failing-check-line, and
+digest-line counts so shared semantic-model release logs prove surface coverage,
+evidence references, named gaps, check outcomes, and digest identity.
 
 ### `appgen format`
 
