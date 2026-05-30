@@ -1617,6 +1617,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
     assert audit["blocking_gaps"] == ()
     assert "enterprise_definition_context" in {check["check"] for check in audit["checks"]}
     assert "lexical_reference_scope" in {check["check"] for check in audit["checks"]}
+    assert "completion_context_filtering" in {check["check"] for check in audit["checks"]}
     assert capabilities["completionProvider"]["triggerCharacters"]
     assert capabilities["hoverProvider"] is True
     assert capabilities["definitionProvider"] is True
@@ -1681,6 +1682,59 @@ def test_lsp_completion_coverage_proves_required_context_sources() -> None:
     assert "LocalModel" in coverage["labels_by_source"]["llm_providers"]
     assert "write" in coverage["labels_by_source"]["agent_skills"]
     assert any(symbol["name"] == "Invoice" for symbol in service["workspaceSymbol"]["symbols"])
+
+
+def test_lsp_completion_filters_items_by_cursor_context() -> None:
+    source = """
+app CompletionContext { targets: web, mobile, desktop }
+table Customer { id: int pk; name: string }
+table Invoice {
+  id: int pk
+  customer_id: int -> Customer.id
+  lookup customer_name (customer.name)
+}
+view InvoiceForm for Invoice {
+  Main: customer.name
+  @ customer.name Lookup 0 0 6 1
+  on Save -> SubmitInvoice
+}
+operation SubmitInvoice { draft -> posted }
+composition Suite { include pbc gl_core version 1.0.0 }
+deploy Production { unit SubmitInvoice as worker; health SubmitInvoice "/health" }
+llm LocalModel { provider: ollama; mode: local }
+agent Builder { provider: LocalModel; tools: read, schema }
+"""
+
+    def labels_at(marker: str, offset: int, expected_context: str) -> set[str]:
+        result = appgen_dsl.lsp_completion_dsl(
+            source,
+            source_name="completion-context.appgen",
+            position=_position_of(source, marker) | {"character": _position_of(source, marker)["character"] + offset},
+        )
+        assert result["context"] == expected_context
+        return {item["label"] for item in result["items"]}
+
+    top_level = appgen_dsl.lsp_completion_dsl(
+        source,
+        source_name="completion-context.appgen",
+        position={"line": 0, "character": 0},
+    )
+    assert top_level["context"] == "top_level"
+    top_level_labels = {item["label"] for item in top_level["items"]}
+    assert {"table", "view", "flow"} <= top_level_labels
+    assert not {"Invoice", "gl_core", "LocalModel"} & top_level_labels
+
+    composition_labels = labels_at("include pbc gl_core", len("include pbc "), "composition")
+    assert {"gl_core", "JournalPosted", "POST /journals"} <= composition_labels
+    assert not {"Invoice", "LocalModel", "table"} & composition_labels
+
+    deploy_labels = labels_at("health SubmitInvoice", len("health "), "deploy")
+    assert {"SubmitInvoice", "worker"} <= deploy_labels
+    assert not {"gl_core", "LocalModel", "Invoice"} & deploy_labels
+
+    agent_labels = labels_at("provider: LocalModel", len("provider: "), "agent")
+    assert {"LocalModel", "read", "schema"} <= agent_labels
+    assert not {"gl_core", "Invoice", "table"} & agent_labels
 
 
 def test_lsp_rename_blocks_destructive_migration_impact() -> None:
@@ -5021,6 +5075,7 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert lsp_check["detail"]["rename_cli"]["blocked_requires_approval"] is True
     assert {
         "did_change_diagnostics",
+        "completion_context_filtering",
         "enterprise_definition_context",
         "lexical_reference_scope",
         "code_action_request",

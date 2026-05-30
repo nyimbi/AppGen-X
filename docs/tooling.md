@@ -1357,6 +1357,10 @@ exercises keywords, snippets, table names, fields, lookup paths, components,
 handler events, operation targets, flow states, PBC keys, aggregate PBC
 contracts, explicit PBC APIs, PBC events, PBC command-style contracts, package
 targets, deployment units, LLM providers, and agent skills.
+JSON-RPC completion requests must also report the detected cursor context and
+filter labels to the relevant completion family; top-level, composition,
+deployment, and agent contexts are release-audited through
+`completion_context_filtering`.
 
 ### Code Actions
 

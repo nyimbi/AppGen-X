@@ -504,6 +504,8 @@ def dsl_completion_items(prefix: str = "", *, source: str | None = None) -> tupl
             for deploy in (block for block in schema.platform_blocks if block.kind == "deploy"):
                 for unit in deploy.deployment_units:
                     items.append({"label": unit.target, "insert": unit.target, "kind": "deployment_unit", "detail": deploy.name})
+            for target_kind in ("worker", "service", "microservice", "job"):
+                items.append({"label": target_kind, "insert": target_kind, "kind": "deployment_unit"})
             for agent in schema.agents:
                 for tool in agent.tools:
                     items.append({"label": tool, "insert": tool, "kind": "agent_skill", "detail": agent.name})
@@ -8023,9 +8025,9 @@ def _tooling_audit_lsp_json_rpc(source: str, *, broken_handler_source: str) -> d
                 "jsonrpc": "2.0",
                 "id": 2,
                 "method": "textDocument/completion",
-                "params": {"textDocument": {"uri": uri}, "position": _tooling_lsp_position(source, "Invoice")},
+                "params": {"textDocument": {"uri": uri}, "position": {"line": 0, "character": 0}},
             },
-            lambda result: any(item.get("label") == "Invoice" for item in result.get("items", ())),
+            lambda result: any(item.get("label") == "table" for item in result.get("items", ())),
         ),
         (
             "hover",
@@ -8101,6 +8103,112 @@ def _tooling_audit_lsp_json_rpc(source: str, *, broken_handler_source: str) -> d
         responses, _ = lsp_server_handle_message(message, documents)
         result = responses[0].get("result") if responses else None
         checks.append(_release_check(name, bool(responses) and predicate(result)))
+
+    completion_context_uri = "memory://completion-context.appgen"
+    completion_context_source = """
+app CompletionContext { targets: web, mobile, desktop }
+table Customer { id: int pk; name: string }
+table Invoice {
+  id: int pk
+  customer_id: int -> Customer.id
+  lookup customer_name (customer.name)
+}
+view InvoiceForm for Invoice {
+  Main: customer.name
+  @ customer.name Lookup 0 0 6 1
+  on Save -> SubmitInvoice
+}
+operation SubmitInvoice { draft -> posted }
+composition Suite { include pbc gl_core version 1.0.0 }
+deploy Production {
+
+  unit SubmitInvoice as worker
+  health SubmitInvoice "/health"
+}
+llm LocalModel { provider: ollama; mode: local }
+agent Builder { provider: LocalModel; tools: read, schema }
+"""
+
+    lsp_server_handle_message(
+        {
+            "jsonrpc": "2.0",
+            "method": "textDocument/didOpen",
+            "params": {
+                "textDocument": {
+                    "uri": completion_context_uri,
+                    "languageId": "appgen",
+                    "version": 1,
+                    "text": completion_context_source,
+                }
+            },
+        },
+        documents,
+    )
+
+    def audit_position(marker: str, offset: int = 0) -> dict:
+        index = completion_context_source.index(marker) + offset
+        return {
+            "line": completion_context_source.count("\n", 0, index),
+            "character": index - completion_context_source.rfind("\n", 0, index) - 1,
+        }
+
+    completion_context_cases = (
+        (
+            "top_level",
+            {"line": 0, "character": 0},
+            {"table", "view", "flow"},
+            {"Invoice", "gl_core", "LocalModel"},
+        ),
+        (
+            "composition",
+            audit_position("include pbc gl_core", len("include pbc ") - 1),
+            {"gl_core", "JournalPosted", "POST /journals"},
+            {"Invoice", "LocalModel", "ReverseInvoice"},
+        ),
+        (
+            "deploy",
+            audit_position("deploy Production {\n\n", len("deploy Production {\n\n")),
+            {"SubmitInvoice", "worker"},
+            {"gl_core", "LocalModel", "Invoice"},
+        ),
+        (
+            "agent",
+            audit_position("provider: LocalModel", len("provider: ") - 1),
+            {"LocalModel", "read", "schema"},
+            {"gl_core", "Invoice", "table"},
+        ),
+    )
+    completion_context_results = []
+    for context_name, position, expected_labels, forbidden_labels in completion_context_cases:
+        responses, _ = lsp_server_handle_message(
+            {
+                "jsonrpc": "2.0",
+                "id": 31 + len(completion_context_results),
+                "method": "textDocument/completion",
+                "params": {"textDocument": {"uri": completion_context_uri}, "position": position},
+            },
+            documents,
+        )
+        result = responses[0].get("result", {}) if responses else {}
+        labels = {item.get("label") for item in result.get("items", ())}
+        completion_context_results.append(
+            {
+                "context": context_name,
+                "reported_context": result.get("context"),
+                "ok": result.get("context") == context_name
+                and expected_labels <= labels
+                and not (forbidden_labels & labels),
+                "label_count": len(labels),
+                "missing_labels": tuple(sorted(expected_labels - labels)),
+                "forbidden_labels": tuple(sorted(forbidden_labels & labels)),
+            }
+        )
+    checks.append(
+        _release_check(
+            "completion_context_filtering",
+            all(case["ok"] for case in completion_context_results),
+        )
+    )
 
     definition_context_uri = "memory://definition-context.appgen"
     definition_context_source = """
@@ -8371,7 +8479,7 @@ def _tooling_audit_lsp_stdio_transport(source: str) -> dict:
     uri = "memory://stdio-tooling-audit.appgen"
     input_stream = io.BytesIO()
     output_stream = io.BytesIO()
-    completion_position = _tooling_lsp_position(source, "Invoice")
+    completion_position = {"line": 0, "character": 0}
     changed_source = source.replace("Main: customer.name, total", "Main: missing_field, total")
     if changed_source == source:
         changed_source = source + "\nview BrokenForm for MissingTable { Main: id }\n"
@@ -8427,7 +8535,7 @@ def _tooling_audit_lsp_stdio_transport(source: str) -> dict:
         1
         for response in responses
         if response.get("id") == 2
-        and any(item.get("label") == "Invoice" for item in response.get("result", {}).get("items", ()))
+        and any(item.get("label") == "table" for item in response.get("result", {}).get("items", ()))
     )
     workspace_symbol_response_count = sum(
         1
@@ -12738,11 +12846,20 @@ def lsp_server_handle_message(message: dict, documents: dict[str, str] | None = 
             position=position,
             prefix=_lsp_prefix_at_position(source, position),
         )
-        items = _lsp_completion_items_with_workspace(result["items"], docs)
+        items = _lsp_completion_items_with_workspace(
+            result["items"],
+            docs,
+            allowed_kinds=set(result.get("allowed_kinds", ())) or None,
+        )
         responses.append(
             _lsp_rpc_result(
                 request_id,
-                {"isIncomplete": result["isIncomplete"], "items": items},
+                {
+                    "isIncomplete": result["isIncomplete"],
+                    "items": items,
+                    "context": result.get("context"),
+                    "allowed_kinds": result.get("allowed_kinds", ()),
+                },
             )
         )
     elif method == "textDocument/hover":
@@ -12847,11 +12964,20 @@ def _lsp_prefix_at_position(source: str, position: dict | None) -> str:
     return token if token else ""
 
 
-def _lsp_completion_items_with_workspace(items: Iterable[dict], documents: dict[str, str]) -> tuple[dict, ...]:
+def _lsp_completion_items_with_workspace(
+    items: Iterable[dict],
+    documents: dict[str, str],
+    *,
+    allowed_kinds: set[str] | None = None,
+) -> tuple[dict, ...]:
     merged = list(items)
     for symbol in lsp_workspace_symbols_dsl_documents(documents).get("symbols", ()):
         data = symbol.get("data", {})
-        if data.get("kind") not in {
+        symbol_kind = data.get("kind")
+        completion_kind = _workspace_symbol_completion_kind(str(symbol_kind or ""), allowed_kinds)
+        if completion_kind is None:
+            continue
+        if symbol_kind not in {
             "table",
             "field",
             "flow",
@@ -12869,12 +12995,34 @@ def _lsp_completion_items_with_workspace(items: Iterable[dict], documents: dict[
             {
                 "label": symbol["name"],
                 "kind": symbol["kind"],
-                "detail": f"workspace {data.get('kind')}",
+                "detail": f"workspace {symbol_kind}",
                 "insertText": symbol["name"],
-                "data": {"source": "workspace_symbols", **data},
+                "data": {"source": "workspace_symbols", "kind": completion_kind, **data},
             }
         )
     return tuple({(item.get("label"), item.get("detail")): item for item in merged}.values())
+
+
+def _workspace_symbol_completion_kind(symbol_kind: str, allowed_kinds: set[str] | None) -> str | None:
+    candidates = {
+        "table": ("table",),
+        "field": ("field", "reference"),
+        "flow": ("flow", "handler_target"),
+        "operation": ("handler_target", "deployment_unit"),
+        "pbc": ("pbc",),
+        "api": ("pbc_api", "pbc_contract"),
+        "event": ("pbc_event", "pbc_contract"),
+        "package": ("package_target",),
+        "deploy": ("deployment_unit",),
+        "llm": ("llm",),
+        "agent": ("agent_skill",),
+    }.get(symbol_kind, ())
+    if allowed_kinds is None:
+        return symbol_kind if symbol_kind in candidates or not candidates else candidates[0]
+    for candidate in candidates:
+        if candidate in allowed_kinds:
+            return candidate
+    return None
 
 
 def _lsp_rpc_result(request_id, result) -> dict:
@@ -12933,7 +13081,11 @@ def lsp_completion_dsl(
     del source_name
     semantic = semantic_model_dsl(text)
     items: list[dict] = []
+    context = _lsp_completion_context(text, position)
+    allowed_kinds = _lsp_completion_allowed_kinds(context)
     for item in dsl_completion_items(prefix, source=text):
+        if allowed_kinds is not None and item.get("kind") not in allowed_kinds:
+            continue
         items.append(
             {
                 "label": item["label"],
@@ -12944,6 +13096,8 @@ def lsp_completion_dsl(
             }
         )
     for key, pbc in semantic.get("pbcs", {}).items():
+        if allowed_kinds is not None and "pbc" not in allowed_kinds:
+            continue
         items.append(
             {
                 "label": key,
@@ -12954,6 +13108,8 @@ def lsp_completion_dsl(
             }
         )
     for flow_name in semantic.get("flows", {}):
+        if allowed_kinds is not None and "flow" not in allowed_kinds:
+            continue
         items.append(
             {
                 "label": flow_name,
@@ -12967,9 +13123,34 @@ def lsp_completion_dsl(
     return {
         "format": "appgen.lsp-completion.v1",
         "position": position,
+        "context": context,
+        "allowed_kinds": tuple(sorted(allowed_kinds)) if allowed_kinds is not None else (),
         "isIncomplete": False,
         "items": deduped,
     }
+
+
+def _lsp_completion_context(source: str, position: dict | None) -> str:
+    index = _lsp_position_to_index(source, position)
+    if index is None:
+        return "workspace"
+    for kind in ("table", "view", "flow", "composition", "deploy", "agent", "package"):
+        if _source_enclosing_block_name(source, kind, index):
+            return kind
+    return "top_level"
+
+
+def _lsp_completion_allowed_kinds(context: str) -> frozenset[str] | None:
+    return {
+        "top_level": frozenset({"keyword", "snippet"}),
+        "table": frozenset({"field", "reference", "table", "snippet"}),
+        "view": frozenset({"field", "reference", "lookup_path", "component", "handler_event", "handler_target", "table"}),
+        "flow": frozenset({"flow_state", "handler_target", "flow", "snippet"}),
+        "composition": frozenset({"pbc", "pbc_contract", "pbc_api", "pbc_event", "pbc_command"}),
+        "deploy": frozenset({"deployment_unit", "package_target", "snippet"}),
+        "agent": frozenset({"llm", "handler_target", "agent_skill"}),
+        "package": frozenset({"package_target", "deployment_unit", "snippet"}),
+    }.get(context)
 
 
 def completion_coverage_dsl(text: str, *, source_name: str | None = None) -> dict:
