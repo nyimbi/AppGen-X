@@ -2624,3 +2624,43 @@ def _digest(payload: dict) -> str:
             separators=(",", ":"),
         ).encode()
     ).hexdigest()
+
+
+# Improve1 notifications control extension.
+from .notifications_control import improve1_notification_control_contract, evaluate_notification_control
+
+_NOTIFICATIONS_BASE_RUNTIME_CAPABILITIES = notifications_runtime_capabilities
+_NOTIFICATIONS_BASE_BUILD_RELEASE_EVIDENCE = notifications_build_release_evidence
+
+
+def notifications_runtime_capabilities():
+    runtime = dict(_NOTIFICATIONS_BASE_RUNTIME_CAPABILITIES())
+    control = improve1_notification_control_contract()
+    runtime["ok"] = bool(runtime.get("ok")) and control["ok"]
+    runtime["notification_control"] = control
+    runtime["operations"] = tuple(dict.fromkeys(tuple(runtime.get("operations", ())) + ("evaluate_notification_control", "improve1_notification_control_contract")))
+    runtime["improve1_control_owned_tables"] = control["owned_tables"]
+    return runtime
+
+
+def notifications_build_release_evidence():
+    evidence = dict(_NOTIFICATIONS_BASE_BUILD_RELEASE_EVIDENCE())
+    control = improve1_notification_control_contract()
+    artifacts = dict(evidence.get("generated_artifacts", {}))
+    artifacts["notification_control"] = {
+        "contract": control["format"],
+        "capability_count": control["capability_count"],
+        "owned_tables": control["owned_tables"],
+        "service_apis": tuple(item["evidence"]["service_api"] for item in control["capabilities"]),
+        "ui_surfaces": tuple(item["evidence"]["ui_surface"] for item in control["capabilities"]),
+        "test": "tests/test_domain_behavior.py",
+    }
+    checks = tuple(evidence.get("checks", ())) + ({"id": "improve1_notification_control", "ok": control["ok"]},)
+    evidence.update({
+        "ok": bool(evidence.get("ok")) and control["ok"],
+        "checks": checks,
+        "generated_artifacts": artifacts,
+        "notification_control": control,
+        "blocking_gaps": tuple(evidence.get("blocking_gaps", ())) + tuple(control.get("blocking_gaps", ())),
+    })
+    return evidence

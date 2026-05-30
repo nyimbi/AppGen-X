@@ -371,3 +371,37 @@ def smoke_test():
         "cards": cards,
         "side_effects": (),
     }
+
+
+# Improve1 notifications control UI extension.
+from .notifications_control import improve1_notification_control_contract as _improve1_notification_control_contract
+
+_NOTIFICATIONS_BASE_UI_CONTRACT = notifications_ui_contract
+_NOTIFICATIONS_BASE_RENDER_WORKBENCH = notifications_render_workbench
+
+
+def notifications_ui_contract():
+    ui = dict(_NOTIFICATIONS_BASE_UI_CONTRACT())
+    control = _improve1_notification_control_contract()
+    panels = tuple(item["evidence"]["ui_surface"] for item in control["capabilities"])
+    service_actions = tuple(item["evidence"]["service_api"] for item in control["capabilities"])
+    ui.update({
+        "ok": ui.get("ok") is True and control["ok"],
+        "notification_control_contract": control,
+        "notification_control_panels": panels,
+        "notification_control_service_actions": service_actions,
+        "stream_engine_picker_visible": False,
+    })
+    return ui
+
+
+def notifications_render_workbench(state: dict, *, tenant: str, principal_permissions: tuple[str, ...]):
+    workbench = dict(_NOTIFICATIONS_BASE_RENDER_WORKBENCH(state, tenant=tenant, principal_permissions=principal_permissions))
+    control = _improve1_notification_control_contract()
+    workbench.update({
+        "ok": workbench.get("ok") is True and control["ok"],
+        "notification_control_panels": tuple(item["evidence"]["ui_surface"] for item in control["capabilities"]),
+        "notification_control_service_actions": tuple(item["evidence"]["service_api"] for item in control["capabilities"]),
+        "notification_control_agent_tools": tuple(f"notifications.skills.{item['slug']}" for item in control["capabilities"]),
+    })
+    return workbench
