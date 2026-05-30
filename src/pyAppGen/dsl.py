@@ -5478,6 +5478,8 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and lsp_rpc.get("reference_scope_location_count") == lsp_rpc.get("reference_scope_expected_line_count")
             and lsp_rpc.get("reference_scope_matched_line_count") == lsp_rpc.get("reference_scope_expected_line_count")
             and lsp_rpc.get("reference_scope_excluded_match_count") == 0
+            and lsp_rpc.get("missing_hover_surface_count") == 0
+            and lsp_rpc.get("observed_hover_surface_count") == lsp_rpc.get("required_hover_surface_count")
             and lsp_text_renderer["ok"]
             and lsp_text_renderer.get("service_count_line_count", 0) >= 1
             and lsp_text_renderer.get("completion_line_count", 0) >= 1
@@ -5515,6 +5517,16 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                     "lines": lsp_rpc.get("reference_scope_lines"),
                     "expected_lines": lsp_rpc.get("reference_scope_expected_lines"),
                     "excluded_lines": lsp_rpc.get("reference_scope_excluded_lines"),
+                },
+                "hover_depth": {
+                    "format": lsp_rpc.get("format"),
+                    "required_surfaces": lsp_rpc.get("required_hover_surfaces"),
+                    "observed_surfaces": lsp_rpc.get("observed_hover_surfaces"),
+                    "missing_surfaces": lsp_rpc.get("missing_hover_surfaces"),
+                    "required_surface_count": lsp_rpc.get("required_hover_surface_count"),
+                    "observed_surface_count": lsp_rpc.get("observed_hover_surface_count"),
+                    "missing_surface_count": lsp_rpc.get("missing_hover_surface_count"),
+                    "surface_checks": lsp_rpc.get("hover_surface_checks"),
                 },
                 "text_renderer": {
                     "format": lsp_text_renderer.get("format"),
@@ -8805,6 +8817,79 @@ agent Builder { provider: LocalModel; tools: read, schema }
         )
     )
 
+    pbc_hover_source = """
+app HoverPbc { targets: web }
+composition Suite { include pbc gl_core version 1.0.0 }
+"""
+    diagnostic_hover_source = """
+app HoverDiagnostic { targets: web }
+table Customer { id: int pk }
+view CustomerForm for Customer { Main: missing }
+"""
+
+    def hover_position(source_text: str, marker: str, offset: int = 0) -> dict:
+        index = source_text.index(marker) + offset
+        return {
+            "line": source_text.count("\n", 0, index),
+            "character": index - source_text.rfind("\n", 0, index) - 1,
+        }
+
+    pbc_hover_uri = "memory://hover-pbc.appgen"
+    diagnostic_hover_uri = "memory://hover-diagnostic.appgen"
+    for hover_uri, hover_source in (
+        (pbc_hover_uri, pbc_hover_source),
+        (diagnostic_hover_uri, diagnostic_hover_source),
+    ):
+        lsp_server_handle_message(
+            {
+                "jsonrpc": "2.0",
+                "method": "textDocument/didOpen",
+                "params": {
+                    "textDocument": {
+                        "uri": hover_uri,
+                        "languageId": "appgen",
+                        "version": 1,
+                        "text": hover_source,
+                    }
+                },
+            },
+            documents,
+        )
+    pbc_hover_responses, _ = lsp_server_handle_message(
+        {
+            "jsonrpc": "2.0",
+            "id": 39,
+            "method": "textDocument/hover",
+            "params": {
+                "textDocument": {"uri": pbc_hover_uri},
+                "position": hover_position(pbc_hover_source, "gl_core"),
+            },
+        },
+        documents,
+    )
+    diagnostic_hover_responses, _ = lsp_server_handle_message(
+        {
+            "jsonrpc": "2.0",
+            "id": 40,
+            "method": "textDocument/hover",
+            "params": {
+                "textDocument": {"uri": diagnostic_hover_uri},
+                "position": hover_position(diagnostic_hover_source, "missing"),
+            },
+        },
+        documents,
+    )
+    pbc_hover_text = (
+        pbc_hover_responses[0].get("result", {}).get("contents", {}).get("value", "")
+        if pbc_hover_responses
+        else ""
+    )
+    diagnostic_hover_text = (
+        diagnostic_hover_responses[0].get("result", {}).get("contents", {}).get("value", "")
+        if diagnostic_hover_responses
+        else ""
+    )
+
     hover_depth_uri = "memory://hover-depth.appgen"
     hover_depth_source = """
 app HoverDepth { targets: web }
@@ -8894,25 +8979,58 @@ operation SubmitInvoice { draft -> posted }
         if handler_hover_responses
         else ""
     )
+    hover_surface_checks = {
+        "pbc_catalog": "appgen.lsp-pbc-hover.v1" in pbc_hover_text
+        and "PBC `gl_core`: General Ledger Core" in pbc_hover_text
+        and '"api_count":' in pbc_hover_text
+        and '"event_count":' in pbc_hover_text,
+        "diagnostic_explanation": "AGX0402:" in diagnostic_hover_text
+        and '"code": "AGX0402"' in diagnostic_hover_text
+        and "database-backed form binding" in diagnostic_hover_text,
+        "relationship": "appgen.lsp-relationship-hover.v1" in relationship_hover_text
+        and "relationship `Invoice.customer_id` -> `Customer.id`" in relationship_hover_text
+        and "many-to-one" in relationship_hover_text,
+        "lookup": "appgen.lsp-lookup-hover.v1" in lookup_hover_text
+        and "lookup `customer.name`" in lookup_hover_text
+        and "Invoice.customer_id" in lookup_hover_text
+        and "Customer.name" in lookup_hover_text,
+        "handler_target": "appgen.lsp-handler-target-hover.v1" in handler_hover_text
+        and "handler `InvoiceForm.Save` targets `SubmitInvoice` (operation)" in handler_hover_text
+        and '"owner_kind": "view"' in handler_hover_text
+        and '"target_kind": "operation"' in handler_hover_text,
+    }
+    required_hover_surfaces = tuple(hover_surface_checks)
+    observed_hover_surfaces = tuple(name for name, ok in hover_surface_checks.items() if ok)
+    missing_hover_surfaces = tuple(name for name, ok in hover_surface_checks.items() if not ok)
     checks.append(
         _release_check(
             "hover_relationship_lookup_depth",
-            "appgen.lsp-relationship-hover.v1" in relationship_hover_text
-            and "relationship `Invoice.customer_id` -> `Customer.id`" in relationship_hover_text
-            and "many-to-one" in relationship_hover_text
-            and "appgen.lsp-lookup-hover.v1" in lookup_hover_text
-            and "lookup `customer.name`" in lookup_hover_text
-            and "Invoice.customer_id" in lookup_hover_text
-            and "Customer.name" in lookup_hover_text,
+            hover_surface_checks["relationship"] and hover_surface_checks["lookup"],
+            detail={
+                "relationship_format_present": "appgen.lsp-relationship-hover.v1" in relationship_hover_text,
+                "lookup_format_present": "appgen.lsp-lookup-hover.v1" in lookup_hover_text,
+            },
         )
     )
     checks.append(
         _release_check(
             "hover_handler_target_depth",
-            "appgen.lsp-handler-target-hover.v1" in handler_hover_text
-            and "handler `InvoiceForm.Save` targets `SubmitInvoice` (operation)" in handler_hover_text
-            and '"owner_kind": "view"' in handler_hover_text
-            and '"target_kind": "operation"' in handler_hover_text,
+            hover_surface_checks["handler_target"],
+            detail={
+                "handler_format_present": "appgen.lsp-handler-target-hover.v1" in handler_hover_text,
+                "owner_kind_present": '"owner_kind": "view"' in handler_hover_text,
+                "target_kind_present": '"target_kind": "operation"' in handler_hover_text,
+            },
+        )
+    )
+    checks.append(
+        _release_check(
+            "hover_catalog_diagnostic_depth",
+            hover_surface_checks["pbc_catalog"] and hover_surface_checks["diagnostic_explanation"],
+            detail={
+                "pbc_format_present": "appgen.lsp-pbc-hover.v1" in pbc_hover_text,
+                "diagnostic_code_present": '"code": "AGX0402"' in diagnostic_hover_text,
+            },
         )
     )
 
@@ -9186,6 +9304,13 @@ audit ReferenceAudit {
         "reference_scope_lines": tuple(sorted(reference_scope_lines)),
         "reference_scope_expected_lines": tuple(sorted(expected_reference_lines)),
         "reference_scope_excluded_lines": tuple(sorted(excluded_reference_lines)),
+        "hover_surface_checks": hover_surface_checks,
+        "required_hover_surfaces": required_hover_surfaces,
+        "observed_hover_surfaces": observed_hover_surfaces,
+        "missing_hover_surfaces": missing_hover_surfaces,
+        "required_hover_surface_count": len(required_hover_surfaces),
+        "observed_hover_surface_count": len(observed_hover_surfaces),
+        "missing_hover_surface_count": len(missing_hover_surfaces),
         "code_action_count": len(code_actions),
         "formatting_edit_count": len(formatting_edits),
         "checks": checks,

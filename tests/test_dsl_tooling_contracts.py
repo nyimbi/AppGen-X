@@ -1713,6 +1713,20 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
     assert "completion_context_filtering" in {check["check"] for check in audit["checks"]}
     assert "hover_relationship_lookup_depth" in {check["check"] for check in audit["checks"]}
     assert "hover_handler_target_depth" in {check["check"] for check in audit["checks"]}
+    assert "hover_catalog_diagnostic_depth" in {check["check"] for check in audit["checks"]}
+    assert audit["required_hover_surface_count"] == 5
+    assert audit["observed_hover_surface_count"] == audit["required_hover_surface_count"]
+    assert audit["missing_hover_surface_count"] == 0
+    assert audit["missing_hover_surfaces"] == ()
+    assert set(audit["required_hover_surfaces"]) == {
+        "pbc_catalog",
+        "diagnostic_explanation",
+        "relationship",
+        "lookup",
+        "handler_target",
+    }
+    assert set(audit["observed_hover_surfaces"]) == set(audit["required_hover_surfaces"])
+    assert all(audit["hover_surface_checks"].values())
     assert "workspace_document_scan_and_rename" in {check["check"] for check in audit["checks"]}
     assert capabilities["completionProvider"]["triggerCharacters"]
     assert capabilities["hoverProvider"] is True
@@ -5418,6 +5432,7 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
         "completion_context_filtering",
         "hover_relationship_lookup_depth",
         "hover_handler_target_depth",
+        "hover_catalog_diagnostic_depth",
         "workspace_document_scan_and_rename",
         "enterprise_definition_context",
         "lexical_reference_scope",
@@ -5460,6 +5475,24 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
         set(lsp_navigation_check["detail"]["reference_scope"]["lines"])
         & set(lsp_navigation_check["detail"]["reference_scope"]["excluded_lines"])
     )
+    assert lsp_navigation_check["detail"]["hover_depth"]["format"] == "appgen.lsp-json-rpc-audit.v1"
+    assert lsp_navigation_check["detail"]["hover_depth"]["required_surface_count"] == 5
+    assert lsp_navigation_check["detail"]["hover_depth"]["observed_surface_count"] == (
+        lsp_navigation_check["detail"]["hover_depth"]["required_surface_count"]
+    )
+    assert lsp_navigation_check["detail"]["hover_depth"]["missing_surface_count"] == 0
+    assert lsp_navigation_check["detail"]["hover_depth"]["missing_surfaces"] == ()
+    assert set(lsp_navigation_check["detail"]["hover_depth"]["required_surfaces"]) == {
+        "pbc_catalog",
+        "diagnostic_explanation",
+        "relationship",
+        "lookup",
+        "handler_target",
+    }
+    assert set(lsp_navigation_check["detail"]["hover_depth"]["observed_surfaces"]) == set(
+        lsp_navigation_check["detail"]["hover_depth"]["required_surfaces"]
+    )
+    assert all(lsp_navigation_check["detail"]["hover_depth"]["surface_checks"].values())
     assert lsp_navigation_check["detail"]["text_renderer"]["format"] == "appgen.lsp-service-text-renderer.v1"
     assert lsp_navigation_check["detail"]["text_renderer"]["service_count_line_count"] == 1
     assert lsp_navigation_check["detail"]["text_renderer"]["completion_line_count"] >= 1

@@ -1343,6 +1343,13 @@ and lookup hover regressions fail the tooling release gate. Handler target
 hover emits `appgen.lsp-handler-target-hover.v1` with owner, event, target,
 target kind, target symbol id, and handler-graph edge metadata; the JSON-RPC
 audit checks this as `hover_handler_target_depth`.
+The same JSON-RPC audit reports named hover surfaces for PBC catalog metadata,
+diagnostic explanations, relationship fields, lookup paths, and handler targets
+through `required_hover_surfaces`, `observed_hover_surfaces`,
+`missing_hover_surfaces`, and `hover_surface_checks`. The aggregate
+`lsp_navigation_completion_contracts` gate requires all five hover surfaces to
+be observed with zero named missing surfaces, so hover coverage cannot regress
+while the generic hover provider still returns a response.
 
 Workspace symbol search includes catalog-backed results. In addition to open
 DSL declarations, `workspace/symbol` returns `catalog://pbc/...` locations for
