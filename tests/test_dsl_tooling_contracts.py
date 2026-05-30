@@ -4654,6 +4654,18 @@ def test_validate_generate_cli_audit_proves_generated_artifact_handoff(tmp_path:
     assert audit["case_count"] == len(audit["cases"])
     assert audit["passing_case_count"] == audit["case_count"]
     assert audit["failing_case_count"] == 0
+    assert audit["required_case_ids"] == (
+        "validate_targets",
+        "validate_rejects_undeclared_targets",
+        "validate_rejects_unknown_targets",
+        "generate_writes_artifacts",
+        "generate_blocks_warnings",
+        "generate_allows_warnings_when_requested",
+        "generate_blocks_errors_even_when_warnings_allowed",
+    )
+    assert audit["observed_case_ids"] == audit["required_case_ids"]
+    assert audit["missing_case_count"] == 0
+    assert audit["missing_case_ids"] == ()
     assert audit["case_ids"] == tuple(case["case"] for case in audit["cases"])
     assert audit["failing_cases"] == ()
     assert audit["generated_case_count"] == 4
@@ -4683,6 +4695,18 @@ def test_validate_generate_cli_audit_proves_generated_artifact_handoff(tmp_path:
     assert audit["generated_blocked_output_absent_case_count"] == 1
     assert audit["generated_blocked_output_absent_cases"] == ("generate_blocks_errors_even_when_warnings_allowed",)
     assert {"lint_warnings", "lint_errors"} <= set(audit["generated_blocking_gap_names"])
+    assert audit["expected_payload_formats_by_case"] == {
+        "validate_targets": "appgen.validate-report.v1",
+        "validate_rejects_undeclared_targets": "appgen.validate-report.v1",
+        "validate_rejects_unknown_targets": "appgen.validate-report.v1",
+        "generate_writes_artifacts": "appgen.generate-report.v1",
+        "generate_blocks_warnings": "appgen.generate-report.v1",
+        "generate_allows_warnings_when_requested": "appgen.generate-report.v1",
+        "generate_blocks_errors_even_when_warnings_allowed": "appgen.generate-report.v1",
+    }
+    assert audit["payload_formats_by_case"] == audit["expected_payload_formats_by_case"]
+    assert audit["missing_payload_format_case_count"] == 0
+    assert audit["missing_payload_format_cases"] == ()
     assert audit["payload_format_count"] == len(audit["payload_formats"])
     assert set(audit["payload_formats"]) == {"appgen.validate-report.v1", "appgen.generate-report.v1"}
     assert generated["ok"] is True
@@ -5904,6 +5928,16 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     cli_check = next(check for check in report["checks"] if check["id"] == "cli_validation_and_generation_contracts")
     assert cli_check["detail"]["validate_generate_cli"]["format"] == "appgen.validate-generate-cli-audit.v1"
     assert cli_check["detail"]["validate_generate_cli"]["ok"] is True
+    assert cli_check["detail"]["validate_generate_cli"]["observed_case_ids"] == (
+        cli_check["detail"]["validate_generate_cli"]["required_case_ids"]
+    )
+    assert cli_check["detail"]["validate_generate_cli"]["missing_case_count"] == 0
+    assert cli_check["detail"]["validate_generate_cli"]["missing_case_ids"] == ()
+    assert cli_check["detail"]["validate_generate_cli"]["payload_formats_by_case"] == (
+        cli_check["detail"]["validate_generate_cli"]["expected_payload_formats_by_case"]
+    )
+    assert cli_check["detail"]["validate_generate_cli"]["missing_payload_format_case_count"] == 0
+    assert cli_check["detail"]["validate_generate_cli"]["missing_payload_format_cases"] == ()
     assert {
         "validate_targets",
         "validate_rejects_undeclared_targets",
@@ -5936,6 +5970,16 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert validate_target_check["detail"]["cli"]["format"] == "appgen.validate-generate-cli-audit.v1"
     assert validate_target_check["detail"]["cli"]["validation_case_count"] == 3
     assert validate_target_check["detail"]["cli"]["validation_rejection_case_count"] == 2
+    assert validate_target_check["detail"]["cli"]["observed_case_ids"] == (
+        validate_target_check["detail"]["cli"]["required_case_ids"]
+    )
+    assert validate_target_check["detail"]["cli"]["missing_case_count"] == 0
+    assert validate_target_check["detail"]["cli"]["missing_case_ids"] == ()
+    assert validate_target_check["detail"]["cli"]["payload_formats_by_case"] == (
+        validate_target_check["detail"]["cli"]["expected_payload_formats_by_case"]
+    )
+    assert validate_target_check["detail"]["cli"]["missing_payload_format_case_count"] == 0
+    assert validate_target_check["detail"]["cli"]["missing_payload_format_cases"] == ()
     assert set(validate_target_check["detail"]["cli"]["validation_rejection_cases"]) == {
         "validate_rejects_undeclared_targets",
         "validate_rejects_unknown_targets",
@@ -5954,6 +5998,11 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert generate_policy_check["detail"]["generate"]["artifact_count"] > 0
     assert generate_policy_check["detail"]["generate"]["manifest_exists"] is True
     assert generate_policy_check["detail"]["cli"]["format"] == "appgen.validate-generate-cli-audit.v1"
+    assert generate_policy_check["detail"]["cli"]["observed_case_ids"] == (
+        generate_policy_check["detail"]["cli"]["required_case_ids"]
+    )
+    assert generate_policy_check["detail"]["cli"]["missing_case_count"] == 0
+    assert generate_policy_check["detail"]["cli"]["missing_case_ids"] == ()
     assert generate_policy_check["detail"]["cli"]["generated_case_count"] == 4
     assert generate_policy_check["detail"]["cli"]["generated_success_case_count"] == 2
     assert set(generate_policy_check["detail"]["cli"]["generated_success_cases"]) == {
@@ -5976,6 +6025,11 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
         generate_policy_check["detail"]["cli"]["generated_blocked_output_absent_cases"]
     )
     assert {"lint_warnings", "lint_errors"} <= set(generate_policy_check["detail"]["cli"]["generated_blocking_gap_names"])
+    assert generate_policy_check["detail"]["cli"]["payload_formats_by_case"] == (
+        generate_policy_check["detail"]["cli"]["expected_payload_formats_by_case"]
+    )
+    assert generate_policy_check["detail"]["cli"]["missing_payload_format_case_count"] == 0
+    assert generate_policy_check["detail"]["cli"]["missing_payload_format_cases"] == ()
     assert generate_policy_check["detail"]["cli"]["payload_format_count"] == len(
         generate_policy_check["detail"]["cli"]["payload_formats"]
     )

@@ -5114,6 +5114,8 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and cli_help_surface["ok"]
             and generation["ok"]
             and generation["generated"]
+            and validate_generate_cli.get("missing_case_count") == 0
+            and validate_generate_cli.get("missing_payload_format_case_count") == 0
             and not warning_generation_blocked["ok"]
             and "lint_warnings" in warning_generation_blocked["blocking_gaps"]
             and warning_generation_allowed["ok"],
@@ -5138,6 +5140,8 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             "validate_target_contracts",
             validation["ok"]
             and validate_generate_cli["ok"]
+            and validate_generate_cli.get("missing_case_count") == 0
+            and validate_generate_cli.get("missing_payload_format_case_count") == 0
             and validate_generate_cli.get("validation_case_count") == 3
             and validate_generate_cli.get("validation_rejection_case_count") == 2
             and set(validate_generate_cli.get("validation_rejection_cases", ()))
@@ -5169,6 +5173,14 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                     "validation_case_count": validate_generate_cli.get("validation_case_count"),
                     "validation_rejection_case_count": validate_generate_cli.get("validation_rejection_case_count"),
                     "validation_rejection_cases": validate_generate_cli.get("validation_rejection_cases"),
+                    "required_case_ids": validate_generate_cli.get("required_case_ids"),
+                    "observed_case_ids": validate_generate_cli.get("observed_case_ids"),
+                    "missing_case_count": validate_generate_cli.get("missing_case_count"),
+                    "missing_case_ids": validate_generate_cli.get("missing_case_ids"),
+                    "expected_payload_formats_by_case": validate_generate_cli.get("expected_payload_formats_by_case"),
+                    "payload_formats_by_case": validate_generate_cli.get("payload_formats_by_case"),
+                    "missing_payload_format_case_count": validate_generate_cli.get("missing_payload_format_case_count"),
+                    "missing_payload_format_cases": validate_generate_cli.get("missing_payload_format_cases"),
                     "case_ids": validate_generate_cli.get("case_ids"),
                 },
                 "text_renderer": {
@@ -5190,6 +5202,8 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and generation.get("artifact_count", 0) > 0
             and generation.get("manifest_exists") is True
             and validate_generate_cli["ok"]
+            and validate_generate_cli.get("missing_case_count") == 0
+            and validate_generate_cli.get("missing_payload_format_case_count") == 0
             and validate_generate_cli.get("generated_case_count") == 4
             and validate_generate_cli.get("generated_success_case_count") == 2
             and set(validate_generate_cli.get("generated_success_cases", ()))
@@ -5226,6 +5240,10 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                 "cli": {
                     "format": validate_generate_cli.get("format"),
                     "generated_case_count": validate_generate_cli.get("generated_case_count"),
+                    "required_case_ids": validate_generate_cli.get("required_case_ids"),
+                    "observed_case_ids": validate_generate_cli.get("observed_case_ids"),
+                    "missing_case_count": validate_generate_cli.get("missing_case_count"),
+                    "missing_case_ids": validate_generate_cli.get("missing_case_ids"),
                     "generated_success_case_count": validate_generate_cli.get("generated_success_case_count"),
                     "generated_success_cases": validate_generate_cli.get("generated_success_cases"),
                     "generated_blocked_case_count": validate_generate_cli.get("generated_blocked_case_count"),
@@ -5240,6 +5258,10 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                     "generated_blocked_output_absent_case_count": validate_generate_cli.get("generated_blocked_output_absent_case_count"),
                     "generated_blocked_output_absent_cases": validate_generate_cli.get("generated_blocked_output_absent_cases"),
                     "generated_blocking_gap_names": validate_generate_cli.get("generated_blocking_gap_names"),
+                    "expected_payload_formats_by_case": validate_generate_cli.get("expected_payload_formats_by_case"),
+                    "payload_formats_by_case": validate_generate_cli.get("payload_formats_by_case"),
+                    "missing_payload_format_case_count": validate_generate_cli.get("missing_payload_format_case_count"),
+                    "missing_payload_format_cases": validate_generate_cli.get("missing_payload_format_cases"),
                     "payload_format_count": validate_generate_cli.get("payload_format_count"),
                     "payload_formats": validate_generate_cli.get("payload_formats"),
                 },
@@ -12002,12 +12024,45 @@ def _tooling_audit_validate_generate_cli(tmp: Path, source: str) -> dict:
     )
     payload_formats = tuple(dict.fromkeys(case.get("payload_format") for case in cases if case.get("payload_format")))
     case_ids = tuple(case["case"] for case in cases)
+    required_case_ids = (
+        "validate_targets",
+        "validate_rejects_undeclared_targets",
+        "validate_rejects_unknown_targets",
+        "generate_writes_artifacts",
+        "generate_blocks_warnings",
+        "generate_allows_warnings_when_requested",
+        "generate_blocks_errors_even_when_warnings_allowed",
+    )
+    missing_case_ids = tuple(case_id for case_id in required_case_ids if case_id not in case_ids)
+    expected_payload_formats_by_case = {
+        "validate_targets": "appgen.validate-report.v1",
+        "validate_rejects_undeclared_targets": "appgen.validate-report.v1",
+        "validate_rejects_unknown_targets": "appgen.validate-report.v1",
+        "generate_writes_artifacts": "appgen.generate-report.v1",
+        "generate_blocks_warnings": "appgen.generate-report.v1",
+        "generate_allows_warnings_when_requested": "appgen.generate-report.v1",
+        "generate_blocks_errors_even_when_warnings_allowed": "appgen.generate-report.v1",
+    }
+    payload_formats_by_case = {
+        case["case"]: case.get("payload_format")
+        for case in cases
+        if case["case"] in expected_payload_formats_by_case
+    }
+    missing_payload_format_cases = tuple(
+        case_id
+        for case_id, expected_format in expected_payload_formats_by_case.items()
+        if payload_formats_by_case.get(case_id) != expected_format
+    )
     return {
         "format": "appgen.validate-generate-cli-audit.v1",
-        "ok": not failing_cases,
+        "ok": not failing_cases and not missing_case_ids and not missing_payload_format_cases,
         "case_count": len(cases),
         "passing_case_count": sum(1 for case in cases if case["ok"]),
         "failing_case_count": len(failing_cases),
+        "required_case_ids": required_case_ids,
+        "observed_case_ids": case_ids,
+        "missing_case_count": len(missing_case_ids),
+        "missing_case_ids": missing_case_ids,
         "case_ids": case_ids,
         "failing_cases": failing_cases,
         "generated_case_count": len(generated_cases),
@@ -12032,6 +12087,10 @@ def _tooling_audit_validate_generate_cli(tmp: Path, source: str) -> dict:
         "generated_blocked_output_absent_case_count": len(generated_blocked_output_absent_cases),
         "generated_blocked_output_absent_cases": generated_blocked_output_absent_cases,
         "generated_blocking_gap_names": generated_blocking_gap_names,
+        "expected_payload_formats_by_case": expected_payload_formats_by_case,
+        "payload_formats_by_case": payload_formats_by_case,
+        "missing_payload_format_case_count": len(missing_payload_format_cases),
+        "missing_payload_format_cases": missing_payload_format_cases,
         "payload_format_count": len(payload_formats),
         "payload_formats": payload_formats,
         "cases": cases,
