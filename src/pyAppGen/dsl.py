@@ -532,17 +532,34 @@ def dsl_language_service(
 ) -> dict:
     """Return the package-level DSL language-service payload for IDEs."""
     source = text or ""
+    lint = lint_dsl(source, source_name=source_name)
+    outline = dsl_outline(source, source_name=source_name)
+    completions = dsl_completion_items(prefix, source=source)
+    code_actions = dsl_code_actions(source, source_name=source_name)
+    formatting = format_dsl(source, source_name=source_name)
+    authoring_score = dsl_authoring_score(source, source_name=source_name)
+    language_quality = dsl_language_quality_contract()
     return {
         "format": "appgen.dsl-language-service.v1",
+        "ok": lint.get("ok") is True
+        and outline.get("ok") is True
+        and formatting.get("after", {}).get("ok") is True
+        and language_quality.get("ok") is True,
         "source": source_name,
         "language": "appgen-dsl",
-        "lint": lint_dsl(source, source_name=source_name),
-        "outline": dsl_outline(source, source_name=source_name),
-        "completions": dsl_completion_items(prefix, source=source),
-        "code_actions": dsl_code_actions(source, source_name=source_name),
-        "formatting": format_dsl(source, source_name=source_name),
-        "authoring_score": dsl_authoring_score(source, source_name=source_name),
-        "language_quality": dsl_language_quality_contract(),
+        "lint": lint,
+        "outline": outline,
+        "completions": completions,
+        "code_actions": code_actions,
+        "formatting": formatting,
+        "authoring_score": authoring_score,
+        "language_quality": language_quality,
+        "service_counts": {
+            "diagnostic_count": len(lint.get("diagnostics", ())),
+            "completion_count": len(completions),
+            "code_action_count": len(code_actions),
+            "outline_block_count": len(outline.get("blocks", ())),
+        },
     }
 
 
@@ -1641,6 +1658,21 @@ def _dsl_tooling_cli_impl(argv: Iterable[str] | None = None) -> int:
     parser_golden_parser = subparsers.add_parser("parser-golden")
     parser_golden_parser.add_argument("--json", action="store_true")
 
+    dsl_quality_parser = subparsers.add_parser("dsl-quality")
+    dsl_quality_parser.add_argument("--json", action="store_true")
+
+    dsl_antlr_parser = subparsers.add_parser("dsl-antlr")
+    dsl_antlr_parser.add_argument("--json", action="store_true")
+
+    dsl_authoring_gate_parser = subparsers.add_parser("dsl-authoring-gate")
+    dsl_authoring_gate_parser.add_argument("path")
+    dsl_authoring_gate_parser.add_argument("--json", action="store_true")
+
+    dsl_language_service_parser = subparsers.add_parser("dsl-language-service")
+    dsl_language_service_parser.add_argument("path")
+    dsl_language_service_parser.add_argument("--prefix", default="")
+    dsl_language_service_parser.add_argument("--json", action="store_true")
+
     drift_parser = subparsers.add_parser("drift")
     drift_parser.add_argument("path")
     drift_parser.add_argument("--json", action="store_true")
@@ -1822,6 +1854,22 @@ def _dsl_tooling_cli_impl(argv: Iterable[str] | None = None) -> int:
         return 0 if report["ok"] else 1
     if args.command == "parser-golden":
         report = parser_golden_audit_dsl()
+        _emit_tooling_payload(report, as_json=args.json)
+        return 0 if report["ok"] else 1
+    if args.command == "dsl-quality":
+        report = dsl_language_quality_contract()
+        _emit_tooling_payload(report, as_json=args.json)
+        return 0 if report["ok"] else 1
+    if args.command == "dsl-antlr":
+        report = dsl_antlr_integrity_report()
+        _emit_tooling_payload(report, as_json=args.json)
+        return 0 if report["ok"] else 1
+    if args.command == "dsl-authoring-gate":
+        report = dsl_authoring_release_gate(source, source_name=str(path))
+        _emit_tooling_payload(report, as_json=args.json)
+        return 0 if report["ok"] else 1
+    if args.command == "dsl-language-service":
+        report = dsl_language_service(source, source_name=str(path), prefix=args.prefix)
         _emit_tooling_payload(report, as_json=args.json)
         return 0 if report["ok"] else 1
     if args.command == "drift":
@@ -2038,6 +2086,58 @@ def _emit_tooling_payload(payload: dict, *, as_json: bool) -> None:
             print(f"missing-constructs {', '.join(missing)}")
         for gap in payload.get("blocking_gaps", ()):
             print(f"fail {gap['name']}: {gap.get('error', '')}")
+        return
+    if payload.get("format") == "appgen.dsl-language-quality.v1":
+        status = "ok" if payload.get("ok") else "failed"
+        antlr = payload.get("antlr_integrity", {})
+        budget = payload.get("budget", {})
+        checks = tuple(payload.get("checks", ()))
+        print(
+            f"dsl-quality {status}: format={payload.get('format')} "
+            f"checks={len(checks)} antlr_ok={antlr.get('ok')} "
+            f"keywords={payload.get('canonical_keyword_count')}/{budget.get('limit')} "
+            f"antlr_format={antlr.get('format')} budget_format={budget.get('format')}"
+        )
+        for check in checks:
+            print(f"{'ok' if check.get('ok') else 'fail'} {check.get('check')}")
+        return
+    if payload.get("format") == "appgen.dsl-antlr-integrity.v1":
+        status = "ok" if payload.get("ok") else "failed"
+        print(
+            f"dsl-antlr {status}: format={payload.get('format')} "
+            f"grammar_tokens={payload.get('grammar_token_count')} "
+            f"parser_tokens={payload.get('parser_token_count')} "
+            f"grammar_rules={payload.get('grammar_rule_count')} "
+            f"parser_rules={payload.get('parser_rule_count')} "
+            f"missing_rules={len(payload.get('missing_required_rules', ()))}"
+        )
+        for rule in payload.get("missing_required_rules", ()):
+            print(f"missing-required-rule {rule}")
+        return
+    if payload.get("format") == "appgen.dsl-authoring-release-gate.v1":
+        status = "ok" if payload.get("ok") else "failed"
+        gates = tuple(payload.get("gates", ()))
+        gaps = tuple(payload.get("blocking_gaps", ()))
+        print(
+            f"dsl-authoring-gate {status}: format={payload.get('format')} "
+            f"decision={payload.get('decision')} gates={len(gates)} blocking_gaps={len(gaps)}"
+        )
+        for gate in gates:
+            print(f"{'ok' if gate.get('ok') else 'fail'} {gate.get('gate')}")
+        return
+    if payload.get("format") == "appgen.dsl-language-service.v1":
+        diagnostics = tuple(payload.get("lint", {}).get("diagnostics", ()))
+        completions = tuple(payload.get("completions", ()))
+        actions = tuple(payload.get("code_actions", ()))
+        quality = payload.get("language_quality", {})
+        counts = payload.get("service_counts", {})
+        print(
+            f"dsl-language-service ok: format={payload.get('format')} "
+            f"diagnostics={counts.get('diagnostic_count', len(diagnostics))} "
+            f"completions={counts.get('completion_count', len(completions))} "
+            f"actions={counts.get('code_action_count', len(actions))} "
+            f"quality_format={quality.get('format')}"
+        )
         return
     if payload.get("format") == "appgen.explain-report.v1":
         _emit_explain_text(payload)
@@ -4200,6 +4300,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
         explain_cli = _tooling_audit_explain_cli_formats(Path(tmp), source)
         migration_cli = _tooling_audit_migration_cli(Path(tmp))
         nl_plan_cli = _tooling_audit_nl_plan_cli(Path(tmp), source)
+        dsl_language_cli = _tooling_audit_dsl_language_cli(Path(tmp), source)
         test_strategy_cli = _tooling_audit_test_strategy_cli(Path(tmp), source)
         generation = generate_report_dsl(
             source,
@@ -4272,6 +4373,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
         formatter_contract=formatter_contract,
         validation=validation,
         validate_generate_cli=validate_generate_cli,
+        dsl_language_cli=dsl_language_cli,
         cli_help_surface=cli_help_surface,
         graphs=graphs,
         graph_cli=graph_cli,
@@ -4337,6 +4439,13 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             "Canonical grammar, generated parser, keyword budget, authoring aliases, and progressive learning path remain synchronized.",
             "docs/tooling.md#semantic-model-contract",
             language_quality,
+        ),
+        _tooling_audit_check(
+            "dsl_language_cli_contracts",
+            dsl_language_cli["ok"],
+            "DSL language-quality, ANTLR integrity, authoring-gate, and language-service contracts are callable from CLI JSON and text modes.",
+            "docs/tooling.md#cli-contracts",
+            dsl_language_cli,
         ),
         _tooling_audit_check(
             "diagnostic_registry_and_fixtures",
@@ -5130,10 +5239,12 @@ def _tooling_audit_implementation_phases(**evidence: dict) -> dict:
                     "id": "machine_readable_cli_contracts",
                     "ok": evidence["validation"].get("ok") is True
                     and evidence["validate_generate_cli"].get("ok") is True
+                    and evidence["dsl_language_cli"].get("ok") is True
                     and evidence["cli_help_surface"].get("ok") is True,
                     "evidence_formats": (
                         evidence["validation"].get("format"),
                         evidence["validate_generate_cli"].get("format"),
+                        evidence["dsl_language_cli"].get("format"),
                         evidence["cli_help_surface"].get("format"),
                     ),
                 },
@@ -6590,6 +6701,8 @@ def _tooling_audit_missing_input_exit(tmp: Path) -> dict:
         ("verify_missing_path", ("verify", str(missing_path))),
         ("package_missing_path", ("package", str(missing_path))),
         ("designer_sync_missing_path", ("designer-sync", str(missing_path))),
+        ("dsl_authoring_gate_missing_path", ("dsl-authoring-gate", str(missing_path))),
+        ("dsl_language_service_missing_path", ("dsl-language-service", str(missing_path))),
         ("drift_missing_path", ("drift", str(missing_path))),
     )
     results = []
@@ -7294,6 +7407,106 @@ def _tooling_audit_test_strategy_cli(tmp: Path, source: str) -> dict:
         "required_surface_count": len(drift_required_surfaces),
         "observed_surface_count": len(drift_payload.get("surfaces", ())),
         "doctor_check_count": len(doctor_payload.get("checks", ())),
+        "cases": cases,
+    }
+
+
+def _tooling_audit_dsl_language_cli(tmp: Path, source: str) -> dict:
+    source_path = tmp / "language.appgen"
+    source_path.write_text(format_dsl(DSL_ERGONOMICS_SAMPLE)["formatted"], encoding="utf-8")
+
+    quality_exit, quality_payload = _tooling_cli_json_case(("dsl-quality", "--json"))
+    antlr_exit, antlr_payload = _tooling_cli_json_case(("dsl-antlr", "--json"))
+    authoring_exit, authoring_payload = _tooling_cli_json_case(("dsl-authoring-gate", str(source_path), "--json"))
+    service_exit, service_payload = _tooling_cli_json_case(("dsl-language-service", str(source_path), "--prefix", "Inv", "--json"))
+    quality_text_exit, quality_text = _tooling_cli_text_case(("dsl-quality",))
+    antlr_text_exit, antlr_text = _tooling_cli_text_case(("dsl-antlr",))
+    authoring_text_exit, authoring_text = _tooling_cli_text_case(("dsl-authoring-gate", str(source_path)))
+    service_text_exit, service_text = _tooling_cli_text_case(("dsl-language-service", str(source_path), "--prefix", "Inv"))
+    cases = (
+        {
+            "case": "dsl_quality_json",
+            "ok": quality_exit == 0
+            and quality_payload.get("format") == "appgen.dsl-language-quality.v1"
+            and quality_payload.get("ok") is True
+            and quality_payload.get("antlr_integrity", {}).get("ok") is True
+            and quality_payload.get("budget", {}).get("ok") is True,
+            "exit_code": quality_exit,
+            "payload_format": quality_payload.get("format"),
+        },
+        {
+            "case": "dsl_antlr_json",
+            "ok": antlr_exit == 0
+            and antlr_payload.get("format") == "appgen.dsl-antlr-integrity.v1"
+            and antlr_payload.get("ok") is True
+            and not antlr_payload.get("missing_required_rules"),
+            "exit_code": antlr_exit,
+            "payload_format": antlr_payload.get("format"),
+        },
+        {
+            "case": "dsl_authoring_gate_json",
+            "ok": authoring_exit == 0
+            and authoring_payload.get("format") == "appgen.dsl-authoring-release-gate.v1"
+            and authoring_payload.get("ok") is True
+            and authoring_payload.get("decision") == "approved",
+            "exit_code": authoring_exit,
+            "payload_format": authoring_payload.get("format"),
+        },
+        {
+            "case": "dsl_language_service_json",
+            "ok": service_exit == 0
+            and service_payload.get("format") == "appgen.dsl-language-service.v1"
+            and service_payload.get("language_quality", {}).get("format") == "appgen.dsl-language-quality.v1"
+            and service_payload.get("language_quality", {}).get("ok") is True
+            and len(service_payload.get("completions", ())) > 0,
+            "exit_code": service_exit,
+            "payload_format": service_payload.get("format"),
+        },
+        {
+            "case": "dsl_quality_text",
+            "ok": quality_text_exit == 0
+            and "dsl-quality ok: format=appgen.dsl-language-quality.v1" in quality_text
+            and "antlr_format=appgen.dsl-antlr-integrity.v1" in quality_text
+            and "budget_format=appgen.dsl-keyword-budget.v1" in quality_text,
+            "exit_code": quality_text_exit,
+        },
+        {
+            "case": "dsl_antlr_text",
+            "ok": antlr_text_exit == 0
+            and "dsl-antlr ok: format=appgen.dsl-antlr-integrity.v1" in antlr_text
+            and "missing_rules=0" in antlr_text,
+            "exit_code": antlr_text_exit,
+        },
+        {
+            "case": "dsl_authoring_gate_text",
+            "ok": authoring_text_exit == 0
+            and "dsl-authoring-gate ok: format=appgen.dsl-authoring-release-gate.v1" in authoring_text
+            and "decision=approved" in authoring_text,
+            "exit_code": authoring_text_exit,
+        },
+        {
+            "case": "dsl_language_service_text",
+            "ok": service_text_exit == 0
+            and "dsl-language-service ok: format=appgen.dsl-language-service.v1" in service_text
+            and "quality_format=appgen.dsl-language-quality.v1" in service_text,
+            "exit_code": service_text_exit,
+        },
+    )
+    failing_cases = tuple(case["case"] for case in cases if not case["ok"])
+    return {
+        "format": "appgen.dsl-language-cli-audit.v1",
+        "ok": not failing_cases,
+        "case_count": len(cases),
+        "passing_case_count": sum(1 for case in cases if case["ok"]),
+        "failing_case_count": len(failing_cases),
+        "failing_cases": failing_cases,
+        "json_case_count": 4,
+        "text_case_count": 4,
+        "language_quality_format": quality_payload.get("format"),
+        "antlr_integrity_format": antlr_payload.get("format"),
+        "authoring_gate_format": authoring_payload.get("format"),
+        "language_service_format": service_payload.get("format"),
+        "completion_count": len(service_payload.get("completions", ())),
         "cases": cases,
     }
 
@@ -8178,6 +8391,10 @@ def _tooling_audit_cli_help_surface(root: Path) -> dict:
         "designer-sync",
         "diagnostics",
         "parser-golden",
+        "dsl-quality",
+        "dsl-antlr",
+        "dsl-authoring-gate",
+        "dsl-language-service",
         "drift",
         "doctor",
         "tooling-audit",
@@ -8214,6 +8431,10 @@ def _tooling_audit_cli_help_surface(root: Path) -> dict:
         ("designer-sync",): ("--edit-json", "--json"),
         ("diagnostics",): ("--audit-fixtures", "--json"),
         ("parser-golden",): ("--json",),
+        ("dsl-quality",): ("--json",),
+        ("dsl-antlr",): ("--json",),
+        ("dsl-authoring-gate",): ("--json",),
+        ("dsl-language-service",): ("--prefix", "--json"),
         ("drift",): ("--json",),
         ("doctor",): ("--json",),
         ("tooling-audit",): ("--json",),

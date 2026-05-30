@@ -608,6 +608,14 @@ expected-message counts, stdout-empty counts where required, command-family
 coverage for missing inputs, and traceback-free counts so release evidence
 proves failure behavior across the CLI surface instead of only recording exit
 codes.
+DSL language-quality commands are first-class CLI contracts: `appgen
+dsl-quality`, `appgen dsl-antlr`, `appgen dsl-authoring-gate <file>`, and
+`appgen dsl-language-service <file>` expose the same grammar, parser, keyword,
+authoring, and editor-service evidence used by the aggregate tooling audit.
+`appgen.dsl-language-cli-audit.v1` exercises those commands in JSON and text
+modes, reports JSON/text case counts, payload formats, failing cases, and
+completion counts, and blocks the tooling audit when agents or CI cannot query
+the language-quality gate directly.
 
 ### `appgen lint`
 

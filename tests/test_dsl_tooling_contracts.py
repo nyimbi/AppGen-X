@@ -3840,6 +3840,7 @@ def test_tooling_implementation_phase_audit_maps_phase_exit_criteria_to_evidence
         formatter_contract=ok("appgen.formatter-contract-audit.v1"),
         validation=ok("appgen.validate-report.v1"),
         validate_generate_cli=ok("appgen.validate-generate-cli-audit.v1"),
+        dsl_language_cli=ok("appgen.dsl-language-cli-audit.v1"),
         cli_help_surface=ok("appgen.cli-help-surface-audit.v1"),
         graphs=ok("appgen.graph-suite-report.v1"),
         graph_cli=ok("appgen.graph-cli-audit.v1"),
@@ -4005,6 +4006,7 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
         "shared_semantic_model",
         "module_boundaries",
         "dsl_language_quality",
+        "dsl_language_cli_contracts",
         "implementation_phase_exit_criteria",
         "language_server_core_features",
         "ide_visual_designer_round_trip",
@@ -4033,6 +4035,16 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert language_check["detail"]["budget"]["format"] == "appgen.dsl-keyword-budget.v1"
     assert language_check["detail"]["budget"]["ok"] is True
     assert language_check["detail"]["canonical_keyword_count"] <= language_check["detail"]["budget"]["limit"]
+    language_cli_check = next(check for check in report["checks"] if check["id"] == "dsl_language_cli_contracts")
+    assert language_cli_check["detail"]["format"] == "appgen.dsl-language-cli-audit.v1"
+    assert language_cli_check["detail"]["ok"] is True
+    assert language_cli_check["detail"]["json_case_count"] == 4
+    assert language_cli_check["detail"]["text_case_count"] == 4
+    assert language_cli_check["detail"]["failing_cases"] == ()
+    assert language_cli_check["detail"]["language_quality_format"] == "appgen.dsl-language-quality.v1"
+    assert language_cli_check["detail"]["antlr_integrity_format"] == "appgen.dsl-antlr-integrity.v1"
+    assert language_cli_check["detail"]["authoring_gate_format"] == "appgen.dsl-authoring-release-gate.v1"
+    assert language_cli_check["detail"]["language_service_format"] == "appgen.dsl-language-service.v1"
     non_goal_check = next(check for check in report["checks"] if check["id"] == "non_goal_policy_guards")
     assert non_goal_check["detail"]["format"] == "appgen.non-goal-policy-audit.v1"
     assert non_goal_check["detail"]["ok"] is True
@@ -5126,7 +5138,8 @@ def test_top_level_help_exposes_tooling_subcommands_and_apg_alias() -> None:
     assert "Tooling subcommands are also available" in normalized_help
     assert "lint, format, validate, generate, graph, graph-suite" in normalized_help
     assert "component-publish, pbc, designer-sync" in normalized_help
-    assert "diagnostics, parser-golden, drift, doctor, and tooling-audit" in normalized_help
+    assert "diagnostics, parser-golden, dsl-quality, dsl-antlr" in normalized_help
+    assert "dsl-authoring-gate, dsl-language-service, drift, doctor, and tooling-audit" in normalized_help
     assert "apg =" in pyproject
     assert "visual drag-and-drop form design" in normalized_help
     assert audit["format"] == "appgen.cli-help-surface-audit.v1"
@@ -5177,12 +5190,44 @@ def test_top_level_help_exposes_tooling_subcommands_and_apg_alias() -> None:
     assert audit["subcommand_option_help"]["lint"]["required_option_count"] >= 5
     assert audit["subcommand_option_help"]["migration-plan"]["missing"] == ()
     assert audit["subcommand_option_help"]["lsp"]["missing"] == ()
+    assert audit["subcommand_option_help"]["dsl-quality"]["missing"] == ()
+    assert audit["subcommand_option_help"]["dsl-antlr"]["missing"] == ()
+    assert audit["subcommand_option_help"]["dsl-authoring-gate"]["missing"] == ()
+    assert audit["subcommand_option_help"]["dsl-language-service"]["missing"] == ()
     assert audit["subcommand_option_help"]["pbc publish"]["missing"] == ()
     assert audit["subcommand_option_help"]["designer-sync"]["missing"] == ()
     assert audit["module_entrypoint"]["ok"] is True
     assert audit["module_entrypoint"]["exit_code"] == 0
     assert audit["module_entrypoint"]["payload_format"] == "appgen.lint-report.v1"
     assert audit["module_entrypoint"]["traceback_free"] is True
+
+
+def test_dsl_language_cli_audit_proves_quality_authoring_and_service_commands(tmp_path: Path) -> None:
+    audit = appgen_dsl._tooling_audit_dsl_language_cli(tmp_path, TOOLING_SAMPLE)
+
+    assert audit["format"] == "appgen.dsl-language-cli-audit.v1"
+    assert audit["ok"] is True
+    assert audit["case_count"] == 8
+    assert audit["passing_case_count"] == audit["case_count"]
+    assert audit["failing_case_count"] == 0
+    assert audit["failing_cases"] == ()
+    assert audit["json_case_count"] == 4
+    assert audit["text_case_count"] == 4
+    assert audit["language_quality_format"] == "appgen.dsl-language-quality.v1"
+    assert audit["antlr_integrity_format"] == "appgen.dsl-antlr-integrity.v1"
+    assert audit["authoring_gate_format"] == "appgen.dsl-authoring-release-gate.v1"
+    assert audit["language_service_format"] == "appgen.dsl-language-service.v1"
+    assert audit["completion_count"] > 0
+    assert {
+        "dsl_quality_json",
+        "dsl_antlr_json",
+        "dsl_authoring_gate_json",
+        "dsl_language_service_json",
+        "dsl_quality_text",
+        "dsl_antlr_text",
+        "dsl_authoring_gate_text",
+        "dsl_language_service_text",
+    } == {case["case"] for case in audit["cases"]}
 
 
 def test_cli_contracts_cover_text_summaries_exit_codes_and_bad_arguments(tmp_path: Path) -> None:
@@ -5422,6 +5467,8 @@ def test_missing_input_audit_covers_file_based_commands(tmp_path: Path) -> None:
         "verify",
         "package",
         "designer-sync",
+        "dsl-authoring-gate",
+        "dsl-language-service",
         "drift",
     } <= set(audit["command_families"])
     assert audit["missing_path_message_count"] == audit["case_count"]
@@ -5444,6 +5491,8 @@ def test_missing_input_audit_covers_file_based_commands(tmp_path: Path) -> None:
         "verify_missing_path",
         "package_missing_path",
         "designer_sync_missing_path",
+        "dsl_authoring_gate_missing_path",
+        "dsl_language_service_missing_path",
         "drift_missing_path",
     } <= set(cases)
     assert all(case["exit_code"] == 2 for case in cases.values())
