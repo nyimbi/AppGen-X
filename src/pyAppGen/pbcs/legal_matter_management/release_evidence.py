@@ -65,3 +65,35 @@ def validate_release_evidence():
 def smoke_test():
     validation = validate_release_evidence()
     return {'ok': validation['ok'], 'validation': validation, 'side_effects': ()}
+
+
+# Improve1 legal control release evidence extension.
+from .legal_control import improve1_legal_control_contract as _legal_control_contract
+
+_LEGAL_MATTER_MANAGEMENT_BASE_BUILD_RELEASE_EVIDENCE = build_release_evidence
+_LEGAL_MATTER_MANAGEMENT_BASE_RELEASE_READINESS_MANIFEST = release_readiness_manifest
+_LEGAL_MATTER_MANAGEMENT_BASE_VALIDATE_RELEASE_EVIDENCE = validate_release_evidence
+
+
+def build_release_evidence():
+    evidence = dict(_LEGAL_MATTER_MANAGEMENT_BASE_BUILD_RELEASE_EVIDENCE())
+    legal_control = _legal_control_contract()
+    checks = tuple(evidence.get("checks", ())) + ({"id": "legal_control_contract", "ok": legal_control["ok"]}, {"id": "legal_control_traceability", "ok": legal_control["capability_count"] == 50})
+    evidence.update({"legal_control": legal_control, "legal_matter_management_controls": tuple(item["evidence"] for item in legal_control["capabilities"]), "checks": checks, "blocking_gaps": tuple(check for check in checks if check.get("ok") is not True)})
+    evidence["ok"] = not evidence["blocking_gaps"]
+    return evidence
+
+
+def release_readiness_manifest():
+    manifest = dict(_LEGAL_MATTER_MANAGEMENT_BASE_RELEASE_READINESS_MANIFEST())
+    evidence = build_release_evidence()
+    manifest.update({"ok": evidence["ok"], "evidence": evidence, "sections": tuple(dict.fromkeys(tuple(manifest.get("sections", ())) + ("legal_control", "improve1_traceability"))), "blocking_gaps": evidence["blocking_gaps"]})
+    return manifest
+
+
+def validate_release_evidence():
+    base = dict(_LEGAL_MATTER_MANAGEMENT_BASE_VALIDATE_RELEASE_EVIDENCE())
+    evidence = build_release_evidence(); legal_control = evidence["legal_control"]
+    failed = tuple(check for check in evidence["checks"] if check.get("ok") is not True)
+    base.update({"ok": base.get("ok") is True and evidence["ok"] and legal_control["ok"] and not failed, "failed_checks": tuple(base.get("failed_checks", ())) + failed, "legal_control": legal_control})
+    return base
