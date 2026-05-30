@@ -20,3 +20,10 @@
 
 - Add broader scenario libraries for sweep orchestration, intercompany netting cycles, in-house banking statements, and richer covenant/facility schedules in later treasury slices.
 - Add visual UI verification once a stable generator-backed screenshot harness exists for single-PBC apps.
+
+## 2026-05-30 Domain Behavior Traceability Slice
+
+- Expanded `tests/test_domain_behavior.py` with route, repository, assistant CRUD/document planning, owned-boundary, and release-evidence checks.
+- Updated `IMPROVE1_TRACEABILITY.md` so all 50 improve1 rows cite `tests/test_domain_behavior.py` as direct treasury behavior evidence.
+- Updated `improve1_capabilities.py` so every feature execution plan carries the domain behavior test artifact.
+- Validation: `/Volumes/Media/src/pjs/appgen/.venv/bin/pytest src/pyAppGen/pbcs/treasury_cash/tests`.

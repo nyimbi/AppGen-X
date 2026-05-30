@@ -4,8 +4,13 @@ from __future__ import annotations
 
 import pytest
 
+from .. import agent
+from .. import release_evidence
+from .. import routes
 from .. import runtime
 from ..services import TreasuryCashService
+from ..repository import TreasuryCashRepository
+from ..repository import repository_manifest
 from ..services import service_operation_manifest
 from ..ui import treasury_cash_render_workbench
 from ..ui import treasury_cash_ui_contract
@@ -267,6 +272,114 @@ def test_treasury_advanced_controls_and_workbench_ui_are_executable():
     assert "LiquidityOptimizationWizard" in tuple(wizard["wizard"] for wizard in rendered["wizards"])
     assert "LiquidityFundingRequestForm" in tuple(form["form"] for form in rendered["forms"])
     assert rendered["cards"][0]["key"] == "bank_accounts"
+
+
+
+def test_treasury_agent_routes_repository_and_release_surfaces_are_executable():
+    service = treasury_service()
+    add_cash_evidence(service)
+    position = service.query_treasury_cash_position({"tenant": "tenant_treasury", "value_date": "2026-05-30"})
+    forecast = service.command_treasury_forecasts(
+        {"tenant": "tenant_treasury", "inflows": (3000.0, 1000.0), "outflows": (1000.0, 1500.0)}
+    )
+    liquidity = service.command_treasury_liquidity_optimize(
+        {
+            "tenant": "tenant_treasury",
+            "target_balance": 2000.0,
+            "funding_options": (
+                {"source": "external_revolver", "available": 5000.0, "cost": 0.08, "risk": 0.12},
+                {"source": "internal_pool", "available": 3000.0, "cost": 0.01, "risk": 0.04},
+            ),
+        }
+    )
+
+    route_validation = routes.validate_api_route_contracts()
+    route_dispatch = routes.dispatch_route(
+        "POST",
+        "/api/pbc/treasury_cash/treasury/bank-accounts",
+        {
+            "account": {
+                "account_id": "route-acct-001",
+                "tenant": "tenant_treasury",
+                "legal_entity": "RouteCo",
+                "bank_id": "bank-route",
+                "currency": "USD",
+                "country": "US",
+                "purpose": "route_test",
+                "signatories": ("treasurer",),
+                "identity": {"did": "did:appgen:bank-route", "issuer": "trusted_registry", "status": "active"},
+                "risk_signals": {"rating_pressure": 0.01, "sanction_hits": 0},
+            }
+        },
+    )
+    skills = agent.agent_skill_manifest()
+    chatbot = agent.chatbot_interface_contract()
+    document_plan = agent.document_instruction_plan(
+        "Intraday bank statement with liquidity shortfall and FX exposure.",
+        "Reconcile statement, forecast cash, optimize liquidity, route payment rail, and recommend hedge.",
+    )
+    crud_plan = agent.datastore_crud_plan(
+        "create",
+        table="treasury_cash_bank_account",
+        payload={"account_id": "agent-bank", "tenant": "tenant_treasury"},
+    )
+    blocked_crud = agent.datastore_crud_plan("update", table="ar_invoice", payload={"invoice_id": "bad"})
+    contribution = agent.composed_agent_contribution()
+
+    repository = TreasuryCashRepository()
+    try:
+        migrations = repository.apply_migrations()
+        account_saved = repository.save_bank_account(service.state["bank_accounts"]["bank-acct-001"])
+        balance_saved = repository.save_balance(service.state["balances"]["bal-001"])
+        statement_saved = repository.save_statement(service.state["statements"]["stmt-001"])
+        position_saved = repository.save_cash_position(position, account_id="bank-acct-001")
+        forecast_saved = repository.save_forecast(forecast, account_id="bank-acct-001")
+        plan_saved = repository.save_liquidity_plan(liquidity, account_id="bank-acct-001")
+        control_saved = repository.save_control_assertion({"ok": True, "control_id": "minimum_liquidity_buffer"}, tenant="tenant_treasury", account_id="bank-acct-001")
+        outbox_saved = repository.save_outbox_events(service.state["outbox"], tenant="tenant_treasury")
+        summary = repository.workbench_summary(tenant="tenant_treasury")
+        repo_manifest = repository.database_manifest()
+    finally:
+        repository.close()
+
+    release_validation = release_evidence.validate_release_evidence()
+    release_smoke = release_evidence.smoke_test()
+
+    assert route_validation["ok"] is True
+    assert all(contract["event_contract"] == "AppGen-X" for contract in route_validation["contracts"])
+    assert all(contract["stream_engine_picker_visible"] is False for contract in route_validation["contracts"])
+    assert all(contract["shared_table_access"] is False for contract in route_validation["contracts"])
+    assert route_dispatch["ok"] is True
+    assert route_dispatch["result"]["account"]["status"] == "active"
+    assert route_dispatch["side_effects"] == ()
+    assert skills["ok"] is True
+    assert chatbot["ok"] is True
+    assert document_plan["ok"] is True
+    assert {"reconcile_statement", "forecast_cash", "optimize_liquidity", "route_payment_rail", "recommend_hedge"} <= set(document_plan["execution_operations"])
+    assert crud_plan["ok"] is True
+    assert crud_plan["requires_confirmation"] is True
+    assert crud_plan["event_contract"] == "AppGen-X"
+    assert blocked_crud["ok"] is False
+    assert contribution["ok"] is True
+    assert "treasury_cash_crud" in contribution["dsl_tools"]
+    assert repository_manifest()["ok"] is True
+    assert migrations == ("001_initial.sql",)
+    assert account_saved["ok"] is True
+    assert balance_saved["ok"] is True
+    assert statement_saved["ok"] is True
+    assert position_saved["ok"] is True
+    assert forecast_saved["ok"] is True
+    assert plan_saved["ok"] is True
+    assert control_saved["ok"] is True
+    assert outbox_saved["ok"] is True
+    assert summary["ok"] is True
+    assert summary["counts"]["bank_accounts"] == 1
+    assert summary["counts"]["cash_positions"] == 1
+    assert summary["counts"]["liquidity_plans"] == 1
+    assert summary["shared_table_access"] is False
+    assert repo_manifest["shared_table_access"] is False
+    assert release_validation["ok"] is True
+    assert release_smoke["ok"] is True
 
 
 def test_treasury_events_retry_dead_letter_manifest_and_configuration_guards():
