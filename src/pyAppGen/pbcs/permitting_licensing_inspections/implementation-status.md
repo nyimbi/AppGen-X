@@ -1,36 +1,15 @@
-# Permitting Licensing and Inspections Implementation Status
+# Permitting Licensing Inspections Implementation Status
 
-## Status
+Status: improve1 executable control slice complete for all 50 backlog features.
 
-Implemented package-local convergence toward a standalone one-PBC permitting,
-licensing, and inspections app.
+Evidence:
+- `permit_control.py` maps feature 1-50 to owned permitting control tables, required fields, UI surfaces, service/API routes, declared event/API/projection dependencies, tests, and release evidence.
+- Runtime exposes `permit_control` and the `evaluate_permit_control` operation.
+- UI exposes 50 permit control panels, service actions, and agent tool identifiers.
+- Release evidence and validation include the permitting improve1 control contract.
+- `tests/test_domain_behavior.py` gates intake, parcel and party normalization, plan review, fee handoffs, issuance, inspections, violations, due process, public notice, hearings, renewals, portal transparency, agent previews, geospatial checks, audit custody, offline sync, exception recovery, training, and go-live proof.
 
-## Completed
-
-- Replaced shallow runtime placeholders with domain-shaped application,
-  plan-set, review, fee, issuance, inspection, violation, and renewal flows.
-- Added package-local forms, wizards, and controls for intake completeness,
-  resubmittals, inspections, renewals, and due-process timelines.
-- Added standalone orchestration in `standalone.py` and standalone shell
-  metadata/rendering in `ui.py`.
-- Updated agent, manifest, package exports, release evidence, routes, services,
-  permissions, config, and seed data to reflect the standalone surface.
-- Added focused tests for contracts plus standalone bootstrap/render/dispatch
-  behavior.
-- Added package-local README and implementation notes for future maintainers.
-
-## Remaining Risks
-
-- Validation is package-local smoke coverage; this slice still uses in-memory
-  state rather than a live database or HTTP server.
-- Route coverage stays intentionally bounded to the declared public APIs even
-  though the standalone app exposes deeper runtime actions directly.
-
-## Repo Gates
-
-- `pbc_source_artifact_contract`: covered by package metadata/discovery and
-  standalone export assertions.
-- `pbc_implementation_release_audit`: covered by release evidence validation and
-  runtime/UI/agent/standalone checks.
-- `pbc_generation_smoke_audit`: covered by runtime smoke and standalone render
-  plus route-dispatch tests.
+Constraints preserved:
+- Allowed database backends remain PostgreSQL, MySQL, and MariaDB.
+- Eventing uses the AppGen-X event contract and `pbc.permitting_licensing_inspections.events` topic.
+- Cross-PBC inputs are declared as APIs, events, or projections; shared table access remains rejected.

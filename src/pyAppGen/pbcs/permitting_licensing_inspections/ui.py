@@ -138,3 +138,24 @@ def smoke_test():
         and permitting_licensing_inspections_render_standalone_app(state)['ok'],
         'side_effects': (),
     }
+
+
+# Improve1 permit control UI extension.
+from .permit_control import improve1_permit_control_contract as _improve1_permit_control_contract
+
+_PERMITTING_BASE_UI_CONTRACT = permitting_licensing_inspections_ui_contract
+_PERMITTING_BASE_RENDER_WORKBENCH = permitting_licensing_inspections_render_workbench
+
+
+def permitting_licensing_inspections_ui_contract():
+    ui = dict(_PERMITTING_BASE_UI_CONTRACT())
+    control = _improve1_permit_control_contract()
+    ui.update({"ok": ui.get("ok") is True and control["ok"], "permit_control_contract": control, "permit_control_panels": tuple(item["evidence"]["ui_surface"] for item in control["capabilities"]), "permit_control_service_actions": tuple(item["evidence"]["service_api"] for item in control["capabilities"]), "stream_engine_picker_visible": False})
+    return ui
+
+
+def permitting_licensing_inspections_render_workbench(state=None, *, tenant="tenant_demo", principal_permissions=()):
+    workbench = dict(_PERMITTING_BASE_RENDER_WORKBENCH(state, tenant=tenant, principal_permissions=principal_permissions))
+    control = _improve1_permit_control_contract()
+    workbench.update({"ok": workbench.get("ok") is True and control["ok"], "permit_control_panels": tuple(item["evidence"]["ui_surface"] for item in control["capabilities"]), "permit_control_service_actions": tuple(item["evidence"]["service_api"] for item in control["capabilities"]), "permit_control_agent_tools": tuple(f"permitting_licensing_inspections.skills.{item['slug']}" for item in control["capabilities"])})
+    return workbench
