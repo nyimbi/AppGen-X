@@ -1773,9 +1773,11 @@ to expose the `appgen.nl-plan.v1` envelope, nested lint and migration-preview
 format markers, PostgreSQL backend marker, generated test-plan entries as
 `test-plan ...`, token-budget notes marker, and individual
 `token-budget-note ...` guidance lines. The audit reports total,
-accepted, accepted-passing, rejected, text-case, and accepted-operation-kind
-counts so token-efficient agent workflows can verify breadth without expanding
-every generated patch.
+accepted, accepted-passing, accepted-failing, rejected, text-case,
+required-operation, accepted-operation-kind, missing-accepted-operation-kind,
+text-marker, blocking-case, test-plan-line, token-budget-note-line, and
+rejection-status counts so token-efficient agent workflows can verify breadth
+without expanding every generated patch.
 The aggregate tooling audit exposes this proof independently as
 `natural_language_cli_agent_contracts`. That gate fails when JSON output stops
 carrying bounded DSL patches, accepted text output hides report, lint,
@@ -1784,10 +1786,12 @@ migration, test-plan, or token-budget markers, rejected prompts stop returning
 OpenAI Codex, OpenCode, Ollama, vLLM, and small local models using natural
 language as a first-class development vector.
 
-The test-strategy CLI audit reports case, passing-case, required-surface,
-observed-surface, and doctor-check counts across diagnostics, parser golden,
-semantic drift, and doctor gates, so release evidence proves the generator,
-IDE, LSP, graph, and release-verifier surfaces share the same semantic model.
+The test-strategy CLI audit reports case, passing-case, failing-case, case-id,
+required-surface, observed-surface, missing-surface, payload-format, and
+doctor-check counts across diagnostics, parser golden, semantic drift, and
+doctor gates, so release evidence proves the generator, IDE, LSP, graph, and
+release-verifier surfaces share the same semantic model without expanding every
+nested report.
 This keeps agent-facing development paths honest; a capability is not counted
 as available just because an in-process helper can produce it.
 The aggregate tooling audit also publishes

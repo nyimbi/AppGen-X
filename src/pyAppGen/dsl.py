@@ -5726,18 +5726,23 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             nl_plan_cli["ok"]
             and nl_plan_cli.get("accepted_case_count") == nl_plan_contract.get("required_operation_count")
             and nl_plan_cli.get("accepted_passing_case_count") == nl_plan_cli.get("accepted_case_count")
+            and nl_plan_cli.get("accepted_failing_case_count") == 0
             and nl_plan_cli.get("accepted_operation_kind_count", 0) >= nl_plan_contract.get("required_operation_count", 0)
+            and nl_plan_cli.get("missing_accepted_operation_kind_count") == 0
             and nl_plan_cli.get("accepted_patch_bytes", 0) > 0
             and nl_plan_cli.get("accepted_test_count", 0) >= nl_plan_cli.get("accepted_case_count", 0)
             and nl_plan_cli.get("accepted_token_budget_notes", 0) >= nl_plan_cli.get("accepted_case_count", 0)
             and nl_plan_cli.get("migration_format") == "appgen.migration-plan.v1"
+            and nl_plan_cli.get("accepted_text_marker_count", 0) >= 6
             and nl_plan_cli.get("accepted_text_has_report_format") is True
             and nl_plan_cli.get("accepted_text_has_lint_format") is True
             and nl_plan_cli.get("accepted_text_has_migration_format") is True
             and bool(nl_plan_cli.get("accepted_text_test_plan_lines"))
             and nl_plan_cli.get("accepted_text_has_token_notes") is True
             and bool(nl_plan_cli.get("accepted_text_token_note_lines"))
+            and nl_plan_cli.get("rejected_ok") is True
             and "AGX1201" in nl_plan_cli.get("rejected_diagnostic_codes", ())
+            and nl_plan_cli.get("blocking_case_count") == 0
             and not nl_plan_cli.get("blocking_cases"),
             "Natural-language CLI and agent contracts prove JSON and text handoffs expose patch, lint, migration, tests, token notes, and bounded rejection evidence.",
             "docs/tooling.md#natural-language-change-planner",
@@ -5746,21 +5751,29 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                 "case_count": nl_plan_cli.get("case_count"),
                 "accepted_case_count": nl_plan_cli.get("accepted_case_count"),
                 "accepted_passing_case_count": nl_plan_cli.get("accepted_passing_case_count"),
+                "accepted_failing_case_count": nl_plan_cli.get("accepted_failing_case_count"),
                 "rejected_case_count": nl_plan_cli.get("rejected_case_count"),
                 "text_case_count": nl_plan_cli.get("text_case_count"),
+                "required_operation_kinds": nl_plan_cli.get("required_operation_kinds"),
+                "accepted_operation_kinds": nl_plan_cli.get("accepted_operation_kinds"),
                 "accepted_operation_kind_count": nl_plan_cli.get("accepted_operation_kind_count"),
+                "missing_accepted_operation_kind_count": nl_plan_cli.get("missing_accepted_operation_kind_count"),
+                "missing_accepted_operation_kinds": nl_plan_cli.get("missing_accepted_operation_kinds"),
                 "accepted_patch_bytes": nl_plan_cli.get("accepted_patch_bytes"),
                 "accepted_test_count": nl_plan_cli.get("accepted_test_count"),
                 "accepted_token_budget_notes": nl_plan_cli.get("accepted_token_budget_notes"),
                 "migration_format": nl_plan_cli.get("migration_format"),
                 "accepted_text_prefix": nl_plan_cli.get("accepted_text_prefix"),
+                "accepted_text_marker_count": nl_plan_cli.get("accepted_text_marker_count"),
                 "accepted_text_has_report_format": nl_plan_cli.get("accepted_text_has_report_format"),
                 "accepted_text_has_lint_format": nl_plan_cli.get("accepted_text_has_lint_format"),
                 "accepted_text_has_migration_format": nl_plan_cli.get("accepted_text_has_migration_format"),
                 "accepted_text_test_plan_line_count": len(nl_plan_cli.get("accepted_text_test_plan_lines", ())),
                 "accepted_text_has_token_notes": nl_plan_cli.get("accepted_text_has_token_notes"),
                 "accepted_text_token_note_line_count": len(nl_plan_cli.get("accepted_text_token_note_lines", ())),
+                "rejected_ok": nl_plan_cli.get("rejected_ok"),
                 "rejected_diagnostic_codes": nl_plan_cli.get("rejected_diagnostic_codes"),
+                "blocking_case_count": nl_plan_cli.get("blocking_case_count"),
                 "blocking_cases": nl_plan_cli.get("blocking_cases"),
             },
         ),
@@ -6091,7 +6104,9 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and drift_text_renderer.get("digest_line_count", 0) >= 1
             and drift_text_renderer.get("json_fallback") is False
             and test_strategy_cli["ok"]
-            and test_strategy_cli.get("observed_surface_count", 0) >= 6,
+            and test_strategy_cli.get("observed_surface_count", 0) >= 6
+            and test_strategy_cli.get("missing_surface_count") == 0
+            and test_strategy_cli.get("failing_case_count") == 0,
             "Semantic drift contracts prove CLI, LSP, Studio, graph, generator, release, and tests consume the shared semantic model with text evidence.",
             "docs/tooling.md#test-strategy",
             {
@@ -6118,6 +6133,14 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                     "format": test_strategy_cli.get("format"),
                     "required_surface_count": test_strategy_cli.get("required_surface_count"),
                     "observed_surface_count": test_strategy_cli.get("observed_surface_count"),
+                    "missing_surface_count": test_strategy_cli.get("missing_surface_count"),
+                    "required_surfaces": test_strategy_cli.get("required_surfaces"),
+                    "observed_surfaces": test_strategy_cli.get("observed_surfaces"),
+                    "missing_surfaces": test_strategy_cli.get("missing_surfaces"),
+                    "failing_case_count": test_strategy_cli.get("failing_case_count"),
+                    "case_ids": test_strategy_cli.get("case_ids"),
+                    "payload_format_count": test_strategy_cli.get("payload_format_count"),
+                    "payload_formats": test_strategy_cli.get("payload_formats"),
                 },
             },
         ),
@@ -10922,13 +10945,26 @@ def _tooling_audit_test_strategy_cli(tmp: Path, source: str) -> dict:
             "check_count": len(doctor_payload.get("checks", ())),
         },
     )
+    observed_surfaces = tuple(drift_payload.get("surfaces", ()))
+    missing_surfaces = tuple(surface for surface in drift_required_surfaces if surface not in set(observed_surfaces))
+    failing_cases = tuple(case["case"] for case in cases if not case["ok"])
+    payload_formats = tuple(dict.fromkeys(case.get("payload_format") for case in cases if case.get("payload_format")))
     return {
         "format": "appgen.test-strategy-cli-audit.v1",
-        "ok": all(case["ok"] for case in cases),
+        "ok": all(case["ok"] for case in cases) and not missing_surfaces,
         "case_count": len(cases),
         "passing_case_count": sum(1 for case in cases if case["ok"]),
+        "failing_case_count": len(failing_cases),
+        "case_ids": tuple(case["case"] for case in cases),
+        "failing_cases": failing_cases,
         "required_surface_count": len(drift_required_surfaces),
-        "observed_surface_count": len(drift_payload.get("surfaces", ())),
+        "observed_surface_count": len(observed_surfaces),
+        "missing_surface_count": len(missing_surfaces),
+        "required_surfaces": drift_required_surfaces,
+        "observed_surfaces": observed_surfaces,
+        "missing_surfaces": missing_surfaces,
+        "payload_format_count": len(payload_formats),
+        "payload_formats": payload_formats,
         "doctor_check_count": len(doctor_payload.get("checks", ())),
         "cases": cases,
     }
@@ -11586,12 +11622,37 @@ def _tooling_audit_nl_plan_cli(tmp: Path, source: str) -> dict:
     accepted_patch_bytes = sum(case["patch_bytes"] for case in accepted_cases)
     accepted_test_count = sum(case["test_count"] for case in accepted_cases)
     accepted_token_budget_notes = sum(case["token_budget_notes"] for case in accepted_cases)
+    required_operation_kinds = tuple(expected_kind for expected_kind, _prompt in accepted_specs)
     accepted_operation_kinds = tuple(
         sorted({operation_kind for case in accepted_cases for operation_kind in case["operation_kinds"]})
+    )
+    missing_accepted_operation_kinds = tuple(
+        kind for kind in required_operation_kinds if kind not in accepted_operation_kinds
+    )
+    accepted_failing_cases = tuple(case["expected_kind"] for case in accepted_cases if not case["passed"])
+    accepted_text_marker_count = sum(
+        1
+        for marker_present in (
+            accepted_text_has_report_format,
+            accepted_text_has_lint_format,
+            accepted_text_has_migration_format,
+            bool(accepted_text_test_plan_lines),
+            accepted_text_has_token_notes,
+            bool(accepted_text_token_note_lines),
+        )
+        if marker_present
+    )
+    rejected_ok = (
+        rejected_exit == 1
+        and rejected_payload.get("format") == "appgen.nl-plan.v1"
+        and rejected_payload.get("ok") is False
+        and rejected_payload.get("dsl_patch") == ""
+        and "AGX1201" in rejected_codes
     )
     return {
         "format": "appgen.nl-plan-cli-audit.v1",
         "ok": all(case["passed"] for case in accepted_cases)
+        and not missing_accepted_operation_kinds
         and accepted_text_exit == 0
         and accepted_text_has_report_format
         and accepted_text_has_lint_format
@@ -11599,29 +11660,34 @@ def _tooling_audit_nl_plan_cli(tmp: Path, source: str) -> dict:
         and bool(accepted_text_test_plan_lines)
         and accepted_text_has_token_notes
         and bool(accepted_text_token_note_lines)
-        and rejected_exit == 1
-        and rejected_payload.get("format") == "appgen.nl-plan.v1"
-        and rejected_payload.get("ok") is False
-        and rejected_payload.get("dsl_patch") == ""
-        and "AGX1201" in rejected_codes,
+        and rejected_ok,
         "case_count": len(accepted_cases) + 2,
         "accepted_case_count": len(accepted_cases),
         "accepted_passing_case_count": sum(1 for case in accepted_cases if case["passed"]),
+        "accepted_failing_case_count": len(accepted_failing_cases),
         "rejected_case_count": 1,
         "text_case_count": 1,
+        "required_operation_kinds": required_operation_kinds,
         "accepted_cases": tuple(accepted_cases),
         "accepted_operation_kinds": accepted_operation_kinds,
         "accepted_operation_kind_count": len(accepted_operation_kinds),
-        "blocking_cases": tuple(case["expected_kind"] for case in accepted_cases if not case["passed"]),
+        "missing_accepted_operation_kinds": missing_accepted_operation_kinds,
+        "missing_accepted_operation_kind_count": len(missing_accepted_operation_kinds),
+        "blocking_cases": accepted_failing_cases,
+        "blocking_case_count": len(accepted_failing_cases),
         "accepted_exit_code": accepted_cases[0]["exit_code"] if accepted_cases else None,
         "accepted_text_exit_code": accepted_text_exit,
         "accepted_text_prefix": accepted_text_lines[0] if accepted_text_lines else "",
+        "accepted_text_marker_count": accepted_text_marker_count,
         "accepted_text_has_report_format": accepted_text_has_report_format,
         "accepted_text_has_lint_format": accepted_text_has_lint_format,
         "accepted_text_has_migration_format": accepted_text_has_migration_format,
+        "accepted_text_test_plan_line_count": len(accepted_text_test_plan_lines),
         "accepted_text_test_plan_lines": accepted_text_test_plan_lines,
         "accepted_text_has_token_notes": accepted_text_has_token_notes,
+        "accepted_text_token_note_line_count": len(accepted_text_token_note_lines),
         "accepted_text_token_note_lines": accepted_text_token_note_lines,
+        "rejected_ok": rejected_ok,
         "rejected_exit_code": rejected_exit,
         "accepted_payload_format": accepted_cases[0]["format"] if accepted_cases else None,
         "accepted_patch_bytes": accepted_patch_bytes,

@@ -1168,26 +1168,35 @@ def test_nl_plan_cli_audit_covers_all_supported_edit_operations(tmp_path: Path) 
     assert audit["ok"] is True
     assert audit["case_count"] == audit["accepted_case_count"] + audit["rejected_case_count"] + audit["text_case_count"]
     assert audit["accepted_passing_case_count"] == audit["accepted_case_count"]
+    assert audit["accepted_failing_case_count"] == 0
     assert audit["rejected_case_count"] == 1
     assert audit["text_case_count"] == 1
+    assert tuple(audit["required_operation_kinds"]) == tuple(contract["required_edit_operations"])
     assert set(audit["accepted_operation_kinds"]) >= set(contract["required_edit_operations"])
     assert audit["accepted_operation_kind_count"] == len(audit["accepted_operation_kinds"])
+    assert audit["missing_accepted_operation_kind_count"] == 0
+    assert audit["missing_accepted_operation_kinds"] == ()
     assert audit["accepted_case_count"] == len(contract["required_edit_operations"])
     assert audit["blocking_cases"] == ()
+    assert audit["blocking_case_count"] == 0
     assert audit["accepted_patch_bytes"] > 0
     assert audit["accepted_test_count"] >= len(contract["required_edit_operations"])
     assert audit["accepted_token_budget_notes"] >= len(contract["required_edit_operations"])
     assert audit["accepted_text_exit_code"] == 0
     assert audit["accepted_text_prefix"].startswith("nl-plan ok: format=appgen.nl-plan.v1")
+    assert audit["accepted_text_marker_count"] >= 6
     assert audit["accepted_text_has_report_format"] is True
     assert audit["accepted_text_has_lint_format"] is True
     assert audit["accepted_text_has_migration_format"] is True
     assert audit["accepted_text_test_plan_lines"]
+    assert audit["accepted_text_test_plan_line_count"] == len(audit["accepted_text_test_plan_lines"])
     assert all(line.startswith("test-plan ") for line in audit["accepted_text_test_plan_lines"])
     assert any("lint_patched_dsl" in line for line in audit["accepted_text_test_plan_lines"])
     assert audit["accepted_text_has_token_notes"] is True
     assert audit["accepted_text_token_note_lines"]
+    assert audit["accepted_text_token_note_line_count"] == len(audit["accepted_text_token_note_lines"])
     assert all(line.startswith("token-budget-note ") for line in audit["accepted_text_token_note_lines"])
+    assert audit["rejected_ok"] is True
     assert "AGX1201" in audit["rejected_diagnostic_codes"]
 
 
@@ -3960,8 +3969,22 @@ def test_test_strategy_cli_audit_requires_generator_drift_surface(tmp_path: Path
     assert report["ok"] is True
     assert report["case_count"] == len(report["cases"])
     assert report["passing_case_count"] == report["case_count"]
+    assert report["failing_case_count"] == 0
+    assert report["case_ids"] == tuple(case["case"] for case in report["cases"])
+    assert report["failing_cases"] == ()
     assert report["required_surface_count"] == 6
     assert report["observed_surface_count"] >= report["required_surface_count"]
+    assert report["missing_surface_count"] == 0
+    assert report["missing_surfaces"] == ()
+    assert set(report["required_surfaces"]) <= set(report["observed_surfaces"])
+    assert report["payload_format_count"] == len(report["payload_formats"])
+    assert set(report["payload_formats"]) >= {
+        "appgen.diagnostic-catalog.v1",
+        "appgen.diagnostic-fixture-audit.v1",
+        "appgen.parser-golden-audit.v1",
+        "appgen.semantic-drift-audit.v1",
+        "appgen.doctor-report.v1",
+    }
     assert report["doctor_check_count"] > 0
     assert catalog_case["payload_format"] == "appgen.diagnostic-catalog.v1"
     assert catalog_case["required_count"] == catalog_case["covered_count"]
@@ -5646,8 +5669,20 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert test_strategy_check["detail"]["cli"]["ok"] is True
     assert test_strategy_check["detail"]["cli"]["case_count"] == len(test_strategy_check["detail"]["cli"]["cases"])
     assert test_strategy_check["detail"]["cli"]["passing_case_count"] == test_strategy_check["detail"]["cli"]["case_count"]
+    assert test_strategy_check["detail"]["cli"]["failing_case_count"] == 0
+    assert test_strategy_check["detail"]["cli"]["case_ids"] == tuple(
+        case["case"] for case in test_strategy_check["detail"]["cli"]["cases"]
+    )
     assert test_strategy_check["detail"]["cli"]["required_surface_count"] == 6
     assert test_strategy_check["detail"]["cli"]["observed_surface_count"] >= 6
+    assert test_strategy_check["detail"]["cli"]["missing_surface_count"] == 0
+    assert test_strategy_check["detail"]["cli"]["missing_surfaces"] == ()
+    assert set(test_strategy_check["detail"]["cli"]["required_surfaces"]) <= set(
+        test_strategy_check["detail"]["cli"]["observed_surfaces"]
+    )
+    assert test_strategy_check["detail"]["cli"]["payload_format_count"] == len(
+        test_strategy_check["detail"]["cli"]["payload_formats"]
+    )
     assert test_strategy_check["detail"]["cli"]["doctor_check_count"] > 0
     assert {
         "diagnostics_catalog",
@@ -5710,6 +5745,11 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert drift_gate["detail"]["text_renderer"]["digest_line_count"] >= 1
     assert drift_gate["detail"]["text_renderer"]["json_fallback"] is False
     assert drift_gate["detail"]["cli"]["observed_surface_count"] >= drift_gate["detail"]["cli"]["required_surface_count"]
+    assert drift_gate["detail"]["cli"]["missing_surface_count"] == 0
+    assert drift_gate["detail"]["cli"]["failing_case_count"] == 0
+    assert drift_gate["detail"]["cli"]["missing_surfaces"] == ()
+    assert set(drift_gate["detail"]["cli"]["required_surfaces"]) <= set(drift_gate["detail"]["cli"]["observed_surfaces"])
+    assert drift_gate["detail"]["cli"]["payload_format_count"] == len(drift_gate["detail"]["cli"]["payload_formats"])
     doctor_gate = next(check for check in report["checks"] if check["id"] == "doctor_cli_text_contracts")
     assert doctor_gate["detail"]["doctor"]["format"] == "appgen.doctor-report.v1"
     assert doctor_gate["detail"]["doctor"]["check_count"] >= 15
@@ -6004,14 +6044,21 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
         + nl_check["detail"]["cli"]["text_case_count"]
     )
     assert nl_check["detail"]["cli"]["accepted_passing_case_count"] == nl_check["detail"]["cli"]["accepted_case_count"]
+    assert nl_check["detail"]["cli"]["accepted_failing_case_count"] == 0
     assert nl_check["detail"]["cli"]["accepted_operation_kind_count"] == len(
         nl_check["detail"]["cli"]["accepted_operation_kinds"]
+    )
+    assert tuple(nl_check["detail"]["cli"]["required_operation_kinds"]) == tuple(
+        nl_check["detail"]["contract"]["required_edit_operations"]
     )
     assert set(nl_check["detail"]["cli"]["accepted_operation_kinds"]) >= set(
         nl_check["detail"]["contract"]["required_edit_operations"]
     )
+    assert nl_check["detail"]["cli"]["missing_accepted_operation_kind_count"] == 0
+    assert nl_check["detail"]["cli"]["missing_accepted_operation_kinds"] == ()
     assert nl_check["detail"]["cli"]["accepted_case_count"] == len(nl_check["detail"]["contract"]["required_edit_operations"])
     assert nl_check["detail"]["cli"]["blocking_cases"] == ()
+    assert nl_check["detail"]["cli"]["blocking_case_count"] == 0
     assert nl_check["detail"]["cli"]["accepted_patch_bytes"] > 0
     assert nl_check["detail"]["cli"]["migration_format"] == "appgen.migration-plan.v1"
     assert nl_check["detail"]["cli"]["accepted_test_count"] > 0
@@ -6045,22 +6092,28 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert nl_cli_agent_check["detail"]["accepted_passing_case_count"] == (
         nl_cli_agent_check["detail"]["accepted_case_count"]
     )
+    assert nl_cli_agent_check["detail"]["accepted_failing_case_count"] == 0
     assert nl_cli_agent_check["detail"]["accepted_operation_kind_count"] >= (
         nl_operation_check["detail"]["required_operation_count"]
     )
+    assert nl_cli_agent_check["detail"]["missing_accepted_operation_kind_count"] == 0
+    assert nl_cli_agent_check["detail"]["missing_accepted_operation_kinds"] == ()
     assert nl_cli_agent_check["detail"]["accepted_patch_bytes"] > 0
     assert nl_cli_agent_check["detail"]["accepted_test_count"] >= nl_cli_agent_check["detail"]["accepted_case_count"]
     assert nl_cli_agent_check["detail"]["accepted_token_budget_notes"] >= (
         nl_cli_agent_check["detail"]["accepted_case_count"]
     )
     assert nl_cli_agent_check["detail"]["migration_format"] == "appgen.migration-plan.v1"
+    assert nl_cli_agent_check["detail"]["accepted_text_marker_count"] >= 6
     assert nl_cli_agent_check["detail"]["accepted_text_has_report_format"] is True
     assert nl_cli_agent_check["detail"]["accepted_text_has_lint_format"] is True
     assert nl_cli_agent_check["detail"]["accepted_text_has_migration_format"] is True
     assert nl_cli_agent_check["detail"]["accepted_text_test_plan_line_count"] > 0
     assert nl_cli_agent_check["detail"]["accepted_text_has_token_notes"] is True
     assert nl_cli_agent_check["detail"]["accepted_text_token_note_line_count"] > 0
+    assert nl_cli_agent_check["detail"]["rejected_ok"] is True
     assert "AGX1201" in nl_cli_agent_check["detail"]["rejected_diagnostic_codes"]
+    assert nl_cli_agent_check["detail"]["blocking_case_count"] == 0
     assert nl_cli_agent_check["detail"]["blocking_cases"] == ()
     assert all(check["section"].startswith("docs/tooling.md#") for check in report["checks"])
     assert cli_json.returncode == 0, cli_json.stderr
