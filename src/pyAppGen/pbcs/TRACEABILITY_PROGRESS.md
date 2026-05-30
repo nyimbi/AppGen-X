@@ -5,8 +5,8 @@ This file tracks package-local progress for the active goal: each PBC must imple
 ## Current Counts
 
 - PBCs with `improve1.md`: 147
-- PBCs with `IMPROVE1_TRACEABILITY.md`: 35
-- PBCs remaining: 112
+- PBCs with `IMPROVE1_TRACEABILITY.md`: 65
+- PBCs remaining: 82
 
 ## Completed Traceability Matrices
 
@@ -15,34 +15,64 @@ This file tracks package-local progress for the active goal: each PBC must imple
 - `ar_credit`
 - `asset_lifecycle`
 - `audit_ledger`
+- `bank_payments_clearing`
+- `banking_core_accounts`
+- `capital_markets_trading_ops`
+- `cdp_segmentation`
 - `checkout_processing`
+- `claims_adjudication_healthcare`
+- `clinical_care_coordination`
 - `composition_engine`
+- `contract_lifecycle`
 - `cross_border_trade`
+- `customer_360`
+- `dam_core`
 - `dom`
 - `eam`
+- `electronic_health_records_core`
+- `enterprise_pim`
+- `enterprise_search_vector`
+- `expense_management`
 - `federated_iam`
 - `field_service_management`
+- `fraud_anomaly_detection`
 - `gl_core`
 - `global_inventory_visibility`
+- `grant_fund_accounting`
+- `insurance_claims_policy`
+- `insurance_underwriting`
 - `inventory_positioning`
+- `lead_opportunity`
+- `loyalty_rewards`
 - `mrp_engine`
 - `multi_sided_market`
+- `notifications`
 - `order_routing_optimization`
 - `payment_orchestration`
 - `payroll_engine`
 - `personnel_identity`
+- `planning_budgeting_forecasting`
+- `policy_administration_insurance`
+- `predictive_demand`
+- `price_promotion_engine`
 - `procurement_sourcing`
 - `product_catalog_pim`
 - `production_control`
+- `provider_revenue_cycle`
 - `quality_assurance`
+- `reinsurance_management`
 - `returns_reverse_logistics`
+- `revenue_recognition`
 - `schema_registry`
+- `service_ticketing`
+- `streaming_analytics`
 - `subscription_billing`
 - `talent_onboarding`
 - `tax_localization`
 - `time_labor`
 - `transportation_management`
 - `treasury_cash`
+- `vendor_supplier_360`
 - `wms_core`
 - `workflow_orchestration`
 
@@ -55,60 +85,41 @@ This file tracks package-local progress for the active goal: each PBC must imple
 - `airline_operations_control`
 - `airport_operations_management`
 - `aviation_maintenance_repair`
-- `bank_payments_clearing`
-- `banking_core_accounts`
 - `building_information_modeling_ops`
-- `capital_markets_trading_ops`
 - `capital_projects_delivery`
 - `case_knowledge_management`
-- `cdp_segmentation`
 - `chemical_batch_compliance`
-- `claims_adjudication_healthcare`
-- `clinical_care_coordination`
 - `clinical_trials_management`
 - `construction_contracts_commercials`
 - `construction_project_controls`
-- `contract_lifecycle`
 - `court_case_management`
-- `customer_360`
 - `customer_success_management`
 - `cybersecurity_operations_center`
-- `dam_core`
 - `data_product_catalog`
 - `defense_readiness_logistics`
 - `donor_grant_fundraising`
 - `education_student_lifecycle`
-- `electronic_health_records_core`
 - `energy_grid_operations`
 - `energy_trading_risk`
-- `enterprise_pim`
 - `enterprise_risk_controls`
-- `enterprise_search_vector`
 - `environment_health_safety`
-- `expense_management`
 - `facilities_space_management`
 - `facility_energy_management`
 - `fleet_mobility_operations`
 - `food_safety_quality_compliance`
-- `fraud_anomaly_detection`
 - `gaming_casino_operations`
-- `grant_fund_accounting`
 - `hospitality_property_operations`
 - `hotel_revenue_management`
 - `humanitarian_relief_operations`
 - `identity_kyc_aml_compliance`
-- `insurance_claims_policy`
-- `insurance_underwriting`
 - `it_service_management`
 - `laboratory_information_management`
 - `land_real_estate_development`
-- `lead_opportunity`
 - `lease_lending_equipment_finance`
 - `legal_matter_management`
 - `lending_origination_servicing`
 - `library_archives_management`
 - `livestock_herd_management`
-- `loyalty_rewards`
 - `maritime_shipping_operations`
 - `master_data_governance`
 - `media_production_management`
@@ -119,34 +130,24 @@ This file tracks package-local progress for the active goal: each PBC must imple
 - `mortgage_servicing`
 - `music_royalties_rights`
 - `nonprofit_program_impact`
-- `notifications`
 - `oil_gas_field_operations`
 - `permitting_licensing_inspections`
 - `pharma_manufacturing_quality`
 - `pharmacy_benefits_management`
-- `planning_budgeting_forecasting`
-- `policy_administration_insurance`
 - `port_terminal_operations`
-- `predictive_demand`
-- `price_promotion_engine`
 - `privacy_consent_governance`
 - `professional_services_automation`
 - `project_portfolio_management`
-- `provider_revenue_cycle`
 - `public_safety_dispatch`
 - `public_sector_case_management`
 - `publishing_editorial_operations`
 - `rail_operations_management`
 - `real_estate_property_management`
-- `reinsurance_management`
 - `renewables_asset_operations`
 - `research_grants_management`
 - `restaurant_operations`
-- `revenue_recognition`
-- `service_ticketing`
 - `smart_city_mobility_operations`
 - `sports_venue_event_operations`
-- `streaming_analytics`
 - `student_financial_aid`
 - `sustainability_esg_reporting`
 - `tax_administration_public_sector`
@@ -156,7 +157,6 @@ This file tracks package-local progress for the active goal: each PBC must imple
 - `travel_management`
 - `utilities_metering_billing`
 - `utility_outage_restoration`
-- `vendor_supplier_360`
 - `waste_recycling_operations`
 - `water_wastewater_operations`
 - `wealth_portfolio_management`
@@ -166,4 +166,5 @@ This file tracks package-local progress for the active goal: each PBC must imple
 - `f76afb6d` established the PBC-only finalization baseline from integrated standalone branches.
 - `9e62b63f` added and tested traceability matrices for the first five high-risk PBCs.
 - `02f6cf7b` added and tested platform-fabric and financial-core traceability matrices.
-- Current working batch adds supply chain/order flow, HCM/payroll, and manufacturing matrices with 20 focused tests passing before commit.
+- `882ef515` added and tested supply chain/order flow, HCM/payroll, and manufacturing matrices.
+- Current working batch adds commerce/content/relationship, intelligence, finance, insurance, and healthcare matrices with 30 focused tests passing before commit.
