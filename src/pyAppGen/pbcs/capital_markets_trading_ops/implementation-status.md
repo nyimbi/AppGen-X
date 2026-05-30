@@ -45,3 +45,21 @@ Additional focused PBC audits cover source artifact, package-local assurance, sp
 
 - Post-trade records are deterministic package-local runtime evidence; durable database tables beyond trade-order persistence remain future integration work.
 - Live broker/custodian connectivity, market calendars, market data feeds, and browser-rendered UI verification are not part of this package-local slice.
+
+## improve1 Full Traceability Evidence
+
+Branch: `pbc/improve1-full-traceability`
+
+Current slice evidence:
+
+- Added `trading_control.py` as executable, side-effect-free domain code for all 50 `improve1.md` capital markets trading operations controls.
+- Bound trading control evidence into `runtime.py` release evidence and `ui.py` trading control panels so every feature has a surfaced workbench/control entry.
+- Added `tests/test_domain_behavior.py` to exercise all 50 control primitives plus runtime, UI, route, service, database-backend, release, and owned-table boundary behavior.
+- Updated `IMPROVE1_TRACEABILITY.md` so all 50 rows point to `trading_control.py` and `tests/test_domain_behavior.py` as direct executable evidence.
+- Updated `improve1_capabilities.py` so every capability registry row names the trading control artifact and domain behavior test.
+
+Verification log:
+
+- Passed: `/Volumes/Media/src/pjs/appgen/.venv/bin/pytest src/pyAppGen/pbcs/capital_markets_trading_ops/tests` (`27 passed`).
+- Passed: improve1 traceability/capability/runtime sweep across all PBCs (`877 passed`).
+- Passed: `git diff --check -- src/pyAppGen/pbcs`.

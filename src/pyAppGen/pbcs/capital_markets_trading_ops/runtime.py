@@ -2,6 +2,7 @@
 from __future__ import annotations
 from copy import deepcopy
 import hashlib
+from .trading_control import improve1_trading_control_contract
 from .domain_depth import domain_depth_contract, domain_depth_smoke_test, execute_domain_operation, DOMAIN_OPERATIONS, DOMAIN_OWNED_TABLES
 from .trade_order_intake import build_trade_order_record, build_trade_order_summary, evaluate_trade_order_intake
 
@@ -232,6 +233,7 @@ def capital_markets_trading_ops_build_release_evidence():
         {'id': 'trade_order_intake_slice', 'ok': True},
         {'id': 'forms_wizards_controls', 'ok': True},
         {'id': 'single_pbc_app_usability', 'ok': True},
+        {'id': 'improve1_trading_control', 'ok': improve1_trading_control_contract()['capability_count'] == 50},
     )
     return {
         'format': 'appgen.capital-markets-trading-ops-release-evidence.v1',
@@ -252,6 +254,7 @@ def capital_markets_trading_ops_build_release_evidence():
             'wizards': ('trade_order_release_wizard',),
             'controls': ('reference_data_checklist', 'risk_gate_panel', 'release_decision_card'),
             'implementation_docs': ('implementation-plan.md', 'README.md', 'implementation-status.md'),
+            'improve1_trading_control': improve1_trading_control_contract(),
         },
         'blocking_gaps': (),
     }
