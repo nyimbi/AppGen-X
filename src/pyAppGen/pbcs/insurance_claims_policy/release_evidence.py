@@ -100,3 +100,35 @@ def smoke_test() -> dict:
 
 def insurance_claims_policy_build_release_evidence() -> dict:
     return build_release_evidence()
+
+# Improve1 claims release evidence extension.
+from .claims_control import improve1_claims_control_contract
+
+_INSURANCE_CLAIMS_POLICY_PRE_CONTROL_BUILD_RELEASE_EVIDENCE = build_release_evidence
+_INSURANCE_CLAIMS_POLICY_PRE_CONTROL_RELEASE_READINESS_MANIFEST = release_readiness_manifest
+_INSURANCE_CLAIMS_POLICY_PRE_CONTROL_VALIDATE_RELEASE_EVIDENCE = validate_release_evidence
+
+
+def build_release_evidence() -> dict:
+    base = dict(_INSURANCE_CLAIMS_POLICY_PRE_CONTROL_BUILD_RELEASE_EVIDENCE())
+    claims_control = improve1_claims_control_contract()
+    checks = tuple(base.get("checks", ())) + (
+        {"id": "improve1_claims_control", "ok": claims_control["ok"]},
+        {"id": "claims_release_pack", "ok": claims_control["capability_count"] == 50},
+    )
+    return {**base, "ok": base.get("ok") is True and all(check["ok"] for check in checks), "checks": checks, "claims_control": claims_control, "blocking_gaps": tuple(check for check in checks if not check["ok"])}
+
+
+def release_readiness_manifest() -> dict:
+    base = dict(_INSURANCE_CLAIMS_POLICY_PRE_CONTROL_RELEASE_READINESS_MANIFEST())
+    claims_control = improve1_claims_control_contract()
+    ok = base.get("ok") is True and claims_control["ok"]
+    sections = tuple(dict.fromkeys(tuple(base.get("sections", ())) + ("claims_controls", "claims_release", "release_rehearsal")))
+    return {**base, "ok": ok, "sections": sections, "claims_control": claims_control, "blocking_gaps": () if ok else ("claims_control_failed",), "side_effects": ()}
+
+
+def validate_release_evidence() -> dict:
+    base = dict(_INSURANCE_CLAIMS_POLICY_PRE_CONTROL_VALIDATE_RELEASE_EVIDENCE())
+    claims_control = improve1_claims_control_contract()
+    ok = base.get("ok") is True and claims_control["ok"]
+    return {**base, "ok": ok, "claims_control": claims_control, "failed_checks": tuple(base.get("failed_checks", ())) + (() if claims_control["ok"] else ("claims_control_failed",)), "blocking_gaps": tuple(base.get("blocking_gaps", ())) + (() if claims_control["ok"] else ("claims_control_failed",)), "side_effects": ()}

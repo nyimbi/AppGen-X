@@ -229,3 +229,37 @@ def insurance_claims_policy_runtime_capabilities() -> dict:
         "domain_advanced_capabilities": domain["advanced_capabilities"],
         "side_effects": (),
     }
+
+# Improve1 claims control extension.
+from .claims_control import improve1_claims_control_contract as insurance_claims_policy_improve1_claims_control_contract
+
+_INSURANCE_CLAIMS_POLICY_BASE_RUNTIME_CAPABILITIES = insurance_claims_policy_runtime_capabilities
+_INSURANCE_CLAIMS_POLICY_BASE_RELEASE_EVIDENCE = insurance_claims_policy_build_release_evidence
+
+
+def insurance_claims_policy_build_release_evidence() -> dict:
+    evidence = dict(_INSURANCE_CLAIMS_POLICY_BASE_RELEASE_EVIDENCE())
+    claims_control = insurance_claims_policy_improve1_claims_control_contract()
+    checks = tuple(evidence.get("checks", ())) + (
+        {"id": "improve1_claims_control", "ok": claims_control["ok"]},
+        {"id": "claims_control_release_pack", "ok": claims_control["capability_count"] == 50 and claims_control["event_contract"] == "AppGen-X"},
+    )
+    return {**evidence, "ok": evidence.get("ok") is True and all(check["ok"] for check in checks), "checks": checks, "claims_control": claims_control, "blocking_gaps": tuple(check for check in checks if not check["ok"])}
+
+
+def insurance_claims_policy_runtime_capabilities() -> dict:
+    runtime = dict(_INSURANCE_CLAIMS_POLICY_BASE_RUNTIME_CAPABILITIES())
+    claims_control = insurance_claims_policy_improve1_claims_control_contract()
+    return {
+        **runtime,
+        "ok": runtime.get("ok") is True and claims_control["ok"],
+        "claims_control": claims_control,
+        "improve1_capabilities": claims_control["capabilities"],
+        "operations": tuple(dict.fromkeys(tuple(runtime.get("operations", ())) + ("improve1_claims_control_contract", "evaluate_claims_control"))),
+        "owned_tables": tuple(dict.fromkeys(tuple(runtime.get("owned_tables", ())) + tuple(claims_control["owned_tables"]))),
+        "allowed_database_backends": claims_control["allowed_database_backends"],
+        "event_contract": claims_control["event_contract"],
+        "required_event_topic": claims_control["required_event_topic"],
+        "stream_engine_picker_visible": False,
+        "side_effects": (),
+    }

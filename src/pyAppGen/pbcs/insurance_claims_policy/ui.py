@@ -153,3 +153,23 @@ def smoke_test() -> dict:
         "standalone": standalone,
         "side_effects": (),
     }
+
+# Improve1 claims UI control extension.
+from .claims_control import improve1_claims_control_contract as insurance_claims_policy_improve1_claims_control_contract
+
+_INSURANCE_CLAIMS_POLICY_BASE_UI_CONTRACT = insurance_claims_policy_ui_contract
+_INSURANCE_CLAIMS_POLICY_BASE_RENDER_WORKBENCH = insurance_claims_policy_render_workbench
+
+
+def insurance_claims_policy_ui_contract() -> dict:
+    base = dict(_INSURANCE_CLAIMS_POLICY_BASE_UI_CONTRACT())
+    claims_control = insurance_claims_policy_improve1_claims_control_contract()
+    control_panels = tuple(item["evidence"]["ui_surface"] for item in claims_control["capabilities"])
+    service_actions = tuple(item["evidence"]["service_api"] for item in claims_control["capabilities"])
+    return {**base, "ok": base.get("ok") is True and claims_control["ok"], "claims_control_contract": claims_control, "claims_control_panels": control_panels, "claims_control_service_actions": service_actions, "claims_control_tables": claims_control["owned_tables"], "side_effects": ()}
+
+
+def insurance_claims_policy_render_workbench(state: dict | None = None, *, tenant: str = "default", principal_permissions: tuple[str, ...] | None = None) -> dict:
+    base = dict(_INSURANCE_CLAIMS_POLICY_BASE_RENDER_WORKBENCH(state, tenant=tenant, principal_permissions=principal_permissions))
+    claims_control = insurance_claims_policy_improve1_claims_control_contract()
+    return {**base, "ok": base.get("ok") is True and claims_control["ok"], "claims_control_panels": tuple(item["evidence"]["ui_surface"] for item in claims_control["capabilities"]), "claims_control_service_actions": tuple(item["evidence"]["service_api"] for item in claims_control["capabilities"]), "claims_control_agent_tools": tuple(f"insurance_claims_policy.agent.{item['slug']}" for item in claims_control["capabilities"]), "side_effects": ()}
