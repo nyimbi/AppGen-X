@@ -16,3 +16,7 @@
 - The slice is in-memory and contract-focused; it does not connect to a live database adapter yet.
 - Bulk ingest, export rendering, and document parsing are governed previews rather than full external integrations.
 - Training lapse assertions are modeled in metadata but only lightly seeded.
+
+## 2026-05-30 improve1 EHS-Control Execution Slice
+
+All 50 environment health and safety improve1 backlog features are now bound to `ehs_control.py`, with package-local evaluations for owned tables, declared API/event dependencies, UI panels, service/API routes, AppGen-X eventing, PostgreSQL/MySQL/MariaDB datastore boundaries, release evidence, and focused domain behavior tests.

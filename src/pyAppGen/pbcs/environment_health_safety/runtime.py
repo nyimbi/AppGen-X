@@ -98,3 +98,22 @@ def environment_health_safety_runtime_smoke() -> dict:
 
 
 environment_health_safety_execute_domain_operation = standalone.execute_domain_operation
+
+
+from .ehs_control import EHS_CONTROL_CAPABILITIES, improve1_ehs_control_contract
+
+_BASE_environment_health_safety_runtime_capabilities = environment_health_safety_runtime_capabilities
+_BASE_environment_health_safety_build_release_evidence = environment_health_safety_build_release_evidence
+
+
+def environment_health_safety_build_release_evidence() -> dict:
+    evidence = dict(_BASE_environment_health_safety_build_release_evidence())
+    ehs_control = improve1_ehs_control_contract()
+    checks = tuple(evidence.get("checks", ())) + ({"id": "improve1_ehs_control_contract", "ok": ehs_control["ok"]},)
+    return {**evidence, "ok": evidence.get("ok") is True and all(check["ok"] for check in checks), "checks": checks, "ehs_control": ehs_control, "blocking_gaps": tuple(check for check in checks if not check["ok"]), "side_effects": ()}
+
+
+def environment_health_safety_runtime_capabilities() -> dict:
+    runtime = dict(_BASE_environment_health_safety_runtime_capabilities())
+    ehs_control = improve1_ehs_control_contract()
+    return {**runtime, "ok": runtime.get("ok") is True and ehs_control["ok"], "ehs_control": ehs_control, "operations": tuple(runtime.get("operations", ())) + ("improve1_ehs_control_contract",), "improve1_ehs_control_capabilities": tuple(capability.slug for capability in EHS_CONTROL_CAPABILITIES), "side_effects": ()}

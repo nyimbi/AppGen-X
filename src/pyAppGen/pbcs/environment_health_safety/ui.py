@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from .standalone import UI_FRAGMENT_KEYS, build_ui_contract, query_workbench, seed_state
 from .domain_depth import domain_capability_surface_contract
+from .ehs_control import improve1_ehs_control_contract
 
 PBC_KEY = "environment_health_safety"
 
@@ -17,7 +18,9 @@ def environment_health_safety_ui_contract():
         "table_browsers": tuple(item["owned_table"] for item in surface["table_surfaces"]),
         "navigation_sections": contract["navigation_sections"],
         "coverage": surface["coverage"],
+        "ehs_control_panels": tuple(item["evidence"]["ui_surface"] for item in improve1_ehs_control_contract()["capabilities"]),
     }
+    contract["ehs_control_contract"] = improve1_ehs_control_contract()
     return contract
 
 
