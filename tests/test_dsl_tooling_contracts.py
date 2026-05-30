@@ -3854,7 +3854,18 @@ def test_tooling_implementation_phase_audit_maps_phase_exit_criteria_to_evidence
         code_action_apply_audit=ok("appgen.lsp-code-action-apply-audit.v1"),
         lsp_apply_cli=ok("appgen.lsp-code-action-cli-audit.v1"),
         vscode=ok("appgen.vscode-extension-audit.v1"),
-        studio=ok("appgen.studio-semantic-service-audit.v1"),
+        studio={
+            **ok("appgen.studio-semantic-service-audit.v1"),
+            "browser_smoke_format": "appgen.studio-browser-smoke-ci-contract.v1",
+            "browser_smoke_checks": {
+                "frontend_semantic_service_bridge": True,
+                "frontend_interaction_audit_bridge": True,
+            },
+            "frontend_semantic_service_format": "appgen.frontend-semantic-service-audit.v1",
+            "frontend_semantic_service_audit": {"format": "appgen.frontend-semantic-service-audit.v1", "ok": True},
+            "frontend_interaction_format": "appgen.frontend-interaction-audit.v1",
+            "frontend_interaction_audit": {"format": "appgen.frontend-interaction-audit.v1", "ok": True},
+        },
         designer=ok("appgen.designer-sync-report.v1"),
         designer_visual_edit_matrix=ok("appgen.designer-visual-edit-matrix.v1"),
         designer_sync_cli=ok("appgen.designer-sync-cli-audit.v1"),
@@ -3897,6 +3908,7 @@ def test_tooling_implementation_phase_audit_maps_phase_exit_criteria_to_evidence
         "graph_json_mermaid_and_dot",
         "rename_and_code_actions",
         "studio_semantic_bridge",
+        "frontend_browser_smoke_bridges",
         "release_and_package_verifiers",
     }
 
@@ -4012,6 +4024,8 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
         "ide_visual_designer_round_trip",
         "vscode_extension_surface",
         "studio_semantic_service",
+        "frontend_semantic_service_bridge",
+        "frontend_interaction_audit_bridge",
         "package_and_release_verifiers",
         "parser_golden_and_drift_gates",
         "tooling_doc_anchor_integrity",
@@ -4138,6 +4152,19 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert studio_check["detail"]["surface_formats"]["diagnostics_panel"] == "appgen.lsp-diagnostics.v1"
     assert studio_check["detail"]["surface_formats"]["graph_explain_panel"] == "appgen.designer-graph-explain-panel.v1"
     assert studio_check["detail"]["surface_formats"]["natural_language_planner"] == "appgen.designer-nl-planner-panel.v1"
+    frontend_semantic_check = next(check for check in report["checks"] if check["id"] == "frontend_semantic_service_bridge")
+    assert frontend_semantic_check["detail"]["format"] == "appgen.frontend-semantic-service-audit.v1"
+    assert frontend_semantic_check["detail"]["audit"]["ok"] is True
+    assert frontend_semantic_check["detail"]["missing_service_count"] == 0
+    assert frontend_semantic_check["detail"]["missing_surface_count"] == 0
+    assert frontend_semantic_check["detail"]["missing_surface_contract_count"] == 0
+    frontend_interaction_check = next(check for check in report["checks"] if check["id"] == "frontend_interaction_audit_bridge")
+    assert frontend_interaction_check["detail"]["format"] == "appgen.frontend-interaction-audit.v1"
+    assert frontend_interaction_check["detail"]["audit"]["ok"] is True
+    assert frontend_interaction_check["detail"]["scenario_count"] == 8
+    assert frontend_interaction_check["detail"]["missing_scenario_count"] == 0
+    assert frontend_interaction_check["detail"]["missing_audit_input_count"] == 0
+    assert frontend_interaction_check["detail"]["missing_helper_count"] == 0
     lsp_check = next(check for check in report["checks"] if check["id"] == "language_server_core_features")
     assert lsp_check["detail"]["symbol_coverage"]["format"] == "appgen.lsp-symbol-coverage.v1"
     assert lsp_check["detail"]["symbol_coverage"]["ok"] is True

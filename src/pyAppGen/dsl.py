@@ -4647,6 +4647,41 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             studio,
         ),
         _tooling_audit_check(
+            "frontend_semantic_service_bridge",
+            studio.get("frontend_semantic_service_audit", {}).get("ok") is True
+            and studio.get("frontend_semantic_missing_service_count") == 0
+            and studio.get("frontend_semantic_missing_surface_count") == 0
+            and studio.get("frontend_semantic_missing_surface_contract_count") == 0,
+            "Frontend semantic-service bridge exposes required Studio service evidence, surface ids, surface contracts, and panel render hooks.",
+            "docs/tooling.md#appgen-x-studio-monaco",
+            {
+                "format": studio.get("frontend_semantic_service_format"),
+                "audit": studio.get("frontend_semantic_service_audit"),
+                "service_count": studio.get("frontend_semantic_service_count"),
+                "surface_count": studio.get("frontend_semantic_surface_count"),
+                "missing_service_count": studio.get("frontend_semantic_missing_service_count"),
+                "missing_surface_count": studio.get("frontend_semantic_missing_surface_count"),
+                "missing_surface_contract_count": studio.get("frontend_semantic_missing_surface_contract_count"),
+            },
+        ),
+        _tooling_audit_check(
+            "frontend_interaction_audit_bridge",
+            studio.get("frontend_interaction_audit", {}).get("ok") is True
+            and studio.get("frontend_interaction_missing_scenario_count") == 0
+            and studio.get("frontend_interaction_missing_audit_input_count") == 0
+            and studio.get("frontend_interaction_missing_helper_count") == 0,
+            "Frontend interaction audit covers palette, drag payload, device/data workbench, status rail, and semantic-service bridge scenarios.",
+            "docs/tooling.md#appgen-x-studio-monaco",
+            {
+                "format": studio.get("frontend_interaction_format"),
+                "audit": studio.get("frontend_interaction_audit"),
+                "scenario_count": studio.get("frontend_interaction_scenario_count"),
+                "missing_scenario_count": studio.get("frontend_interaction_missing_scenario_count"),
+                "missing_audit_input_count": studio.get("frontend_interaction_missing_audit_input_count"),
+                "missing_helper_count": studio.get("frontend_interaction_missing_helper_count"),
+            },
+        ),
+        _tooling_audit_check(
             "migration_detection_coverage",
             set(REQUIRED_MIGRATION_DETECTIONS) <= set(migration_detected)
             and migration_text_renderer["ok"]
@@ -5320,6 +5355,18 @@ def _tooling_audit_implementation_phases(**evidence: dict) -> dict:
                     "id": "studio_semantic_bridge",
                     "ok": evidence["studio"].get("ok") is True,
                     "evidence_format": evidence["studio"].get("format"),
+                },
+                {
+                    "id": "frontend_browser_smoke_bridges",
+                    "ok": evidence["studio"].get("browser_smoke_checks", {}).get("frontend_semantic_service_bridge") is True
+                    and evidence["studio"].get("browser_smoke_checks", {}).get("frontend_interaction_audit_bridge") is True
+                    and evidence["studio"].get("frontend_semantic_service_audit", {}).get("ok") is True
+                    and evidence["studio"].get("frontend_interaction_audit", {}).get("ok") is True,
+                    "evidence_formats": (
+                        evidence["studio"].get("browser_smoke_format"),
+                        evidence["studio"].get("frontend_semantic_service_format"),
+                        evidence["studio"].get("frontend_interaction_format"),
+                    ),
                 },
             ),
         ),

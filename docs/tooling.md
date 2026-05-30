@@ -1419,6 +1419,14 @@ the Studio bridge counts as complete in Python release evidence. It also embeds
 audit covers palette category/search/empty states, component drag payloads,
 device and data workbench render inputs, status-rail audit inputs, and the
 semantic-service bridge before the Studio browser-smoke gate can pass.
+The top-level `appgen.tooling-audit.v1` treats these as first-class gates:
+`frontend_semantic_service_bridge` reports service, surface, surface-contract,
+and missing-count evidence from `appgen.frontend-semantic-service-audit.v1`;
+`frontend_interaction_audit_bridge` reports scenario, audit-input, helper, and
+missing-count evidence from `appgen.frontend-interaction-audit.v1`. Either gate
+can fail independently of the aggregate Studio semantic-service audit, so
+browser-facing regressions are visible in release evidence without expanding
+nested Studio details.
 
 ## Graph Tooling
 
