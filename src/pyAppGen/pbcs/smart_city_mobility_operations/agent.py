@@ -103,6 +103,7 @@ def chatbot_interface_contract():
             "signal_timing_review",
             "document_and_instruction_intake",
             "governed_mutation_preview",
+            "governed_datastore_crud",
             "public_alert_assistance",
         ),
         "professional_controls": (

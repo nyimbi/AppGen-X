@@ -45,6 +45,8 @@ SMART_CITY_MOBILITY_OPERATIONS_STANDARD_FEATURE_KEYS = (
     "multimodal_trip_reliability",
     "environmental_analytics",
     "governed_document_instruction_intake",
+    "governed_datastore_crud",
+    "permissions_rbac",
     "appgen_x_outbox_inbox_eventing",
     "idempotent_handlers",
     "continuous_release_assurance",
