@@ -1853,3 +1853,49 @@ def _digest(payload: dict) -> str:
         return value
 
     return hashlib.sha256(json.dumps(payload, sort_keys=True, default=default, separators=(",", ":")).encode()).hexdigest()
+
+
+# Improve1 lead control extension.
+from .lead_control import (
+    LEAD_CONTROL_ALLOWED_DATABASE_BACKENDS,
+    LEAD_CONTROL_OWNED_TABLES,
+    LEAD_CONTROL_REQUIRED_EVENT_TOPIC,
+    improve1_lead_control_contract as lead_opportunity_improve1_lead_control_contract,
+)
+
+_LEAD_OPPORTUNITY_BASE_RUNTIME_CAPABILITIES = lead_opportunity_runtime_capabilities
+_LEAD_OPPORTUNITY_BASE_RELEASE_EVIDENCE = lead_opportunity_build_release_evidence
+
+
+def lead_opportunity_build_release_evidence() -> dict:
+    evidence = dict(_LEAD_OPPORTUNITY_BASE_RELEASE_EVIDENCE())
+    lead_control = lead_opportunity_improve1_lead_control_contract()
+    checks = tuple(evidence.get("checks", ())) + (
+        {"id": "improve1_lead_control", "ok": lead_control["ok"]},
+        {"id": "lead_opportunity_release_pack", "ok": lead_control["capability_count"] == 50},
+    )
+    evidence.update({
+        "lead_control": lead_control,
+        "checks": checks,
+        "blocking_gaps": tuple(check for check in checks if check.get("ok") is not True),
+    })
+    evidence["ok"] = not evidence["blocking_gaps"]
+    return evidence
+
+
+def lead_opportunity_runtime_capabilities() -> dict:
+    runtime = dict(_LEAD_OPPORTUNITY_BASE_RUNTIME_CAPABILITIES())
+    lead_control = lead_opportunity_improve1_lead_control_contract()
+    runtime.update({
+        "ok": runtime.get("ok") is True and lead_control["ok"],
+        "lead_control": lead_control,
+        "improve1_capabilities": lead_control["capabilities"],
+        "operations": tuple(dict.fromkeys(tuple(runtime.get("operations", ())) + ("improve1_lead_control_contract", "evaluate_lead_control"))),
+        "owned_tables": LEAD_CONTROL_OWNED_TABLES,
+        "allowed_database_backends": LEAD_CONTROL_ALLOWED_DATABASE_BACKENDS,
+        "database_backends": LEAD_CONTROL_ALLOWED_DATABASE_BACKENDS,
+        "required_event_topic": LEAD_CONTROL_REQUIRED_EVENT_TOPIC,
+        "event_contract": "AppGen-X",
+        "stream_engine_picker_visible": False,
+    })
+    return runtime

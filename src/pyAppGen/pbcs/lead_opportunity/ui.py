@@ -282,3 +282,38 @@ def smoke_test():
         "cards": cards,
         "side_effects": (),
     }
+
+
+# Improve1 lead control UI extension.
+from .lead_control import improve1_lead_control_contract as _improve1_lead_control_contract
+
+_LEAD_OPPORTUNITY_BASE_UI_CONTRACT = lead_opportunity_ui_contract
+_LEAD_OPPORTUNITY_BASE_RENDER_WORKBENCH = lead_opportunity_render_workbench
+
+
+def lead_opportunity_ui_contract() -> dict:
+    ui = dict(_LEAD_OPPORTUNITY_BASE_UI_CONTRACT())
+    lead_control = _improve1_lead_control_contract()
+    panels = tuple(item["evidence"]["ui_surface"] for item in lead_control["capabilities"])
+    service_actions = tuple(item["evidence"]["service_api"] for item in lead_control["capabilities"])
+    ui.update({
+        "ok": ui.get("ok") is True and lead_control["ok"],
+        "lead_control_contract": lead_control,
+        "lead_control_panels": panels,
+        "lead_control_service_actions": service_actions,
+        "stream_engine_picker_visible": False,
+    })
+    ui["binding_evidence"] = dict(ui.get("binding_evidence", {}), lead_control_tables=lead_control["owned_tables"], shared_table_access=False)
+    return ui
+
+
+def lead_opportunity_render_workbench(state: dict, *, tenant: str, principal_permissions: tuple[str, ...]) -> dict:
+    workbench = dict(_LEAD_OPPORTUNITY_BASE_RENDER_WORKBENCH(state, tenant=tenant, principal_permissions=principal_permissions))
+    lead_control = _improve1_lead_control_contract()
+    workbench.update({
+        "ok": workbench.get("ok") is True and lead_control["ok"],
+        "lead_control_panels": tuple(item["evidence"]["ui_surface"] for item in lead_control["capabilities"]),
+        "lead_control_service_actions": tuple(item["evidence"]["service_api"] for item in lead_control["capabilities"]),
+        "lead_control_agent_tools": tuple(f"lead_opportunity.skills.{item['slug']}" for item in lead_control["capabilities"]),
+    })
+    return workbench

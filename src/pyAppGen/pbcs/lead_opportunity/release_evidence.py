@@ -125,3 +125,53 @@ def smoke_test():
         'evidence': evidence,
         'side_effects': (),
     }
+
+
+# Improve1 lead control release evidence extension.
+from .lead_control import improve1_lead_control_contract as _lead_control_contract
+
+_LEAD_OPPORTUNITY_BASE_BUILD_RELEASE_EVIDENCE = build_release_evidence
+_LEAD_OPPORTUNITY_BASE_RELEASE_READINESS_MANIFEST = release_readiness_manifest
+_LEAD_OPPORTUNITY_BASE_VALIDATE_RELEASE_EVIDENCE = validate_release_evidence
+
+
+def build_release_evidence() -> dict:
+    evidence = dict(_LEAD_OPPORTUNITY_BASE_BUILD_RELEASE_EVIDENCE())
+    lead_control = _lead_control_contract()
+    checks = tuple(evidence.get("checks", ())) + (
+        {"id": "lead_control_contract", "ok": lead_control["ok"]},
+        {"id": "lead_control_traceability", "ok": lead_control["capability_count"] == 50},
+    )
+    evidence.update({
+        "lead_control": lead_control,
+        "lead_opportunity_controls": tuple(item["evidence"] for item in lead_control["capabilities"]),
+        "checks": checks,
+        "blocking_gaps": tuple(check for check in checks if check.get("ok") is not True),
+    })
+    evidence["ok"] = not evidence["blocking_gaps"]
+    return evidence
+
+
+def release_readiness_manifest():
+    manifest = dict(_LEAD_OPPORTUNITY_BASE_RELEASE_READINESS_MANIFEST())
+    evidence = build_release_evidence()
+    manifest.update({
+        "ok": evidence["ok"],
+        "evidence": evidence,
+        "sections": tuple(dict.fromkeys(tuple(manifest.get("sections", ())) + ("lead_control", "improve1_traceability"))),
+        "blocking_gaps": evidence["blocking_gaps"],
+    })
+    return manifest
+
+
+def validate_release_evidence():
+    base = dict(_LEAD_OPPORTUNITY_BASE_VALIDATE_RELEASE_EVIDENCE())
+    evidence = build_release_evidence()
+    lead_control = evidence["lead_control"]
+    failed = tuple(check for check in evidence["checks"] if check.get("ok") is not True)
+    base.update({
+        "ok": base.get("ok") is True and evidence["ok"] and lead_control["ok"] and not failed,
+        "failed_checks": tuple(base.get("failed_checks", ())) + failed,
+        "lead_control": lead_control,
+    })
+    return base
