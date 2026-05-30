@@ -254,3 +254,46 @@ def facilities_space_management_runtime_capabilities():
         'domain_advanced_capabilities': tuple(domain['advanced_capabilities']),
         'side_effects': (),
     }
+
+
+# Facilities improve1 control extension with per-feature executable evidence.
+from .facilities_control import improve1_facilities_control_contract as facilities_space_management_improve1_facilities_control_contract
+
+_FACILITIES_SPACE_MANAGEMENT_DOMAIN_BUILD_RELEASE_EVIDENCE = facilities_space_management_build_release_evidence
+_FACILITIES_SPACE_MANAGEMENT_DOMAIN_RUNTIME_CAPABILITIES = facilities_space_management_runtime_capabilities
+
+
+def facilities_space_management_build_release_evidence():
+    evidence = dict(_FACILITIES_SPACE_MANAGEMENT_DOMAIN_BUILD_RELEASE_EVIDENCE())
+    facilities_control = facilities_space_management_improve1_facilities_control_contract()
+    checks = tuple(evidence.get('checks', ())) + (
+        {'id': 'improve1_facilities_control_contract', 'ok': facilities_control['ok']},
+        {'id': 'improve1_facilities_control_capability_count', 'ok': facilities_control['capability_count'] == 50},
+        {'id': 'improve1_facilities_control_boundary', 'ok': not facilities_control['blocking_gaps'] and facilities_control['stream_engine_picker_visible'] is False},
+    )
+    return {
+        **evidence,
+        'ok': evidence.get('ok') is True and all(check['ok'] for check in checks),
+        'checks': checks,
+        'facilities_control': facilities_control,
+        'blocking_gaps': tuple(check for check in checks if not check['ok']),
+        'side_effects': (),
+    }
+
+
+def facilities_space_management_runtime_capabilities():
+    runtime = dict(_FACILITIES_SPACE_MANAGEMENT_DOMAIN_RUNTIME_CAPABILITIES())
+    facilities_control = facilities_space_management_improve1_facilities_control_contract()
+    return {
+        **runtime,
+        'ok': runtime.get('ok') is True and facilities_control['ok'],
+        'facilities_control': facilities_control,
+        'operations': tuple(runtime.get('operations', ())) + ('improve1_facilities_control_contract',),
+        'improve1_facilities_control_capabilities': tuple(item['slug'] for item in facilities_control['capabilities']),
+        'owned_tables': tuple(dict.fromkeys(tuple(runtime.get('owned_tables', ())) + tuple(facilities_control['owned_tables']))),
+        'allowed_database_backends': facilities_control['allowed_database_backends'],
+        'event_contract': facilities_control['event_contract'],
+        'required_event_topic': facilities_control['required_event_topic'],
+        'stream_engine_picker_visible': False,
+        'side_effects': (),
+    }

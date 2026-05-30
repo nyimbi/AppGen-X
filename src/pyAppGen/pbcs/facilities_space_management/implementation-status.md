@@ -56,3 +56,10 @@ pbc_generation_smoke_audit(("facilities_space_management",)) did not complete in
 ## Merge Notes
 
 This branch should contain only files under `src/pyAppGen/pbcs/facilities_space_management`. It can be reviewed independently, but the generation-smoke hang should be resolved before merging if the branch is held to the strict smoke-audit standard.
+
+## 2026-05-30 improve1 Facilities-Control Execution Slice
+
+- Added `facilities_control.py` as the executable per-feature control layer for all 50 Facilities and Space Management improve1 capabilities.
+- Wired the control contract into runtime capabilities, release evidence, and UI workbench surfaces so generated applications can discover facilities-specific gates.
+- Rebuilt `IMPROVE1_TRACEABILITY.md` so each feature maps to code/model, UI surface, service/API, test, and release evidence.
+- Added `tests/test_domain_behavior.py` with negative guardrails for facility topology, digital twins, occupancy assignment, hybrid HR boundaries, reservation eligibility, setup readiness, privacy-safe analytics, maintenance blocking, move dependencies, access constraints, safety blocking, lease boundaries, accessibility controls, wayfinding, agent document intake, floor-plan change approval, maintenance/access boundary proofs, release evidence packs, dead-letter replay, and complete role workbench coverage.
