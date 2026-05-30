@@ -3374,6 +3374,17 @@ def test_package_cli_audit_proves_all_target_handoff_contracts(tmp_path: Path) -
     assert report["missing_release_graph_kinds"] == ()
     assert report["missing_release_graph_format_count"] == 0
     assert report["missing_release_graph_formats"] == ()
+    assert report["readiness_check_count"] == 29
+    assert report["passing_readiness_check_count"] == report["readiness_check_count"]
+    assert report["missing_readiness_check_count"] == 0
+    assert report["missing_readiness_checks"] == ()
+    assert set(report["readiness_matrix"]) == {"web", "mobile", "desktop", "pbc", "deployment"}
+    assert all(all(checks.values()) for checks in report["readiness_matrix"].values())
+    assert report["readiness_matrix"]["web"]["smoke_entrypoint"] is True
+    assert report["readiness_matrix"]["mobile"]["smoke_entrypoint"] is True
+    assert report["readiness_matrix"]["desktop"]["smoke_entrypoint"] is True
+    assert report["readiness_matrix"]["pbc"]["handoff_contracts_present"] is True
+    assert report["readiness_matrix"]["deployment"]["topology_declared"] is True
     assert set(manifest_case["release_evidence_reports"]) == {"web", "mobile", "desktop", "pbc", "deployment"}
     assert manifest_case["web_artifact_class"] == "web_application"
     assert manifest_case["release_graph_suite_format"] == "appgen.graph-suite-report.v1"
@@ -6353,6 +6364,25 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert package_manifest_check["detail"]["manifest_formats"]["web"] == "appgen.package-manifest.v1"
     assert package_manifest_check["detail"]["handoff_artifact_count"] >= 25
     assert package_manifest_check["detail"]["handoff_counts_by_target"]["mobile"] >= 6
+    assert package_manifest_check["detail"]["readiness_check_count"] == 29
+    assert package_manifest_check["detail"]["passing_readiness_check_count"] == (
+        package_manifest_check["detail"]["readiness_check_count"]
+    )
+    assert package_manifest_check["detail"]["missing_readiness_check_count"] == 0
+    assert package_manifest_check["detail"]["missing_readiness_checks"] == ()
+    assert set(package_manifest_check["detail"]["readiness_matrix"]) == {
+        "web",
+        "mobile",
+        "desktop",
+        "pbc",
+        "deployment",
+    }
+    assert all(all(checks.values()) for checks in package_manifest_check["detail"]["readiness_matrix"].values())
+    assert package_manifest_check["detail"]["readiness_matrix"]["web"]["smoke_entrypoint"] is True
+    assert package_manifest_check["detail"]["readiness_matrix"]["mobile"]["smoke_entrypoint"] is True
+    assert package_manifest_check["detail"]["readiness_matrix"]["desktop"]["smoke_entrypoint"] is True
+    assert package_manifest_check["detail"]["readiness_matrix"]["pbc"]["handoff_contracts_present"] is True
+    assert package_manifest_check["detail"]["readiness_matrix"]["deployment"]["topology_declared"] is True
     assert package_manifest_check["detail"]["release_evidence_report_count"] == 5
     assert package_manifest_check["detail"]["missing_release_report_count"] == 0
     assert package_manifest_check["detail"]["missing_release_reports"] == ()

@@ -6060,7 +6060,9 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and package_manifest_case.get("deployment_environment_variables_named") is True
             and package_manifest_case.get("deployment_secret_values_absent") is True
             and package_manifest_case.get("deployment_resource_hints_present") is True
-            and package_manifest_case.get("deployment_topology_graph_connected") is True,
+            and package_manifest_case.get("deployment_topology_graph_connected") is True
+            and package_verify_cli.get("readiness_check_count") == package_verify_cli.get("passing_readiness_check_count")
+            and package_verify_cli.get("missing_readiness_check_count") == 0,
             "Package manifests expose stable handoff metadata for web, mobile, desktop, PBC, and deployment builders.",
             "docs/tooling.md#appgen-package",
             {
@@ -6078,6 +6080,12 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                 "manifest_formats": package_verify_cli.get("manifest_formats"),
                 "handoff_artifact_count": package_verify_cli.get("handoff_artifact_count"),
                 "handoff_counts_by_target": package_verify_cli.get("handoff_counts_by_target"),
+                "readiness_matrix": package_verify_cli.get("readiness_matrix"),
+                "readiness_checks_by_target": package_verify_cli.get("readiness_checks_by_target"),
+                "readiness_check_count": package_verify_cli.get("readiness_check_count"),
+                "passing_readiness_check_count": package_verify_cli.get("passing_readiness_check_count"),
+                "missing_readiness_check_count": package_verify_cli.get("missing_readiness_check_count"),
+                "missing_readiness_checks": package_verify_cli.get("missing_readiness_checks"),
                 "release_evidence_report_count": package_verify_cli.get("release_evidence_report_count"),
                 "release_evidence_reports": package_manifest_case.get("release_evidence_reports"),
                 "missing_release_report_count": package_verify_cli.get("missing_release_report_count"),
@@ -13021,6 +13029,58 @@ def _tooling_audit_package_verify_cli(tmp: Path, source: str) -> dict:
     release_graph_formats = tuple(evidence_graph_suite.get("formats", ()))
     missing_release_graph_kinds = tuple(kind for kind in REQUIRED_GRAPH_KINDS if kind not in release_graph_kinds)
     missing_release_graph_formats = tuple(output_format for output_format in GRAPH_TEXT_FORMATS if output_format not in release_graph_formats)
+    readiness_matrix = {
+        "web": {
+            "app_build_contract": web_manifest.get("app_build_contract") is True,
+            "routes_declared": web_manifest.get("routes_declared") is True,
+            "forms_bind_valid_fields": web_manifest.get("forms_bind_valid_fields") is True,
+            "handler_targets_resolve": web_manifest.get("handler_targets_resolve") is True,
+            "smoke_tests_declared": web_manifest.get("smoke_tests_declared") is True,
+            "smoke_entrypoint": web_manifest.get("smoke_entrypoint") == "web.smoke",
+        },
+        "mobile": {
+            "package_metadata_exists": mobile_manifest.get("package_metadata_exists") is True,
+            "signing_posture_declared": mobile_manifest.get("signing_posture_declared") is True,
+            "offline_policy_declared": mobile_manifest.get("offline_policy_declared") is True,
+            "permissions_explained": mobile_manifest.get("permissions_explained") is True,
+            "screens_fit_target_density": mobile_manifest.get("screens_fit_target_density") is True,
+            "smoke_launch_path_exists": mobile_manifest.get("smoke_launch_path_exists") is True,
+            "smoke_entrypoint": mobile_manifest.get("smoke_entrypoint") == "mobile.launch",
+        },
+        "desktop": {
+            "package_metadata_exists": desktop_manifest.get("package_metadata_exists") is True,
+            "installer_posture_declared": desktop_manifest.get("installer_posture_declared") is True,
+            "startup_assets_declared": desktop_manifest.get("startup_assets_declared") is True,
+            "menus_bind_to_handlers": desktop_manifest.get("menus_bind_to_handlers") is True,
+            "smoke_launch_path_exists": desktop_manifest.get("smoke_launch_path_exists") is True,
+            "smoke_entrypoint": desktop_manifest.get("smoke_entrypoint") == "desktop.launch",
+        },
+        "pbc": {
+            "manifest_present": pbc_manifest.get("artifact_class") == "packaged_business_capability",
+            "side_effect_free_registration": pbc_manifest.get("side_effect_free_registration") is True,
+            "handoff_contracts_present": {"manifest", "contracts", "owned_schema", "registration", "release_evidence"} <= set(pbc_handoff),
+        },
+        "deployment": {
+            "units_declared": deployment_manifest.get("units_declared") is True,
+            "health_checks_declared": deployment_manifest.get("health_checks_declared") is True,
+            "environment_variables_named": deployment_manifest.get("environment_variables_named") is True,
+            "secret_values_absent": deployment_manifest.get("secret_values_absent") is True,
+            "resource_hints_present": deployment_manifest.get("resource_hints_present") is True,
+            "topology_graph_connected": deployment_manifest.get("topology_graph_connected") is True,
+            "topology_declared": deployment_manifest.get("topology_declared") is True,
+        },
+    }
+    readiness_checks_by_target = {
+        target: tuple(checks)
+        for target, checks in readiness_matrix.items()
+    }
+    missing_readiness_checks = tuple(
+        f"{target}.{name}"
+        for target, checks in readiness_matrix.items()
+        for name, ok in checks.items()
+        if not ok
+    )
+    readiness_check_count = sum(len(checks) for checks in readiness_matrix.values())
     return {
         "format": "appgen.package-verify-cli-audit.v1",
         "ok": all(case["ok"] for case in cases)
@@ -13050,6 +13110,12 @@ def _tooling_audit_package_verify_cli(tmp: Path, source: str) -> dict:
             for items in (web_handoff, mobile_handoff, desktop_handoff, pbc_handoff, deployment_handoff)
         ),
         "handoff_counts_by_target": handoff_counts_by_target,
+        "readiness_matrix": readiness_matrix,
+        "readiness_checks_by_target": readiness_checks_by_target,
+        "readiness_check_count": readiness_check_count,
+        "passing_readiness_check_count": readiness_check_count - len(missing_readiness_checks),
+        "missing_readiness_check_count": len(missing_readiness_checks),
+        "missing_readiness_checks": missing_readiness_checks,
         "release_evidence_report_count": len(release_reports),
         "release_evidence_reports": release_reports,
         "missing_release_report_count": len(missing_release_reports),
