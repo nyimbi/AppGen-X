@@ -5811,10 +5811,18 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and code_action_apply_audit.get("passing_case_count") == code_action_apply_audit.get("case_count")
             and code_action_apply_audit.get("required_action_count", 0) >= 15
             and code_action_apply_audit.get("observed_action_count") == code_action_apply_audit.get("required_action_count")
+            and code_action_apply_audit.get("missing_case_count") == 0
             and code_action_apply_audit.get("missing_required_action_count") == 0
             and code_action_apply_audit.get("applied_edit_count", 0) >= code_action_apply_audit.get("case_count", 0)
+            and code_action_apply_audit.get("missing_applied_edit_case_count") == 0
+            and code_action_apply_audit.get("missing_expected_text_case_count") == 0
             and code_action_apply_audit.get("lint_passing_case_count") == code_action_apply_audit.get("case_count")
+            and code_action_apply_audit.get("missing_lint_passing_case_count") == 0
             and code_action_apply_audit.get("lint_failing_case_count") == 0
+            and code_action_apply_audit.get("changed_case_count") == code_action_apply_audit.get("case_count")
+            and code_action_apply_audit.get("missing_changed_case_count") == 0
+            and code_action_apply_audit.get("cleanup_case_count") == code_action_apply_audit.get("case_count")
+            and code_action_apply_audit.get("missing_cleanup_case_count") == 0
             and code_action_apply_audit.get("blocking_gap_count") == 0,
             "Required quick-fix families apply as linted DSL patches with measurable case, action, edit, lint, diagnostic, and blocking-gap evidence.",
             "docs/tooling.md#code-actions",
@@ -16548,30 +16556,78 @@ def lsp_code_action_apply_audit_dsl() -> dict:
                 "action_id": action_id,
                 "ok": ok,
                 "expected_text": expected_text,
+                "expected_matched": expected_text in result["patched_source"],
+                "changed": result.get("changed"),
+                "cleanup_ok": invalid_picker_removed,
                 "diagnostic_codes": tuple(item.get("code") for item in result.get("diagnostics", ())),
                 "applied_edit_count": len(result.get("applied_edits", ())),
                 "lint_ok": result.get("lint", {}).get("ok"),
             }
         )
     required_action_ids = tuple(case[1] for case in case_specs)
+    required_case_ids = tuple(case[0] for case in case_specs)
+    observed_case_ids = tuple(case["id"] for case in cases)
+    missing_case_ids = tuple(case_id for case_id in required_case_ids if case_id not in observed_case_ids)
     observed_action_ids = tuple(case["action_id"] for case in cases)
     missing_required_action_ids = tuple(action_id for action_id in required_action_ids if action_id not in observed_action_ids)
+    expected_text_by_case = {case_id: expected_text for case_id, _action_id, _source, expected_text in case_specs}
+    expected_text_matched_cases = tuple(case["id"] for case in cases if case["expected_matched"])
+    missing_expected_text_cases = tuple(
+        case_id for case_id in required_case_ids if case_id not in expected_text_matched_cases
+    )
+    applied_edit_cases = tuple(case["id"] for case in cases if case["applied_edit_count"] > 0)
+    missing_applied_edit_cases = tuple(case_id for case_id in required_case_ids if case_id not in applied_edit_cases)
+    lint_passing_cases = tuple(case["id"] for case in cases if case["lint_ok"])
+    missing_lint_passing_cases = tuple(case_id for case_id in required_case_ids if case_id not in lint_passing_cases)
+    changed_cases = tuple(case["id"] for case in cases if case["changed"])
+    missing_changed_cases = tuple(case_id for case_id in required_case_ids if case_id not in changed_cases)
+    cleanup_cases = tuple(case["id"] for case in cases if case["cleanup_ok"])
+    missing_cleanup_cases = tuple(case_id for case_id in required_case_ids if case_id not in cleanup_cases)
     failing_cases = tuple(case for case in cases if not case["ok"])
     diagnostic_codes = tuple(
         code for case in cases for code in case.get("diagnostic_codes", ()) if code
     )
     return {
         "format": "appgen.lsp-code-action-apply-audit.v1",
-        "ok": all(case["ok"] for case in cases) and not missing_required_action_ids,
+        "ok": all(case["ok"] for case in cases)
+        and not missing_case_ids
+        and not missing_required_action_ids
+        and not missing_expected_text_cases
+        and not missing_applied_edit_cases
+        and not missing_lint_passing_cases
+        and not missing_changed_cases
+        and not missing_cleanup_cases,
         "case_count": len(cases),
         "passing_case_count": sum(1 for case in cases if case["ok"]),
         "failing_case_count": len(failing_cases),
+        "required_case_ids": required_case_ids,
+        "observed_case_ids": observed_case_ids,
+        "missing_case_count": len(missing_case_ids),
+        "missing_case_ids": missing_case_ids,
         "required_action_count": len(required_action_ids),
         "observed_action_count": len(observed_action_ids),
         "missing_required_action_count": len(missing_required_action_ids),
         "applied_edit_count": sum(case["applied_edit_count"] for case in cases),
+        "applied_edit_cases": applied_edit_cases,
+        "missing_applied_edit_case_count": len(missing_applied_edit_cases),
+        "missing_applied_edit_cases": missing_applied_edit_cases,
+        "expected_text_by_case": expected_text_by_case,
+        "expected_text_matched_cases": expected_text_matched_cases,
+        "missing_expected_text_case_count": len(missing_expected_text_cases),
+        "missing_expected_text_cases": missing_expected_text_cases,
         "lint_passing_case_count": sum(1 for case in cases if case["lint_ok"]),
+        "lint_passing_cases": lint_passing_cases,
+        "missing_lint_passing_case_count": len(missing_lint_passing_cases),
+        "missing_lint_passing_cases": missing_lint_passing_cases,
         "lint_failing_case_count": sum(1 for case in cases if not case["lint_ok"]),
+        "changed_case_count": len(changed_cases),
+        "changed_cases": changed_cases,
+        "missing_changed_case_count": len(missing_changed_cases),
+        "missing_changed_cases": missing_changed_cases,
+        "cleanup_case_count": len(cleanup_cases),
+        "cleanup_cases": cleanup_cases,
+        "missing_cleanup_case_count": len(missing_cleanup_cases),
+        "missing_cleanup_cases": missing_cleanup_cases,
         "diagnostic_code_count": len(diagnostic_codes),
         "diagnostic_codes": diagnostic_codes,
         "cases": tuple(cases),

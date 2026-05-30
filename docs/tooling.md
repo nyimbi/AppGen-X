@@ -1538,7 +1538,11 @@ contract. The in-process apply audit reports case, passing-case,
 failing-case, required-action, observed-action, missing-required-action,
 applied-edit, lint-passing-case, lint-failing-case, diagnostic-code, and
 blocking-gap counts so library consumers get measurable quick-fix breadth and
-failure evidence from the top-level report.
+failure evidence from the top-level report. It also reports required, observed,
+and missing case ids; expected text by case; expected-text matched cases;
+applied-edit cases; changed cases; cleanup cases; and lint-passing cases so the
+library-side gate identifies the exact quick-fix family that lost its patch,
+cleanup, expected text, or lint handoff.
 The CLI audit also reports case, passing-case, required-action, observed-action,
 missing-action, applied-edit, lint-passing-case, lint-failing-case,
 changed-case, unchanged-case, and blocking-gap counts so external agents can

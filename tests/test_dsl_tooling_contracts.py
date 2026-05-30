@@ -2583,12 +2583,35 @@ def test_lsp_code_action_apply_audit_proves_required_quick_fixes() -> None:
     assert audit["case_count"] == len(audit["cases"])
     assert audit["passing_case_count"] == audit["case_count"]
     assert audit["failing_case_count"] == 0
+    assert audit["required_case_ids"] == audit["required_action_ids"]
+    assert audit["observed_case_ids"] == audit["observed_action_ids"]
+    assert audit["missing_case_count"] == 0
+    assert audit["missing_case_ids"] == ()
     assert audit["required_action_count"] == len(audit["required_action_ids"])
     assert audit["observed_action_count"] == len(audit["observed_action_ids"])
     assert audit["missing_required_action_count"] == 0
     assert audit["applied_edit_count"] >= audit["case_count"]
+    assert audit["applied_edit_cases"] == audit["required_case_ids"]
+    assert audit["missing_applied_edit_case_count"] == 0
+    assert audit["missing_applied_edit_cases"] == ()
+    assert audit["expected_text_by_case"]["create_missing_table"] == "table Missing"
+    assert audit["expected_text_by_case"]["remove_invalid_runtime_picker_fields"] == "targets: web"
+    assert audit["expected_text_matched_cases"] == audit["required_case_ids"]
+    assert audit["missing_expected_text_case_count"] == 0
+    assert audit["missing_expected_text_cases"] == ()
     assert audit["lint_passing_case_count"] == audit["case_count"]
+    assert audit["lint_passing_cases"] == audit["required_case_ids"]
+    assert audit["missing_lint_passing_case_count"] == 0
+    assert audit["missing_lint_passing_cases"] == ()
     assert audit["lint_failing_case_count"] == 0
+    assert audit["changed_case_count"] == audit["case_count"]
+    assert audit["changed_cases"] == audit["required_case_ids"]
+    assert audit["missing_changed_case_count"] == 0
+    assert audit["missing_changed_cases"] == ()
+    assert audit["cleanup_case_count"] == audit["case_count"]
+    assert audit["cleanup_cases"] == audit["required_case_ids"]
+    assert audit["missing_cleanup_case_count"] == 0
+    assert audit["missing_cleanup_cases"] == ()
     assert audit["diagnostic_code_count"] == len(audit["diagnostic_codes"])
     assert audit["diagnostic_code_count"] >= audit["case_count"] - 2
     assert audit["blocking_gap_count"] == 0
@@ -5969,7 +5992,20 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert quick_fix_coverage["detail"]["format"] == "appgen.lsp-code-action-apply-audit.v1"
     assert quick_fix_coverage["detail"]["required_action_count"] >= 15
     assert quick_fix_coverage["detail"]["passing_case_count"] == quick_fix_coverage["detail"]["case_count"]
+    assert quick_fix_coverage["detail"]["missing_case_count"] == 0
     assert quick_fix_coverage["detail"]["missing_required_action_count"] == 0
+    assert quick_fix_coverage["detail"]["applied_edit_cases"] == quick_fix_coverage["detail"]["required_case_ids"]
+    assert quick_fix_coverage["detail"]["missing_applied_edit_case_count"] == 0
+    assert quick_fix_coverage["detail"]["expected_text_matched_cases"] == quick_fix_coverage["detail"][
+        "required_case_ids"
+    ]
+    assert quick_fix_coverage["detail"]["missing_expected_text_case_count"] == 0
+    assert quick_fix_coverage["detail"]["lint_passing_cases"] == quick_fix_coverage["detail"]["required_case_ids"]
+    assert quick_fix_coverage["detail"]["missing_lint_passing_case_count"] == 0
+    assert quick_fix_coverage["detail"]["changed_cases"] == quick_fix_coverage["detail"]["required_case_ids"]
+    assert quick_fix_coverage["detail"]["missing_changed_case_count"] == 0
+    assert quick_fix_coverage["detail"]["cleanup_cases"] == quick_fix_coverage["detail"]["required_case_ids"]
+    assert quick_fix_coverage["detail"]["missing_cleanup_case_count"] == 0
     assert quick_fix_coverage["detail"]["blocking_gap_count"] == 0
     quick_fix_cli = next(check for check in report["checks"] if check["id"] == "lsp_quick_fix_cli_contracts")
     assert quick_fix_cli["ok"] is True
