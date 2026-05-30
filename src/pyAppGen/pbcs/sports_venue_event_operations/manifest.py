@@ -1,5 +1,7 @@
 """Package manifest for the sports_venue_event_operations PBC."""
 
+PBC_LITERAL = 'sports_venue_event_operations'
+
 PBC_MANIFEST = {
     "advanced_capabilities": (
         "sports_venue_event_operations_event_sourced_operational_history",

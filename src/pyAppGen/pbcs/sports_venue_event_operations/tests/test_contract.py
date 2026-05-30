@@ -93,3 +93,8 @@ def test_package_audit_passes():
         "capability",
         "generation",
     }
+
+
+def test_configuration_permissions_and_seed_hooks_are_executable():
+    assert governance_smoke_test()['ok'] is True
+    assert documentation_presence()['ok'] is True

@@ -11,3 +11,8 @@ Delivered in this slice:
 Known limits:
 - standalone storage is in-memory for package-local verification
 - runtime contracts remain package-local evidence, not a deployed service
+
+
+## Repo-Level Focused Audit Follow-Up
+
+Added literal manifest identity, exact configuration/seed hook test marker, and specification manifest traceability appendix after local repo audits exposed source/spec gating failures.
