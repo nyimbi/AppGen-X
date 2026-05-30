@@ -69,3 +69,17 @@ Not implemented in this slice:
 - Broader publisher qualification response workflows beyond inbox handling.
 
 Those can build on the new standalone planning and launch-gate foundation without requiring shared-generator changes.
+
+## improve1 Full Traceability Evidence
+
+- Current slice branch: `pbc/improve1-full-traceability`.
+- Domain behavior evidence: `tests/test_domain_behavior.py`.
+- Matrix binding: every row in `IMPROVE1_TRACEABILITY.md` now names `tests/test_domain_behavior.py` alongside the existing contract and standalone tests.
+- Capability registry binding: every feature in `improve1_capabilities.py` now includes `tests/test_domain_behavior.py` in `test_artifacts`.
+- Behavioral coverage: canonical brief normalization, missing-field validation, flight/channel planning, guardrails, launch dependency checks, blocked launch reviews, approved launch attempts, command-center summaries, brief-to-plan workflows, launch gate workflows, document instruction workflows, runtime configuration/rules/parameters/schema extensions, AppGen-X consumed events, idempotent duplicate handling, retry/dead-letter evidence, campaign plan creation, exception and approval outbox events, workbench query, advanced assessment, document parsing, schema/service/API/release contracts, permissions, owned-boundary rejection, stateful service facade, route dispatch, UI rendering, assistant document and CRUD planning, standalone app bootstrap/demo/release snapshots, workflow catalog, source package contract, and domain operation execution.
+
+## Verification Log
+
+- Passed: `/Volumes/Media/src/pjs/appgen/.venv/bin/pytest src/pyAppGen/pbcs/advertising_campaign_operations/tests` -> 18 passed.
+- Passed: improve1 sweep over 441 test files -> 877 passed.
+- Passed: `git diff --check -- src/pyAppGen/pbcs`.
