@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from .cdp_control import CDP_CONTROL_CAPABILITIES, improve1_cdp_control_contract
 from .runtime import CDP_SEGMENTATION_ALLOWED_DATABASE_BACKENDS
 from .runtime import CDP_SEGMENTATION_OWNED_TABLES
 from .runtime import CDP_SEGMENTATION_REQUIRED_EVENT_TOPIC
@@ -309,6 +310,9 @@ def cdp_segmentation_ui_contract() -> dict:
         'form_catalog': forms['forms'],
         'wizard_catalog': wizards['wizards'],
         'control_catalog': controls['controls'],
+        'advanced_panels': CDP_CONTROL_CAPABILITIES,
+        'cdp_control_panels': tuple(f'cdp_control_{capability}' for capability in CDP_CONTROL_CAPABILITIES),
+        'cdp_control_contract': improve1_cdp_control_contract(),
         'standalone_app': cdp_segmentation_standalone_app_contract(),
         'binding_evidence': {
             'owned_tables': CDP_SEGMENTATION_OWNED_TABLES,

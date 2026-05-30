@@ -8,6 +8,8 @@ import json
 import math
 from pathlib import Path
 
+from .cdp_control import improve1_cdp_control_contract
+
 
 CDP_SEGMENTATION_REQUIRED_EVENT_TOPIC = "appgen.cdp_segmentation.events"
 CDP_SEGMENTATION_ALLOWED_DATABASE_BACKENDS = ("postgresql", "mysql", "mariadb")
@@ -1555,6 +1557,7 @@ def cdp_segmentation_build_release_evidence() -> dict:
         {"id": "no_shared_table_access", "ok": not schema["shared_table_access"] and not service["shared_table_access"] and not api["shared_table_access"]},
         {"id": "documentation_present", "ok": all((package_dir / name).exists() for name in required_docs)},
         {"id": "package_local_tests_present", "ok": all((package_dir / name).exists() for name in required_tests)},
+        {"id": "improve1_cdp_control", "ok": improve1_cdp_control_contract()["capability_count"] == 50},
     )
     blocking = tuple(check for check in checks if not check["ok"])
     return {
@@ -1572,6 +1575,7 @@ def cdp_segmentation_build_release_evidence() -> dict:
             "present": tuple(name for name in required_docs if (package_dir / name).exists()),
             "missing": tuple(name for name in required_docs if not (package_dir / name).exists()),
         },
+        "improve1_cdp_control": improve1_cdp_control_contract(),
         "tests": {
             "required": required_tests,
             "present": tuple(name for name in required_tests if (package_dir / name).exists()),
