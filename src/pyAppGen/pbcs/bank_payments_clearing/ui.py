@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from .payment_operations import build_payment_operations_workbench, empty_operations_state
+from .payment_control import PAYMENT_CONTROL_CAPABILITIES, improve1_payment_control_contract
 from .permissions import permission_manifest
 from .runtime import BANK_PAYMENTS_CLEARING_ALLOWED_DATABASE_BACKENDS
 
@@ -250,6 +251,8 @@ def bank_payments_clearing_ui_contract() -> dict:
         "controls": PAYMENT_CONTROLS,
         "workflows": PAYMENT_WORKFLOWS,
         "payment_actions": payment_actions,
+        "payment_control_panels": tuple(f"payment_control_{capability}" for capability in PAYMENT_CONTROL_CAPABILITIES),
+        "payment_control_contract": improve1_payment_control_contract(),
         "action_permissions": permissions["permissions"],
         "standalone_app": bank_payments_clearing_standalone_app_contract(),
         "stream_engine_picker_visible": False,

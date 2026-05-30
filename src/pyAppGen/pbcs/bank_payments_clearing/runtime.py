@@ -3,6 +3,7 @@ from __future__ import annotations
 from copy import deepcopy
 import hashlib
 from .domain_depth import domain_depth_contract, domain_depth_smoke_test, execute_domain_operation, DOMAIN_OPERATIONS, DOMAIN_OWNED_TABLES
+from .payment_control import improve1_payment_control_contract
 from .payment_operations import (
     assemble_clearing_batch,
     build_payment_operations_release_evidence,
@@ -176,8 +177,8 @@ def bank_payments_clearing_build_api_contract():
  'GET /bank-payments-clearing-workbench'), 'event_contract': 'AppGen-X', 'stream_engine_picker_visible': False, 'owned_tables': BANK_PAYMENTS_CLEARING_OWNED_TABLES}
 
 def bank_payments_clearing_build_release_evidence():
-    checks = ({'id': 'schema_models_migrations', 'ok': True}, {'id': 'service_api_events', 'ok': True}, {'id': 'agent_ui_governance', 'ok': True}, {'id': 'retry_dead_letter', 'ok': True})
-    return {'format': 'appgen.bank-payments-clearing-release-evidence.v1', 'ok': True, 'pbc': PBC_KEY, 'checks': checks, 'generated_artifacts': {'migrations': bank_payments_clearing_build_schema_contract()['migrations'], 'models': bank_payments_clearing_build_schema_contract()['models'], 'events': {'contract': 'AppGen-X', 'emits': BANK_PAYMENTS_CLEARING_EMITTED_EVENT_TYPES, 'consumes': BANK_PAYMENTS_CLEARING_CONSUMED_EVENT_TYPES}, 'handlers': ('receive_event',), 'ui': BANK_PAYMENTS_CLEARING_UI_FRAGMENT_KEYS}, 'blocking_gaps': ()}
+    checks = ({'id': 'schema_models_migrations', 'ok': True}, {'id': 'service_api_events', 'ok': True}, {'id': 'agent_ui_governance', 'ok': True}, {'id': 'retry_dead_letter', 'ok': True}, {'id': 'improve1_payment_control', 'ok': improve1_payment_control_contract()['ok'] and improve1_payment_control_contract()['capability_count'] == 50})
+    return {'format': 'appgen.bank-payments-clearing-release-evidence.v1', 'ok': True, 'pbc': PBC_KEY, 'checks': checks, 'generated_artifacts': {'migrations': bank_payments_clearing_build_schema_contract()['migrations'], 'models': bank_payments_clearing_build_schema_contract()['models'], 'events': {'contract': 'AppGen-X', 'emits': BANK_PAYMENTS_CLEARING_EMITTED_EVENT_TYPES, 'consumes': BANK_PAYMENTS_CLEARING_CONSUMED_EVENT_TYPES}, 'handlers': ('receive_event',), 'ui': BANK_PAYMENTS_CLEARING_UI_FRAGMENT_KEYS, 'improve1_payment_control': improve1_payment_control_contract()}, 'blocking_gaps': ()}
 
 def bank_payments_clearing_permissions_contract():
     return {'ok': True, 'pbc': PBC_KEY, 'permissions': ('bank_payments_clearing.read',
