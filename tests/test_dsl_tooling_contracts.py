@@ -4808,6 +4808,14 @@ def test_format_text_renderer_contract_proves_write_and_idempotence_log_markers(
     assert report["required_fragment_count"] == len(report["required_fragments"])
     assert report["missing_fragment_count"] == 0
     assert report["marker_line_count"] >= 3
+    assert report["summary_line_count"] == 1
+    assert report["write_path_line_count"] == 1
+    assert report["diagnostic_line_count"] == 1
+    assert report["warning_line_count"] == 1
+    assert report["error_line_count"] == 0
+    assert report["write_flag_line_count"] == 1
+    assert report["idempotence_line_count"] == 1
+    assert report["organize_line_count"] == 1
     assert report["missing_fragments"] == ()
     assert report["json_fallback"] is False
     assert report["text_prefix"].startswith("format changed: format=appgen.format-result.v1")
@@ -4827,16 +4835,15 @@ def test_designer_sync_text_renderer_contract_proves_round_trip_log_markers() ->
     assert report["missing_fragment_count"] == 0
     assert report["marker_line_count"] >= 10
     assert report["summary_line_count"] == 1
-    assert report["coverage_line_count"] == 1
-    assert report["detected_family_line_count"] == 1
-    assert report["missing_family_line_count"] == 1
-    assert report["change_line_count"] == 3
-    assert report["safe_alternative_line_count"] == 2
-    assert report["diagnostic_line_count"] == 1
-    assert report["warning_line_count"] == 1
-    assert report["error_line_count"] == 0
-    assert report["approval_line_count"] == 1
-    assert report["destructive_summary_line_count"] == 1
+    assert report["surface_line_count"] == 1
+    assert report["visual_edit_line_count"] == 1
+    assert report["dsl_diff_line_count"] == 2
+    assert report["matrix_line_count"] == 1
+    assert report["operation_line_count"] == 1
+    assert report["case_line_count"] == 3
+    assert report["check_line_count"] == 2
+    assert report["passing_check_line_count"] == 2
+    assert report["failing_check_line_count"] == 0
     assert report["missing_fragments"] == ()
     assert report["json_fallback"] is False
     assert report["text_prefix"].startswith(
@@ -4863,6 +4870,17 @@ def test_migration_plan_text_renderer_contract_proves_safety_log_markers() -> No
     assert report["required_fragment_count"] == len(report["required_fragments"])
     assert report["missing_fragment_count"] == 0
     assert report["marker_line_count"] >= 10
+    assert report["summary_line_count"] == 1
+    assert report["coverage_line_count"] == 1
+    assert report["detected_family_line_count"] == 1
+    assert report["missing_family_line_count"] == 1
+    assert report["change_line_count"] == 3
+    assert report["safe_alternative_line_count"] == 2
+    assert report["diagnostic_line_count"] == 1
+    assert report["warning_line_count"] == 1
+    assert report["error_line_count"] == 0
+    assert report["approval_line_count"] == 1
+    assert report["destructive_summary_line_count"] == 1
     assert report["missing_fragments"] == ()
     assert report["json_fallback"] is False
     assert report["text_prefix"].startswith(

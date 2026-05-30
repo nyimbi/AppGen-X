@@ -714,7 +714,11 @@ also reports the formatter report format in the header, `organize`, `write_reque
 format text logs preserve the formatter envelope, idempotence state,
 organize/write flags, write path, and diagnostic lines without JSON parsing.
 The format text contract reports fragment and marker counts for the formatter
-header, mutation posture, write path, and diagnostic markers.
+header, mutation posture, write path, and diagnostic markers. It also reports
+summary-line, write-path-line, diagnostic-line, warning-line, error-line,
+write-flag-line, idempotence-line, and organize-line counts so formatter text
+logs prove mutation posture, write status, idempotence, organize mode, and
+diagnostics remain visible.
 `--organize` enables the optional table-body organization profile: identity
 fields and spreads, business keys, relationships, editable scalar fields,
 calculated fields, audit fields, and directives are ordered inside each table
@@ -1346,6 +1350,10 @@ prove those designer handoff logs keep round-trip, projection, diff-preview,
 matrix, required-operation, and executed-case evidence visible without JSON
 parsing. The renderer contract reports fragment and marker counts for the
 designer summary, surface list, visual edit, DSL diff, matrix, and check lines.
+It also reports summary-line, surface-line, visual-edit-line, dsl-diff-line,
+matrix-line, operation-line, case-line, check-line, passing-check-line, and
+failing-check-line counts so designer release logs prove round-trip,
+projection, and matrix evidence did not collapse into prose.
 `--edit-json` must be a JSON object; malformed edit payloads are CLI
 configuration errors and return exit code `2` before any designer mutation is
 accepted.

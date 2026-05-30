@@ -2351,6 +2351,10 @@ def _format_text_renderer_contract() -> dict:
         "warning AGX0201: Formatter normalized field modifier order.",
     )
     missing = tuple(fragment for fragment in required_fragments if fragment not in text)
+    lines = tuple(line for line in text.splitlines() if line.strip())
+    summary_lines = tuple(line for line in lines if line.startswith("format "))
+    write_path_lines = tuple(line for line in lines if line.startswith("write_path "))
+    diagnostic_lines = tuple(line for line in lines if line.startswith(("warning ", "error ")))
     return {
         "format": "appgen.format-text-renderer.v1",
         "ok": not missing and not text.lstrip().startswith("{"),
@@ -2361,6 +2365,14 @@ def _format_text_renderer_contract() -> dict:
         ),
         "required_fragments": required_fragments,
         "missing_fragments": missing,
+        "summary_line_count": len(summary_lines),
+        "write_path_line_count": len(write_path_lines),
+        "diagnostic_line_count": len(diagnostic_lines),
+        "warning_line_count": sum(1 for line in diagnostic_lines if line.startswith("warning ")),
+        "error_line_count": sum(1 for line in diagnostic_lines if line.startswith("error ")),
+        "write_flag_line_count": sum(1 for line in summary_lines if "write_requested=True" in line and "written=True" in line),
+        "idempotence_line_count": sum(1 for line in summary_lines if "idempotent" in line or "not-idempotent" in line),
+        "organize_line_count": sum(1 for line in summary_lines if "organize=True" in line),
         "json_fallback": text.lstrip().startswith("{"),
         "text_prefix": text[:240],
     }
@@ -3068,6 +3080,15 @@ def _designer_sync_text_renderer_contract() -> dict:
         "ok projection_refresh",
     )
     missing = tuple(fragment for fragment in required_fragments if fragment not in text)
+    lines = tuple(line for line in text.splitlines() if line.strip())
+    summary_lines = tuple(line for line in lines if line.startswith("designer-sync "))
+    surface_lines = tuple(line for line in lines if line.startswith("surfaces "))
+    visual_edit_lines = tuple(line for line in lines if line.startswith("visual-edit "))
+    dsl_diff_lines = tuple(line for line in lines if line.startswith("dsl-diff "))
+    matrix_lines = tuple(line for line in lines if line.startswith("visual-edit-matrix "))
+    operation_lines = tuple(line for line in lines if line.startswith("visual-edit-operations "))
+    case_lines = tuple(line for line in lines if line.startswith("visual-edit-case "))
+    check_lines = tuple(line for line in lines if line.startswith(("ok ", "fail ")))
     return {
         "format": "appgen.designer-sync-text-renderer.v1",
         "ok": not missing and not text.lstrip().startswith("{"),
@@ -3078,6 +3099,16 @@ def _designer_sync_text_renderer_contract() -> dict:
         ),
         "required_fragments": required_fragments,
         "missing_fragments": missing,
+        "summary_line_count": len(summary_lines),
+        "surface_line_count": len(surface_lines),
+        "visual_edit_line_count": len(visual_edit_lines),
+        "dsl_diff_line_count": len(dsl_diff_lines),
+        "matrix_line_count": len(matrix_lines),
+        "operation_line_count": len(operation_lines),
+        "case_line_count": len(case_lines),
+        "check_line_count": len(check_lines),
+        "passing_check_line_count": sum(1 for line in check_lines if line.startswith("ok ")),
+        "failing_check_line_count": sum(1 for line in check_lines if line.startswith("fail ")),
         "json_fallback": text.lstrip().startswith("{"),
         "text_prefix": text[:240],
     }
