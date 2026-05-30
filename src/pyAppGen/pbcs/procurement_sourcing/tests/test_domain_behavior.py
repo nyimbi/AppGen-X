@@ -4,8 +4,16 @@ from __future__ import annotations
 
 import pytest
 
+from .. import agent
+from .. import release_evidence
+from .. import routes
 from .. import runtime
 from .. import ui
+from ..repository import ProcurementSourcingRepository
+from ..repository import procurement_sourcing_repository_contract
+from ..standalone import ProcurementSourcingStandaloneApp
+from ..standalone import smoke_test as standalone_smoke_test
+from ..standalone import standalone_app_manifest
 from ..services import StatefulProcurementSourcingService
 from ..services import runtime_service_manifest
 from ..services import service_operation_manifest
@@ -247,3 +255,72 @@ def test_procurement_event_handlers_retry_dead_letter_service_and_boundary_guard
         service.configure_runtime({**_configuration(), "database_backend": "sqlite"})
     with pytest.raises(ValueError, match="stream-engine picker"):
         service.configure_runtime({**_configuration(), "stream_engine_picker": "user_choice"})
+
+
+def test_procurement_routes_repository_agent_standalone_and_release_surfaces_are_executable() -> None:
+    route_validation = routes.validate_api_route_contracts()
+    requisition_dispatch = routes.dispatch_route(
+        "POST",
+        "/api/pbc/procurement_sourcing/procurement/requisitions",
+        {"tenant": TENANT, "requisition_id": "req-route-001"},
+    )
+    workbench_dispatch = routes.dispatch_route(
+        "GET",
+        "/api/pbc/procurement_sourcing/procurement/workbench",
+        {"tenant": TENANT},
+    )
+
+    assert route_validation["ok"] is True
+    assert all(contract["event_contract"] == "AppGen-X" for contract in route_validation["contracts"])
+    assert all(contract["stream_engine_picker_visible"] is False for contract in route_validation["contracts"])
+    assert all(contract["shared_table_access"] is False for contract in route_validation["contracts"])
+    assert requisition_dispatch["ok"] is True
+    assert requisition_dispatch["result"]["outbox_table"] == "procurement_sourcing_appgen_outbox_event"
+    assert workbench_dispatch["ok"] is True
+    assert workbench_dispatch["result"]["read_only"] is True
+
+    skills = agent.agent_skill_manifest()
+    chatbot = agent.chatbot_interface_contract()
+    document_plan = agent.document_instruction_plan(
+        "Create an RFQ for sku-100, invite supplier-a and supplier-b, then prepare award guidance.",
+        "Validate policy, risk, budget, and supplier qualification before any mutation.",
+    )
+    create_plan = agent.datastore_crud_plan(
+        "create",
+        "procurement_sourcing_procurement_sourcing_purchase_requisition",
+        {"requisition_id": "req-agent-001", "item_id": ITEM_ID, "quantity": 40},
+    )
+    blocked_plan = agent.datastore_crud_plan("update", "ap_automation_invoice", {})
+    contribution = agent.composed_agent_contribution()
+
+    assert skills["ok"] is True
+    assert chatbot["ok"] is True
+    assert document_plan["ok"] is True
+    assert create_plan["ok"] is True and create_plan["requires_confirmation"] is True
+    assert blocked_plan["ok"] is False
+    assert contribution["ok"] is True
+    assert "procurement_sourcing_crud" in contribution["dsl_tools"]
+
+    app = ProcurementSourcingStandaloneApp()
+    loaded = app.load_demo_workspace(tenant=TENANT)
+    rendered = app.render_workbench(tenant=TENANT)
+    read_model = ProcurementSourcingRepository(app.state).read_model(TENANT)
+    binding = ProcurementSourcingRepository(app.state).form_binding_plan("requisition_intake_form")
+
+    assert standalone_app_manifest()["ok"] is True
+    assert standalone_smoke_test()["ok"] is True
+    assert procurement_sourcing_repository_contract()["ok"] is True
+    assert loaded["ok"] is True
+    assert rendered["ok"] is True
+    assert rendered["shell"]["app_id"] == "procurement_sourcing_one_pbc_app"
+    assert read_model["requisition"]["requisition_count"] == 1
+    assert read_model["sourcing"]["bid_count"] >= 2
+    assert read_model["contracting"]["purchase_order_count"] == 1
+    assert binding["ok"] is True
+    assert binding["event_contract"] == "AppGen-X"
+
+    release_validation = release_evidence.validate_release_evidence()
+    release_smoke = release_evidence.smoke_test()
+    assert release_validation["ok"] is True
+    assert release_smoke["ok"] is True
+    assert release_smoke["evidence"]["repository"]["shared_table_access"] is False
