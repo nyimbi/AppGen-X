@@ -892,7 +892,13 @@ failed.
 case-id, failing-case, covered-kind, missing-required-kind, covered-format,
 JSON-case, Mermaid-case, DOT-case, payload-format, and text-marker counts
 across every required graph kind, so graph release evidence captures both
-individual CLI examples and full graph breadth. The graph-suite CLI audit
+individual CLI examples and full graph breadth. It also reports required,
+observed, and missing case ids; expected and observed output formats by case;
+expected and observed JSON payload formats by case; and required plus missing
+Mermaid/DOT text markers by case. This makes a missing documented graph
+example, a format drift, a JSON payload envelope regression, or a text-renderer
+marker regression fail by name rather than only changing an aggregate count.
+The graph-suite CLI audit
 reports required-kind, missing-required-kind, output-format,
 missing-rendering, text-fragment, and missing-text-fragment counts, so CI can
 prove JSON and text release logs preserve the same graph contract markers.
@@ -909,7 +915,8 @@ marker-line counts across graph-suite, symbol, diagnostic, and handler summaries
 The aggregate tooling audit exposes graph rendering as its own
 `graph_rendering_contracts` gate. It fails independently when a required graph
 kind is missing, JSON/Mermaid/DOT renderings drift, graph CLI cases fail, or
-graph-suite text markers disappear.
+graph CLI named case/format/payload/text-marker contracts or graph-suite text
+markers disappear.
 
 Supported graph kinds:
 

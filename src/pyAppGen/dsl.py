@@ -5427,9 +5427,13 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and set(REQUIRED_GRAPH_KINDS) <= set(graph_cli.get("covered_graph_kinds", ()))
             and graph_cli.get("missing_required_kind_count") == 0
             and graph_cli.get("failing_case_count") == 0
+            and graph_cli.get("missing_case_count") == 0
+            and graph_cli.get("missing_format_case_count") == 0
             and graph_cli.get("payload_format_case_count") == graph_cli.get("json_case_count")
+            and graph_cli.get("missing_payload_format_case_count") == 0
             and graph_cli.get("text_marker_case_count")
             == graph_cli.get("mermaid_case_count", 0) + graph_cli.get("dot_case_count", 0)
+            and graph_cli.get("missing_text_marker_count") == 0
             and graph_suite_cli["ok"]
             and graph_suite_cli.get("missing_required_kind_count") == 0
             and graph_suite_cli.get("missing_rendering_count") == 0
@@ -5450,6 +5454,14 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                     "case_count": graph_cli.get("case_count"),
                     "passing_case_count": graph_cli.get("passing_case_count"),
                     "failing_case_count": graph_cli.get("failing_case_count"),
+                    "required_case_ids": graph_cli.get("required_case_ids"),
+                    "observed_case_ids": graph_cli.get("observed_case_ids"),
+                    "missing_case_count": graph_cli.get("missing_case_count"),
+                    "missing_case_ids": graph_cli.get("missing_case_ids"),
+                    "expected_formats_by_case": graph_cli.get("expected_formats_by_case"),
+                    "formats_by_case": graph_cli.get("formats_by_case"),
+                    "missing_format_case_count": graph_cli.get("missing_format_case_count"),
+                    "missing_format_cases": graph_cli.get("missing_format_cases"),
                     "graph_kind_count": graph_cli.get("graph_kind_count"),
                     "missing_required_kind_count": graph_cli.get("missing_required_kind_count"),
                     "output_format_count": graph_cli.get("output_format_count"),
@@ -5457,7 +5469,15 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                     "mermaid_case_count": graph_cli.get("mermaid_case_count"),
                     "dot_case_count": graph_cli.get("dot_case_count"),
                     "payload_format_case_count": graph_cli.get("payload_format_case_count"),
+                    "expected_payload_formats_by_case": graph_cli.get("expected_payload_formats_by_case"),
+                    "payload_formats_by_case": graph_cli.get("payload_formats_by_case"),
+                    "missing_payload_format_case_count": graph_cli.get("missing_payload_format_case_count"),
+                    "missing_payload_format_cases": graph_cli.get("missing_payload_format_cases"),
                     "text_marker_case_count": graph_cli.get("text_marker_case_count"),
+                    "required_text_markers_by_case": graph_cli.get("required_text_markers_by_case"),
+                    "missing_text_marker_count": graph_cli.get("missing_text_marker_count"),
+                    "missing_text_marker_cases": graph_cli.get("missing_text_marker_cases"),
+                    "missing_text_markers_by_case": graph_cli.get("missing_text_markers_by_case"),
                 },
                 "suite_cli": {
                     "format": graph_suite_cli.get("format"),
@@ -12686,17 +12706,63 @@ def _tooling_audit_graph_cli_formats(tmp: Path, source: str) -> dict:
         )
     failing_cases = tuple(result["case"] for result in results if not result["ok"])
     case_ids = tuple(result["case"] for result in results)
+    required_case_ids = tuple(case_id for case_id, _, _, _ in cases)
+    missing_case_ids = tuple(case_id for case_id in required_case_ids if case_id not in case_ids)
+    expected_formats_by_case = {case_id: output_format for case_id, _, output_format, _ in cases}
+    formats_by_case = {result["case"]: result["format"] for result in results}
+    missing_format_cases = tuple(
+        case_id
+        for case_id, expected_format in expected_formats_by_case.items()
+        if formats_by_case.get(case_id) != expected_format
+    )
+    expected_payload_formats_by_case = {
+        case_id: "appgen.graph-report.v1" for case_id, _, output_format, _ in cases if output_format == "json"
+    }
+    payload_formats_by_case = {
+        result["case"]: result.get("payload_format")
+        for result in results
+        if result["case"] in expected_payload_formats_by_case
+    }
+    missing_payload_format_cases = tuple(
+        case_id
+        for case_id, expected_format in expected_payload_formats_by_case.items()
+        if payload_formats_by_case.get(case_id) != expected_format
+    )
+    required_text_markers_by_case = {
+        case_id: "graph TD" if output_format == "mermaid" else "digraph appgen"
+        for case_id, _, output_format, _ in cases
+        if output_format in {"mermaid", "dot"}
+    }
+    missing_text_markers_by_case = {
+        result["case"]: required_text_markers_by_case[result["case"]]
+        for result in results
+        if result["case"] in required_text_markers_by_case
+        and not result["stdout_prefix"].startswith(required_text_markers_by_case[result["case"]])
+    }
     covered_kinds = tuple(dict.fromkeys(result["kind"] for result in results))
     covered_formats = tuple(dict.fromkeys(result["format"] for result in results))
     missing_required_kinds = tuple(kind for kind in REQUIRED_GRAPH_KINDS if kind not in covered_kinds)
     return {
         "format": "appgen.graph-cli-format-audit.v1",
-        "ok": not failing_cases and not missing_required_kinds,
+        "ok": not failing_cases
+        and not missing_required_kinds
+        and not missing_case_ids
+        and not missing_format_cases
+        and not missing_payload_format_cases
+        and not missing_text_markers_by_case,
         "case_count": len(results),
         "passing_case_count": sum(1 for result in results if result["ok"]),
         "failing_case_count": len(failing_cases),
         "case_ids": case_ids,
+        "required_case_ids": required_case_ids,
+        "observed_case_ids": case_ids,
+        "missing_case_count": len(missing_case_ids),
+        "missing_case_ids": missing_case_ids,
         "failing_cases": failing_cases,
+        "expected_formats_by_case": expected_formats_by_case,
+        "formats_by_case": formats_by_case,
+        "missing_format_case_count": len(missing_format_cases),
+        "missing_format_cases": missing_format_cases,
         "graph_kind_count": len(covered_kinds),
         "covered_graph_kinds": covered_kinds,
         "missing_required_kind_count": len(missing_required_kinds),
@@ -12707,12 +12773,20 @@ def _tooling_audit_graph_cli_formats(tmp: Path, source: str) -> dict:
         "mermaid_case_count": sum(1 for result in results if result["format"] == "mermaid"),
         "dot_case_count": sum(1 for result in results if result["format"] == "dot"),
         "payload_format_case_count": sum(1 for result in results if result.get("payload_format") == "appgen.graph-report.v1"),
+        "expected_payload_formats_by_case": expected_payload_formats_by_case,
+        "payload_formats_by_case": payload_formats_by_case,
+        "missing_payload_format_case_count": len(missing_payload_format_cases),
+        "missing_payload_format_cases": missing_payload_format_cases,
         "text_marker_case_count": sum(
             1
             for result in results
             if result["format"] in {"mermaid", "dot"}
             and (result["stdout_prefix"].startswith("graph TD") or result["stdout_prefix"].startswith("digraph appgen"))
         ),
+        "required_text_markers_by_case": required_text_markers_by_case,
+        "missing_text_markers_by_case": missing_text_markers_by_case,
+        "missing_text_marker_count": len(missing_text_markers_by_case),
+        "missing_text_marker_cases": tuple(missing_text_markers_by_case),
         "cases": tuple(results),
     }
 
