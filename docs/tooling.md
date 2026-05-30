@@ -1001,7 +1001,8 @@ blocking-gap-line, and implementation-phase-line counts so release triage can
 see whether a human log lost checks, sections, embedded audit formats, or
 failure markers.
 When implementation-phase evidence is present, the text output also reports the
-number of audited phases, missing phase count, and the
+number of audited phases, missing phase count, passing/total exit-criterion
+counts, missing exit-criterion count, and the
 `appgen.tooling-implementation-phase-audit.v1` format marker.
 The implementation-phase audit reports phase ids, phase counts, passing-phase
 counts, exit-criterion ids, exit-criterion counts, passing-exit-criterion
@@ -1677,9 +1678,11 @@ missing-family-line, change-line, safe-alternative-line, diagnostic-line,
 warning-line, error-line, approval-line, and destructive-summary-line counts so
 migration release logs prove safety posture, coverage breadth, destructive
 change count, and mitigation guidance remain visible.
-`appgen.migration-cli-audit.v1` reports case, passing-case, allowed-backend,
-and change-kind counts so supported database profiles and rename-hint behavior
-are visible in release evidence.
+`appgen.migration-cli-audit.v1` reports case, passing-case, failing-case,
+allowed/observed/missing backend, required/observed/missing change-kind,
+approval-required, and rename-hint case counts so supported database profiles,
+required migration families, and rename-hint behavior are visible in release
+evidence without expanding every per-backend case.
 The aggregate tooling audit exposes migration safety and text evidence as
 `migration_safety_text_contracts`. This gate fails independently when required
 detection families are missing, supported backend profiles fail, destructive
@@ -1851,10 +1854,10 @@ Deployment verifier:
   handoff metadata: units, health checks, environment variable names,
   secret-value absence, resource hints, and connected topology graph evidence.
 
-The package invalid-target audit reports case, passing-case,
-invalid-choice-message, and traceback-free counts for unsupported target
-handling, so package tooling has explicit failure-path evidence in addition to
-successful target manifests.
+The package invalid-target audit reports case, passing-case, failing-case,
+invalid-choice-message, traceback-free, and case-id counts for unsupported
+`package` and `verify` target handling, so package tooling has explicit
+failure-path evidence in addition to successful target manifests.
 
 ## Test Strategy
 

@@ -4798,11 +4798,13 @@ def test_package_invalid_target_audit_reports_failure_counts(tmp_path: Path) -> 
 
     assert report["format"] == "appgen.package-invalid-target-audit.v1"
     assert report["ok"] is True
-    assert report["case_count"] == 1
-    assert report["passing_case_count"] == 1
-    assert report["invalid_choice_message_count"] == 1
-    assert report["traceback_free_count"] == 1
-    assert report["exit_code"] == 2
+    assert report["case_count"] == 2
+    assert report["passing_case_count"] == 2
+    assert report["failing_case_count"] == 0
+    assert report["invalid_choice_message_count"] == 2
+    assert report["traceback_free_count"] == 2
+    assert report["case_ids"] == ("package_invalid_target", "verify_invalid_target")
+    assert all(case["exit_code"] == 2 for case in report["cases"])
 
 
 def test_package_verify_cli_audit_exposes_deployment_manifest_readiness_metadata(tmp_path: Path) -> None:
@@ -5720,10 +5722,15 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert package_check["detail"]["cli"]["ok"] is True
     assert package_check["detail"]["invalid_target"]["format"] == "appgen.package-invalid-target-audit.v1"
     assert package_check["detail"]["invalid_target"]["ok"] is True
-    assert package_check["detail"]["invalid_target"]["case_count"] == 1
-    assert package_check["detail"]["invalid_target"]["passing_case_count"] == 1
-    assert package_check["detail"]["invalid_target"]["invalid_choice_message_count"] == 1
-    assert package_check["detail"]["invalid_target"]["traceback_free_count"] == 1
+    assert package_check["detail"]["invalid_target"]["case_count"] == 2
+    assert package_check["detail"]["invalid_target"]["passing_case_count"] == 2
+    assert package_check["detail"]["invalid_target"]["failing_case_count"] == 0
+    assert package_check["detail"]["invalid_target"]["invalid_choice_message_count"] == 2
+    assert package_check["detail"]["invalid_target"]["traceback_free_count"] == 2
+    assert set(package_check["detail"]["invalid_target"]["case_ids"]) == {
+        "package_invalid_target",
+        "verify_invalid_target",
+    }
     assert package_check["detail"]["cli"]["case_count"] == 2
     assert package_check["detail"]["cli"]["passing_case_count"] == 2
     assert package_check["detail"]["cli"]["target_count"] == 5
@@ -5844,7 +5851,13 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert migration_check["detail"]["cli"]["ok"] is True
     assert migration_check["detail"]["cli"]["case_count"] == migration_check["detail"]["cli"]["allowed_backend_count"]
     assert migration_check["detail"]["cli"]["passing_case_count"] == migration_check["detail"]["cli"]["case_count"]
+    assert migration_check["detail"]["cli"]["failing_case_count"] == 0
+    assert migration_check["detail"]["cli"]["missing_allowed_backend_count"] == 0
     assert migration_check["detail"]["cli"]["change_kind_count"] >= 3
+    assert migration_check["detail"]["cli"]["required_change_kind_count"] == 3
+    assert migration_check["detail"]["cli"]["missing_required_change_kind_count"] == 0
+    assert migration_check["detail"]["cli"]["approval_required_count"] == migration_check["detail"]["cli"]["case_count"]
+    assert migration_check["detail"]["cli"]["rename_hint_case_count"] == migration_check["detail"]["cli"]["case_count"]
     migration_safety_check = next(check for check in report["checks"] if check["id"] == "migration_safety_text_contracts")
     assert migration_safety_check["detail"]["required_detection_count"] == len(appgen_dsl.REQUIRED_MIGRATION_DETECTIONS)
     assert migration_safety_check["detail"]["detected_detection_count"] >= len(appgen_dsl.REQUIRED_MIGRATION_DETECTIONS)
@@ -5852,7 +5865,9 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert migration_safety_check["detail"]["cli"]["format"] == "appgen.migration-cli-audit.v1"
     assert migration_safety_check["detail"]["cli"]["case_count"] == migration_safety_check["detail"]["cli"]["allowed_backend_count"]
     assert migration_safety_check["detail"]["cli"]["passing_case_count"] == migration_safety_check["detail"]["cli"]["case_count"]
+    assert migration_safety_check["detail"]["cli"]["missing_allowed_backend_count"] == 0
     assert migration_safety_check["detail"]["cli"]["change_kind_count"] >= 3
+    assert migration_safety_check["detail"]["cli"]["missing_required_change_kind_count"] == 0
     assert migration_safety_check["detail"]["text_renderer"]["format"] == "appgen.migration-plan-text-renderer.v1"
     assert migration_safety_check["detail"]["text_renderer"]["summary_line_count"] == 1
     assert migration_safety_check["detail"]["text_renderer"]["coverage_line_count"] == 1
@@ -6079,7 +6094,7 @@ def test_tooling_audit_text_renderer_contract_proves_human_log_markers() -> None
         "formats=appgen.lsp-json-rpc-audit.v1",
         "formats=appgen.non-goal-policy-audit.v1",
         "formats=appgen.tooling-doc-anchor-audit.v1",
-        "implementation-phases 1 missing=0 format=appgen.tooling-implementation-phase-audit.v1",
+        "implementation-phases 1 missing=0 format=appgen.tooling-implementation-phase-audit.v1 criteria=3/3 missing_criteria=0",
     } <= set(report["required_fragments"])
 
 
@@ -6450,10 +6465,22 @@ def test_migration_cli_audit_covers_supported_backends_and_rename_hints(tmp_path
     assert report["ok"] is True
     assert report["case_count"] == report["allowed_backend_count"]
     assert report["passing_case_count"] == report["case_count"]
+    assert report["failing_case_count"] == 0
     assert report["allowed_backends"] == appgen_dsl.SUPPORTED_DATABASE_BACKENDS
+    assert report["observed_backends"] == appgen_dsl.SUPPORTED_DATABASE_BACKENDS
+    assert report["missing_allowed_backend_count"] == 0
+    assert report["missing_allowed_backends"] == ()
     assert report["change_kind_count"] >= 3
+    assert report["required_change_kind_count"] == 3
+    assert report["missing_required_change_kind_count"] == 0
+    assert report["missing_required_change_kinds"] == ()
+    assert set(report["required_change_kinds"]) == {"rename_table", "rename_field", "add_field"}
+    assert set(report["required_change_kinds"]) <= set(report["observed_change_kinds"])
+    assert report["approval_required_count"] == report["case_count"]
+    assert report["rename_hint_case_count"] == report["case_count"]
     assert all(case["exit_code"] == 0 for case in report["cases"])
     assert all(case["requires_approval"] is True for case in report["cases"])
+    assert all(case["rename_hint_count"] >= 2 for case in report["cases"])
     assert all({"rename_table", "rename_field", "add_field"} <= set(case["change_kinds"]) for case in report["cases"])
 
 

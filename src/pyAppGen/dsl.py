@@ -2202,9 +2202,17 @@ def _emit_tooling_payload(payload: dict, *, as_json: bool) -> None:
         if phase_detail:
             phases = tuple(phase_detail.get("phases", ()))
             missing_phases = tuple(phase_detail.get("missing_phases", ()))
+            criteria_suffix = ""
+            if "exit_criterion_count" in phase_detail:
+                criteria_suffix = (
+                    f" criteria={phase_detail.get('passing_exit_criterion_count', 0)}/"
+                    f"{phase_detail.get('exit_criterion_count', 0)}"
+                    f" missing_criteria={phase_detail.get('missing_exit_criterion_count', 0)}"
+                )
             print(
                 f"implementation-phases {len(phases)} "
                 f"missing={len(missing_phases)} format={phase_detail.get('format')}"
+                f"{criteria_suffix}"
             )
         for gap in gaps:
             if isinstance(gap, dict):
@@ -5543,7 +5551,11 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and migration_cli["ok"]
             and migration_cli.get("case_count") == migration_cli.get("allowed_backend_count")
             and migration_cli.get("passing_case_count") == migration_cli.get("case_count")
+            and migration_cli.get("missing_allowed_backend_count") == 0
             and migration_cli.get("change_kind_count", 0) >= 3
+            and migration_cli.get("missing_required_change_kind_count") == 0
+            and migration_cli.get("approval_required_count") == migration_cli.get("case_count")
+            and migration_cli.get("rename_hint_case_count") == migration_cli.get("case_count")
             and all(case.get("requires_approval") is True for case in migration_cli.get("cases", ()))
             and migration_text_renderer["ok"]
             and migration_text_renderer.get("summary_line_count") == 1
@@ -5567,9 +5579,21 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                     "format": migration_cli.get("format"),
                     "case_count": migration_cli.get("case_count"),
                     "passing_case_count": migration_cli.get("passing_case_count"),
+                    "failing_case_count": migration_cli.get("failing_case_count"),
                     "allowed_backend_count": migration_cli.get("allowed_backend_count"),
+                    "observed_backend_count": migration_cli.get("observed_backend_count"),
+                    "missing_allowed_backend_count": migration_cli.get("missing_allowed_backend_count"),
                     "change_kind_count": migration_cli.get("change_kind_count"),
+                    "required_change_kind_count": migration_cli.get("required_change_kind_count"),
+                    "missing_required_change_kind_count": migration_cli.get("missing_required_change_kind_count"),
+                    "approval_required_count": migration_cli.get("approval_required_count"),
+                    "rename_hint_case_count": migration_cli.get("rename_hint_case_count"),
                     "allowed_backends": migration_cli.get("allowed_backends"),
+                    "observed_backends": migration_cli.get("observed_backends"),
+                    "missing_allowed_backends": migration_cli.get("missing_allowed_backends"),
+                    "required_change_kinds": migration_cli.get("required_change_kinds"),
+                    "observed_change_kinds": migration_cli.get("observed_change_kinds"),
+                    "missing_required_change_kinds": migration_cli.get("missing_required_change_kinds"),
                 },
                 "text_renderer": {
                     "format": migration_text_renderer.get("format"),
@@ -6236,6 +6260,9 @@ def _tooling_audit_text_renderer_contract() -> dict:
                     "format": "appgen.tooling-implementation-phase-audit.v1",
                     "phases": ({"id": "phase_0_inventory_and_stabilization"},),
                     "missing_phases": (),
+                    "exit_criterion_count": 3,
+                    "passing_exit_criterion_count": 3,
+                    "missing_exit_criterion_count": 0,
                 },
             },
             {
@@ -6284,7 +6311,7 @@ def _tooling_audit_text_renderer_contract() -> dict:
         "formats=appgen.lsp-json-rpc-audit.v1",
         "formats=appgen.non-goal-policy-audit.v1",
         "formats=appgen.tooling-doc-anchor-audit.v1",
-        "implementation-phases 1 missing=0 format=appgen.tooling-implementation-phase-audit.v1",
+        "implementation-phases 1 missing=0 format=appgen.tooling-implementation-phase-audit.v1 criteria=3/3 missing_criteria=0",
     )
     missing = tuple(fragment for fragment in required_fragments if fragment not in text)
     lines = tuple(line for line in text.splitlines() if line.strip())
@@ -11339,6 +11366,7 @@ table Invoice {
 """,
         encoding="utf-8",
     )
+    required_change_kinds = ("rename_table", "rename_field", "add_field")
     cases = []
     for backend in SUPPORTED_DATABASE_BACKENDS:
         output = io.StringIO()
@@ -11367,7 +11395,7 @@ table Invoice {
             and payload.get("format") == "appgen.migration-plan.v1"
             and payload.get("backend") == backend
             and payload.get("requires_approval") is True
-            and {"rename_table", "rename_field", "add_field"} <= change_kinds
+            and set(required_change_kinds) <= change_kinds
             and bool(payload.get("rename_hints"))
         )
         cases.append(
@@ -11377,17 +11405,40 @@ table Invoice {
                 "exit_code": exit_code,
                 "change_kinds": tuple(sorted(change_kinds)),
                 "requires_approval": payload.get("requires_approval"),
+                "rename_hint_count": len(payload.get("rename_hints", ())),
                 "diagnostic_codes": tuple(item.get("code") for item in payload.get("diagnostics", ())),
             }
         )
+    observed_backends = tuple(case["backend"] for case in cases)
+    observed_change_kinds = tuple(sorted({kind for case in cases for kind in case["change_kinds"]}))
+    missing_required_change_kinds = tuple(
+        kind for kind in required_change_kinds if kind not in observed_change_kinds
+    )
+    missing_allowed_backends = tuple(
+        backend for backend in SUPPORTED_DATABASE_BACKENDS if backend not in observed_backends
+    )
     return {
         "format": "appgen.migration-cli-audit.v1",
-        "ok": all(case["ok"] for case in cases),
+        "ok": all(case["ok"] for case in cases)
+        and not missing_allowed_backends
+        and not missing_required_change_kinds,
         "case_count": len(cases),
         "passing_case_count": sum(1 for case in cases if case["ok"]),
+        "failing_case_count": sum(1 for case in cases if not case["ok"]),
         "allowed_backend_count": len(SUPPORTED_DATABASE_BACKENDS),
-        "change_kind_count": len({kind for case in cases for kind in case["change_kinds"]}),
+        "observed_backend_count": len(observed_backends),
+        "missing_allowed_backend_count": len(missing_allowed_backends),
+        "change_kind_count": len(observed_change_kinds),
+        "required_change_kind_count": len(required_change_kinds),
+        "missing_required_change_kind_count": len(missing_required_change_kinds),
+        "approval_required_count": sum(1 for case in cases if case["requires_approval"] is True),
+        "rename_hint_case_count": sum(1 for case in cases if case["rename_hint_count"] > 0),
         "allowed_backends": SUPPORTED_DATABASE_BACKENDS,
+        "observed_backends": observed_backends,
+        "missing_allowed_backends": missing_allowed_backends,
+        "required_change_kinds": required_change_kinds,
+        "observed_change_kinds": observed_change_kinds,
+        "missing_required_change_kinds": missing_required_change_kinds,
         "cases": tuple(cases),
     }
 
@@ -11791,25 +11842,42 @@ deploy Production {
 def _tooling_audit_package_invalid_target(tmp: Path, source: str) -> dict:
     source_path = tmp / "package-invalid-target.appgen"
     source_path.write_text(source, encoding="utf-8")
-    output = io.StringIO()
-    error = io.StringIO()
-    exit_code = 0
-    with contextlib.redirect_stdout(output), contextlib.redirect_stderr(error):
-        try:
-            exit_code = dsl_tooling_cli(("package", str(source_path), "--target", "banana", "--json"))
-        except SystemExit as exc:
-            exit_code = int(exc.code or 0)
-    stderr = error.getvalue()
+    cases = []
+    for name, argv in (
+        ("package_invalid_target", ("package", str(source_path), "--target", "banana", "--json")),
+        ("verify_invalid_target", ("verify", str(source_path), "--target", "banana", "--json")),
+    ):
+        output = io.StringIO()
+        error = io.StringIO()
+        exit_code = 0
+        with contextlib.redirect_stdout(output), contextlib.redirect_stderr(error):
+            try:
+                exit_code = dsl_tooling_cli(argv)
+            except SystemExit as exc:
+                exit_code = int(exc.code or 0)
+        stderr = error.getvalue()
+        ok = exit_code == 2 and "invalid choice" in stderr and "Traceback" not in stderr
+        cases.append(
+            {
+                "case": name,
+                "ok": ok,
+                "exit_code": exit_code,
+                "invalid_choice_message": "invalid choice" in stderr,
+                "traceback_free": "Traceback" not in stderr,
+                "stderr": stderr.strip(),
+                "stdout": output.getvalue().strip(),
+            }
+        )
     return {
         "format": "appgen.package-invalid-target-audit.v1",
-        "ok": exit_code == 2 and "invalid choice" in stderr and "Traceback" not in stderr,
-        "case_count": 1,
-        "passing_case_count": 1 if exit_code == 2 and "invalid choice" in stderr and "Traceback" not in stderr else 0,
-        "invalid_choice_message_count": 1 if "invalid choice" in stderr else 0,
-        "traceback_free_count": 1 if "Traceback" not in stderr else 0,
-        "exit_code": exit_code,
-        "stderr": stderr.strip(),
-        "stdout": output.getvalue().strip(),
+        "ok": all(case["ok"] for case in cases),
+        "case_count": len(cases),
+        "passing_case_count": sum(1 for case in cases if case["ok"]),
+        "failing_case_count": sum(1 for case in cases if not case["ok"]),
+        "invalid_choice_message_count": sum(1 for case in cases if case["invalid_choice_message"]),
+        "traceback_free_count": sum(1 for case in cases if case["traceback_free"]),
+        "case_ids": tuple(case["case"] for case in cases),
+        "cases": tuple(cases),
     }
 
 
