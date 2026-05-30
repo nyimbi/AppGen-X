@@ -1160,6 +1160,11 @@ a blocking gap. The CLI audit publishes named case ids, failing-case counts,
 missing-catalog exit status, missing-catalog blocking gaps, and side-effect
 markers for the rejected missing-catalog path so the release gate proves even
 failure paths remain non-mutating.
+It also reports required, observed, and missing case ids; required and missing
+text markers; and required versus observed missing-catalog blocking gaps. The
+aggregate gate fails if a JSON/text/missing-catalog case disappears, if the
+human log loses a side-effect or catalog marker, or if the rejected missing
+catalog path stops naming `catalog_path_readable`.
 
 ### `appgen pbc`
 

@@ -4934,6 +4934,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             "component_publish_catalog_contracts",
             component_publish_cli["ok"]
             and component_publish_cli.get("passing_case_count") == component_publish_cli.get("case_count")
+            and component_publish_cli.get("missing_case_count") == 0
             and component_publish_cli.get("patch_format") == "appgen.component-catalog-patch.v1"
             and component_publish_cli.get("operation") == "upsert_component"
             and component_publish_cli.get("component") == "CustomGauge"
@@ -4947,8 +4948,10 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and component_publish_cli.get("text_has_patch_format") is True
             and component_publish_cli.get("text_has_side_effect_markers") is True
             and component_publish_cli.get("text_has_existing_catalog") is True
+            and component_publish_cli.get("missing_text_marker_count") == 0
             and component_publish_cli.get("missing_catalog_exit_code") == 1
             and "catalog_path_readable" in component_publish_cli.get("missing_catalog_blocking_gaps", ())
+            and component_publish_cli.get("missing_catalog_blocking_gap_miss_count") == 0
             and component_publish_cli.get("missing_catalog_side_effect_free") is True
             and component_publish_cli.get("missing_catalog_write_performed") is False
             and component_publish_text_renderer["ok"]
@@ -4967,6 +4970,10 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                     "passing_case_count": component_publish_cli.get("passing_case_count"),
                     "failing_case_count": component_publish_cli.get("failing_case_count"),
                     "case_ids": component_publish_cli.get("case_ids"),
+                    "required_case_ids": component_publish_cli.get("required_case_ids"),
+                    "observed_case_ids": component_publish_cli.get("observed_case_ids"),
+                    "missing_case_count": component_publish_cli.get("missing_case_count"),
+                    "missing_case_ids": component_publish_cli.get("missing_case_ids"),
                     "patch_format": component_publish_cli.get("patch_format"),
                     "operation": component_publish_cli.get("operation"),
                     "component": component_publish_cli.get("component"),
@@ -4979,8 +4986,14 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                     "text_has_patch_format": component_publish_cli.get("text_has_patch_format"),
                     "text_has_side_effect_markers": component_publish_cli.get("text_has_side_effect_markers"),
                     "text_has_existing_catalog": component_publish_cli.get("text_has_existing_catalog"),
+                    "required_text_markers": component_publish_cli.get("required_text_markers"),
+                    "missing_text_marker_count": component_publish_cli.get("missing_text_marker_count"),
+                    "missing_text_markers": component_publish_cli.get("missing_text_markers"),
                     "missing_catalog_exit_code": component_publish_cli.get("missing_catalog_exit_code"),
+                    "required_missing_catalog_blocking_gaps": component_publish_cli.get("required_missing_catalog_blocking_gaps"),
                     "missing_catalog_blocking_gaps": component_publish_cli.get("missing_catalog_blocking_gaps"),
+                    "missing_catalog_blocking_gap_miss_count": component_publish_cli.get("missing_catalog_blocking_gap_miss_count"),
+                    "missing_catalog_blocking_gap_misses": component_publish_cli.get("missing_catalog_blocking_gap_misses"),
                     "missing_catalog_side_effect_free": component_publish_cli.get("missing_catalog_side_effect_free"),
                     "missing_catalog_write_performed": component_publish_cli.get("missing_catalog_write_performed"),
                 },
@@ -11333,14 +11346,38 @@ def _tooling_audit_component_publish_cli(tmp: Path) -> dict:
         },
     )
     failing_cases = tuple(case["case"] for case in cases if not case["ok"])
+    required_case_ids = ("json_publish_patch", "text_publish_markers", "missing_catalog_rejected")
+    observed_case_ids = tuple(case["case"] for case in cases)
+    missing_case_ids = tuple(case_id for case_id in required_case_ids if case_id not in observed_case_ids)
+    required_text_markers = (
+        "component-publish ok: format=appgen.component-publish-report.v1",
+        "patch_format=appgen.component-catalog-patch.v1",
+        "side_effect_free=True",
+        "write_performed=False",
+        "catalog-count before=1 after=2 existing=1",
+        "catalog-existing ExistingBox",
+    )
+    missing_text_markers = tuple(marker for marker in required_text_markers if marker not in text_output)
+    required_missing_catalog_blocking_gaps = ("catalog_path_readable",)
+    observed_missing_catalog_blocking_gaps = tuple(missing_payload.get("blocking_gaps", ()))
+    missing_catalog_blocking_gap_misses = tuple(
+        gap for gap in required_missing_catalog_blocking_gaps if gap not in observed_missing_catalog_blocking_gaps
+    )
     return {
         "format": "appgen.component-publish-cli-audit.v1",
-        "ok": not failing_cases,
+        "ok": not failing_cases
+        and not missing_case_ids
+        and not missing_text_markers
+        and not missing_catalog_blocking_gap_misses,
         "case_count": len(cases),
         "passing_case_count": sum(1 for case in cases if case["ok"]),
         "failing_case_count": len(failing_cases),
         "failing_cases": failing_cases,
-        "case_ids": tuple(case["case"] for case in cases),
+        "required_case_ids": required_case_ids,
+        "observed_case_ids": observed_case_ids,
+        "missing_case_count": len(missing_case_ids),
+        "missing_case_ids": missing_case_ids,
+        "case_ids": observed_case_ids,
         "payload_format": json_payload.get("format"),
         "patch_format": patch.get("format"),
         "operation": patch.get("operation"),
@@ -11357,8 +11394,14 @@ def _tooling_audit_component_publish_cli(tmp: Path) -> dict:
         "text_has_patch_format": "patch_format=appgen.component-catalog-patch.v1" in text_output,
         "text_has_side_effect_markers": "side_effect_free=True" in text_output and "write_performed=False" in text_output,
         "text_has_existing_catalog": "catalog-existing ExistingBox" in text_output,
+        "required_text_markers": required_text_markers,
+        "missing_text_marker_count": len(missing_text_markers),
+        "missing_text_markers": missing_text_markers,
         "missing_catalog_exit_code": missing_exit,
-        "missing_catalog_blocking_gaps": missing_payload.get("blocking_gaps", ()),
+        "required_missing_catalog_blocking_gaps": required_missing_catalog_blocking_gaps,
+        "missing_catalog_blocking_gaps": observed_missing_catalog_blocking_gaps,
+        "missing_catalog_blocking_gap_miss_count": len(missing_catalog_blocking_gap_misses),
+        "missing_catalog_blocking_gap_misses": missing_catalog_blocking_gap_misses,
         "missing_catalog_side_effect_free": missing_payload.get("catalog_patch", {}).get("side_effect_free"),
         "missing_catalog_write_performed": missing_payload.get("catalog_patch", {}).get("write_performed"),
         "cases": cases,
