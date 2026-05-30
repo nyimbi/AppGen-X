@@ -164,3 +164,34 @@ def smoke_test() -> dict:
         "rendered": rendered,
         "side_effects": (),
     }
+
+# Improve1 revenue cycle control UI extension.
+from .revenue_cycle_control import improve1_revenue_cycle_control_contract as _improve1_revenue_cycle_control_contract
+
+_REVENUE_CYCLE_CONTROL_BASE_UI_CONTRACT = provider_revenue_cycle_ui_contract
+_REVENUE_CYCLE_CONTROL_BASE_RENDER_WORKBENCH = provider_revenue_cycle_render_workbench
+
+
+def provider_revenue_cycle_ui_contract() -> dict:
+    ui = dict(_REVENUE_CYCLE_CONTROL_BASE_UI_CONTRACT())
+    control = _improve1_revenue_cycle_control_contract()
+    ui.update({
+        "ok": ui.get("ok") is True and control["ok"],
+        "revenue_cycle_control_contract": control,
+        "revenue_cycle_control_panels": tuple(item["evidence"]["ui_surface"] for item in control["capabilities"]),
+        "revenue_cycle_control_service_actions": tuple(item["evidence"]["service_api"] for item in control["capabilities"]),
+        "stream_engine_picker_visible": False,
+    })
+    return ui
+
+
+def provider_revenue_cycle_render_workbench(*args, **kwargs) -> dict:
+    workbench = dict(_REVENUE_CYCLE_CONTROL_BASE_RENDER_WORKBENCH(*args, **kwargs))
+    control = _improve1_revenue_cycle_control_contract()
+    workbench.update({
+        "ok": workbench.get("ok") is True and control["ok"],
+        "revenue_cycle_control_panels": tuple(item["evidence"]["ui_surface"] for item in control["capabilities"]),
+        "revenue_cycle_control_service_actions": tuple(item["evidence"]["service_api"] for item in control["capabilities"]),
+        "revenue_cycle_control_agent_tools": tuple(f"provider_revenue_cycle.skills.{item['slug']}" for item in control["capabilities"]),
+    })
+    return workbench

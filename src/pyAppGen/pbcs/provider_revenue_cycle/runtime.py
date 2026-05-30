@@ -967,3 +967,42 @@ def provider_revenue_cycle_runtime_smoke() -> dict:
         "assessment": assessment,
         "side_effects": (),
     }
+
+# Improve1 revenue cycle control extension.
+from .revenue_cycle_control import evaluate_revenue_cycle_control, improve1_revenue_cycle_control_contract
+
+_REVENUE_CYCLE_CONTROL_BASE_RUNTIME_CAPABILITIES = provider_revenue_cycle_runtime_capabilities
+_REVENUE_CYCLE_CONTROL_BASE_BUILD_RELEASE_EVIDENCE = provider_revenue_cycle_build_release_evidence
+
+
+def provider_revenue_cycle_runtime_capabilities() -> dict:
+    runtime = dict(_REVENUE_CYCLE_CONTROL_BASE_RUNTIME_CAPABILITIES())
+    control = improve1_revenue_cycle_control_contract()
+    runtime["ok"] = bool(runtime.get("ok")) and control["ok"]
+    runtime["revenue_cycle_control"] = control
+    runtime["operations"] = tuple(dict.fromkeys(tuple(runtime.get("operations", ())) + ("evaluate_revenue_cycle_control", "improve1_revenue_cycle_control_contract")))
+    runtime["improve1_control_owned_tables"] = control["owned_tables"]
+    return runtime
+
+
+def provider_revenue_cycle_build_release_evidence() -> dict:
+    evidence = dict(_REVENUE_CYCLE_CONTROL_BASE_BUILD_RELEASE_EVIDENCE())
+    control = improve1_revenue_cycle_control_contract()
+    artifacts = dict(evidence.get("generated_artifacts", {}))
+    artifacts["revenue_cycle_control"] = {
+        "contract": control["format"],
+        "capability_count": control["capability_count"],
+        "owned_tables": control["owned_tables"],
+        "service_apis": tuple(item["evidence"]["service_api"] for item in control["capabilities"]),
+        "ui_surfaces": tuple(item["evidence"]["ui_surface"] for item in control["capabilities"]),
+        "test": "tests/test_domain_behavior.py",
+    }
+    checks = tuple(evidence.get("checks", ())) + ({"id": "improve1_revenue_cycle_control", "ok": control["ok"]},)
+    evidence.update({
+        "ok": bool(evidence.get("ok")) and control["ok"],
+        "checks": checks,
+        "generated_artifacts": artifacts,
+        "revenue_cycle_control": control,
+        "blocking_gaps": tuple(evidence.get("blocking_gaps", ())) + tuple(control.get("blocking_gaps", ())),
+    })
+    return evidence
