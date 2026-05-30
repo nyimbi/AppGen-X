@@ -1,19 +1,39 @@
-from .domain_depth import domain_capability_surface_contract, DOMAIN_OPERATIONS, DOMAIN_RULES, DOMAIN_PARAMETERS, DOMAIN_ADVANCED_CAPABILITIES, DOMAIN_OWNED_TABLES, DOMAIN_EDGE_CASES
-PBC_KEY = 'food_safety_quality_compliance'
+from .slice_app import build_app_surface
+from .slice_app import build_ui_contract
+from .slice_app import domain_capability_surface_contract
+from .slice_app import PBC_KEY
+
 
 def food_safety_quality_compliance_ui_contract():
     surface = domain_capability_surface_contract()
-    return {'ok': True, 'pbc': PBC_KEY, 'fragments': ('FoodSafetyQualityComplianceWorkbench',
- 'FoodSafetyQualityComplianceDetail',
- 'FoodSafetyQualityComplianceAssistantPanel'), 'configuration_editor': True, 'stream_engine_picker_visible': False, 'action_permissions': ('food_safety_quality_compliance.read',
- 'food_safety_quality_compliance.create',
- 'food_safety_quality_compliance.update',
- 'food_safety_quality_compliance.approve',
- 'food_safety_quality_compliance.admin'), 'full_capability_surface': {'operation_actions': DOMAIN_OPERATIONS, 'rule_editors': DOMAIN_RULES, 'parameter_editors': DOMAIN_PARAMETERS, 'advanced_panels': DOMAIN_ADVANCED_CAPABILITIES, 'table_browsers': DOMAIN_OWNED_TABLES, 'edge_case_queues': DOMAIN_EDGE_CASES, 'agent_tools': tuple(f'{PBC_KEY}_skills.{op}' for op in DOMAIN_OPERATIONS), 'navigation_sections': ('overview','operations','edge_case_triage','advanced_intelligence','release_evidence'), 'coverage': surface['coverage']}, 'side_effects': ()}
+    ui = build_ui_contract()
+    return {
+        "ok": ui["ok"],
+        "pbc": PBC_KEY,
+        "fragments": ui["fragments"],
+        "configuration_editor": True,
+        "stream_engine_picker_visible": False,
+        "action_permissions": ui["action_permissions"],
+        "full_capability_surface": {
+            "operation_actions": tuple(item["operation"] for item in surface["operation_surfaces"]),
+            "rule_editors": tuple(item["rule"] for item in surface["rule_surfaces"]),
+            "parameter_editors": tuple(item["parameter"] for item in surface["parameter_surfaces"]),
+            "advanced_panels": tuple(item["capability"] for item in surface["advanced_surfaces"]),
+            "table_browsers": tuple(item["owned_table"] for item in surface["table_surfaces"]),
+            "edge_case_queues": tuple(item["edge_case"] for item in surface["edge_case_surfaces"]),
+            "agent_tools": surface["specialist_capabilities"],
+            "navigation_sections": ("overview", "operations", "wizards", "edge_case_triage", "release_evidence"),
+            "coverage": surface["coverage"],
+            "forms": ui["forms"],
+            "controls": ui["controls"],
+        },
+        "side_effects": (),
+    }
 
-def food_safety_quality_compliance_render_workbench():
-    ui = food_safety_quality_compliance_ui_contract(); full = ui['full_capability_surface']
-    return {'ok': True, 'pbc': PBC_KEY, 'route': f'/workbench/pbcs/{PBC_KEY}', 'operation_actions': full['operation_actions'], 'table_browsers': full['table_browsers'], 'side_effects': ()}
+
+def food_safety_quality_compliance_render_workbench(state=None, tenant: str = "default"):
+    return build_app_surface(state, tenant=tenant)
+
 
 def smoke_test():
-    return {'ok': food_safety_quality_compliance_ui_contract()['ok'] and food_safety_quality_compliance_render_workbench()['ok'], 'side_effects': ()}
+    return {"ok": food_safety_quality_compliance_ui_contract()["ok"] and food_safety_quality_compliance_render_workbench()["ok"], "side_effects": ()}

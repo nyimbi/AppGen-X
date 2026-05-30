@@ -1,12 +1,19 @@
-# Release Evidence - Food Safety Quality Compliance
+# Release Evidence
 
-Package directory: `pbcs/food_safety_quality_compliance`.
+Package directory: `pbcs/food_safety_quality_compliance`
 
-This PBC includes owned schema, migration DDL, models, services, routes, events, handlers, UI workbench surfaces, agent skills, permissions, configuration, seed data, package metadata, side-effect-free registration, and focused package tests.
+## Evidence Areas
 
-## Evidence
+- Schema, models, and migration align to the owned food safety tables and local AppGen-X event tables.
+- Services, routes, handlers, and runtime contracts all resolve to the standalone package-local slice.
+- HACCP approval enforces CCP coverage for required hazards.
+- Inspections pin to the active HACCP plan version and escalate to holds/nonconformances when risk thresholds are crossed.
+- Recall analysis rejects foreign table access and runs mock drills without mutating live recall records.
+- Assistant CRUD previews require owned tables, citations, human confirmation, and release review when applicable.
 
-- Release Evidence: schema, service, route, event, handler, UI, agent, and governance contracts are materialized.
-- Owned datastore boundary: every owned table starts with `food_safety_quality_compliance_` and cross-PBC collaboration uses AppGen-X events or declared APIs.
-- Event contract: AppGen-X outbox/inbox with retry and dead-letter evidence.
-- Package tests: `tests/test_contract.py` validates schema/service/release, event contracts, side-effect-free registration, routes, governance, and idempotent handlers.
+## Verification Hooks
+
+- `python3 -m compileall src/pyAppGen/pbcs/food_safety_quality_compliance`
+- `python3 -m pytest src/pyAppGen/pbcs/food_safety_quality_compliance/tests`
+- `python3 - <<'PY' ... food_safety_quality_compliance_runtime_smoke() ... PY`
+- `git diff --check`
