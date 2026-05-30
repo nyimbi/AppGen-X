@@ -7,13 +7,25 @@ from .runtime import gl_core_append_ledger_event
 from .runtime import gl_core_build_api_contract
 from .runtime import gl_core_build_projection
 from .runtime import gl_core_build_service_contract
+from .runtime import gl_core_build_trial_balance
 from .runtime import gl_core_build_workbench_view
+from .runtime import gl_core_calculate_allocation
+from .runtime import gl_core_create_accrual_deferral_schedule
 from .runtime import gl_core_create_continuous_close_snapshot
 from .runtime import gl_core_empty_state
 from .runtime import gl_core_generate_audit_proof
+from .runtime import gl_core_evaluate_budget_control
+from .runtime import gl_core_map_financial_statement
+from .runtime import gl_core_open_accounting_period
+from .runtime import gl_core_post_recurring_journal
+from .runtime import gl_core_post_reversal_entry
 from .runtime import gl_core_predict_posting_validation
 from .runtime import gl_core_receive_event
+from .runtime import gl_core_register_chart_account
+from .runtime import gl_core_register_dimension_policy
 from .runtime import gl_core_register_rule
+from .runtime import gl_core_run_intercompany_settlement
+from .runtime import gl_core_translate_currency
 from .runtime import gl_core_suggest_reconciliation
 
 PBC_KEY = "gl_core"
@@ -127,6 +139,41 @@ class GlCoreService:
             return {**result, "state": next_state}
         if operation_name == "register_rule":
             return gl_core_register_rule(self.state, payload.get("rule", payload))
+        if operation_name == "register_chart_account":
+            return gl_core_register_chart_account(self.state, payload.get("account", payload))
+        if operation_name == "open_accounting_period":
+            return gl_core_open_accounting_period(self.state, payload.get("period", payload))
+        if operation_name == "post_recurring_journal":
+            return gl_core_post_recurring_journal(self.state, payload.get("template", payload))
+        if operation_name == "post_reversal_entry":
+            return gl_core_post_reversal_entry(
+                self.state,
+                payload["original_event_id"],
+                reversal_date=payload["reversal_date"],
+                reason=payload.get("reason", "controller_reversal"),
+            )
+        if operation_name == "create_accrual_deferral_schedule":
+            return gl_core_create_accrual_deferral_schedule(self.state, payload.get("schedule", payload))
+        if operation_name == "calculate_allocation":
+            return gl_core_calculate_allocation(self.state, payload.get("rule", payload))
+        if operation_name == "translate_currency":
+            return gl_core_translate_currency(self.state, payload.get("rate_set", payload))
+        if operation_name == "run_intercompany_settlement":
+            return gl_core_run_intercompany_settlement(self.state, payload.get("settlement", payload))
+        if operation_name == "map_financial_statement":
+            return gl_core_map_financial_statement(
+                self.state,
+                tuple(payload.get("mappings", ())),
+                tenant=payload.get("tenant"),
+            )
+        if operation_name == "register_dimension_policy":
+            return gl_core_register_dimension_policy(self.state, payload.get("policy", payload))
+        if operation_name == "evaluate_budget_control":
+            return gl_core_evaluate_budget_control(
+                self.state,
+                payload.get("posting", payload),
+                payload.get("budget", {}),
+            )
         if operation_name == "receive_event":
             return gl_core_receive_event(
                 self.state,
@@ -138,6 +185,8 @@ class GlCoreService:
     def _apply_query(self, operation_name: str, payload: dict) -> dict:
         if operation_name == "build_projection":
             return gl_core_build_projection(self.state, tenant=payload.get("tenant"))
+        if operation_name == "build_trial_balance":
+            return gl_core_build_trial_balance(self.state, tenant=payload.get("tenant"))
         if operation_name == "generate_audit_proof":
             return gl_core_generate_audit_proof(self.state, disclosure=tuple(payload.get("disclosure", ())))
         if operation_name == "build_workbench_view":

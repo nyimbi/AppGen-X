@@ -31,11 +31,17 @@ GL_CORE_FORM_KEYS = (
     "journal_draft_form",
     "semantic_source_document_form",
     "reconciliation_case_form",
+    "accrual_deferral_schedule_form",
+    "allocation_rule_form",
+    "intercompany_settlement_form",
+    "statement_mapping_form",
 )
 GL_CORE_WIZARD_KEYS = (
     "journal_posting_wizard",
     "continuous_close_wizard",
     "agent_assisted_adjustment_wizard",
+    "allocation_and_revaluation_wizard",
+    "intercompany_settlement_wizard",
 )
 GL_CORE_CONTROL_KEYS = (
     "close_status_banner",
@@ -44,6 +50,9 @@ GL_CORE_CONTROL_KEYS = (
     "event_outbox_timeline",
     "dead_letter_queue",
     "audit_proof_drawer",
+    "allocation_proof_panel",
+    "currency_translation_panel",
+    "intercompany_settlement_queue",
 )
 
 
@@ -86,6 +95,38 @@ def gl_core_form_catalog() -> tuple[dict, ...]:
             "command": "suggest_reconciliation",
             "fields": ("case_id", "source_id", "ledger_event_id", "score", "decision", "tenant"),
         },
+        {
+            "key": "accrual_deferral_schedule_form",
+            "title": "Accrual and Deferral Schedule",
+            "repository_method": "save_accrual_schedule",
+            "storage_table": "gl_core_probabilistic_posting",
+            "command": "create_accrual_deferral_schedule",
+            "fields": ("schedule_id", "amount", "periods", "debit_account", "credit_account", "recognition_method", "tenant"),
+        },
+        {
+            "key": "allocation_rule_form",
+            "title": "Allocation Rule",
+            "repository_method": "save_allocation_rule",
+            "storage_tables": ("gl_core_policy_rule", "gl_core_journal_event", "gl_core_journal_line"),
+            "command": "calculate_allocation",
+            "fields": ("rule_id", "source_account", "target_account", "amount", "targets", "tenant"),
+        },
+        {
+            "key": "intercompany_settlement_form",
+            "title": "Intercompany Settlement",
+            "repository_method": "save_intercompany_settlement",
+            "storage_tables": ("gl_core_reconciliation_case", "gl_core_journal_event", "gl_core_journal_line"),
+            "command": "run_intercompany_settlement",
+            "fields": ("settlement_id", "from_entity", "to_entity", "amount", "due_from_account", "due_to_account", "tenant"),
+        },
+        {
+            "key": "statement_mapping_form",
+            "title": "Financial Statement Mapping",
+            "repository_method": "save_statement_mapping",
+            "storage_tables": ("gl_core_ledger_projection", "gl_core_account_projection"),
+            "command": "map_financial_statement",
+            "fields": ("statement_line", "accounts", "sign", "effective_from", "tenant"),
+        },
     )
 
 
@@ -106,6 +147,16 @@ def gl_core_wizard_catalog() -> tuple[dict, ...]:
             "steps": ("semantic_source_document_form", "journal_draft_form"),
             "goal": "Translate finance instructions into a governed journal draft with approval and audit evidence.",
         },
+        {
+            "key": "allocation_and_revaluation_wizard",
+            "steps": ("allocation_rule_form", "statement_mapping_form"),
+            "goal": "Simulate allocation, post the balanced allocation journal, and review translated statement impact.",
+        },
+        {
+            "key": "intercompany_settlement_wizard",
+            "steps": ("intercompany_settlement_form", "reconciliation_case_form"),
+            "goal": "Prepare due-to/due-from postings, reconciliation evidence, and close-blocker resolution for intercompany balances.",
+        },
     )
 
 
@@ -117,6 +168,9 @@ def gl_core_control_catalog() -> tuple[dict, ...]:
         {"key": "event_outbox_timeline", "type": "timeline", "binds_to": "outbox"},
         {"key": "dead_letter_queue", "type": "queue", "binds_to": "dead_letter"},
         {"key": "audit_proof_drawer", "type": "drawer", "binds_to": "audit_proof"},
+        {"key": "allocation_proof_panel", "type": "panel", "binds_to": "allocation_runs"},
+        {"key": "currency_translation_panel", "type": "panel", "binds_to": "currency_translations"},
+        {"key": "intercompany_settlement_queue", "type": "queue", "binds_to": "intercompany_settlements"},
     )
 
 
@@ -174,7 +228,13 @@ def gl_core_ui_contract() -> dict:
                 "key": "governance",
                 "fragment": "PolicyRuleStudio",
                 "binds_to": ("policy_rule", "schema_extension", "tenant_ledger_partition"),
-                "commands": ("register_rule",),
+                "commands": ("register_rule", "register_chart_account", "open_accounting_period", "register_dimension_policy"),
+            },
+            {
+                "key": "advanced_accounting",
+                "fragment": "AccountProjectionExplorer",
+                "binds_to": ("allocation_runs", "currency_translations", "intercompany_settlements", "statement_mappings"),
+                "commands": ("calculate_allocation", "translate_currency", "run_intercompany_settlement", "map_financial_statement"),
             },
         ),
         "forms": gl_core_form_catalog(),
