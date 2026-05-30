@@ -5,16 +5,26 @@ This file tracks package-local progress for the active goal: each PBC must imple
 ## Current Counts
 
 - PBCs with `improve1.md`: 147
-- PBCs with `IMPROVE1_TRACEABILITY.md`: 5
-- PBCs remaining: 142
+- PBCs with `IMPROVE1_TRACEABILITY.md`: 15
+- PBCs remaining: 132
 
 ## Completed Traceability Matrices
 
 - `ap_automation`
+- `api_gateway_mesh`
 - `ar_credit`
+- `asset_lifecycle`
+- `audit_ledger`
+- `composition_engine`
+- `federated_iam`
 - `field_service_management`
 - `gl_core`
 - `multi_sided_market`
+- `payment_orchestration`
+- `schema_registry`
+- `tax_localization`
+- `treasury_cash`
+- `workflow_orchestration`
 
 ## Remaining Traceability Matrices
 
@@ -24,9 +34,6 @@ This file tracks package-local progress for the active goal: each PBC must imple
 - `agriculture_farm_operations`
 - `airline_operations_control`
 - `airport_operations_management`
-- `api_gateway_mesh`
-- `asset_lifecycle`
-- `audit_ledger`
 - `aviation_maintenance_repair`
 - `bank_payments_clearing`
 - `banking_core_accounts`
@@ -40,7 +47,6 @@ This file tracks package-local progress for the active goal: each PBC must imple
 - `claims_adjudication_healthcare`
 - `clinical_care_coordination`
 - `clinical_trials_management`
-- `composition_engine`
 - `construction_contracts_commercials`
 - `construction_project_controls`
 - `contract_lifecycle`
@@ -66,7 +72,6 @@ This file tracks package-local progress for the active goal: each PBC must imple
 - `expense_management`
 - `facilities_space_management`
 - `facility_energy_management`
-- `federated_iam`
 - `fleet_mobility_operations`
 - `food_safety_quality_compliance`
 - `fraud_anomaly_detection`
@@ -104,7 +109,6 @@ This file tracks package-local progress for the active goal: each PBC must imple
 - `notifications`
 - `oil_gas_field_operations`
 - `order_routing_optimization`
-- `payment_orchestration`
 - `payroll_engine`
 - `permitting_licensing_inspections`
 - `personnel_identity`
@@ -134,7 +138,6 @@ This file tracks package-local progress for the active goal: each PBC must imple
 - `restaurant_operations`
 - `returns_reverse_logistics`
 - `revenue_recognition`
-- `schema_registry`
 - `service_ticketing`
 - `smart_city_mobility_operations`
 - `sports_venue_event_operations`
@@ -144,14 +147,12 @@ This file tracks package-local progress for the active goal: each PBC must imple
 - `sustainability_esg_reporting`
 - `talent_onboarding`
 - `tax_administration_public_sector`
-- `tax_localization`
 - `telecom_network_operations`
 - `telecom_subscription_lifecycle`
 - `time_labor`
 - `trade_finance_operations`
 - `transportation_management`
 - `travel_management`
-- `treasury_cash`
 - `utilities_metering_billing`
 - `utility_outage_restoration`
 - `vendor_supplier_360`
@@ -159,9 +160,9 @@ This file tracks package-local progress for the active goal: each PBC must imple
 - `water_wastewater_operations`
 - `wealth_portfolio_management`
 - `wms_core`
-- `workflow_orchestration`
 
 ## Latest Evidence
 
 - `f76afb6d` established the PBC-only finalization baseline from integrated standalone branches.
 - `9e62b63f` added and tested traceability matrices for the first five high-risk PBCs.
+- Current working batch adds platform-fabric and financial-core traceability matrices with 10 focused tests passing before commit.
