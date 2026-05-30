@@ -104,3 +104,39 @@ def smoke_test():
         "ok": ui["ok"] and workbench["ok"] and len(ui["forms"]) >= 8 and len(ui["wizards"]) >= 6,
         "side_effects": (),
     }
+
+
+# Improve1 media production control UI extension.
+from .media_production_control import improve1_media_production_control_contract as _improve1_media_production_control_contract
+
+_MEDIA_PRODUCTION_MANAGEMENT_BASE_UI_CONTRACT = media_production_management_ui_contract
+_MEDIA_PRODUCTION_MANAGEMENT_BASE_RENDER_WORKBENCH = media_production_management_render_workbench
+
+
+def media_production_management_ui_contract():
+    ui = dict(_MEDIA_PRODUCTION_MANAGEMENT_BASE_UI_CONTRACT())
+    control = _improve1_media_production_control_contract()
+    panels = tuple(item["evidence"]["ui_surface"] for item in control["capabilities"])
+    service_actions = tuple(item["evidence"]["service_api"] for item in control["capabilities"])
+    ui.update({
+        "ok": ui.get("ok") is True and control["ok"],
+        "media_production_control_contract": control,
+        "media_production_control_panels": panels,
+        "media_production_control_service_actions": service_actions,
+        "stream_engine_picker_visible": False,
+    })
+    ui.setdefault("full_capability_surface", {})
+    ui["full_capability_surface"] = dict(ui["full_capability_surface"], media_production_control_panels=panels, media_production_control_service_actions=service_actions)
+    return ui
+
+
+def media_production_management_render_workbench():
+    workbench = dict(_MEDIA_PRODUCTION_MANAGEMENT_BASE_RENDER_WORKBENCH())
+    control = _improve1_media_production_control_contract()
+    workbench.update({
+        "ok": workbench.get("ok") is True and control["ok"],
+        "media_production_control_panels": tuple(item["evidence"]["ui_surface"] for item in control["capabilities"]),
+        "media_production_control_service_actions": tuple(item["evidence"]["service_api"] for item in control["capabilities"]),
+        "media_production_control_agent_tools": tuple(f"media_production_management.skills.{item['slug']}" for item in control["capabilities"]),
+    })
+    return workbench

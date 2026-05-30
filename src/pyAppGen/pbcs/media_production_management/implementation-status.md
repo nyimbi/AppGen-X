@@ -11,3 +11,9 @@ Known gaps:
 
 - Browser rendering is represented as UI contracts rather than a live browser session in this PBC-only worktree.
 - Database execution is contract-backed and in-memory for standalone tests; generated app integration supplies the datastore binding.
+
+## Improve1 executable control pass
+
+- Added package-local `media_production_control.py` covering all 50 media-production improve1 features with owned tables, AppGen-X eventing, PostgreSQL/MySQL/MariaDB backend enforcement, projection-only external vendor/policy/audit gates, human-confirmed assistant actions, side-effect-free samples, and backlog-derived domain findings.
+- Wired the control contract into runtime capabilities, release evidence, UI/workbench panels, and the improve1 artifact registry.
+- Added `tests/test_domain_behavior.py` and regenerated `IMPROVE1_TRACEABILITY.md` so every feature maps to executable code, UI, service/API, test, and evidence.
