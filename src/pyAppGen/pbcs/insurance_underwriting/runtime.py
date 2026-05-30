@@ -304,3 +304,37 @@ def insurance_underwriting_runtime_smoke() -> dict:
         "release": release,
         "side_effects": (),
     }
+
+# Improve1 underwriting control extension.
+from .underwriting_control import improve1_underwriting_control_contract as insurance_underwriting_improve1_underwriting_control_contract
+
+_INSURANCE_UNDERWRITING_BASE_RUNTIME_CAPABILITIES = insurance_underwriting_runtime_capabilities
+_INSURANCE_UNDERWRITING_BASE_RELEASE_EVIDENCE = insurance_underwriting_build_release_evidence
+
+
+def insurance_underwriting_build_release_evidence() -> dict:
+    evidence = dict(_INSURANCE_UNDERWRITING_BASE_RELEASE_EVIDENCE())
+    underwriting_control = insurance_underwriting_improve1_underwriting_control_contract()
+    checks = tuple(evidence.get("checks", ())) + (
+        {"id": "improve1_underwriting_control", "ok": underwriting_control["ok"]},
+        {"id": "underwriting_release_pack", "ok": underwriting_control["capability_count"] == 50 and underwriting_control["event_contract"] == "AppGen-X"},
+    )
+    return {**evidence, "ok": evidence.get("ok") is True and all(check["ok"] for check in checks), "checks": checks, "underwriting_control": underwriting_control, "blocking_gaps": tuple(check for check in checks if not check["ok"])}
+
+
+def insurance_underwriting_runtime_capabilities() -> dict:
+    runtime = dict(_INSURANCE_UNDERWRITING_BASE_RUNTIME_CAPABILITIES())
+    underwriting_control = insurance_underwriting_improve1_underwriting_control_contract()
+    return {
+        **runtime,
+        "ok": runtime.get("ok") is True and underwriting_control["ok"],
+        "underwriting_control": underwriting_control,
+        "improve1_capabilities": underwriting_control["capabilities"],
+        "operations": tuple(dict.fromkeys(tuple(runtime.get("operations", ())) + ("improve1_underwriting_control_contract", "evaluate_underwriting_control"))),
+        "owned_tables": tuple(dict.fromkeys(tuple(runtime.get("owned_tables", ())) + tuple(underwriting_control["owned_tables"]))),
+        "allowed_database_backends": underwriting_control["allowed_database_backends"],
+        "event_contract": underwriting_control["event_contract"],
+        "required_event_topic": underwriting_control["required_event_topic"],
+        "stream_engine_picker_visible": False,
+        "side_effects": (),
+    }

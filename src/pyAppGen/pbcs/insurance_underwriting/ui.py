@@ -198,3 +198,26 @@ def smoke_test() -> dict:
         }
     )
     return {"ok": blueprint["ok"] and rendered["ok"] and insurance_underwriting_ui_contract()["ok"], "blueprint": blueprint, "rendered": rendered, "side_effects": ()}
+
+# Improve1 underwriting UI control extension.
+from .underwriting_control import improve1_underwriting_control_contract as insurance_underwriting_improve1_underwriting_control_contract
+
+_INSURANCE_UNDERWRITING_BASE_UI_CONTRACT = insurance_underwriting_ui_contract
+_INSURANCE_UNDERWRITING_BASE_RENDER_WORKBENCH = insurance_underwriting_render_workbench
+
+
+def insurance_underwriting_ui_contract() -> dict:
+    base = dict(_INSURANCE_UNDERWRITING_BASE_UI_CONTRACT())
+    underwriting_control = insurance_underwriting_improve1_underwriting_control_contract()
+    control_panels = tuple(item["evidence"]["ui_surface"] for item in underwriting_control["capabilities"])
+    service_actions = tuple(item["evidence"]["service_api"] for item in underwriting_control["capabilities"])
+    full_surface = dict(base.get("full_capability_surface", {}))
+    full_surface.update({"underwriting_control_panels": control_panels, "underwriting_control_service_actions": service_actions, "underwriting_control_tables": underwriting_control["owned_tables"]})
+    return {**base, "ok": base.get("ok") is True and underwriting_control["ok"], "full_capability_surface": full_surface, "underwriting_control_contract": underwriting_control, "underwriting_control_panels": control_panels, "underwriting_control_service_actions": service_actions, "side_effects": ()}
+
+
+def insurance_underwriting_render_workbench(workbench: dict | None = None, *, principal_permissions: tuple[str, ...] = tuple(permission_manifest()["permissions"])) -> dict:
+    base_workbench = workbench or {"submission_count": 0, "referral_queue_count": 0, "quotes_expiring_count": 0, "bind_ready_count": 0, "dead_letter_count": 0, "queues": {}}
+    base = dict(_INSURANCE_UNDERWRITING_BASE_RENDER_WORKBENCH(base_workbench, principal_permissions=principal_permissions))
+    underwriting_control = insurance_underwriting_improve1_underwriting_control_contract()
+    return {**base, "ok": base.get("ok") is True and underwriting_control["ok"], "underwriting_control_panels": tuple(item["evidence"]["ui_surface"] for item in underwriting_control["capabilities"]), "underwriting_control_service_actions": tuple(item["evidence"]["service_api"] for item in underwriting_control["capabilities"]), "underwriting_control_agent_tools": tuple(f"insurance_underwriting.agent.{item['slug']}" for item in underwriting_control["capabilities"]), "side_effects": ()}
