@@ -36,3 +36,13 @@ Implemented package-local convergence toward a standalone one-PBC GL app.
   route, event, UI, agent, and repository evidence.
 - `pbc_generation_smoke_audit`: covered by runtime smoke, repository smoke,
   and standalone app bootstrap/render smoke.
+
+## 2026-05-30 Domain Behavior Traceability Slice
+
+- Expanded `tests/test_domain_behavior.py` to prove the GL Core PBC executes standalone app flows, repository-backed journals, route dispatch, assistant document/CRUD planning, retry/dead-letter handling, owned-boundary enforcement, configuration rejection, advanced finance controls, audit proofs, resilience drills, private consolidation proofs, reconciliation game resolution, and release evidence.
+- Updated `IMPROVE1_TRACEABILITY.md` so every improve1 row cites the expanded executable domain behavior proof.
+
+Validation evidence:
+
+- `/Volumes/Media/src/pjs/appgen/.venv/bin/pytest src/pyAppGen/pbcs/gl_core/tests`
+  Result: `22 passed in 1.11s`.
