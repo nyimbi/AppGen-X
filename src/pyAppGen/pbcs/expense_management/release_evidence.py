@@ -41,3 +41,31 @@ def build_release_evidence():
 
 def expense_management_build_release_evidence():
     return build_release_evidence()
+
+
+from .expense_control import improve1_expense_control_contract
+
+_EXPENSE_MANAGEMENT_DOMAIN_RELEASE_EVIDENCE = build_release_evidence
+
+
+def build_release_evidence():
+    base = dict(_EXPENSE_MANAGEMENT_DOMAIN_RELEASE_EVIDENCE())
+    expense_control = improve1_expense_control_contract()
+    checks = tuple(base.get('checks', ())) + (
+        {'id': 'improve1_expense_control_contract', 'ok': expense_control['ok']},
+        {'id': 'improve1_expense_control_capability_count', 'ok': expense_control['capability_count'] == 50},
+        {'id': 'improve1_expense_control_release_boundary', 'ok': not expense_control['blocking_gaps']},
+    )
+    return {
+        **base,
+        'ok': base.get('ok') is True and all(check['ok'] for check in checks),
+        'checks': checks,
+        'expense_control': expense_control,
+        'blocking_gaps': tuple(check for check in checks if not check['ok']),
+        'sections': tuple(dict.fromkeys(tuple(base.get('sections', ())) + ('expense_control',))),
+        'side_effects': (),
+    }
+
+
+def expense_management_build_release_evidence():
+    return build_release_evidence()

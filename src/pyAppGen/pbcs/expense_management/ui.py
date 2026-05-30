@@ -52,3 +52,38 @@ def expense_management_render_workbench(state=None):
         'table_browsers': full['table_browsers'],
         'agent_tools': full['agent_tools'],
     }
+
+
+# Improve1 expense control coverage is part of the visible workbench contract.
+from .expense_control import improve1_expense_control_contract
+
+_EXPENSE_MANAGEMENT_FULL_UI_CONTRACT = expense_management_ui_contract
+_EXPENSE_MANAGEMENT_FULL_RENDER_WORKBENCH = expense_management_render_workbench
+
+
+def expense_management_ui_contract():
+    base = dict(_EXPENSE_MANAGEMENT_FULL_UI_CONTRACT())
+    expense_control = improve1_expense_control_contract()
+    full_surface = dict(base.get('full_capability_surface', {}))
+    full_surface['expense_control_panels'] = tuple(item['evidence']['ui_surface'] for item in expense_control['capabilities'])
+    full_surface['expense_control_service_actions'] = tuple(item['evidence']['service_api'] for item in expense_control['capabilities'])
+    return {
+        **base,
+        'ok': base.get('ok') is True and expense_control['ok'],
+        'full_capability_surface': full_surface,
+        'expense_control_contract': expense_control,
+        'stream_engine_picker_visible': False,
+    }
+
+
+def expense_management_render_workbench(state=None):
+    base = dict(_EXPENSE_MANAGEMENT_FULL_RENDER_WORKBENCH(state=state))
+    expense_control = improve1_expense_control_contract()
+    return {
+        **base,
+        'ok': base.get('ok') is True and expense_control['ok'],
+        'panels': tuple(dict.fromkeys(tuple(base.get('panels', ())) + tuple(item['evidence']['ui_surface'] for item in expense_control['capabilities']))),
+        'expense_control_actions': tuple(item['evidence']['service_api'] for item in expense_control['capabilities']),
+        'expense_control_contract': expense_control,
+        'stream_engine_picker_visible': False,
+    }

@@ -59,3 +59,10 @@ Result: passed.
 ## Merge Notes
 
 This branch should contain only files under `src/pyAppGen/pbcs/expense_management`. It can be reviewed and merged independently of other PBC worktree branches.
+
+## 2026-05-30 improve1 Expense-Control Execution Slice
+
+- Added `expense_control.py` as the executable per-feature control layer for all 50 Expense Management improve1 capabilities.
+- Wired the control contract into runtime capabilities, release evidence, and UI workbench surfaces so generated applications can discover the expense-specific gates.
+- Rebuilt `IMPROVE1_TRACEABILITY.md` so each feature maps to code/model, UI surface, service/API, test, and release evidence.
+- Added `tests/test_domain_behavior.py` with negative guardrails for readiness, lifecycle, receipt integrity, card feed idempotency, policy compilation, segregation of duty, reimbursement readiness, payment reconciliation, cash advances, mileage, per diem, hospitality, duplicate review, audit, allocation, FX, continuous controls, cryptographic proof, AppGen-X eventing, cross-PBC boundaries, agent confirmation, resilience drills, readiness scoring, and end-to-end release proof.
