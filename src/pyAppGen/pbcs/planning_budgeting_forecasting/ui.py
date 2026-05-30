@@ -72,3 +72,24 @@ def standalone_ui_smoke_test():
     contract = planning_budgeting_forecasting_ui_contract()
     rendered = planning_budgeting_forecasting_render_workbench()
     return {'ok': contract['ok'] and rendered['ok'] and bool(contract['forms']) and bool(contract['wizards']) and bool(contract['controls']) and contract['single_pbc_app']['ok'], 'contract': contract, 'rendered': rendered, 'side_effects': ()}
+
+
+# Improve1 planning control UI extension.
+from .planning_control import improve1_planning_control_contract as _improve1_planning_control_contract
+
+_PLANNING_BASE_UI_CONTRACT = planning_budgeting_forecasting_ui_contract
+_PLANNING_BASE_RENDER_WORKBENCH = planning_budgeting_forecasting_render_workbench
+
+
+def planning_budgeting_forecasting_ui_contract():
+    ui = dict(_PLANNING_BASE_UI_CONTRACT())
+    control = _improve1_planning_control_contract()
+    ui.update({"ok": ui.get("ok") is True and control["ok"], "planning_control_contract": control, "planning_control_panels": tuple(item["evidence"]["ui_surface"] for item in control["capabilities"]), "planning_control_service_actions": tuple(item["evidence"]["service_api"] for item in control["capabilities"]), "stream_engine_picker_visible": False})
+    return ui
+
+
+def planning_budgeting_forecasting_render_workbench(state=None):
+    workbench = dict(_PLANNING_BASE_RENDER_WORKBENCH(state=state))
+    control = _improve1_planning_control_contract()
+    workbench.update({"ok": workbench.get("ok") is True and control["ok"], "planning_control_panels": tuple(item["evidence"]["ui_surface"] for item in control["capabilities"]), "planning_control_service_actions": tuple(item["evidence"]["service_api"] for item in control["capabilities"]), "planning_control_agent_tools": tuple(f"planning_budgeting_forecasting.skills.{item['slug']}" for item in control["capabilities"])})
+    return workbench
