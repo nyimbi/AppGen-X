@@ -1,10 +1,7 @@
-# Mining Safety and Permits Implementation Status
+# Mining Safety Permits Implementation Status
 
-Implemented in this branch:
-
-- `standalone.py` with a full in-memory mine permit control center.
-- `forms.py`, `wizards.py`, and `controls.py` for field forms, guided workflows, and blocking controls.
-- UI, release evidence, manifest, and package exports wired to the standalone surface.
-- Focused tests for permit lifecycle, isolations, gas testing, ground control, blasting, incidents, regulatory packs, and assistant safety refusal.
-
-Known gaps: browser rendering and live database execution are not run in this PBC-only branch; generated app bindings provide those integrations.
+- improve1 backlog: 50 of 50 features have executable control specs in `mining_safety_control.py`.
+- Runtime wiring: `runtime.py` exposes the improve1 control contract and release evidence artifacts.
+- UI wiring: `ui.py` exposes 50 mining safety panels, service actions, and assistant tools.
+- Release evidence: `release_evidence.py` validates the mining safety control contract and traceability evidence.
+- Tests: `tests/test_domain_behavior.py` proves feature gating, owned-table boundaries, eventing, backend limits, projection-only dependencies, assistant refusal/preview controls, safety-critical evidence gates, and side-effect-free samples.

@@ -17,3 +17,25 @@ def mining_safety_permits_render_workbench():
 def smoke_test():
     ui = mining_safety_permits_ui_contract(); wb = mining_safety_permits_render_workbench()
     return {"ok": ui["ok"] and wb["ok"] and len(ui["forms"]) >= 8 and len(ui["wizards"]) >= 6, "side_effects": ()}
+
+# Improve1 mining safety control UI extension.
+from .mining_safety_control import improve1_mining_safety_control_contract as _improve1_mining_safety_control_contract
+
+_MINING_SAFETY_PERMITS_BASE_UI_CONTRACT = mining_safety_permits_ui_contract
+_MINING_SAFETY_PERMITS_BASE_RENDER_WORKBENCH = mining_safety_permits_render_workbench
+
+
+def mining_safety_permits_ui_contract():
+    ui = dict(_MINING_SAFETY_PERMITS_BASE_UI_CONTRACT())
+    control = _improve1_mining_safety_control_contract()
+    panels = tuple(item["evidence"]["ui_surface"] for item in control["capabilities"])
+    service_actions = tuple(item["evidence"]["service_api"] for item in control["capabilities"])
+    ui.update({"ok": ui.get("ok") is True and control["ok"], "mining_safety_control_contract": control, "mining_safety_control_panels": panels, "mining_safety_control_service_actions": service_actions, "stream_engine_picker_visible": False})
+    return ui
+
+
+def mining_safety_permits_render_workbench():
+    workbench = dict(_MINING_SAFETY_PERMITS_BASE_RENDER_WORKBENCH())
+    control = _improve1_mining_safety_control_contract()
+    workbench.update({"ok": workbench.get("ok") is True and control["ok"], "mining_safety_control_panels": tuple(item["evidence"]["ui_surface"] for item in control["capabilities"]), "mining_safety_control_service_actions": tuple(item["evidence"]["service_api"] for item in control["capabilities"]), "mining_safety_control_agent_tools": tuple(f"mining_safety_permits.skills.{item['slug']}" for item in control["capabilities"])})
+    return workbench
