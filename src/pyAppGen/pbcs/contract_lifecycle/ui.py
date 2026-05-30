@@ -1,6 +1,7 @@
 """UI fragments for the contract_lifecycle PBC."""
 
 from .application import PBC_KEY, render_workbench, ui_contract
+from .contract_control import improve1_contract_control_contract
 from .app_surface import (
     contract_lifecycle_controls_contract,
     contract_lifecycle_forms_contract,
@@ -13,6 +14,7 @@ from .domain_depth import domain_capability_surface_contract, ui_capability_surf
 def contract_lifecycle_ui_contract():
     base = ui_contract()
     capability = ui_capability_surface_contract()
+    contract_control = improve1_contract_control_contract()
     return {
         **base,
         "ok": base["ok"] and capability["ok"],
@@ -31,6 +33,18 @@ def contract_lifecycle_ui_contract():
         "wizards_contract": contract_lifecycle_wizards_contract(),
         "controls_contract": contract_lifecycle_controls_contract(),
         "single_pbc_app": single_pbc_contract_lifecycle_app_contract(),
+        "contract_control_panels": tuple(
+            {
+                "capability": sample["capability"],
+                "feature_number": sample["feature_number"],
+                "title": sample["title"],
+                "target_table": sample["target_table"],
+                "route": sample["route"],
+                "permission": sample["permission"],
+            }
+            for sample in contract_control["samples"]
+        ),
+        "contract_control_contract": contract_control,
     }
 
 

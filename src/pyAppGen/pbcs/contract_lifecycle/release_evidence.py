@@ -1,6 +1,7 @@
 """Release evidence for the contract_lifecycle PBC."""
 
 from .app_surface import app_surface_smoke_test, single_pbc_contract_lifecycle_app_contract
+from .contract_control import improve1_contract_control_contract
 from .application import PBC_KEY, release_evidence
 from .domain_depth import domain_depth_contract, domain_depth_smoke_test
 
@@ -11,20 +12,23 @@ def build_release_evidence():
     smoke = domain_depth_smoke_test()
     app_surface = app_surface_smoke_test()
     standalone = single_pbc_contract_lifecycle_app_contract()
+    contract_control = improve1_contract_control_contract()
     checks = tuple(evidence["checks"]) + (
         {"id": "world_class_domain_depth", "ok": domain["ok"]},
         {"id": "domain_depth_smoke", "ok": smoke["ok"]},
         {"id": "standalone_app_surface", "ok": app_surface["ok"]},
         {"id": "standalone_forms_wizards_controls", "ok": standalone["forms"]["ok"] and standalone["wizards"]["ok"] and standalone["controls"]["ok"]},
+        {"id": "improve1_contract_control", "ok": contract_control["ok"]},
     )
     return {
         **evidence,
-        "ok": evidence["ok"] and domain["ok"] and smoke["ok"] and app_surface["ok"] and standalone["ok"],
+        "ok": evidence["ok"] and domain["ok"] and smoke["ok"] and app_surface["ok"] and standalone["ok"] and contract_control["ok"],
         "checks": checks,
         "world_class_domain_depth": domain,
         "domain_depth_smoke": smoke,
         "standalone_app": standalone,
         "standalone_app_smoke": app_surface,
+        "improve1_contract_control": contract_control,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }
 

@@ -25,3 +25,10 @@ Implemented as a package-local one-PBC contract lifecycle application slice.
 - runtime persistence is intentionally in-memory for package-local execution and smokeability; no external DB adapter or HTTP server is introduced in this slice
 - document instruction parsing is deterministic keyword routing, not NLP extraction from real contract binaries
 - route dispatch models contract APIs and workbench queries, but does not mount a framework router inside this package
+
+## 2026-05-30 improve1 Contract-Control Execution Slice
+
+- Added `contract_control.py` as side-effect-free executable proof for all 50 improve1 CLM capabilities.
+- Bound each feature to owned CLM tables, AppGen-X event metadata, UI/API route surfaces, agent skills, configuration handles, retry/dead-letter evidence, and traceability artifacts.
+- Added package-local domain behavior tests for intake readiness, lifecycle transitions, signing authority, semantic extraction, document integrity, approvals, obligations, legal holds, cross-PBC boundaries, agent redline governance, resilience, readiness, and end-to-end release proof.
+- Updated runtime, UI, release evidence, and improve1 traceability so every feature row points to executable contract-control behavior and `tests/test_domain_behavior.py`.

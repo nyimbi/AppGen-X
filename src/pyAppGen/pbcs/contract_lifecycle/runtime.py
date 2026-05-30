@@ -1,5 +1,6 @@
 """Executable runtime contract for the contract_lifecycle PBC."""
 
+from .contract_control import CONTRACT_CONTROL_CAPABILITIES, improve1_contract_control_contract
 from .application import (
     ALLOWED_DATABASE_BACKENDS,
     BUSINESS_TABLES,
@@ -159,6 +160,7 @@ def contract_lifecycle_runtime_smoke():
     duplicate = receive_event(received["state"], {"event_type": CONTRACT_LIFECYCLE_CONSUMED_EVENT_TYPES[0], "event_id": "evt-1", "customer_name": "Smoke Customer"})
     dead = receive_event(duplicate["state"], {"event_type": "UnexpectedEvent", "event_id": "evt-bad"})
     boundary = contract_lifecycle_verify_owned_table_boundary(CONTRACT_LIFECYCLE_OWNED_TABLES + ("foreign_table",))
+    contract_control = improve1_contract_control_contract()
     return {
         "format": "appgen.contract-lifecycle-runtime-smoke.v2",
         "ok": config["ok"]
@@ -167,19 +169,24 @@ def contract_lifecycle_runtime_smoke():
         and received["ok"]
         and duplicate["duplicate"] is True
         and dead["ok"] is False
-        and not boundary["ok"],
+        and not boundary["ok"]
+        and contract_control["ok"],
         "checks": (
             {"id": "runtime_config", "ok": config["ok"]},
             {"id": "intake_command", "ok": command["ok"]},
             {"id": "duplicate_event_guard", "ok": duplicate["duplicate"] is True},
             {"id": "dead_letter_guard", "ok": dead["ok"] is False},
             {"id": "boundary_guard", "ok": not boundary["ok"]},
+            {"id": "improve1_contract_control", "ok": contract_control["ok"]},
         ),
         "state": dead["state"],
+        "improve1_contract_control": contract_control,
     }
 
 
 def contract_lifecycle_runtime_capabilities():
     runtime = runtime_capabilities()
     smoke = contract_lifecycle_runtime_smoke()
-    return {**runtime, "ok": runtime["ok"] and smoke["ok"], "smoke": smoke}
+    contract_control = improve1_contract_control_contract()
+    operations = tuple(runtime.get("operations", ())) + ("improve1_contract_control_contract",) + tuple(CONTRACT_CONTROL_CAPABILITIES)
+    return {**runtime, "ok": runtime["ok"] and smoke["ok"] and contract_control["ok"], "operations": operations, "smoke": smoke, "improve1_contract_control": contract_control}
