@@ -4239,6 +4239,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
     doctor_text_renderer = _doctor_text_renderer_contract()
     lsp_text_renderer = _lsp_service_text_renderer_contract()
     doctor = doctor_report_dsl()
+    language_quality = dsl_language_quality_contract()
     module_boundaries = module_boundary_audit_dsl()
     non_goal_policy = _tooling_audit_non_goal_policy()
     component_publish_text_renderer = _component_publish_text_renderer_contract()
@@ -4256,6 +4257,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
     implementation_phases = _tooling_audit_implementation_phases(
         semantic=semantic,
         symbol_coverage=symbol_coverage,
+        language_quality=language_quality,
         diagnostics=diagnostics,
         diagnostic_fixtures=diagnostic_fixtures,
         parser_golden=parser_golden,
@@ -4326,6 +4328,15 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             "Documented parser, AST, symbols, semantic, diagnostics, formatter, LSP, CLI, graph, migration, NL planning, and release boundaries expose callable surfaces.",
             "docs/tooling.md#proposed-modules",
             module_boundaries,
+        ),
+        _tooling_audit_check(
+            "dsl_language_quality",
+            language_quality["ok"]
+            and language_quality["antlr_integrity"]["ok"]
+            and language_quality["budget"]["ok"],
+            "Canonical grammar, generated parser, keyword budget, authoring aliases, and progressive learning path remain synchronized.",
+            "docs/tooling.md#semantic-model-contract",
+            language_quality,
         ),
         _tooling_audit_check(
             "diagnostic_registry_and_fixtures",
@@ -5042,6 +5053,17 @@ def _tooling_audit_implementation_phases(**evidence: dict) -> dict:
                         evidence["parser_golden"].get("format"),
                         evidence["diagnostic_fixtures"].get("format"),
                         evidence["drift"].get("format"),
+                    ),
+                },
+                {
+                    "id": "grammar_parser_sync_and_keyword_budget",
+                    "ok": evidence["language_quality"].get("ok") is True
+                    and evidence["language_quality"].get("antlr_integrity", {}).get("ok") is True
+                    and evidence["language_quality"].get("budget", {}).get("ok") is True,
+                    "evidence_formats": (
+                        evidence["language_quality"].get("format"),
+                        evidence["language_quality"].get("antlr_integrity", {}).get("format"),
+                        evidence["language_quality"].get("budget", {}).get("format"),
                     ),
                 },
                 {

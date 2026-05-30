@@ -100,6 +100,12 @@ library services without starting Studio or a generated application.
 
 The semantic model should be serializable to JSON and stable enough for CLI,
 IDE, tests, and agents.
+The top-level tooling audit also embeds `appgen.dsl-language-quality.v1`, which
+combines `appgen.dsl-antlr-integrity.v1` and `appgen.dsl-keyword-budget.v1`.
+That release gate proves `lang/appgen.g4`, the generated parser/lexer, required
+enterprise grammar rules, the compact keyword budget, authoring aliases, and the
+progressive learning path remain synchronized before semantic-model evidence is
+accepted.
 
 Required top-level fields:
 
@@ -1740,6 +1746,9 @@ Exit criteria:
 - No new generator behavior required.
 - Tooling fixtures can run in CI, including `appgen parser-golden --json`,
   `appgen diagnostics --audit-fixtures --json`, and `appgen drift <file> --json`.
+- `appgen.dsl-language-quality.v1` proves grammar/parser synchronization,
+  required enterprise grammar rules, keyword budget, authoring aliases, and the
+  progressive learning path.
 - The test-strategy CLI audit requires `appgen drift` to prove CLI, LSP,
   Studio, graph, generator, and release-verifier surfaces share one semantic
   model, including `appgen.generate-report.v1` evidence.

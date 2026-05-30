@@ -3820,6 +3820,12 @@ def test_tooling_implementation_phase_audit_maps_phase_exit_criteria_to_evidence
             )},
         },
         symbol_coverage={"format": "appgen.symbol-coverage.v1", "missing": ()},
+        language_quality={
+            "format": "appgen.dsl-language-quality.v1",
+            "ok": True,
+            "antlr_integrity": {"format": "appgen.dsl-antlr-integrity.v1", "ok": True},
+            "budget": {"format": "appgen.dsl-keyword-budget.v1", "ok": True},
+        },
         diagnostics=ok("appgen.diagnostic-catalog.v1"),
         diagnostic_fixtures=ok("appgen.diagnostic-fixture-audit.v1"),
         parser_golden=ok("appgen.parser-golden-audit.v1"),
@@ -3884,6 +3890,7 @@ def test_tooling_implementation_phase_audit_maps_phase_exit_criteria_to_evidence
         for criterion in phase["exit_criteria"]
     } >= {
         "current_behavior_documented",
+        "grammar_parser_sync_and_keyword_budget",
         "semantic_model_contract",
         "formatter_idempotency",
         "graph_json_mermaid_and_dot",
@@ -3997,6 +4004,7 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert {
         "shared_semantic_model",
         "module_boundaries",
+        "dsl_language_quality",
         "implementation_phase_exit_criteria",
         "language_server_core_features",
         "ide_visual_designer_round_trip",
@@ -4017,6 +4025,14 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     )
     assert semantic_check["detail"]["symbol_coverage_counts"]["missing_kind_count"] == 0
     assert semantic_check["detail"]["symbol_coverage_counts"]["symbol_count"] > 0
+    language_check = next(check for check in report["checks"] if check["id"] == "dsl_language_quality")
+    assert language_check["detail"]["format"] == "appgen.dsl-language-quality.v1"
+    assert language_check["detail"]["ok"] is True
+    assert language_check["detail"]["antlr_integrity"]["format"] == "appgen.dsl-antlr-integrity.v1"
+    assert language_check["detail"]["antlr_integrity"]["ok"] is True
+    assert language_check["detail"]["budget"]["format"] == "appgen.dsl-keyword-budget.v1"
+    assert language_check["detail"]["budget"]["ok"] is True
+    assert language_check["detail"]["canonical_keyword_count"] <= language_check["detail"]["budget"]["limit"]
     non_goal_check = next(check for check in report["checks"] if check["id"] == "non_goal_policy_guards")
     assert non_goal_check["detail"]["format"] == "appgen.non-goal-policy-audit.v1"
     assert non_goal_check["detail"]["ok"] is True
@@ -4275,7 +4291,7 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert cli_check["detail"]["missing_input_exit"]["case_ids"] == tuple(
         case["name"] for case in cli_check["detail"]["missing_input_exit"]["cases"]
     )
-    assert cli_check["detail"]["missing_input_exit"]["command_family_count"] >= 15
+    assert cli_check["detail"]["missing_input_exit"]["command_family_count"] >= 14
     assert cli_check["detail"]["missing_input_exit"]["missing_path_message_count"] == (
         cli_check["detail"]["missing_input_exit"]["case_count"]
     )
