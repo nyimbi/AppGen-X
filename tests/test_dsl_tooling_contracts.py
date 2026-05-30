@@ -6762,6 +6762,36 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert drift_gate["detail"]["text_renderer"]["evidence_line_count"] >= 3
     assert drift_gate["detail"]["text_renderer"]["check_line_count"] >= 2
     assert drift_gate["detail"]["text_renderer"]["digest_line_count"] >= 1
+    assert drift_gate["detail"]["text_renderer"]["emitted_surfaces"] == drift_gate["detail"]["text_renderer"][
+        "required_surfaces"
+    ]
+    assert drift_gate["detail"]["text_renderer"]["missing_surface_count"] == 0
+    assert drift_gate["detail"]["text_renderer"]["missing_surfaces"] == ()
+    assert drift_gate["detail"]["text_renderer"]["emitted_gap_ids"] == drift_gate["detail"]["text_renderer"][
+        "required_gap_ids"
+    ]
+    assert drift_gate["detail"]["text_renderer"]["missing_gap_id_count"] == 0
+    assert drift_gate["detail"]["text_renderer"]["missing_gap_ids"] == ()
+    assert drift_gate["detail"]["text_renderer"]["emitted_evidence_keys"] == drift_gate["detail"]["text_renderer"][
+        "required_evidence_keys"
+    ]
+    assert drift_gate["detail"]["text_renderer"]["missing_evidence_key_count"] == 0
+    assert drift_gate["detail"]["text_renderer"]["missing_evidence_keys"] == ()
+    assert drift_gate["detail"]["text_renderer"]["emitted_check_ids"] == drift_gate["detail"]["text_renderer"][
+        "required_check_ids"
+    ]
+    assert drift_gate["detail"]["text_renderer"]["missing_check_id_count"] == 0
+    assert drift_gate["detail"]["text_renderer"]["missing_check_ids"] == ()
+    assert drift_gate["detail"]["text_renderer"]["emitted_passing_check_ids"] == drift_gate["detail"][
+        "text_renderer"
+    ]["required_passing_check_ids"]
+    assert drift_gate["detail"]["text_renderer"]["missing_passing_check_id_count"] == 0
+    assert drift_gate["detail"]["text_renderer"]["missing_passing_check_ids"] == ()
+    assert drift_gate["detail"]["text_renderer"]["emitted_failing_check_ids"] == drift_gate["detail"][
+        "text_renderer"
+    ]["required_failing_check_ids"]
+    assert drift_gate["detail"]["text_renderer"]["missing_failing_check_id_count"] == 0
+    assert drift_gate["detail"]["text_renderer"]["missing_failing_check_ids"] == ()
     assert drift_gate["detail"]["text_renderer"]["json_fallback"] is False
     assert drift_gate["detail"]["cli"]["observed_surface_count"] >= drift_gate["detail"]["cli"]["required_surface_count"]
     assert drift_gate["detail"]["cli"]["missing_surface_count"] == 0
@@ -7705,6 +7735,30 @@ def test_semantic_drift_text_renderer_contract_proves_shared_model_log_markers()
     assert report["passing_check_line_count"] == 1
     assert report["failing_check_line_count"] == 1
     assert report["digest_line_count"] == 1
+    assert report["required_surfaces"] == ("cli", "lsp", "studio", "generator")
+    assert report["emitted_surfaces"] == report["required_surfaces"]
+    assert report["missing_surface_count"] == 0
+    assert report["missing_surfaces"] == ()
+    assert report["required_gap_ids"] == ("studio_missing_surface",)
+    assert report["emitted_gap_ids"] == report["required_gap_ids"]
+    assert report["missing_gap_id_count"] == 0
+    assert report["missing_gap_ids"] == ()
+    assert report["required_evidence_keys"] == ("generate_report", "lsp_service", "studio_surfaces")
+    assert report["emitted_evidence_keys"] == report["required_evidence_keys"]
+    assert report["missing_evidence_key_count"] == 0
+    assert report["missing_evidence_keys"] == ()
+    assert report["required_check_ids"] == ("cli_uses_semantic_model", "studio_uses_semantic_model")
+    assert report["emitted_check_ids"] == report["required_check_ids"]
+    assert report["missing_check_id_count"] == 0
+    assert report["missing_check_ids"] == ()
+    assert report["required_passing_check_ids"] == ("cli_uses_semantic_model",)
+    assert report["emitted_passing_check_ids"] == report["required_passing_check_ids"]
+    assert report["missing_passing_check_id_count"] == 0
+    assert report["missing_passing_check_ids"] == ()
+    assert report["required_failing_check_ids"] == ("studio_uses_semantic_model",)
+    assert report["emitted_failing_check_ids"] == report["required_failing_check_ids"]
+    assert report["missing_failing_check_id_count"] == 0
+    assert report["missing_failing_check_ids"] == ()
     assert report["missing_fragments"] == ()
     assert report["json_fallback"] is False
     assert report["text_prefix"].startswith(

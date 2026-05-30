@@ -3589,9 +3589,42 @@ def _semantic_drift_text_renderer_contract() -> dict:
     gap_lines = tuple(line for line in lines if line.startswith("gap "))
     evidence_lines = tuple(line for line in lines if line.startswith("evidence "))
     check_lines = tuple(line for line in lines if line.startswith(("ok ", "fail ")))
+    emitted_surfaces = tuple()
+    if surface_lines:
+        emitted_surfaces = tuple(item.strip() for item in surface_lines[0].removeprefix("surfaces ").split(","))
+    emitted_gap_ids = tuple(line.removeprefix("gap ").strip() for line in gap_lines)
+    emitted_evidence_keys = tuple(
+        line.removeprefix("evidence ").split(":", 1)[0].strip() for line in evidence_lines
+    )
+    emitted_check_ids = tuple(line.split()[1] for line in check_lines if len(line.split()) >= 2)
+    emitted_passing_check_ids = tuple(line.split()[1] for line in check_lines if line.startswith("ok ") and len(line.split()) >= 2)
+    emitted_failing_check_ids = tuple(line.split()[1] for line in check_lines if line.startswith("fail ") and len(line.split()) >= 2)
+    required_surfaces = tuple(payload["surfaces"])
+    required_gap_ids = tuple(payload["blocking_gaps"])
+    required_evidence_keys = tuple(sorted(payload["surface_evidence"]))
+    required_check_ids = tuple(check["check"] for check in payload["checks"])
+    required_passing_check_ids = tuple(check["check"] for check in payload["checks"] if check["ok"])
+    required_failing_check_ids = tuple(check["check"] for check in payload["checks"] if not check["ok"])
+    missing_surfaces = tuple(surface for surface in required_surfaces if surface not in emitted_surfaces)
+    missing_gap_ids = tuple(gap_id for gap_id in required_gap_ids if gap_id not in emitted_gap_ids)
+    missing_evidence_keys = tuple(key for key in required_evidence_keys if key not in emitted_evidence_keys)
+    missing_check_ids = tuple(check_id for check_id in required_check_ids if check_id not in emitted_check_ids)
+    missing_passing_check_ids = tuple(
+        check_id for check_id in required_passing_check_ids if check_id not in emitted_passing_check_ids
+    )
+    missing_failing_check_ids = tuple(
+        check_id for check_id in required_failing_check_ids if check_id not in emitted_failing_check_ids
+    )
     return {
         "format": "appgen.semantic-drift-text-renderer.v1",
-        "ok": not missing and not text.lstrip().startswith("{"),
+        "ok": not missing
+        and not missing_surfaces
+        and not missing_gap_ids
+        and not missing_evidence_keys
+        and not missing_check_ids
+        and not missing_passing_check_ids
+        and not missing_failing_check_ids
+        and not text.lstrip().startswith("{"),
         **_text_renderer_contract_counts(
             text,
             required_fragments,
@@ -3607,6 +3640,30 @@ def _semantic_drift_text_renderer_contract() -> dict:
         "passing_check_line_count": sum(1 for line in check_lines if line.startswith("ok ")),
         "failing_check_line_count": sum(1 for line in check_lines if line.startswith("fail ")),
         "digest_line_count": sum(1 for line in summary_lines if "digest=sha256:" in line),
+        "required_surfaces": required_surfaces,
+        "emitted_surfaces": emitted_surfaces,
+        "missing_surface_count": len(missing_surfaces),
+        "missing_surfaces": missing_surfaces,
+        "required_gap_ids": required_gap_ids,
+        "emitted_gap_ids": emitted_gap_ids,
+        "missing_gap_id_count": len(missing_gap_ids),
+        "missing_gap_ids": missing_gap_ids,
+        "required_evidence_keys": required_evidence_keys,
+        "emitted_evidence_keys": emitted_evidence_keys,
+        "missing_evidence_key_count": len(missing_evidence_keys),
+        "missing_evidence_keys": missing_evidence_keys,
+        "required_check_ids": required_check_ids,
+        "emitted_check_ids": emitted_check_ids,
+        "missing_check_id_count": len(missing_check_ids),
+        "missing_check_ids": missing_check_ids,
+        "required_passing_check_ids": required_passing_check_ids,
+        "emitted_passing_check_ids": emitted_passing_check_ids,
+        "missing_passing_check_id_count": len(missing_passing_check_ids),
+        "missing_passing_check_ids": missing_passing_check_ids,
+        "required_failing_check_ids": required_failing_check_ids,
+        "emitted_failing_check_ids": emitted_failing_check_ids,
+        "missing_failing_check_id_count": len(missing_failing_check_ids),
+        "missing_failing_check_ids": missing_failing_check_ids,
         "json_fallback": text.lstrip().startswith("{"),
         "text_prefix": text[:240],
     }
@@ -6870,6 +6927,12 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and drift_text_renderer.get("evidence_line_count", 0) >= 3
             and drift_text_renderer.get("check_line_count", 0) >= 2
             and drift_text_renderer.get("digest_line_count", 0) >= 1
+            and drift_text_renderer.get("missing_surface_count") == 0
+            and drift_text_renderer.get("missing_gap_id_count") == 0
+            and drift_text_renderer.get("missing_evidence_key_count") == 0
+            and drift_text_renderer.get("missing_check_id_count") == 0
+            and drift_text_renderer.get("missing_passing_check_id_count") == 0
+            and drift_text_renderer.get("missing_failing_check_id_count") == 0
             and drift_text_renderer.get("json_fallback") is False
             and test_strategy_cli["ok"]
             and test_strategy_cli.get("missing_case_count") == 0
@@ -6897,6 +6960,30 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                     "passing_check_line_count": drift_text_renderer.get("passing_check_line_count"),
                     "failing_check_line_count": drift_text_renderer.get("failing_check_line_count"),
                     "digest_line_count": drift_text_renderer.get("digest_line_count"),
+                    "required_surfaces": drift_text_renderer.get("required_surfaces"),
+                    "emitted_surfaces": drift_text_renderer.get("emitted_surfaces"),
+                    "missing_surface_count": drift_text_renderer.get("missing_surface_count"),
+                    "missing_surfaces": drift_text_renderer.get("missing_surfaces"),
+                    "required_gap_ids": drift_text_renderer.get("required_gap_ids"),
+                    "emitted_gap_ids": drift_text_renderer.get("emitted_gap_ids"),
+                    "missing_gap_id_count": drift_text_renderer.get("missing_gap_id_count"),
+                    "missing_gap_ids": drift_text_renderer.get("missing_gap_ids"),
+                    "required_evidence_keys": drift_text_renderer.get("required_evidence_keys"),
+                    "emitted_evidence_keys": drift_text_renderer.get("emitted_evidence_keys"),
+                    "missing_evidence_key_count": drift_text_renderer.get("missing_evidence_key_count"),
+                    "missing_evidence_keys": drift_text_renderer.get("missing_evidence_keys"),
+                    "required_check_ids": drift_text_renderer.get("required_check_ids"),
+                    "emitted_check_ids": drift_text_renderer.get("emitted_check_ids"),
+                    "missing_check_id_count": drift_text_renderer.get("missing_check_id_count"),
+                    "missing_check_ids": drift_text_renderer.get("missing_check_ids"),
+                    "required_passing_check_ids": drift_text_renderer.get("required_passing_check_ids"),
+                    "emitted_passing_check_ids": drift_text_renderer.get("emitted_passing_check_ids"),
+                    "missing_passing_check_id_count": drift_text_renderer.get("missing_passing_check_id_count"),
+                    "missing_passing_check_ids": drift_text_renderer.get("missing_passing_check_ids"),
+                    "required_failing_check_ids": drift_text_renderer.get("required_failing_check_ids"),
+                    "emitted_failing_check_ids": drift_text_renderer.get("emitted_failing_check_ids"),
+                    "missing_failing_check_id_count": drift_text_renderer.get("missing_failing_check_id_count"),
+                    "missing_failing_check_ids": drift_text_renderer.get("missing_failing_check_ids"),
                     "json_fallback": drift_text_renderer.get("json_fallback"),
                 },
                 "cli": {

@@ -2098,7 +2098,10 @@ The aggregate tooling audit also exposes shared-model drift as
 `semantic_drift_surface_contracts`. That gate fails when CLI, LSP, Studio,
 graph, generator, generator-readiness, release-verifier, or tests stop proving
 they consume the same `appgen.semantic-model.v1`, or when drift text output
-loses surface, evidence, check, digest, or gap markers.
+loses surface, evidence, check, digest, or gap markers. The drift text renderer
+also publishes required and emitted surface names, blocking-gap ids, evidence
+keys, check ids, passing-check ids, and failing-check ids with named missing
+lists, so shared-model release evidence fails on the exact hidden drift marker.
 
 ## Implementation Phases
 
