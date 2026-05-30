@@ -2389,6 +2389,15 @@ def _component_publish_text_renderer_contract() -> dict:
         "catalog-existing ExistingBox",
     )
     missing = tuple(fragment for fragment in required_fragments if fragment not in text)
+    lines = tuple(line for line in text.splitlines() if line.strip())
+    summary_lines = tuple(line for line in lines if line.startswith("component-publish "))
+    catalog_lines = tuple(line for line in lines if line.startswith(("catalog-count ", "catalog-existing ")))
+    side_effect_lines = tuple(
+        line
+        for line in lines
+        if "side_effect_free=" in line or "write_performed=" in line
+    )
+    patch_contract_lines = tuple(line for line in lines if "patch_format=appgen.component-catalog-patch.v1" in line)
     return {
         "format": "appgen.component-publish-text-renderer.v1",
         "ok": not missing and not text.lstrip().startswith("{"),
@@ -2399,6 +2408,11 @@ def _component_publish_text_renderer_contract() -> dict:
         ),
         "required_fragments": required_fragments,
         "missing_fragments": missing,
+        "summary_line_count": len(summary_lines),
+        "catalog_line_count": len(catalog_lines),
+        "side_effect_line_count": len(side_effect_lines),
+        "patch_contract_line_count": len(patch_contract_lines),
+        "existing_catalog_line_count": sum(1 for line in catalog_lines if line.startswith("catalog-existing ")),
         "json_fallback": text.lstrip().startswith("{"),
         "text_prefix": text[:240],
     }

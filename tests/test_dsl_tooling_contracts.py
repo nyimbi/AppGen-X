@@ -4613,6 +4613,11 @@ def test_component_publish_text_renderer_contract_proves_catalog_log_markers() -
     assert report["required_fragment_count"] == len(report["required_fragments"])
     assert report["missing_fragment_count"] == 0
     assert report["marker_line_count"] == report["output_line_count"] == 3
+    assert report["summary_line_count"] == 1
+    assert report["catalog_line_count"] == 2
+    assert report["side_effect_line_count"] == 1
+    assert report["patch_contract_line_count"] == 1
+    assert report["existing_catalog_line_count"] == 1
     assert report["missing_fragments"] == ()
     assert report["json_fallback"] is False
     assert report["text_prefix"].startswith(

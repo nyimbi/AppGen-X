@@ -1001,7 +1001,10 @@ prove this human-readable component publication log remains side-effect-aware
 and exposes the catalog patch contract plus existing-catalog context without
 parsing JSON.
 The renderer contract reports fragment and marker counts for the component
-summary, catalog metadata, side-effect posture, and patch contract.
+summary, catalog metadata, side-effect posture, and patch contract. It also
+reports summary-line, catalog-line, side-effect-line, patch-contract-line, and
+existing-catalog-line counts so component publication logs prove catalog
+context and non-mutating publication posture did not disappear.
 
 ### `appgen pbc`
 
