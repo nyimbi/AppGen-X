@@ -1237,7 +1237,9 @@ each blocker code and available fix id, including `AGX1101` and
 step without parsing JSON. Rename edits operate on code identifiers, not raw
 text: comments and string literals must remain unchanged, and the rename report
 must expose the lexical scope plus occurrence counts so editors and agents can
-distinguish a symbol refactor from a broad textual replacement.
+distinguish a symbol refactor from a broad textual replacement. Operation and
+workflow renames are scoped to declarations plus handler/transition targets, so
+same-named fields or unrelated declarations are not rewritten by a refactor.
 
 ### Capabilities
 
@@ -1296,8 +1298,8 @@ explicit migration approval, such as destructive relationship changes. The
 blocker includes an `add_rename_hint` fix suggestion so agents and IDEs can ask
 for an explicit migration decision before applying the edit. The
 `appgen.lsp-rename-cli-audit.v1` gate also exercises lexical-scope safety by
-renaming a handler target while proving matching names in comments and string
-literals are preserved.
+renaming a handler target while proving matching names in fields, comments, and
+string literals are preserved.
 
 ### Completion Sources
 

@@ -8544,13 +8544,13 @@ def _tooling_audit_lsp_rename_cli(tmp: Path, source: str) -> dict:
         and rename.get("new_name") == "PostInvoice"
         and "PostInvoice" in patched_text
         and rename.get("occurrence_count", 0) >= 2
-        and rename.get("lexical_scope") == "code_identifiers"
+        and rename.get("lexical_scope") == "flow_declarations_and_targets"
         and rename.get("migration_preview", {}).get("format") == "appgen.migration-plan.v1"
     )
 
     lexical_source = """
 app RenameScope { targets: web }
-table Invoice { id: int pk }
+table Invoice { id: int pk; SubmitInvoice: string }
 view InvoiceForm for Invoice {
   Main: id
   on Save -> SubmitInvoice
@@ -8560,6 +8560,10 @@ operation SubmitInvoice {
 }
 audit RenameAudit {
   evidence: "SubmitInvoice"
+}
+deploy Production {
+  unit SubmitInvoice as worker
+  health SubmitInvoice "/health"
 }
 // SubmitInvoice should remain in this comment
 """
@@ -8592,9 +8596,13 @@ audit RenameAudit {
         and lexical_payload.get("format") == "appgen.lsp-service.v1"
         and lexical_rename.get("format") == "appgen.lsp-rename.v1"
         and lexical_rename.get("ok") is True
-        and lexical_rename.get("occurrence_count") == 2
+        and lexical_rename.get("lexical_scope") == "operation_declarations_and_targets"
+        and lexical_rename.get("occurrence_count") == 4
         and "on Save -> PostInvoice" in lexical_patched_text
         and "operation PostInvoice" in lexical_patched_text
+        and "unit PostInvoice as worker" in lexical_patched_text
+        and 'health PostInvoice "/health"' in lexical_patched_text
+        and "SubmitInvoice: string" in lexical_patched_text
         and 'evidence: "SubmitInvoice"' in lexical_patched_text
         and "// SubmitInvoice should remain in this comment" in lexical_patched_text
     )
@@ -8700,6 +8708,8 @@ view InvoiceForm for Invoice {
         "safe_ok": safe_ok,
         "lexical_scope_ok": lexical_scope_ok,
         "lexical_occurrence_count": lexical_rename.get("occurrence_count"),
+        "lexical_symbol_scope": lexical_rename.get("lexical_scope"),
+        "lexical_field_preserved": "SubmitInvoice: string" in lexical_patched_text,
         "lexical_string_preserved": 'evidence: "SubmitInvoice"' in lexical_patched_text,
         "lexical_comment_preserved": "// SubmitInvoice should remain in this comment" in lexical_patched_text,
         "blocked_ok": blocked_ok,
@@ -13103,7 +13113,7 @@ def lsp_rename_dsl(
                 _spec_diagnostic(source, "AGX0100", "error", f"Cannot rename unknown symbol: {token}"),
             ),
         }
-    new_text, occurrence_count = _replace_identifier_occurrences(source, token, new_name)
+    new_text, occurrence_count, rename_scope = _replace_symbol_identifier_occurrences(source, token, new_name, symbol)
     lint = lint_report_dsl(new_text, source_name=source_name)
     migration = migration_plan_dsl(source, new_text, previous_name=source_name, current_name=source_name)
     blockers = _lsp_rename_blocking_diagnostics(source, migration)
@@ -13116,7 +13126,7 @@ def lsp_rename_dsl(
         "blocked": bool(blockers),
         "blockers": blockers,
         "occurrence_count": occurrence_count,
-        "lexical_scope": "code_identifiers",
+        "lexical_scope": rename_scope,
         "workspace_edit": {
             "changes": {
                 source_name or "memory://appgen": (
@@ -13151,7 +13161,7 @@ def lsp_rename_dsl_documents(
     for uri, document_source in documents.items():
         if not re.search(rf"\b{re.escape(token)}\b", document_source):
             continue
-        document_new_text, _ = _replace_identifier_occurrences(document_source, token, str(new_name))
+        document_new_text, _, _ = _replace_symbol_identifier_occurrences(document_source, token, str(new_name), local.get("symbol", {}))
         if document_new_text == document_source:
             continue
         changes[uri] = (
@@ -13171,7 +13181,20 @@ def lsp_rename_dsl_documents(
     }
 
 
+def _replace_symbol_identifier_occurrences(source: str, token: str, new_name: str, symbol: dict | None) -> tuple[str, int, str]:
+    symbol_kind = (symbol or {}).get("kind")
+    if symbol_kind in {"operation", "flow"}:
+        return (*_replace_identifier_occurrences_scoped(source, token, new_name, scope=symbol_kind), f"{symbol_kind}_declarations_and_targets")
+    text, count = _replace_identifier_occurrences(source, token, new_name)
+    return text, count, "code_identifiers"
+
+
 def _replace_identifier_occurrences(source: str, token: str, new_name: str) -> tuple[str, int]:
+    """Replace identifier tokens in code while preserving comments and strings."""
+    return _replace_identifier_occurrences_scoped(source, token, new_name, scope=None)
+
+
+def _replace_identifier_occurrences_scoped(source: str, token: str, new_name: str, *, scope: str | None) -> tuple[str, int]:
     """Replace identifier tokens in code while preserving comments and strings."""
     if not token:
         return source or "", 0
@@ -13228,7 +13251,7 @@ def _replace_identifier_occurrences(source: str, token: str, new_name: str) -> t
             while index < len(text) and (text[index] == "_" or text[index].isalnum()):
                 index += 1
             word = text[start:index]
-            if word == token:
+            if word == token and _rename_occurrence_in_scope(text, start, index, scope):
                 pieces.append(new_name)
                 count += 1
             else:
@@ -13237,6 +13260,21 @@ def _replace_identifier_occurrences(source: str, token: str, new_name: str) -> t
         pieces.append(char)
         index += 1
     return "".join(pieces), count
+
+
+def _rename_occurrence_in_scope(source: str, start: int, end: int, scope: str | None) -> bool:
+    if scope is None:
+        return True
+    before = source[:start]
+    after = source[end:]
+    if scope in {"operation", "flow"}:
+        if re.search(rf"\b{scope}\s+$", before[-80:]):
+            return True
+        if re.search(r"->\s*$", before[-40:]) and not re.match(r"\s*\.", after):
+            return True
+        if re.search(r"\b(?:unit|health|resource|env)\s+$", before[-80:]):
+            return True
+    return False
 
 
 def _lsp_full_document_range(source: str) -> dict:
