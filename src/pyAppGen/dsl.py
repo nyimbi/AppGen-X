@@ -6886,13 +6886,40 @@ def _tooling_audit_validate_generate_cli(tmp: Path, source: str) -> dict:
             "output_exists": error_allowed_dir.exists(),
         },
     )
+    failing_cases = tuple(case["case"] for case in cases if not case["ok"])
+    generated_cases = tuple(case for case in cases if case.get("case", "").startswith("generate_"))
+    validation_cases = tuple(case for case in cases if case.get("case", "").startswith("validate_"))
+    generated_success_cases = tuple(case["case"] for case in generated_cases if case.get("ok") and case.get("exit_code") == 0)
+    generated_blocked_cases = tuple(
+        case["case"]
+        for case in generated_cases
+        if case.get("ok") and case.get("exit_code") == 1 and case.get("blocking_gaps")
+    )
+    validation_rejection_cases = tuple(
+        case["case"]
+        for case in validation_cases
+        if case.get("ok") and case.get("exit_code") == 1 and case.get("diagnostic_codes")
+    )
+    case_ids = tuple(case["case"] for case in cases)
     return {
         "format": "appgen.validate-generate-cli-audit.v1",
-        "ok": all(case["ok"] for case in cases),
+        "ok": not failing_cases,
         "case_count": len(cases),
         "passing_case_count": sum(1 for case in cases if case["ok"]),
-        "generated_case_count": sum(1 for case in cases if case.get("case", "").startswith("generate_")),
-        "validation_case_count": sum(1 for case in cases if case.get("case", "").startswith("validate_")),
+        "failing_case_count": len(failing_cases),
+        "case_ids": case_ids,
+        "failing_cases": failing_cases,
+        "generated_case_count": len(generated_cases),
+        "validation_case_count": len(validation_cases),
+        "generated_success_case_count": len(generated_success_cases),
+        "generated_success_cases": generated_success_cases,
+        "generated_blocked_case_count": len(generated_blocked_cases),
+        "generated_blocked_cases": generated_blocked_cases,
+        "validation_rejection_case_count": len(validation_rejection_cases),
+        "validation_rejection_cases": validation_rejection_cases,
+        "manifest_case_count": sum(1 for case in generated_cases if case.get("manifest") or case.get("manifest_exists")),
+        "artifact_handoff_case_count": sum(1 for case in generated_cases if case.get("artifact_count", 0) > 0),
+        "blocking_gap_case_count": sum(1 for case in cases if case.get("blocking_gaps")),
         "cases": cases,
     }
 

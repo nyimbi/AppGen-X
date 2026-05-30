@@ -756,9 +756,12 @@ hands off resolved targets, output directory, semantic-model format, validation
 report format, manifest existence, manifest app name, artifact count, and
 artifact path existence, while still proving warning-only sources require
 `--allow-warnings` and lint errors block generation even with that flag. The
-audit reports total, passing, validation, and generation case counts so release
-evidence can distinguish target-validation coverage from artifact-generation
-coverage.
+audit reports total, passing, failing, validation, and generation case counts
+so release evidence can distinguish target-validation coverage from
+artifact-generation coverage. It also reports case ids, failing case ids,
+generation success cases, generation blocked cases, validation rejection cases,
+manifest case counts, artifact handoff case counts, and blocking-gap case
+counts so agents can review generation readiness without expanding every case.
 
 ### `appgen graph`
 

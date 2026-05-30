@@ -3759,8 +3759,26 @@ def test_validate_generate_cli_audit_proves_generated_artifact_handoff(tmp_path:
     assert audit["ok"] is True
     assert audit["case_count"] == len(audit["cases"])
     assert audit["passing_case_count"] == audit["case_count"]
+    assert audit["failing_case_count"] == 0
+    assert audit["case_ids"] == tuple(case["case"] for case in audit["cases"])
+    assert audit["failing_cases"] == ()
     assert audit["generated_case_count"] == 4
     assert audit["validation_case_count"] == 3
+    assert audit["generated_success_case_count"] == 2
+    assert audit["generated_success_cases"] == ("generate_writes_artifacts", "generate_allows_warnings_when_requested")
+    assert audit["generated_blocked_case_count"] == 2
+    assert audit["generated_blocked_cases"] == (
+        "generate_blocks_warnings",
+        "generate_blocks_errors_even_when_warnings_allowed",
+    )
+    assert audit["validation_rejection_case_count"] == 2
+    assert audit["validation_rejection_cases"] == (
+        "validate_rejects_undeclared_targets",
+        "validate_rejects_unknown_targets",
+    )
+    assert audit["manifest_case_count"] == 2
+    assert audit["artifact_handoff_case_count"] == 1
+    assert audit["blocking_gap_case_count"] == 2
     assert generated["ok"] is True
     assert generated["targets"] == ("web",)
     assert generated["semantic_model_format"] == "appgen.semantic-model.v1"
