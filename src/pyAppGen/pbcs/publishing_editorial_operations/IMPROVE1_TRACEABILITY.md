@@ -63,3 +63,7 @@ Verification rule: every row must identify a code/model artifact, UI surface, se
 - Matrix rows: 50 of 50 improve1 features.
 - The accompanying `tests/test_improve1_traceability.py` test verifies row count and required evidence columns against the current backlog.
 - This file is traceability evidence, not a substitute for the executable tests and release evidence linked in the table.
+
+## Executable Publishing Editorial Control Evidence
+
+Each improve1 feature 1-50 is backed by `publishing_editorial_control.py`, which maps the feature to a publishing-editorial-owned control table, required acquisition/manuscript/review/rights/metadata/production fields, UI panel, service/API route, AppGen-X event contract evidence, declared API/event/projection dependencies, and `tests/test_domain_behavior.py`. Runtime, UI, release evidence, and traceability wrappers expose the contract without stream-engine pickers, shared-table access, or foreign-table dependencies.

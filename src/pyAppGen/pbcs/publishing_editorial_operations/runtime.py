@@ -267,3 +267,42 @@ def publishing_editorial_operations_runtime_smoke():
     }
 
 publishing_editorial_operations_execute_domain_operation = execute_domain_operation
+
+# Improve1 publishing editorial control extension.
+from .publishing_editorial_control import evaluate_publishing_editorial_control, improve1_publishing_editorial_control_contract
+
+_PUBLISHING_EDITORIAL_CONTROL_BASE_RUNTIME_CAPABILITIES = publishing_editorial_operations_runtime_capabilities
+_PUBLISHING_EDITORIAL_CONTROL_BASE_BUILD_RELEASE_EVIDENCE = publishing_editorial_operations_build_release_evidence
+
+
+def publishing_editorial_operations_runtime_capabilities() -> dict:
+    runtime = dict(_PUBLISHING_EDITORIAL_CONTROL_BASE_RUNTIME_CAPABILITIES())
+    control = improve1_publishing_editorial_control_contract()
+    runtime["ok"] = bool(runtime.get("ok")) and control["ok"]
+    runtime["publishing_editorial_control"] = control
+    runtime["operations"] = tuple(dict.fromkeys(tuple(runtime.get("operations", ())) + ("evaluate_publishing_editorial_control", "improve1_publishing_editorial_control_contract")))
+    runtime["improve1_control_owned_tables"] = control["owned_tables"]
+    return runtime
+
+
+def publishing_editorial_operations_build_release_evidence() -> dict:
+    evidence = dict(_PUBLISHING_EDITORIAL_CONTROL_BASE_BUILD_RELEASE_EVIDENCE())
+    control = improve1_publishing_editorial_control_contract()
+    artifacts = dict(evidence.get("generated_artifacts", {}))
+    artifacts["publishing_editorial_control"] = {
+        "contract": control["format"],
+        "capability_count": control["capability_count"],
+        "owned_tables": control["owned_tables"],
+        "service_apis": tuple(item["evidence"]["service_api"] for item in control["capabilities"]),
+        "ui_surfaces": tuple(item["evidence"]["ui_surface"] for item in control["capabilities"]),
+        "test": "tests/test_domain_behavior.py",
+    }
+    checks = tuple(evidence.get("checks", ())) + ({"id": "improve1_publishing_editorial_control", "ok": control["ok"]},)
+    evidence.update({
+        "ok": bool(evidence.get("ok")) and control["ok"],
+        "checks": checks,
+        "generated_artifacts": artifacts,
+        "publishing_editorial_control": control,
+        "blocking_gaps": tuple(evidence.get("blocking_gaps", ())) + tuple(control.get("blocking_gaps", ())),
+    })
+    return evidence
