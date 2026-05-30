@@ -785,6 +785,12 @@ diagnostics remain visible. It also publishes required and emitted write paths,
 write-requested values, written values, organize values, idempotence states,
 diagnostic codes, and diagnostic severities with named missing lists, so
 formatter release logs fail on the exact hidden mutation or diagnostic marker.
+The formatter text gate also publishes required, emitted, missing, and
+missing-count evidence for text surfaces, embedded formatter contract formats,
+and mutation states. The aggregate formatter gate requires zero named missing
+entries, so a generic formatter header or warning line cannot hide a missing
+write path, write flag, organize flag, idempotence state, mutation state, or
+contract marker.
 `--organize` enables the optional table-body organization profile: identity
 fields and spreads, business keys, relationships, editable scalar fields,
 calculated fields, audit fields, and directives are ordered inside each table

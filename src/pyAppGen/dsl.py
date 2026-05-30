@@ -2647,6 +2647,43 @@ def _format_text_renderer_contract() -> dict:
     required_idempotence_states = ("idempotent" if payload["idempotent"] else "not-idempotent",)
     required_diagnostic_codes = tuple(diagnostic["code"] for diagnostic in payload["diagnostics"])
     required_diagnostic_severities = tuple(diagnostic["severity"] for diagnostic in payload["diagnostics"])
+    required_text_surfaces = (
+        "summary",
+        "write_path",
+        "diagnostics",
+        "write_requested",
+        "written",
+        "organize",
+        "idempotence",
+    )
+    emitted_text_surfaces = tuple(
+        surface
+        for surface, present in (
+            ("summary", bool(summary_lines)),
+            ("write_path", bool(write_path_lines)),
+            ("diagnostics", bool(diagnostic_lines)),
+            ("write_requested", bool(emitted_write_requested_values)),
+            ("written", bool(emitted_written_values)),
+            ("organize", bool(emitted_organize_values)),
+            ("idempotence", bool(emitted_idempotence_states)),
+        )
+        if present
+    )
+    missing_text_surfaces = tuple(
+        surface for surface in required_text_surfaces if surface not in emitted_text_surfaces
+    )
+    required_contract_formats = ("appgen.format-result.v1",)
+    emitted_contract_formats = tuple(
+        contract_format for contract_format in required_contract_formats if contract_format in text
+    )
+    missing_contract_formats = tuple(
+        contract_format for contract_format in required_contract_formats if contract_format not in emitted_contract_formats
+    )
+    required_mutation_states = ("changed",)
+    emitted_mutation_states = tuple(state for state in required_mutation_states if state in text)
+    missing_mutation_states = tuple(
+        state for state in required_mutation_states if state not in emitted_mutation_states
+    )
     missing_write_paths = tuple(path for path in required_write_paths if path not in emitted_write_paths)
     missing_write_requested_values = tuple(
         value for value in required_write_requested_values if value not in emitted_write_requested_values
@@ -2670,6 +2707,9 @@ def _format_text_renderer_contract() -> dict:
         and not missing_idempotence_states
         and not missing_diagnostic_codes
         and not missing_diagnostic_severities
+        and not missing_text_surfaces
+        and not missing_contract_formats
+        and not missing_mutation_states
         and not text.lstrip().startswith("{"),
         **_text_renderer_contract_counts(
             text,
@@ -2686,6 +2726,18 @@ def _format_text_renderer_contract() -> dict:
         "write_flag_line_count": sum(1 for line in summary_lines if "write_requested=True" in line and "written=True" in line),
         "idempotence_line_count": sum(1 for line in summary_lines if "idempotent" in line or "not-idempotent" in line),
         "organize_line_count": sum(1 for line in summary_lines if "organize=True" in line),
+        "required_text_surfaces": required_text_surfaces,
+        "emitted_text_surfaces": emitted_text_surfaces,
+        "missing_text_surfaces": missing_text_surfaces,
+        "missing_text_surface_count": len(missing_text_surfaces),
+        "required_contract_formats": required_contract_formats,
+        "emitted_contract_formats": emitted_contract_formats,
+        "missing_contract_formats": missing_contract_formats,
+        "missing_contract_format_count": len(missing_contract_formats),
+        "required_mutation_states": required_mutation_states,
+        "emitted_mutation_states": emitted_mutation_states,
+        "missing_mutation_states": missing_mutation_states,
+        "missing_mutation_state_count": len(missing_mutation_states),
         "required_write_paths": required_write_paths,
         "emitted_write_paths": emitted_write_paths,
         "missing_write_path_count": len(missing_write_paths),
@@ -6291,11 +6343,9 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and format_write.get("text_has_report_format") is True
             and format_write.get("text_has_write_metadata") is True
             and format_text_renderer["ok"]
-            and format_text_renderer.get("summary_line_count") == 1
-            and format_text_renderer.get("write_path_line_count") == 1
-            and format_text_renderer.get("write_flag_line_count") == 1
-            and format_text_renderer.get("idempotence_line_count") == 1
-            and format_text_renderer.get("organize_line_count") == 1
+            and format_text_renderer.get("missing_text_surface_count") == 0
+            and format_text_renderer.get("missing_contract_format_count") == 0
+            and format_text_renderer.get("missing_mutation_state_count") == 0
             and format_text_renderer.get("missing_write_path_count") == 0
             and format_text_renderer.get("missing_write_requested_value_count") == 0
             and format_text_renderer.get("missing_written_value_count") == 0
@@ -6346,6 +6396,18 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                     "write_flag_line_count": format_text_renderer.get("write_flag_line_count"),
                     "idempotence_line_count": format_text_renderer.get("idempotence_line_count"),
                     "organize_line_count": format_text_renderer.get("organize_line_count"),
+                    "required_text_surfaces": format_text_renderer.get("required_text_surfaces"),
+                    "emitted_text_surfaces": format_text_renderer.get("emitted_text_surfaces"),
+                    "missing_text_surfaces": format_text_renderer.get("missing_text_surfaces"),
+                    "missing_text_surface_count": format_text_renderer.get("missing_text_surface_count"),
+                    "required_contract_formats": format_text_renderer.get("required_contract_formats"),
+                    "emitted_contract_formats": format_text_renderer.get("emitted_contract_formats"),
+                    "missing_contract_formats": format_text_renderer.get("missing_contract_formats"),
+                    "missing_contract_format_count": format_text_renderer.get("missing_contract_format_count"),
+                    "required_mutation_states": format_text_renderer.get("required_mutation_states"),
+                    "emitted_mutation_states": format_text_renderer.get("emitted_mutation_states"),
+                    "missing_mutation_states": format_text_renderer.get("missing_mutation_states"),
+                    "missing_mutation_state_count": format_text_renderer.get("missing_mutation_state_count"),
                     "required_write_paths": format_text_renderer.get("required_write_paths"),
                     "emitted_write_paths": format_text_renderer.get("emitted_write_paths"),
                     "missing_write_path_count": format_text_renderer.get("missing_write_path_count"),

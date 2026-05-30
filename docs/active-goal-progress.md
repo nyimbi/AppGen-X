@@ -4037,3 +4037,14 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   (`1 passed`), aggregate tooling audit (`1 passed`, with the known active-PBC
   `datetime.utcnow()` warnings only), scoped diff whitespace check, and
   restricted-name scan outside archive, Git internals, and active PBC paths.
+- Current formatter text audit hardening pass replaces generic formatter text
+  count acceptance with named evidence for formatter release logs.
+  `appgen.format-text-renderer.v1` now proves required and emitted text
+  surfaces, embedded formatter contract formats, mutation states, write paths,
+  write-requested values, written values, organize values, idempotence states,
+  diagnostic codes, and diagnostic severities. Verification passed: Python
+  compile for the touched DSL and tests, focused formatter text renderer test
+  (`1 passed`), focused lint text renderer test (`1 passed`), aggregate tooling
+  audit (`1 passed`, with the known active-PBC `datetime.utcnow()` warnings
+  only), scoped diff whitespace check, and restricted-name scan outside archive,
+  Git internals, and active PBC paths.

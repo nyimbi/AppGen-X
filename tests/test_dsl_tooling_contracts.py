@@ -6483,6 +6483,21 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert formatter_gate["detail"]["text_renderer"]["write_flag_line_count"] == 1
     assert formatter_gate["detail"]["text_renderer"]["idempotence_line_count"] == 1
     assert formatter_gate["detail"]["text_renderer"]["organize_line_count"] == 1
+    assert formatter_gate["detail"]["text_renderer"]["emitted_text_surfaces"] == formatter_gate["detail"][
+        "text_renderer"
+    ]["required_text_surfaces"]
+    assert formatter_gate["detail"]["text_renderer"]["missing_text_surface_count"] == 0
+    assert formatter_gate["detail"]["text_renderer"]["missing_text_surfaces"] == ()
+    assert formatter_gate["detail"]["text_renderer"]["emitted_contract_formats"] == formatter_gate["detail"][
+        "text_renderer"
+    ]["required_contract_formats"]
+    assert formatter_gate["detail"]["text_renderer"]["missing_contract_format_count"] == 0
+    assert formatter_gate["detail"]["text_renderer"]["missing_contract_formats"] == ()
+    assert formatter_gate["detail"]["text_renderer"]["emitted_mutation_states"] == formatter_gate["detail"][
+        "text_renderer"
+    ]["required_mutation_states"]
+    assert formatter_gate["detail"]["text_renderer"]["missing_mutation_state_count"] == 0
+    assert formatter_gate["detail"]["text_renderer"]["missing_mutation_states"] == ()
     assert formatter_gate["detail"]["text_renderer"]["emitted_write_paths"] == formatter_gate["detail"][
         "text_renderer"
     ]["required_write_paths"]
@@ -8338,6 +8353,26 @@ def test_format_text_renderer_contract_proves_write_and_idempotence_log_markers(
     assert report["write_flag_line_count"] == 1
     assert report["idempotence_line_count"] == 1
     assert report["organize_line_count"] == 1
+    assert report["required_text_surfaces"] == (
+        "summary",
+        "write_path",
+        "diagnostics",
+        "write_requested",
+        "written",
+        "organize",
+        "idempotence",
+    )
+    assert report["emitted_text_surfaces"] == report["required_text_surfaces"]
+    assert report["missing_text_surface_count"] == 0
+    assert report["missing_text_surfaces"] == ()
+    assert report["required_contract_formats"] == ("appgen.format-result.v1",)
+    assert report["emitted_contract_formats"] == report["required_contract_formats"]
+    assert report["missing_contract_format_count"] == 0
+    assert report["missing_contract_formats"] == ()
+    assert report["required_mutation_states"] == ("changed",)
+    assert report["emitted_mutation_states"] == report["required_mutation_states"]
+    assert report["missing_mutation_state_count"] == 0
+    assert report["missing_mutation_states"] == ()
     assert report["required_write_paths"] == ("apps/sales.appgen",)
     assert report["emitted_write_paths"] == report["required_write_paths"]
     assert report["missing_write_path_count"] == 0
