@@ -26,6 +26,7 @@ def sustainability_esg_reporting_render_workbench(state: dict | None = None) -> 
         'controls': workbench['controls'],
         'summary': workbench['summary'],
         'configuration_editor': True,
+        'stream_engine_picker_visible': False,
         'action_permissions': tuple(build_ui_contract()['action_permissions']),
         'advanced_panels': tuple(build_ui_contract()['advanced_panels']),
         'agent_tools': tuple(build_ui_contract()['agent_tools']),

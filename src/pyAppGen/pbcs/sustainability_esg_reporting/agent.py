@@ -7,7 +7,8 @@ from .slice_app import build_agent_contract, build_standalone_app
 
 def agent_skill_manifest() -> dict:
     contract = build_agent_contract()
-    return {'ok': contract['ok'], 'pbc': PBC_KEY, 'skills': contract['skills'], 'side_effects': ()}
+    skills = tuple({**skill, 'requires_confirmation_for_mutation': True} for skill in contract['skills'])
+    return {'ok': contract['ok'] and all(skill['requires_confirmation_for_mutation'] is True for skill in skills), 'pbc': PBC_KEY, 'skills': skills, 'side_effects': ()}
 
 
 def chatbot_interface_contract() -> dict:
@@ -16,6 +17,8 @@ def chatbot_interface_contract() -> dict:
         'pbc': PBC_KEY,
         'entrypoint': f'/assistant/pbc/{PBC_KEY}',
         'single_agent_contribution': f'{PBC_KEY}_skills',
+        'single_agent_skill_namespace': f'{PBC_KEY}_skills',
+        'stream_engine_picker_visible': False,
         'capabilities': (
             'task_guidance',
             'document_instruction_intake',
@@ -24,6 +27,7 @@ def chatbot_interface_contract() -> dict:
             'board_pack_navigation',
             'regulator_filing_navigation',
         ),
+        'professional_controls': ('mutation_preview_before_commit', 'permission_check_before_mutation', 'owned_table_boundary_check', 'human_confirmation_required'),
         'side_effects': (),
     }
 

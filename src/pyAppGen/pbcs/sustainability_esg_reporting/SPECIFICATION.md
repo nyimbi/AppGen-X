@@ -151,3 +151,18 @@ Focused tests assert:
 - AppGen-X is the only event contract
 - stream engine picker visibility stays false
 - board packs, regulator filings, Scope 1/2/3 calculations, renewable governance, water/waste/social/governance metrics, and governed AI previews are executable surfaces
+
+
+## Manifest Traceability Appendix
+
+This appendix ties the specification to package registration, side-effect-free discovery, seed data, standard capabilities, advanced capabilities, command and query service routes, UI permission RBAC, configuration, PostgreSQL, MySQL, MariaDB, and AppGen-X release evidence. Service APIs expose command and query paths; package registration and package discovery are side-effect-free.
+
+- tables: emissions_factor, activity_data, carbon_ledger_entry, esg_metric, supplier_disclosure, assurance_evidence, sustainability_report, regulatory_submission
+- apis: POST /emissions-factors, POST /activity-data, POST /carbon-ledger, POST /sustainability-reports, GET /esg-workbench
+- emits: CarbonLedgerPosted, EsgMetricPublished, SustainabilityReportFiled, SupplierDisclosureReceived
+- consumes: SupplierQualified, TravelBooked, AssetPlacedInService
+- ui_fragments: SustainabilityEsgReportingWorkbench, SustainabilityEsgReportingDetail, SustainabilityEsgReportingAssistantPanel
+- permissions: sustainability_esg_reporting.read, sustainability_esg_reporting.create, sustainability_esg_reporting.update, sustainability_esg_reporting.approve, sustainability_esg_reporting.admin
+- configuration: SUSTAINABILITY_ESG_REPORTING_DATABASE_URL, SUSTAINABILITY_ESG_REPORTING_EVENT_TOPIC, SUSTAINABILITY_ESG_REPORTING_RETRY_LIMIT, SUSTAINABILITY_ESG_REPORTING_DEFAULT_POLICY
+- standard_features: emissions_factor_management, sustainability_esg_reporting_workflow, sustainability_esg_reporting_analytics, configuration_schema, rule_engine, parameter_engine, owned_schema_migrations_models, appgen_x_outbox_inbox_eventing, idempotent_handlers, retry_dead_letter_evidence, permissions, seed_data, workbench, agentic_document_instruction_intake, governed_datastore_crud
+- advanced_capabilities: sustainability_esg_reporting_event_sourced_operational_history, sustainability_esg_reporting_multi_tenant_policy_isolation, sustainability_esg_reporting_schema_evolution_resilience, sustainability_esg_reporting_autonomous_anomaly_detection, sustainability_esg_reporting_semantic_document_instruction_understanding, sustainability_esg_reporting_predictive_risk_scoring, sustainability_esg_reporting_counterfactual_scenario_simulation, sustainability_esg_reporting_cryptographic_audit_proofs, sustainability_esg_reporting_continuous_control_testing, sustainability_esg_reporting_carbon_and_sustainability_awareness, sustainability_esg_reporting_cross_pbc_event_federation, sustainability_esg_reporting_governed_ai_agent_execution

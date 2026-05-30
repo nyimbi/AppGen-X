@@ -1,6 +1,8 @@
 """Package manifest for the sustainability_esg_reporting PBC."""
 from __future__ import annotations
 
+PBC_LITERAL = 'sustainability_esg_reporting'
+
 from .blueprint import (
     ADVANCED_CAPABILITIES,
     BUSINESS_TABLE_BLUEPRINTS,
@@ -42,7 +44,7 @@ PBC_MANIFEST = {
     'migrations': ('migrations/001_initial.sql',),
     'seed_data': ('seed_data.py',),
     'tests': ('tests/test_contract.py',),
-    'docs': ('SPECIFICATION.md', 'RELEASE_EVIDENCE.md', 'improve1.md'),
+    'docs': ('SPECIFICATION.md', 'RELEASE_EVIDENCE.md', 'improve1.md', 'README.md', 'implementation-plan.md', 'implementation-status.md'),
     'capabilities': tuple(STANDARD_FEATURES) + tuple(ADVANCED_CAPABILITIES),
     'standard_features': tuple(STANDARD_FEATURES),
     'advanced_capabilities': tuple(ADVANCED_CAPABILITIES),

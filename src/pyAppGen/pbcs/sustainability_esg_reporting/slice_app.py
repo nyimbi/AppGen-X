@@ -1058,9 +1058,17 @@ def build_runtime_capabilities() -> dict[str, Any]:
         'allowed_database_backends': ALLOWED_DATABASE_BACKENDS,
         'capabilities': tuple(ADVANCED_CAPABILITIES),
         'standard_features': tuple(STANDARD_FEATURES),
-        'operations': _dedupe(tuple(service['command_methods'] + service['query_methods'])),
+        'operations': _dedupe(tuple(service['command_methods'] + service['query_methods']) + ('build_schema_contract', 'build_service_contract', 'build_release_evidence')),
         'world_class_domain_depth': domain_depth_contract(),
         'domain_depth_smoke': domain_depth_smoke_test(),
-        'smoke': smoke,
+        'smoke': {
+            **smoke,
+            'checks': tuple(smoke.get('checks', ())) or (
+                {'id': 'slice_smoke', 'ok': smoke.get('ok') is True},
+                {'id': 'schema_contract', 'ok': build_schema_contract().get('ok') is True},
+                {'id': 'service_contract', 'ok': service.get('ok') is True},
+            ),
+            'blocking_gaps': tuple(smoke.get('blocking_gaps', ())),
+        },
         'side_effects': (),
     }

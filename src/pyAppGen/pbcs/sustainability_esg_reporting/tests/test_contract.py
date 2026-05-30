@@ -1,5 +1,6 @@
 from pyAppGen.pbcs.sustainability_esg_reporting import (
     implementation_contract,
+    registration_plan,
     package_discovery_plan,
     package_metadata_manifest,
     validate_package_metadata,
@@ -279,3 +280,22 @@ def test_service_surface_and_registration_are_side_effect_free():
     assert package_discovery_plan()['ok'] is True
     assert package_discovery_plan()['side_effects'] == ()
     assert service_operation_contracts()['ok'] is True
+
+
+def test_registration_plan_is_side_effect_free():
+    plan = registration_plan()
+    discovery = package_discovery_plan()
+    assert plan['ok'] is True
+    assert discovery['ok'] is True
+    assert discovery['side_effects'] == ()
+
+
+def test_service_and_route_surface_are_executable():
+    services = service_operation_contracts()
+    routes = api_route_contracts()
+    validation = validate_api_route_contracts()
+    dispatched = dispatch_route('/sustainability-esg-reporting-workbench', {'tenant': 'tenant-route'}, method='GET')
+    assert services['ok'] is True
+    assert routes['ok'] is True
+    assert validation['ok'] is True
+    assert dispatched['ok'] is True
