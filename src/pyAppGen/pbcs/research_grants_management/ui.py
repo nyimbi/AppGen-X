@@ -17,3 +17,34 @@ def research_grants_management_render_workbench():
 
 def smoke_test():
     return {'ok': research_grants_management_ui_contract()['ok'] and research_grants_management_render_workbench()['ok'], 'side_effects': ()}
+
+# Improve1 research grants management control UI extension.
+from .research_grants_management_control import improve1_research_grants_management_control_contract as _improve1_research_grants_management_control_contract
+
+_RESEARCH_CONTROL_BASE_UI_CONTRACT = research_grants_management_ui_contract
+_RESEARCH_CONTROL_BASE_RENDER_WORKBENCH = research_grants_management_render_workbench
+
+
+def research_grants_management_ui_contract() -> dict:
+    ui = dict(_RESEARCH_CONTROL_BASE_UI_CONTRACT())
+    control = _improve1_research_grants_management_control_contract()
+    ui.update({
+        "ok": ui.get("ok") is True and control["ok"],
+        "research_grants_management_control_contract": control,
+        "research_grants_management_control_panels": tuple(item["evidence"]["ui_surface"] for item in control["capabilities"]),
+        "research_grants_management_control_service_actions": tuple(item["evidence"]["service_api"] for item in control["capabilities"]),
+        "stream_engine_picker_visible": False,
+    })
+    return ui
+
+
+def research_grants_management_render_workbench(*args, **kwargs) -> dict:
+    workbench = dict(_RESEARCH_CONTROL_BASE_RENDER_WORKBENCH(*args, **kwargs))
+    control = _improve1_research_grants_management_control_contract()
+    workbench.update({
+        "ok": workbench.get("ok") is True and control["ok"],
+        "research_grants_management_control_panels": tuple(item["evidence"]["ui_surface"] for item in control["capabilities"]),
+        "research_grants_management_control_service_actions": tuple(item["evidence"]["service_api"] for item in control["capabilities"]),
+        "research_grants_management_control_agent_tools": tuple(f"research_grants_management.skills.{item['slug']}" for item in control["capabilities"]),
+    })
+    return workbench
