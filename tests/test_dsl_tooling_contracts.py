@@ -5204,6 +5204,16 @@ def test_tooling_implementation_phase_audit_maps_phase_exit_criteria_to_evidence
     assert report["phase_count"] == len(report["phases"])
     assert report["passing_phase_count"] == report["phase_count"]
     assert report["phase_ids"] == tuple(phase["id"] for phase in report["phases"])
+    assert report["required_phase_ids"] == report["phase_ids"]
+    assert report["missing_required_phase_count"] == 0
+    assert report["missing_required_phase_ids"] == ()
+    assert report["observed_exit_criteria_by_phase"] == {
+        phase["id"]: tuple(criterion["id"] for criterion in phase["exit_criteria"])
+        for phase in report["phases"]
+    }
+    assert report["required_exit_criteria_by_phase"] == report["observed_exit_criteria_by_phase"]
+    assert report["missing_required_exit_criteria_phase_count"] == 0
+    assert report["missing_required_exit_criteria_by_phase"] == {}
     assert report["exit_criterion_counts_by_phase"] == {
         phase["id"]: len(phase["exit_criteria"])
         for phase in report["phases"]
@@ -5582,6 +5592,14 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     phase_check = next(check for check in report["checks"] if check["id"] == "implementation_phase_exit_criteria")
     assert phase_check["detail"]["format"] == "appgen.tooling-implementation-phase-audit.v1"
     assert phase_check["detail"]["ok"] is True
+    assert phase_check["detail"]["required_phase_ids"] == phase_check["detail"]["phase_ids"]
+    assert phase_check["detail"]["missing_required_phase_count"] == 0
+    assert phase_check["detail"]["missing_required_phase_ids"] == ()
+    assert phase_check["detail"]["required_exit_criteria_by_phase"] == phase_check["detail"][
+        "observed_exit_criteria_by_phase"
+    ]
+    assert phase_check["detail"]["missing_required_exit_criteria_phase_count"] == 0
+    assert phase_check["detail"]["missing_required_exit_criteria_by_phase"] == {}
     assert phase_check["detail"]["missing_phases"] == ()
     assert {phase["id"] for phase in phase_check["detail"]["phases"]} == {
         "phase_0_inventory_and_stabilization",
@@ -5620,11 +5638,17 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert contributor_check["detail"]["format"] == "appgen.contributor-task-contract-audit.v1"
     assert contributor_check["detail"]["ok"] is True
     assert contributor_check["detail"]["group_count"] == 3
+    assert contributor_check["detail"]["required_groups"] == ("good_first", "intermediate", "advanced")
     assert contributor_check["detail"]["groups"] == ("good_first", "intermediate", "advanced")
+    assert contributor_check["detail"]["missing_required_group_count"] == 0
+    assert contributor_check["detail"]["missing_required_groups"] == ()
     assert contributor_check["detail"]["task_count"] == 22
     assert contributor_check["detail"]["passing_task_count"] == contributor_check["detail"]["task_count"]
     assert contributor_check["detail"]["missing_task_count"] == 0
     assert contributor_check["detail"]["missing_tasks"] == ()
+    assert contributor_check["detail"]["required_task_names"] == contributor_check["detail"]["task_names"]
+    assert contributor_check["detail"]["missing_required_task_count"] == 0
+    assert contributor_check["detail"]["missing_required_task_names"] == ()
     assert {
         "define_diagnostic_dataclasses_and_json_schema",
         "pbc_catalog_binding_in_semantic_model",
@@ -5639,6 +5663,9 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert priority_check["detail"]["passing_priority_count"] == priority_check["detail"]["priority_count"]
     assert priority_check["detail"]["missing_priority_count"] == 0
     assert priority_check["detail"]["missing_priorities"] == ()
+    assert priority_check["detail"]["required_priority_ids"] == priority_check["detail"]["priority_ids"]
+    assert priority_check["detail"]["missing_required_priority_count"] == 0
+    assert priority_check["detail"]["missing_required_priority_ids"] == ()
     assert priority_check["detail"]["documented_item_count"] == 10
     assert priority_check["detail"]["document_order_matches"] is True
     assert priority_check["detail"]["documented_items"] == priority_check["detail"]["expected_items"]

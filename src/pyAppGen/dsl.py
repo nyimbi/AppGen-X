@@ -6838,7 +6838,9 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
         ),
         _tooling_audit_check(
             "implementation_phase_exit_criteria",
-            implementation_phases["ok"],
+            implementation_phases["ok"]
+            and implementation_phases.get("missing_required_phase_count") == 0
+            and implementation_phases.get("missing_required_exit_criteria_phase_count") == 0,
             "Implementation phases 0 through 6 have executable exit-criteria evidence instead of prose-only status.",
             "docs/tooling.md#implementation-phases",
             implementation_phases,
@@ -6861,6 +6863,8 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and contributor_task_contracts.get("task_count") == 22
             and contributor_task_contracts.get("passing_task_count") == contributor_task_contracts.get("task_count")
             and contributor_task_contracts.get("missing_task_count") == 0
+            and contributor_task_contracts.get("missing_required_task_count") == 0
+            and contributor_task_contracts.get("missing_required_group_count") == 0
             and contributor_task_contracts.get("group_count") == 3,
             "Contributor task breakdown items are mapped to executable evidence for good-first, intermediate, and advanced implementation work.",
             "docs/tooling.md#contributor-task-breakdown",
@@ -6872,6 +6876,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and priority_order_contracts.get("priority_count") == 10
             and priority_order_contracts.get("passing_priority_count") == priority_order_contracts.get("priority_count")
             and priority_order_contracts.get("missing_priority_count") == 0
+            and priority_order_contracts.get("missing_required_priority_count") == 0
             and priority_order_contracts.get("document_order_matches") is True,
             "Priority-order items are preserved in docs/tooling.md and mapped to executable evidence in dependency order.",
             "docs/tooling.md#priority-order",
@@ -7757,6 +7762,31 @@ def _tooling_audit_phase_doc_alignment(root: Path, implementation_phases: dict) 
 
 
 def _tooling_audit_contributor_task_contracts(**evidence: dict) -> dict:
+    required_groups = ("good_first", "intermediate", "advanced")
+    required_task_names = (
+        "define_diagnostic_dataclasses_and_json_schema",
+        "add_diagnostic_code_registry_tests",
+        "create_semantic_model_dataclasses",
+        "write_table_field_symbol_extraction",
+        "write_relationship_target_resolution",
+        "write_lookup_path_resolution",
+        "write_view_binding_validation",
+        "write_handler_target_validation",
+        "add_appgen_lint_json_contract_tests",
+        "add_formatter_idempotency_tests",
+        "pbc_catalog_binding_in_semantic_model",
+        "workflow_graph_extraction",
+        "graph_output_in_mermaid_and_json",
+        "migration_diff_detection",
+        "lsp_completion_and_hover",
+        "code_action_application_required_quick_fix_family",
+        "generator_drift_evidence_shared_semantic_model",
+        "safe_rename_across_workspace",
+        "natural_language_patch_planner",
+        "visual_designer_round_trip_engine",
+        "release_evidence_bundle_verifier",
+        "cross_tool_drift_tests",
+    )
     tasks = (
         _contributor_task("good_first", "define_diagnostic_dataclasses_and_json_schema", evidence["diagnostics"].get("ok") is True and evidence["diagnostics"].get("catalog_shape_gap_count") == 0, evidence["diagnostics"].get("format")),
         _contributor_task("good_first", "add_diagnostic_code_registry_tests", evidence["diagnostic_fixtures"].get("ok") is True and evidence["diagnostic_fixtures"].get("missing_code_count") == 0, evidence["diagnostic_fixtures"].get("format")),
@@ -7783,22 +7813,43 @@ def _tooling_audit_contributor_task_contracts(**evidence: dict) -> dict:
     )
     missing = tuple(task["task"] for task in tasks if not task["ok"])
     groups = tuple(dict.fromkeys(task["group"] for task in tasks))
+    task_names = tuple(task["task"] for task in tasks)
+    missing_required_groups = tuple(group for group in required_groups if group not in groups)
+    missing_required_task_names = tuple(task for task in required_task_names if task not in task_names)
     return {
         "format": "appgen.contributor-task-contract-audit.v1",
-        "ok": not missing,
+        "ok": not missing and not missing_required_groups and not missing_required_task_names,
+        "required_groups": required_groups,
         "group_count": len(groups),
         "groups": groups,
+        "missing_required_group_count": len(missing_required_groups),
+        "missing_required_groups": missing_required_groups,
+        "required_task_names": required_task_names,
         "task_count": len(tasks),
         "passing_task_count": sum(1 for task in tasks if task["ok"]),
         "missing_task_count": len(missing),
         "missing_tasks": missing,
+        "missing_required_task_count": len(missing_required_task_names),
+        "missing_required_task_names": missing_required_task_names,
         "tasks": tasks,
-        "task_names": tuple(task["task"] for task in tasks),
+        "task_names": task_names,
         "source_of_truth": "docs/tooling.md#contributor-task-breakdown",
     }
 
 
 def _tooling_audit_priority_order_contracts(root: Path, **evidence: dict) -> dict:
+    required_priority_ids = (
+        "shared_parser_and_semantic_model",
+        "diagnostic_registry_and_linter",
+        "formatter",
+        "cli_json_contracts",
+        "graph_and_explain_tooling",
+        "language_server",
+        "vscode_and_monaco_integration",
+        "migration_planner",
+        "natural_language_dsl_diff_planner",
+        "package_and_release_verifiers",
+    )
     priorities = (
         _priority_contract("shared_parser_and_semantic_model", "Shared parser and semantic model.", evidence["semantic"].get("ok") is True and evidence["symbol_coverage"].get("missing") == (), evidence["semantic"].get("format")),
         _priority_contract("diagnostic_registry_and_linter", "Diagnostic registry and linter.", evidence["diagnostics"].get("ok") is True and evidence["diagnostic_fixtures"].get("ok") is True and evidence["lint"].get("ok") is True, evidence["diagnostics"].get("format")),
@@ -7819,15 +7870,20 @@ def _tooling_audit_priority_order_contracts(root: Path, **evidence: dict) -> dic
     )
     expected_items = tuple(item["label"] for item in priorities)
     missing = tuple(item["priority"] for item in priorities if not item["ok"])
+    priority_ids = tuple(item["priority"] for item in priorities)
+    missing_required_priority_ids = tuple(priority for priority in required_priority_ids if priority not in priority_ids)
     return {
         "format": "appgen.priority-order-contract-audit.v1",
-        "ok": not missing and documented_items == expected_items,
+        "ok": not missing and not missing_required_priority_ids and documented_items == expected_items,
+        "required_priority_ids": required_priority_ids,
         "priority_count": len(priorities),
         "passing_priority_count": sum(1 for item in priorities if item["ok"]),
         "missing_priority_count": len(missing),
         "missing_priorities": missing,
+        "missing_required_priority_count": len(missing_required_priority_ids),
+        "missing_required_priority_ids": missing_required_priority_ids,
         "priorities": priorities,
-        "priority_ids": tuple(item["priority"] for item in priorities),
+        "priority_ids": priority_ids,
         "documented_item_count": len(documented_items),
         "documented_items": documented_items,
         "expected_items": expected_items,
@@ -7901,6 +7957,16 @@ def _tooling_audit_semantic_keys_present(semantic: dict) -> bool:
 
 
 def _tooling_audit_implementation_phases(**evidence: dict) -> dict:
+    required_phase_ids = (
+        "phase_0_inventory_and_stabilization",
+        "phase_1_shared_semantic_model_mvp",
+        "phase_2_linter_and_formatter",
+        "phase_3_cli_and_graph_tooling",
+        "phase_4_language_server",
+        "phase_5_ide_and_visual_designer_integration",
+        "phase_6_migration_natural_language_and_release_verifiers",
+    )
+
     def phase(phase_id: str, title: str, criteria: tuple[dict, ...]) -> dict:
         missing = tuple(item["id"] for item in criteria if not item["ok"])
         passing = tuple(item["id"] for item in criteria if item["ok"])
@@ -7926,6 +7992,70 @@ def _tooling_audit_implementation_phases(**evidence: dict) -> dict:
         }
 
     semantic = evidence["semantic"]
+    required_exit_criteria_by_phase = {
+        "phase_0_inventory_and_stabilization": (
+            "current_behavior_documented",
+            "fixture_catalogs_run_in_ci",
+            "parser_golden_fixture_contracts",
+            "semantic_drift_surface_contracts",
+            "doctor_cli_text_contracts",
+            "grammar_parser_sync_and_keyword_budget",
+            "test_strategy_cli_proves_shared_surfaces",
+            "test_strategy_family_contracts",
+            "contributor_task_breakdown_contracts",
+            "priority_order_contracts",
+        ),
+        "phase_1_shared_semantic_model_mvp": (
+            "semantic_model_contract",
+            "symbol_coverage_complete",
+            "database_backed_form_validation",
+        ),
+        "phase_2_linter_and_formatter": (
+            "diagnostic_registry_and_fixtures",
+            "diagnostic_catalog_fixture_contracts",
+            "lint_profiles_and_directory_input",
+            "lint_cli_directory_contracts",
+            "component_publish_catalog_contracts",
+            "formatter_idempotency",
+            "formatter_write_organize_contracts",
+        ),
+        "phase_3_cli_and_graph_tooling": (
+            "machine_readable_cli_contracts",
+            "validate_target_contracts",
+            "generate_artifact_policy_contracts",
+            "cli_usage_failure_modes",
+            "cli_help_alias_contracts",
+            "graph_json_mermaid_and_dot",
+            "graph_rendering_contracts",
+            "explain_symbols_diagnostics_handlers",
+            "explain_cli_contracts",
+        ),
+        "phase_4_language_server": (
+            "lsp_core_json_rpc_and_stdio",
+            "lsp_transport_rpc_contracts",
+            "lsp_navigation_completion_contracts",
+            "rename_and_code_actions",
+            "quick_fix_family_coverage",
+            "quick_fix_cli_and_text_contracts",
+            "editor_extension_surface",
+        ),
+        "phase_5_ide_and_visual_designer_integration": (
+            "visual_edits_generate_linted_dsl_patches",
+            "studio_semantic_bridge",
+            "frontend_browser_smoke_bridges",
+        ),
+        "phase_6_migration_natural_language_and_release_verifiers": (
+            "migration_detection_coverage",
+            "migration_safety_text_contracts",
+            "natural_language_planner_contract",
+            "natural_language_operation_contracts",
+            "natural_language_cli_agent_contracts",
+            "release_and_package_verifiers",
+            "package_manifest_handoff_contracts",
+            "release_text_evidence_contracts",
+            "pbc_publish_side_effect_contracts",
+        ),
+    }
     phases = (
         phase(
             "phase_0_inventory_and_stabilization",
@@ -7978,7 +8108,11 @@ def _tooling_audit_implementation_phases(**evidence: dict) -> dict:
                     "ok": evidence["doctor"].get("ok") is True
                     and not evidence["doctor"].get("blocking_gaps")
                     and len(evidence["doctor"].get("checks", ())) >= 15
+                    and evidence["doctor"].get("missing_required_check_count", 0) == 0
+                    and evidence["doctor"].get("missing_detail_format_check_count", 0) == 0
                     and evidence["doctor_text_renderer"].get("ok") is True
+                    and evidence["doctor_text_renderer"].get("missing_check_id_count", 0) == 0
+                    and evidence["doctor_text_renderer"].get("missing_detail_format_check_count", 0) == 0
                     and evidence["test_strategy_cli"].get("doctor_check_count", 0) >= 15,
                     "evidence_formats": (
                         evidence["doctor"].get("format"),
@@ -8017,7 +8151,9 @@ def _tooling_audit_implementation_phases(**evidence: dict) -> dict:
                     and evidence["contributor_task_contracts"].get("task_count") == 22
                     and evidence["contributor_task_contracts"].get("passing_task_count")
                     == evidence["contributor_task_contracts"].get("task_count")
-                    and evidence["contributor_task_contracts"].get("missing_task_count") == 0,
+                    and evidence["contributor_task_contracts"].get("missing_task_count") == 0
+                    and evidence["contributor_task_contracts"].get("missing_required_task_count", 0) == 0
+                    and evidence["contributor_task_contracts"].get("missing_required_group_count", 0) == 0,
                     "evidence_format": evidence["contributor_task_contracts"].get("format"),
                 },
                 {
@@ -8027,6 +8163,7 @@ def _tooling_audit_implementation_phases(**evidence: dict) -> dict:
                     and evidence["priority_order_contracts"].get("passing_priority_count")
                     == evidence["priority_order_contracts"].get("priority_count")
                     and evidence["priority_order_contracts"].get("missing_priority_count") == 0
+                    and evidence["priority_order_contracts"].get("missing_required_priority_count", 0) == 0
                     and evidence["priority_order_contracts"].get("document_order_matches") is True,
                     "evidence_format": evidence["priority_order_contracts"].get("format"),
                 },
@@ -8505,6 +8642,11 @@ def _tooling_audit_implementation_phases(**evidence: dict) -> dict:
     )
     missing = tuple(item["id"] for item in phases if not item["ok"])
     phase_ids = tuple(item["id"] for item in phases)
+    missing_required_phase_ids = tuple(phase_id for phase_id in required_phase_ids if phase_id not in phase_ids)
+    observed_exit_criteria_by_phase = {
+        item["id"]: tuple(criterion["id"] for criterion in item["exit_criteria"])
+        for item in phases
+    }
     exit_criterion_ids = tuple(
         criterion["id"] for item in phases for criterion in item["exit_criteria"]
     )
@@ -8543,16 +8685,37 @@ def _tooling_audit_implementation_phases(**evidence: dict) -> dict:
         item["id"]: len(item["missing_exit_criteria"])
         for item in phases
     }
+    missing_required_exit_criteria_by_phase = {
+        phase_id: tuple(
+            criterion_id
+            for criterion_id in required_exit_criteria_by_phase.get(phase_id, ())
+            if criterion_id not in observed_exit_criteria_by_phase.get(phase_id, ())
+            or criterion_id not in passing_exit_criteria_by_phase.get(phase_id, ())
+        )
+        for phase_id in required_phase_ids
+    }
+    missing_required_exit_criteria_by_phase = {
+        phase_id: missing_criteria
+        for phase_id, missing_criteria in missing_required_exit_criteria_by_phase.items()
+        if missing_criteria
+    }
     return {
         "format": "appgen.tooling-implementation-phase-audit.v1",
-        "ok": not missing,
+        "ok": not missing and not missing_required_phase_ids and not missing_required_exit_criteria_by_phase,
+        "required_phase_ids": required_phase_ids,
         "phase_count": len(phases),
         "passing_phase_count": sum(1 for item in phases if item["ok"]),
         "phase_ids": phase_ids,
+        "missing_required_phase_count": len(missing_required_phase_ids),
+        "missing_required_phase_ids": missing_required_phase_ids,
+        "required_exit_criteria_by_phase": required_exit_criteria_by_phase,
+        "observed_exit_criteria_by_phase": observed_exit_criteria_by_phase,
         "exit_criterion_counts_by_phase": exit_criterion_counts_by_phase,
         "passing_exit_criterion_counts_by_phase": passing_exit_criterion_counts_by_phase,
         "missing_exit_criterion_counts_by_phase": missing_exit_criterion_counts_by_phase,
         "passing_exit_criteria_by_phase": passing_exit_criteria_by_phase,
+        "missing_required_exit_criteria_by_phase": missing_required_exit_criteria_by_phase,
+        "missing_required_exit_criteria_phase_count": len(missing_required_exit_criteria_by_phase),
         "exit_criterion_evidence_formats_by_phase": exit_criterion_evidence_formats_by_phase,
         "exit_criterion_count": sum(len(item["exit_criteria"]) for item in phases),
         "passing_exit_criterion_count": sum(

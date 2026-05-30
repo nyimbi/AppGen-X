@@ -2103,11 +2103,16 @@ has a current machine-readable proof from the CLI, semantic model, LSP, designer
 sync, migration planner, natural-language planner, release verifier, or fixture
 audit surfaces.
 The audit also exposes `passing_exit_criteria_by_phase`,
+`required_phase_ids`, `missing_required_phase_ids`,
+`required_exit_criteria_by_phase`, `observed_exit_criteria_by_phase`,
+`missing_required_exit_criteria_by_phase`,
 `exit_criterion_evidence_formats_by_phase`, and
 `evidence_formats_by_criterion` on each phase. Those fields are intended for
 release dashboards and agents that need to prove which phase criteria are
 complete, which machine-readable reports supported them, and which named
-criteria still block completion.
+criteria still block completion. The aggregate gate fails when a required phase
+or a named exit criterion is removed, hidden, or no longer backed by passing
+runtime evidence.
 `appgen.implementation-phase-doc-alignment.v1` is embedded beside it through
 the `implementation_phase_doc_alignment_contracts` gate. It proves the seven
 documented phase headings, titles, and representative exit criteria remain
@@ -2224,7 +2229,8 @@ aggregate tooling audit through `contributor_task_breakdown_contracts`. It maps
 the good-first, intermediate, and advanced task lists below to concrete parser,
 semantic, diagnostic, formatter, CLI, LSP, graph, migration, natural-language,
 designer, release, and drift evidence. The gate fails when any listed task no
-longer has a passing evidence format.
+longer has a passing evidence format, when one of the three task groups is
+missing, or when a required task name disappears from the runtime contract.
 
 Good first implementation tasks:
 
@@ -2264,7 +2270,9 @@ Priority order is also executable release evidence. The aggregate tooling audit
 embeds `appgen.priority-order-contract-audit.v1` through
 `priority_order_contracts`; it proves the numbered list below stays in the
 documented order and each priority has a passing evidence format before later
-tooling is counted on top of an unstable foundation.
+tooling is counted on top of an unstable foundation. It also publishes
+`required_priority_ids` and `missing_required_priority_ids`, so a deleted or
+renamed priority fails by name instead of only changing the priority count.
 
 1. Shared parser and semantic model.
 2. Diagnostic registry and linter.
