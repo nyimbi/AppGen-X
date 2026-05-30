@@ -1,41 +1,46 @@
-PBC_KEY = 'public_safety_dispatch'
-PARAMETERS = ('quality_score_floor',
- 'materiality_threshold',
- 'approval_sla_hours',
- 'risk_threshold',
- 'forecast_horizon_days',
- 'workbench_limit')
-RULES = ('emergency_call_policy',
- 'response_unit_policy',
- 'incident_policy',
- 'dispatch_assignment_policy',
- 'mutual_aid_policy',
- 'response_milestone_policy')
+from __future__ import annotations
 
-def configuration_manifest():
-    return {'ok': True, 'pbc': PBC_KEY, 'database_backends': ('postgresql','mysql','mariadb'), 'event_contract': 'AppGen-X', 'stream_engine_picker_visible': False}
+from .standalone import PBC_KEY, build_standalone_app, default_configuration, default_parameter_values, default_rules
 
-def validate_configuration(config=None):
-    config = dict(config or {'database_backend': 'postgresql'})
-    return {'ok': config.get('database_backend', 'postgresql') in ('postgresql','mysql','mariadb'), 'configuration': config, 'side_effects': ()}
+PARAMETERS = tuple(default_parameter_values())
+RULES = tuple(rule["rule_id"] for rule in default_rules())
 
-def parameter_manifest():
-    return {'ok': True, 'parameters': tuple({'name': p, 'bounded': True} for p in PARAMETERS), 'side_effects': ()}
 
-def set_parameter(name, value):
-    return {'ok': name in PARAMETERS, 'name': name, 'value': value, 'bounded': True, 'side_effects': ()}
+def configuration_manifest() -> dict:
+    config = default_configuration()
+    return {"ok": True, "pbc": PBC_KEY, "database_backends": ("postgresql", "mysql", "mariadb"), "event_contract": "AppGen-X", "configuration": config, "stream_engine_picker_visible": False}
 
-def rule_manifest():
-    return {'ok': True, 'rules': RULES, 'side_effects': ()}
 
-def compile_rule(rule):
-    return {'ok': True, 'rule': dict(rule), 'compiled_hash': str(abs(hash(repr(rule)))), 'side_effects': ()}
+def validate_configuration(config: dict | None = None) -> dict:
+    app = build_standalone_app()
+    result = app.configure_runtime(dict(config or default_configuration()))
+    return {"ok": result["ok"], "configuration": result["configuration"], "side_effects": ()}
 
-def evaluate_rule(rule, payload=None):
-    return {'ok': True, 'passed': True, 'rule': rule, 'payload': dict(payload or {}), 'side_effects': ()}
 
-def governance_smoke_test():
-    return {'ok': validate_configuration()['ok'] and parameter_manifest()['ok'] and rule_manifest()['ok'] and compile_rule({'rule_id': RULES[0]})['ok'] and evaluate_rule(RULES[0])['ok'], 'side_effects': ()}
+def parameter_manifest() -> dict:
+    return {"ok": True, "parameters": tuple({"name": name, "bounded": True} for name in PARAMETERS), "side_effects": ()}
 
-def smoke_test():
+
+def set_parameter(name: str, value):
+    return build_standalone_app().set_parameter(name, value)
+
+
+def rule_manifest() -> dict:
+    return {"ok": True, "rules": RULES, "side_effects": ()}
+
+
+def compile_rule(rule: dict) -> dict:
+    return build_standalone_app().register_rule(rule)
+
+
+def evaluate_rule(rule: str, payload: dict | None = None) -> dict:
+    payload = dict(payload or {})
+    return {"ok": rule in RULES, "passed": rule in RULES and not payload.get("force_fail"), "rule": rule, "payload": payload, "side_effects": ()}
+
+
+def governance_smoke_test() -> dict:
+    return {"ok": validate_configuration()["ok"] and parameter_manifest()["ok"] and rule_manifest()["ok"] and compile_rule({"rule_id": RULES[0]})["ok"] and evaluate_rule(RULES[0])["ok"], "side_effects": ()}
+
+
+def smoke_test() -> dict:
     return governance_smoke_test()

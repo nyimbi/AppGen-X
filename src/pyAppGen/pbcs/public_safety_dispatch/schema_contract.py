@@ -1,1 +1,1 @@
-from .runtime import public_safety_dispatch_build_schema_contract as build_schema_contract
+from .standalone import build_schema_contract
