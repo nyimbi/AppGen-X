@@ -52,3 +52,17 @@ Results:
 ## Known Gap
 
 - `pytest` entrypoints in this environment were broken (`python3 -m pytest` had no module and the available `pytest` launcher pointed to a missing interpreter), so focused package tests were executed directly under `python3` instead.
+
+## improve1 Full Traceability Evidence
+
+- Current slice branch: `pbc/improve1-full-traceability`.
+- Domain behavior evidence: `tests/test_domain_behavior.py`.
+- Matrix binding: every row in `IMPROVE1_TRACEABILITY.md` now names `tests/test_domain_behavior.py` alongside the existing contract and standalone tests.
+- Capability registry binding: every feature in `improve1_capabilities.py` now includes `tests/test_domain_behavior.py` in `test_artifacts`.
+- Behavioral coverage: authoritative flight-leg timelines, diversion branches, minimum-turn feasibility, tail-rotation graph recovery risk, workbench attention queues, idempotent inbox handling, dead-letter retry evidence, schema extension boundary rejection, disruption/reaccommodation/decision records, service execution, route dispatch, UI rendering, document/CRUD agent plans, standalone app evidence, package discovery, and domain-depth operation execution.
+
+## Verification Log
+
+- Passed: `/Volumes/Media/src/pjs/appgen/.venv/bin/pytest src/pyAppGen/pbcs/airline_operations_control/tests` (18 passed).
+- Passed: improve1 traceability/capability/runtime sweep (877 passed).
+- Passed: `git diff --check -- src/pyAppGen/pbcs`.
