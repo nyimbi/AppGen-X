@@ -4015,3 +4015,13 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   (`1 passed`, with the known active-PBC `datetime.utcnow()` warnings only),
   scoped diff whitespace check, and restricted-name scan outside archive, Git
   internals, and active PBC paths.
+- Current release verifier text audit hardening pass expands release handoff
+  log evidence beyond marker-family checks. `appgen.release-verifier-text-
+  renderer.v1` now proves required and emitted text surfaces, embedded release/
+  evidence/graph contract formats, graph kinds, graph output formats, target
+  outcomes, artifact kinds, blocking gaps, and artifact paths. Verification
+  passed: Python compile for the touched DSL and tests, focused release text
+  renderer test (`1 passed`), implementation-phase evidence test (`1 passed`),
+  aggregate tooling audit (`1 passed`, with the known active-PBC
+  `datetime.utcnow()` warnings only), scoped diff whitespace check, and
+  restricted-name scan outside archive, Git internals, and active PBC paths.

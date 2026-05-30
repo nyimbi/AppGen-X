@@ -1161,6 +1161,13 @@ envelope markers, graph-suite markers, target statuses, blocking gaps, and
 artifact markers. This keeps the check specific enough to fail when, for
 example, the desktop target line or a named package artifact disappears even if
 the total line count still looks plausible.
+The same renderer also publishes named required, emitted, missing, and
+missing-count evidence for text surfaces, embedded contract formats, graph
+kinds, graph output formats, target outcomes, and artifact paths. The aggregate
+release-text and implementation-phase gates require zero named missing entries,
+so a release log cannot pass by printing generic graph, target, or artifact
+lines that omit a required target outcome, graph format, or package handoff
+path.
 The aggregate tooling audit also exposes package handoff and release text as
 separate gates. `package_manifest_handoff_contracts` proves the written web,
 mobile, desktop, PBC, and deployment manifests carry target-specific handoff

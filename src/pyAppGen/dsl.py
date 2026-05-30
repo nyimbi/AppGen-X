@@ -3655,6 +3655,85 @@ def _release_verifier_text_renderer_contract() -> dict:
         dict.fromkeys(line.split()[1].rstrip(":") for line in artifact_lines if len(line.split()) >= 2)
     )
     missing_artifact_markers = tuple(marker for marker in required_artifact_markers if marker not in emitted_artifact_markers)
+    required_text_surfaces = (
+        "release_summary",
+        "release_evidence",
+        "graph_suite",
+        "graph_kinds",
+        "graph_formats",
+        "target_statuses",
+        "blocking_gaps",
+        "artifacts",
+    )
+    emitted_text_surfaces = tuple(
+        surface
+        for surface, present in (
+            ("release_summary", any(line.startswith("release-verify ") for line in release_lines)),
+            ("release_evidence", any(line.startswith("release-evidence ") for line in release_lines)),
+            ("graph_suite", any(line.startswith("graph-suite ") for line in graph_lines)),
+            ("graph_kinds", any(line.startswith("graph-kinds ") for line in graph_lines)),
+            ("graph_formats", any(line.startswith("graph-formats ") for line in graph_lines)),
+            ("target_statuses", bool(target_status_lines)),
+            ("blocking_gaps", bool(emitted_blocking_gaps)),
+            ("artifacts", bool(artifact_lines)),
+        )
+        if present
+    )
+    missing_text_surfaces = tuple(
+        surface for surface in required_text_surfaces if surface not in emitted_text_surfaces
+    )
+    required_contract_formats = (
+        "appgen.release-verifier-report.v1",
+        "appgen.release-evidence-bundle.v1",
+        "appgen.graph-suite-report.v1",
+    )
+    emitted_contract_formats = tuple(
+        contract_format for contract_format in required_contract_formats if contract_format in text
+    )
+    missing_contract_formats = tuple(
+        contract_format for contract_format in required_contract_formats if contract_format not in emitted_contract_formats
+    )
+    required_graph_kinds = ("workflow", "package")
+    emitted_graph_kinds = tuple(
+        kind.strip()
+        for line in graph_lines
+        if line.startswith("graph-kinds ")
+        for kind in line.removeprefix("graph-kinds ").split(",")
+        if kind.strip()
+    )
+    missing_graph_kinds = tuple(kind for kind in required_graph_kinds if kind not in emitted_graph_kinds)
+    required_graph_formats = ("json", "mermaid", "dot")
+    emitted_graph_formats = tuple(
+        output_format.strip()
+        for line in graph_lines
+        if line.startswith("graph-formats ")
+        for output_format in line.removeprefix("graph-formats ").split(",")
+        if output_format.strip()
+    )
+    missing_graph_formats = tuple(
+        output_format for output_format in required_graph_formats if output_format not in emitted_graph_formats
+    )
+    required_target_outcomes = ("mobile:fail", "desktop:ok")
+    emitted_target_outcomes = tuple(
+        f"{line.split()[1]}:{line.split()[0]}"
+        for line in target_status_lines
+        if len(line.split()) >= 2
+    )
+    missing_target_outcomes = tuple(
+        outcome for outcome in required_target_outcomes if outcome not in emitted_target_outcomes
+    )
+    required_artifact_paths = (
+        "dist/appgen-release-evidence.json",
+        "dist/appgen-package-mobile.json",
+    )
+    emitted_artifact_paths = tuple(
+        line.split(": ", 1)[1].strip()
+        for line in artifact_lines
+        if ": " in line
+    )
+    missing_artifact_paths = tuple(
+        path for path in required_artifact_paths if path not in emitted_artifact_paths
+    )
     return {
         "format": "appgen.release-verifier-text-renderer.v1",
         "ok": not missing
@@ -3663,6 +3742,12 @@ def _release_verifier_text_renderer_contract() -> dict:
         and not missing_target_statuses
         and not missing_blocking_gaps
         and not missing_artifact_markers
+        and not missing_text_surfaces
+        and not missing_contract_formats
+        and not missing_graph_kinds
+        and not missing_graph_formats
+        and not missing_target_outcomes
+        and not missing_artifact_paths
         and not text.lstrip().startswith("{"),
         **_text_renderer_contract_counts(
             text,
@@ -3698,6 +3783,30 @@ def _release_verifier_text_renderer_contract() -> dict:
         "emitted_artifact_markers": emitted_artifact_markers,
         "missing_artifact_markers": missing_artifact_markers,
         "missing_artifact_marker_count": len(missing_artifact_markers),
+        "required_text_surfaces": required_text_surfaces,
+        "emitted_text_surfaces": emitted_text_surfaces,
+        "missing_text_surfaces": missing_text_surfaces,
+        "missing_text_surface_count": len(missing_text_surfaces),
+        "required_contract_formats": required_contract_formats,
+        "emitted_contract_formats": emitted_contract_formats,
+        "missing_contract_formats": missing_contract_formats,
+        "missing_contract_format_count": len(missing_contract_formats),
+        "required_graph_kinds": required_graph_kinds,
+        "emitted_graph_kinds": emitted_graph_kinds,
+        "missing_graph_kinds": missing_graph_kinds,
+        "missing_graph_kind_count": len(missing_graph_kinds),
+        "required_graph_formats": required_graph_formats,
+        "emitted_graph_formats": emitted_graph_formats,
+        "missing_graph_formats": missing_graph_formats,
+        "missing_graph_format_count": len(missing_graph_formats),
+        "required_target_outcomes": required_target_outcomes,
+        "emitted_target_outcomes": emitted_target_outcomes,
+        "missing_target_outcomes": missing_target_outcomes,
+        "missing_target_outcome_count": len(missing_target_outcomes),
+        "required_artifact_paths": required_artifact_paths,
+        "emitted_artifact_paths": emitted_artifact_paths,
+        "missing_artifact_paths": missing_artifact_paths,
+        "missing_artifact_path_count": len(missing_artifact_paths),
         "json_fallback": text.lstrip().startswith("{"),
         "text_prefix": text[:240],
     }
@@ -7729,6 +7838,30 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                 "emitted_artifact_markers": release_text_renderer.get("emitted_artifact_markers"),
                 "missing_artifact_markers": release_text_renderer.get("missing_artifact_markers"),
                 "missing_artifact_marker_count": release_text_renderer.get("missing_artifact_marker_count"),
+                "required_text_surfaces": release_text_renderer.get("required_text_surfaces"),
+                "emitted_text_surfaces": release_text_renderer.get("emitted_text_surfaces"),
+                "missing_text_surfaces": release_text_renderer.get("missing_text_surfaces"),
+                "missing_text_surface_count": release_text_renderer.get("missing_text_surface_count"),
+                "required_contract_formats": release_text_renderer.get("required_contract_formats"),
+                "emitted_contract_formats": release_text_renderer.get("emitted_contract_formats"),
+                "missing_contract_formats": release_text_renderer.get("missing_contract_formats"),
+                "missing_contract_format_count": release_text_renderer.get("missing_contract_format_count"),
+                "required_graph_kinds": release_text_renderer.get("required_graph_kinds"),
+                "emitted_graph_kinds": release_text_renderer.get("emitted_graph_kinds"),
+                "missing_graph_kinds": release_text_renderer.get("missing_graph_kinds"),
+                "missing_graph_kind_count": release_text_renderer.get("missing_graph_kind_count"),
+                "required_graph_formats": release_text_renderer.get("required_graph_formats"),
+                "emitted_graph_formats": release_text_renderer.get("emitted_graph_formats"),
+                "missing_graph_formats": release_text_renderer.get("missing_graph_formats"),
+                "missing_graph_format_count": release_text_renderer.get("missing_graph_format_count"),
+                "required_target_outcomes": release_text_renderer.get("required_target_outcomes"),
+                "emitted_target_outcomes": release_text_renderer.get("emitted_target_outcomes"),
+                "missing_target_outcomes": release_text_renderer.get("missing_target_outcomes"),
+                "missing_target_outcome_count": release_text_renderer.get("missing_target_outcome_count"),
+                "required_artifact_paths": release_text_renderer.get("required_artifact_paths"),
+                "emitted_artifact_paths": release_text_renderer.get("emitted_artifact_paths"),
+                "missing_artifact_paths": release_text_renderer.get("missing_artifact_paths"),
+                "missing_artifact_path_count": release_text_renderer.get("missing_artifact_path_count"),
                 "json_fallback": release_text_renderer.get("json_fallback"),
             },
         ),
@@ -9866,10 +9999,17 @@ def _tooling_audit_implementation_phases(**evidence: dict) -> dict:
                 {
                     "id": "release_text_evidence_contracts",
                     "ok": evidence["release_text_renderer"].get("ok") is True
-                    and evidence["release_text_renderer"].get("release_line_count", 0) >= 2
-                    and evidence["release_text_renderer"].get("graph_line_count", 0) >= 3
-                    and evidence["release_text_renderer"].get("target_status_line_count", 0) >= 2
-                    and evidence["release_text_renderer"].get("artifact_line_count", 0) >= 2,
+                    and evidence["release_text_renderer"].get("missing_release_marker_count") == 0
+                    and evidence["release_text_renderer"].get("missing_graph_marker_count") == 0
+                    and evidence["release_text_renderer"].get("missing_target_status_count") == 0
+                    and evidence["release_text_renderer"].get("missing_blocking_gap_count") == 0
+                    and evidence["release_text_renderer"].get("missing_artifact_marker_count") == 0
+                    and evidence["release_text_renderer"].get("missing_text_surface_count") == 0
+                    and evidence["release_text_renderer"].get("missing_contract_format_count") == 0
+                    and evidence["release_text_renderer"].get("missing_graph_kind_count") == 0
+                    and evidence["release_text_renderer"].get("missing_graph_format_count") == 0
+                    and evidence["release_text_renderer"].get("missing_target_outcome_count") == 0
+                    and evidence["release_text_renderer"].get("missing_artifact_path_count") == 0,
                     "evidence_format": evidence["release_text_renderer"].get("format"),
                 },
                 {

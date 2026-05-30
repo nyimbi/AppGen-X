@@ -5208,6 +5208,17 @@ def test_tooling_implementation_phase_audit_maps_phase_exit_criteria_to_evidence
             "graph_line_count": 3,
             "target_status_line_count": 2,
             "artifact_line_count": 2,
+            "missing_release_marker_count": 0,
+            "missing_graph_marker_count": 0,
+            "missing_target_status_count": 0,
+            "missing_blocking_gap_count": 0,
+            "missing_artifact_marker_count": 0,
+            "missing_text_surface_count": 0,
+            "missing_contract_format_count": 0,
+            "missing_graph_kind_count": 0,
+            "missing_graph_format_count": 0,
+            "missing_target_outcome_count": 0,
+            "missing_artifact_path_count": 0,
         },
         pbc_publish_cli={
             **ok("appgen.pbc-publish-cli-audit.v1"),
@@ -7208,6 +7219,28 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert release_text_check["detail"]["missing_target_status_count"] == 0
     assert release_text_check["detail"]["missing_blocking_gap_count"] == 0
     assert release_text_check["detail"]["missing_artifact_marker_count"] == 0
+    assert release_text_check["detail"]["missing_text_surface_count"] == 0
+    assert release_text_check["detail"]["missing_text_surfaces"] == ()
+    assert release_text_check["detail"]["emitted_text_surfaces"] == (
+        "release_summary",
+        "release_evidence",
+        "graph_suite",
+        "graph_kinds",
+        "graph_formats",
+        "target_statuses",
+        "blocking_gaps",
+        "artifacts",
+    )
+    assert release_text_check["detail"]["missing_contract_format_count"] == 0
+    assert release_text_check["detail"]["missing_contract_formats"] == ()
+    assert release_text_check["detail"]["missing_graph_kind_count"] == 0
+    assert release_text_check["detail"]["missing_graph_kinds"] == ()
+    assert release_text_check["detail"]["missing_graph_format_count"] == 0
+    assert release_text_check["detail"]["missing_graph_formats"] == ()
+    assert release_text_check["detail"]["missing_target_outcome_count"] == 0
+    assert release_text_check["detail"]["missing_target_outcomes"] == ()
+    assert release_text_check["detail"]["missing_artifact_path_count"] == 0
+    assert release_text_check["detail"]["missing_artifact_paths"] == ()
     assert release_text_check["detail"]["required_release_markers"] == ("release-verify", "release-evidence")
     assert release_text_check["detail"]["required_graph_markers"] == ("graph-suite", "graph-kinds", "graph-formats")
     assert release_text_check["detail"]["required_target_statuses"] == ("mobile", "desktop")
@@ -7790,6 +7823,46 @@ def test_release_verifier_text_renderer_contract_proves_handoff_log_markers() ->
     assert report["missing_artifact_markers"] == ()
     assert report["required_artifact_markers"] == ("release_evidence", "mobile_package_manifest")
     assert set(report["required_artifact_markers"]) <= set(report["emitted_artifact_markers"])
+    assert report["required_text_surfaces"] == (
+        "release_summary",
+        "release_evidence",
+        "graph_suite",
+        "graph_kinds",
+        "graph_formats",
+        "target_statuses",
+        "blocking_gaps",
+        "artifacts",
+    )
+    assert report["emitted_text_surfaces"] == report["required_text_surfaces"]
+    assert report["missing_text_surface_count"] == 0
+    assert report["missing_text_surfaces"] == ()
+    assert report["required_contract_formats"] == (
+        "appgen.release-verifier-report.v1",
+        "appgen.release-evidence-bundle.v1",
+        "appgen.graph-suite-report.v1",
+    )
+    assert report["emitted_contract_formats"] == report["required_contract_formats"]
+    assert report["missing_contract_format_count"] == 0
+    assert report["missing_contract_formats"] == ()
+    assert report["required_graph_kinds"] == ("workflow", "package")
+    assert report["emitted_graph_kinds"] == report["required_graph_kinds"]
+    assert report["missing_graph_kind_count"] == 0
+    assert report["missing_graph_kinds"] == ()
+    assert report["required_graph_formats"] == ("json", "mermaid", "dot")
+    assert report["emitted_graph_formats"] == report["required_graph_formats"]
+    assert report["missing_graph_format_count"] == 0
+    assert report["missing_graph_formats"] == ()
+    assert report["required_target_outcomes"] == ("mobile:fail", "desktop:ok")
+    assert report["emitted_target_outcomes"] == report["required_target_outcomes"]
+    assert report["missing_target_outcome_count"] == 0
+    assert report["missing_target_outcomes"] == ()
+    assert report["required_artifact_paths"] == (
+        "dist/appgen-release-evidence.json",
+        "dist/appgen-package-mobile.json",
+    )
+    assert report["emitted_artifact_paths"] == report["required_artifact_paths"]
+    assert report["missing_artifact_path_count"] == 0
+    assert report["missing_artifact_paths"] == ()
     assert report["json_fallback"] is False
     assert report["text_prefix"].startswith(
         "release-verify failed: format=appgen.release-verifier-report.v1 targets=mobile,desktop"
