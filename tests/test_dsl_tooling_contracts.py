@@ -6424,6 +6424,22 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert release_text_check["detail"]["failing_target_line_count"] == 1
     assert release_text_check["detail"]["blocking_gap_line_count"] == 1
     assert release_text_check["detail"]["artifact_line_count"] == 2
+    assert release_text_check["detail"]["missing_release_marker_count"] == 0
+    assert release_text_check["detail"]["missing_graph_marker_count"] == 0
+    assert release_text_check["detail"]["missing_target_status_count"] == 0
+    assert release_text_check["detail"]["missing_blocking_gap_count"] == 0
+    assert release_text_check["detail"]["missing_artifact_marker_count"] == 0
+    assert release_text_check["detail"]["required_release_markers"] == ("release-verify", "release-evidence")
+    assert release_text_check["detail"]["required_graph_markers"] == ("graph-suite", "graph-kinds", "graph-formats")
+    assert release_text_check["detail"]["required_target_statuses"] == ("mobile", "desktop")
+    assert release_text_check["detail"]["required_blocking_gaps"] == (
+        "package_metadata_exists",
+        "smoke_launch_not_declared",
+    )
+    assert release_text_check["detail"]["required_artifact_markers"] == (
+        "release_evidence",
+        "mobile_package_manifest",
+    )
     assert release_text_check["detail"]["json_fallback"] is False
     pbc_publish_check = next(check for check in report["checks"] if check["id"] == "pbc_publish_side_effect_contracts")
     assert pbc_publish_check["detail"]["catalog"]["format"] == "appgen.pbc-verifier-catalog.v1"
@@ -6790,6 +6806,26 @@ def test_release_verifier_text_renderer_contract_proves_handoff_log_markers() ->
     assert report["blocking_gap_line_count"] == 1
     assert report["artifact_line_count"] == 2
     assert report["missing_fragments"] == ()
+    assert report["missing_release_marker_count"] == 0
+    assert report["missing_release_markers"] == ()
+    assert report["required_release_markers"] == ("release-verify", "release-evidence")
+    assert set(report["required_release_markers"]) <= set(report["emitted_release_markers"])
+    assert report["missing_graph_marker_count"] == 0
+    assert report["missing_graph_markers"] == ()
+    assert report["required_graph_markers"] == ("graph-suite", "graph-kinds", "graph-formats")
+    assert set(report["required_graph_markers"]) <= set(report["emitted_graph_markers"])
+    assert report["missing_target_status_count"] == 0
+    assert report["missing_target_statuses"] == ()
+    assert report["required_target_statuses"] == ("mobile", "desktop")
+    assert set(report["required_target_statuses"]) <= set(report["emitted_target_statuses"])
+    assert report["missing_blocking_gap_count"] == 0
+    assert report["missing_blocking_gaps"] == ()
+    assert report["required_blocking_gaps"] == ("package_metadata_exists", "smoke_launch_not_declared")
+    assert set(report["required_blocking_gaps"]) <= set(report["emitted_blocking_gaps"])
+    assert report["missing_artifact_marker_count"] == 0
+    assert report["missing_artifact_markers"] == ()
+    assert report["required_artifact_markers"] == ("release_evidence", "mobile_package_manifest")
+    assert set(report["required_artifact_markers"]) <= set(report["emitted_artifact_markers"])
     assert report["json_fallback"] is False
     assert report["text_prefix"].startswith(
         "release-verify failed: format=appgen.release-verifier-report.v1 targets=mobile,desktop"

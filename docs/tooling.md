@@ -1102,13 +1102,19 @@ graph-line, target-status-line, passing-target-line, failing-target-line,
 blocking-gap-line, and artifact-line counts so release logs can prove package
 handoff evidence did not lose target status, graph-suite context, or written
 artifact paths.
+It also reports required, emitted, and missing marker families for release
+envelope markers, graph-suite markers, target statuses, blocking gaps, and
+artifact markers. This keeps the check specific enough to fail when, for
+example, the desktop target line or a named package artifact disappears even if
+the total line count still looks plausible.
 The aggregate tooling audit also exposes package handoff and release text as
 separate gates. `package_manifest_handoff_contracts` proves the written web,
 mobile, desktop, PBC, and deployment manifests carry target-specific handoff
 metadata, graph-suite evidence, and downstream-builder readiness booleans.
 `release_text_evidence_contracts` proves the human release log retains release,
 graph-suite, target-status, blocking-gap, and artifact markers without falling
-back to raw JSON.
+back to raw JSON, and fails if any required marker family reports missing named
+entries.
 
 ### `appgen component-publish`
 

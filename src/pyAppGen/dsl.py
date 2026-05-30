@@ -3103,9 +3103,50 @@ def _release_verifier_text_renderer_contract() -> dict:
     target_status_lines = tuple(line for line in lines if line.startswith(("ok ", "fail ")))
     failing_target_lines = tuple(line for line in target_status_lines if line.startswith("fail "))
     artifact_lines = tuple(line for line in lines if line.startswith("artifact "))
+    required_release_markers = ("release-verify", "release-evidence")
+    emitted_release_markers = tuple(
+        marker for marker in required_release_markers if any(line.startswith(f"{marker} ") for line in release_lines)
+    )
+    missing_release_markers = tuple(marker for marker in required_release_markers if marker not in emitted_release_markers)
+    required_graph_markers = ("graph-suite", "graph-kinds", "graph-formats")
+    emitted_graph_markers = tuple(
+        marker for marker in required_graph_markers if any(line.startswith(f"{marker} ") for line in graph_lines)
+    )
+    missing_graph_markers = tuple(marker for marker in required_graph_markers if marker not in emitted_graph_markers)
+    required_target_statuses = tuple(check["verifier"] for check in payload.get("checks", ()))
+    emitted_target_statuses = tuple(
+        dict.fromkeys(line.split()[1] for line in target_status_lines if len(line.split()) >= 2)
+    )
+    missing_target_statuses = tuple(target for target in required_target_statuses if target not in emitted_target_statuses)
+    required_blocking_gaps = tuple(
+        dict.fromkeys(
+            gap for check in payload.get("checks", ()) for gap in check.get("blocking_gaps", ())
+        )
+    )
+    emitted_blocking_gaps = tuple(
+        dict.fromkeys(
+            gap
+            for line in failing_target_lines
+            for match in re.findall(r"gaps=([^ ]+)", line)
+            for gap in match.split(",")
+            if gap
+        )
+    )
+    missing_blocking_gaps = tuple(gap for gap in required_blocking_gaps if gap not in emitted_blocking_gaps)
+    required_artifact_markers = tuple(artifact["kind"] for artifact in payload.get("written_artifacts", ()))
+    emitted_artifact_markers = tuple(
+        dict.fromkeys(line.split()[1].rstrip(":") for line in artifact_lines if len(line.split()) >= 2)
+    )
+    missing_artifact_markers = tuple(marker for marker in required_artifact_markers if marker not in emitted_artifact_markers)
     return {
         "format": "appgen.release-verifier-text-renderer.v1",
-        "ok": not missing and not text.lstrip().startswith("{"),
+        "ok": not missing
+        and not missing_release_markers
+        and not missing_graph_markers
+        and not missing_target_statuses
+        and not missing_blocking_gaps
+        and not missing_artifact_markers
+        and not text.lstrip().startswith("{"),
         **_text_renderer_contract_counts(
             text,
             required_fragments,
@@ -3120,6 +3161,26 @@ def _release_verifier_text_renderer_contract() -> dict:
         "failing_target_line_count": len(failing_target_lines),
         "blocking_gap_line_count": sum(1 for line in failing_target_lines if "gaps=" in line),
         "artifact_line_count": len(artifact_lines),
+        "required_release_markers": required_release_markers,
+        "emitted_release_markers": emitted_release_markers,
+        "missing_release_markers": missing_release_markers,
+        "missing_release_marker_count": len(missing_release_markers),
+        "required_graph_markers": required_graph_markers,
+        "emitted_graph_markers": emitted_graph_markers,
+        "missing_graph_markers": missing_graph_markers,
+        "missing_graph_marker_count": len(missing_graph_markers),
+        "required_target_statuses": required_target_statuses,
+        "emitted_target_statuses": emitted_target_statuses,
+        "missing_target_statuses": missing_target_statuses,
+        "missing_target_status_count": len(missing_target_statuses),
+        "required_blocking_gaps": required_blocking_gaps,
+        "emitted_blocking_gaps": emitted_blocking_gaps,
+        "missing_blocking_gaps": missing_blocking_gaps,
+        "missing_blocking_gap_count": len(missing_blocking_gaps),
+        "required_artifact_markers": required_artifact_markers,
+        "emitted_artifact_markers": emitted_artifact_markers,
+        "missing_artifact_markers": missing_artifact_markers,
+        "missing_artifact_marker_count": len(missing_artifact_markers),
         "json_fallback": text.lstrip().startswith("{"),
         "text_prefix": text[:240],
     }
@@ -6150,6 +6211,11 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and release_text_renderer.get("target_status_line_count", 0) >= 2
             and release_text_renderer.get("blocking_gap_line_count", 0) >= 1
             and release_text_renderer.get("artifact_line_count", 0) >= 2
+            and release_text_renderer.get("missing_release_marker_count") == 0
+            and release_text_renderer.get("missing_graph_marker_count") == 0
+            and release_text_renderer.get("missing_target_status_count") == 0
+            and release_text_renderer.get("missing_blocking_gap_count") == 0
+            and release_text_renderer.get("missing_artifact_marker_count") == 0
             and release_text_renderer.get("json_fallback") is False,
             "Release verifier text evidence preserves release, graph-suite, target status, blocking-gap, and artifact markers without JSON parsing.",
             "docs/tooling.md#appgen-package",
@@ -6162,6 +6228,26 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                 "failing_target_line_count": release_text_renderer.get("failing_target_line_count"),
                 "blocking_gap_line_count": release_text_renderer.get("blocking_gap_line_count"),
                 "artifact_line_count": release_text_renderer.get("artifact_line_count"),
+                "required_release_markers": release_text_renderer.get("required_release_markers"),
+                "emitted_release_markers": release_text_renderer.get("emitted_release_markers"),
+                "missing_release_markers": release_text_renderer.get("missing_release_markers"),
+                "missing_release_marker_count": release_text_renderer.get("missing_release_marker_count"),
+                "required_graph_markers": release_text_renderer.get("required_graph_markers"),
+                "emitted_graph_markers": release_text_renderer.get("emitted_graph_markers"),
+                "missing_graph_markers": release_text_renderer.get("missing_graph_markers"),
+                "missing_graph_marker_count": release_text_renderer.get("missing_graph_marker_count"),
+                "required_target_statuses": release_text_renderer.get("required_target_statuses"),
+                "emitted_target_statuses": release_text_renderer.get("emitted_target_statuses"),
+                "missing_target_statuses": release_text_renderer.get("missing_target_statuses"),
+                "missing_target_status_count": release_text_renderer.get("missing_target_status_count"),
+                "required_blocking_gaps": release_text_renderer.get("required_blocking_gaps"),
+                "emitted_blocking_gaps": release_text_renderer.get("emitted_blocking_gaps"),
+                "missing_blocking_gaps": release_text_renderer.get("missing_blocking_gaps"),
+                "missing_blocking_gap_count": release_text_renderer.get("missing_blocking_gap_count"),
+                "required_artifact_markers": release_text_renderer.get("required_artifact_markers"),
+                "emitted_artifact_markers": release_text_renderer.get("emitted_artifact_markers"),
+                "missing_artifact_markers": release_text_renderer.get("missing_artifact_markers"),
+                "missing_artifact_marker_count": release_text_renderer.get("missing_artifact_marker_count"),
                 "json_fallback": release_text_renderer.get("json_fallback"),
             },
         ),
