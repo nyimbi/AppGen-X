@@ -17,3 +17,9 @@ Status: implemented in standalone PBC slice.
 - Focused source/package/spec/agent/implementation/capability/generation audits: true.
 - `git diff --check -- src/pyAppGen/pbcs/maritime_shipping_operations`: clean.
 - Commit: pending.
+
+## Improve1 executable control pass
+
+- Added package-local `maritime_control.py` covering all 50 maritime improve1 features with owned tables, AppGen-X eventing, PostgreSQL/MySQL/MariaDB backend enforcement, projection-only dependency gates, human-confirmed agent actions, side-effect-free samples, and domain-specific negative findings.
+- Wired the control contract into runtime capabilities, release evidence, UI/workbench panels, and the improve1 artifact registry.
+- Added `tests/test_domain_behavior.py` and regenerated `IMPROVE1_TRACEABILITY.md` so every feature maps to executable code, UI, service/API, test, and evidence.

@@ -267,3 +267,43 @@ def maritime_shipping_operations_runtime_smoke():
     }
 
 maritime_shipping_operations_execute_domain_operation = execute_domain_operation
+
+
+# Improve1 maritime control extension.
+from .maritime_control import improve1_maritime_control_contract, evaluate_maritime_control
+
+_MARITIME_SHIPPING_OPERATIONS_BASE_RUNTIME_CAPABILITIES = maritime_shipping_operations_runtime_capabilities
+_MARITIME_SHIPPING_OPERATIONS_BASE_BUILD_RELEASE_EVIDENCE = maritime_shipping_operations_build_release_evidence
+
+
+def maritime_shipping_operations_runtime_capabilities():
+    runtime = dict(_MARITIME_SHIPPING_OPERATIONS_BASE_RUNTIME_CAPABILITIES())
+    control = improve1_maritime_control_contract()
+    runtime["ok"] = bool(runtime.get("ok")) and control["ok"]
+    runtime["maritime_control"] = control
+    runtime["operations"] = tuple(dict.fromkeys(tuple(runtime.get("operations", ())) + ("evaluate_maritime_control", "improve1_maritime_control_contract")))
+    runtime["owned_tables"] = tuple(dict.fromkeys(tuple(runtime.get("owned_tables", ())) + tuple(control["owned_tables"])))
+    return runtime
+
+
+def maritime_shipping_operations_build_release_evidence():
+    evidence = dict(_MARITIME_SHIPPING_OPERATIONS_BASE_BUILD_RELEASE_EVIDENCE())
+    control = improve1_maritime_control_contract()
+    artifacts = dict(evidence.get("generated_artifacts", {}))
+    artifacts["maritime_control"] = {
+        "contract": control["format"],
+        "capability_count": control["capability_count"],
+        "owned_tables": control["owned_tables"],
+        "service_apis": tuple(item["evidence"]["service_api"] for item in control["capabilities"]),
+        "ui_surfaces": tuple(item["evidence"]["ui_surface"] for item in control["capabilities"]),
+        "test": "tests/test_domain_behavior.py",
+    }
+    checks = tuple(evidence.get("checks", ())) + ({"id": "improve1_maritime_control", "ok": control["ok"]},)
+    evidence.update({
+        "ok": bool(evidence.get("ok")) and control["ok"],
+        "checks": checks,
+        "generated_artifacts": artifacts,
+        "maritime_control": control,
+        "blocking_gaps": tuple(evidence.get("blocking_gaps", ())) + tuple(control.get("blocking_gaps", ())),
+    })
+    return evidence

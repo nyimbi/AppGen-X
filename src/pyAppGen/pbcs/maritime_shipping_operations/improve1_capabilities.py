@@ -648,3 +648,28 @@ def validate_improve1_capabilities(expected_titles: tuple[str, ...]) -> dict:
         "registry_ok": registry["ok"],
         "side_effects": (),
     }
+
+
+# Improve1 maritime control artifact augmentation.
+def _augment_artifacts() -> None:
+    global IMPROVE1_CAPABILITIES
+    augmented = []
+    for capability in IMPROVE1_CAPABILITIES:
+        augmented.append(Improve1Capability(
+            feature_number=capability.feature_number,
+            title=capability.title,
+            slug=capability.slug,
+            domain_tags=capability.domain_tags,
+            model_artifacts=tuple(dict.fromkeys(capability.model_artifacts + ("maritime_control.py",))),
+            ui_artifacts=tuple(dict.fromkeys(capability.ui_artifacts + ("ui.py",))),
+            service_artifacts=tuple(dict.fromkeys(capability.service_artifacts + ("maritime_control.py", "runtime.py"))),
+            test_artifacts=tuple(dict.fromkeys(capability.test_artifacts + ("tests/test_domain_behavior.py",))),
+            evidence_artifacts=tuple(dict.fromkeys(capability.evidence_artifacts + ("IMPROVE1_TRACEABILITY.md",))),
+            configurable=capability.configurable,
+            agent_assisted=capability.agent_assisted,
+            side_effect_free_plan=capability.side_effect_free_plan,
+        ))
+    IMPROVE1_CAPABILITIES = tuple(augmented)
+
+
+_augment_artifacts()
