@@ -1,33 +1,59 @@
 """Agent and chatbot assistance for the sustainability_esg_reporting PBC."""
-PBC_KEY = 'sustainability_esg_reporting'
-OWNED_TABLES = ('sustainability_esg_reporting_emissions_factor', 'sustainability_esg_reporting_activity_data', 'sustainability_esg_reporting_carbon_ledger_entry', 'sustainability_esg_reporting_esg_metric', 'sustainability_esg_reporting_supplier_disclosure', 'sustainability_esg_reporting_assurance_evidence', 'sustainability_esg_reporting_sustainability_report', 'sustainability_esg_reporting_regulatory_submission', 'sustainability_esg_reporting_appgen_outbox_event', 'sustainability_esg_reporting_appgen_inbox_event', 'sustainability_esg_reporting_appgen_dead_letter_event')
+from __future__ import annotations
+
+from .blueprint import BUSINESS_TABLES, PBC_KEY
+from .slice_app import build_agent_contract, build_standalone_app
 
 
-def agent_skill_manifest():
-    skills = tuple({'name': name, 'scope': PBC_KEY, 'description': f'{name} for {PBC_KEY}', 'requires_confirmation_for_mutation': True, 'uses_appgen_event_contract': True, 'stream_engine_picker_visible': False} for name in ('sustainability_esg_reporting_guide_user', 'sustainability_esg_reporting_read_records', 'sustainability_esg_reporting_create_record', 'sustainability_esg_reporting_update_record'))
-    return {'ok': True, 'pbc': PBC_KEY, 'skills': skills, 'side_effects': ()}
+def agent_skill_manifest() -> dict:
+    contract = build_agent_contract()
+    return {'ok': contract['ok'], 'pbc': PBC_KEY, 'skills': contract['skills'], 'side_effects': ()}
 
 
-def chatbot_interface_contract():
-    return {'ok': True, 'pbc': PBC_KEY, 'entrypoint': f'/assistant/pbc/{PBC_KEY}', 'single_agent_contribution': f'{PBC_KEY}_skills', 'capabilities': ('task_guidance','document_instruction_intake','governed_datastore_crud','mutation_preview'), 'side_effects': ()}
+def chatbot_interface_contract() -> dict:
+    return {
+        'ok': True,
+        'pbc': PBC_KEY,
+        'entrypoint': f'/assistant/pbc/{PBC_KEY}',
+        'single_agent_contribution': f'{PBC_KEY}_skills',
+        'capabilities': (
+            'task_guidance',
+            'document_instruction_intake',
+            'governed_datastore_crud',
+            'mutation_preview',
+            'board_pack_navigation',
+            'regulator_filing_navigation',
+        ),
+        'side_effects': (),
+    }
 
 
-def document_instruction_plan(document, instruction):
-    return {'ok': True, 'pbc': PBC_KEY, 'document_digest': str(abs(hash(document))), 'instruction': instruction, 'candidate_tables': OWNED_TABLES[:3], 'requires_human_confirmation': True, 'crud_preview': {'operation': 'create', 'event_contract': 'AppGen-X'}, 'side_effects': ()}
+def document_instruction_plan(document: str, instruction: str) -> dict:
+    app = build_standalone_app()
+    return app.document_instruction_plan(document, instruction)
 
 
-def datastore_crud_plan(action, table=None, payload=None):
-    target = table or OWNED_TABLES[0]
-    if not str(target).startswith(f'{PBC_KEY}_'):
-        return {'ok': False, 'reason': 'foreign_table_rejected', 'table': target, 'side_effects': ()}
-    mutation = action in ('create','update','delete')
-    return {'ok': True, 'pbc': PBC_KEY, 'action': action, 'table': target, 'payload': dict(payload or {}), 'requires_confirmation': mutation, 'event_contract': 'AppGen-X', 'side_effects': ()}
+def datastore_crud_plan(action: str, table: str | None = None, payload: dict | None = None) -> dict:
+    app = build_standalone_app()
+    return app.datastore_crud_plan(action, table=table, payload=payload)
 
 
-def composed_agent_contribution():
+def composed_agent_contribution() -> dict:
     namespace = f'{PBC_KEY}_skills'
-    return {'ok': True, 'pbc': PBC_KEY, 'single_agent_skill_namespace': namespace, 'dsl_tools': (namespace, f'{PBC_KEY}_crud', f'{PBC_KEY}_documents'), 'side_effects': ()}
+    return {
+        'ok': True,
+        'pbc': PBC_KEY,
+        'single_agent_skill_namespace': namespace,
+        'dsl_tools': (namespace, f'{PBC_KEY}_crud', f'{PBC_KEY}_documents'),
+        'owned_tables': BUSINESS_TABLES,
+        'side_effects': (),
+    }
 
 
-def smoke_test():
-    return {'ok': agent_skill_manifest()['ok'] and chatbot_interface_contract()['ok'] and document_instruction_plan('doc','create')['ok'] and datastore_crud_plan('create')['ok'] and datastore_crud_plan('update', table='foreign_table')['ok'] is False and composed_agent_contribution()['ok'], 'side_effects': ()}
+def smoke_test() -> dict:
+    manifest = agent_skill_manifest()
+    chatbot = chatbot_interface_contract()
+    document = document_instruction_plan('board narrative', 'preview updates for the renewable claim section')
+    crud = datastore_crud_plan('create', table=BUSINESS_TABLES[0], payload={'status': 'draft'})
+    rejected = datastore_crud_plan('update', table='foreign_table')
+    return {'ok': manifest['ok'] and chatbot['ok'] and document['ok'] and crud['ok'] and rejected['ok'] is False, 'side_effects': ()}
