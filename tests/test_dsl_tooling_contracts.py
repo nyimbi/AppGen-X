@@ -5159,6 +5159,13 @@ def test_tooling_implementation_phase_audit_maps_phase_exit_criteria_to_evidence
             **ok("appgen.migration-plan-text-renderer.v1"),
             "approval_line_count": 1,
             "safe_alternative_line_count": 2,
+            "missing_text_surface_count": 0,
+            "missing_detected_family_count": 0,
+            "missing_missing_family_count": 0,
+            "missing_change_target_count": 0,
+            "missing_safe_alternative_count": 0,
+            "missing_diagnostic_code_count": 0,
+            "missing_contract_format_count": 0,
         },
         nl_plan={"ok": True, "format": "appgen.nl-plan.v1", "dsl_patch": "--- before\n+++ after"},
         nl_plan_contract={
@@ -7307,6 +7314,31 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert migration_safety_check["detail"]["text_renderer"]["safe_alternative_line_count"] == 2
     assert migration_safety_check["detail"]["text_renderer"]["approval_line_count"] == 1
     assert migration_safety_check["detail"]["text_renderer"]["destructive_summary_line_count"] == 1
+    assert migration_safety_check["detail"]["text_renderer"]["missing_text_surface_count"] == 0
+    assert migration_safety_check["detail"]["text_renderer"]["missing_text_surfaces"] == ()
+    assert migration_safety_check["detail"]["text_renderer"]["emitted_text_surfaces"] == (
+        "summary",
+        "coverage",
+        "detected_families",
+        "missing_families",
+        "changes",
+        "safe_alternatives",
+        "diagnostics",
+        "approval_required",
+        "destructive_summary",
+    )
+    assert migration_safety_check["detail"]["text_renderer"]["missing_detected_family_count"] == 0
+    assert migration_safety_check["detail"]["text_renderer"]["missing_detected_families"] == ()
+    assert migration_safety_check["detail"]["text_renderer"]["missing_missing_family_count"] == 0
+    assert migration_safety_check["detail"]["text_renderer"]["missing_missing_families"] == ()
+    assert migration_safety_check["detail"]["text_renderer"]["missing_change_target_count"] == 0
+    assert migration_safety_check["detail"]["text_renderer"]["missing_change_targets"] == ()
+    assert migration_safety_check["detail"]["text_renderer"]["missing_safe_alternative_count"] == 0
+    assert migration_safety_check["detail"]["text_renderer"]["missing_safe_alternatives"] == ()
+    assert migration_safety_check["detail"]["text_renderer"]["missing_diagnostic_code_count"] == 0
+    assert migration_safety_check["detail"]["text_renderer"]["missing_diagnostic_codes"] == ()
+    assert migration_safety_check["detail"]["text_renderer"]["missing_contract_format_count"] == 0
+    assert migration_safety_check["detail"]["text_renderer"]["missing_contract_formats"] == ()
     assert migration_safety_check["detail"]["text_renderer"]["json_fallback"] is False
     graph_check = next(check for check in report["checks"] if check["id"] == "graph_and_explain_tooling")
     assert graph_check["detail"]["cli"]["format"] == "appgen.graph-cli-format-audit.v1"
@@ -8269,6 +8301,51 @@ def test_migration_plan_text_renderer_contract_proves_safety_log_markers() -> No
     assert report["error_line_count"] == 0
     assert report["approval_line_count"] == 1
     assert report["destructive_summary_line_count"] == 1
+    assert report["required_text_surfaces"] == (
+        "summary",
+        "coverage",
+        "detected_families",
+        "missing_families",
+        "changes",
+        "safe_alternatives",
+        "diagnostics",
+        "approval_required",
+        "destructive_summary",
+    )
+    assert report["emitted_text_surfaces"] == report["required_text_surfaces"]
+    assert report["missing_text_surface_count"] == 0
+    assert report["missing_text_surfaces"] == ()
+    assert report["required_detected_families"] == ("added_table", "dropped_field", "type_change")
+    assert report["emitted_detected_families"] == report["required_detected_families"]
+    assert report["missing_detected_family_count"] == 0
+    assert report["missing_detected_families"] == ()
+    assert report["required_missing_families"] == ("relationship_change",)
+    assert report["emitted_missing_families"] == report["required_missing_families"]
+    assert report["missing_missing_family_count"] == 0
+    assert report["missing_missing_families"] == ()
+    assert report["required_change_targets"] == (
+        "add_table: CreditMemo",
+        "drop_field: Invoice.legacy_code",
+        "type_change: Invoice.total",
+    )
+    assert report["emitted_change_targets"] == report["required_change_targets"]
+    assert report["missing_change_target_count"] == 0
+    assert report["missing_change_targets"] == ()
+    assert report["required_safe_alternatives"] == ("drop_field", "type_change")
+    assert report["emitted_safe_alternatives"] == report["required_safe_alternatives"]
+    assert report["missing_safe_alternative_count"] == 0
+    assert report["missing_safe_alternatives"] == ()
+    assert report["required_diagnostic_codes"] == ("AGX1101",)
+    assert report["emitted_diagnostic_codes"] == report["required_diagnostic_codes"]
+    assert report["missing_diagnostic_code_count"] == 0
+    assert report["missing_diagnostic_codes"] == ()
+    assert report["required_contract_formats"] == (
+        "appgen.migration-plan.v1",
+        "appgen.migration-coverage.v1",
+    )
+    assert report["emitted_contract_formats"] == report["required_contract_formats"]
+    assert report["missing_contract_format_count"] == 0
+    assert report["missing_contract_formats"] == ()
     assert report["missing_fragments"] == ()
     assert report["json_fallback"] is False
     assert report["text_prefix"].startswith(

@@ -3352,9 +3352,104 @@ def _migration_plan_text_renderer_contract() -> dict:
     change_lines = tuple(line for line in lines if line.startswith("change "))
     safe_alternative_lines = tuple(line for line in lines if line.startswith("safe-alternative "))
     diagnostic_lines = tuple(line for line in lines if line.startswith(("warning ", "error ")))
+    required_text_surfaces = (
+        "summary",
+        "coverage",
+        "detected_families",
+        "missing_families",
+        "changes",
+        "safe_alternatives",
+        "diagnostics",
+        "approval_required",
+        "destructive_summary",
+    )
+    emitted_text_surfaces = tuple(
+        surface
+        for surface, present in (
+            ("summary", bool(summary_lines)),
+            ("coverage", bool(coverage_lines)),
+            ("detected_families", bool(detected_lines)),
+            ("missing_families", bool(missing_family_lines)),
+            ("changes", bool(change_lines)),
+            ("safe_alternatives", bool(safe_alternative_lines)),
+            ("diagnostics", bool(diagnostic_lines)),
+            ("approval_required", any("requires_approval=True" in line for line in summary_lines)),
+            ("destructive_summary", any("destructive=2" in line for line in summary_lines)),
+        )
+        if present
+    )
+    missing_text_surfaces = tuple(
+        surface for surface in required_text_surfaces if surface not in emitted_text_surfaces
+    )
+    required_detected_families = ("added_table", "dropped_field", "type_change")
+    emitted_detected_families = tuple(
+        family.strip()
+        for line in detected_lines
+        for family in line.removeprefix("migration-detected ").split(",")
+        if family.strip()
+    )
+    missing_detected_families = tuple(
+        family for family in required_detected_families if family not in emitted_detected_families
+    )
+    required_missing_families = ("relationship_change",)
+    emitted_missing_families = tuple(
+        family.strip()
+        for line in missing_family_lines
+        for family in line.removeprefix("migration-missing ").split(",")
+        if family.strip()
+    )
+    missing_missing_families = tuple(
+        family for family in required_missing_families if family not in emitted_missing_families
+    )
+    required_change_targets = (
+        "add_table: CreditMemo",
+        "drop_field: Invoice.legacy_code",
+        "type_change: Invoice.total",
+    )
+    emitted_change_targets = tuple(line.removeprefix("change ").strip() for line in change_lines)
+    missing_change_targets = tuple(
+        target for target in required_change_targets if target not in emitted_change_targets
+    )
+    required_safe_alternatives = (
+        "drop_field",
+        "type_change",
+    )
+    emitted_safe_alternatives = tuple(
+        line.removeprefix("safe-alternative ").split(":", 1)[0].strip()
+        for line in safe_alternative_lines
+    )
+    missing_safe_alternatives = tuple(
+        kind for kind in required_safe_alternatives if kind not in emitted_safe_alternatives
+    )
+    required_diagnostic_codes = ("AGX1101",)
+    emitted_diagnostic_codes = tuple(
+        line.split(":", 1)[0].split()[-1]
+        for line in diagnostic_lines
+        if ":" in line and line.split()
+    )
+    missing_diagnostic_codes = tuple(
+        code for code in required_diagnostic_codes if code not in emitted_diagnostic_codes
+    )
+    required_contract_formats = ("appgen.migration-plan.v1", "appgen.migration-coverage.v1")
+    emitted_contract_formats = tuple(
+        contract_format for contract_format in required_contract_formats if contract_format in text
+    )
+    missing_contract_formats = tuple(
+        contract_format for contract_format in required_contract_formats if contract_format not in emitted_contract_formats
+    )
     return {
         "format": "appgen.migration-plan-text-renderer.v1",
-        "ok": not missing and not text.lstrip().startswith("{"),
+        "ok": not (
+            missing
+            or missing_text_surfaces
+            or missing_detected_families
+            or missing_missing_families
+            or missing_change_targets
+            or missing_safe_alternatives
+            or missing_diagnostic_codes
+            or missing_contract_formats
+            or text.lstrip().startswith("{")
+        ),
         **_text_renderer_contract_counts(
             text,
             required_fragments,
@@ -3373,6 +3468,34 @@ def _migration_plan_text_renderer_contract() -> dict:
         "error_line_count": sum(1 for line in diagnostic_lines if line.startswith("error ")),
         "approval_line_count": sum(1 for line in summary_lines if "requires_approval=True" in line),
         "destructive_summary_line_count": sum(1 for line in summary_lines if "destructive=2" in line),
+        "required_text_surfaces": required_text_surfaces,
+        "emitted_text_surfaces": emitted_text_surfaces,
+        "missing_text_surfaces": missing_text_surfaces,
+        "missing_text_surface_count": len(missing_text_surfaces),
+        "required_detected_families": required_detected_families,
+        "emitted_detected_families": emitted_detected_families,
+        "missing_detected_families": missing_detected_families,
+        "missing_detected_family_count": len(missing_detected_families),
+        "required_missing_families": required_missing_families,
+        "emitted_missing_families": emitted_missing_families,
+        "missing_missing_families": missing_missing_families,
+        "missing_missing_family_count": len(missing_missing_families),
+        "required_change_targets": required_change_targets,
+        "emitted_change_targets": emitted_change_targets,
+        "missing_change_targets": missing_change_targets,
+        "missing_change_target_count": len(missing_change_targets),
+        "required_safe_alternatives": required_safe_alternatives,
+        "emitted_safe_alternatives": emitted_safe_alternatives,
+        "missing_safe_alternatives": missing_safe_alternatives,
+        "missing_safe_alternative_count": len(missing_safe_alternatives),
+        "required_diagnostic_codes": required_diagnostic_codes,
+        "emitted_diagnostic_codes": emitted_diagnostic_codes,
+        "missing_diagnostic_codes": missing_diagnostic_codes,
+        "missing_diagnostic_code_count": len(missing_diagnostic_codes),
+        "required_contract_formats": required_contract_formats,
+        "emitted_contract_formats": emitted_contract_formats,
+        "missing_contract_formats": missing_contract_formats,
+        "missing_contract_format_count": len(missing_contract_formats),
         "json_fallback": text.lstrip().startswith("{"),
         "text_prefix": text[:240],
     }
@@ -7140,14 +7263,13 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and migration_cli.get("missing_payload_format_case_count") == 0
             and all(case.get("requires_approval") is True for case in migration_cli.get("cases", ()))
             and migration_text_renderer["ok"]
-            and migration_text_renderer.get("summary_line_count") == 1
-            and migration_text_renderer.get("coverage_line_count") == 1
-            and migration_text_renderer.get("detected_family_line_count", 0) >= 1
-            and migration_text_renderer.get("missing_family_line_count", 0) >= 1
-            and migration_text_renderer.get("change_line_count", 0) >= 3
-            and migration_text_renderer.get("safe_alternative_line_count", 0) >= 2
-            and migration_text_renderer.get("approval_line_count", 0) >= 1
-            and migration_text_renderer.get("destructive_summary_line_count", 0) >= 1
+            and migration_text_renderer.get("missing_text_surface_count") == 0
+            and migration_text_renderer.get("missing_detected_family_count") == 0
+            and migration_text_renderer.get("missing_missing_family_count") == 0
+            and migration_text_renderer.get("missing_change_target_count") == 0
+            and migration_text_renderer.get("missing_safe_alternative_count") == 0
+            and migration_text_renderer.get("missing_diagnostic_code_count") == 0
+            and migration_text_renderer.get("missing_contract_format_count") == 0
             and migration_text_renderer.get("json_fallback") is False,
             "Migration tooling proves required detection families, backend profiles, approval posture, safe alternatives, and text safety markers.",
             "docs/tooling.md#migration-planner",
@@ -7212,6 +7334,42 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                     "warning_line_count": migration_text_renderer.get("warning_line_count"),
                     "approval_line_count": migration_text_renderer.get("approval_line_count"),
                     "destructive_summary_line_count": migration_text_renderer.get("destructive_summary_line_count"),
+                    "required_text_surfaces": migration_text_renderer.get("required_text_surfaces"),
+                    "emitted_text_surfaces": migration_text_renderer.get("emitted_text_surfaces"),
+                    "missing_text_surfaces": migration_text_renderer.get("missing_text_surfaces"),
+                    "missing_text_surface_count": migration_text_renderer.get("missing_text_surface_count"),
+                    "required_detected_families": migration_text_renderer.get("required_detected_families"),
+                    "emitted_detected_families": migration_text_renderer.get("emitted_detected_families"),
+                    "missing_detected_families": migration_text_renderer.get("missing_detected_families"),
+                    "missing_detected_family_count": migration_text_renderer.get(
+                        "missing_detected_family_count"
+                    ),
+                    "required_missing_families": migration_text_renderer.get("required_missing_families"),
+                    "emitted_missing_families": migration_text_renderer.get("emitted_missing_families"),
+                    "missing_missing_families": migration_text_renderer.get("missing_missing_families"),
+                    "missing_missing_family_count": migration_text_renderer.get("missing_missing_family_count"),
+                    "required_change_targets": migration_text_renderer.get("required_change_targets"),
+                    "emitted_change_targets": migration_text_renderer.get("emitted_change_targets"),
+                    "missing_change_targets": migration_text_renderer.get("missing_change_targets"),
+                    "missing_change_target_count": migration_text_renderer.get("missing_change_target_count"),
+                    "required_safe_alternatives": migration_text_renderer.get("required_safe_alternatives"),
+                    "emitted_safe_alternatives": migration_text_renderer.get("emitted_safe_alternatives"),
+                    "missing_safe_alternatives": migration_text_renderer.get("missing_safe_alternatives"),
+                    "missing_safe_alternative_count": migration_text_renderer.get(
+                        "missing_safe_alternative_count"
+                    ),
+                    "required_diagnostic_codes": migration_text_renderer.get("required_diagnostic_codes"),
+                    "emitted_diagnostic_codes": migration_text_renderer.get("emitted_diagnostic_codes"),
+                    "missing_diagnostic_codes": migration_text_renderer.get("missing_diagnostic_codes"),
+                    "missing_diagnostic_code_count": migration_text_renderer.get(
+                        "missing_diagnostic_code_count"
+                    ),
+                    "required_contract_formats": migration_text_renderer.get("required_contract_formats"),
+                    "emitted_contract_formats": migration_text_renderer.get("emitted_contract_formats"),
+                    "missing_contract_formats": migration_text_renderer.get("missing_contract_formats"),
+                    "missing_contract_format_count": migration_text_renderer.get(
+                        "missing_contract_format_count"
+                    ),
                     "json_fallback": migration_text_renderer.get("json_fallback"),
                 },
             },
@@ -9625,8 +9783,13 @@ def _tooling_audit_implementation_phases(**evidence: dict) -> dict:
                     and evidence["migration_cli"].get("case_count") == evidence["migration_cli"].get("allowed_backend_count")
                     and evidence["migration_cli"].get("passing_case_count") == evidence["migration_cli"].get("case_count")
                     and evidence["migration_text_renderer"].get("ok") is True
-                    and evidence["migration_text_renderer"].get("approval_line_count", 0) >= 1
-                    and evidence["migration_text_renderer"].get("safe_alternative_line_count", 0) >= 1,
+                    and evidence["migration_text_renderer"].get("missing_text_surface_count") == 0
+                    and evidence["migration_text_renderer"].get("missing_detected_family_count") == 0
+                    and evidence["migration_text_renderer"].get("missing_missing_family_count") == 0
+                    and evidence["migration_text_renderer"].get("missing_change_target_count") == 0
+                    and evidence["migration_text_renderer"].get("missing_safe_alternative_count") == 0
+                    and evidence["migration_text_renderer"].get("missing_diagnostic_code_count") == 0
+                    and evidence["migration_text_renderer"].get("missing_contract_format_count") == 0,
                     "evidence_formats": (
                         evidence["migration_cli"].get("format"),
                         evidence["migration_text_renderer"].get("format"),

@@ -1865,6 +1865,13 @@ missing-family-line, change-line, safe-alternative-line, diagnostic-line,
 warning-line, error-line, approval-line, and destructive-summary-line counts so
 migration release logs prove safety posture, coverage breadth, destructive
 change count, and mitigation guidance remain visible.
+Those counts are backed by named required, emitted, missing, and missing-count
+evidence for text surfaces, detected migration families, intentionally missing
+coverage families, change targets, safe-alternative families, diagnostic codes,
+and embedded migration contract formats. The migration safety gates require
+zero named missing entries, so a release log cannot satisfy the audit by
+printing generic `change`, `safe-alternative`, or `warning` lines while omitting
+the required migration family or approval evidence.
 `appgen.migration-cli-audit.v1` reports case, passing-case, failing-case,
 allowed/observed/missing backend, required/observed/missing change-kind,
 approval-required, and rename-hint case counts so supported database profiles,

@@ -4004,3 +4004,14 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   known active-PBC `datetime.utcnow()` warnings only), scoped diff whitespace
   check, and restricted-name scan outside archive, Git internals, and active PBC
   paths.
+- Current migration safety text audit hardening pass replaces migration text
+  line-count acceptance with named evidence for migration release logs.
+  `appgen.migration-plan-text-renderer.v1` now proves required and emitted text
+  surfaces, detected migration families, intentionally missing coverage
+  families, change targets, safe-alternative families, diagnostic codes, and
+  embedded migration contract formats. Verification passed: Python compile for
+  the touched DSL and tests, focused migration text renderer test (`1 passed`),
+  implementation-phase evidence test (`1 passed`), aggregate tooling audit
+  (`1 passed`, with the known active-PBC `datetime.utcnow()` warnings only),
+  scoped diff whitespace check, and restricted-name scan outside archive, Git
+  internals, and active PBC paths.
