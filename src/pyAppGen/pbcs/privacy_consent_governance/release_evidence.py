@@ -161,6 +161,7 @@ def privacy_consent_governance_build_release_evidence() -> dict:
     return build_release_evidence()
 
 
+
 def release_readiness_manifest() -> dict:
     evidence = build_release_evidence()
     return {
@@ -199,3 +200,39 @@ def smoke_test() -> dict:
         'validation': validation,
         'side_effects': (),
     }
+
+# Improve1 privacy control release extension.
+from .privacy_control import improve1_privacy_control_contract as _improve1_privacy_control_contract
+
+_PRIVACY_CONTROL_BASE_BUILD_RELEASE_EVIDENCE = build_release_evidence
+
+
+def build_release_evidence() -> dict:
+    evidence = dict(_PRIVACY_CONTROL_BASE_BUILD_RELEASE_EVIDENCE())
+    control = _improve1_privacy_control_contract()
+    artifacts = tuple(evidence.get("artifacts", ())) + ({"artifact": "privacy_control.py", "exists": True}, {"artifact": "tests/test_domain_behavior.py", "exists": True})
+    checks = tuple(evidence.get("checks", ())) + ({"id": "improve1_privacy_control", "ok": control["ok"]},)
+    evidence.update({
+        "ok": bool(evidence.get("ok")) and control["ok"],
+        "checks": checks,
+        "artifacts": artifacts,
+        "privacy_control": control,
+        "blocking_gaps": tuple(evidence.get("blocking_gaps", ())) + tuple(control.get("blocking_gaps", ())),
+    })
+    return evidence
+
+
+def privacy_consent_governance_build_release_evidence() -> dict:
+    return build_release_evidence()
+
+
+_PRIVACY_CONTROL_BASE_VALIDATE_RELEASE_EVIDENCE = validate_release_evidence
+
+
+def validate_release_evidence() -> dict:
+    validation = dict(_PRIVACY_CONTROL_BASE_VALIDATE_RELEASE_EVIDENCE())
+    control = _improve1_privacy_control_contract()
+    validation["ok"] = validation.get("ok") is True and control["ok"]
+    validation["privacy_control"] = control
+    validation["blocking_gaps"] = tuple(validation.get("blocking_gaps", ())) + tuple(control.get("blocking_gaps", ()))
+    return validation

@@ -585,3 +585,18 @@ def privacy_consent_governance_runtime_capabilities() -> dict:
         'domain_depth_smoke': domain_smoke,
         'side_effects': (),
     }
+
+# Improve1 privacy control extension.
+from .privacy_control import evaluate_privacy_control, improve1_privacy_control_contract
+
+_PRIVACY_CONTROL_BASE_RUNTIME_CAPABILITIES = privacy_consent_governance_runtime_capabilities
+
+
+def privacy_consent_governance_runtime_capabilities() -> dict:
+    runtime = dict(_PRIVACY_CONTROL_BASE_RUNTIME_CAPABILITIES())
+    control = improve1_privacy_control_contract()
+    runtime["ok"] = bool(runtime.get("ok")) and control["ok"]
+    runtime["privacy_control"] = control
+    runtime["operations"] = tuple(dict.fromkeys(tuple(runtime.get("operations", ())) + ("evaluate_privacy_control", "improve1_privacy_control_contract")))
+    runtime["improve1_control_owned_tables"] = control["owned_tables"]
+    return runtime
