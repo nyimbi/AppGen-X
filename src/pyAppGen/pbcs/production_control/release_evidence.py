@@ -90,3 +90,31 @@ def build_release_evidence():
     from . import standalone
     from .repository import standalone_repository_smoke_test
     evidence['documentation']=_standalone_documentation_evidence(); evidence['standalone_app']=standalone.production_control_standalone_app_smoke(); evidence['standalone_repository']=standalone_repository_smoke_test(); evidence['ok']=evidence.get('ok') is True and evidence['documentation']['ok'] and evidence['standalone_app']['ok'] and evidence['standalone_repository']['ok']; return evidence
+
+# Improve1 production control release extension.
+from .production_control_control import improve1_production_control_contract as _improve1_production_control_contract
+
+_PRODUCTION_CONTROL_CONTROL_BASE_BUILD_RELEASE_EVIDENCE = build_release_evidence
+_PRODUCTION_CONTROL_CONTROL_BASE_VALIDATE_RELEASE_EVIDENCE = validate_release_evidence
+
+
+def build_release_evidence() -> dict:
+    evidence = dict(_PRODUCTION_CONTROL_CONTROL_BASE_BUILD_RELEASE_EVIDENCE())
+    control = _improve1_production_control_contract()
+    checks = tuple(evidence.get("checks", ())) + ({"id": "improve1_production_control", "ok": control["ok"]},)
+    evidence.update({
+        "ok": bool(evidence.get("ok")) and control["ok"],
+        "checks": checks,
+        "production_control": control,
+        "blocking_gaps": tuple(evidence.get("blocking_gaps", ())) + tuple(control.get("blocking_gaps", ())),
+    })
+    return evidence
+
+
+def validate_release_evidence() -> dict:
+    validation = dict(_PRODUCTION_CONTROL_CONTROL_BASE_VALIDATE_RELEASE_EVIDENCE())
+    control = _improve1_production_control_contract()
+    validation["ok"] = validation.get("ok") is True and control["ok"]
+    validation["production_control"] = control
+    validation["blocking_gaps"] = tuple(validation.get("blocking_gaps", ())) + tuple(control.get("blocking_gaps", ()))
+    return validation

@@ -310,3 +310,34 @@ def production_control_render_standalone_workbench(workbench: dict) -> dict:
         {'key':'operations','value':workbench.get('operation_count',0),'fragment':'RoutingEditor'},
         {'key':'downtime_minutes','value':workbench.get('downtime_minutes',0),'fragment':'DowntimeConsole'},)
     return {'format':'appgen.production-control-standalone-render.v1','ok':bp['ok'] and bool(cards),'pbc':'production_control','tenant':workbench.get('tenant'),'cards':cards,'forms':tuple(i['key'] for i in bp['forms']),'wizards':tuple(i['key'] for i in bp['wizards']),'controls':tuple(i['key'] for i in bp['controls']),'side_effects':()}
+
+# Improve1 production control UI extension.
+from .production_control_control import improve1_production_control_contract as _improve1_production_control_contract
+
+_PRODUCTION_CONTROL_BASE_UI_CONTRACT = production_control_ui_contract
+_PRODUCTION_CONTROL_BASE_RENDER_WORKBENCH = production_control_render_workbench
+
+
+def production_control_ui_contract() -> dict:
+    ui = dict(_PRODUCTION_CONTROL_BASE_UI_CONTRACT())
+    control = _improve1_production_control_contract()
+    ui.update({
+        "ok": ui.get("ok") is True and control["ok"],
+        "production_control_contract": control,
+        "production_control_panels": tuple(item["evidence"]["ui_surface"] for item in control["capabilities"]),
+        "production_control_service_actions": tuple(item["evidence"]["service_api"] for item in control["capabilities"]),
+        "stream_engine_picker_visible": False,
+    })
+    return ui
+
+
+def production_control_render_workbench(*args, **kwargs) -> dict:
+    workbench = dict(_PRODUCTION_CONTROL_BASE_RENDER_WORKBENCH(*args, **kwargs))
+    control = _improve1_production_control_contract()
+    workbench.update({
+        "ok": workbench.get("ok") is True and control["ok"],
+        "production_control_panels": tuple(item["evidence"]["ui_surface"] for item in control["capabilities"]),
+        "production_control_service_actions": tuple(item["evidence"]["service_api"] for item in control["capabilities"]),
+        "production_control_agent_tools": tuple(f"production_control.skills.{item['slug']}" for item in control["capabilities"]),
+    })
+    return workbench
