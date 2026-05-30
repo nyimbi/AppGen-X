@@ -663,6 +663,10 @@ counts, migration preview metadata, detected migration families, and diagnostic
 lines without JSON parsing. Its contract reports required-fragment,
 missing-fragment, output-line, and marker-line counts so release evidence can
 distinguish complete text coverage from a partially rendered summary.
+It also reports source-file-line, stage-line, migration-line,
+migration-preview-line, migration-detected-line, diagnostic-line, error-line,
+and warning-line counts so lint release logs prove source coverage, stage
+coverage, migration preview evidence, and diagnostic severity visibility.
 `appgen diagnostics`
 text output summarizes the `appgen.diagnostic-catalog.v1` format in the header,
 registry coverage, required registry codes as `required-code ...`, covered

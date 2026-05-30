@@ -2295,6 +2295,11 @@ def _lint_text_renderer_contract() -> dict:
         "warning AGX0701: A generated package should declare a smoke test.",
     )
     missing = tuple(fragment for fragment in required_fragments if fragment not in text)
+    lines = tuple(line for line in text.splitlines() if line.strip())
+    source_file_lines = tuple(line for line in lines if line.startswith("source-file "))
+    stage_lines = tuple(line for line in lines if line.startswith("stages "))
+    migration_lines = tuple(line for line in lines if line.startswith("migration-"))
+    diagnostic_lines = tuple(line for line in lines if line.startswith(("error ", "warning ")))
     return {
         "format": "appgen.lint-text-renderer.v1",
         "ok": not missing and not text.lstrip().startswith("{"),
@@ -2305,6 +2310,14 @@ def _lint_text_renderer_contract() -> dict:
         ),
         "required_fragments": required_fragments,
         "missing_fragments": missing,
+        "source_file_line_count": len(source_file_lines),
+        "stage_line_count": len(stage_lines),
+        "migration_line_count": len(migration_lines),
+        "migration_preview_line_count": sum(1 for line in migration_lines if line.startswith("migration-preview ")),
+        "migration_detected_line_count": sum(1 for line in migration_lines if line.startswith("migration-detected ")),
+        "diagnostic_line_count": len(diagnostic_lines),
+        "error_line_count": sum(1 for line in diagnostic_lines if line.startswith("error ")),
+        "warning_line_count": sum(1 for line in diagnostic_lines if line.startswith("warning ")),
         "json_fallback": text.lstrip().startswith("{"),
         "text_prefix": text[:240],
     }

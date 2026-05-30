@@ -4684,6 +4684,14 @@ def test_lint_text_renderer_contract_proves_stage_and_migration_log_markers() ->
     assert report["required_fragment_count"] == len(report["required_fragments"])
     assert report["missing_fragment_count"] == 0
     assert report["marker_line_count"] >= 7
+    assert report["source_file_line_count"] == 2
+    assert report["stage_line_count"] == 1
+    assert report["migration_line_count"] == 2
+    assert report["migration_preview_line_count"] == 1
+    assert report["migration_detected_line_count"] == 1
+    assert report["diagnostic_line_count"] == 2
+    assert report["error_line_count"] == 1
+    assert report["warning_line_count"] == 1
     assert report["missing_fragments"] == ()
     assert report["json_fallback"] is False
     assert report["text_prefix"].startswith("lint failed: format=appgen.lint-report.v1")
