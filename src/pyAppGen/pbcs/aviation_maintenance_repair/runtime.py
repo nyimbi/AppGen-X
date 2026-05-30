@@ -9,6 +9,7 @@ from .config import compile_rule, set_parameter as validate_parameter, validate_
 from .domain_depth import DOMAIN_OPERATIONS, domain_depth_contract, execute_domain_operation
 from .events import CONSUMED, EMITTED, build_event_envelope
 from .maintenance_release import build_release_to_service_pack, maintenance_release_evidence
+from .mro_control import improve1_mro_control_contract
 from .models import BUSINESS_TABLES, OWNED_TABLES, build_model_contracts
 from .workflows import build_release_to_service_workflow, workflow_catalog
 
@@ -407,6 +408,7 @@ def aviation_maintenance_repair_build_release_evidence():
         {"id": "maintenance_release_execution", "ok": True},
         {"id": "workflow_catalog", "ok": workflow_catalog()["ok"]},
         {"id": "permissions_matrix", "ok": permission_manifest()["ok"]},
+        {"id": "improve1_mro_control", "ok": improve1_mro_control_contract()["ok"] and improve1_mro_control_contract()["capability_count"] == 50},
     )
     return {
         "format": "appgen.aviation-maintenance-repair-release-evidence.v1",
@@ -426,6 +428,7 @@ def aviation_maintenance_repair_build_release_evidence():
             "workflows": workflow_catalog()["workflows"],
             "service_manifest": service_operation_manifest(),
             "maintenance_release": maintenance_release_evidence(),
+            "improve1_mro_control": improve1_mro_control_contract(),
         },
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }

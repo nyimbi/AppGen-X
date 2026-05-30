@@ -39,3 +39,18 @@ Observed results:
   workflow layer, not as fully expanded SQL columns.
 - No web UI rendering or external API server was started; validation stayed at
   the package-contract and runtime-execution level.
+
+## improve1 Full Traceability Evidence
+
+- Current slice branch: `pbc/improve1-full-traceability`.
+- Domain behavior evidence: `tests/test_domain_behavior.py`.
+- MRO control implementation: `mro_control.py` now implements 50 side-effect-free aviation maintenance primitives for configuration baselines, utilization synchronization, serialized component history, life-limited parts, AMP applicability, work-card revisions, non-routines, defect chronology, MEL/CDL countdowns, AD/SB/EO governance, visit planning, inspections, authorizations, tooling, consumables, material readiness, traceability packs, quarantine, rotables, cannibalization, vendor evidence, NDT evidence, release packs, reliability, forecasts, AOG, line/base workbenches, event/API/audit boundaries, corrections, technical document intake, agent guardrails, redelivery, corrosion campaigns, pre-close release gates, and executive airworthiness posture.
+- UI/release binding: `ui.py` exposes the 50 MRO control panels, and `runtime.py` includes `improve1_mro_control` in release evidence.
+- Matrix binding: every row in `IMPROVE1_TRACEABILITY.md` now names `mro_control.py` and `tests/test_domain_behavior.py`.
+- Capability registry binding: every feature in `improve1_capabilities.py` now includes `mro_control.py` and `tests/test_domain_behavior.py`.
+
+## improve1 Verification Log
+
+- Passed: `/Volumes/Media/src/pjs/appgen/.venv/bin/pytest src/pyAppGen/pbcs/aviation_maintenance_repair/tests` (20 passed).
+- Passed: improve1 traceability/capability/runtime sweep (877 passed).
+- Passed: `git diff --check -- src/pyAppGen/pbcs`.

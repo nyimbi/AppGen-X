@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from .domain_depth import DOMAIN_ADVANCED_CAPABILITIES, DOMAIN_EDGE_CASES, DOMAIN_OPERATIONS, DOMAIN_PARAMETERS, DOMAIN_RULES
 from .models import BUSINESS_TABLES
+from .mro_control import MRO_CONTROL_CAPABILITIES
 from .workflows import workflow_catalog
 
 PBC_KEY = "aviation_maintenance_repair"
@@ -85,7 +86,8 @@ def aviation_maintenance_repair_ui_contract():
             "operation_actions": DOMAIN_OPERATIONS + ("record_aircraft", "record_component", "record_work_card", "record_deferred_defect", "record_airworthiness_directive", "plan_document_instruction", "assess_release_to_service"),
             "rule_editors": DOMAIN_RULES,
             "parameter_editors": DOMAIN_PARAMETERS,
-            "advanced_panels": DOMAIN_ADVANCED_CAPABILITIES,
+            "advanced_panels": DOMAIN_ADVANCED_CAPABILITIES + MRO_CONTROL_CAPABILITIES,
+            "mro_control_panels": tuple(f"mro_control_{capability}" for capability in MRO_CONTROL_CAPABILITIES),
             "table_browsers": BUSINESS_TABLES,
             "edge_case_queues": DOMAIN_EDGE_CASES,
             "release_panels": ("release_to_service_pack", "duplicate_inspection_evidence", "component_life_traceability", "tooling_and_consumable_lockouts"),
