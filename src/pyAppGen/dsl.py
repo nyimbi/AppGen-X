@@ -463,6 +463,16 @@ def dsl_completion_items(prefix: str = "", *, source: str | None = None) -> tupl
                 table.name: {field.name: field for field in table.columns}
                 for table in schema.tables
             }
+            for directive in ("lookup", "index", "unique", "constraint", "ref"):
+                items.append({"label": directive, "insert": directive, "kind": "table_directive"})
+            for group_name in _declared_group_names(source):
+                items.append(
+                    {
+                        "label": f"... {group_name}",
+                        "insert": f"... {group_name}",
+                        "kind": "field_group",
+                    }
+                )
             for table in schema.tables:
                 for path, detail in _semantic_lookup_paths(table, table_map, field_map).items():
                     if detail.get("valid"):
@@ -8108,22 +8118,37 @@ def _tooling_audit_lsp_json_rpc(source: str, *, broken_handler_source: str) -> d
     completion_context_source = """
 app CompletionContext { targets: web, mobile, desktop }
 table Customer { id: int pk; name: string }
+AuditFields { created_at: string }
 table Invoice {
+
   id: int pk
+  ... AuditFields
   customer_id: int -> Customer.id
   lookup customer_name (customer.name)
 }
 view InvoiceForm for Invoice {
+
   Main: customer.name
   @ customer.name Lookup 0 0 6 1
   on Save -> SubmitInvoice
 }
-operation SubmitInvoice { draft -> posted }
-composition Suite { include pbc gl_core version 1.0.0 }
+flow SubmitInvoice {
+
+  draft -> posted
+}
+operation ReverseInvoice { posted -> reversed }
+composition Suite {
+  include pbc gl_core version 1.0.0
+}
 deploy Production {
 
   unit SubmitInvoice as worker
   health SubmitInvoice "/health"
+}
+package MobileRelease {
+
+  target: mobile
+  smoke: launch
 }
 llm LocalModel { provider: ollama; mode: local }
 agent Builder { provider: LocalModel; tools: read, schema }
@@ -8160,6 +8185,24 @@ agent Builder { provider: LocalModel; tools: read, schema }
             {"Invoice", "gl_core", "LocalModel"},
         ),
         (
+            "table",
+            audit_position("table Invoice {\n\n", len("table Invoice {\n\n")),
+            {"id", "Customer", "lookup", "... AuditFields"},
+            {"gl_core", "LocalModel", "table"},
+        ),
+        (
+            "view",
+            audit_position("view InvoiceForm for Invoice {\n\n", len("view InvoiceForm for Invoice {\n\n")),
+            {"customer.name", "Lookup", "Save", "SubmitInvoice"},
+            {"gl_core", "LocalModel", "table"},
+        ),
+        (
+            "flow",
+            audit_position("flow SubmitInvoice {\n\n", len("flow SubmitInvoice {\n\n")),
+            {"draft", "posted", "ReverseInvoice"},
+            {"gl_core", "LocalModel", "Invoice"},
+        ),
+        (
             "composition",
             audit_position("include pbc gl_core", len("include pbc ") - 1),
             {"gl_core", "JournalPosted", "POST /journals"},
@@ -8169,6 +8212,12 @@ agent Builder { provider: LocalModel; tools: read, schema }
             "deploy",
             audit_position("deploy Production {\n\n", len("deploy Production {\n\n")),
             {"SubmitInvoice", "worker"},
+            {"gl_core", "LocalModel", "Invoice"},
+        ),
+        (
+            "package",
+            audit_position("package MobileRelease {\n\n", len("package MobileRelease {\n\n")),
+            {"mobile", "SubmitInvoice", "Package"},
             {"gl_core", "LocalModel", "Invoice"},
         ),
         (
@@ -13143,7 +13192,7 @@ def _lsp_completion_context(source: str, position: dict | None) -> str:
 def _lsp_completion_allowed_kinds(context: str) -> frozenset[str] | None:
     return {
         "top_level": frozenset({"keyword", "snippet"}),
-        "table": frozenset({"field", "reference", "table", "snippet"}),
+        "table": frozenset({"field", "reference", "table", "snippet", "table_directive", "field_group"}),
         "view": frozenset({"field", "reference", "lookup_path", "component", "handler_event", "handler_target", "table"}),
         "flow": frozenset({"flow_state", "handler_target", "flow", "snippet"}),
         "composition": frozenset({"pbc", "pbc_contract", "pbc_api", "pbc_event", "pbc_command"}),

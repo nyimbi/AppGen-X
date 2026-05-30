@@ -1688,19 +1688,36 @@ def test_lsp_completion_filters_items_by_cursor_context() -> None:
     source = """
 app CompletionContext { targets: web, mobile, desktop }
 table Customer { id: int pk; name: string }
+AuditFields { created_at: string }
 table Invoice {
+
   id: int pk
+  ... AuditFields
   customer_id: int -> Customer.id
   lookup customer_name (customer.name)
 }
 view InvoiceForm for Invoice {
+
   Main: customer.name
   @ customer.name Lookup 0 0 6 1
   on Save -> SubmitInvoice
 }
-operation SubmitInvoice { draft -> posted }
+flow SubmitInvoice {
+
+  draft -> posted
+}
+operation ReverseInvoice { posted -> reversed }
 composition Suite { include pbc gl_core version 1.0.0 }
-deploy Production { unit SubmitInvoice as worker; health SubmitInvoice "/health" }
+deploy Production {
+
+  unit SubmitInvoice as worker
+  health SubmitInvoice "/health"
+}
+package MobileRelease {
+
+  target: mobile
+  smoke: launch
+}
 llm LocalModel { provider: ollama; mode: local }
 agent Builder { provider: LocalModel; tools: read, schema }
 """
@@ -1724,13 +1741,29 @@ agent Builder { provider: LocalModel; tools: read, schema }
     assert {"table", "view", "flow"} <= top_level_labels
     assert not {"Invoice", "gl_core", "LocalModel"} & top_level_labels
 
+    table_labels = labels_at("table Invoice {\n\n", len("table Invoice {\n\n"), "table")
+    assert {"id", "Customer", "lookup", "... AuditFields"} <= table_labels
+    assert not {"gl_core", "LocalModel", "table"} & table_labels
+
+    view_labels = labels_at("view InvoiceForm for Invoice {\n\n", len("view InvoiceForm for Invoice {\n\n"), "view")
+    assert {"customer.name", "Lookup", "Save", "SubmitInvoice"} <= view_labels
+    assert not {"gl_core", "LocalModel", "table"} & view_labels
+
+    flow_labels = labels_at("flow SubmitInvoice {\n\n", len("flow SubmitInvoice {\n\n"), "flow")
+    assert {"draft", "posted", "ReverseInvoice"} <= flow_labels
+    assert not {"gl_core", "LocalModel", "Invoice"} & flow_labels
+
     composition_labels = labels_at("include pbc gl_core", len("include pbc "), "composition")
     assert {"gl_core", "JournalPosted", "POST /journals"} <= composition_labels
     assert not {"Invoice", "LocalModel", "table"} & composition_labels
 
-    deploy_labels = labels_at("health SubmitInvoice", len("health "), "deploy")
+    deploy_labels = labels_at("deploy Production {\n\n", len("deploy Production {\n\n"), "deploy")
     assert {"SubmitInvoice", "worker"} <= deploy_labels
     assert not {"gl_core", "LocalModel", "Invoice"} & deploy_labels
+
+    package_labels = labels_at("package MobileRelease {\n\n", len("package MobileRelease {\n\n"), "package")
+    assert {"mobile", "SubmitInvoice", "Package"} <= package_labels
+    assert not {"gl_core", "LocalModel", "Invoice"} & package_labels
 
     agent_labels = labels_at("provider: LocalModel", len("provider: "), "agent")
     assert {"LocalModel", "read", "schema"} <= agent_labels
