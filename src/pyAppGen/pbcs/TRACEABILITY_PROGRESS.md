@@ -1,0 +1,167 @@
+# PBC improve1 Traceability Progress
+
+This file tracks package-local progress for the active goal: each PBC must implement its `improve1.md` and include an `IMPROVE1_TRACEABILITY.md` matrix mapping feature 1-50 to code/model, UI, service/API, test, and release evidence.
+
+## Current Counts
+
+- PBCs with `improve1.md`: 147
+- PBCs with `IMPROVE1_TRACEABILITY.md`: 5
+- PBCs remaining: 142
+
+## Completed Traceability Matrices
+
+- `ap_automation`
+- `ar_credit`
+- `field_service_management`
+- `gl_core`
+- `multi_sided_market`
+
+## Remaining Traceability Matrices
+
+- `actuarial_pricing_reserving`
+- `advertising_campaign_operations`
+- `agri_supply_chain_traceability`
+- `agriculture_farm_operations`
+- `airline_operations_control`
+- `airport_operations_management`
+- `api_gateway_mesh`
+- `asset_lifecycle`
+- `audit_ledger`
+- `aviation_maintenance_repair`
+- `bank_payments_clearing`
+- `banking_core_accounts`
+- `building_information_modeling_ops`
+- `capital_markets_trading_ops`
+- `capital_projects_delivery`
+- `case_knowledge_management`
+- `cdp_segmentation`
+- `checkout_processing`
+- `chemical_batch_compliance`
+- `claims_adjudication_healthcare`
+- `clinical_care_coordination`
+- `clinical_trials_management`
+- `composition_engine`
+- `construction_contracts_commercials`
+- `construction_project_controls`
+- `contract_lifecycle`
+- `court_case_management`
+- `cross_border_trade`
+- `customer_360`
+- `customer_success_management`
+- `cybersecurity_operations_center`
+- `dam_core`
+- `data_product_catalog`
+- `defense_readiness_logistics`
+- `dom`
+- `donor_grant_fundraising`
+- `eam`
+- `education_student_lifecycle`
+- `electronic_health_records_core`
+- `energy_grid_operations`
+- `energy_trading_risk`
+- `enterprise_pim`
+- `enterprise_risk_controls`
+- `enterprise_search_vector`
+- `environment_health_safety`
+- `expense_management`
+- `facilities_space_management`
+- `facility_energy_management`
+- `federated_iam`
+- `fleet_mobility_operations`
+- `food_safety_quality_compliance`
+- `fraud_anomaly_detection`
+- `gaming_casino_operations`
+- `global_inventory_visibility`
+- `grant_fund_accounting`
+- `hospitality_property_operations`
+- `hotel_revenue_management`
+- `humanitarian_relief_operations`
+- `identity_kyc_aml_compliance`
+- `insurance_claims_policy`
+- `insurance_underwriting`
+- `inventory_positioning`
+- `it_service_management`
+- `laboratory_information_management`
+- `land_real_estate_development`
+- `lead_opportunity`
+- `lease_lending_equipment_finance`
+- `legal_matter_management`
+- `lending_origination_servicing`
+- `library_archives_management`
+- `livestock_herd_management`
+- `loyalty_rewards`
+- `maritime_shipping_operations`
+- `master_data_governance`
+- `media_production_management`
+- `media_rights_content_monetization`
+- `medical_device_lifecycle`
+- `mining_operations_management`
+- `mining_safety_permits`
+- `mortgage_servicing`
+- `mrp_engine`
+- `music_royalties_rights`
+- `nonprofit_program_impact`
+- `notifications`
+- `oil_gas_field_operations`
+- `order_routing_optimization`
+- `payment_orchestration`
+- `payroll_engine`
+- `permitting_licensing_inspections`
+- `personnel_identity`
+- `pharma_manufacturing_quality`
+- `pharmacy_benefits_management`
+- `planning_budgeting_forecasting`
+- `policy_administration_insurance`
+- `port_terminal_operations`
+- `predictive_demand`
+- `price_promotion_engine`
+- `privacy_consent_governance`
+- `procurement_sourcing`
+- `product_catalog_pim`
+- `production_control`
+- `professional_services_automation`
+- `project_portfolio_management`
+- `provider_revenue_cycle`
+- `public_safety_dispatch`
+- `public_sector_case_management`
+- `publishing_editorial_operations`
+- `quality_assurance`
+- `rail_operations_management`
+- `real_estate_property_management`
+- `reinsurance_management`
+- `renewables_asset_operations`
+- `research_grants_management`
+- `restaurant_operations`
+- `returns_reverse_logistics`
+- `revenue_recognition`
+- `schema_registry`
+- `service_ticketing`
+- `smart_city_mobility_operations`
+- `sports_venue_event_operations`
+- `streaming_analytics`
+- `student_financial_aid`
+- `subscription_billing`
+- `sustainability_esg_reporting`
+- `talent_onboarding`
+- `tax_administration_public_sector`
+- `tax_localization`
+- `telecom_network_operations`
+- `telecom_subscription_lifecycle`
+- `time_labor`
+- `trade_finance_operations`
+- `transportation_management`
+- `travel_management`
+- `treasury_cash`
+- `utilities_metering_billing`
+- `utility_outage_restoration`
+- `vendor_supplier_360`
+- `waste_recycling_operations`
+- `water_wastewater_operations`
+- `wealth_portfolio_management`
+- `wms_core`
+- `workflow_orchestration`
+
+## Latest Evidence
+
+- `f76afb6d` established the PBC-only finalization baseline from integrated standalone branches.
+- `9e62b63f` added and tested traceability matrices for the first five high-risk PBCs.
