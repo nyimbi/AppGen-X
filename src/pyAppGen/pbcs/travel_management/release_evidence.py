@@ -41,3 +41,16 @@ def build_release_evidence():
 
 def travel_management_build_release_evidence():
     return build_release_evidence()
+
+from .standalone import standalone_smoke_test
+
+_TRAVEL_MANAGEMENT_STANDALONE_RELEASE_EVIDENCE = build_release_evidence
+
+def build_release_evidence():
+    base = dict(_TRAVEL_MANAGEMENT_STANDALONE_RELEASE_EVIDENCE())
+    standalone = standalone_smoke_test()
+    checks = tuple(base.get('checks', ())) + ({'id': 'standalone_one_pbc_app', 'ok': standalone['ok']},)
+    return {**base, 'ok': base.get('ok') is True and standalone['ok'] and all(check['ok'] for check in checks), 'checks': checks, 'standalone': standalone, 'blocking_gaps': tuple(check for check in checks if not check['ok'])}
+
+def travel_management_build_release_evidence():
+    return build_release_evidence()
