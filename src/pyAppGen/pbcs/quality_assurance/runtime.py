@@ -1359,3 +1359,42 @@ def _normalize_value(value: object) -> object:
     if isinstance(value, (tuple, list)):
         return tuple(_normalize_value(item) for item in value)
     return value
+
+# Improve1 quality assurance control extension.
+from .quality_assurance_control import evaluate_quality_assurance_control, improve1_quality_assurance_control_contract
+
+_QUALITY_ASSURANCE_CONTROL_BASE_RUNTIME_CAPABILITIES = quality_assurance_runtime_capabilities
+_QUALITY_ASSURANCE_CONTROL_BASE_BUILD_RELEASE_EVIDENCE = quality_assurance_build_release_evidence
+
+
+def quality_assurance_runtime_capabilities() -> dict:
+    runtime = dict(_QUALITY_ASSURANCE_CONTROL_BASE_RUNTIME_CAPABILITIES())
+    control = improve1_quality_assurance_control_contract()
+    runtime["ok"] = bool(runtime.get("ok")) and control["ok"]
+    runtime["quality_assurance_control"] = control
+    runtime["operations"] = tuple(dict.fromkeys(tuple(runtime.get("operations", ())) + ("evaluate_quality_assurance_control", "improve1_quality_assurance_control_contract")))
+    runtime["improve1_control_owned_tables"] = control["owned_tables"]
+    return runtime
+
+
+def quality_assurance_build_release_evidence() -> dict:
+    evidence = dict(_QUALITY_ASSURANCE_CONTROL_BASE_BUILD_RELEASE_EVIDENCE())
+    control = improve1_quality_assurance_control_contract()
+    artifacts = dict(evidence.get("generated_artifacts", {}))
+    artifacts["quality_assurance_control"] = {
+        "contract": control["format"],
+        "capability_count": control["capability_count"],
+        "owned_tables": control["owned_tables"],
+        "service_apis": tuple(item["evidence"]["service_api"] for item in control["capabilities"]),
+        "ui_surfaces": tuple(item["evidence"]["ui_surface"] for item in control["capabilities"]),
+        "test": "tests/test_domain_behavior.py",
+    }
+    checks = tuple(evidence.get("checks", ())) + ({"id": "improve1_quality_assurance_control", "ok": control["ok"]},)
+    evidence.update({
+        "ok": bool(evidence.get("ok")) and control["ok"],
+        "checks": checks,
+        "generated_artifacts": artifacts,
+        "quality_assurance_control": control,
+        "blocking_gaps": tuple(evidence.get("blocking_gaps", ())) + tuple(control.get("blocking_gaps", ())),
+    })
+    return evidence

@@ -318,3 +318,34 @@ def quality_assurance_render_standalone_workbench(workbench: dict) -> dict:
         {'key': 'nonconformances', 'value': workbench.get('nonconformance_count', workbench.get('open_nc_count', 0)), 'fragment': 'NonConformanceBoard'},
     )
     return {'format': 'appgen.quality-assurance-standalone-render.v1', 'ok': blueprint['ok'] and bool(cards), 'pbc': 'quality_assurance', 'tenant': workbench.get('tenant'), 'cards': cards, 'forms': tuple(item['key'] for item in blueprint['forms']), 'wizards': tuple(item['key'] for item in blueprint['wizards']), 'controls': tuple(item['key'] for item in blueprint['controls']), 'side_effects': ()}
+
+# Improve1 quality assurance control UI extension.
+from .quality_assurance_control import improve1_quality_assurance_control_contract as _improve1_quality_assurance_control_contract
+
+_QUALITY_ASSURANCE_CONTROL_BASE_UI_CONTRACT = quality_assurance_ui_contract
+_QUALITY_ASSURANCE_CONTROL_BASE_RENDER_WORKBENCH = quality_assurance_render_workbench
+
+
+def quality_assurance_ui_contract() -> dict:
+    ui = dict(_QUALITY_ASSURANCE_CONTROL_BASE_UI_CONTRACT())
+    control = _improve1_quality_assurance_control_contract()
+    ui.update({
+        "ok": ui.get("ok") is True and control["ok"],
+        "quality_assurance_control_contract": control,
+        "quality_assurance_control_panels": tuple(item["evidence"]["ui_surface"] for item in control["capabilities"]),
+        "quality_assurance_control_service_actions": tuple(item["evidence"]["service_api"] for item in control["capabilities"]),
+        "stream_engine_picker_visible": False,
+    })
+    return ui
+
+
+def quality_assurance_render_workbench(*args, **kwargs) -> dict:
+    workbench = dict(_QUALITY_ASSURANCE_CONTROL_BASE_RENDER_WORKBENCH(*args, **kwargs))
+    control = _improve1_quality_assurance_control_contract()
+    workbench.update({
+        "ok": workbench.get("ok") is True and control["ok"],
+        "quality_assurance_control_panels": tuple(item["evidence"]["ui_surface"] for item in control["capabilities"]),
+        "quality_assurance_control_service_actions": tuple(item["evidence"]["service_api"] for item in control["capabilities"]),
+        "quality_assurance_control_agent_tools": tuple(f"quality_assurance.skills.{item['slug']}" for item in control["capabilities"]),
+    })
+    return workbench
