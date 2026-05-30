@@ -38,3 +38,17 @@ worktree.
 - The release gate remains centered on the currently owned evidence set; deeper
   lineage features from `improve1.md` such as split/merge harvest graphs and
   explicit custody transfers remain future backlog work.
+
+## improve1 Full Traceability Evidence
+
+- Current slice branch: `pbc/improve1-full-traceability`.
+- Domain behavior evidence: `tests/test_domain_behavior.py`.
+- Matrix binding: every row in `IMPROVE1_TRACEABILITY.md` now names `tests/test_domain_behavior.py` alongside the existing contract and standalone tests.
+- Capability registry binding: every feature in `improve1_capabilities.py` now includes `tests/test_domain_behavior.py` in `test_artifacts`.
+- Behavioral coverage: complete agri lineage release approval, cold-chain and active-recall blocking, idempotent inbox handling, dead-letter retry evidence, owned schema extension rejection, stateful service execution, route dispatch, UI workbench rendering, document/CRUD agent plans, standalone app release evidence, package discovery, and domain-depth operation execution.
+
+## Verification Log
+
+- Passed: `/Volumes/Media/src/pjs/appgen/.venv/bin/pytest src/pyAppGen/pbcs/agri_supply_chain_traceability/tests` (18 passed).
+- Passed: improve1 traceability/capability/runtime sweep (877 passed).
+- Passed: `git diff --check -- src/pyAppGen/pbcs`.
