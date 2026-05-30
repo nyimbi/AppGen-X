@@ -54,7 +54,7 @@ IMPROVE1_CAPABILITIES: tuple[Improve1Capability, ...] = (
         model_artifacts=('models.py', 'migrations/001_initial.sql', 'repository.py', 'schema_contract.py', 'manifest.py'),
         ui_artifacts=('ui.py', 'forms.py', 'wizards.py', 'controls.py', 'agent.py'),
         service_artifacts=('services.py', 'service_contract.py', 'routes.py', 'runtime.py', 'app_surface.py'),
-        test_artifacts=('tests/test_app_surface.py', 'tests/test_contract.py', 'tests/test_improve1_traceability.py'),
+        test_artifacts=('tests/test_app_surface.py', 'tests/test_contract.py', 'tests/test_improve1_traceability.py', 'tests/test_domain_behavior.py'),
         evidence_artifacts=('release_evidence.py', 'RELEASE_EVIDENCE.md', 'capability_assurance.py', 'implementation-status.md', 'SPECIFICATION.md', 'README.md'),
     ),
     Improve1Capability(
@@ -65,7 +65,7 @@ IMPROVE1_CAPABILITIES: tuple[Improve1Capability, ...] = (
         model_artifacts=('models.py', 'migrations/001_initial.sql', 'repository.py', 'schema_contract.py', 'manifest.py'),
         ui_artifacts=('ui.py', 'forms.py', 'wizards.py', 'controls.py', 'agent.py'),
         service_artifacts=('services.py', 'service_contract.py', 'routes.py', 'runtime.py', 'app_surface.py'),
-        test_artifacts=('tests/test_app_surface.py', 'tests/test_contract.py', 'tests/test_improve1_traceability.py'),
+        test_artifacts=('tests/test_app_surface.py', 'tests/test_contract.py', 'tests/test_improve1_traceability.py', 'tests/test_domain_behavior.py'),
         evidence_artifacts=('release_evidence.py', 'RELEASE_EVIDENCE.md', 'capability_assurance.py', 'implementation-status.md', 'SPECIFICATION.md', 'README.md'),
     ),
     Improve1Capability(
@@ -76,7 +76,7 @@ IMPROVE1_CAPABILITIES: tuple[Improve1Capability, ...] = (
         model_artifacts=('models.py', 'migrations/001_initial.sql', 'repository.py', 'schema_contract.py', 'manifest.py'),
         ui_artifacts=('ui.py', 'forms.py', 'wizards.py', 'controls.py', 'agent.py'),
         service_artifacts=('services.py', 'service_contract.py', 'routes.py', 'runtime.py', 'app_surface.py'),
-        test_artifacts=('tests/test_app_surface.py', 'tests/test_contract.py', 'tests/test_improve1_traceability.py'),
+        test_artifacts=('tests/test_app_surface.py', 'tests/test_contract.py', 'tests/test_improve1_traceability.py', 'tests/test_domain_behavior.py'),
         evidence_artifacts=('release_evidence.py', 'RELEASE_EVIDENCE.md', 'capability_assurance.py', 'implementation-status.md', 'SPECIFICATION.md', 'README.md'),
     ),
     Improve1Capability(
@@ -87,7 +87,7 @@ IMPROVE1_CAPABILITIES: tuple[Improve1Capability, ...] = (
         model_artifacts=('models.py', 'migrations/001_initial.sql', 'repository.py', 'schema_contract.py', 'manifest.py'),
         ui_artifacts=('ui.py', 'forms.py', 'wizards.py', 'controls.py', 'agent.py'),
         service_artifacts=('services.py', 'service_contract.py', 'routes.py', 'runtime.py', 'app_surface.py'),
-        test_artifacts=('tests/test_app_surface.py', 'tests/test_contract.py', 'tests/test_improve1_traceability.py'),
+        test_artifacts=('tests/test_app_surface.py', 'tests/test_contract.py', 'tests/test_improve1_traceability.py', 'tests/test_domain_behavior.py'),
         evidence_artifacts=('release_evidence.py', 'RELEASE_EVIDENCE.md', 'capability_assurance.py', 'implementation-status.md', 'SPECIFICATION.md', 'README.md'),
     ),
     Improve1Capability(
@@ -98,7 +98,7 @@ IMPROVE1_CAPABILITIES: tuple[Improve1Capability, ...] = (
         model_artifacts=('models.py', 'migrations/001_initial.sql', 'repository.py', 'schema_contract.py', 'manifest.py'),
         ui_artifacts=('ui.py', 'forms.py', 'wizards.py', 'controls.py', 'agent.py'),
         service_artifacts=('services.py', 'service_contract.py', 'routes.py', 'runtime.py', 'app_surface.py'),
-        test_artifacts=('tests/test_app_surface.py', 'tests/test_contract.py', 'tests/test_improve1_traceability.py'),
+        test_artifacts=('tests/test_app_surface.py', 'tests/test_contract.py', 'tests/test_improve1_traceability.py', 'tests/test_domain_behavior.py'),
         evidence_artifacts=('release_evidence.py', 'RELEASE_EVIDENCE.md', 'capability_assurance.py', 'implementation-status.md', 'SPECIFICATION.md', 'README.md'),
     ),
     Improve1Capability(
@@ -109,7 +109,7 @@ IMPROVE1_CAPABILITIES: tuple[Improve1Capability, ...] = (
         model_artifacts=('models.py', 'migrations/001_initial.sql', 'repository.py', 'schema_contract.py', 'manifest.py'),
         ui_artifacts=('ui.py', 'forms.py', 'wizards.py', 'controls.py', 'agent.py'),
         service_artifacts=('services.py', 'service_contract.py', 'routes.py', 'runtime.py', 'app_surface.py'),
-        test_artifacts=('tests/test_app_surface.py', 'tests/test_contract.py', 'tests/test_improve1_traceability.py'),
+        test_artifacts=('tests/test_app_surface.py', 'tests/test_contract.py', 'tests/test_improve1_traceability.py', 'tests/test_domain_behavior.py'),
         evidence_artifacts=('release_evidence.py', 'RELEASE_EVIDENCE.md', 'capability_assurance.py', 'implementation-status.md', 'SPECIFICATION.md', 'README.md'),
     ),
     Improve1Capability(
@@ -120,7 +120,7 @@ IMPROVE1_CAPABILITIES: tuple[Improve1Capability, ...] = (
         model_artifacts=('models.py', 'migrations/001_initial.sql', 'repository.py', 'schema_contract.py', 'manifest.py'),
         ui_artifacts=('ui.py', 'forms.py', 'wizards.py', 'controls.py', 'agent.py'),
         service_artifacts=('services.py', 'service_contract.py', 'routes.py', 'runtime.py', 'app_surface.py'),
-        test_artifacts=('tests/test_app_surface.py', 'tests/test_contract.py', 'tests/test_improve1_traceability.py'),
+        test_artifacts=('tests/test_app_surface.py', 'tests/test_contract.py', 'tests/test_improve1_traceability.py', 'tests/test_domain_behavior.py'),
         evidence_artifacts=('release_evidence.py', 'RELEASE_EVIDENCE.md', 'capability_assurance.py', 'implementation-status.md', 'SPECIFICATION.md', 'README.md'),
     ),
     Improve1Capability(
@@ -131,7 +131,7 @@ IMPROVE1_CAPABILITIES: tuple[Improve1Capability, ...] = (
         model_artifacts=('models.py', 'migrations/001_initial.sql', 'repository.py', 'schema_contract.py', 'manifest.py'),
         ui_artifacts=('ui.py', 'forms.py', 'wizards.py', 'controls.py', 'agent.py'),
         service_artifacts=('services.py', 'service_contract.py', 'routes.py', 'runtime.py', 'app_surface.py'),
-        test_artifacts=('tests/test_app_surface.py', 'tests/test_contract.py', 'tests/test_improve1_traceability.py'),
+        test_artifacts=('tests/test_app_surface.py', 'tests/test_contract.py', 'tests/test_improve1_traceability.py', 'tests/test_domain_behavior.py'),
         evidence_artifacts=('release_evidence.py', 'RELEASE_EVIDENCE.md', 'capability_assurance.py', 'implementation-status.md', 'SPECIFICATION.md', 'README.md'),
     ),
     Improve1Capability(
@@ -142,7 +142,7 @@ IMPROVE1_CAPABILITIES: tuple[Improve1Capability, ...] = (
         model_artifacts=('models.py', 'migrations/001_initial.sql', 'repository.py', 'schema_contract.py', 'manifest.py'),
         ui_artifacts=('ui.py', 'forms.py', 'wizards.py', 'controls.py', 'agent.py'),
         service_artifacts=('services.py', 'service_contract.py', 'routes.py', 'runtime.py', 'app_surface.py'),
-        test_artifacts=('tests/test_app_surface.py', 'tests/test_contract.py', 'tests/test_improve1_traceability.py'),
+        test_artifacts=('tests/test_app_surface.py', 'tests/test_contract.py', 'tests/test_improve1_traceability.py', 'tests/test_domain_behavior.py'),
         evidence_artifacts=('release_evidence.py', 'RELEASE_EVIDENCE.md', 'capability_assurance.py', 'implementation-status.md', 'SPECIFICATION.md', 'README.md'),
     ),
     Improve1Capability(
@@ -153,7 +153,7 @@ IMPROVE1_CAPABILITIES: tuple[Improve1Capability, ...] = (
         model_artifacts=('models.py', 'migrations/001_initial.sql', 'repository.py', 'schema_contract.py', 'manifest.py'),
         ui_artifacts=('ui.py', 'forms.py', 'wizards.py', 'controls.py', 'agent.py'),
         service_artifacts=('services.py', 'service_contract.py', 'routes.py', 'runtime.py', 'app_surface.py'),
-        test_artifacts=('tests/test_app_surface.py', 'tests/test_contract.py', 'tests/test_improve1_traceability.py'),
+        test_artifacts=('tests/test_app_surface.py', 'tests/test_contract.py', 'tests/test_improve1_traceability.py', 'tests/test_domain_behavior.py'),
         evidence_artifacts=('release_evidence.py', 'RELEASE_EVIDENCE.md', 'capability_assurance.py', 'implementation-status.md', 'SPECIFICATION.md', 'README.md'),
     ),
     Improve1Capability(
@@ -164,7 +164,7 @@ IMPROVE1_CAPABILITIES: tuple[Improve1Capability, ...] = (
         model_artifacts=('models.py', 'migrations/001_initial.sql', 'repository.py', 'schema_contract.py', 'manifest.py'),
         ui_artifacts=('ui.py', 'forms.py', 'wizards.py', 'controls.py', 'agent.py'),
         service_artifacts=('services.py', 'service_contract.py', 'routes.py', 'runtime.py', 'app_surface.py'),
-        test_artifacts=('tests/test_app_surface.py', 'tests/test_contract.py', 'tests/test_improve1_traceability.py'),
+        test_artifacts=('tests/test_app_surface.py', 'tests/test_contract.py', 'tests/test_improve1_traceability.py', 'tests/test_domain_behavior.py'),
         evidence_artifacts=('release_evidence.py', 'RELEASE_EVIDENCE.md', 'capability_assurance.py', 'implementation-status.md', 'SPECIFICATION.md', 'README.md'),
     ),
     Improve1Capability(
@@ -175,7 +175,7 @@ IMPROVE1_CAPABILITIES: tuple[Improve1Capability, ...] = (
         model_artifacts=('models.py', 'migrations/001_initial.sql', 'repository.py', 'schema_contract.py', 'manifest.py'),
         ui_artifacts=('ui.py', 'forms.py', 'wizards.py', 'controls.py', 'agent.py'),
         service_artifacts=('services.py', 'service_contract.py', 'routes.py', 'runtime.py', 'app_surface.py'),
-        test_artifacts=('tests/test_app_surface.py', 'tests/test_contract.py', 'tests/test_improve1_traceability.py'),
+        test_artifacts=('tests/test_app_surface.py', 'tests/test_contract.py', 'tests/test_improve1_traceability.py', 'tests/test_domain_behavior.py'),
         evidence_artifacts=('release_evidence.py', 'RELEASE_EVIDENCE.md', 'capability_assurance.py', 'implementation-status.md', 'SPECIFICATION.md', 'README.md'),
     ),
     Improve1Capability(
@@ -186,7 +186,7 @@ IMPROVE1_CAPABILITIES: tuple[Improve1Capability, ...] = (
         model_artifacts=('models.py', 'migrations/001_initial.sql', 'repository.py', 'schema_contract.py', 'manifest.py'),
         ui_artifacts=('ui.py', 'forms.py', 'wizards.py', 'controls.py', 'agent.py'),
         service_artifacts=('services.py', 'service_contract.py', 'routes.py', 'runtime.py', 'app_surface.py'),
-        test_artifacts=('tests/test_app_surface.py', 'tests/test_contract.py', 'tests/test_improve1_traceability.py'),
+        test_artifacts=('tests/test_app_surface.py', 'tests/test_contract.py', 'tests/test_improve1_traceability.py', 'tests/test_domain_behavior.py'),
         evidence_artifacts=('release_evidence.py', 'RELEASE_EVIDENCE.md', 'capability_assurance.py', 'implementation-status.md', 'SPECIFICATION.md', 'README.md'),
     ),
     Improve1Capability(
@@ -197,7 +197,7 @@ IMPROVE1_CAPABILITIES: tuple[Improve1Capability, ...] = (
         model_artifacts=('models.py', 'migrations/001_initial.sql', 'repository.py', 'schema_contract.py', 'manifest.py'),
         ui_artifacts=('ui.py', 'forms.py', 'wizards.py', 'controls.py', 'agent.py'),
         service_artifacts=('services.py', 'service_contract.py', 'routes.py', 'runtime.py', 'app_surface.py'),
-        test_artifacts=('tests/test_app_surface.py', 'tests/test_contract.py', 'tests/test_improve1_traceability.py'),
+        test_artifacts=('tests/test_app_surface.py', 'tests/test_contract.py', 'tests/test_improve1_traceability.py', 'tests/test_domain_behavior.py'),
         evidence_artifacts=('release_evidence.py', 'RELEASE_EVIDENCE.md', 'capability_assurance.py', 'implementation-status.md', 'SPECIFICATION.md', 'README.md'),
     ),
     Improve1Capability(
@@ -208,7 +208,7 @@ IMPROVE1_CAPABILITIES: tuple[Improve1Capability, ...] = (
         model_artifacts=('models.py', 'migrations/001_initial.sql', 'repository.py', 'schema_contract.py', 'manifest.py'),
         ui_artifacts=('ui.py', 'forms.py', 'wizards.py', 'controls.py', 'agent.py'),
         service_artifacts=('services.py', 'service_contract.py', 'routes.py', 'runtime.py', 'app_surface.py'),
-        test_artifacts=('tests/test_app_surface.py', 'tests/test_contract.py', 'tests/test_improve1_traceability.py'),
+        test_artifacts=('tests/test_app_surface.py', 'tests/test_contract.py', 'tests/test_improve1_traceability.py', 'tests/test_domain_behavior.py'),
         evidence_artifacts=('release_evidence.py', 'RELEASE_EVIDENCE.md', 'capability_assurance.py', 'implementation-status.md', 'SPECIFICATION.md', 'README.md'),
     ),
     Improve1Capability(
@@ -219,7 +219,7 @@ IMPROVE1_CAPABILITIES: tuple[Improve1Capability, ...] = (
         model_artifacts=('models.py', 'migrations/001_initial.sql', 'repository.py', 'schema_contract.py', 'manifest.py'),
         ui_artifacts=('ui.py', 'forms.py', 'wizards.py', 'controls.py', 'agent.py'),
         service_artifacts=('services.py', 'service_contract.py', 'routes.py', 'runtime.py', 'app_surface.py'),
-        test_artifacts=('tests/test_app_surface.py', 'tests/test_contract.py', 'tests/test_improve1_traceability.py'),
+        test_artifacts=('tests/test_app_surface.py', 'tests/test_contract.py', 'tests/test_improve1_traceability.py', 'tests/test_domain_behavior.py'),
         evidence_artifacts=('release_evidence.py', 'RELEASE_EVIDENCE.md', 'capability_assurance.py', 'implementation-status.md', 'SPECIFICATION.md', 'README.md'),
     ),
     Improve1Capability(
@@ -230,7 +230,7 @@ IMPROVE1_CAPABILITIES: tuple[Improve1Capability, ...] = (
         model_artifacts=('models.py', 'migrations/001_initial.sql', 'repository.py', 'schema_contract.py', 'manifest.py'),
         ui_artifacts=('ui.py', 'forms.py', 'wizards.py', 'controls.py', 'agent.py'),
         service_artifacts=('services.py', 'service_contract.py', 'routes.py', 'runtime.py', 'app_surface.py'),
-        test_artifacts=('tests/test_app_surface.py', 'tests/test_contract.py', 'tests/test_improve1_traceability.py'),
+        test_artifacts=('tests/test_app_surface.py', 'tests/test_contract.py', 'tests/test_improve1_traceability.py', 'tests/test_domain_behavior.py'),
         evidence_artifacts=('release_evidence.py', 'RELEASE_EVIDENCE.md', 'capability_assurance.py', 'implementation-status.md', 'SPECIFICATION.md', 'README.md'),
     ),
     Improve1Capability(
@@ -241,7 +241,7 @@ IMPROVE1_CAPABILITIES: tuple[Improve1Capability, ...] = (
         model_artifacts=('models.py', 'migrations/001_initial.sql', 'repository.py', 'schema_contract.py', 'manifest.py'),
         ui_artifacts=('ui.py', 'forms.py', 'wizards.py', 'controls.py', 'agent.py'),
         service_artifacts=('services.py', 'service_contract.py', 'routes.py', 'runtime.py', 'app_surface.py'),
-        test_artifacts=('tests/test_app_surface.py', 'tests/test_contract.py', 'tests/test_improve1_traceability.py'),
+        test_artifacts=('tests/test_app_surface.py', 'tests/test_contract.py', 'tests/test_improve1_traceability.py', 'tests/test_domain_behavior.py'),
         evidence_artifacts=('release_evidence.py', 'RELEASE_EVIDENCE.md', 'capability_assurance.py', 'implementation-status.md', 'SPECIFICATION.md', 'README.md'),
     ),
     Improve1Capability(
@@ -252,7 +252,7 @@ IMPROVE1_CAPABILITIES: tuple[Improve1Capability, ...] = (
         model_artifacts=('models.py', 'migrations/001_initial.sql', 'repository.py', 'schema_contract.py', 'manifest.py'),
         ui_artifacts=('ui.py', 'forms.py', 'wizards.py', 'controls.py', 'agent.py'),
         service_artifacts=('services.py', 'service_contract.py', 'routes.py', 'runtime.py', 'app_surface.py'),
-        test_artifacts=('tests/test_app_surface.py', 'tests/test_contract.py', 'tests/test_improve1_traceability.py'),
+        test_artifacts=('tests/test_app_surface.py', 'tests/test_contract.py', 'tests/test_improve1_traceability.py', 'tests/test_domain_behavior.py'),
         evidence_artifacts=('release_evidence.py', 'RELEASE_EVIDENCE.md', 'capability_assurance.py', 'implementation-status.md', 'SPECIFICATION.md', 'README.md'),
     ),
     Improve1Capability(
@@ -263,7 +263,7 @@ IMPROVE1_CAPABILITIES: tuple[Improve1Capability, ...] = (
         model_artifacts=('models.py', 'migrations/001_initial.sql', 'repository.py', 'schema_contract.py', 'manifest.py'),
         ui_artifacts=('ui.py', 'forms.py', 'wizards.py', 'controls.py', 'agent.py'),
         service_artifacts=('services.py', 'service_contract.py', 'routes.py', 'runtime.py', 'app_surface.py'),
-        test_artifacts=('tests/test_app_surface.py', 'tests/test_contract.py', 'tests/test_improve1_traceability.py'),
+        test_artifacts=('tests/test_app_surface.py', 'tests/test_contract.py', 'tests/test_improve1_traceability.py', 'tests/test_domain_behavior.py'),
         evidence_artifacts=('release_evidence.py', 'RELEASE_EVIDENCE.md', 'capability_assurance.py', 'implementation-status.md', 'SPECIFICATION.md', 'README.md'),
     ),
     Improve1Capability(
@@ -274,7 +274,7 @@ IMPROVE1_CAPABILITIES: tuple[Improve1Capability, ...] = (
         model_artifacts=('models.py', 'migrations/001_initial.sql', 'repository.py', 'schema_contract.py', 'manifest.py'),
         ui_artifacts=('ui.py', 'forms.py', 'wizards.py', 'controls.py', 'agent.py'),
         service_artifacts=('services.py', 'service_contract.py', 'routes.py', 'runtime.py', 'app_surface.py'),
-        test_artifacts=('tests/test_app_surface.py', 'tests/test_contract.py', 'tests/test_improve1_traceability.py'),
+        test_artifacts=('tests/test_app_surface.py', 'tests/test_contract.py', 'tests/test_improve1_traceability.py', 'tests/test_domain_behavior.py'),
         evidence_artifacts=('release_evidence.py', 'RELEASE_EVIDENCE.md', 'capability_assurance.py', 'implementation-status.md', 'SPECIFICATION.md', 'README.md'),
     ),
     Improve1Capability(
@@ -285,7 +285,7 @@ IMPROVE1_CAPABILITIES: tuple[Improve1Capability, ...] = (
         model_artifacts=('models.py', 'migrations/001_initial.sql', 'repository.py', 'schema_contract.py', 'manifest.py'),
         ui_artifacts=('ui.py', 'forms.py', 'wizards.py', 'controls.py', 'agent.py'),
         service_artifacts=('services.py', 'service_contract.py', 'routes.py', 'runtime.py', 'app_surface.py'),
-        test_artifacts=('tests/test_app_surface.py', 'tests/test_contract.py', 'tests/test_improve1_traceability.py'),
+        test_artifacts=('tests/test_app_surface.py', 'tests/test_contract.py', 'tests/test_improve1_traceability.py', 'tests/test_domain_behavior.py'),
         evidence_artifacts=('release_evidence.py', 'RELEASE_EVIDENCE.md', 'capability_assurance.py', 'implementation-status.md', 'SPECIFICATION.md', 'README.md'),
     ),
     Improve1Capability(
@@ -296,7 +296,7 @@ IMPROVE1_CAPABILITIES: tuple[Improve1Capability, ...] = (
         model_artifacts=('models.py', 'migrations/001_initial.sql', 'repository.py', 'schema_contract.py', 'manifest.py'),
         ui_artifacts=('ui.py', 'forms.py', 'wizards.py', 'controls.py', 'agent.py'),
         service_artifacts=('services.py', 'service_contract.py', 'routes.py', 'runtime.py', 'app_surface.py'),
-        test_artifacts=('tests/test_app_surface.py', 'tests/test_contract.py', 'tests/test_improve1_traceability.py'),
+        test_artifacts=('tests/test_app_surface.py', 'tests/test_contract.py', 'tests/test_improve1_traceability.py', 'tests/test_domain_behavior.py'),
         evidence_artifacts=('release_evidence.py', 'RELEASE_EVIDENCE.md', 'capability_assurance.py', 'implementation-status.md', 'SPECIFICATION.md', 'README.md'),
     ),
     Improve1Capability(
@@ -307,7 +307,7 @@ IMPROVE1_CAPABILITIES: tuple[Improve1Capability, ...] = (
         model_artifacts=('models.py', 'migrations/001_initial.sql', 'repository.py', 'schema_contract.py', 'manifest.py'),
         ui_artifacts=('ui.py', 'forms.py', 'wizards.py', 'controls.py', 'agent.py'),
         service_artifacts=('services.py', 'service_contract.py', 'routes.py', 'runtime.py', 'app_surface.py'),
-        test_artifacts=('tests/test_app_surface.py', 'tests/test_contract.py', 'tests/test_improve1_traceability.py'),
+        test_artifacts=('tests/test_app_surface.py', 'tests/test_contract.py', 'tests/test_improve1_traceability.py', 'tests/test_domain_behavior.py'),
         evidence_artifacts=('release_evidence.py', 'RELEASE_EVIDENCE.md', 'capability_assurance.py', 'implementation-status.md', 'SPECIFICATION.md', 'README.md'),
     ),
     Improve1Capability(
@@ -318,7 +318,7 @@ IMPROVE1_CAPABILITIES: tuple[Improve1Capability, ...] = (
         model_artifacts=('models.py', 'migrations/001_initial.sql', 'repository.py', 'schema_contract.py', 'manifest.py'),
         ui_artifacts=('ui.py', 'forms.py', 'wizards.py', 'controls.py', 'agent.py'),
         service_artifacts=('services.py', 'service_contract.py', 'routes.py', 'runtime.py', 'app_surface.py'),
-        test_artifacts=('tests/test_app_surface.py', 'tests/test_contract.py', 'tests/test_improve1_traceability.py'),
+        test_artifacts=('tests/test_app_surface.py', 'tests/test_contract.py', 'tests/test_improve1_traceability.py', 'tests/test_domain_behavior.py'),
         evidence_artifacts=('release_evidence.py', 'RELEASE_EVIDENCE.md', 'capability_assurance.py', 'implementation-status.md', 'SPECIFICATION.md', 'README.md'),
     ),
     Improve1Capability(
@@ -329,7 +329,7 @@ IMPROVE1_CAPABILITIES: tuple[Improve1Capability, ...] = (
         model_artifacts=('models.py', 'migrations/001_initial.sql', 'repository.py', 'schema_contract.py', 'manifest.py'),
         ui_artifacts=('ui.py', 'forms.py', 'wizards.py', 'controls.py', 'agent.py'),
         service_artifacts=('services.py', 'service_contract.py', 'routes.py', 'runtime.py', 'app_surface.py'),
-        test_artifacts=('tests/test_app_surface.py', 'tests/test_contract.py', 'tests/test_improve1_traceability.py'),
+        test_artifacts=('tests/test_app_surface.py', 'tests/test_contract.py', 'tests/test_improve1_traceability.py', 'tests/test_domain_behavior.py'),
         evidence_artifacts=('release_evidence.py', 'RELEASE_EVIDENCE.md', 'capability_assurance.py', 'implementation-status.md', 'SPECIFICATION.md', 'README.md'),
     ),
     Improve1Capability(
@@ -340,7 +340,7 @@ IMPROVE1_CAPABILITIES: tuple[Improve1Capability, ...] = (
         model_artifacts=('models.py', 'migrations/001_initial.sql', 'repository.py', 'schema_contract.py', 'manifest.py'),
         ui_artifacts=('ui.py', 'forms.py', 'wizards.py', 'controls.py', 'agent.py'),
         service_artifacts=('services.py', 'service_contract.py', 'routes.py', 'runtime.py', 'app_surface.py'),
-        test_artifacts=('tests/test_app_surface.py', 'tests/test_contract.py', 'tests/test_improve1_traceability.py'),
+        test_artifacts=('tests/test_app_surface.py', 'tests/test_contract.py', 'tests/test_improve1_traceability.py', 'tests/test_domain_behavior.py'),
         evidence_artifacts=('release_evidence.py', 'RELEASE_EVIDENCE.md', 'capability_assurance.py', 'implementation-status.md', 'SPECIFICATION.md', 'README.md'),
     ),
     Improve1Capability(
@@ -351,7 +351,7 @@ IMPROVE1_CAPABILITIES: tuple[Improve1Capability, ...] = (
         model_artifacts=('models.py', 'migrations/001_initial.sql', 'repository.py', 'schema_contract.py', 'manifest.py'),
         ui_artifacts=('ui.py', 'forms.py', 'wizards.py', 'controls.py', 'agent.py'),
         service_artifacts=('services.py', 'service_contract.py', 'routes.py', 'runtime.py', 'app_surface.py'),
-        test_artifacts=('tests/test_app_surface.py', 'tests/test_contract.py', 'tests/test_improve1_traceability.py'),
+        test_artifacts=('tests/test_app_surface.py', 'tests/test_contract.py', 'tests/test_improve1_traceability.py', 'tests/test_domain_behavior.py'),
         evidence_artifacts=('release_evidence.py', 'RELEASE_EVIDENCE.md', 'capability_assurance.py', 'implementation-status.md', 'SPECIFICATION.md', 'README.md'),
     ),
     Improve1Capability(
@@ -362,7 +362,7 @@ IMPROVE1_CAPABILITIES: tuple[Improve1Capability, ...] = (
         model_artifacts=('models.py', 'migrations/001_initial.sql', 'repository.py', 'schema_contract.py', 'manifest.py'),
         ui_artifacts=('ui.py', 'forms.py', 'wizards.py', 'controls.py', 'agent.py'),
         service_artifacts=('services.py', 'service_contract.py', 'routes.py', 'runtime.py', 'app_surface.py'),
-        test_artifacts=('tests/test_app_surface.py', 'tests/test_contract.py', 'tests/test_improve1_traceability.py'),
+        test_artifacts=('tests/test_app_surface.py', 'tests/test_contract.py', 'tests/test_improve1_traceability.py', 'tests/test_domain_behavior.py'),
         evidence_artifacts=('release_evidence.py', 'RELEASE_EVIDENCE.md', 'capability_assurance.py', 'implementation-status.md', 'SPECIFICATION.md', 'README.md'),
     ),
     Improve1Capability(
@@ -373,7 +373,7 @@ IMPROVE1_CAPABILITIES: tuple[Improve1Capability, ...] = (
         model_artifacts=('models.py', 'migrations/001_initial.sql', 'repository.py', 'schema_contract.py', 'manifest.py'),
         ui_artifacts=('ui.py', 'forms.py', 'wizards.py', 'controls.py', 'agent.py'),
         service_artifacts=('services.py', 'service_contract.py', 'routes.py', 'runtime.py', 'app_surface.py'),
-        test_artifacts=('tests/test_app_surface.py', 'tests/test_contract.py', 'tests/test_improve1_traceability.py'),
+        test_artifacts=('tests/test_app_surface.py', 'tests/test_contract.py', 'tests/test_improve1_traceability.py', 'tests/test_domain_behavior.py'),
         evidence_artifacts=('release_evidence.py', 'RELEASE_EVIDENCE.md', 'capability_assurance.py', 'implementation-status.md', 'SPECIFICATION.md', 'README.md'),
     ),
     Improve1Capability(
@@ -384,7 +384,7 @@ IMPROVE1_CAPABILITIES: tuple[Improve1Capability, ...] = (
         model_artifacts=('models.py', 'migrations/001_initial.sql', 'repository.py', 'schema_contract.py', 'manifest.py'),
         ui_artifacts=('ui.py', 'forms.py', 'wizards.py', 'controls.py', 'agent.py'),
         service_artifacts=('services.py', 'service_contract.py', 'routes.py', 'runtime.py', 'app_surface.py'),
-        test_artifacts=('tests/test_app_surface.py', 'tests/test_contract.py', 'tests/test_improve1_traceability.py'),
+        test_artifacts=('tests/test_app_surface.py', 'tests/test_contract.py', 'tests/test_improve1_traceability.py', 'tests/test_domain_behavior.py'),
         evidence_artifacts=('release_evidence.py', 'RELEASE_EVIDENCE.md', 'capability_assurance.py', 'implementation-status.md', 'SPECIFICATION.md', 'README.md'),
     ),
     Improve1Capability(
@@ -395,7 +395,7 @@ IMPROVE1_CAPABILITIES: tuple[Improve1Capability, ...] = (
         model_artifacts=('models.py', 'migrations/001_initial.sql', 'repository.py', 'schema_contract.py', 'manifest.py'),
         ui_artifacts=('ui.py', 'forms.py', 'wizards.py', 'controls.py', 'agent.py'),
         service_artifacts=('services.py', 'service_contract.py', 'routes.py', 'runtime.py', 'app_surface.py'),
-        test_artifacts=('tests/test_app_surface.py', 'tests/test_contract.py', 'tests/test_improve1_traceability.py'),
+        test_artifacts=('tests/test_app_surface.py', 'tests/test_contract.py', 'tests/test_improve1_traceability.py', 'tests/test_domain_behavior.py'),
         evidence_artifacts=('release_evidence.py', 'RELEASE_EVIDENCE.md', 'capability_assurance.py', 'implementation-status.md', 'SPECIFICATION.md', 'README.md'),
     ),
     Improve1Capability(
@@ -406,7 +406,7 @@ IMPROVE1_CAPABILITIES: tuple[Improve1Capability, ...] = (
         model_artifacts=('models.py', 'migrations/001_initial.sql', 'repository.py', 'schema_contract.py', 'manifest.py'),
         ui_artifacts=('ui.py', 'forms.py', 'wizards.py', 'controls.py', 'agent.py'),
         service_artifacts=('services.py', 'service_contract.py', 'routes.py', 'runtime.py', 'app_surface.py'),
-        test_artifacts=('tests/test_app_surface.py', 'tests/test_contract.py', 'tests/test_improve1_traceability.py'),
+        test_artifacts=('tests/test_app_surface.py', 'tests/test_contract.py', 'tests/test_improve1_traceability.py', 'tests/test_domain_behavior.py'),
         evidence_artifacts=('release_evidence.py', 'RELEASE_EVIDENCE.md', 'capability_assurance.py', 'implementation-status.md', 'SPECIFICATION.md', 'README.md'),
     ),
     Improve1Capability(
@@ -417,7 +417,7 @@ IMPROVE1_CAPABILITIES: tuple[Improve1Capability, ...] = (
         model_artifacts=('models.py', 'migrations/001_initial.sql', 'repository.py', 'schema_contract.py', 'manifest.py'),
         ui_artifacts=('ui.py', 'forms.py', 'wizards.py', 'controls.py', 'agent.py'),
         service_artifacts=('services.py', 'service_contract.py', 'routes.py', 'runtime.py', 'app_surface.py'),
-        test_artifacts=('tests/test_app_surface.py', 'tests/test_contract.py', 'tests/test_improve1_traceability.py'),
+        test_artifacts=('tests/test_app_surface.py', 'tests/test_contract.py', 'tests/test_improve1_traceability.py', 'tests/test_domain_behavior.py'),
         evidence_artifacts=('release_evidence.py', 'RELEASE_EVIDENCE.md', 'capability_assurance.py', 'implementation-status.md', 'SPECIFICATION.md', 'README.md'),
     ),
     Improve1Capability(
@@ -428,7 +428,7 @@ IMPROVE1_CAPABILITIES: tuple[Improve1Capability, ...] = (
         model_artifacts=('models.py', 'migrations/001_initial.sql', 'repository.py', 'schema_contract.py', 'manifest.py'),
         ui_artifacts=('ui.py', 'forms.py', 'wizards.py', 'controls.py', 'agent.py'),
         service_artifacts=('services.py', 'service_contract.py', 'routes.py', 'runtime.py', 'app_surface.py'),
-        test_artifacts=('tests/test_app_surface.py', 'tests/test_contract.py', 'tests/test_improve1_traceability.py'),
+        test_artifacts=('tests/test_app_surface.py', 'tests/test_contract.py', 'tests/test_improve1_traceability.py', 'tests/test_domain_behavior.py'),
         evidence_artifacts=('release_evidence.py', 'RELEASE_EVIDENCE.md', 'capability_assurance.py', 'implementation-status.md', 'SPECIFICATION.md', 'README.md'),
     ),
     Improve1Capability(
@@ -439,7 +439,7 @@ IMPROVE1_CAPABILITIES: tuple[Improve1Capability, ...] = (
         model_artifacts=('models.py', 'migrations/001_initial.sql', 'repository.py', 'schema_contract.py', 'manifest.py'),
         ui_artifacts=('ui.py', 'forms.py', 'wizards.py', 'controls.py', 'agent.py'),
         service_artifacts=('services.py', 'service_contract.py', 'routes.py', 'runtime.py', 'app_surface.py'),
-        test_artifacts=('tests/test_app_surface.py', 'tests/test_contract.py', 'tests/test_improve1_traceability.py'),
+        test_artifacts=('tests/test_app_surface.py', 'tests/test_contract.py', 'tests/test_improve1_traceability.py', 'tests/test_domain_behavior.py'),
         evidence_artifacts=('release_evidence.py', 'RELEASE_EVIDENCE.md', 'capability_assurance.py', 'implementation-status.md', 'SPECIFICATION.md', 'README.md'),
     ),
     Improve1Capability(
@@ -450,7 +450,7 @@ IMPROVE1_CAPABILITIES: tuple[Improve1Capability, ...] = (
         model_artifacts=('models.py', 'migrations/001_initial.sql', 'repository.py', 'schema_contract.py', 'manifest.py'),
         ui_artifacts=('ui.py', 'forms.py', 'wizards.py', 'controls.py', 'agent.py'),
         service_artifacts=('services.py', 'service_contract.py', 'routes.py', 'runtime.py', 'app_surface.py'),
-        test_artifacts=('tests/test_app_surface.py', 'tests/test_contract.py', 'tests/test_improve1_traceability.py'),
+        test_artifacts=('tests/test_app_surface.py', 'tests/test_contract.py', 'tests/test_improve1_traceability.py', 'tests/test_domain_behavior.py'),
         evidence_artifacts=('release_evidence.py', 'RELEASE_EVIDENCE.md', 'capability_assurance.py', 'implementation-status.md', 'SPECIFICATION.md', 'README.md'),
     ),
     Improve1Capability(
@@ -461,7 +461,7 @@ IMPROVE1_CAPABILITIES: tuple[Improve1Capability, ...] = (
         model_artifacts=('models.py', 'migrations/001_initial.sql', 'repository.py', 'schema_contract.py', 'manifest.py'),
         ui_artifacts=('ui.py', 'forms.py', 'wizards.py', 'controls.py', 'agent.py'),
         service_artifacts=('services.py', 'service_contract.py', 'routes.py', 'runtime.py', 'app_surface.py'),
-        test_artifacts=('tests/test_app_surface.py', 'tests/test_contract.py', 'tests/test_improve1_traceability.py'),
+        test_artifacts=('tests/test_app_surface.py', 'tests/test_contract.py', 'tests/test_improve1_traceability.py', 'tests/test_domain_behavior.py'),
         evidence_artifacts=('release_evidence.py', 'RELEASE_EVIDENCE.md', 'capability_assurance.py', 'implementation-status.md', 'SPECIFICATION.md', 'README.md'),
     ),
     Improve1Capability(
@@ -472,7 +472,7 @@ IMPROVE1_CAPABILITIES: tuple[Improve1Capability, ...] = (
         model_artifacts=('models.py', 'migrations/001_initial.sql', 'repository.py', 'schema_contract.py', 'manifest.py'),
         ui_artifacts=('ui.py', 'forms.py', 'wizards.py', 'controls.py', 'agent.py'),
         service_artifacts=('services.py', 'service_contract.py', 'routes.py', 'runtime.py', 'app_surface.py'),
-        test_artifacts=('tests/test_app_surface.py', 'tests/test_contract.py', 'tests/test_improve1_traceability.py'),
+        test_artifacts=('tests/test_app_surface.py', 'tests/test_contract.py', 'tests/test_improve1_traceability.py', 'tests/test_domain_behavior.py'),
         evidence_artifacts=('release_evidence.py', 'RELEASE_EVIDENCE.md', 'capability_assurance.py', 'implementation-status.md', 'SPECIFICATION.md', 'README.md'),
     ),
     Improve1Capability(
@@ -483,7 +483,7 @@ IMPROVE1_CAPABILITIES: tuple[Improve1Capability, ...] = (
         model_artifacts=('models.py', 'migrations/001_initial.sql', 'repository.py', 'schema_contract.py', 'manifest.py'),
         ui_artifacts=('ui.py', 'forms.py', 'wizards.py', 'controls.py', 'agent.py'),
         service_artifacts=('services.py', 'service_contract.py', 'routes.py', 'runtime.py', 'app_surface.py'),
-        test_artifacts=('tests/test_app_surface.py', 'tests/test_contract.py', 'tests/test_improve1_traceability.py'),
+        test_artifacts=('tests/test_app_surface.py', 'tests/test_contract.py', 'tests/test_improve1_traceability.py', 'tests/test_domain_behavior.py'),
         evidence_artifacts=('release_evidence.py', 'RELEASE_EVIDENCE.md', 'capability_assurance.py', 'implementation-status.md', 'SPECIFICATION.md', 'README.md'),
     ),
     Improve1Capability(
@@ -494,7 +494,7 @@ IMPROVE1_CAPABILITIES: tuple[Improve1Capability, ...] = (
         model_artifacts=('models.py', 'migrations/001_initial.sql', 'repository.py', 'schema_contract.py', 'manifest.py'),
         ui_artifacts=('ui.py', 'forms.py', 'wizards.py', 'controls.py', 'agent.py'),
         service_artifacts=('services.py', 'service_contract.py', 'routes.py', 'runtime.py', 'app_surface.py'),
-        test_artifacts=('tests/test_app_surface.py', 'tests/test_contract.py', 'tests/test_improve1_traceability.py'),
+        test_artifacts=('tests/test_app_surface.py', 'tests/test_contract.py', 'tests/test_improve1_traceability.py', 'tests/test_domain_behavior.py'),
         evidence_artifacts=('release_evidence.py', 'RELEASE_EVIDENCE.md', 'capability_assurance.py', 'implementation-status.md', 'SPECIFICATION.md', 'README.md'),
     ),
     Improve1Capability(
@@ -505,7 +505,7 @@ IMPROVE1_CAPABILITIES: tuple[Improve1Capability, ...] = (
         model_artifacts=('models.py', 'migrations/001_initial.sql', 'repository.py', 'schema_contract.py', 'manifest.py'),
         ui_artifacts=('ui.py', 'forms.py', 'wizards.py', 'controls.py', 'agent.py'),
         service_artifacts=('services.py', 'service_contract.py', 'routes.py', 'runtime.py', 'app_surface.py'),
-        test_artifacts=('tests/test_app_surface.py', 'tests/test_contract.py', 'tests/test_improve1_traceability.py'),
+        test_artifacts=('tests/test_app_surface.py', 'tests/test_contract.py', 'tests/test_improve1_traceability.py', 'tests/test_domain_behavior.py'),
         evidence_artifacts=('release_evidence.py', 'RELEASE_EVIDENCE.md', 'capability_assurance.py', 'implementation-status.md', 'SPECIFICATION.md', 'README.md'),
     ),
     Improve1Capability(
@@ -516,7 +516,7 @@ IMPROVE1_CAPABILITIES: tuple[Improve1Capability, ...] = (
         model_artifacts=('models.py', 'migrations/001_initial.sql', 'repository.py', 'schema_contract.py', 'manifest.py'),
         ui_artifacts=('ui.py', 'forms.py', 'wizards.py', 'controls.py', 'agent.py'),
         service_artifacts=('services.py', 'service_contract.py', 'routes.py', 'runtime.py', 'app_surface.py'),
-        test_artifacts=('tests/test_app_surface.py', 'tests/test_contract.py', 'tests/test_improve1_traceability.py'),
+        test_artifacts=('tests/test_app_surface.py', 'tests/test_contract.py', 'tests/test_improve1_traceability.py', 'tests/test_domain_behavior.py'),
         evidence_artifacts=('release_evidence.py', 'RELEASE_EVIDENCE.md', 'capability_assurance.py', 'implementation-status.md', 'SPECIFICATION.md', 'README.md'),
     ),
     Improve1Capability(
@@ -527,7 +527,7 @@ IMPROVE1_CAPABILITIES: tuple[Improve1Capability, ...] = (
         model_artifacts=('models.py', 'migrations/001_initial.sql', 'repository.py', 'schema_contract.py', 'manifest.py'),
         ui_artifacts=('ui.py', 'forms.py', 'wizards.py', 'controls.py', 'agent.py'),
         service_artifacts=('services.py', 'service_contract.py', 'routes.py', 'runtime.py', 'app_surface.py'),
-        test_artifacts=('tests/test_app_surface.py', 'tests/test_contract.py', 'tests/test_improve1_traceability.py'),
+        test_artifacts=('tests/test_app_surface.py', 'tests/test_contract.py', 'tests/test_improve1_traceability.py', 'tests/test_domain_behavior.py'),
         evidence_artifacts=('release_evidence.py', 'RELEASE_EVIDENCE.md', 'capability_assurance.py', 'implementation-status.md', 'SPECIFICATION.md', 'README.md'),
     ),
     Improve1Capability(
@@ -538,7 +538,7 @@ IMPROVE1_CAPABILITIES: tuple[Improve1Capability, ...] = (
         model_artifacts=('models.py', 'migrations/001_initial.sql', 'repository.py', 'schema_contract.py', 'manifest.py'),
         ui_artifacts=('ui.py', 'forms.py', 'wizards.py', 'controls.py', 'agent.py'),
         service_artifacts=('services.py', 'service_contract.py', 'routes.py', 'runtime.py', 'app_surface.py'),
-        test_artifacts=('tests/test_app_surface.py', 'tests/test_contract.py', 'tests/test_improve1_traceability.py'),
+        test_artifacts=('tests/test_app_surface.py', 'tests/test_contract.py', 'tests/test_improve1_traceability.py', 'tests/test_domain_behavior.py'),
         evidence_artifacts=('release_evidence.py', 'RELEASE_EVIDENCE.md', 'capability_assurance.py', 'implementation-status.md', 'SPECIFICATION.md', 'README.md'),
     ),
     Improve1Capability(
@@ -549,7 +549,7 @@ IMPROVE1_CAPABILITIES: tuple[Improve1Capability, ...] = (
         model_artifacts=('models.py', 'migrations/001_initial.sql', 'repository.py', 'schema_contract.py', 'manifest.py'),
         ui_artifacts=('ui.py', 'forms.py', 'wizards.py', 'controls.py', 'agent.py'),
         service_artifacts=('services.py', 'service_contract.py', 'routes.py', 'runtime.py', 'app_surface.py'),
-        test_artifacts=('tests/test_app_surface.py', 'tests/test_contract.py', 'tests/test_improve1_traceability.py'),
+        test_artifacts=('tests/test_app_surface.py', 'tests/test_contract.py', 'tests/test_improve1_traceability.py', 'tests/test_domain_behavior.py'),
         evidence_artifacts=('release_evidence.py', 'RELEASE_EVIDENCE.md', 'capability_assurance.py', 'implementation-status.md', 'SPECIFICATION.md', 'README.md'),
     ),
     Improve1Capability(
@@ -560,7 +560,7 @@ IMPROVE1_CAPABILITIES: tuple[Improve1Capability, ...] = (
         model_artifacts=('models.py', 'migrations/001_initial.sql', 'repository.py', 'schema_contract.py', 'manifest.py'),
         ui_artifacts=('ui.py', 'forms.py', 'wizards.py', 'controls.py', 'agent.py'),
         service_artifacts=('services.py', 'service_contract.py', 'routes.py', 'runtime.py', 'app_surface.py'),
-        test_artifacts=('tests/test_app_surface.py', 'tests/test_contract.py', 'tests/test_improve1_traceability.py'),
+        test_artifacts=('tests/test_app_surface.py', 'tests/test_contract.py', 'tests/test_improve1_traceability.py', 'tests/test_domain_behavior.py'),
         evidence_artifacts=('release_evidence.py', 'RELEASE_EVIDENCE.md', 'capability_assurance.py', 'implementation-status.md', 'SPECIFICATION.md', 'README.md'),
     ),
     Improve1Capability(
@@ -571,7 +571,7 @@ IMPROVE1_CAPABILITIES: tuple[Improve1Capability, ...] = (
         model_artifacts=('models.py', 'migrations/001_initial.sql', 'repository.py', 'schema_contract.py', 'manifest.py'),
         ui_artifacts=('ui.py', 'forms.py', 'wizards.py', 'controls.py', 'agent.py'),
         service_artifacts=('services.py', 'service_contract.py', 'routes.py', 'runtime.py', 'app_surface.py'),
-        test_artifacts=('tests/test_app_surface.py', 'tests/test_contract.py', 'tests/test_improve1_traceability.py'),
+        test_artifacts=('tests/test_app_surface.py', 'tests/test_contract.py', 'tests/test_improve1_traceability.py', 'tests/test_domain_behavior.py'),
         evidence_artifacts=('release_evidence.py', 'RELEASE_EVIDENCE.md', 'capability_assurance.py', 'implementation-status.md', 'SPECIFICATION.md', 'README.md'),
     ),
     Improve1Capability(
@@ -582,7 +582,7 @@ IMPROVE1_CAPABILITIES: tuple[Improve1Capability, ...] = (
         model_artifacts=('models.py', 'migrations/001_initial.sql', 'repository.py', 'schema_contract.py', 'manifest.py'),
         ui_artifacts=('ui.py', 'forms.py', 'wizards.py', 'controls.py', 'agent.py'),
         service_artifacts=('services.py', 'service_contract.py', 'routes.py', 'runtime.py', 'app_surface.py'),
-        test_artifacts=('tests/test_app_surface.py', 'tests/test_contract.py', 'tests/test_improve1_traceability.py'),
+        test_artifacts=('tests/test_app_surface.py', 'tests/test_contract.py', 'tests/test_improve1_traceability.py', 'tests/test_domain_behavior.py'),
         evidence_artifacts=('release_evidence.py', 'RELEASE_EVIDENCE.md', 'capability_assurance.py', 'implementation-status.md', 'SPECIFICATION.md', 'README.md'),
     ),
     Improve1Capability(
@@ -593,7 +593,7 @@ IMPROVE1_CAPABILITIES: tuple[Improve1Capability, ...] = (
         model_artifacts=('models.py', 'migrations/001_initial.sql', 'repository.py', 'schema_contract.py', 'manifest.py'),
         ui_artifacts=('ui.py', 'forms.py', 'wizards.py', 'controls.py', 'agent.py'),
         service_artifacts=('services.py', 'service_contract.py', 'routes.py', 'runtime.py', 'app_surface.py'),
-        test_artifacts=('tests/test_app_surface.py', 'tests/test_contract.py', 'tests/test_improve1_traceability.py'),
+        test_artifacts=('tests/test_app_surface.py', 'tests/test_contract.py', 'tests/test_improve1_traceability.py', 'tests/test_domain_behavior.py'),
         evidence_artifacts=('release_evidence.py', 'RELEASE_EVIDENCE.md', 'capability_assurance.py', 'implementation-status.md', 'SPECIFICATION.md', 'README.md'),
     ),
 )

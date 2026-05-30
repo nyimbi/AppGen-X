@@ -27,3 +27,10 @@ Implementation and validation complete.
 
 - `python3 -m pytest ...` was not usable in this environment because `pytest` is not installed in the active Python runtime.
 - Validation therefore used direct execution of the focused package test functions plus the targeted package and global PBC audit contracts.
+
+## 2026-05-30 Domain Behavior Traceability Slice
+
+- Expanded `tests/test_domain_behavior.py` with route, repository snapshot, assistant CRUD/document planning, owned-boundary, and release-evidence checks.
+- Updated `IMPROVE1_TRACEABILITY.md` so all 50 improve1 rows cite `tests/test_domain_behavior.py` as direct tax localization behavior evidence.
+- Updated `improve1_capabilities.py` so every feature execution plan carries the domain behavior test artifact.
+- Validation: `/Volumes/Media/src/pjs/appgen/.venv/bin/pytest src/pyAppGen/pbcs/tax_localization/tests`.

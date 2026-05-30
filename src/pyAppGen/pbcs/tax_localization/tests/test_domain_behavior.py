@@ -4,8 +4,12 @@ from __future__ import annotations
 
 import pytest
 
+from .. import agent
+from .. import release_evidence
+from .. import routes
 from .. import runtime
 from ..services import TaxLocalizationService
+from ..repository import TaxLocalizationRepository
 from ..services import service_operation_manifest
 from ..ui import tax_localization_render_workbench
 from ..ui import tax_localization_ui_contract
@@ -298,6 +302,113 @@ def test_tax_ui_forms_wizards_controls_and_configuration_are_executable():
     assert rendered["single_pbc_app"]["single_pbc_app"] is True
     assert rendered["binding_evidence"]["shared_table_access"] is False
     assert ui_contract["configuration_editor"]["stream_engine_picker_visible"] is False
+
+
+
+def test_tax_agent_routes_repository_and_release_surfaces_are_executable():
+    service = configured_tax_service()
+    quote = service.command_tax_quotes({"quote": quote_payload("tax-quote-surface")})
+    invoice = service.command_tax_invoices_id_tax_records(
+        {"invoice_id": "invoice-surface-001", "calculation_id": quote["calculation"]["calculation_id"]}
+    )
+    filing = service.command_tax_filings(
+        {
+            "filing_id": "filing-surface-2026-06",
+            "jurisdiction_id": "us_ca_san_francisco",
+            "period": "2026-06",
+            "approved_by": "tax_controller",
+        }
+    )
+
+    route_validation = routes.validate_api_route_contracts()
+    route_dispatch = routes.dispatch_route(
+        "POST",
+        "/api/pbc/tax_localization/tax/jurisdictions",
+        {
+            "jurisdiction": {
+                **jurisdiction_payload(),
+                "jurisdiction_id": "us_wa_seattle",
+                "region": "WA",
+                "locality": "Seattle",
+                "authority_channel": "wa_dor_api",
+            }
+        },
+    )
+    skills = agent.agent_skill_manifest()
+    chatbot = agent.chatbot_interface_contract()
+    document_plan = agent.document_instruction_plan(
+        "California exemption certificate cert-001 and monthly filing instruction.",
+        "Update the exemption certificate and prepare filing remittance evidence.",
+        target_entity="exemption_certificate",
+        requested_action="update",
+    )
+    crud_plan = agent.datastore_crud_plan(
+        "create",
+        table="tax_localization_tax_filing",
+        payload={"filing_id": "filing-agent", "jurisdiction_id": "us_ca_san_francisco"},
+    )
+    blocked_crud = agent.datastore_crud_plan("update", table="treasury_cash_bank_account", payload={"account_id": "bad"})
+    assistant_preview = agent.tax_localization_assistant_preview(
+        {
+            "document_text": "Nexus threshold update for California filings.",
+            "instructions": "Update the tax parameter and preview the mutation.",
+            "target_entity": "tax_parameter",
+            "requested_action": "update",
+            "payload": {"name": "nexus_sales_threshold", "value": 150000},
+        }
+    )
+    contribution = agent.composed_agent_contribution()
+
+    repository = TaxLocalizationRepository()
+    try:
+        tables = repository.apply_schema()
+        persisted = repository.save_runtime_snapshot(service.state)
+        jurisdictions = repository.list_jurisdictions()
+        calculations = repository.list_calculations()
+        filings = repository.list_filings()
+        outbox = repository.list_outbox_events()
+        repo_manifest = repository.database_manifest()
+    finally:
+        repository.close()
+
+    release_validation = release_evidence.validate_release_evidence()
+    release_smoke = release_evidence.smoke_test()
+
+    assert quote["ok"] is True
+    assert invoice["record"]["status"] == "recorded"
+    assert filing["filing"]["status"] == "prepared"
+    assert route_validation["ok"] is True
+    assert all(contract["event_contract"] == "AppGen-X" for contract in route_validation["contracts"])
+    assert all(contract["stream_engine_picker_visible"] is False for contract in route_validation["contracts"])
+    assert all(contract["shared_table_access"] is False for contract in route_validation["contracts"])
+    assert route_dispatch["ok"] is True
+    assert route_dispatch["result"]["jurisdiction"]["status"] == "active"
+    assert route_dispatch["side_effects"] == ()
+    assert skills["ok"] is True
+    assert chatbot["ok"] is True
+    assert document_plan["ok"] is True
+    assert document_plan["candidate_table"] == "tax_localization_exemption_certificate"
+    assert crud_plan["ok"] is True
+    assert crud_plan["requires_confirmation"] is True
+    assert crud_plan["event_contract"] == "AppGen-X"
+    assert blocked_crud["ok"] is False
+    assert assistant_preview["ok"] is True
+    assert assistant_preview["mutation_preview"]["requires_confirmation"] is True
+    assert contribution["ok"] is True
+    assert "tax_localization_crud" in contribution["dsl_tools"]
+    assert set(tables) >= {"tax_localization_tax_jurisdiction", "tax_localization_tax_filing", "tax_localization_appgen_outbox_event"}
+    assert persisted["ok"] is True
+    assert persisted["counts"]["jurisdictions"] == 1
+    assert persisted["counts"]["calculations"] == 1
+    assert persisted["counts"]["filings"] == 1
+    assert len(jurisdictions) == 1
+    assert calculations[0]["tax_total"] == 175.0
+    assert filings[0]["liability"] == 175.0
+    assert len(outbox) >= 5
+    assert repo_manifest["shared_table_access"] is False
+    assert repo_manifest["local_repository_backend"] == "sqlite"
+    assert release_validation["ok"] is True
+    assert release_smoke["ok"] is True
 
 
 def test_tax_events_retry_dead_letter_manifest_and_configuration_guards():
