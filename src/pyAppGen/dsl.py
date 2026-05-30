@@ -2594,9 +2594,49 @@ def _component_publish_text_renderer_contract() -> dict:
         if "side_effect_free=" in line or "write_performed=" in line
     )
     patch_contract_lines = tuple(line for line in lines if "patch_format=appgen.component-catalog-patch.v1" in line)
+    emitted_catalog_sources = tuple()
+    emitted_side_effect_values = tuple()
+    emitted_write_values = tuple()
+    emitted_patch_formats = tuple()
+    for line in summary_lines:
+        parts = line.split()
+        for part in parts:
+            if part.startswith("catalog="):
+                emitted_catalog_sources = (*emitted_catalog_sources, part.removeprefix("catalog="))
+            elif part.startswith("side_effect_free="):
+                emitted_side_effect_values = (*emitted_side_effect_values, part.removeprefix("side_effect_free="))
+            elif part.startswith("write_performed="):
+                emitted_write_values = (*emitted_write_values, part.removeprefix("write_performed="))
+            elif part.startswith("patch_format="):
+                emitted_patch_formats = (*emitted_patch_formats, part.removeprefix("patch_format="))
+    emitted_existing_components = tuple(
+        line.removeprefix("catalog-existing ").strip()
+        for line in catalog_lines
+        if line.startswith("catalog-existing ")
+    )
+    required_catalog_sources = (payload["catalog"]["source"],)
+    required_side_effect_values = (str(payload["catalog_patch"]["side_effect_free"]),)
+    required_write_values = (str(payload["catalog_patch"]["write_performed"]),)
+    required_patch_formats = (payload["catalog_patch"]["format"],)
+    required_existing_components = tuple(payload["catalog"]["components"])
+    missing_catalog_sources = tuple(source for source in required_catalog_sources if source not in emitted_catalog_sources)
+    missing_side_effect_values = tuple(
+        value for value in required_side_effect_values if value not in emitted_side_effect_values
+    )
+    missing_write_values = tuple(value for value in required_write_values if value not in emitted_write_values)
+    missing_patch_formats = tuple(format_name for format_name in required_patch_formats if format_name not in emitted_patch_formats)
+    missing_existing_components = tuple(
+        component for component in required_existing_components if component not in emitted_existing_components
+    )
     return {
         "format": "appgen.component-publish-text-renderer.v1",
-        "ok": not missing and not text.lstrip().startswith("{"),
+        "ok": not missing
+        and not missing_catalog_sources
+        and not missing_side_effect_values
+        and not missing_write_values
+        and not missing_patch_formats
+        and not missing_existing_components
+        and not text.lstrip().startswith("{"),
         **_text_renderer_contract_counts(
             text,
             required_fragments,
@@ -2609,6 +2649,26 @@ def _component_publish_text_renderer_contract() -> dict:
         "side_effect_line_count": len(side_effect_lines),
         "patch_contract_line_count": len(patch_contract_lines),
         "existing_catalog_line_count": sum(1 for line in catalog_lines if line.startswith("catalog-existing ")),
+        "required_catalog_sources": required_catalog_sources,
+        "emitted_catalog_sources": emitted_catalog_sources,
+        "missing_catalog_source_count": len(missing_catalog_sources),
+        "missing_catalog_sources": missing_catalog_sources,
+        "required_side_effect_values": required_side_effect_values,
+        "emitted_side_effect_values": emitted_side_effect_values,
+        "missing_side_effect_value_count": len(missing_side_effect_values),
+        "missing_side_effect_values": missing_side_effect_values,
+        "required_write_values": required_write_values,
+        "emitted_write_values": emitted_write_values,
+        "missing_write_value_count": len(missing_write_values),
+        "missing_write_values": missing_write_values,
+        "required_patch_formats": required_patch_formats,
+        "emitted_patch_formats": emitted_patch_formats,
+        "missing_patch_format_count": len(missing_patch_formats),
+        "missing_patch_formats": missing_patch_formats,
+        "required_existing_components": required_existing_components,
+        "emitted_existing_components": emitted_existing_components,
+        "missing_existing_component_count": len(missing_existing_components),
+        "missing_existing_components": missing_existing_components,
         "json_fallback": text.lstrip().startswith("{"),
         "text_prefix": text[:240],
     }
@@ -5238,6 +5298,11 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and component_publish_text_renderer.get("side_effect_line_count") == 1
             and component_publish_text_renderer.get("patch_contract_line_count") == 1
             and component_publish_text_renderer.get("existing_catalog_line_count") == 1
+            and component_publish_text_renderer.get("missing_catalog_source_count") == 0
+            and component_publish_text_renderer.get("missing_side_effect_value_count") == 0
+            and component_publish_text_renderer.get("missing_write_value_count") == 0
+            and component_publish_text_renderer.get("missing_patch_format_count") == 0
+            and component_publish_text_renderer.get("missing_existing_component_count") == 0
             and component_publish_text_renderer.get("json_fallback") is False,
             "Component publication contracts prove reusable component catalog patches are side-effect-free, iconized, text-visible, and reject missing catalogs.",
             "docs/tooling.md#appgen-component-publish",
@@ -5282,6 +5347,30 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                     "side_effect_line_count": component_publish_text_renderer.get("side_effect_line_count"),
                     "patch_contract_line_count": component_publish_text_renderer.get("patch_contract_line_count"),
                     "existing_catalog_line_count": component_publish_text_renderer.get("existing_catalog_line_count"),
+                    "required_catalog_sources": component_publish_text_renderer.get("required_catalog_sources"),
+                    "emitted_catalog_sources": component_publish_text_renderer.get("emitted_catalog_sources"),
+                    "missing_catalog_source_count": component_publish_text_renderer.get("missing_catalog_source_count"),
+                    "missing_catalog_sources": component_publish_text_renderer.get("missing_catalog_sources"),
+                    "required_side_effect_values": component_publish_text_renderer.get("required_side_effect_values"),
+                    "emitted_side_effect_values": component_publish_text_renderer.get("emitted_side_effect_values"),
+                    "missing_side_effect_value_count": component_publish_text_renderer.get(
+                        "missing_side_effect_value_count"
+                    ),
+                    "missing_side_effect_values": component_publish_text_renderer.get("missing_side_effect_values"),
+                    "required_write_values": component_publish_text_renderer.get("required_write_values"),
+                    "emitted_write_values": component_publish_text_renderer.get("emitted_write_values"),
+                    "missing_write_value_count": component_publish_text_renderer.get("missing_write_value_count"),
+                    "missing_write_values": component_publish_text_renderer.get("missing_write_values"),
+                    "required_patch_formats": component_publish_text_renderer.get("required_patch_formats"),
+                    "emitted_patch_formats": component_publish_text_renderer.get("emitted_patch_formats"),
+                    "missing_patch_format_count": component_publish_text_renderer.get("missing_patch_format_count"),
+                    "missing_patch_formats": component_publish_text_renderer.get("missing_patch_formats"),
+                    "required_existing_components": component_publish_text_renderer.get("required_existing_components"),
+                    "emitted_existing_components": component_publish_text_renderer.get("emitted_existing_components"),
+                    "missing_existing_component_count": component_publish_text_renderer.get(
+                        "missing_existing_component_count"
+                    ),
+                    "missing_existing_components": component_publish_text_renderer.get("missing_existing_components"),
                     "json_fallback": component_publish_text_renderer.get("json_fallback"),
                 },
             },

@@ -6672,6 +6672,31 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert component_publish_check["detail"]["text_renderer"]["side_effect_line_count"] == 1
     assert component_publish_check["detail"]["text_renderer"]["patch_contract_line_count"] == 1
     assert component_publish_check["detail"]["text_renderer"]["existing_catalog_line_count"] == 1
+    assert component_publish_check["detail"]["text_renderer"]["emitted_catalog_sources"] == (
+        component_publish_check["detail"]["text_renderer"]["required_catalog_sources"]
+    )
+    assert component_publish_check["detail"]["text_renderer"]["missing_catalog_source_count"] == 0
+    assert component_publish_check["detail"]["text_renderer"]["missing_catalog_sources"] == ()
+    assert component_publish_check["detail"]["text_renderer"]["emitted_side_effect_values"] == (
+        component_publish_check["detail"]["text_renderer"]["required_side_effect_values"]
+    )
+    assert component_publish_check["detail"]["text_renderer"]["missing_side_effect_value_count"] == 0
+    assert component_publish_check["detail"]["text_renderer"]["missing_side_effect_values"] == ()
+    assert component_publish_check["detail"]["text_renderer"]["emitted_write_values"] == (
+        component_publish_check["detail"]["text_renderer"]["required_write_values"]
+    )
+    assert component_publish_check["detail"]["text_renderer"]["missing_write_value_count"] == 0
+    assert component_publish_check["detail"]["text_renderer"]["missing_write_values"] == ()
+    assert component_publish_check["detail"]["text_renderer"]["emitted_patch_formats"] == (
+        component_publish_check["detail"]["text_renderer"]["required_patch_formats"]
+    )
+    assert component_publish_check["detail"]["text_renderer"]["missing_patch_format_count"] == 0
+    assert component_publish_check["detail"]["text_renderer"]["missing_patch_formats"] == ()
+    assert component_publish_check["detail"]["text_renderer"]["emitted_existing_components"] == (
+        component_publish_check["detail"]["text_renderer"]["required_existing_components"]
+    )
+    assert component_publish_check["detail"]["text_renderer"]["missing_existing_component_count"] == 0
+    assert component_publish_check["detail"]["text_renderer"]["missing_existing_components"] == ()
     assert component_publish_check["detail"]["text_renderer"]["json_fallback"] is False
     test_strategy_check = next(check for check in report["checks"] if check["id"] == "parser_golden_and_drift_gates")
     assert test_strategy_check["detail"]["cli"]["format"] == "appgen.test-strategy-cli-audit.v1"
@@ -7549,6 +7574,26 @@ def test_component_publish_text_renderer_contract_proves_catalog_log_markers() -
     assert report["side_effect_line_count"] == 1
     assert report["patch_contract_line_count"] == 1
     assert report["existing_catalog_line_count"] == 1
+    assert report["required_catalog_sources"] == ("components.json",)
+    assert report["emitted_catalog_sources"] == report["required_catalog_sources"]
+    assert report["missing_catalog_source_count"] == 0
+    assert report["missing_catalog_sources"] == ()
+    assert report["required_side_effect_values"] == ("True",)
+    assert report["emitted_side_effect_values"] == report["required_side_effect_values"]
+    assert report["missing_side_effect_value_count"] == 0
+    assert report["missing_side_effect_values"] == ()
+    assert report["required_write_values"] == ("False",)
+    assert report["emitted_write_values"] == report["required_write_values"]
+    assert report["missing_write_value_count"] == 0
+    assert report["missing_write_values"] == ()
+    assert report["required_patch_formats"] == ("appgen.component-catalog-patch.v1",)
+    assert report["emitted_patch_formats"] == report["required_patch_formats"]
+    assert report["missing_patch_format_count"] == 0
+    assert report["missing_patch_formats"] == ()
+    assert report["required_existing_components"] == ("ExistingBox",)
+    assert report["emitted_existing_components"] == report["required_existing_components"]
+    assert report["missing_existing_component_count"] == 0
+    assert report["missing_existing_components"] == ()
     assert report["missing_fragments"] == ()
     assert report["json_fallback"] is False
     assert report["text_prefix"].startswith(

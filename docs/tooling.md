@@ -1183,7 +1183,10 @@ The renderer contract reports fragment and marker counts for the component
 summary, catalog metadata, side-effect posture, and patch contract. It also
 reports summary-line, catalog-line, side-effect-line, patch-contract-line, and
 existing-catalog-line counts so component publication logs prove catalog
-context and non-mutating publication posture did not disappear.
+context and non-mutating publication posture did not disappear. It also reports
+required and emitted catalog sources, side-effect values, write-performed
+values, patch formats, and existing catalog component names with named missing
+lists, so the release gate fails on the exact hidden publication marker.
 The aggregate tooling audit exposes this proof independently as
 `component_publish_catalog_contracts`. That gate fails when
 `appgen component-publish` stops returning an `appgen.component-catalog-patch.v1`
