@@ -1357,6 +1357,12 @@ registered PBCs and their API/event contracts when the query matches PBC names,
 labels, mesh metadata, descriptions, or contract names. This lets editors and
 agents discover selectable PBCs without hard-coding the catalog into grammar
 rules.
+The JSON-RPC audit reports this as `workspace_symbol_catalog_result_depth`,
+including catalog query names, passing/missing query counts, PBC result counts,
+contract result counts, catalog URI sets, PBC keys, and contract names. The
+aggregate `lsp_navigation_completion_contracts` gate requires the catalog PBC
+query and catalog contract query to both pass, so catalog-backed discovery does
+not silently fall back to ordinary workspace-only symbols.
 Definition navigation uses the same catalog location scheme for registered PBC
 keys and API/event contract tokens, so `textDocument/definition` can jump from
 composition references to read-only catalog declarations as well as to ordinary

@@ -5480,6 +5480,9 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and lsp_rpc.get("reference_scope_excluded_match_count") == 0
             and lsp_rpc.get("missing_hover_surface_count") == 0
             and lsp_rpc.get("observed_hover_surface_count") == lsp_rpc.get("required_hover_surface_count")
+            and lsp_rpc.get("workspace_symbol_catalog_missing_query_count") == 0
+            and lsp_rpc.get("workspace_symbol_catalog_pbc_result_count", 0) >= 1
+            and lsp_rpc.get("workspace_symbol_catalog_contract_result_count", 0) >= 1
             and lsp_text_renderer["ok"]
             and lsp_text_renderer.get("service_count_line_count", 0) >= 1
             and lsp_text_renderer.get("completion_line_count", 0) >= 1
@@ -5527,6 +5530,20 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                     "observed_surface_count": lsp_rpc.get("observed_hover_surface_count"),
                     "missing_surface_count": lsp_rpc.get("missing_hover_surface_count"),
                     "surface_checks": lsp_rpc.get("hover_surface_checks"),
+                },
+                "workspace_symbol_catalog": {
+                    "format": lsp_rpc.get("format"),
+                    "queries": lsp_rpc.get("workspace_symbol_catalog_queries"),
+                    "query_count": lsp_rpc.get("workspace_symbol_catalog_query_count"),
+                    "passing_query_count": lsp_rpc.get("workspace_symbol_catalog_passing_query_count"),
+                    "missing_queries": lsp_rpc.get("workspace_symbol_catalog_missing_queries"),
+                    "missing_query_count": lsp_rpc.get("workspace_symbol_catalog_missing_query_count"),
+                    "pbc_result_count": lsp_rpc.get("workspace_symbol_catalog_pbc_result_count"),
+                    "contract_result_count": lsp_rpc.get("workspace_symbol_catalog_contract_result_count"),
+                    "pbc_uris": lsp_rpc.get("workspace_symbol_catalog_pbc_uris"),
+                    "contract_uris": lsp_rpc.get("workspace_symbol_catalog_contract_uris"),
+                    "pbc_keys": lsp_rpc.get("workspace_symbol_catalog_pbc_keys"),
+                    "contract_names": lsp_rpc.get("workspace_symbol_catalog_contract_names"),
                 },
                 "text_renderer": {
                     "format": lsp_text_renderer.get("format"),
@@ -8520,10 +8537,52 @@ def _tooling_audit_lsp_json_rpc(source: str, *, broken_handler_source: str) -> d
             ),
         ),
     )
+    request_results = {}
     for name, message, predicate in request_checks:
         responses, _ = lsp_server_handle_message(message, documents)
         result = responses[0].get("result") if responses else None
+        request_results[name] = result
         checks.append(_release_check(name, bool(responses) and predicate(result)))
+
+    catalog_pbc_symbol_responses, _ = lsp_server_handle_message(
+        {"jsonrpc": "2.0", "id": 25, "method": "workspace/symbol", "params": {"query": "ledger"}},
+        documents,
+    )
+    catalog_pbc_items = tuple(catalog_pbc_symbol_responses[0].get("result", ()) if catalog_pbc_symbol_responses else ())
+    catalog_contract_items = tuple(request_results.get("workspace_symbol_catalog_metadata") or ())
+    catalog_pbc_matches = tuple(
+        item
+        for item in catalog_pbc_items
+        if item.get("location", {}).get("uri") == "catalog://pbc/gl_core"
+        and item.get("data", {}).get("catalog_resolved") is True
+    )
+    catalog_contract_matches = tuple(
+        item
+        for item in catalog_contract_items
+        if str(item.get("location", {}).get("uri", "")).startswith("catalog://pbc/gl_core/")
+        and item.get("data", {}).get("catalog_resolved") is True
+        and item.get("data", {}).get("pbc") == "gl_core"
+    )
+    catalog_workspace_queries = {
+        "ledger": bool(catalog_pbc_matches),
+        "JournalPosted": bool(catalog_contract_matches),
+    }
+    missing_catalog_workspace_queries = tuple(
+        query for query, ok in catalog_workspace_queries.items() if not ok
+    )
+    checks.append(
+        _release_check(
+            "workspace_symbol_catalog_result_depth",
+            not missing_catalog_workspace_queries
+            and any(item.get("data", {}).get("label") == "General Ledger Core" for item in catalog_pbc_matches)
+            and any(item.get("data", {}).get("kind") == "event" for item in catalog_contract_matches),
+            detail={
+                "catalog_pbc_result_count": len(catalog_pbc_matches),
+                "catalog_contract_result_count": len(catalog_contract_matches),
+                "missing_catalog_workspace_queries": missing_catalog_workspace_queries,
+            },
+        )
+    )
 
     customer_workspace_uri = "memory://workspace-customer.appgen"
     invoice_workspace_uri = "memory://workspace-invoice.appgen"
@@ -9296,6 +9355,24 @@ audit ReferenceAudit {
         "request_check_count": len(request_checks),
         "passing_request_check_count": sum(1 for check in checks if check["check"] in request_check_ids and check["ok"]),
         "request_check_ids": request_check_ids,
+        "workspace_symbol_catalog_queries": tuple(catalog_workspace_queries),
+        "workspace_symbol_catalog_query_count": len(catalog_workspace_queries),
+        "workspace_symbol_catalog_passing_query_count": sum(1 for ok in catalog_workspace_queries.values() if ok),
+        "workspace_symbol_catalog_missing_queries": missing_catalog_workspace_queries,
+        "workspace_symbol_catalog_missing_query_count": len(missing_catalog_workspace_queries),
+        "workspace_symbol_catalog_pbc_result_count": len(catalog_pbc_matches),
+        "workspace_symbol_catalog_contract_result_count": len(catalog_contract_matches),
+        "workspace_symbol_catalog_pbc_uris": tuple(
+            item.get("location", {}).get("uri") for item in catalog_pbc_matches
+        ),
+        "workspace_symbol_catalog_contract_uris": tuple(
+            item.get("location", {}).get("uri") for item in catalog_contract_matches
+        ),
+        "workspace_symbol_catalog_pbc_keys": tuple(
+            str(item.get("data", {}).get("id", "")).removeprefix("catalog.pbc.")
+            for item in catalog_pbc_matches
+        ),
+        "workspace_symbol_catalog_contract_names": tuple(item.get("name") for item in catalog_contract_matches),
         "lexical_reference_scope_ok": lexical_reference_scope_ok,
         "reference_scope_location_count": len(reference_scope_locations),
         "reference_scope_expected_line_count": len(expected_reference_lines),

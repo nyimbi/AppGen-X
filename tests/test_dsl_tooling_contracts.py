@@ -1714,6 +1714,20 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
     assert "hover_relationship_lookup_depth" in {check["check"] for check in audit["checks"]}
     assert "hover_handler_target_depth" in {check["check"] for check in audit["checks"]}
     assert "hover_catalog_diagnostic_depth" in {check["check"] for check in audit["checks"]}
+    assert "workspace_symbol_catalog_result_depth" in {check["check"] for check in audit["checks"]}
+    assert audit["workspace_symbol_catalog_query_count"] == 2
+    assert audit["workspace_symbol_catalog_passing_query_count"] == audit["workspace_symbol_catalog_query_count"]
+    assert audit["workspace_symbol_catalog_missing_query_count"] == 0
+    assert audit["workspace_symbol_catalog_missing_queries"] == ()
+    assert audit["workspace_symbol_catalog_pbc_result_count"] >= 1
+    assert audit["workspace_symbol_catalog_contract_result_count"] >= 1
+    assert "catalog://pbc/gl_core" in audit["workspace_symbol_catalog_pbc_uris"]
+    assert any(
+        uri.startswith("catalog://pbc/gl_core/event/")
+        for uri in audit["workspace_symbol_catalog_contract_uris"]
+    )
+    assert "gl_core" in audit["workspace_symbol_catalog_pbc_keys"]
+    assert "JournalPosted" in audit["workspace_symbol_catalog_contract_names"]
     assert audit["required_hover_surface_count"] == 5
     assert audit["observed_hover_surface_count"] == audit["required_hover_surface_count"]
     assert audit["missing_hover_surface_count"] == 0
@@ -5433,6 +5447,7 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
         "hover_relationship_lookup_depth",
         "hover_handler_target_depth",
         "hover_catalog_diagnostic_depth",
+        "workspace_symbol_catalog_result_depth",
         "workspace_document_scan_and_rename",
         "enterprise_definition_context",
         "lexical_reference_scope",
@@ -5493,6 +5508,22 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
         lsp_navigation_check["detail"]["hover_depth"]["required_surfaces"]
     )
     assert all(lsp_navigation_check["detail"]["hover_depth"]["surface_checks"].values())
+    assert lsp_navigation_check["detail"]["workspace_symbol_catalog"]["format"] == "appgen.lsp-json-rpc-audit.v1"
+    assert lsp_navigation_check["detail"]["workspace_symbol_catalog"]["query_count"] == 2
+    assert lsp_navigation_check["detail"]["workspace_symbol_catalog"]["passing_query_count"] == (
+        lsp_navigation_check["detail"]["workspace_symbol_catalog"]["query_count"]
+    )
+    assert lsp_navigation_check["detail"]["workspace_symbol_catalog"]["missing_query_count"] == 0
+    assert lsp_navigation_check["detail"]["workspace_symbol_catalog"]["missing_queries"] == ()
+    assert lsp_navigation_check["detail"]["workspace_symbol_catalog"]["pbc_result_count"] >= 1
+    assert lsp_navigation_check["detail"]["workspace_symbol_catalog"]["contract_result_count"] >= 1
+    assert "catalog://pbc/gl_core" in lsp_navigation_check["detail"]["workspace_symbol_catalog"]["pbc_uris"]
+    assert any(
+        uri.startswith("catalog://pbc/gl_core/event/")
+        for uri in lsp_navigation_check["detail"]["workspace_symbol_catalog"]["contract_uris"]
+    )
+    assert "gl_core" in lsp_navigation_check["detail"]["workspace_symbol_catalog"]["pbc_keys"]
+    assert "JournalPosted" in lsp_navigation_check["detail"]["workspace_symbol_catalog"]["contract_names"]
     assert lsp_navigation_check["detail"]["text_renderer"]["format"] == "appgen.lsp-service-text-renderer.v1"
     assert lsp_navigation_check["detail"]["text_renderer"]["service_count_line_count"] == 1
     assert lsp_navigation_check["detail"]["text_renderer"]["completion_line_count"] >= 1
