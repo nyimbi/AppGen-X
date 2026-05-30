@@ -1971,6 +1971,14 @@ Exit criteria:
 
 ## Contributor Task Breakdown
 
+Contributor tasks are executable coverage checkpoints, not only onboarding
+advice. `appgen.contributor-task-contract-audit.v1` is embedded in the
+aggregate tooling audit through `contributor_task_breakdown_contracts`. It maps
+the good-first, intermediate, and advanced task lists below to concrete parser,
+semantic, diagnostic, formatter, CLI, LSP, graph, migration, natural-language,
+designer, release, and drift evidence. The gate fails when any listed task no
+longer has a passing evidence format.
+
 Good first implementation tasks:
 
 - define diagnostic dataclasses and JSON schema;

@@ -3895,6 +3895,12 @@ def test_tooling_implementation_phase_audit_maps_phase_exit_criteria_to_evidence
             "passing_family_count": 11,
             "missing_family_count": 0,
         },
+        contributor_task_contracts={
+            **ok("appgen.contributor-task-contract-audit.v1"),
+            "task_count": 22,
+            "passing_task_count": 22,
+            "missing_task_count": 0,
+        },
         module_boundaries=ok("appgen.module-boundary-audit.v1"),
         lint=ok("appgen.lint-report.v1"),
         strict_lint={**ok("appgen.lint-report.v1"), "strict": True},
@@ -4143,6 +4149,7 @@ def test_tooling_implementation_phase_audit_maps_phase_exit_criteria_to_evidence
         "doctor_cli_text_contracts",
         "grammar_parser_sync_and_keyword_budget",
         "test_strategy_family_contracts",
+        "contributor_task_breakdown_contracts",
         "semantic_model_contract",
         "diagnostic_catalog_fixture_contracts",
         "lint_cli_directory_contracts",
@@ -4408,6 +4415,22 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert phase_doc_check["detail"]["title_mismatch_count"] == 0
     assert phase_doc_check["detail"]["exit_criteria_label_count"] == phase_check["detail"]["phase_count"]
     assert phase_doc_check["detail"]["missing_exit_phrase_count"] == 0
+    contributor_check = next(check for check in report["checks"] if check["id"] == "contributor_task_breakdown_contracts")
+    assert contributor_check["detail"]["format"] == "appgen.contributor-task-contract-audit.v1"
+    assert contributor_check["detail"]["ok"] is True
+    assert contributor_check["detail"]["group_count"] == 3
+    assert contributor_check["detail"]["groups"] == ("good_first", "intermediate", "advanced")
+    assert contributor_check["detail"]["task_count"] == 22
+    assert contributor_check["detail"]["passing_task_count"] == contributor_check["detail"]["task_count"]
+    assert contributor_check["detail"]["missing_task_count"] == 0
+    assert contributor_check["detail"]["missing_tasks"] == ()
+    assert {
+        "define_diagnostic_dataclasses_and_json_schema",
+        "pbc_catalog_binding_in_semantic_model",
+        "safe_rename_across_workspace",
+        "cross_tool_drift_tests",
+    } <= set(contributor_check["detail"]["task_names"])
+    assert all(task["evidence_format"] for task in contributor_check["detail"]["tasks"])
     vscode_check = next(check for check in report["checks"] if check["id"] == "vscode_extension_surface")
     assert vscode_check["detail"]["checks"]["diagnostics_collection"] is True
     assert vscode_check["detail"]["checks"]["cli_command_contracts"] is True

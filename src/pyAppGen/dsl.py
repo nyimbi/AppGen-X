@@ -4424,6 +4424,35 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
         drift_text_renderer=drift_text_renderer,
         test_strategy_cli=test_strategy_cli,
     )
+    contributor_task_contracts = _tooling_audit_contributor_task_contracts(
+        semantic=semantic,
+        symbol_coverage=symbol_coverage,
+        lint=lint,
+        diagnostics=diagnostics,
+        diagnostic_fixtures=diagnostic_fixtures,
+        formatter_contract=formatter_contract,
+        lint_directory_cli=lint_directory_cli,
+        validate_generate_cli=validate_generate_cli,
+        graphs=graphs,
+        graph_cli=graph_cli,
+        graph_suite_cli=graph_suite_cli,
+        migration_detected=migration_detected,
+        migration_cli=migration_cli,
+        lsp=lsp,
+        lsp_rpc=lsp_rpc,
+        lsp_rename_cli=lsp_rename_cli,
+        code_action_apply_audit=code_action_apply_audit,
+        designer=designer,
+        designer_visual_edit_matrix=designer_visual_edit_matrix,
+        designer_sync_cli=designer_sync_cli,
+        nl_plan_contract=nl_plan_contract,
+        nl_plan_cli=nl_plan_cli,
+        release=release,
+        package=package,
+        package_verify_cli=package_verify_cli,
+        drift=drift,
+        test_strategy_cli=test_strategy_cli,
+    )
     implementation_phases = _tooling_audit_implementation_phases(
         semantic=semantic,
         symbol_coverage=symbol_coverage,
@@ -4483,6 +4512,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
         parser_golden_text_renderer=parser_golden_text_renderer,
         drift_text_renderer=drift_text_renderer,
         test_family_contracts=test_family_contracts,
+        contributor_task_contracts=contributor_task_contracts,
         doctor=doctor,
         doctor_text_renderer=doctor_text_renderer,
     )
@@ -6018,6 +6048,17 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             "docs/tooling.md#implementation-phases",
             implementation_phase_doc_alignment,
         ),
+        _tooling_audit_check(
+            "contributor_task_breakdown_contracts",
+            contributor_task_contracts["ok"]
+            and contributor_task_contracts.get("task_count") == 22
+            and contributor_task_contracts.get("passing_task_count") == contributor_task_contracts.get("task_count")
+            and contributor_task_contracts.get("missing_task_count") == 0
+            and contributor_task_contracts.get("group_count") == 3,
+            "Contributor task breakdown items are mapped to executable evidence for good-first, intermediate, and advanced implementation work.",
+            "docs/tooling.md#contributor-task-breakdown",
+            contributor_task_contracts,
+        ),
     )
     text_renderer = _tooling_audit_text_renderer_contract()
     checks = checks + (
@@ -6591,6 +6632,57 @@ def _tooling_audit_phase_doc_alignment(root: Path, implementation_phases: dict) 
     }
 
 
+def _tooling_audit_contributor_task_contracts(**evidence: dict) -> dict:
+    tasks = (
+        _contributor_task("good_first", "define_diagnostic_dataclasses_and_json_schema", evidence["diagnostics"].get("ok") is True and evidence["diagnostics"].get("catalog_shape_gap_count") == 0, evidence["diagnostics"].get("format")),
+        _contributor_task("good_first", "add_diagnostic_code_registry_tests", evidence["diagnostic_fixtures"].get("ok") is True and evidence["diagnostic_fixtures"].get("missing_code_count") == 0, evidence["diagnostic_fixtures"].get("format")),
+        _contributor_task("good_first", "create_semantic_model_dataclasses", evidence["semantic"].get("ok") is True and evidence["semantic"].get("format") == "appgen.semantic-model.v1", evidence["semantic"].get("format")),
+        _contributor_task("good_first", "write_table_field_symbol_extraction", evidence["symbol_coverage"].get("missing") == () and evidence["semantic"].get("tables") is not None, evidence["symbol_coverage"].get("format")),
+        _contributor_task("good_first", "write_relationship_target_resolution", evidence["semantic"].get("ok") is True and evidence["lint"].get("ok") is True, evidence["semantic"].get("format")),
+        _contributor_task("good_first", "write_lookup_path_resolution", evidence["lint"].get("ok") is True and evidence["graphs"].get("ok") is True, evidence["graphs"].get("format")),
+        _contributor_task("good_first", "write_view_binding_validation", evidence["lint"].get("ok") is True and evidence["validate_generate_cli"].get("ok") is True, evidence["lint"].get("format")),
+        _contributor_task("good_first", "write_handler_target_validation", evidence["lint"].get("ok") is True and evidence["code_action_apply_audit"].get("ok") is True, evidence["code_action_apply_audit"].get("format")),
+        _contributor_task("good_first", "add_appgen_lint_json_contract_tests", evidence["lint_directory_cli"].get("ok") is True, evidence["lint_directory_cli"].get("format")),
+        _contributor_task("good_first", "add_formatter_idempotency_tests", evidence["formatter_contract"].get("ok") is True, evidence["formatter_contract"].get("format")),
+        _contributor_task("intermediate", "pbc_catalog_binding_in_semantic_model", evidence["semantic"].get("ok") is True and evidence["drift"].get("ok") is True, evidence["semantic"].get("format")),
+        _contributor_task("intermediate", "workflow_graph_extraction", evidence["graphs"].get("ok") is True and "workflow" in evidence["graphs"].get("graph_reports", ()), evidence["graphs"].get("format")),
+        _contributor_task("intermediate", "graph_output_in_mermaid_and_json", evidence["graph_cli"].get("ok") is True and evidence["graph_suite_cli"].get("ok") is True, evidence["graph_suite_cli"].get("format")),
+        _contributor_task("intermediate", "migration_diff_detection", evidence["migration_cli"].get("ok") is True and set(REQUIRED_MIGRATION_DETECTIONS) <= set(evidence["migration_detected"]), evidence["migration_cli"].get("format")),
+        _contributor_task("intermediate", "lsp_completion_and_hover", evidence["lsp"].get("ok") is True and evidence["lsp_rpc"].get("ok") is True, evidence["lsp"].get("format")),
+        _contributor_task("intermediate", "code_action_application_required_quick_fix_family", evidence["code_action_apply_audit"].get("ok") is True and evidence["code_action_apply_audit"].get("required_action_count", 0) >= 15, evidence["code_action_apply_audit"].get("format")),
+        _contributor_task("intermediate", "generator_drift_evidence_shared_semantic_model", evidence["drift"].get("ok") is True and evidence["test_strategy_cli"].get("observed_surface_count", 0) >= evidence["test_strategy_cli"].get("required_surface_count", 0), evidence["drift"].get("format")),
+        _contributor_task("advanced", "safe_rename_across_workspace", evidence["lsp_rename_cli"].get("ok") is True, evidence["lsp_rename_cli"].get("format")),
+        _contributor_task("advanced", "natural_language_patch_planner", evidence["nl_plan_contract"].get("ok") is True and evidence["nl_plan_cli"].get("ok") is True, evidence["nl_plan_contract"].get("format")),
+        _contributor_task("advanced", "visual_designer_round_trip_engine", evidence["designer"].get("ok") is True and evidence["designer_visual_edit_matrix"].get("ok") is True and evidence["designer_sync_cli"].get("ok") is True, evidence["designer"].get("format")),
+        _contributor_task("advanced", "release_evidence_bundle_verifier", evidence["release"].get("ok") is True and evidence["package"].get("ok") is True and evidence["package_verify_cli"].get("ok") is True, evidence["package_verify_cli"].get("format")),
+        _contributor_task("advanced", "cross_tool_drift_tests", evidence["drift"].get("ok") is True and evidence["test_strategy_cli"].get("ok") is True, evidence["test_strategy_cli"].get("format")),
+    )
+    missing = tuple(task["task"] for task in tasks if not task["ok"])
+    groups = tuple(dict.fromkeys(task["group"] for task in tasks))
+    return {
+        "format": "appgen.contributor-task-contract-audit.v1",
+        "ok": not missing,
+        "group_count": len(groups),
+        "groups": groups,
+        "task_count": len(tasks),
+        "passing_task_count": sum(1 for task in tasks if task["ok"]),
+        "missing_task_count": len(missing),
+        "missing_tasks": missing,
+        "tasks": tasks,
+        "task_names": tuple(task["task"] for task in tasks),
+        "source_of_truth": "docs/tooling.md#contributor-task-breakdown",
+    }
+
+
+def _contributor_task(group: str, task: str, ok: bool, evidence_format: str | None) -> dict:
+    return {
+        "group": group,
+        "task": task,
+        "ok": bool(ok),
+        "evidence_format": evidence_format,
+    }
+
+
 def _slug_identifier(title: str) -> str:
     return re.sub(r"_+", "_", re.sub(r"[^a-z0-9]+", "_", title.lower())).strip("_")
 
@@ -6733,6 +6825,15 @@ def _tooling_audit_implementation_phases(**evidence: dict) -> dict:
                     == evidence["test_family_contracts"].get("family_count")
                     and evidence["test_family_contracts"].get("missing_family_count") == 0,
                     "evidence_format": evidence["test_family_contracts"].get("format"),
+                },
+                {
+                    "id": "contributor_task_breakdown_contracts",
+                    "ok": evidence["contributor_task_contracts"].get("ok") is True
+                    and evidence["contributor_task_contracts"].get("task_count") == 22
+                    and evidence["contributor_task_contracts"].get("passing_task_count")
+                    == evidence["contributor_task_contracts"].get("task_count")
+                    and evidence["contributor_task_contracts"].get("missing_task_count") == 0,
+                    "evidence_format": evidence["contributor_task_contracts"].get("format"),
                 },
             ),
         ),
