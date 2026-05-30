@@ -6,7 +6,8 @@ This file tracks package-local progress for the active goal: each PBC must imple
 
 - PBCs with `improve1.md`: 147
 - PBCs with `IMPROVE1_TRACEABILITY.md`: 147
-- PBCs remaining: 0
+- PBCs remaining traceability matrices: 0
+- PBCs with executable `improve1_capabilities.py` registries: 5
 
 ## Completed Traceability Matrices
 
@@ -158,6 +159,14 @@ This file tracks package-local progress for the active goal: each PBC must imple
 - `wms_core`
 - `workflow_orchestration`
 
+## Executable improve1 Capability Registries
+
+- `ap_automation`
+- `ar_credit`
+- `field_service_management`
+- `gl_core`
+- `multi_sided_market`
+
 ## Remaining Traceability Matrices
 
 - None
@@ -169,8 +178,11 @@ This file tracks package-local progress for the active goal: each PBC must imple
 - `02f6cf7b` added and tested platform-fabric and financial-core traceability matrices.
 - `882ef515` added and tested supply chain/order flow, HCM/payroll, and manufacturing matrices.
 - `01a5351d` added and tested commerce/content/relationship, intelligence, finance, insurance, and healthcare matrices.
-- Current working batch adds all remaining package-local matrices. Validation: `/Volumes/Media/src/pjs/appgen/.venv/bin/pytest` over all 147 `test_improve1_traceability.py` files passed.
+- `c9ad4035` completed package-local traceability matrices for all 147 PBCs.
+- `d6cdf9f3` strengthened all 147 matrix tests to verify exact titles and real evidence paths.
+- Current working batch adds executable improve1 capability registries for `gl_core`, `ap_automation`, `ar_credit`, `field_service_management`, and `multi_sided_market`; 15 focused tests passed before commit.
 
 ## Remaining Goal Work
 
-- Matrix presence and structure are complete, but the full goal is not closed until implementation-depth audits prove every improve1 feature is actually executable through code/model, UI, service/API, tests, and release evidence for every PBC.
+- Matrix presence and path integrity are complete for all PBCs.
+- Executable improve1 capability registries currently cover the first five high-risk PBCs; remaining PBCs still need equivalent executable semantic registries or stronger feature-specific runtime tests before the full goal can be closed.
