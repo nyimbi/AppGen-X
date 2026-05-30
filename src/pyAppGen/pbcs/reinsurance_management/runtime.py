@@ -1397,3 +1397,42 @@ def reinsurance_management_runtime_smoke() -> dict:
         'release_preview': reinsurance_management_run_advanced_assessment(preview['state'], {'tenant': 'tenant-smoke'}),
         'side_effects': (),
     }
+
+# Improve1 reinsurance management control extension.
+from .reinsurance_management_control import evaluate_reinsurance_management_control, improve1_reinsurance_management_control_contract
+
+_REINSURANCE_CONTROL_BASE_RUNTIME_CAPABILITIES = reinsurance_management_runtime_capabilities
+_REINSURANCE_CONTROL_BASE_BUILD_RELEASE_EVIDENCE = reinsurance_management_build_release_evidence
+
+
+def reinsurance_management_runtime_capabilities() -> dict:
+    runtime = dict(_REINSURANCE_CONTROL_BASE_RUNTIME_CAPABILITIES())
+    control = improve1_reinsurance_management_control_contract()
+    runtime["ok"] = bool(runtime.get("ok")) and control["ok"]
+    runtime["reinsurance_management_control"] = control
+    runtime["operations"] = tuple(dict.fromkeys(tuple(runtime.get("operations", ())) + ("evaluate_reinsurance_management_control", "improve1_reinsurance_management_control_contract")))
+    runtime["improve1_control_owned_tables"] = control["owned_tables"]
+    return runtime
+
+
+def reinsurance_management_build_release_evidence() -> dict:
+    evidence = dict(_REINSURANCE_CONTROL_BASE_BUILD_RELEASE_EVIDENCE())
+    control = improve1_reinsurance_management_control_contract()
+    artifacts = dict(evidence.get("generated_artifacts", {}))
+    artifacts["reinsurance_management_control"] = {
+        "contract": control["format"],
+        "capability_count": control["capability_count"],
+        "owned_tables": control["owned_tables"],
+        "service_apis": tuple(item["evidence"]["service_api"] for item in control["capabilities"]),
+        "ui_surfaces": tuple(item["evidence"]["ui_surface"] for item in control["capabilities"]),
+        "test": "tests/test_domain_behavior.py",
+    }
+    checks = tuple(evidence.get("checks", ())) + ({"id": "improve1_reinsurance_management_control", "ok": control["ok"]},)
+    evidence.update({
+        "ok": bool(evidence.get("ok")) and control["ok"],
+        "checks": checks,
+        "generated_artifacts": artifacts,
+        "reinsurance_management_control": control,
+        "blocking_gaps": tuple(evidence.get("blocking_gaps", ())) + tuple(control.get("blocking_gaps", ())),
+    })
+    return evidence

@@ -140,3 +140,34 @@ def smoke_test() -> dict:
         'ok': reinsurance_management_ui_contract()['ok'] and reinsurance_management_render_standalone_app(None, tenant='tenant-smoke')['ok'] and bool(rendered['workbench']['controls']),
         'side_effects': (),
     }
+
+# Improve1 reinsurance management control UI extension.
+from .reinsurance_management_control import improve1_reinsurance_management_control_contract as _improve1_reinsurance_management_control_contract
+
+_REINSURANCE_CONTROL_BASE_UI_CONTRACT = reinsurance_management_ui_contract
+_REINSURANCE_CONTROL_BASE_RENDER_WORKBENCH = reinsurance_management_render_workbench
+
+
+def reinsurance_management_ui_contract() -> dict:
+    ui = dict(_REINSURANCE_CONTROL_BASE_UI_CONTRACT())
+    control = _improve1_reinsurance_management_control_contract()
+    ui.update({
+        "ok": ui.get("ok") is True and control["ok"],
+        "reinsurance_management_control_contract": control,
+        "reinsurance_management_control_panels": tuple(item["evidence"]["ui_surface"] for item in control["capabilities"]),
+        "reinsurance_management_control_service_actions": tuple(item["evidence"]["service_api"] for item in control["capabilities"]),
+        "stream_engine_picker_visible": False,
+    })
+    return ui
+
+
+def reinsurance_management_render_workbench(*args, **kwargs) -> dict:
+    workbench = dict(_REINSURANCE_CONTROL_BASE_RENDER_WORKBENCH(*args, **kwargs))
+    control = _improve1_reinsurance_management_control_contract()
+    workbench.update({
+        "ok": workbench.get("ok") is True and control["ok"],
+        "reinsurance_management_control_panels": tuple(item["evidence"]["ui_surface"] for item in control["capabilities"]),
+        "reinsurance_management_control_service_actions": tuple(item["evidence"]["service_api"] for item in control["capabilities"]),
+        "reinsurance_management_control_agent_tools": tuple(f"reinsurance_management.skills.{item['slug']}" for item in control["capabilities"]),
+    })
+    return workbench
