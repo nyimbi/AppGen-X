@@ -9,3 +9,24 @@ def pharma_manufacturing_quality_ui_contract():
 def pharma_manufacturing_quality_render_workbench():
     ui=pharma_manufacturing_quality_ui_contract(); full=ui["full_capability_surface"]; return {"ok":True,"pbc":PBC_KEY,"route":f"/workbench/pbcs/{PBC_KEY}","role_boards":ui["role_boards"],"operation_actions":full["operation_actions"],"table_browsers":full["table_browsers"],"forms":tuple(f["id"] for f in ui["forms"]),"wizards":tuple(w["id"] for w in ui["wizards"]),"exception_queues":full["edge_case_queues"],"side_effects":()}
 def smoke_test(): return {"ok":pharma_manufacturing_quality_ui_contract()["ok"] and pharma_manufacturing_quality_render_workbench()["ok"],"side_effects":()}
+
+
+# Improve1 pharma quality control UI extension.
+from .quality_control import improve1_quality_control_contract as _improve1_quality_control_contract
+
+_PHARMA_QUALITY_BASE_UI_CONTRACT = pharma_manufacturing_quality_ui_contract
+_PHARMA_QUALITY_BASE_RENDER_WORKBENCH = pharma_manufacturing_quality_render_workbench
+
+
+def pharma_manufacturing_quality_ui_contract():
+    ui = dict(_PHARMA_QUALITY_BASE_UI_CONTRACT())
+    control = _improve1_quality_control_contract()
+    ui.update({"ok": ui.get("ok") is True and control["ok"], "quality_control_contract": control, "quality_control_panels": tuple(item["evidence"]["ui_surface"] for item in control["capabilities"]), "quality_control_service_actions": tuple(item["evidence"]["service_api"] for item in control["capabilities"]), "stream_engine_picker_visible": False})
+    return ui
+
+
+def pharma_manufacturing_quality_render_workbench():
+    workbench = dict(_PHARMA_QUALITY_BASE_RENDER_WORKBENCH())
+    control = _improve1_quality_control_contract()
+    workbench.update({"ok": workbench.get("ok") is True and control["ok"], "quality_control_panels": tuple(item["evidence"]["ui_surface"] for item in control["capabilities"]), "quality_control_service_actions": tuple(item["evidence"]["service_api"] for item in control["capabilities"]), "quality_control_agent_tools": tuple(f"pharma_manufacturing_quality.skills.{item['slug']}" for item in control["capabilities"])})
+    return workbench
