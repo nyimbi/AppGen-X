@@ -41,10 +41,20 @@ def test_improve1_registry_is_bound_to_executable_pbc_surfaces():
     _assert_ok_result(f"release_evidence.{release_name}", release_result)
     _assert_ok_result(f"agent.{agent_name}", agent_result)
 
-    for feature_number in (1, 10, 25, 40, 50):
+    titles_by_number = {capability["feature_number"]: capability["title"] for capability in registry["capabilities"]}
+    assert len(titles_by_number) == 50
+    for feature_number in range(1, 51):
         plan = plan_feature_execution(feature_number)
         assert plan["ok"] is True
+        assert plan["feature_number"] == feature_number
+        assert plan["title"] == titles_by_number[feature_number]
         assert plan["side_effects"] == ()
+        assert plan["domain_tags"]
+        assert plan["model_artifacts"]
+        assert plan["ui_artifacts"]
+        assert plan["service_artifacts"]
+        assert plan["test_artifacts"]
+        assert plan["evidence_artifacts"]
         assert "services.py" in plan["service_artifacts"] or "routes.py" in plan["service_artifacts"]
         assert "ui.py" in plan["ui_artifacts"]
         assert "release_evidence.py" in plan["evidence_artifacts"]
@@ -53,7 +63,9 @@ def test_improve1_registry_is_bound_to_executable_pbc_surfaces():
 def test_all_improve1_capabilities_expose_runtime_surface_classes():
     registry = capability_registry()
     assert registry["capability_count"] == 50
-    for capability in registry["capabilities"]:
+    for expected_number, capability in enumerate(registry["capabilities"], start=1):
+        assert capability["feature_number"] == expected_number
+        assert capability["title"]
         assert capability["code_artifact_model"]
         assert capability["ui_surface"]
         assert capability["service_api"]
