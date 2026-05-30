@@ -4036,15 +4036,45 @@ def test_designer_sync_cli_audit_proves_diff_semantic_and_projection_refresh(tmp
     assert report["ok"] is True
     assert report["scenario_count"] == 3
     assert report["passing_scenario_count"] == report["scenario_count"]
+    assert report["required_scenario_ids"] == (
+        "valid_add_field_round_trip",
+        "invalid_json_rejected",
+        "non_object_edit_rejected",
+    )
+    assert report["observed_scenario_ids"] == report["required_scenario_ids"]
+    assert report["missing_scenario_count"] == 0
+    assert report["missing_scenario_ids"] == ()
+    assert report["failing_scenario_count"] == 0
+    assert report["failing_scenario_ids"] == ()
     assert report["valid_changed_surface_count"] >= 1
+    assert report["required_changed_surfaces"] == ("database_designer",)
+    assert report["missing_changed_surface_count"] == 0
+    assert report["missing_changed_surfaces"] == ()
     assert report["projection_count"] >= 1
+    assert report["required_projection_ids"] == (
+        "form_designer",
+        "database_designer",
+        "workflow_designer",
+        "pbc_composition_designer",
+        "package_deployment_designer",
+    )
+    assert set(report["projection_ids"]) == set(report["required_projection_ids"])
+    assert report["missing_projection_count"] == 0
+    assert report["missing_projection_ids"] == ()
     assert report["invalid_case_count"] == 2
+    assert report["invalid_case_ids"] == ("invalid_json_rejected", "non_object_edit_rejected")
     assert report["traceback_free_count"] == report["invalid_case_count"]
+    assert report["traceback_free_case_ids"] == report["invalid_case_ids"]
+    assert report["missing_traceback_free_case_count"] == 0
+    assert report["missing_traceback_free_case_ids"] == ()
     assert report["valid_exit"] == 0
     assert report["valid_payload_format"] == "appgen.designer-sync-report.v1"
     assert report["valid_round_trip"] is True
     assert "database_designer" in report["valid_changed_surfaces"]
     assert report["valid_diff_lines"] > 0
+    assert report["required_diff_fragments"] == ("+  sync_note: string",)
+    assert report["missing_diff_fragment_count"] == 0
+    assert report["missing_diff_fragments"] == ()
     assert report["valid_semantic_model_format"] == "appgen.semantic-model.v1"
     assert report["valid_projection_format"] == "appgen.designer-database-projection.v1"
     assert report["valid_projection_semantic_model_format"] == "appgen.semantic-model.v1"
@@ -5619,13 +5649,23 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert designer_check["detail"]["cli"]["ok"] is True
     assert designer_check["detail"]["cli"]["scenario_count"] == 3
     assert designer_check["detail"]["cli"]["passing_scenario_count"] == 3
+    assert designer_check["detail"]["cli"]["missing_scenario_count"] == 0
+    assert designer_check["detail"]["cli"]["failing_scenario_count"] == 0
     assert designer_check["detail"]["cli"]["valid_changed_surface_count"] >= 1
+    assert designer_check["detail"]["cli"]["missing_changed_surface_count"] == 0
     assert designer_check["detail"]["cli"]["projection_count"] >= 1
+    assert set(designer_check["detail"]["cli"]["projection_ids"]) == set(
+        designer_check["detail"]["cli"]["required_projection_ids"]
+    )
+    assert designer_check["detail"]["cli"]["missing_projection_count"] == 0
     assert designer_check["detail"]["cli"]["invalid_case_count"] == 2
     assert designer_check["detail"]["cli"]["traceback_free_count"] == 2
+    assert designer_check["detail"]["cli"]["traceback_free_case_ids"] == designer_check["detail"]["cli"]["invalid_case_ids"]
+    assert designer_check["detail"]["cli"]["missing_traceback_free_case_count"] == 0
     assert designer_check["detail"]["cli"]["valid_round_trip"] is True
     assert "database_designer" in designer_check["detail"]["cli"]["valid_changed_surfaces"]
     assert designer_check["detail"]["cli"]["valid_diff_lines"] > 0
+    assert designer_check["detail"]["cli"]["missing_diff_fragment_count"] == 0
     assert designer_check["detail"]["cli"]["valid_semantic_model_format"] == "appgen.semantic-model.v1"
     assert designer_check["detail"]["cli"]["valid_projection_semantic_model_format"] == "appgen.semantic-model.v1"
     assert designer_check["detail"]["cli"]["non_object_exit"] == 2

@@ -5883,7 +5883,13 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and designer["visual_edit"]["round_trip_ok"]
             and designer_visual_edit_matrix["ok"]
             and designer_sync_text_renderer["ok"]
-            and designer_sync_cli["ok"],
+            and designer_sync_cli["ok"]
+            and designer_sync_cli.get("missing_scenario_count") == 0
+            and designer_sync_cli.get("failing_scenario_count") == 0
+            and designer_sync_cli.get("missing_projection_count") == 0
+            and designer_sync_cli.get("missing_changed_surface_count") == 0
+            and designer_sync_cli.get("missing_diff_fragment_count") == 0
+            and designer_sync_cli.get("missing_traceback_free_case_count") == 0,
             "Studio designer projections, visual edits, and text summaries round-trip through linted DSL patches.",
             "docs/tooling.md#ide-integration",
             {
@@ -12777,14 +12783,79 @@ def _tooling_audit_designer_sync_cli(tmp: Path, source: str) -> dict:
         and "--edit-json must be a JSON object" in non_object_stderr
         and "Traceback" not in non_object_stderr
     )
+    scenarios = (
+        {"id": "valid_add_field_round_trip", "ok": valid_ok},
+        {"id": "invalid_json_rejected", "ok": invalid_ok},
+        {"id": "non_object_edit_rejected", "ok": non_object_ok},
+    )
+    required_scenario_ids = tuple(scenario["id"] for scenario in scenarios)
+    observed_scenario_ids = tuple(scenario["id"] for scenario in scenarios)
+    failing_scenario_ids = tuple(scenario["id"] for scenario in scenarios if not scenario["ok"])
+    missing_scenario_ids = tuple(
+        scenario_id for scenario_id in required_scenario_ids if scenario_id not in observed_scenario_ids
+    )
+    required_projection_ids = (
+        "form_designer",
+        "database_designer",
+        "workflow_designer",
+        "pbc_composition_designer",
+        "package_deployment_designer",
+    )
+    projection_ids = tuple(valid_edit.get("projections_after", {}).keys())
+    missing_projection_ids = tuple(
+        projection_id for projection_id in required_projection_ids if projection_id not in set(projection_ids)
+    )
+    required_changed_surfaces = ("database_designer",)
+    missing_changed_surfaces = tuple(
+        surface for surface in required_changed_surfaces if surface not in set(valid_edit.get("changed_surfaces", ()))
+    )
+    required_diff_fragments = ("+  sync_note: string",)
+    diff_lines = tuple(str(line) for line in valid_edit.get("dsl_diff", ()))
+    missing_diff_fragments = tuple(
+        fragment for fragment in required_diff_fragments if not any(line.startswith(fragment) for line in diff_lines)
+    )
+    invalid_case_ids = ("invalid_json_rejected", "non_object_edit_rejected")
+    traceback_free_case_ids = tuple(
+        case_id
+        for case_id, stderr in (
+            ("invalid_json_rejected", invalid_stderr),
+            ("non_object_edit_rejected", non_object_stderr),
+        )
+        if "Traceback" not in stderr
+    )
+    missing_traceback_free_case_ids = tuple(
+        case_id for case_id in invalid_case_ids if case_id not in traceback_free_case_ids
+    )
     return {
         "format": "appgen.designer-sync-cli-audit.v1",
-        "ok": valid_ok and invalid_ok and non_object_ok,
+        "ok": valid_ok
+        and invalid_ok
+        and non_object_ok
+        and not missing_scenario_ids
+        and not failing_scenario_ids
+        and not missing_projection_ids
+        and not missing_changed_surfaces
+        and not missing_diff_fragments
+        and not missing_traceback_free_case_ids,
         "scenario_count": 3,
         "passing_scenario_count": sum(1 for ok in (valid_ok, invalid_ok, non_object_ok) if ok),
+        "required_scenario_ids": required_scenario_ids,
+        "observed_scenario_ids": observed_scenario_ids,
+        "missing_scenario_count": len(missing_scenario_ids),
+        "missing_scenario_ids": missing_scenario_ids,
+        "failing_scenario_count": len(failing_scenario_ids),
+        "failing_scenario_ids": failing_scenario_ids,
         "valid_changed_surface_count": len(valid_edit.get("changed_surfaces", ())),
+        "required_changed_surfaces": required_changed_surfaces,
+        "missing_changed_surface_count": len(missing_changed_surfaces),
+        "missing_changed_surfaces": missing_changed_surfaces,
         "projection_count": len(valid_edit.get("projections_after", {})),
+        "required_projection_ids": required_projection_ids,
+        "projection_ids": projection_ids,
+        "missing_projection_count": len(missing_projection_ids),
+        "missing_projection_ids": missing_projection_ids,
         "invalid_case_count": 2,
+        "invalid_case_ids": invalid_case_ids,
         "traceback_free_count": sum(
             1
             for ok in (
@@ -12793,11 +12864,17 @@ def _tooling_audit_designer_sync_cli(tmp: Path, source: str) -> dict:
             )
             if ok
         ),
+        "traceback_free_case_ids": traceback_free_case_ids,
+        "missing_traceback_free_case_count": len(missing_traceback_free_case_ids),
+        "missing_traceback_free_case_ids": missing_traceback_free_case_ids,
         "valid_exit": valid_exit,
         "valid_payload_format": valid_payload.get("format"),
         "valid_round_trip": valid_edit.get("round_trip_ok"),
         "valid_changed_surfaces": valid_edit.get("changed_surfaces", ()),
         "valid_diff_lines": len(valid_edit.get("dsl_diff", ())),
+        "required_diff_fragments": required_diff_fragments,
+        "missing_diff_fragment_count": len(missing_diff_fragments),
+        "missing_diff_fragments": missing_diff_fragments,
         "valid_semantic_model_format": valid_edit.get("semantic_model_format"),
         "valid_projection_format": valid_projection.get("format"),
         "valid_projection_semantic_model_format": valid_projection.get("semantic_model_format"),

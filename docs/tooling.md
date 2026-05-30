@@ -1637,6 +1637,12 @@ patched DSL before the Studio accepts the visual operation.
 The designer-sync audit reports scenario, passing-scenario, changed-surface,
 projection, invalid-case, and traceback-free counts across accepted edits,
 malformed JSON, and non-object edit payloads.
+It also reports required, observed, missing, and failing scenario ids; required
+projection ids; missing projection ids; required changed surfaces; required
+diff fragments; invalid-case ids; traceback-free case ids; and missing
+traceback-free cases. The aggregate IDE gate fails when a named designer-sync
+scenario, projection surface, changed surface, diff preview fragment, or
+invalid-payload rejection contract disappears.
 Without `--json`, `appgen designer-sync` prints the
 `appgen.designer-sync-report.v1` format, semantic-model format as
 `semantic_format=...`, surface count and names, visual edit acceptance,
