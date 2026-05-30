@@ -1382,6 +1382,12 @@ agent asks for references to a PBC key or catalog API/event contract,
 `textDocument/references` returns ordinary workspace occurrences plus the
 matching `catalog://pbc/...` index location, which keeps generated PBC contracts
 discoverable without making catalog entries look like editable DSL source.
+The JSON-RPC audit reports this as `reference_catalog_index_depth`, with
+separate workspace and catalog counts for PBC-key references and event-contract
+references. The aggregate `lsp_navigation_completion_contracts` gate requires
+both the editable workspace occurrence and the read-only catalog index
+occurrence for each reference family, so generated catalog references remain
+discoverable without being confused with editable DSL source.
 Reference locations are lexical code references: comments, string literals, and
 block comments are preserved as authoring evidence and must not be returned as
 symbol references.

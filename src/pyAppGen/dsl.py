@@ -5485,6 +5485,9 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and lsp_rpc.get("workspace_symbol_catalog_contract_result_count", 0) >= 1
             and lsp_rpc.get("missing_definition_context_count") == 0
             and lsp_rpc.get("passing_definition_context_count") == lsp_rpc.get("definition_context_count")
+            and lsp_rpc.get("missing_catalog_reference_context_count") == 0
+            and lsp_rpc.get("catalog_reference_pbc_catalog_count", 0) >= 1
+            and lsp_rpc.get("catalog_reference_event_catalog_count", 0) >= 1
             and lsp_text_renderer["ok"]
             and lsp_text_renderer.get("service_count_line_count", 0) >= 1
             and lsp_text_renderer.get("completion_line_count", 0) >= 1
@@ -5557,6 +5560,17 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                     "expected_lines": lsp_rpc.get("definition_context_expected_lines"),
                     "observed_lines": lsp_rpc.get("definition_context_observed_lines"),
                     "matches": lsp_rpc.get("definition_context_matches"),
+                },
+                "catalog_references": {
+                    "format": lsp_rpc.get("format"),
+                    "counts": lsp_rpc.get("catalog_reference_counts"),
+                    "checks": lsp_rpc.get("catalog_reference_checks"),
+                    "missing_contexts": lsp_rpc.get("missing_catalog_reference_contexts"),
+                    "missing_context_count": lsp_rpc.get("missing_catalog_reference_context_count"),
+                    "pbc_catalog_count": lsp_rpc.get("catalog_reference_pbc_catalog_count"),
+                    "event_catalog_count": lsp_rpc.get("catalog_reference_event_catalog_count"),
+                    "pbc_workspace_count": lsp_rpc.get("catalog_reference_pbc_workspace_count"),
+                    "event_workspace_count": lsp_rpc.get("catalog_reference_event_workspace_count"),
                 },
                 "text_renderer": {
                     "format": lsp_text_renderer.get("format"),
@@ -9351,6 +9365,99 @@ audit ReferenceAudit {
         )
     )
 
+    catalog_reference_uri = "memory://reference-catalog.appgen"
+    catalog_reference_source = """
+app ReferenceCatalog { targets: web }
+composition Suite {
+  include pbc gl_core version 1.0.0
+  connect ap_automation event InvoiceApproved -> gl_core event JournalPosted
+}
+"""
+
+    def catalog_reference_position(marker: str, offset: int = 0) -> dict:
+        index = catalog_reference_source.index(marker) + offset
+        return {
+            "line": catalog_reference_source.count("\n", 0, index),
+            "character": index - catalog_reference_source.rfind("\n", 0, index) - 1,
+        }
+
+    lsp_server_handle_message(
+        {
+            "jsonrpc": "2.0",
+            "method": "textDocument/didOpen",
+            "params": {
+                "textDocument": {
+                    "uri": catalog_reference_uri,
+                    "languageId": "appgen",
+                    "version": 1,
+                    "text": catalog_reference_source,
+                }
+            },
+        },
+        documents,
+    )
+    catalog_pbc_reference_responses, _ = lsp_server_handle_message(
+        {
+            "jsonrpc": "2.0",
+            "id": 63,
+            "method": "textDocument/references",
+            "params": {
+                "textDocument": {"uri": catalog_reference_uri},
+                "position": catalog_reference_position("gl_core version", 0),
+            },
+        },
+        documents,
+    )
+    catalog_event_reference_responses, _ = lsp_server_handle_message(
+        {
+            "jsonrpc": "2.0",
+            "id": 64,
+            "method": "textDocument/references",
+            "params": {
+                "textDocument": {"uri": catalog_reference_uri},
+                "position": catalog_reference_position("JournalPosted"),
+            },
+        },
+        documents,
+    )
+    catalog_pbc_reference_locations = tuple(
+        catalog_pbc_reference_responses[0].get("result", ()) if catalog_pbc_reference_responses else ()
+    )
+    catalog_event_reference_locations = tuple(
+        catalog_event_reference_responses[0].get("result", ()) if catalog_event_reference_responses else ()
+    )
+    catalog_reference_counts = {
+        "pbc_workspace": sum(1 for location in catalog_pbc_reference_locations if location.get("uri") == catalog_reference_uri),
+        "pbc_catalog": sum(1 for location in catalog_pbc_reference_locations if location.get("uri") == "catalog://pbc/gl_core"),
+        "event_workspace": sum(
+            1 for location in catalog_event_reference_locations if location.get("uri") == catalog_reference_uri
+        ),
+        "event_catalog": sum(
+            1
+            for location in catalog_event_reference_locations
+            if location.get("uri") == "catalog://pbc/gl_core/event/JournalPosted"
+        ),
+    }
+    catalog_reference_checks = {
+        "pbc_workspace": catalog_reference_counts["pbc_workspace"] >= 1,
+        "pbc_catalog": catalog_reference_counts["pbc_catalog"] >= 1,
+        "event_workspace": catalog_reference_counts["event_workspace"] >= 1,
+        "event_catalog": catalog_reference_counts["event_catalog"] >= 1,
+    }
+    missing_catalog_reference_contexts = tuple(
+        name for name, ok in catalog_reference_checks.items() if not ok
+    )
+    checks.append(
+        _release_check(
+            "reference_catalog_index_depth",
+            not missing_catalog_reference_contexts,
+            detail={
+                "counts": catalog_reference_counts,
+                "missing_catalog_reference_contexts": missing_catalog_reference_contexts,
+            },
+        )
+    )
+
     lsp_server_handle_message(
         {
             "jsonrpc": "2.0",
@@ -9455,6 +9562,14 @@ audit ReferenceAudit {
         "passing_definition_context_count": sum(1 for ok in definition_context_matches.values() if ok),
         "missing_definition_contexts": missing_definition_contexts,
         "missing_definition_context_count": len(missing_definition_contexts),
+        "catalog_reference_counts": catalog_reference_counts,
+        "catalog_reference_checks": catalog_reference_checks,
+        "missing_catalog_reference_contexts": missing_catalog_reference_contexts,
+        "missing_catalog_reference_context_count": len(missing_catalog_reference_contexts),
+        "catalog_reference_pbc_workspace_count": catalog_reference_counts["pbc_workspace"],
+        "catalog_reference_pbc_catalog_count": catalog_reference_counts["pbc_catalog"],
+        "catalog_reference_event_workspace_count": catalog_reference_counts["event_workspace"],
+        "catalog_reference_event_catalog_count": catalog_reference_counts["event_catalog"],
         "lexical_reference_scope_ok": lexical_reference_scope_ok,
         "reference_scope_location_count": len(reference_scope_locations),
         "reference_scope_expected_line_count": len(expected_reference_lines),

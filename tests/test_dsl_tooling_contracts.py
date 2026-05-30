@@ -1715,6 +1715,16 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
     assert "hover_handler_target_depth" in {check["check"] for check in audit["checks"]}
     assert "hover_catalog_diagnostic_depth" in {check["check"] for check in audit["checks"]}
     assert "workspace_symbol_catalog_result_depth" in {check["check"] for check in audit["checks"]}
+    assert "reference_catalog_index_depth" in {check["check"] for check in audit["checks"]}
+    assert audit["missing_catalog_reference_context_count"] == 0
+    assert audit["missing_catalog_reference_contexts"] == ()
+    assert audit["catalog_reference_pbc_workspace_count"] >= 1
+    assert audit["catalog_reference_pbc_catalog_count"] >= 1
+    assert audit["catalog_reference_event_workspace_count"] >= 1
+    assert audit["catalog_reference_event_catalog_count"] >= 1
+    assert all(audit["catalog_reference_checks"].values())
+    assert audit["catalog_reference_counts"]["pbc_catalog"] >= 1
+    assert audit["catalog_reference_counts"]["event_catalog"] >= 1
     assert audit["definition_context_count"] == 5
     assert audit["passing_definition_context_count"] == audit["definition_context_count"]
     assert audit["missing_definition_context_count"] == 0
@@ -5464,6 +5474,7 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
         "hover_handler_target_depth",
         "hover_catalog_diagnostic_depth",
         "workspace_symbol_catalog_result_depth",
+        "reference_catalog_index_depth",
         "workspace_document_scan_and_rename",
         "enterprise_definition_context",
         "lexical_reference_scope",
@@ -5558,6 +5569,16 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert lsp_navigation_check["detail"]["definition_context"]["expected_lines"] == (
         lsp_navigation_check["detail"]["definition_context"]["observed_lines"]
     )
+    assert lsp_navigation_check["detail"]["catalog_references"]["format"] == "appgen.lsp-json-rpc-audit.v1"
+    assert lsp_navigation_check["detail"]["catalog_references"]["missing_context_count"] == 0
+    assert lsp_navigation_check["detail"]["catalog_references"]["missing_contexts"] == ()
+    assert lsp_navigation_check["detail"]["catalog_references"]["pbc_workspace_count"] >= 1
+    assert lsp_navigation_check["detail"]["catalog_references"]["pbc_catalog_count"] >= 1
+    assert lsp_navigation_check["detail"]["catalog_references"]["event_workspace_count"] >= 1
+    assert lsp_navigation_check["detail"]["catalog_references"]["event_catalog_count"] >= 1
+    assert all(lsp_navigation_check["detail"]["catalog_references"]["checks"].values())
+    assert lsp_navigation_check["detail"]["catalog_references"]["counts"]["pbc_catalog"] >= 1
+    assert lsp_navigation_check["detail"]["catalog_references"]["counts"]["event_catalog"] >= 1
     assert lsp_navigation_check["detail"]["text_renderer"]["format"] == "appgen.lsp-service-text-renderer.v1"
     assert lsp_navigation_check["detail"]["text_renderer"]["service_count_line_count"] == 1
     assert lsp_navigation_check["detail"]["text_renderer"]["completion_line_count"] >= 1
