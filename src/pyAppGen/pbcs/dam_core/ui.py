@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from .dam_control import improve1_dam_control_contract
 from .runtime import DAM_CORE_ALLOWED_DATABASE_BACKENDS
 from .runtime import DAM_CORE_CONSUMED_EVENT_TYPES
 from .runtime import DAM_CORE_EMITTED_EVENT_TYPES
@@ -147,8 +148,10 @@ def dam_core_ui_contract() -> dict:
         "forms": dam_core_form_catalog(),
         "wizards": dam_core_wizard_catalog(),
         "controls": dam_core_control_catalog(),
+        "dam_control_panels": tuple(item["ui_surface"] for item in improve1_dam_control_contract()["capabilities"]),
         "standalone_app": dam_core_standalone_app_contract(),
         "action_permissions": dam_core_permissions_contract(),
+        "dam_control_contract": improve1_dam_control_contract(),
         "configuration_editor": {
             "required_fields": (
                 "database_backend",

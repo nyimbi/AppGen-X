@@ -36,3 +36,9 @@ Implemented package-local convergence toward a standalone one-PBC DAM app.
   runtime-driven service/schema/event/UI/agent checks.
 - `pbc_generation_smoke_audit`: covered by runtime smoke plus standalone app
   bootstrap/render smoke.
+
+## 2026-05-30 improve1 DAM-Control Execution Slice
+
+- Added `dam_control.py` as the side-effect-free executable proof layer for all 50 DAM improve1 backlog items.
+- Bound each feature to owned DAM tables, AppGen-X event lineage, UI fragment, service/API route, permission, agent skill, configuration guardrails, retry/dead-letter evidence, and release evidence.
+- Wired DAM controls into runtime capabilities, runtime smoke, release evidence, UI contracts, traceability artifacts, and focused package tests.

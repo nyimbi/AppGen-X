@@ -11,6 +11,7 @@ from . import permissions
 from . import schema_contract
 from . import service_contract
 from . import ui
+from .dam_control import improve1_dam_control_contract
 from .manifest import PBC_MANIFEST
 from .runtime import dam_core_build_release_evidence as _runtime_build_release_evidence
 from .runtime import dam_core_runtime_smoke
@@ -45,6 +46,7 @@ def build_release_evidence() -> dict:
     event_manifest = events.event_contract_manifest()
     agent_manifest = agent.composed_agent_contribution()
     ui_manifest = ui.dam_core_ui_contract()
+    dam_control = improve1_dam_control_contract()
     model_manifest = models.model_manifest()
     artifact_status = _artifact_paths()
     from . import standalone
@@ -59,6 +61,7 @@ def build_release_evidence() -> dict:
         and event_manifest["ok"]
         and ui_manifest["ok"],
         "pbc_generation_smoke_audit": dam_core_runtime_smoke()["ok"]
+        and dam_control["ok"]
         and agent_manifest["ok"]
         and standalone_smoke["ok"],
     }
@@ -66,6 +69,7 @@ def build_release_evidence() -> dict:
         {"id": "package_artifacts_present", "ok": all(item["exists"] for item in artifact_status)},
         {"id": "agent_surface_present", "ok": agent_manifest["ok"]},
         {"id": "ui_forms_wizards_controls_present", "ok": bool(ui_manifest["forms"]) and bool(ui_manifest["wizards"]) and bool(ui_manifest["controls"])},
+        {"id": "dam_improve1_control_contract", "ok": dam_control["ok"]},
         {"id": "repo_gate_pbc_source_artifact_contract", "ok": gate_results["pbc_source_artifact_contract"]},
         {"id": "repo_gate_pbc_implementation_release_audit", "ok": gate_results["pbc_implementation_release_audit"]},
         {"id": "repo_gate_pbc_generation_smoke_audit", "ok": gate_results["pbc_generation_smoke_audit"]},
@@ -85,6 +89,7 @@ def build_release_evidence() -> dict:
         "ui": ui_manifest,
         "agent": agent_manifest,
         "models": models.database_model_contract(),
+        "dam_control": dam_control,
         "runtime_smoke": dam_core_runtime_smoke(),
         "standalone_smoke": standalone_smoke,
         "artifact_status": artifact_status,
