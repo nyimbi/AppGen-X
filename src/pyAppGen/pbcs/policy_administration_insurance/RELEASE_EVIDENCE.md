@@ -2,11 +2,12 @@
 
 Package directory: `pbcs/policy_administration_insurance`.
 
-This PBC includes owned schema, migration DDL, models, services, routes, events, handlers, UI workbench surfaces, agent skills, permissions, configuration, seed data, package metadata, side-effect-free registration, and focused package tests.
+This package now includes the original runtime/schema/service/event surface plus a package-local standalone one-PBC application harness, explicit UI forms/wizards/controls, assistant workspace planning, and package-local documentation evidence.
 
 ## Evidence
 
-- Release Evidence: schema, service, route, event, handler, UI, agent, and governance contracts are materialized.
-- Owned datastore boundary: every owned table starts with `policy_administration_insurance_` and cross-PBC collaboration uses AppGen-X events or declared APIs.
-- Event contract: AppGen-X outbox/inbox with retry and dead-letter evidence.
-- Package tests: `tests/test_contract.py` validates schema/service/release, event contracts, side-effect-free registration, routes, governance, and idempotent handlers.
+- Runtime evidence: schema, service, route, event, handler, UI, agent, and governance contracts are materialized.
+- Standalone evidence: `standalone.py` composes runtime, UI, agent, and release readiness into a package-local standalone app surface.
+- UI evidence: issuance, coverage, endorsement, renewal, cancellation, billing, document, and AppGen-X inbox forms are paired with insurance workflow wizards and operator controls.
+- Documentation evidence: `README.md`, `implementation-plan.md`, `implementation-status.md`, `SPECIFICATION.md`, and this file are validated by release evidence helpers.
+- Test evidence: `tests/test_contract.py` and `tests/test_standalone.py` cover contract integrity and standalone execution.
