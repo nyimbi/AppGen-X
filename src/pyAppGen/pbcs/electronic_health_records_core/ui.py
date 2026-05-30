@@ -1,6 +1,7 @@
 """Workbench, forms, wizards, and controls for electronic health records core."""
 from __future__ import annotations
 
+from .ehr_control import improve1_ehr_control_contract
 from .domain_depth import (
     DOMAIN_ADVANCED_CAPABILITIES,
     DOMAIN_EDGE_CASES,
@@ -30,6 +31,7 @@ def electronic_health_records_core_ui_contract() -> dict:
             "ElectronicHealthRecordsCoreDetail",
             "ElectronicHealthRecordsCoreAssistantPanel",
         ),
+        "ehr_control_contract": improve1_ehr_control_contract(),
         "forms": ehr_core_forms_contract()["forms"],
         "wizards": ehr_core_wizards_contract()["wizards"],
         "controls": ehr_core_controls_contract()["controls"],
@@ -51,6 +53,7 @@ def electronic_health_records_core_ui_contract() -> dict:
             "table_browsers": DOMAIN_OWNED_TABLES,
             "edge_case_queues": DOMAIN_EDGE_CASES,
             "agent_tools": tuple(f"{PBC_KEY}_skills.{op}" for op in DOMAIN_OPERATIONS),
+            "ehr_control_panels": tuple(item["ui_surface"] for item in improve1_ehr_control_contract()["capabilities"]),
             "navigation_sections": ("overview", "operations", "edge_case_triage", "advanced_intelligence", "release_evidence"),
             "coverage": surface["coverage"],
         },

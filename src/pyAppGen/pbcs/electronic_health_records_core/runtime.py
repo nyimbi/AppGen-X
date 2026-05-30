@@ -5,6 +5,7 @@ from copy import deepcopy
 import hashlib
 
 from .domain_depth import DOMAIN_OPERATIONS, DOMAIN_OWNED_TABLES, domain_depth_contract, execute_domain_operation
+from .ehr_control import EHR_CONTROL_CAPABILITIES, improve1_ehr_control_contract
 from .ehr_core_app import (
     create_patient_chart,
     document_instruction_mutation_plan,
@@ -504,6 +505,7 @@ def electronic_health_records_core_build_api_contract() -> dict:
 
 def electronic_health_records_core_build_release_evidence() -> dict:
     schema = electronic_health_records_core_build_schema_contract()
+    ehr_control = improve1_ehr_control_contract()
     checks = (
         {"id": "schema_models_migrations", "ok": schema["ok"]},
         {"id": "service_api_events", "ok": electronic_health_records_core_build_service_contract()["ok"]},
@@ -511,6 +513,7 @@ def electronic_health_records_core_build_release_evidence() -> dict:
         {"id": "retry_dead_letter", "ok": True},
         {"id": "forms_wizards_controls", "ok": True},
         {"id": "single_pbc_app", "ok": single_pbc_app_contract()["ok"]},
+        {"id": "ehr_improve1_control_contract", "ok": ehr_control["ok"]},
     )
     return {
         "format": "appgen.electronic-health-records-core-release-evidence.v1",
@@ -530,6 +533,7 @@ def electronic_health_records_core_build_release_evidence() -> dict:
             "forms": ehr_core_forms_contract()["forms"],
             "wizards": ehr_core_wizards_contract()["wizards"],
             "controls": ehr_core_controls_contract()["controls"],
+            "ehr_control": ehr_control,
         },
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }
@@ -604,6 +608,7 @@ def electronic_health_records_core_runtime_capabilities() -> dict:
         "query_workbench",
         "run_advanced_assessment",
         "parse_document_instruction",
+        "improve1_ehr_control_contract",
     ) + tuple(DOMAIN_OPERATIONS)
     return {
         "format": "appgen.electronic-health-records-core-runtime-capabilities.v1",
@@ -614,6 +619,7 @@ def electronic_health_records_core_runtime_capabilities() -> dict:
         "allowed_database_backends": ELECTRONIC_HEALTH_RECORDS_CORE_ALLOWED_DATABASE_BACKENDS,
         "standard_features": ELECTRONIC_HEALTH_RECORDS_CORE_STANDARD_FEATURE_KEYS,
         "capabilities": ELECTRONIC_HEALTH_RECORDS_CORE_RUNTIME_CAPABILITY_KEYS,
+        "improve1_ehr_control_capabilities": tuple(capability.slug for capability in EHR_CONTROL_CAPABILITIES),
         "operations": operations,
         "forms": ehr_core_forms_contract()["forms"],
         "wizards": ehr_core_wizards_contract()["wizards"],
@@ -654,6 +660,7 @@ def electronic_health_records_core_runtime_smoke() -> dict:
     app_smoke = ehr_core_smoke_test()
     boundary = electronic_health_records_core_verify_owned_table_boundary(ELECTRONIC_HEALTH_RECORDS_CORE_OWNED_TABLES + ("foreign_table",))
     domain = domain_depth_contract()
+    ehr_control = improve1_ehr_control_contract()
     checks = (
         {"id": "configure_runtime", "ok": cfg["ok"]},
         {"id": "set_parameter", "ok": param["ok"]},
@@ -669,11 +676,13 @@ def electronic_health_records_core_runtime_smoke() -> dict:
         {"id": "single_pbc_ehr_app", "ok": app_smoke["ok"]},
         {"id": "owned_boundary_rejects_foreign_table", "ok": boundary["ok"] is False},
         {"id": "domain_depth", "ok": domain["ok"]},
+        {"id": "improve1_ehr_control_contract", "ok": ehr_control["ok"]},
     ) + tuple({"id": capability, "ok": True} for capability in ELECTRONIC_HEALTH_RECORDS_CORE_RUNTIME_CAPABILITY_KEYS)
     return {
         "format": "appgen.electronic-health-records-core-runtime-smoke.v1",
         "ok": all(check["ok"] for check in checks),
         "checks": checks,
+        "checks_by_id": {check["id"]: check["ok"] for check in checks},
         "configuration": cfg,
         "command": command,
         "schema": schema,
@@ -682,6 +691,7 @@ def electronic_health_records_core_runtime_smoke() -> dict:
         "workbench": workbench,
         "single_pbc_app": app_smoke,
         "domain_depth": domain,
+        "ehr_control": ehr_control,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
         "side_effects": (),
     }

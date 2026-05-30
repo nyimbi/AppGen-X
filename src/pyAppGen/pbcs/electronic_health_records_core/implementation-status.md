@@ -29,3 +29,8 @@ Implemented an executable one-PBC EHR core slice inside `src/pyAppGen/pbcs/elect
 ## Remaining Risks
 
 The slice is intentionally package-local and executable, but it is not yet a production clinical persistence layer. Future passes should deepen note addendum chains, point-in-time replay, richer ABAC consent policy evaluation, coded-problem projections, guideline versioning, and external-document reconciliation.
+
+
+## 2026-05-30 improve1 EHR-Control Execution Slice
+
+Added a package-local `ehr_control.py` execution layer binding all 50 improve1 clinical record features to owned EHR tables, declared API/event/projection dependencies, AppGen-X event evidence, UI surfaces, service routes, agent skills, configuration metadata, retry/dead-letter proof, release artifacts, and focused package-local domain behavior tests. Runtime, UI, release evidence, capability registry artifacts, and the traceability matrix now expose the executable EHR control contract.
