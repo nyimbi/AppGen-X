@@ -5119,6 +5119,12 @@ def test_tooling_implementation_phase_audit_maps_phase_exit_criteria_to_evidence
             "json_fallback": False,
             "edit_line_count": 1,
             "available_action_line_count": 1,
+            "missing_text_surface_count": 0,
+            "missing_action_id_count": 0,
+            "missing_edit_snippet_count": 0,
+            "missing_available_action_count": 0,
+            "missing_diagnostic_code_count": 0,
+            "missing_status_count": 0,
         },
         vscode=ok("appgen.vscode-extension-audit.v1"),
         studio={
@@ -6204,6 +6210,32 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert quick_fix_text["detail"]["edit_line_count"] >= 1
     assert quick_fix_text["detail"]["available_action_line_count"] >= 1
     assert quick_fix_text["detail"]["diagnostic_line_count"] >= 1
+    assert quick_fix_text["detail"]["missing_text_surface_count"] == 0
+    assert quick_fix_text["detail"]["missing_text_surfaces"] == ()
+    assert quick_fix_text["detail"]["emitted_text_surfaces"] == (
+        "success_summary",
+        "failure_summary",
+        "title",
+        "edit",
+        "available_actions",
+        "diagnostic",
+        "lint_status",
+        "changed_status",
+    )
+    assert quick_fix_text["detail"]["missing_action_id_count"] == 0
+    assert quick_fix_text["detail"]["missing_action_ids"] == ()
+    assert quick_fix_text["detail"]["emitted_action_ids"] == (
+        "create_operation_from_handler",
+        "missing_action",
+    )
+    assert quick_fix_text["detail"]["missing_edit_snippet_count"] == 0
+    assert quick_fix_text["detail"]["missing_edit_snippets"] == ()
+    assert quick_fix_text["detail"]["missing_available_action_count"] == 0
+    assert quick_fix_text["detail"]["missing_available_actions"] == ()
+    assert quick_fix_text["detail"]["missing_diagnostic_code_count"] == 0
+    assert quick_fix_text["detail"]["missing_diagnostic_codes"] == ()
+    assert quick_fix_text["detail"]["missing_status_count"] == 0
+    assert quick_fix_text["detail"]["missing_statuses"] == ()
     assert quick_fix_text["detail"]["json_fallback"] is False
     cli_check = next(check for check in report["checks"] if check["id"] == "cli_validation_and_generation_contracts")
     assert cli_check["detail"]["validate_generate_cli"]["format"] == "appgen.validate-generate-cli-audit.v1"
@@ -8417,6 +8449,49 @@ def test_lsp_code_action_text_renderer_contract_proves_quick_fix_log_markers() -
     assert report["diagnostic_line_count"] == 1
     assert report["lint_status_line_count"] == 2
     assert report["changed_status_line_count"] == 2
+    assert report["required_text_surfaces"] == (
+        "success_summary",
+        "failure_summary",
+        "title",
+        "edit",
+        "available_actions",
+        "diagnostic",
+        "lint_status",
+        "changed_status",
+    )
+    assert report["emitted_text_surfaces"] == report["required_text_surfaces"]
+    assert report["missing_text_surface_count"] == 0
+    assert report["missing_text_surfaces"] == ()
+    assert report["required_action_ids"] == ("create_operation_from_handler", "missing_action")
+    assert report["emitted_action_ids"] == report["required_action_ids"]
+    assert report["missing_action_id_count"] == 0
+    assert report["missing_action_ids"] == ()
+    assert report["required_edit_snippets"] == ("operation SubmitInvoice {}",)
+    assert report["emitted_edit_snippets"] == report["required_edit_snippets"]
+    assert report["missing_edit_snippet_count"] == 0
+    assert report["missing_edit_snippets"] == ()
+    assert report["required_available_actions"] == (
+        "create_operation_from_handler",
+        "create_flow_from_handler",
+    )
+    assert report["emitted_available_actions"] == report["required_available_actions"]
+    assert report["missing_available_action_count"] == 0
+    assert report["missing_available_actions"] == ()
+    assert report["required_diagnostic_codes"] == ("AGX1002",)
+    assert report["emitted_diagnostic_codes"] == report["required_diagnostic_codes"]
+    assert report["missing_diagnostic_code_count"] == 0
+    assert report["missing_diagnostic_codes"] == ()
+    assert report["required_statuses"] == (
+        "ok",
+        "failed",
+        "lint_ok=True",
+        "lint_ok=False",
+        "changed=True",
+        "changed=False",
+    )
+    assert report["emitted_statuses"] == report["required_statuses"]
+    assert report["missing_status_count"] == 0
+    assert report["missing_statuses"] == ()
     assert report["missing_fragments"] == ()
     assert report["json_fallback"] is False
     assert report["text_prefix"].startswith(

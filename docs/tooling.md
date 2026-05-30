@@ -1559,6 +1559,13 @@ prove quick-fix logs keep success, failure, title, available-action, lint, edit
 text, and diagnostic evidence visible without JSON parsing.
 Its renderer contract reports fragment and marker counts for success/failure
 summaries, titles, edits, available-action lists, and diagnostics.
+Those counts are also backed by named required, emitted, missing, and
+missing-count evidence for text surfaces, action ids, edit snippets,
+available-action fallback ids, diagnostic codes, and status markers
+(`ok`, `failed`, `lint_ok=True`, `lint_ok=False`, `changed=True`, and
+`changed=False`). The aggregate quick-fix text gates require zero named missing
+entries, so a log line with the right prefix cannot mask a missing quick-fix
+action, edit, diagnostic, or fallback action.
 This is the evidence path for missing-operation, lookup-directive,
 event-contract, relationship, typo, secret-literal replacement, invalid
 runtime/stream/backend picker removal, PBC manifest, agent-permission, package

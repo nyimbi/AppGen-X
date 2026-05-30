@@ -4557,22 +4557,122 @@ def _lsp_code_action_text_renderer_contract() -> dict:
         "error AGX1002: Unknown code action: missing_action",
     )
     missing = tuple(fragment for fragment in required_fragments if fragment not in text)
+    success_summary_lines = tuple(line for line in lines if line.startswith("lsp-code-action ok:"))
+    failure_summary_lines = tuple(line for line in lines if line.startswith("lsp-code-action failed:"))
+    title_lines = tuple(line for line in lines if line.startswith("title "))
+    edit_lines = tuple(line for line in lines if line.startswith("edit "))
+    available_action_lines = tuple(line for line in lines if line.startswith("available-actions "))
+    diagnostic_lines = tuple(line for line in lines if line.startswith(("warning ", "error ")))
+    required_text_surfaces = (
+        "success_summary",
+        "failure_summary",
+        "title",
+        "edit",
+        "available_actions",
+        "diagnostic",
+        "lint_status",
+        "changed_status",
+    )
+    emitted_text_surfaces = tuple(
+        surface
+        for surface, present in (
+            ("success_summary", bool(success_summary_lines)),
+            ("failure_summary", bool(failure_summary_lines)),
+            ("title", bool(title_lines)),
+            ("edit", bool(edit_lines)),
+            ("available_actions", bool(available_action_lines)),
+            ("diagnostic", bool(diagnostic_lines)),
+            ("lint_status", any(" lint_ok=" in line for line in lines)),
+            ("changed_status", any(" changed=" in line for line in lines)),
+        )
+        if present
+    )
+    missing_text_surfaces = tuple(
+        surface for surface in required_text_surfaces if surface not in emitted_text_surfaces
+    )
+    required_action_ids = ("create_operation_from_handler", "missing_action")
+    emitted_action_ids = tuple(
+        line.split(" action=", 1)[1].split(" ", 1)[0]
+        for line in (*success_summary_lines, *failure_summary_lines)
+        if " action=" in line
+    )
+    missing_action_ids = tuple(action_id for action_id in required_action_ids if action_id not in emitted_action_ids)
+    required_edit_snippets = ("operation SubmitInvoice {}",)
+    emitted_edit_snippets = tuple(line.removeprefix("edit ").strip() for line in edit_lines)
+    missing_edit_snippets = tuple(
+        snippet for snippet in required_edit_snippets if snippet not in emitted_edit_snippets
+    )
+    required_available_actions = ("create_operation_from_handler", "create_flow_from_handler")
+    emitted_available_actions = tuple(
+        action.strip()
+        for line in available_action_lines
+        for action in line.removeprefix("available-actions ").split(",")
+        if action.strip()
+    )
+    missing_available_actions = tuple(
+        action for action in required_available_actions if action not in emitted_available_actions
+    )
+    required_diagnostic_codes = ("AGX1002",)
+    emitted_diagnostic_codes = tuple(
+        line.split(":", 1)[0].split()[-1]
+        for line in diagnostic_lines
+        if ":" in line and line.split()
+    )
+    missing_diagnostic_codes = tuple(
+        code for code in required_diagnostic_codes if code not in emitted_diagnostic_codes
+    )
+    required_statuses = ("ok", "failed", "lint_ok=True", "lint_ok=False", "changed=True", "changed=False")
+    emitted_statuses = tuple(status for status in required_statuses if status in text)
+    missing_statuses = tuple(status for status in required_statuses if status not in emitted_statuses)
     return {
         "format": "appgen.lsp-code-action-text-renderer.v1",
-        "ok": not missing and not text.lstrip().startswith("{"),
+        "ok": not (
+            missing
+            or missing_text_surfaces
+            or missing_action_ids
+            or missing_edit_snippets
+            or missing_available_actions
+            or missing_diagnostic_codes
+            or missing_statuses
+            or text.lstrip().startswith("{")
+        ),
         **_text_renderer_contract_counts(
             text,
             required_fragments,
             marker_prefixes=("lsp-code-action ", "title ", "edit ", "available-actions ", "warning ", "error "),
         ),
-        "success_summary_line_count": sum(1 for line in lines if line.startswith("lsp-code-action ok:")),
-        "failure_summary_line_count": sum(1 for line in lines if line.startswith("lsp-code-action failed:")),
-        "title_line_count": sum(1 for line in lines if line.startswith("title ")),
-        "edit_line_count": sum(1 for line in lines if line.startswith("edit ")),
-        "available_action_line_count": sum(1 for line in lines if line.startswith("available-actions ")),
-        "diagnostic_line_count": sum(1 for line in lines if line.startswith(("warning ", "error "))),
+        "success_summary_line_count": len(success_summary_lines),
+        "failure_summary_line_count": len(failure_summary_lines),
+        "title_line_count": len(title_lines),
+        "edit_line_count": len(edit_lines),
+        "available_action_line_count": len(available_action_lines),
+        "diagnostic_line_count": len(diagnostic_lines),
         "lint_status_line_count": sum(1 for line in lines if " lint_ok=" in line),
         "changed_status_line_count": sum(1 for line in lines if " changed=" in line),
+        "required_text_surfaces": required_text_surfaces,
+        "emitted_text_surfaces": emitted_text_surfaces,
+        "missing_text_surfaces": missing_text_surfaces,
+        "missing_text_surface_count": len(missing_text_surfaces),
+        "required_action_ids": required_action_ids,
+        "emitted_action_ids": emitted_action_ids,
+        "missing_action_ids": missing_action_ids,
+        "missing_action_id_count": len(missing_action_ids),
+        "required_edit_snippets": required_edit_snippets,
+        "emitted_edit_snippets": emitted_edit_snippets,
+        "missing_edit_snippets": missing_edit_snippets,
+        "missing_edit_snippet_count": len(missing_edit_snippets),
+        "required_available_actions": required_available_actions,
+        "emitted_available_actions": emitted_available_actions,
+        "missing_available_actions": missing_available_actions,
+        "missing_available_action_count": len(missing_available_actions),
+        "required_diagnostic_codes": required_diagnostic_codes,
+        "emitted_diagnostic_codes": emitted_diagnostic_codes,
+        "missing_diagnostic_codes": missing_diagnostic_codes,
+        "missing_diagnostic_code_count": len(missing_diagnostic_codes),
+        "required_statuses": required_statuses,
+        "emitted_statuses": emitted_statuses,
+        "missing_statuses": missing_statuses,
+        "missing_status_count": len(missing_statuses),
         "required_fragments": required_fragments,
         "missing_fragments": missing,
         "json_fallback": text.lstrip().startswith("{"),
@@ -6878,14 +6978,12 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             "lsp_quick_fix_text_contracts",
             code_action_text_renderer["ok"]
             and code_action_text_renderer.get("missing_fragment_count") == 0
-            and code_action_text_renderer.get("success_summary_line_count", 0) >= 1
-            and code_action_text_renderer.get("failure_summary_line_count", 0) >= 1
-            and code_action_text_renderer.get("title_line_count", 0) >= 1
-            and code_action_text_renderer.get("edit_line_count", 0) >= 1
-            and code_action_text_renderer.get("available_action_line_count", 0) >= 1
-            and code_action_text_renderer.get("diagnostic_line_count", 0) >= 1
-            and code_action_text_renderer.get("lint_status_line_count", 0) >= 2
-            and code_action_text_renderer.get("changed_status_line_count", 0) >= 2
+            and code_action_text_renderer.get("missing_text_surface_count") == 0
+            and code_action_text_renderer.get("missing_action_id_count") == 0
+            and code_action_text_renderer.get("missing_edit_snippet_count") == 0
+            and code_action_text_renderer.get("missing_available_action_count") == 0
+            and code_action_text_renderer.get("missing_diagnostic_code_count") == 0
+            and code_action_text_renderer.get("missing_status_count") == 0
             and code_action_text_renderer.get("json_fallback") is False,
             "Human-readable quick-fix logs expose success, failure, title, edit, lint, changed, available-action, and diagnostic evidence without JSON parsing.",
             "docs/tooling.md#code-actions",
@@ -9440,8 +9538,12 @@ def _tooling_audit_implementation_phases(**evidence: dict) -> dict:
                     and evidence["lsp_apply_cli"].get("blocking_gap_count") == 0
                     and evidence["code_action_text_renderer"].get("ok") is True
                     and evidence["code_action_text_renderer"].get("json_fallback") is False
-                    and evidence["code_action_text_renderer"].get("edit_line_count", 0) >= 1
-                    and evidence["code_action_text_renderer"].get("available_action_line_count", 0) >= 1,
+                    and evidence["code_action_text_renderer"].get("missing_text_surface_count") == 0
+                    and evidence["code_action_text_renderer"].get("missing_action_id_count") == 0
+                    and evidence["code_action_text_renderer"].get("missing_edit_snippet_count") == 0
+                    and evidence["code_action_text_renderer"].get("missing_available_action_count") == 0
+                    and evidence["code_action_text_renderer"].get("missing_diagnostic_code_count") == 0
+                    and evidence["code_action_text_renderer"].get("missing_status_count") == 0,
                     "evidence_formats": (
                         evidence["lsp_apply_cli"].get("format"),
                         evidence["code_action_text_renderer"].get("format"),

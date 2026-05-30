@@ -3993,3 +3993,14 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   tooling audit (`1 passed`, with the known active-PBC `datetime.utcnow()`
   warnings only), scoped diff whitespace check, and restricted-name scan outside
   archive, Git internals, and active PBC paths.
+- Current LSP quick-fix text audit hardening pass replaces title/edit/
+  diagnostic line-count acceptance with named evidence for quick-fix logs.
+  `appgen.lsp-code-action-text-renderer.v1` now proves required and emitted
+  text surfaces, action ids, edit snippets, fallback available actions,
+  diagnostic codes, and status markers (`ok`, `failed`, lint status, and change
+  status). Verification passed: Python compile for the touched DSL and tests,
+  focused LSP quick-fix text renderer test (`1 passed`), implementation-phase
+  evidence test (`1 passed`), aggregate tooling audit (`1 passed`, with the
+  known active-PBC `datetime.utcnow()` warnings only), scoped diff whitespace
+  check, and restricted-name scan outside archive, Git internals, and active PBC
+  paths.
