@@ -1,5 +1,8 @@
 """Command service layer for the ap_automation PBC."""
 
+
+from . import runtime as ap_runtime
+
 EVENT_CONTRACT = {'contract': 'appgen_event_contract', 'runtime_profile_visibility': 'read_only_platform_metadata', 'adapter': 'appgen_event_adapter', 'topic': 'pbc.ap_automation.events', 'inbox_topic': 'pbc.ap_automation.inbox', 'outbox_table': 'ap_automation_outbox', 'inbox_table': 'ap_automation_inbox', 'dead_letter_table': 'ap_automation_dead_letter', 'emitted': ({'event_type': 'VendorOnboarded', 'schema': 'ap_automation.vendor_onboarded.emitted.v1', 'topic': 'pbc.ap_automation.events', 'outbox_table': 'ap_automation_outbox', 'payload_fields': ('event_id', 'occurred_at', 'pbc', 'data')}, {'event_type': 'PurchaseOrderIssued', 'schema': 'ap_automation.purchase_order_issued.emitted.v1', 'topic': 'pbc.ap_automation.events', 'outbox_table': 'ap_automation_outbox', 'payload_fields': ('event_id', 'occurred_at', 'pbc', 'data')}, {'event_type': 'GoodsReceiptRecorded', 'schema': 'ap_automation.goods_receipt_recorded.emitted.v1', 'topic': 'pbc.ap_automation.events', 'outbox_table': 'ap_automation_outbox', 'payload_fields': ('event_id', 'occurred_at', 'pbc', 'data')}, {'event_type': 'InvoiceCaptured', 'schema': 'ap_automation.invoice_captured.emitted.v1', 'topic': 'pbc.ap_automation.events', 'outbox_table': 'ap_automation_outbox', 'payload_fields': ('event_id', 'occurred_at', 'pbc', 'data')}, {'event_type': 'PaymentScheduled', 'schema': 'ap_automation.payment_scheduled.emitted.v1', 'topic': 'pbc.ap_automation.events', 'outbox_table': 'ap_automation_outbox', 'payload_fields': ('event_id', 'occurred_at', 'pbc', 'data')}, {'event_type': 'PaymentExecuted', 'schema': 'ap_automation.payment_executed.emitted.v1', 'topic': 'pbc.ap_automation.events', 'outbox_table': 'ap_automation_outbox', 'payload_fields': ('event_id', 'occurred_at', 'pbc', 'data')}, {'event_type': 'InvoiceExceptionResolved', 'schema': 'ap_automation.invoice_exception_resolved.emitted.v1', 'topic': 'pbc.ap_automation.events', 'outbox_table': 'ap_automation_outbox', 'payload_fields': ('event_id', 'occurred_at', 'pbc', 'data')}, {'event_type': 'VendorRiskChanged', 'schema': 'ap_automation.vendor_risk_changed.emitted.v1', 'topic': 'pbc.ap_automation.events', 'outbox_table': 'ap_automation_outbox', 'payload_fields': ('event_id', 'occurred_at', 'pbc', 'data')}, {'event_type': 'DiscountOpportunityCaptured', 'schema': 'ap_automation.discount_opportunity_captured.emitted.v1', 'topic': 'pbc.ap_automation.events', 'outbox_table': 'ap_automation_outbox', 'payload_fields': ('event_id', 'occurred_at', 'pbc', 'data')}), 'consumed': ({'event_type': 'VendorApproved', 'schema': 'ap_automation.vendor_approved.consumed.v1', 'topic': 'pbc.ap_automation.inbox', 'inbox_table': 'ap_automation_inbox', 'payload_fields': ('event_id', 'occurred_at', 'source_pbc', 'data')}, {'event_type': 'PurchaseOrderApproved', 'schema': 'ap_automation.purchase_order_approved.consumed.v1', 'topic': 'pbc.ap_automation.inbox', 'inbox_table': 'ap_automation_inbox', 'payload_fields': ('event_id', 'occurred_at', 'source_pbc', 'data')}, {'event_type': 'GoodsReceiptPosted', 'schema': 'ap_automation.goods_receipt_posted.consumed.v1', 'topic': 'pbc.ap_automation.inbox', 'inbox_table': 'ap_automation_inbox', 'payload_fields': ('event_id', 'occurred_at', 'source_pbc', 'data')}, {'event_type': 'TaxPolicyChanged', 'schema': 'ap_automation.tax_policy_changed.consumed.v1', 'topic': 'pbc.ap_automation.inbox', 'inbox_table': 'ap_automation_inbox', 'payload_fields': ('event_id', 'occurred_at', 'source_pbc', 'data')}, {'event_type': 'CashForecastUpdated', 'schema': 'ap_automation.cash_forecast_updated.consumed.v1', 'topic': 'pbc.ap_automation.inbox', 'inbox_table': 'ap_automation_inbox', 'payload_fields': ('event_id', 'occurred_at', 'source_pbc', 'data')}, {'event_type': 'AccessPolicyChanged', 'schema': 'ap_automation.access_policy_changed.consumed.v1', 'topic': 'pbc.ap_automation.inbox', 'inbox_table': 'ap_automation_inbox', 'payload_fields': ('event_id', 'occurred_at', 'source_pbc', 'data')}), 'retry_policy': {'name': 'ap_automation_default_retry', 'max_attempts': 5, 'backoff': 'exponential'}, 'idempotency': {'key_fields': ('event_type', 'event_id', 'handler'), 'storage': 'ap_automation_inbox'}}
 
 
@@ -186,6 +189,9 @@ AP_EXECUTION_OPERATIONS = (
 class ApAutomationExecutionService:
     """Runtime-backed AP service facade with owned-table and outbox boundaries."""
 
+    def __init__(self, state=None):
+        self.state = state or ap_runtime.ap_automation_empty_state()
+
     def plan(self, operation, payload=None):
         supplied = dict(payload or {})
         return {
@@ -204,6 +210,99 @@ class ApAutomationExecutionService:
 
     def execution_operations(self):
         return AP_EXECUTION_OPERATIONS
+
+    def execute(self, operation, payload=None):
+        supplied = dict(payload or {})
+        plan = self.plan(operation, supplied)
+        if not plan['ok']:
+            return {**plan, 'result': {'ok': False, 'error': 'unknown_operation'}, 'state': self.state}
+        result = self._execute_runtime_operation(operation, supplied)
+        if isinstance(result, dict) and 'state' in result:
+            self.state = result['state']
+        return {
+            'ok': bool(result.get('ok')) if isinstance(result, dict) else False,
+            'pbc': 'ap_automation',
+            'operation': operation,
+            'payload': supplied,
+            'operation_contract': plan,
+            'transaction_boundary': plan['transaction_boundary'],
+            'event_contract': plan['event_contract'],
+            'result': result,
+            'state': self.state,
+            'side_effects': (),
+        }
+
+    def _execute_runtime_operation(self, operation, payload):
+        if operation == 'configure_runtime':
+            return ap_runtime.ap_automation_configure_runtime(self.state, payload.get('configuration', payload))
+        if operation == 'set_parameter':
+            return ap_runtime.ap_automation_set_parameter(self.state, payload['key'], payload['value'])
+        if operation == 'register_rule':
+            return ap_runtime.ap_automation_register_rule(self.state, payload.get('rule', payload))
+        if operation == 'register_schema_extension':
+            return ap_runtime.ap_automation_register_schema_extension(self.state, payload['table'], payload['fields'])
+        if operation == 'onboard_vendor':
+            return ap_runtime.ap_automation_onboard_vendor(self.state, payload.get('vendor', payload))
+        if operation == 'validate_vendor_bank_account':
+            return ap_runtime.ap_automation_validate_vendor_bank_account(self.state, payload.get('bank_account', payload))
+        if operation == 'register_vendor_tax_profile':
+            return ap_runtime.ap_automation_register_vendor_tax_profile(self.state, payload.get('tax_profile', payload))
+        if operation == 'issue_purchase_order':
+            return ap_runtime.ap_automation_issue_purchase_order(self.state, payload.get('purchase_order', payload))
+        if operation == 'record_goods_receipt':
+            return ap_runtime.ap_automation_record_goods_receipt(self.state, payload.get('receipt', payload))
+        if operation == 'extract_invoice_artifact':
+            return ap_runtime.ap_automation_extract_invoice_artifact(payload.get('artifact', {}), payload.get('invoice', payload))
+        if operation == 'capture_invoice':
+            return ap_runtime.ap_automation_capture_invoice(self.state, payload.get('invoice', payload))
+        if operation == 'match_invoice':
+            return ap_runtime.ap_automation_match_invoice(self.state, payload['invoice_id'])
+        if operation == 'create_approval_task':
+            return ap_runtime.ap_automation_create_approval_task(
+                self.state,
+                payload['invoice_id'],
+                payload['reason'],
+                assignee=payload.get('assignee', 'ap_controller'),
+            )
+        if operation == 'resolve_exception':
+            return ap_runtime.ap_automation_resolve_exception(self.state, payload.get('exception', payload))
+        if operation == 'receive_event':
+            return ap_runtime.ap_automation_receive_event(
+                self.state,
+                payload.get('event', payload),
+                simulate_failure=payload.get('simulate_failure', False),
+            )
+        if operation == 'build_workbench_view':
+            return ap_runtime.ap_automation_build_workbench_view(self.state, tenant=payload['tenant'])
+        if operation == 'schedule_payments':
+            return ap_runtime.ap_automation_schedule_payments(
+                self.state,
+                tenant=payload['tenant'],
+                liquidity_forecast=tuple(payload['liquidity_forecast']),
+                risk_limit=payload['risk_limit'],
+            )
+        if operation == 'create_payment_batch':
+            return ap_runtime.ap_automation_create_payment_batch(self.state, payload.get('batch_request', payload))
+        if operation == 'execute_payment':
+            return ap_runtime.ap_automation_execute_payment(
+                self.state,
+                payload['payment_id'],
+                rails=tuple(payload['rails']),
+            )
+        if operation == 'generate_remittance_advice':
+            return ap_runtime.ap_automation_generate_remittance_advice(
+                self.state,
+                payload['payment_id'],
+                delivery_channel=payload.get('delivery_channel', 'email'),
+            )
+        if operation == 'reconcile_vendor_statement':
+            return ap_runtime.ap_automation_reconcile_vendor_statement(self.state, payload.get('statement', payload))
+        raise ValueError(f'Unsupported AP execution operation: {operation}')
+
+    def __getattr__(self, operation):
+        if operation in AP_EXECUTION_OPERATIONS:
+            return lambda payload=None: self.execute(operation, payload or {})
+        raise AttributeError(operation)
 
 
 def execution_service_manifest():
