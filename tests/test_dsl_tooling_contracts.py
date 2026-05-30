@@ -3889,6 +3889,12 @@ def test_tooling_implementation_phase_audit_maps_phase_exit_criteria_to_evidence
         },
         doctor_text_renderer=ok("appgen.doctor-text-renderer.v1"),
         test_strategy_cli={**ok("appgen.test-strategy-cli-audit.v1"), "doctor_check_count": 15},
+        test_family_contracts={
+            **ok("appgen.test-family-contract-audit.v1"),
+            "family_count": 11,
+            "passing_family_count": 11,
+            "missing_family_count": 0,
+        },
         module_boundaries=ok("appgen.module-boundary-audit.v1"),
         lint=ok("appgen.lint-report.v1"),
         strict_lint={**ok("appgen.lint-report.v1"), "strict": True},
@@ -4136,6 +4142,7 @@ def test_tooling_implementation_phase_audit_maps_phase_exit_criteria_to_evidence
         "semantic_drift_surface_contracts",
         "doctor_cli_text_contracts",
         "grammar_parser_sync_and_keyword_budget",
+        "test_strategy_family_contracts",
         "semantic_model_contract",
         "diagnostic_catalog_fixture_contracts",
         "lint_cli_directory_contracts",
@@ -4938,6 +4945,27 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
         drift_case["required_surfaces"]
     )
     assert drift_case["generate_report"] == "appgen.generate-report.v1"
+    family_gate = next(check for check in report["checks"] if check["id"] == "test_strategy_family_contracts")
+    assert family_gate["ok"] is True
+    assert family_gate["detail"]["format"] == "appgen.test-family-contract-audit.v1"
+    assert family_gate["detail"]["family_count"] == 11
+    assert family_gate["detail"]["passing_family_count"] == family_gate["detail"]["family_count"]
+    assert family_gate["detail"]["missing_family_count"] == 0
+    assert family_gate["detail"]["missing_families"] == ()
+    assert {
+        "parser_golden_tests",
+        "semantic_tests",
+        "diagnostic_golden_tests",
+        "formatter_tests",
+        "cli_contract_tests",
+        "lsp_tests",
+        "graph_tests",
+        "migration_tests",
+        "natural_language_planner_tests",
+        "verifier_tests",
+        "drift_tests",
+    } == set(family_gate["detail"]["family_names"])
+    assert all(family["ok"] for family in family_gate["detail"]["families"])
     parser_gate = next(check for check in report["checks"] if check["id"] == "parser_golden_fixture_contracts")
     assert parser_gate["detail"]["parser"]["format"] == "appgen.parser-golden-audit.v1"
     assert parser_gate["detail"]["parser"]["required_construct_count"] == (

@@ -1720,6 +1720,13 @@ semantic drift, and doctor gates, so release evidence proves the generator,
 IDE, LSP, graph, and release-verifier surfaces share the same semantic model.
 This keeps agent-facing development paths honest; a capability is not counted
 as available just because an in-process helper can produce it.
+The aggregate tooling audit also publishes
+`appgen.test-family-contract-audit.v1` through the
+`test_strategy_family_contracts` gate. That gate maps every required Test
+Strategy row to executable evidence: parser golden, semantic, diagnostic
+golden, formatter, CLI, LSP, graph, migration, natural-language planner,
+verifier, and drift families must all have passing evidence formats and zero
+missing families before `docs/tooling.md` can be considered implemented.
 
 ## Package And Verifier Tooling
 

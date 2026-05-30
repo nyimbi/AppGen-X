@@ -4386,6 +4386,44 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
     package_artifact_names = tuple(Path(item["path"]).name for item in package.get("written_artifacts", ()))
     package_verify_cases = {case.get("case"): case for case in package_verify_cli.get("cases", ())}
     package_manifest_case = package_verify_cases.get("package_writes_target_manifests", {})
+    test_family_contracts = _tooling_audit_test_family_contracts(
+        semantic=semantic,
+        symbol_coverage=symbol_coverage,
+        diagnostics=diagnostics,
+        diagnostic_fixtures=diagnostic_fixtures,
+        parser_golden=parser_golden,
+        parser_golden_text_renderer=parser_golden_text_renderer,
+        formatter_contract=formatter_contract,
+        formatted=formatted,
+        format_write=format_write,
+        dsl_language_cli=dsl_language_cli,
+        cli_help_surface=cli_help_surface,
+        internal_error_exit=internal_error_exit,
+        missing_input_exit=missing_input_exit,
+        missing_required_option_exit=missing_required_option_exit,
+        invalid_choice_exit=invalid_choice_exit,
+        lsp=lsp,
+        lsp_rpc=lsp_rpc,
+        lsp_stdio=lsp_stdio,
+        lsp_rename_cli=lsp_rename_cli,
+        code_action_apply_audit=code_action_apply_audit,
+        lsp_apply_cli=lsp_apply_cli,
+        graphs=graphs,
+        graph_cli=graph_cli,
+        graph_suite_cli=graph_suite_cli,
+        explain_cli=explain_cli,
+        migration_detected=migration_detected,
+        migration_cli=migration_cli,
+        migration_text_renderer=migration_text_renderer,
+        nl_plan_contract=nl_plan_contract,
+        nl_plan_cli=nl_plan_cli,
+        release=release,
+        package=package,
+        package_verify_cli=package_verify_cli,
+        drift=drift,
+        drift_text_renderer=drift_text_renderer,
+        test_strategy_cli=test_strategy_cli,
+    )
     implementation_phases = _tooling_audit_implementation_phases(
         semantic=semantic,
         symbol_coverage=symbol_coverage,
@@ -4444,6 +4482,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
         pbc_publish_cli=pbc_publish_cli,
         parser_golden_text_renderer=parser_golden_text_renderer,
         drift_text_renderer=drift_text_renderer,
+        test_family_contracts=test_family_contracts,
         doctor=doctor,
         doctor_text_renderer=doctor_text_renderer,
     )
@@ -5809,6 +5848,17 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             },
         ),
         _tooling_audit_check(
+            "test_strategy_family_contracts",
+            test_family_contracts["ok"]
+            and test_family_contracts.get("family_count") == 11
+            and test_family_contracts.get("passing_family_count") == test_family_contracts.get("family_count")
+            and test_family_contracts.get("missing_family_count") == 0
+            and test_family_contracts.get("missing_families") == (),
+            "Every Test Strategy family is mapped to executable evidence for parser, semantic, diagnostics, formatter, CLI, LSP, graph, migration, NL planner, verifier, and drift coverage.",
+            "docs/tooling.md#test-strategy",
+            test_family_contracts,
+        ),
+        _tooling_audit_check(
             "parser_golden_fixture_contracts",
             parser_golden["ok"]
             and parser_golden.get("required_construct_count") == len(parser_golden.get("constructs_required", ()))
@@ -6298,6 +6348,172 @@ def _tooling_audit_doc_refs(value: object) -> tuple[str, ...]:
     return tuple(dict.fromkeys(refs))
 
 
+def _tooling_audit_test_family_contracts(**evidence: dict) -> dict:
+    families = (
+        {
+            "family": "parser_golden_tests",
+            "required_coverage": "Valid and invalid examples cover every grammar construct.",
+            "ok": evidence["parser_golden"].get("ok") is True
+            and evidence["parser_golden"].get("missing_construct_count") == 0
+            and evidence["parser_golden"].get("passing_fixture_count")
+            == evidence["parser_golden"].get("fixture_count")
+            and evidence["parser_golden_text_renderer"].get("ok") is True,
+            "evidence_formats": (
+                evidence["parser_golden"].get("format"),
+                evidence["parser_golden_text_renderer"].get("format"),
+            ),
+        },
+        {
+            "family": "semantic_tests",
+            "required_coverage": "Symbol table, lookup paths, handler targets, PBC catalog binding, workflows, packages, and deployments use the shared semantic model.",
+            "ok": evidence["semantic"].get("ok") is True
+            and evidence["symbol_coverage"].get("missing") == ()
+            and evidence["drift"].get("ok") is True,
+            "evidence_formats": (
+                evidence["semantic"].get("format"),
+                evidence["symbol_coverage"].get("format"),
+                evidence["drift"].get("format"),
+            ),
+        },
+        {
+            "family": "diagnostic_golden_tests",
+            "required_coverage": "Every required diagnostic code has a fixture and expected JSON shape.",
+            "ok": evidence["diagnostics"].get("ok") is True
+            and evidence["diagnostic_fixtures"].get("ok") is True
+            and evidence["diagnostics"].get("missing_fixture_count") == 0
+            and evidence["diagnostic_fixtures"].get("missing_code_count") == 0,
+            "evidence_formats": (
+                evidence["diagnostics"].get("format"),
+                evidence["diagnostic_fixtures"].get("format"),
+            ),
+        },
+        {
+            "family": "formatter_tests",
+            "required_coverage": "Formatter idempotency, comment preservation, modifier ordering, stable output, and write/organize behavior are covered.",
+            "ok": evidence["formatted"].get("idempotent") is True
+            and evidence["formatter_contract"].get("ok") is True
+            and evidence["format_write"].get("ok") is True,
+            "evidence_formats": (
+                evidence["formatted"].get("format"),
+                evidence["formatter_contract"].get("format"),
+                evidence["format_write"].get("format"),
+            ),
+        },
+        {
+            "family": "cli_contract_tests",
+            "required_coverage": "CLI exit codes, JSON schemas, text summaries, bad arguments, help, and aliases are covered.",
+            "ok": evidence["dsl_language_cli"].get("ok") is True
+            and evidence["cli_help_surface"].get("ok") is True
+            and evidence["internal_error_exit"].get("ok") is True
+            and evidence["missing_input_exit"].get("ok") is True
+            and evidence["missing_required_option_exit"].get("ok") is True
+            and evidence["invalid_choice_exit"].get("ok") is True,
+            "evidence_formats": (
+                evidence["dsl_language_cli"].get("format"),
+                evidence["cli_help_surface"].get("format"),
+                evidence["internal_error_exit"].get("format"),
+                evidence["missing_input_exit"].get("format"),
+                evidence["missing_required_option_exit"].get("format"),
+                evidence["invalid_choice_exit"].get("format"),
+            ),
+        },
+        {
+            "family": "lsp_tests",
+            "required_coverage": "Completion, hover, definition, references, rename, code actions, formatting, JSON-RPC, and stdio are covered.",
+            "ok": evidence["lsp"].get("ok") is True
+            and evidence["lsp_rpc"].get("ok") is True
+            and evidence["lsp_stdio"].get("ok") is True
+            and evidence["lsp_rename_cli"].get("ok") is True
+            and evidence["code_action_apply_audit"].get("ok") is True
+            and evidence["lsp_apply_cli"].get("ok") is True,
+            "evidence_formats": (
+                evidence["lsp"].get("format"),
+                evidence["lsp_rpc"].get("format"),
+                evidence["lsp_stdio"].get("format"),
+                evidence["lsp_rename_cli"].get("format"),
+                evidence["code_action_apply_audit"].get("format"),
+                evidence["lsp_apply_cli"].get("format"),
+            ),
+        },
+        {
+            "family": "graph_tests",
+            "required_coverage": "ER, lookup, workflow, handler, PBC, security, agent, package, and deployment graph output are covered.",
+            "ok": evidence["graphs"].get("ok") is True
+            and evidence["graphs"].get("missing_kind_count") == 0
+            and evidence["graph_cli"].get("ok") is True
+            and evidence["graph_suite_cli"].get("ok") is True
+            and evidence["explain_cli"].get("ok") is True,
+            "evidence_formats": (
+                evidence["graphs"].get("format"),
+                evidence["graph_cli"].get("format"),
+                evidence["graph_suite_cli"].get("format"),
+                evidence["explain_cli"].get("format"),
+            ),
+        },
+        {
+            "family": "migration_tests",
+            "required_coverage": "Add, drop, rename, type, nullability, default, relationship, and index migration scenarios are covered.",
+            "ok": evidence["migration_cli"].get("ok") is True
+            and set(REQUIRED_MIGRATION_DETECTIONS) <= set(evidence["migration_detected"])
+            and evidence["migration_text_renderer"].get("ok") is True,
+            "evidence_formats": (
+                evidence["migration_cli"].get("format"),
+                evidence["migration_text_renderer"].get("format"),
+            ),
+        },
+        {
+            "family": "natural_language_planner_tests",
+            "required_coverage": "Prompt-to-DSL patch fixtures, lint integration, rejected unsafe plans, and token-budget notes are covered.",
+            "ok": evidence["nl_plan_contract"].get("ok") is True
+            and evidence["nl_plan_cli"].get("ok") is True
+            and not evidence["nl_plan_contract"].get("blocking_gaps")
+            and not evidence["nl_plan_cli"].get("blocking_cases"),
+            "evidence_formats": (
+                evidence["nl_plan_contract"].get("format"),
+                evidence["nl_plan_cli"].get("format"),
+            ),
+        },
+        {
+            "family": "verifier_tests",
+            "required_coverage": "Web, mobile, desktop, PBC, and deployment release evidence contracts are covered.",
+            "ok": evidence["release"].get("ok") is True
+            and evidence["package"].get("ok") is True
+            and evidence["package_verify_cli"].get("ok") is True
+            and evidence["package_verify_cli"].get("target_count", 0) >= 5,
+            "evidence_formats": (
+                evidence["release"].get("format"),
+                evidence["package"].get("format"),
+                evidence["package_verify_cli"].get("format"),
+            ),
+        },
+        {
+            "family": "drift_tests",
+            "required_coverage": "CLI, LSP, IDE, generator, release verifier, and tests consume the same semantic model.",
+            "ok": evidence["drift"].get("ok") is True
+            and evidence["drift_text_renderer"].get("ok") is True
+            and evidence["test_strategy_cli"].get("ok") is True
+            and evidence["test_strategy_cli"].get("observed_surface_count", 0)
+            >= evidence["test_strategy_cli"].get("required_surface_count", 0),
+            "evidence_formats": (
+                evidence["drift"].get("format"),
+                evidence["drift_text_renderer"].get("format"),
+                evidence["test_strategy_cli"].get("format"),
+            ),
+        },
+    )
+    missing = tuple(family["family"] for family in families if not family["ok"])
+    return {
+        "format": "appgen.test-family-contract-audit.v1",
+        "ok": not missing,
+        "family_count": len(families),
+        "passing_family_count": sum(1 for family in families if family["ok"]),
+        "missing_family_count": len(missing),
+        "missing_families": missing,
+        "families": families,
+        "family_names": tuple(family["family"] for family in families),
+    }
+
+
 def _markdown_heading_anchors(markdown: str) -> tuple[str, ...]:
     anchors = []
     seen: dict[str, int] = {}
@@ -6427,6 +6643,15 @@ def _tooling_audit_implementation_phases(**evidence: dict) -> dict:
                     "id": "test_strategy_cli_proves_shared_surfaces",
                     "ok": evidence["test_strategy_cli"].get("ok") is True,
                     "evidence_format": evidence["test_strategy_cli"].get("format"),
+                },
+                {
+                    "id": "test_strategy_family_contracts",
+                    "ok": evidence["test_family_contracts"].get("ok") is True
+                    and evidence["test_family_contracts"].get("family_count") == 11
+                    and evidence["test_family_contracts"].get("passing_family_count")
+                    == evidence["test_family_contracts"].get("family_count")
+                    and evidence["test_family_contracts"].get("missing_family_count") == 0,
+                    "evidence_format": evidence["test_family_contracts"].get("format"),
                 },
             ),
         ),
