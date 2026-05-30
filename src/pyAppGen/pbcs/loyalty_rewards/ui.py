@@ -475,3 +475,34 @@ def smoke_test():
         "rendered": rendered["workbench"],
         "side_effects": (),
     }
+
+
+# Improve1 loyalty control UI extension.
+from .loyalty_control import improve1_loyalty_control_contract
+
+_LOYALTY_REWARDS_BASE_UI_CONTRACT = loyalty_rewards_ui_contract
+_LOYALTY_REWARDS_BASE_RENDER_WORKBENCH = loyalty_rewards_render_workbench
+
+def loyalty_rewards_ui_contract() -> dict:
+    ui = dict(_LOYALTY_REWARDS_BASE_UI_CONTRACT())
+    control = improve1_loyalty_control_contract()
+    panels = tuple(item["evidence"]["ui_surface"] for item in control["capabilities"])
+    service_actions = tuple(item["evidence"]["service_api"] for item in control["capabilities"])
+    ui["ok"] = bool(ui.get("ok")) and control["ok"] and len(panels) == 50
+    ui["loyalty_control_contract"] = control["format"]
+    ui["loyalty_control_panels"] = panels
+    ui["loyalty_control_service_actions"] = service_actions
+    ui["improve1_loyalty_agent_tools"] = tuple(f"loyalty_agent.{item['slug']}" for item in control["capabilities"])
+    return ui
+
+def loyalty_rewards_render_workbench(*args, **kwargs):
+    if not args and "state" not in kwargs:
+        args = (loyalty_rewards_empty_state(),)
+    kwargs.setdefault("tenant", "default")
+    kwargs.setdefault("principal_permissions", loyalty_rewards_permissions_contract()["permissions"])
+    workbench = dict(_LOYALTY_REWARDS_BASE_RENDER_WORKBENCH(*args, **kwargs))
+    control = improve1_loyalty_control_contract()
+    workbench["ok"] = bool(workbench.get("ok")) and control["ok"]
+    workbench["loyalty_control_panels"] = tuple(item["evidence"]["ui_surface"] for item in control["capabilities"])
+    workbench["loyalty_control_agent_tools"] = tuple(f"loyalty_agent.{item['slug']}" for item in control["capabilities"])
+    return workbench

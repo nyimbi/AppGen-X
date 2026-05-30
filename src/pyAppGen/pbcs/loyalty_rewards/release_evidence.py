@@ -182,3 +182,38 @@ def smoke_test() -> dict:
         "evidence": evidence,
         "side_effects": (),
     }
+
+
+# Improve1 loyalty control release extension.
+from .loyalty_control import improve1_loyalty_control_contract
+
+_LOYALTY_REWARDS_BASE_BUILD_RELEASE_EVIDENCE = build_release_evidence
+_LOYALTY_REWARDS_BASE_RELEASE_READINESS_MANIFEST = release_readiness_manifest
+_LOYALTY_REWARDS_BASE_VALIDATE_RELEASE_EVIDENCE = validate_release_evidence
+
+def build_release_evidence() -> dict:
+    evidence = dict(_LOYALTY_REWARDS_BASE_BUILD_RELEASE_EVIDENCE())
+    control = improve1_loyalty_control_contract()
+    checks = tuple(evidence.get("checks", ())) + ({"id": "improve1_loyalty_control", "ok": control["ok"]},)
+    evidence["checks"] = checks
+    evidence["ok"] = bool(evidence.get("ok")) and control["ok"]
+    evidence["loyalty_control"] = control
+    evidence["blocking_gaps"] = tuple(evidence.get("blocking_gaps", ())) + tuple(control.get("blocking_gaps", ()))
+    return evidence
+
+def release_readiness_manifest() -> dict:
+    manifest = dict(_LOYALTY_REWARDS_BASE_RELEASE_READINESS_MANIFEST())
+    control = improve1_loyalty_control_contract()
+    manifest["ok"] = bool(manifest.get("ok")) and control["ok"]
+    manifest["sections"] = tuple(dict.fromkeys(tuple(manifest.get("sections", ())) + ("improve1_loyalty_control", "improve1_traceability")))
+    manifest["loyalty_control"] = control
+    manifest["blocking_gaps"] = tuple(manifest.get("blocking_gaps", ())) + tuple(control.get("blocking_gaps", ()))
+    return manifest
+
+def validate_release_evidence() -> dict:
+    validation = dict(_LOYALTY_REWARDS_BASE_VALIDATE_RELEASE_EVIDENCE())
+    control = improve1_loyalty_control_contract()
+    validation["ok"] = bool(validation.get("ok")) and control["ok"]
+    validation["loyalty_control"] = control
+    validation["failed_checks"] = tuple(validation.get("failed_checks", ())) + tuple(control.get("blocking_gaps", ()))
+    return validation
