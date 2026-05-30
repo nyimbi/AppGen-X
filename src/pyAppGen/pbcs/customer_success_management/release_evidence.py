@@ -1,6 +1,7 @@
 """Release evidence for the customer_success_management PBC."""
 from __future__ import annotations
 
+from .success_control import improve1_success_control_contract
 from .slice_app import (
     PBC_KEY,
     build_release_evidence as _build_release_evidence,
@@ -11,7 +12,10 @@ from .slice_app import (
 
 
 def build_release_evidence() -> dict:
-    return _build_release_evidence()
+    evidence = _build_release_evidence()
+    success_control = improve1_success_control_contract()
+    checks = tuple(evidence.get("checks", ())) + ({"id": "improve1_success_control", "ok": success_control["ok"]},)
+    return {**evidence, "ok": evidence["ok"] and success_control["ok"], "checks": checks, "improve1_success_control": success_control, "blocking_gaps": tuple(check.get("id") for check in checks if not check.get("ok"))}
 
 
 def customer_success_management_build_release_evidence() -> dict:

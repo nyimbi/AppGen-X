@@ -1,6 +1,7 @@
 """Executable runtime contract for the customer_success_management PBC."""
 from __future__ import annotations
 
+from .success_control import SUCCESS_CONTROL_CAPABILITIES, improve1_success_control_contract
 from .slice_app import (
     ALLOWED_DATABASE_BACKENDS,
     APPGEN_X_TOPIC,
@@ -129,7 +130,10 @@ def customer_success_management_build_api_contract() -> dict:
 
 
 def customer_success_management_build_release_evidence() -> dict:
-    return build_release_evidence()
+    evidence = build_release_evidence()
+    success_control = improve1_success_control_contract()
+    checks = tuple(evidence.get("checks", ())) + ({"id": "improve1_success_control", "ok": success_control["ok"]},)
+    return {**evidence, "ok": evidence["ok"] and success_control["ok"], "checks": checks, "improve1_success_control": success_control, "blocking_gaps": tuple(check.get("id") for check in checks if not check.get("ok"))}
 
 
 def customer_success_management_permissions_contract() -> dict:
@@ -164,7 +168,8 @@ def customer_success_management_runtime_smoke() -> dict:
     smoke = slice_app_smoke_test()
     route = dispatch_route("GET", "/customer-success-workbench", {"tenant": "tenant-smoke"})
     generation = pbc_generation_smoke_audit()
-    checks = tuple({"id": capability, "ok": True} for capability in CUSTOMER_SUCCESS_MANAGEMENT_RUNTIME_CAPABILITY_KEYS)
+    success_control = improve1_success_control_contract()
+    checks = tuple({"id": capability, "ok": True} for capability in CUSTOMER_SUCCESS_MANAGEMENT_RUNTIME_CAPABILITY_KEYS) + ({"id": "improve1_success_control", "ok": success_control["ok"]},)
     return {
         "format": f"appgen.{PBC_KEY}.runtime-smoke.v1",
         "ok": smoke["ok"] and route["ok"] and generation["ok"] and all(check["ok"] for check in checks),
@@ -173,6 +178,7 @@ def customer_success_management_runtime_smoke() -> dict:
         "route": route,
         "generation": generation,
         "state": customer_success_management_empty_state(),
+        "improve1_success_control": success_control,
         "blocking_gaps": (),
         "side_effects": (),
     }
@@ -181,11 +187,13 @@ def customer_success_management_runtime_smoke() -> dict:
 def customer_success_management_runtime_capabilities() -> dict:
     runtime = build_runtime_capabilities()
     smoke = customer_success_management_runtime_smoke()
+    success_control = improve1_success_control_contract()
     return {
         **runtime,
-        "ok": runtime["ok"] and smoke["ok"],
+        "ok": runtime["ok"] and smoke["ok"] and success_control["ok"],
         "owned_tables": CUSTOMER_SUCCESS_MANAGEMENT_OWNED_TABLES,
-        "operations": tuple(build_service_contract()["command_methods"] + build_service_contract()["query_methods"]),
+        "operations": tuple(build_service_contract()["command_methods"] + build_service_contract()["query_methods"] + ("improve1_success_control_contract",) + SUCCESS_CONTROL_CAPABILITIES),
         "smoke": smoke,
+        "improve1_success_control": success_control,
         "side_effects": (),
     }

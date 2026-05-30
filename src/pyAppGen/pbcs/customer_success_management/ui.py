@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from .domain_depth import DOMAIN_OPERATIONS, DOMAIN_PARAMETERS, DOMAIN_RULES
 from .slice_app import BUSINESS_TABLES, build_standalone_app, build_ui_contract
+from .success_control import improve1_success_control_contract
 
 PBC_KEY = "customer_success_management"
 UI_FRAGMENTS = tuple(build_ui_contract()["fragments"])
@@ -10,6 +11,7 @@ UI_FRAGMENTS = tuple(build_ui_contract()["fragments"])
 
 def customer_success_management_ui_contract() -> dict:
     contract = build_ui_contract()
+    success_control = improve1_success_control_contract()
     return {
         **contract,
         "full_capability_surface": {
@@ -45,6 +47,8 @@ def customer_success_management_ui_contract() -> dict:
             "agent_assistant",
             "release_evidence",
         ),
+        "success_control_panels": tuple({"capability": sample["capability"], "feature_number": sample["feature_number"], "title": sample["title"], "target_table": sample["target_table"], "route": sample["route"], "permission": sample["permission"]} for sample in success_control["samples"]),
+        "success_control_contract": success_control,
     }
 
 

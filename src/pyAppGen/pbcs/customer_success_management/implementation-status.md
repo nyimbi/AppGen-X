@@ -37,3 +37,10 @@
 PYTHONPATH=src ./.venv/bin/pytest src/pyAppGen/pbcs/customer_success_management/tests
 PYTHONPATH=src ./.venv/bin/python -m py_compile src/pyAppGen/pbcs/customer_success_management/*.py
 ```
+
+## 2026-05-30 improve1 Success-Control Execution Slice
+
+- Added `success_control.py` as side-effect-free executable proof for all 50 improve1 customer-success capabilities.
+- Bound each feature to owned customer-success tables, AppGen-X event metadata, UI/API route surfaces, agent skills, configuration handles, retry/dead-letter evidence, and traceability artifacts.
+- Added package-local domain behavior tests for success account readiness, lifecycle state, health scoring, playbook task proof, escalations, renewals, schema extension governance, event reliability, cross-PBC boundary proof, semantic plan extraction, agent-safe plans, continuous controls, ethics guardrails, readiness, and end-to-end success proof.
+- Updated runtime, UI, release evidence, and improve1 traceability so every feature row points to executable success-control behavior and `tests/test_domain_behavior.py`.
