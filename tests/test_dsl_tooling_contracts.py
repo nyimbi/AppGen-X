@@ -3840,9 +3840,29 @@ def test_tooling_implementation_phase_audit_maps_phase_exit_criteria_to_evidence
             "shape_gap_count": 0,
             "severity_gap_count": 0,
         },
-        parser_golden=ok("appgen.parser-golden-audit.v1"),
-        drift=ok("appgen.semantic-drift-audit.v1"),
-        test_strategy_cli=ok("appgen.test-strategy-cli-audit.v1"),
+        parser_golden={
+            **ok("appgen.parser-golden-audit.v1"),
+            "fixture_count": 4,
+            "passing_fixture_count": 4,
+            "failing_fixture_count": 0,
+            "missing_construct_count": 0,
+            "blocking_gap_count": 0,
+        },
+        parser_golden_text_renderer=ok("appgen.parser-golden-text-renderer.v1"),
+        drift={
+            **ok("appgen.semantic-drift-audit.v1"),
+            "semantic_model_format": "appgen.semantic-model.v1",
+            "surfaces": ("cli", "lsp", "studio", "graph", "generator", "release_verifier"),
+            "blocking_gaps": (),
+        },
+        drift_text_renderer=ok("appgen.semantic-drift-text-renderer.v1"),
+        doctor={
+            **ok("appgen.doctor-report.v1"),
+            "checks": tuple({"check": f"check_{index}", "ok": True} for index in range(15)),
+            "blocking_gaps": (),
+        },
+        doctor_text_renderer=ok("appgen.doctor-text-renderer.v1"),
+        test_strategy_cli={**ok("appgen.test-strategy-cli-audit.v1"), "doctor_check_count": 15},
         module_boundaries=ok("appgen.module-boundary-audit.v1"),
         lint=ok("appgen.lint-report.v1"),
         strict_lint={**ok("appgen.lint-report.v1"), "strict": True},
@@ -3856,7 +3876,17 @@ def test_tooling_implementation_phase_audit_maps_phase_exit_criteria_to_evidence
             "stage_separation": {"ok": True},
         },
         formatted={"ok": True, "format": "appgen.format-result.v1", "idempotent": True},
-        formatter_contract=ok("appgen.formatter-contract-audit.v1"),
+        formatter_contract={
+            **ok("appgen.formatter-contract-audit.v1"),
+            "check_count": 9,
+            "passing_check_count": 9,
+        },
+        format_write={
+            **ok("appgen.format-write-audit.v1"),
+            "scenario_count": 5,
+            "passing_scenario_count": 5,
+            "organize_category_count": 7,
+        },
         validation=ok("appgen.validate-report.v1"),
         validate_generate_cli=ok("appgen.validate-generate-cli-audit.v1"),
         dsl_language_cli=ok("appgen.dsl-language-cli-audit.v1"),
@@ -4010,11 +4040,15 @@ def test_tooling_implementation_phase_audit_maps_phase_exit_criteria_to_evidence
         for criterion in phase["exit_criteria"]
     } >= {
         "current_behavior_documented",
+        "parser_golden_fixture_contracts",
+        "semantic_drift_surface_contracts",
+        "doctor_cli_text_contracts",
         "grammar_parser_sync_and_keyword_budget",
         "semantic_model_contract",
         "diagnostic_catalog_fixture_contracts",
         "lint_cli_directory_contracts",
         "formatter_idempotency",
+        "formatter_write_organize_contracts",
         "cli_usage_failure_modes",
         "graph_json_mermaid_and_dot",
         "graph_rendering_contracts",
@@ -4149,6 +4183,7 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
         "frontend_semantic_service_bridge",
         "frontend_interaction_audit_bridge",
         "cli_usage_failure_contracts",
+        "formatter_write_organize_contracts",
         "package_and_release_verifiers",
         "package_manifest_handoff_contracts",
         "release_text_evidence_contracts",
@@ -4156,6 +4191,9 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
         "explain_cli_contracts",
         "migration_safety_text_contracts",
         "parser_golden_and_drift_gates",
+        "parser_golden_fixture_contracts",
+        "semantic_drift_surface_contracts",
+        "doctor_cli_text_contracts",
         "tooling_doc_anchor_integrity",
         "non_goal_policy_guards",
         "tooling_audit_text_renderer",
@@ -4464,6 +4502,34 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert cli_check["detail"]["format_write"]["organize_order"] == tuple(
         sorted(cli_check["detail"]["format_write"]["organize_order"])
     )
+    formatter_gate = next(check for check in report["checks"] if check["id"] == "formatter_write_organize_contracts")
+    assert formatter_gate["detail"]["formatted"]["format"] == "appgen.format-result.v1"
+    assert formatter_gate["detail"]["formatted"]["idempotent"] is True
+    assert formatter_gate["detail"]["formatter_contract"]["format"] == "appgen.formatter-contract-audit.v1"
+    assert formatter_gate["detail"]["formatter_contract"]["passing_check_count"] == (
+        formatter_gate["detail"]["formatter_contract"]["check_count"]
+    )
+    assert formatter_gate["detail"]["formatter_contract"]["failed_check_count"] == 0
+    assert formatter_gate["detail"]["formatter_contract"]["diagnostic_error_count"] == 0
+    assert formatter_gate["detail"]["formatter_contract"]["blocking_gaps"] == ()
+    assert formatter_gate["detail"]["format_write"]["format"] == "appgen.format-write-audit.v1"
+    assert formatter_gate["detail"]["format_write"]["passing_scenario_count"] == (
+        formatter_gate["detail"]["format_write"]["scenario_count"]
+    )
+    assert formatter_gate["detail"]["format_write"]["failing_scenario_count"] == 0
+    assert formatter_gate["detail"]["format_write"]["blocking_gap_count"] == 0
+    assert formatter_gate["detail"]["format_write"]["write_mode_count"] == 2
+    assert formatter_gate["detail"]["format_write"]["check_mode_count"] == 2
+    assert formatter_gate["detail"]["format_write"]["organize_category_count"] == 7
+    assert formatter_gate["detail"]["format_write"]["text_has_report_format"] is True
+    assert formatter_gate["detail"]["format_write"]["text_has_write_metadata"] is True
+    assert formatter_gate["detail"]["text_renderer"]["format"] == "appgen.format-text-renderer.v1"
+    assert formatter_gate["detail"]["text_renderer"]["summary_line_count"] == 1
+    assert formatter_gate["detail"]["text_renderer"]["write_path_line_count"] == 1
+    assert formatter_gate["detail"]["text_renderer"]["write_flag_line_count"] == 1
+    assert formatter_gate["detail"]["text_renderer"]["idempotence_line_count"] == 1
+    assert formatter_gate["detail"]["text_renderer"]["organize_line_count"] == 1
+    assert formatter_gate["detail"]["text_renderer"]["json_fallback"] is False
     assert cli_check["detail"]["internal_error_exit"]["format"] == "appgen.internal-error-exit-audit.v1"
     assert cli_check["detail"]["internal_error_exit"]["ok"] is True
     assert cli_check["detail"]["internal_error_exit"]["mode_count"] == 2
@@ -4659,6 +4725,51 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
         drift_case["required_surfaces"]
     )
     assert drift_case["generate_report"] == "appgen.generate-report.v1"
+    parser_gate = next(check for check in report["checks"] if check["id"] == "parser_golden_fixture_contracts")
+    assert parser_gate["detail"]["parser"]["format"] == "appgen.parser-golden-audit.v1"
+    assert parser_gate["detail"]["parser"]["required_construct_count"] == (
+        parser_gate["detail"]["parser"]["covered_construct_count"]
+    )
+    assert parser_gate["detail"]["parser"]["missing_construct_count"] == 0
+    assert parser_gate["detail"]["parser"]["passing_fixture_count"] == parser_gate["detail"]["parser"]["fixture_count"]
+    assert parser_gate["detail"]["parser"]["failing_fixture_count"] == 0
+    assert parser_gate["detail"]["parser"]["blocking_gap_count"] == 0
+    assert parser_gate["detail"]["parser"]["valid_fixture_count"] >= 1
+    assert parser_gate["detail"]["parser"]["invalid_fixture_count"] >= 1
+    assert parser_gate["detail"]["text_renderer"]["format"] == "appgen.parser-golden-text-renderer.v1"
+    assert parser_gate["detail"]["text_renderer"]["missing_fragment_count"] == 0
+    assert parser_gate["detail"]["text_renderer"]["marker_line_count"] >= 4
+    assert parser_gate["detail"]["text_renderer"]["json_fallback"] is False
+    drift_gate = next(check for check in report["checks"] if check["id"] == "semantic_drift_surface_contracts")
+    assert drift_gate["detail"]["drift"]["format"] == "appgen.semantic-drift-audit.v1"
+    assert drift_gate["detail"]["drift"]["semantic_model_format"] == "appgen.semantic-model.v1"
+    assert drift_gate["detail"]["drift"]["surface_count"] >= 8
+    assert drift_gate["detail"]["drift"]["blocking_gap_count"] == 0
+    assert drift_gate["detail"]["drift"]["surface_evidence"]["generate_report"] == "appgen.generate-report.v1"
+    assert drift_gate["detail"]["text_renderer"]["format"] == "appgen.semantic-drift-text-renderer.v1"
+    assert drift_gate["detail"]["text_renderer"]["surface_line_count"] >= 1
+    assert drift_gate["detail"]["text_renderer"]["evidence_line_count"] >= 3
+    assert drift_gate["detail"]["text_renderer"]["check_line_count"] >= 2
+    assert drift_gate["detail"]["text_renderer"]["digest_line_count"] >= 1
+    assert drift_gate["detail"]["text_renderer"]["json_fallback"] is False
+    assert drift_gate["detail"]["cli"]["observed_surface_count"] >= drift_gate["detail"]["cli"]["required_surface_count"]
+    doctor_gate = next(check for check in report["checks"] if check["id"] == "doctor_cli_text_contracts")
+    assert doctor_gate["detail"]["doctor"]["format"] == "appgen.doctor-report.v1"
+    assert doctor_gate["detail"]["doctor"]["check_count"] >= 15
+    assert doctor_gate["detail"]["doctor"]["blocking_gap_count"] == 0
+    assert {
+        "parser_golden_fixtures",
+        "directory_lint_input",
+        "cli_alias_contract",
+        "module_boundaries",
+        "studio_semantic_service",
+        "vscode_extension_surface",
+    } <= set(doctor_gate["detail"]["doctor"]["check_ids"])
+    assert doctor_gate["detail"]["text_renderer"]["format"] == "appgen.doctor-text-renderer.v1"
+    assert doctor_gate["detail"]["text_renderer"]["check_line_count"] >= 8
+    assert doctor_gate["detail"]["text_renderer"]["detail_format_line_count"] >= 8
+    assert doctor_gate["detail"]["text_renderer"]["json_fallback"] is False
+    assert doctor_gate["detail"]["cli"]["doctor_check_count"] >= 15
     package_check = next(check for check in report["checks"] if check["id"] == "package_and_release_verifiers")
     assert package_check["detail"]["cli"]["format"] == "appgen.package-verify-cli-audit.v1"
     assert package_check["detail"]["cli"]["ok"] is True

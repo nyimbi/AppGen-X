@@ -4373,6 +4373,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
         lint_directory_cli=lint_directory_cli,
         formatted=formatted,
         formatter_contract=formatter_contract,
+        format_write=format_write,
         validation=validation,
         validate_generate_cli=validate_generate_cli,
         dsl_language_cli=dsl_language_cli,
@@ -4409,6 +4410,10 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
         package=package,
         package_verify_cli=package_verify_cli,
         release_text_renderer=release_text_renderer,
+        parser_golden_text_renderer=parser_golden_text_renderer,
+        drift_text_renderer=drift_text_renderer,
+        doctor=doctor,
+        doctor_text_renderer=doctor_text_renderer,
     )
 
     checks = (
@@ -4644,6 +4649,84 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                 "idempotent": formatted.get("idempotent"),
                 "formatter_contract": formatter_contract,
                 "text_renderer": format_text_renderer,
+            },
+        ),
+        _tooling_audit_check(
+            "formatter_write_organize_contracts",
+            formatted["format"] == "appgen.format-result.v1"
+            and formatted["idempotent"]
+            and formatter_contract["ok"]
+            and formatter_contract.get("passing_check_count") == formatter_contract.get("check_count")
+            and formatter_contract.get("idempotent_report_count") == formatter_contract.get("report_count")
+            and formatter_contract.get("changed_report_count") == formatter_contract.get("report_count")
+            and formatter_contract.get("diagnostic_error_count") == 0
+            and not formatter_contract.get("blocking_gaps")
+            and format_write["ok"]
+            and format_write.get("passing_scenario_count") == format_write.get("scenario_count")
+            and format_write.get("failing_scenario_count") == 0
+            and format_write.get("blocking_gap_count") == 0
+            and format_write.get("write_mode_count") == 2
+            and format_write.get("check_mode_count") == 2
+            and format_write.get("organize_category_count") == 7
+            and format_write.get("check_exit_code") == 1
+            and format_write.get("check_write_requested") is False
+            and format_write.get("check_written") is False
+            and format_write.get("clean_check_exit_code") == 0
+            and format_write.get("organize") is True
+            and format_write.get("organize_idempotent") is True
+            and format_write.get("text_has_report_format") is True
+            and format_write.get("text_has_write_metadata") is True
+            and format_text_renderer["ok"]
+            and format_text_renderer.get("summary_line_count") == 1
+            and format_text_renderer.get("write_path_line_count") == 1
+            and format_text_renderer.get("write_flag_line_count") == 1
+            and format_text_renderer.get("idempotence_line_count") == 1
+            and format_text_renderer.get("organize_line_count") == 1
+            and format_text_renderer.get("json_fallback") is False,
+            "Formatter write and organize contracts prove check/write modes, table organization categories, idempotence, comments, diagnostics, and text markers.",
+            "docs/tooling.md#appgen-format",
+            {
+                "formatted": {
+                    "format": formatted.get("format"),
+                    "changed": formatted.get("changed"),
+                    "idempotent": formatted.get("idempotent"),
+                },
+                "formatter_contract": {
+                    "format": formatter_contract.get("format"),
+                    "check_count": formatter_contract.get("check_count"),
+                    "passing_check_count": formatter_contract.get("passing_check_count"),
+                    "failed_check_count": formatter_contract.get("failed_check_count"),
+                    "comment_check_count": formatter_contract.get("comment_check_count"),
+                    "ordering_check_count": formatter_contract.get("ordering_check_count"),
+                    "report_count": formatter_contract.get("report_count"),
+                    "idempotent_report_count": formatter_contract.get("idempotent_report_count"),
+                    "changed_report_count": formatter_contract.get("changed_report_count"),
+                    "diagnostic_error_count": formatter_contract.get("diagnostic_error_count"),
+                    "blocking_gaps": formatter_contract.get("blocking_gaps"),
+                },
+                "format_write": {
+                    "format": format_write.get("format"),
+                    "scenario_count": format_write.get("scenario_count"),
+                    "passing_scenario_count": format_write.get("passing_scenario_count"),
+                    "failing_scenario_count": format_write.get("failing_scenario_count"),
+                    "blocking_gap_count": format_write.get("blocking_gap_count"),
+                    "write_mode_count": format_write.get("write_mode_count"),
+                    "check_mode_count": format_write.get("check_mode_count"),
+                    "organize_category_count": format_write.get("organize_category_count"),
+                    "organize_table_body_order": format_write.get("organize_table_body_order"),
+                    "text_has_report_format": format_write.get("text_has_report_format"),
+                    "text_has_write_metadata": format_write.get("text_has_write_metadata"),
+                },
+                "text_renderer": {
+                    "format": format_text_renderer.get("format"),
+                    "summary_line_count": format_text_renderer.get("summary_line_count"),
+                    "write_path_line_count": format_text_renderer.get("write_path_line_count"),
+                    "diagnostic_line_count": format_text_renderer.get("diagnostic_line_count"),
+                    "write_flag_line_count": format_text_renderer.get("write_flag_line_count"),
+                    "idempotence_line_count": format_text_renderer.get("idempotence_line_count"),
+                    "organize_line_count": format_text_renderer.get("organize_line_count"),
+                    "json_fallback": format_text_renderer.get("json_fallback"),
+                },
             },
         ),
         _tooling_audit_check(
@@ -5361,6 +5444,146 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             },
         ),
         _tooling_audit_check(
+            "parser_golden_fixture_contracts",
+            parser_golden["ok"]
+            and parser_golden.get("required_construct_count") == len(parser_golden.get("constructs_required", ()))
+            and parser_golden.get("covered_construct_count") == len(parser_golden.get("constructs_covered", ()))
+            and parser_golden.get("missing_construct_count") == 0
+            and parser_golden.get("passing_fixture_count") == parser_golden.get("fixture_count")
+            and parser_golden.get("failing_fixture_count") == 0
+            and parser_golden.get("blocking_gap_count") == 0
+            and parser_golden.get("valid_parsed_fixture_count") == parser_golden.get("valid_fixture_count")
+            and parser_golden.get("invalid_rejected_fixture_count") == parser_golden.get("invalid_fixture_count")
+            and set(parser_golden.get("constructs_required", ())) <= set(parser_golden.get("constructs_covered", ()))
+            and parser_golden_text_renderer["ok"]
+            and parser_golden_text_renderer.get("missing_fragment_count") == 0
+            and parser_golden_text_renderer.get("json_fallback") is False,
+            "Parser golden contracts prove every required grammar construct has valid fixtures, invalid fixtures still reject, and text logs expose construct/gap evidence.",
+            "docs/tooling.md#parser-golden-audit",
+            {
+                "parser": {
+                    "format": parser_golden.get("format"),
+                    "required_construct_count": parser_golden.get("required_construct_count"),
+                    "covered_construct_count": parser_golden.get("covered_construct_count"),
+                    "missing_construct_count": parser_golden.get("missing_construct_count"),
+                    "fixture_count": parser_golden.get("fixture_count"),
+                    "valid_fixture_count": parser_golden.get("valid_fixture_count"),
+                    "invalid_fixture_count": parser_golden.get("invalid_fixture_count"),
+                    "passing_fixture_count": parser_golden.get("passing_fixture_count"),
+                    "failing_fixture_count": parser_golden.get("failing_fixture_count"),
+                    "blocking_gap_count": parser_golden.get("blocking_gap_count"),
+                },
+                "text_renderer": {
+                    "format": parser_golden_text_renderer.get("format"),
+                    "required_fragment_count": parser_golden_text_renderer.get("required_fragment_count"),
+                    "missing_fragment_count": parser_golden_text_renderer.get("missing_fragment_count"),
+                    "marker_line_count": parser_golden_text_renderer.get("marker_line_count"),
+                    "json_fallback": parser_golden_text_renderer.get("json_fallback"),
+                },
+            },
+        ),
+        _tooling_audit_check(
+            "semantic_drift_surface_contracts",
+            drift["ok"]
+            and drift.get("semantic_model_format") == "appgen.semantic-model.v1"
+            and {
+                "cli",
+                "lsp",
+                "studio",
+                "graph",
+                "generator",
+                "generator_readiness",
+                "release_verifier",
+                "tests",
+            }
+            <= set(drift.get("surfaces", ()))
+            and not drift.get("blocking_gaps")
+            and all(check.get("ok") is True for check in drift.get("checks", ()))
+            and drift.get("surface_evidence", {}).get("generate_report") == "appgen.generate-report.v1"
+            and drift_text_renderer["ok"]
+            and drift_text_renderer.get("surface_line_count", 0) >= 1
+            and drift_text_renderer.get("evidence_line_count", 0) >= 3
+            and drift_text_renderer.get("check_line_count", 0) >= 2
+            and drift_text_renderer.get("digest_line_count", 0) >= 1
+            and drift_text_renderer.get("json_fallback") is False
+            and test_strategy_cli["ok"]
+            and test_strategy_cli.get("observed_surface_count", 0) >= 6,
+            "Semantic drift contracts prove CLI, LSP, Studio, graph, generator, release, and tests consume the shared semantic model with text evidence.",
+            "docs/tooling.md#test-strategy",
+            {
+                "drift": {
+                    "format": drift.get("format"),
+                    "semantic_model_format": drift.get("semantic_model_format"),
+                    "surface_count": len(drift.get("surfaces", ())),
+                    "surfaces": drift.get("surfaces"),
+                    "blocking_gap_count": len(drift.get("blocking_gaps", ())),
+                    "check_count": len(drift.get("checks", ())),
+                    "surface_evidence": drift.get("surface_evidence"),
+                },
+                "text_renderer": {
+                    "format": drift_text_renderer.get("format"),
+                    "surface_line_count": drift_text_renderer.get("surface_line_count"),
+                    "evidence_line_count": drift_text_renderer.get("evidence_line_count"),
+                    "check_line_count": drift_text_renderer.get("check_line_count"),
+                    "passing_check_line_count": drift_text_renderer.get("passing_check_line_count"),
+                    "failing_check_line_count": drift_text_renderer.get("failing_check_line_count"),
+                    "digest_line_count": drift_text_renderer.get("digest_line_count"),
+                    "json_fallback": drift_text_renderer.get("json_fallback"),
+                },
+                "cli": {
+                    "format": test_strategy_cli.get("format"),
+                    "required_surface_count": test_strategy_cli.get("required_surface_count"),
+                    "observed_surface_count": test_strategy_cli.get("observed_surface_count"),
+                },
+            },
+        ),
+        _tooling_audit_check(
+            "doctor_cli_text_contracts",
+            doctor["ok"]
+            and not doctor.get("blocking_gaps")
+            and len(doctor.get("checks", ())) >= 15
+            and all(check.get("ok") is True for check in doctor.get("checks", ()))
+            and {
+                "parser_golden_fixtures",
+                "directory_lint_input",
+                "cli_alias_contract",
+                "lsp_completion_coverage",
+                "semantic_symbol_coverage",
+                "lsp_symbol_coverage",
+                "module_boundaries",
+                "studio_semantic_service",
+                "vscode_extension_surface",
+            }
+            <= {check.get("check") for check in doctor.get("checks", ())}
+            and doctor_text_renderer["ok"]
+            and doctor_text_renderer.get("check_line_count", 0) >= 8
+            and doctor_text_renderer.get("detail_format_line_count", 0) >= 8
+            and doctor_text_renderer.get("json_fallback") is False
+            and test_strategy_cli["ok"]
+            and test_strategy_cli.get("doctor_check_count", 0) >= 15,
+            "Doctor CLI and text contracts prove parser, imports, catalogs, backends, semantic coverage, editor hooks, aliases, and embedded audit markers from one command.",
+            "docs/tooling.md#appgen-doctor",
+            {
+                "doctor": {
+                    "format": doctor.get("format"),
+                    "check_count": len(doctor.get("checks", ())),
+                    "blocking_gap_count": len(doctor.get("blocking_gaps", ())),
+                    "check_ids": tuple(check.get("check") for check in doctor.get("checks", ())),
+                },
+                "text_renderer": {
+                    "format": doctor_text_renderer.get("format"),
+                    "check_line_count": doctor_text_renderer.get("check_line_count"),
+                    "detail_format_line_count": doctor_text_renderer.get("detail_format_line_count"),
+                    "marker_line_count": doctor_text_renderer.get("marker_line_count"),
+                    "json_fallback": doctor_text_renderer.get("json_fallback"),
+                },
+                "cli": {
+                    "format": test_strategy_cli.get("format"),
+                    "doctor_check_count": test_strategy_cli.get("doctor_check_count"),
+                },
+            },
+        ),
+        _tooling_audit_check(
             "implementation_phase_exit_criteria",
             implementation_phases["ok"],
             "Implementation phases 0 through 6 have executable exit-criteria evidence instead of prose-only status.",
@@ -5786,6 +6009,45 @@ def _tooling_audit_implementation_phases(**evidence: dict) -> dict:
                     ),
                 },
                 {
+                    "id": "parser_golden_fixture_contracts",
+                    "ok": evidence["parser_golden"].get("ok") is True
+                    and evidence["parser_golden"].get("missing_construct_count") == 0
+                    and evidence["parser_golden"].get("passing_fixture_count")
+                    == evidence["parser_golden"].get("fixture_count")
+                    and evidence["parser_golden"].get("failing_fixture_count") == 0
+                    and evidence["parser_golden"].get("blocking_gap_count") == 0
+                    and evidence["parser_golden_text_renderer"].get("ok") is True,
+                    "evidence_formats": (
+                        evidence["parser_golden"].get("format"),
+                        evidence["parser_golden_text_renderer"].get("format"),
+                    ),
+                },
+                {
+                    "id": "semantic_drift_surface_contracts",
+                    "ok": evidence["drift"].get("ok") is True
+                    and evidence["drift"].get("semantic_model_format") == "appgen.semantic-model.v1"
+                    and len(evidence["drift"].get("surfaces", ())) >= 6
+                    and not evidence["drift"].get("blocking_gaps")
+                    and evidence["drift_text_renderer"].get("ok") is True,
+                    "evidence_formats": (
+                        evidence["drift"].get("format"),
+                        evidence["drift_text_renderer"].get("format"),
+                    ),
+                },
+                {
+                    "id": "doctor_cli_text_contracts",
+                    "ok": evidence["doctor"].get("ok") is True
+                    and not evidence["doctor"].get("blocking_gaps")
+                    and len(evidence["doctor"].get("checks", ())) >= 15
+                    and evidence["doctor_text_renderer"].get("ok") is True
+                    and evidence["test_strategy_cli"].get("doctor_check_count", 0) >= 15,
+                    "evidence_formats": (
+                        evidence["doctor"].get("format"),
+                        evidence["doctor_text_renderer"].get("format"),
+                        evidence["test_strategy_cli"].get("format"),
+                    ),
+                },
+                {
                     "id": "grammar_parser_sync_and_keyword_budget",
                     "ok": evidence["language_quality"].get("ok") is True
                     and evidence["language_quality"].get("antlr_integrity", {}).get("ok") is True
@@ -5877,6 +6139,22 @@ def _tooling_audit_implementation_phases(**evidence: dict) -> dict:
                     "ok": evidence["formatted"].get("idempotent") is True
                     and evidence["formatter_contract"].get("ok") is True,
                     "evidence_formats": (evidence["formatted"].get("format"), evidence["formatter_contract"].get("format")),
+                },
+                {
+                    "id": "formatter_write_organize_contracts",
+                    "ok": evidence["formatted"].get("idempotent") is True
+                    and evidence["formatter_contract"].get("ok") is True
+                    and evidence["formatter_contract"].get("passing_check_count")
+                    == evidence["formatter_contract"].get("check_count")
+                    and evidence["format_write"].get("ok") is True
+                    and evidence["format_write"].get("passing_scenario_count")
+                    == evidence["format_write"].get("scenario_count")
+                    and evidence["format_write"].get("organize_category_count") == 7,
+                    "evidence_formats": (
+                        evidence["formatted"].get("format"),
+                        evidence["formatter_contract"].get("format"),
+                        evidence["format_write"].get("format"),
+                    ),
                 },
             ),
         ),

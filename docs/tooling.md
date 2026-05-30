@@ -758,6 +758,11 @@ passing scenario counts, failing scenario counts, scenario ids, failing
 scenario ids, blocking-gap counts, write-mode counts, check-mode counts, and
 organize category counts across dirty-check, clean-check, organize, JSON-write,
 and text-write scenarios.
+The aggregate tooling audit exposes this proof independently as
+`formatter_write_organize_contracts`. That gate fails when formatter
+idempotence, comment preservation, modifier ordering, check/write exit
+semantics, write metadata, table-body organization categories, diagnostics, or
+human-readable format markers regress.
 
 ### `appgen validate`
 
@@ -924,6 +929,11 @@ doctor text logs keep check status, blocking-gap counts, and embedded
 contract also reports required-fragment, check-line, and detail-format-line
 counts so release evidence can prove the text summary preserved every expected
 status and embedded audit marker.
+The aggregate tooling audit exposes this proof independently as
+`doctor_cli_text_contracts`. That gate fails when doctor stops proving parser,
+package import, catalog, template writer, backend, semantic-model, alias, LSP,
+Studio, or editor-extension readiness, or when text output hides embedded audit
+format markers.
 
 ### `appgen tooling-audit`
 
@@ -1786,10 +1796,19 @@ present, and blocking fixture gaps. JSON remains the
 machine-readable source of truth.
 
 `appgen.parser-golden-text-renderer.v1` is embedded in the tooling audit to prove parser-golden text logs keep fixture counts, covered construct names, missing construct names, and blocking gap evidence visible without JSON parsing. The parser-golden renderer contract reports fragment and marker counts for the header, covered/missing construct lines, and blocking fixture gaps.
+The aggregate tooling audit exposes this proof independently as
+`parser_golden_fixture_contracts`. That gate fails when any required construct
+lacks a valid fixture, invalid fixtures stop rejecting, blocking parser gaps
+appear, or parser-golden text output loses construct/gap markers.
 
 The required construct set includes application options, table fields, reusable field groups, spreads, derived fields, modifiers, relationships, relationship cardinality, table directives, enums, views, component placement, handlers, flows, workflow directives, roles, permissions, rules, rule expressions, LLM definitions, agents, PBCs, PBC composition include/require/expose/connect clauses, audit blocks, deployment units/scale/health/check/resource/env/directives, version blocks, operations, security, APIs, events, jobs, reports, menus, component contracts, packages, and tests.
 
 When a new keyword, block, nested item, or syntax form is added to `lang/appgen.g4`, the same change must add or extend a parser golden fixture before the grammar is considered release-ready. Diagnostic golden fixtures are still required for semantic behavior, but parser-golden fixtures prove that the grammar itself accepts and rejects the intended language forms.
+The aggregate tooling audit also exposes shared-model drift as
+`semantic_drift_surface_contracts`. That gate fails when CLI, LSP, Studio,
+graph, generator, generator-readiness, release-verifier, or tests stop proving
+they consume the same `appgen.semantic-model.v1`, or when drift text output
+loses surface, evidence, check, digest, or gap markers.
 
 ## Implementation Phases
 
