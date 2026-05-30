@@ -26,3 +26,32 @@ def lending_origination_servicing_standalone_ui_contract():
 
 def smoke_test():
     return {'ok': lending_origination_servicing_ui_contract()['ok'] and lending_origination_servicing_render_workbench()['ok'] and lending_origination_servicing_standalone_ui_contract()['ok'], 'side_effects': ()}
+
+
+# Improve1 lending control UI extension.
+from .lending_control import improve1_lending_control_contract
+
+_LENDING_ORIGINATION_SERVICING_BASE_UI_CONTRACT = lending_origination_servicing_ui_contract
+_LENDING_ORIGINATION_SERVICING_BASE_RENDER_WORKBENCH = lending_origination_servicing_render_workbench
+
+def lending_origination_servicing_ui_contract():
+    ui = dict(_LENDING_ORIGINATION_SERVICING_BASE_UI_CONTRACT())
+    control = improve1_lending_control_contract()
+    panels = tuple(item["evidence"]["ui_surface"] for item in control["capabilities"])
+    service_actions = tuple(item["evidence"]["service_api"] for item in control["capabilities"])
+    ui["ok"] = bool(ui.get("ok")) and control["ok"] and len(panels) == 50
+    ui["lending_control_contract"] = control["format"]
+    ui["lending_control_panels"] = panels
+    ui["lending_control_service_actions"] = service_actions
+    ui["full_capability_surface"] = dict(ui.get("full_capability_surface", {}))
+    ui["full_capability_surface"]["improve1_lending_panels"] = panels
+    ui["full_capability_surface"]["improve1_lending_agent_tools"] = tuple(f"lending_agent.{item['slug']}" for item in control["capabilities"])
+    return ui
+
+def lending_origination_servicing_render_workbench():
+    workbench = dict(_LENDING_ORIGINATION_SERVICING_BASE_RENDER_WORKBENCH())
+    control = improve1_lending_control_contract()
+    workbench["ok"] = bool(workbench.get("ok")) and control["ok"]
+    workbench["lending_control_panels"] = tuple(item["evidence"]["ui_surface"] for item in control["capabilities"])
+    workbench["lending_control_agent_tools"] = tuple(f"lending_agent.{item['slug']}" for item in control["capabilities"])
+    return workbench

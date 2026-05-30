@@ -17,3 +17,9 @@ Status: implemented in standalone PBC slice.
 - Focused source/package/spec/agent/implementation/capability/generation audits: true.
 - `git diff --check -- src/pyAppGen/pbcs/lending_origination_servicing`: clean.
 - Commit: pending.
+
+## Improve1 Lending Control Implementation
+
+- Added `lending_control.py` as the executable, side-effect-free control contract for all 50 improve1 lending features.
+- Added package-local domain behavior tests proving owned tables, UI surfaces, AppGen-X service routes, agent approval boundaries, datastore backend constraints, event topic constraints, and negative lending paths.
+- Runtime, UI, release evidence, and traceability now expose the lending control contract and feature-specific evidence for origination, underwriting, closing, boarding, servicing, collections, compliance, agents, controls, dashboards, and cutover readiness.
