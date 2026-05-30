@@ -122,3 +122,28 @@ def smoke_test():
         'rendered': rendered,
         'side_effects': (),
     }
+
+
+# Improve1 rights control UI extension.
+from .rights_control import improve1_rights_control_contract as _improve1_rights_control_contract
+
+_MEDIA_RIGHTS_CONTENT_MONETIZATION_BASE_UI_CONTRACT = media_rights_content_monetization_ui_contract
+_MEDIA_RIGHTS_CONTENT_MONETIZATION_BASE_RENDER_WORKBENCH = media_rights_content_monetization_render_workbench
+
+
+def media_rights_content_monetization_ui_contract():
+    ui = dict(_MEDIA_RIGHTS_CONTENT_MONETIZATION_BASE_UI_CONTRACT())
+    control = _improve1_rights_control_contract()
+    panels = tuple(item["evidence"]["ui_surface"] for item in control["capabilities"])
+    service_actions = tuple(item["evidence"]["service_api"] for item in control["capabilities"])
+    ui.update({"ok": ui.get("ok") is True and control["ok"], "rights_control_contract": control, "rights_control_panels": panels, "rights_control_service_actions": service_actions, "stream_engine_picker_visible": False})
+    ui.setdefault("full_capability_surface", {})
+    ui["full_capability_surface"] = dict(ui["full_capability_surface"], rights_control_panels=panels, rights_control_service_actions=service_actions)
+    return ui
+
+
+def media_rights_content_monetization_render_workbench():
+    workbench = dict(_MEDIA_RIGHTS_CONTENT_MONETIZATION_BASE_RENDER_WORKBENCH())
+    control = _improve1_rights_control_contract()
+    workbench.update({"ok": workbench.get("ok") is True and control["ok"], "rights_control_panels": tuple(item["evidence"]["ui_surface"] for item in control["capabilities"]), "rights_control_service_actions": tuple(item["evidence"]["service_api"] for item in control["capabilities"]), "rights_control_agent_tools": tuple(f"media_rights_content_monetization.skills.{item['slug']}" for item in control["capabilities"])})
+    return workbench
