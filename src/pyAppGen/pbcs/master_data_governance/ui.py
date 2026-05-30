@@ -65,3 +65,37 @@ def smoke_test():
         "rendered": rendered,
         "side_effects": (),
     }
+
+
+# Improve1 master data control UI extension.
+from .master_data_control import improve1_master_data_control_contract as _improve1_master_data_control_contract
+
+_MASTER_DATA_GOVERNANCE_BASE_UI_CONTRACT = master_data_governance_ui_contract
+_MASTER_DATA_GOVERNANCE_BASE_RENDER_WORKBENCH = master_data_governance_render_workbench
+
+
+def master_data_governance_ui_contract():
+    ui = dict(_MASTER_DATA_GOVERNANCE_BASE_UI_CONTRACT())
+    control = _improve1_master_data_control_contract()
+    panels = tuple(item["evidence"]["ui_surface"] for item in control["capabilities"])
+    service_actions = tuple(item["evidence"]["service_api"] for item in control["capabilities"])
+    ui.update({
+        "ok": ui.get("ok") is True and control["ok"],
+        "master_data_control_contract": control,
+        "master_data_control_panels": panels,
+        "master_data_control_service_actions": service_actions,
+        "stream_engine_picker_visible": False,
+    })
+    return ui
+
+
+def master_data_governance_render_workbench(state: dict | None = None):
+    workbench = dict(_MASTER_DATA_GOVERNANCE_BASE_RENDER_WORKBENCH(state))
+    control = _improve1_master_data_control_contract()
+    workbench.update({
+        "ok": workbench.get("ok") is True and control["ok"],
+        "master_data_control_panels": tuple(item["evidence"]["ui_surface"] for item in control["capabilities"]),
+        "master_data_control_service_actions": tuple(item["evidence"]["service_api"] for item in control["capabilities"]),
+        "master_data_control_agent_tools": tuple(f"master_data_governance.skills.{item['slug']}" for item in control["capabilities"]),
+    })
+    return workbench

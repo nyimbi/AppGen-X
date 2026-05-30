@@ -183,3 +183,53 @@ def smoke_test():
 
 def master_data_governance_build_release_evidence():
     return build_release_evidence()
+
+
+# Improve1 master data control release evidence extension.
+from .master_data_control import improve1_master_data_control_contract as _master_data_control_contract
+
+_MASTER_DATA_GOVERNANCE_BASE_BUILD_RELEASE_EVIDENCE_FOR_CONTROL = build_release_evidence
+_MASTER_DATA_GOVERNANCE_BASE_RELEASE_READINESS_MANIFEST_FOR_CONTROL = release_readiness_manifest
+_MASTER_DATA_GOVERNANCE_BASE_VALIDATE_RELEASE_EVIDENCE_FOR_CONTROL = validate_release_evidence
+
+
+def build_release_evidence():
+    evidence = dict(_MASTER_DATA_GOVERNANCE_BASE_BUILD_RELEASE_EVIDENCE_FOR_CONTROL())
+    control = _master_data_control_contract()
+    checks = tuple(evidence.get("checks", ())) + (
+        {"id": "master_data_control_contract", "ok": control["ok"]},
+        {"id": "master_data_control_traceability", "ok": control["capability_count"] == 50},
+    )
+    evidence.update({
+        "master_data_control": control,
+        "master_data_governance_controls": tuple(item["evidence"] for item in control["capabilities"]),
+        "checks": checks,
+        "blocking_gaps": tuple(check for check in checks if check.get("ok") is not True),
+    })
+    evidence["ok"] = not evidence["blocking_gaps"]
+    return evidence
+
+
+def release_readiness_manifest():
+    manifest = dict(_MASTER_DATA_GOVERNANCE_BASE_RELEASE_READINESS_MANIFEST_FOR_CONTROL())
+    evidence = build_release_evidence()
+    manifest.update({
+        "ok": evidence["ok"],
+        "evidence": evidence,
+        "sections": tuple(dict.fromkeys(tuple(manifest.get("sections", ())) + ("master_data_control", "improve1_traceability"))),
+        "blocking_gaps": evidence["blocking_gaps"],
+    })
+    return manifest
+
+
+def validate_release_evidence():
+    base = dict(_MASTER_DATA_GOVERNANCE_BASE_VALIDATE_RELEASE_EVIDENCE_FOR_CONTROL())
+    evidence = build_release_evidence()
+    control = evidence["master_data_control"]
+    failed = tuple(check for check in evidence["checks"] if check.get("ok") is not True)
+    base.update({
+        "ok": base.get("ok") is True and evidence["ok"] and control["ok"] and not failed,
+        "failed_checks": tuple(base.get("failed_checks", ())) + failed,
+        "master_data_control": control,
+    })
+    return base
