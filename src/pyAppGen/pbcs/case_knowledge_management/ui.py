@@ -7,6 +7,7 @@ from .domain_depth import WORKBENCH_CONTROLS
 from .domain_depth import WORKBENCH_FORMS
 from .domain_depth import WORKBENCH_WIZARDS
 from .domain_depth import ui_capability_surface_contract
+from .support_control import CASE_KNOWLEDGE_CAPABILITIES, improve1_support_control_contract
 
 
 PBC_KEY = "case_knowledge_management"
@@ -40,7 +41,9 @@ def case_knowledge_management_ui_contract() -> dict:
         "operation_actions": full["operation_actions"],
         "rule_editors": full["rule_editors"],
         "parameter_editors": full["parameter_editors"],
-        "advanced_panels": full["advanced_panels"],
+        "advanced_panels": full["advanced_panels"] + CASE_KNOWLEDGE_CAPABILITIES,
+        "support_control_panels": tuple(f"support_control_{capability}" for capability in CASE_KNOWLEDGE_CAPABILITIES),
+        "support_control_contract": improve1_support_control_contract(),
         "table_browsers": full["table_browsers"],
         "navigation_sections": full["navigation_sections"],
         "side_effects": (),
@@ -63,7 +66,9 @@ def case_knowledge_management_render_workbench(state: dict | None = None) -> dic
         "records": overview["records"],
         "metrics": overview["metrics"],
         "operation_actions": full["operation_actions"],
-        "advanced_panels": full["advanced_panels"],
+        "advanced_panels": full["advanced_panels"] + CASE_KNOWLEDGE_CAPABILITIES,
+        "support_control_panels": tuple(f"support_control_{capability}" for capability in CASE_KNOWLEDGE_CAPABILITIES),
+        "support_control_contract": improve1_support_control_contract(),
         "table_browsers": full["table_browsers"],
         "side_effects": (),
     }
