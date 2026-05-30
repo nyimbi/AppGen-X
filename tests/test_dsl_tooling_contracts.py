@@ -1446,6 +1446,62 @@ def test_lsp_definition_resolves_pbc_catalog_keys_and_contracts() -> None:
     assert rpc_responses[0]["result"]["uri"] == "catalog://pbc/gl_core/event/JournalPosted"
 
 
+def test_lsp_definition_uses_reference_context_for_enterprise_symbols() -> None:
+    source = """
+app DefinitionContext { targets: web }
+table Ledger { id: int pk; gl_core: string }
+pbc gl_core { datastore: postgresql }
+event JournalPosted { topic: finance.journal }
+api LedgerApi { POST "/journal" -> JournalPosted }
+operation JournalPosted { draft -> done }
+operation SubmitInvoice { draft -> done }
+composition Suite {
+  include pbc gl_core version 1.0.0
+}
+deploy Production {
+  unit SubmitInvoice as worker
+  health SubmitInvoice "/health"
+  resource SubmitInvoice cpu "500m"
+  env SubmitInvoice QUEUE_URL
+}
+"""
+
+    def position_at(index: int) -> dict:
+        line = source.count("\n", 0, index)
+        previous_newline = source.rfind("\n", 0, index)
+        return {"line": line, "character": index if previous_newline < 0 else index - previous_newline - 1}
+
+    pbc_ref = source.index("include pbc gl_core") + len("include pbc ")
+    event_ref = source.index("-> JournalPosted") + len("-> ")
+    unit_ref = source.index("health SubmitInvoice") + len("health ")
+    pbc_decl_line = source.count("\n", 0, source.index("pbc gl_core"))
+    event_decl_line = source.count("\n", 0, source.index("event JournalPosted"))
+    unit_decl_line = source.count("\n", 0, source.index("unit SubmitInvoice"))
+
+    pbc_definition = appgen_dsl.lsp_definition_dsl(
+        source,
+        source_name="definition-context.appgen",
+        position=position_at(pbc_ref),
+    )
+    event_definition = appgen_dsl.lsp_definition_dsl(
+        source,
+        source_name="definition-context.appgen",
+        position=position_at(event_ref),
+    )
+    deployment_definition = appgen_dsl.lsp_definition_dsl(
+        source,
+        source_name="definition-context.appgen",
+        position=position_at(unit_ref),
+    )
+
+    assert pbc_definition["ok"] is True
+    assert pbc_definition["location"]["uri"] == "definition-context.appgen"
+    assert pbc_definition["location"]["range"]["start"]["line"] == pbc_decl_line
+    assert event_definition["ok"] is True
+    assert event_definition["location"]["range"]["start"]["line"] == event_decl_line
+    assert deployment_definition["ok"] is True
+    assert deployment_definition["location"]["range"]["start"]["line"] == unit_decl_line
+
 def test_lsp_references_include_pbc_catalog_contract_indexes() -> None:
     pbc_source = """
     app ReferenceCatalog { targets: web }
@@ -1526,6 +1582,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
     assert audit["formatting_edit_count"] >= 1
     assert audit["blocking_gap_count"] == 0
     assert audit["blocking_gaps"] == ()
+    assert "enterprise_definition_context" in {check["check"] for check in audit["checks"]}
     assert capabilities["completionProvider"]["triggerCharacters"]
     assert capabilities["hoverProvider"] is True
     assert capabilities["definitionProvider"] is True
@@ -4930,6 +4987,7 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert lsp_check["detail"]["rename_cli"]["blocked_requires_approval"] is True
     assert {
         "did_change_diagnostics",
+        "enterprise_definition_context",
         "code_action_request",
         "formatting_request",
     } <= {check["check"] for check in lsp_check["detail"]["rpc"]["checks"]}

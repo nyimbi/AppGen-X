@@ -1314,6 +1314,10 @@ Definition navigation uses the same catalog location scheme for registered PBC
 keys and API/event contract tokens, so `textDocument/definition` can jump from
 composition references to read-only catalog declarations as well as to ordinary
 DSL declarations.
+For ordinary DSL declarations, definition is context-aware: a token used as an
+API/event contract target or deployment health/resource/env target resolves to
+the event or deployment-unit declaration even when an operation or field has the
+same name.
 Reference search also includes those read-only catalog indexes. When a user or
 agent asks for references to a PBC key or catalog API/event contract,
 `textDocument/references` returns ordinary workspace occurrences plus the

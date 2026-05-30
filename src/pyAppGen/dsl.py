@@ -8102,6 +8102,99 @@ def _tooling_audit_lsp_json_rpc(source: str, *, broken_handler_source: str) -> d
         result = responses[0].get("result") if responses else None
         checks.append(_release_check(name, bool(responses) and predicate(result)))
 
+    definition_context_uri = "memory://definition-context.appgen"
+    definition_context_source = """
+app DefinitionContext { targets: web }
+table Ledger { id: int pk; gl_core: string }
+pbc gl_core { datastore: postgresql }
+event JournalPosted { topic: finance.journal }
+api LedgerApi { POST "/journal" -> JournalPosted }
+operation JournalPosted { draft -> done }
+operation SubmitInvoice { draft -> done }
+composition Suite {
+  include pbc gl_core version 1.0.0
+}
+deploy Production {
+  unit SubmitInvoice as worker
+  health SubmitInvoice "/health"
+  resource SubmitInvoice cpu "500m"
+  env SubmitInvoice QUEUE_URL
+}
+"""
+
+    def context_position(marker: str, offset: int = 0) -> dict:
+        index = definition_context_source.index(marker) + offset
+        return {
+            "line": definition_context_source.count("\n", 0, index),
+            "character": index - definition_context_source.rfind("\n", 0, index) - 1,
+        }
+
+    lsp_server_handle_message(
+        {
+            "jsonrpc": "2.0",
+            "method": "textDocument/didOpen",
+            "params": {
+                "textDocument": {
+                    "uri": definition_context_uri,
+                    "languageId": "appgen",
+                    "version": 1,
+                    "text": definition_context_source,
+                }
+            },
+        },
+        documents,
+    )
+    pbc_definition_responses, _ = lsp_server_handle_message(
+        {
+            "jsonrpc": "2.0",
+            "id": 21,
+            "method": "textDocument/definition",
+            "params": {
+                "textDocument": {"uri": definition_context_uri},
+                "position": context_position("include pbc gl_core", len("include pbc ")),
+            },
+        },
+        documents,
+    )
+    event_definition_responses, _ = lsp_server_handle_message(
+        {
+            "jsonrpc": "2.0",
+            "id": 22,
+            "method": "textDocument/definition",
+            "params": {
+                "textDocument": {"uri": definition_context_uri},
+                "position": context_position("-> JournalPosted", len("-> ")),
+            },
+        },
+        documents,
+    )
+    deployment_definition_responses, _ = lsp_server_handle_message(
+        {
+            "jsonrpc": "2.0",
+            "id": 23,
+            "method": "textDocument/definition",
+            "params": {
+                "textDocument": {"uri": definition_context_uri},
+                "position": context_position("health SubmitInvoice", len("health ")),
+            },
+        },
+        documents,
+    )
+    pbc_result = pbc_definition_responses[0].get("result", {}) if pbc_definition_responses else {}
+    event_result = event_definition_responses[0].get("result", {}) if event_definition_responses else {}
+    deployment_result = deployment_definition_responses[0].get("result", {}) if deployment_definition_responses else {}
+    checks.append(
+        _release_check(
+            "enterprise_definition_context",
+            pbc_result.get("range", {}).get("start", {}).get("line")
+            == definition_context_source.count("\n", 0, definition_context_source.index("pbc gl_core"))
+            and event_result.get("range", {}).get("start", {}).get("line")
+            == definition_context_source.count("\n", 0, definition_context_source.index("event JournalPosted"))
+            and deployment_result.get("range", {}).get("start", {}).get("line")
+            == definition_context_source.count("\n", 0, definition_context_source.index("unit SubmitInvoice")),
+        )
+    )
+
     lsp_server_handle_message(
         {
             "jsonrpc": "2.0",
@@ -12864,7 +12957,7 @@ def _completion_source_for_kind(kind: str) -> str | None:
 
 def lsp_hover_dsl(text: str, *, source_name: str | None = None, position: dict | None = None) -> dict:
     token = _lsp_token_at_position(text, position)
-    symbol = _lsp_symbol_for_token(text, token, source_name=source_name)
+    symbol = _lsp_symbol_for_token(text, token, source_name=source_name, position=position)
     diagnostic = _lsp_diagnostic_for_token(text, token, source_name=source_name)
     contents: list[str] = []
     if symbol:
@@ -12909,7 +13002,7 @@ def _lsp_pbc_catalog_metadata_for_token(token: str) -> dict | None:
 
 def lsp_definition_dsl(text: str, *, source_name: str | None = None, position: dict | None = None) -> dict:
     token = _lsp_token_at_position(text, position)
-    symbol = _lsp_symbol_for_token(text, token, source_name=source_name)
+    symbol = _lsp_symbol_for_token(text, token, source_name=source_name, position=position)
     location = _lsp_location(source_name, symbol.get("range")) if symbol else _lsp_catalog_definition_location(token)
     return {
         "format": "appgen.lsp-definition.v1",
@@ -14001,13 +14094,27 @@ def _lsp_positional_symbol(source: str, token: str, position: dict | None, candi
         return candidate("operation")
     if re.search(r"\bpbc\s+$", line_prefix):
         return candidate("pbc")
+    if re.search(r"\binclude\s+pbc\s+$", line_prefix):
+        return candidate("pbc")
+    if re.search(r"\bconnect\s+$", line_prefix):
+        return candidate("pbc")
+    if re.search(r"->\s*$", line_prefix) and re.match(rf"\s*{re.escape(token)}\s+(?:api|domain_event|command)\b", source[index:]):
+        return candidate("pbc")
     if re.search(r"\bpackage\s+$", line_prefix):
         return candidate("package")
     if re.search(r"\bapi\s+$", line_prefix):
         return candidate("api")
     if re.search(r"\bevent\s+$", line_prefix):
         return candidate("event")
+    if re.search(r"->\s*$", line_prefix) and _source_enclosing_block_name(source, "api", index):
+        return candidate("event") or candidate("api") or candidate("operation") or candidate("flow")
+    if re.search(r"\b(?:api|domain_event|command)\s+$", line_prefix):
+        return candidate("event") or candidate("api")
     if re.search(r"\bunit\s+$", line_prefix):
+        deploy_name = _source_enclosing_block_name(source, "deploy", index)
+        if deploy_name:
+            return candidate("deployment_unit", f"deploy.{deploy_name}")
+    if re.search(r"\b(?:health|resource|env)\s+$", line_prefix):
         deploy_name = _source_enclosing_block_name(source, "deploy", index)
         if deploy_name:
             return candidate("deployment_unit", f"deploy.{deploy_name}")
@@ -16390,7 +16497,7 @@ def _semantic_symbols(source: str, schema: AppSchema) -> dict:
 
     def add(kind: str, name: str, *, parent: str | None = None, detail: dict | None = None) -> None:
         symbol_id = f"{kind}.{name}" if parent is None else f"{parent}.{name}"
-        line, column = _locate_token(source, name)
+        line, column = _locate_symbol_declaration(source, kind, name, parent=parent)
         symbols[symbol_id] = {
             "id": symbol_id,
             "kind": kind,
@@ -16465,6 +16572,59 @@ def _semantic_symbols(source: str, schema: AppSchema) -> dict:
         for handler in contract.handlers:
             add("handler", handler.event, parent=f"{contract.kind}.{contract.name}", detail={"target": handler.target})
     return symbols
+
+
+def _locate_symbol_declaration(source: str, kind: str, name: str, *, parent: str | None = None) -> tuple[int | None, int | None]:
+    def semantic_line_column(index: int) -> tuple[int, int]:
+        line, column = _line_column_for_index(source, index)
+        return line + 1, column
+
+    if parent and parent.startswith("table."):
+        table_name = parent.split(".", 1)[1]
+        span = _source_block_span(source, "table", table_name)
+        if span:
+            match = re.search(rf"\b{re.escape(name)}\s*:", source[span[0] : span[1]])
+            if match:
+                return semantic_line_column(span[0] + match.start())
+    if kind == "deployment_unit" and parent and parent.startswith("deploy."):
+        deploy_name = parent.split(".", 1)[1]
+        span = _source_block_span(source, "deploy", deploy_name)
+        if span:
+            match = re.search(rf"\bunit\s+{re.escape(name)}\b", source[span[0] : span[1]])
+            if match:
+                return semantic_line_column(span[0] + match.start() + len("unit "))
+    top_level_kinds = {
+        "app",
+        "group",
+        "table",
+        "enum",
+        "view",
+        "flow",
+        "role",
+        "rule",
+        "llm",
+        "agent",
+        "pbc",
+        "composition",
+        "audit",
+        "deploy",
+        "version",
+        "operation",
+        "security",
+        "api",
+        "event",
+        "job",
+        "report",
+        "menu",
+        "component",
+        "package",
+        "test",
+    }
+    if parent is None and kind in top_level_kinds:
+        match = re.search(rf"\b{re.escape(kind)}\s+{re.escape(name)}\b", source or "")
+        if match:
+            return semantic_line_column(match.start() + len(kind) + 1)
+    return _locate_token(source, name)
 
 
 def _permission_symbol_name(permission: PermissionSchema) -> str:
