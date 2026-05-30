@@ -7,6 +7,8 @@ import json
 import math
 import re
 
+from .eam_control import EAM_CONTROL_CAPABILITIES, improve1_eam_control_contract
+
 EAM_ALLOWED_DATABASE_BACKENDS = ("postgresql", "mysql", "mariadb")
 EAM_EVENT_CONTRACT = "appgen_event_contract"
 EAM_REQUIRED_EVENT_TOPIC = "appgen.maintenance.events"
@@ -206,7 +208,9 @@ def eam_runtime_capabilities() -> dict:
             "build_service_contract",
             "build_release_evidence",
             "verify_owned_table_boundary",
+            "improve1_eam_control_contract",
         ),
+        "improve1_eam_control_capabilities": tuple(capability.slug for capability in EAM_CONTROL_CAPABILITIES),
         "smoke": smoke,
     }
 
@@ -396,6 +400,7 @@ def eam_runtime_smoke() -> dict:
     stochastic = eam_model_stochastic_maintenance_exposure(failure_path=(1, 2, 5), volatility=0.15)
     workbench = eam_build_workbench_view(state, tenant="tenant_alpha")
     model = eam_register_governed_model("maintenance_risk", {"features": ("condition", "criticality", "downtime"), "auc": 0.91, "drift_score": 0.03})
+    eam_control = improve1_eam_control_contract()
     checks = (
         {"id": "event_sourced_maintenance_lifecycle", "ok": len(state["events"]) >= 7 and state["events"][-1]["hash"]},
         {"id": "graph_relational_asset_topology", "ok": equipment["equipment"]["graph_degree"] >= 4},
@@ -429,9 +434,17 @@ def eam_runtime_smoke() -> dict:
         {"id": "cryptographic_engineering", "ok": proof["hash"] and crypto["epoch"] == 2},
         {"id": "mathematical_optimization", "ok": optimization["objective_score"] > 0 and allocation["clearing_priority"] > 0},
         {"id": "maintenance_mlops_governance", "ok": model["governance"]["regulated"] and model["governance"]["explainability_required"]},
+        {"id": "improve1_eam_control_contract", "ok": eam_control["ok"]},
     )
     blocking_gaps = tuple(check for check in checks if not check["ok"])
-    return {"format": "appgen.eam-runtime-smoke.v1", "ok": not blocking_gaps, "checks": checks, "blocking_gaps": blocking_gaps}
+    return {
+        "format": "appgen.eam-runtime-smoke.v1",
+        "ok": not blocking_gaps,
+        "checks": checks,
+        "checks_by_id": {check["id"]: check["ok"] for check in checks},
+        "eam_control": eam_control,
+        "blocking_gaps": blocking_gaps,
+    }
 
 
 def eam_empty_state() -> dict:
@@ -846,6 +859,7 @@ def eam_build_service_contract() -> dict:
         "complete_work_order",
         "run_control_tests",
         "register_governed_model",
+        "improve1_eam_control_contract",
     )
     return {
         "format": "appgen.eam-service-contract.v1",
@@ -871,6 +885,7 @@ def eam_build_service_contract() -> dict:
             "detect_failure_anomaly",
             "model_stochastic_maintenance_exposure",
             "verify_owned_table_boundary",
+            "improve1_eam_control_contract",
         ),
         "mutates_only": EAM_OWNED_TABLES,
         "external_dependencies": {
@@ -888,6 +903,7 @@ def eam_build_release_evidence() -> dict:
     service = eam_build_service_contract()
     api = eam_build_api_contract()
     permissions = eam_permissions_contract()
+    eam_control = improve1_eam_control_contract()
     ui = {
         "fragments": (
             "MaintenanceWorkbench",
@@ -916,6 +932,7 @@ def eam_build_release_evidence() -> dict:
         {"id": "backend_allowlist", "ok": schema["datastore_backends"] == EAM_ALLOWED_DATABASE_BACKENDS},
         {"id": "no_shared_table_access", "ok": not schema["shared_table_access"] and not api["shared_table_access"]},
         {"id": "ui_workbench_evidence", "ok": "MaintenanceConfigurationPanel" in ui["fragments"] and not ui["stream_engine_picker_visible"]},
+        {"id": "eam_improve1_control_contract", "ok": eam_control["ok"]},
     )
     return {
         "format": "appgen.eam-release-evidence.v1",
@@ -926,6 +943,7 @@ def eam_build_release_evidence() -> dict:
         "api": api,
         "permissions": permissions,
         "ui": ui,
+        "eam_control": eam_control,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }
 

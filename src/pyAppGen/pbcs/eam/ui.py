@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from .eam_control import improve1_eam_control_contract
 from .runtime import EAM_ALLOWED_DATABASE_BACKENDS
 from .runtime import EAM_CONSUMED_EVENT_TYPES
 from .runtime import EAM_EMITTED_EVENT_TYPES
@@ -39,6 +40,7 @@ def eam_ui_contract() -> dict:
         "implementation_directory": "src/pyAppGen/pbcs/eam",
         "owned_tables": EAM_OWNED_TABLES,
         "fragments": EAM_UI_FRAGMENT_KEYS,
+        "eam_control_contract": improve1_eam_control_contract(),
         "routes": (
             "/workbench/pbcs/eam",
             "/workbench/pbcs/eam/equipment",
@@ -130,6 +132,7 @@ def eam_ui_contract() -> dict:
             "event_contract": EAM_EVENT_CONTRACT,
             "required_event_topic": EAM_REQUIRED_EVENT_TOPIC,
             "shared_table_access": False,
+            "improve1_control_panels": tuple(item["ui_surface"] for item in improve1_eam_control_contract()["capabilities"]),
         },
     }
 

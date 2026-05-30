@@ -65,3 +65,8 @@ No unresolved code-review findings remain for this slice.
 - `tests/test_standalone_app_surface.py`
 - `README.md`
 - `implementation-status.md`
+
+
+## 2026-05-30 improve1 EAM-Control Execution Slice
+
+Added a package-local `eam_control.py` execution layer binding all 50 improve1 features to owned EAM tables, declared API/event dependencies, AppGen-X event evidence, UI surfaces, service routes, agent skills, configuration metadata, retry/dead-letter proof, release artifacts, and focused package-local domain behavior tests. Runtime, UI, release evidence, capability registry artifacts, and the traceability matrix now expose the executable EAM control contract.
