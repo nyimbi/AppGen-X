@@ -1,4 +1,15 @@
-from .standalone import PBC_KEY, seed_plan, validate_seed_data
+"""Seed data plans for real estate property management."""
+from .standalone import PBC_KEY
+from .standalone import seed_plan as _seed_plan
+from .standalone import validate_seed_data as _validate_seed_data
+
+
+def seed_plan():
+    return _seed_plan()
+
+
+def validate_seed_data():
+    return _validate_seed_data()
 
 
 def smoke_test():

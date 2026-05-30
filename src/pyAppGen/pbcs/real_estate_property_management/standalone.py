@@ -14,6 +14,10 @@ DEFAULT_TENANT = "default"
 REAL_ESTATE_PROPERTY_MANAGEMENT_ALLOWED_DATABASE_BACKENDS = ("postgresql", "mysql", "mariadb")
 REAL_ESTATE_PROPERTY_MANAGEMENT_REQUIRED_EVENT_TOPIC = f"pbc.{PBC_KEY}.events"
 REAL_ESTATE_PROPERTY_MANAGEMENT_EMITTED_EVENT_TYPES = (
+    "RealEstatePropertyManagementCreated",
+    "RealEstatePropertyManagementUpdated",
+    "RealEstatePropertyManagementApproved",
+    "RealEstatePropertyManagementExceptionOpened",
     "PropertyPortfolioRegistered",
     "LeaseLifecycleUpdated",
     "CollectionsEscalated",
@@ -22,6 +26,7 @@ REAL_ESTATE_PROPERTY_MANAGEMENT_EMITTED_EVENT_TYPES = (
 REAL_ESTATE_PROPERTY_MANAGEMENT_CONSUMED_EVENT_TYPES = (
     "PolicyChanged",
     "CustomerUpdated",
+    "SupplierQualified",
     "VendorQualified",
     "DocumentStored",
 )
@@ -126,6 +131,7 @@ BUSINESS_TABLE_SPECS = (
     {"name": "rent_schedule", "fields": ("id", "tenant", "lease_id", "unit_id", "code", "frequency", "next_due_date", "amount", "status", "payload", "created_at", "updated_at")},
     {"name": "security_deposit", "fields": ("id", "tenant", "lease_id", "tenant_id", "code", "trust_account", "amount", "status", "payload", "created_at", "updated_at")},
     {"name": "charge", "fields": ("id", "tenant", "lease_id", "tenant_id", "charge_type", "code", "amount", "due_date", "status", "payload", "created_at", "updated_at")},
+    {"name": "rent_charge", "fields": ("id", "tenant", "lease_id", "tenant_id", "charge_type", "code", "amount", "due_date", "status", "payload", "created_at", "updated_at")},
     {"name": "cam_recovery", "fields": ("id", "tenant", "property_id", "lease_id", "code", "recovery_basis", "estimated_amount", "status", "payload", "created_at", "updated_at")},
     {"name": "maintenance_request", "fields": ("id", "tenant", "property_id", "unit_id", "lease_id", "code", "priority", "summary", "status", "payload", "created_at", "updated_at")},
     {"name": "inspection", "fields": ("id", "tenant", "property_id", "unit_id", "lease_id", "code", "inspection_type", "scheduled_for", "result", "status", "payload", "created_at", "updated_at")},
@@ -191,7 +197,7 @@ REAL_ESTATE_PROPERTY_MANAGEMENT_DOMAIN_OPERATIONS = tuple(spec["operation"] for 
 DOMAIN_OPERATIONS = REAL_ESTATE_PROPERTY_MANAGEMENT_DOMAIN_OPERATIONS
 ROUTE_TO_OPERATION = {spec["route"]: spec["operation"] for spec in DOMAIN_OPERATION_SPECS}
 CANONICAL_ROUTES = tuple(spec["route"] for spec in DOMAIN_OPERATION_SPECS) + ("GET /real-estate-property-management-workbench",)
-ROUTE_ALIASES = {"POST /propertys": "POST /properties"}
+ROUTE_ALIASES = {"POST /propertys": "POST /properties", "POST /rent-charges": "POST /charges"}
 ROUTES = CANONICAL_ROUTES + tuple(ROUTE_ALIASES)
 WORKBENCH_ROUTE = "GET /real-estate-property-management-workbench"
 LEGACY_OPERATION_ALIASES = {
@@ -1788,7 +1794,7 @@ def real_estate_property_management_runtime_capabilities() -> dict:
         "allowed_database_backends": REAL_ESTATE_PROPERTY_MANAGEMENT_ALLOWED_DATABASE_BACKENDS,
         "standard_features": REAL_ESTATE_PROPERTY_MANAGEMENT_STANDARD_FEATURE_KEYS,
         "capabilities": REAL_ESTATE_PROPERTY_MANAGEMENT_RUNTIME_CAPABILITY_KEYS,
-        "operations": SERVICE_COMMAND_OPERATIONS + QUERY_OPERATIONS + ("domain_depth_contract", "execute_domain_operation"),
+        "operations": SERVICE_COMMAND_OPERATIONS + QUERY_OPERATIONS + ("build_schema_contract", "build_service_contract", "build_release_evidence", "domain_depth_contract", "execute_domain_operation"),
         "smoke": smoke,
         "world_class_domain_depth": domain,
         "database_backends": REAL_ESTATE_PROPERTY_MANAGEMENT_ALLOWED_DATABASE_BACKENDS,
@@ -1796,3 +1802,15 @@ def real_estate_property_management_runtime_capabilities() -> dict:
         "stream_engine_picker_visible": False,
         "side_effects": (),
     }
+
+
+def build_schema_contract():
+    return real_estate_property_management_build_schema_contract()
+
+
+def build_service_contract():
+    return real_estate_property_management_build_service_contract()
+
+
+def build_release_evidence_contract():
+    return real_estate_property_management_build_release_evidence()

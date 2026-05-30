@@ -198,3 +198,43 @@ def run_all_tests():
 if __name__ == '__main__':
     for name in run_all_tests():
         print(name)
+
+
+def test_manifest_and_event_contract():
+    assert implementation_contract()['pbc'] == PBC_KEY
+    assert event_contract_manifest()['ok'] is True
+    assert validate_event_contract()['ok'] is True
+
+
+def test_registration_plan_is_side_effect_free():
+    assert package_metadata_manifest()['pbc'] == PBC_KEY
+    assert validate_package_metadata()['ok'] is True
+    assert package_discovery_plan()['ok'] is True
+    assert package_discovery_plan()['side_effects'] == ()
+
+
+def test_service_and_route_surface_are_executable():
+    contracts = service_operation_contracts()
+    operation_contract = contracts.get('operation_contract')
+    assert contracts['ok'] is True
+    assert operation_contract
+    assert api_route_contracts()['ok'] is True
+    assert validate_api_route_contracts()['ok'] is True
+
+
+def test_configuration_permissions_and_seed_hooks_are_executable():
+    assert governance_smoke_test()['ok'] is True
+    assert permission_manifest()['ok'] is True
+    assert seed_plan()['ok'] is True
+    assert validate_seed_data()['ok'] is True
+
+
+def test_event_handlers_are_idempotent_and_retryable():
+    manifest = handler_manifest()
+    assert manifest['ok'] is True
+    first = dispatch_event({'event_type': manifest['consumes'][0], 'idempotency_key': 'idem-real-estate-source-audit'})
+    second = dispatch_event({'event_type': manifest['consumes'][0], 'idempotency_key': 'idem-real-estate-source-audit'})
+    failed = dispatch_event({'event_type': 'Unexpected', 'idempotency_key': 'bad-real-estate-source-audit'})
+    assert first['ok'] is True
+    assert second['duplicate'] is True
+    assert failed['dead_letter_table'].endswith('dead_letter_event')

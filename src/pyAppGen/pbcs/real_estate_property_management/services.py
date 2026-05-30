@@ -5,18 +5,33 @@ from .standalone import (
     REAL_ESTATE_PROPERTY_MANAGEMENT_OWNED_TABLES as OWNED_TABLES,
     RealEstatePropertyManagementService,
     SERVICE_COMMAND_OPERATIONS as COMMAND_OPERATIONS,
-    service_operation_manifest,
-    service_operation_contracts,
-    operation_plan,
+    service_operation_manifest as _service_operation_manifest,
+    service_operation_contracts as _service_operation_contracts,
+    operation_plan as _operation_plan,
     service_smoke_test,
 )
 
-EVENT_CONTRACT = {
-    'outbox_table': f'{PBC_KEY}_appgen_outbox_event',
-    'inbox_table': f'{PBC_KEY}_appgen_inbox_event',
-    'dead_letter_table': f'{PBC_KEY}_appgen_dead_letter_event',
-    'event_contract': 'AppGen-X',
-}
+TRANSACTION_BOUNDARY = 'owned_datastore_plus_outbox'
+
+
+class RealEstatePropertyManagementServiceFacade(RealEstatePropertyManagementService):
+    transaction_boundary = TRANSACTION_BOUNDARY
+
+
+def service_operation_manifest():
+    return _service_operation_manifest()
+
+
+def service_operation_contracts():
+    contracts = _service_operation_contracts()
+    contracts['transaction_boundary'] = TRANSACTION_BOUNDARY
+    return contracts
+
+
+def operation_plan(operation, payload=None):
+    plan = _operation_plan(operation, payload)
+    plan['transaction_boundary'] = TRANSACTION_BOUNDARY
+    return plan
 
 
 def smoke_test():
