@@ -33,3 +33,25 @@ def it_service_management_standalone_ui_contract():
 
 def smoke_test():
     return {'ok': it_service_management_ui_contract()['ok'] and it_service_management_render_workbench()['ok'] and it_service_management_standalone_ui_contract()['ok'], 'side_effects': ()}
+
+# Improve1 ITSM UI control extension.
+from .itsm_control import improve1_itsm_control_contract as it_service_management_improve1_itsm_control_contract
+
+_IT_SERVICE_MANAGEMENT_BASE_UI_CONTRACT = it_service_management_ui_contract
+_IT_SERVICE_MANAGEMENT_BASE_RENDER_WORKBENCH = it_service_management_render_workbench
+
+
+def it_service_management_ui_contract():
+    base = dict(_IT_SERVICE_MANAGEMENT_BASE_UI_CONTRACT())
+    itsm_control = it_service_management_improve1_itsm_control_contract()
+    control_panels = tuple(item["evidence"]["ui_surface"] for item in itsm_control["capabilities"])
+    service_actions = tuple(item["evidence"]["service_api"] for item in itsm_control["capabilities"])
+    full_surface = dict(base.get("full_capability_surface", {}))
+    full_surface.update({"itsm_control_panels": control_panels, "itsm_control_service_actions": service_actions, "itsm_control_tables": itsm_control["owned_tables"]})
+    return {**base, "ok": base.get("ok") is True and itsm_control["ok"], "full_capability_surface": full_surface, "itsm_control_contract": itsm_control, "itsm_control_panels": control_panels, "itsm_control_service_actions": service_actions, "side_effects": ()}
+
+
+def it_service_management_render_workbench():
+    base = dict(_IT_SERVICE_MANAGEMENT_BASE_RENDER_WORKBENCH())
+    itsm_control = it_service_management_improve1_itsm_control_contract()
+    return {**base, "ok": base.get("ok") is True and itsm_control["ok"], "itsm_control_panels": tuple(item["evidence"]["ui_surface"] for item in itsm_control["capabilities"]), "itsm_control_service_actions": tuple(item["evidence"]["service_api"] for item in itsm_control["capabilities"]), "itsm_control_agent_tools": tuple(f"it_service_management.agent.{item['slug']}" for item in itsm_control["capabilities"]), "side_effects": ()}

@@ -44,3 +44,35 @@ def validate_release_evidence():
 
 def smoke_test():
     return {'ok': release_readiness_manifest()['ok'] and validate_release_evidence()['ok'], 'side_effects': ()}
+
+# Improve1 ITSM release evidence extension.
+from .itsm_control import improve1_itsm_control_contract
+
+_IT_SERVICE_MANAGEMENT_PRE_CONTROL_BUILD_RELEASE_EVIDENCE = build_release_evidence
+_IT_SERVICE_MANAGEMENT_PRE_CONTROL_RELEASE_READINESS_MANIFEST = release_readiness_manifest
+_IT_SERVICE_MANAGEMENT_PRE_CONTROL_VALIDATE_RELEASE_EVIDENCE = validate_release_evidence
+
+
+def build_release_evidence():
+    base = dict(_IT_SERVICE_MANAGEMENT_PRE_CONTROL_BUILD_RELEASE_EVIDENCE())
+    itsm_control = improve1_itsm_control_contract()
+    checks = tuple(base.get("checks", ())) + (
+        {"id": "improve1_itsm_control", "ok": itsm_control["ok"]},
+        {"id": "itsm_release_pack", "ok": itsm_control["capability_count"] == 50},
+    )
+    return {**base, "ok": base.get("ok") is True and all(check["ok"] for check in checks), "checks": checks, "itsm_control": itsm_control, "blocking_gaps": tuple(check for check in checks if not check["ok"])}
+
+
+def release_readiness_manifest():
+    base = dict(_IT_SERVICE_MANAGEMENT_PRE_CONTROL_RELEASE_READINESS_MANIFEST())
+    itsm_control = improve1_itsm_control_contract()
+    ok = base.get("ok") is True and itsm_control["ok"]
+    sections = tuple(dict.fromkeys(tuple(base.get("sections", ())) + ("itsm_controls", "itsm_release", "release_rehearsal")))
+    return {**base, "ok": ok, "sections": sections, "itsm_control": itsm_control, "blocking_gaps": () if ok else ("itsm_control_failed",), "side_effects": ()}
+
+
+def validate_release_evidence():
+    base = dict(_IT_SERVICE_MANAGEMENT_PRE_CONTROL_VALIDATE_RELEASE_EVIDENCE())
+    itsm_control = improve1_itsm_control_contract()
+    ok = base.get("ok") is True and itsm_control["ok"]
+    return {**base, "ok": ok, "itsm_control": itsm_control, "failed_checks": tuple(base.get("failed_checks", ())) + (() if itsm_control["ok"] else ("itsm_control_failed",)), "blocking_gaps": tuple(base.get("blocking_gaps", ())) + (() if itsm_control["ok"] else ("itsm_control_failed",)), "side_effects": ()}
