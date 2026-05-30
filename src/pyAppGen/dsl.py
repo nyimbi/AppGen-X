@@ -4401,6 +4401,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
         designer_sync_cli=designer_sync_cli,
         migration_detected=migration_detected,
         migration_cli=migration_cli,
+        migration_text_renderer=migration_text_renderer,
         nl_plan=nl_plan,
         nl_plan_contract=nl_plan_contract,
         nl_plan_cli=nl_plan_cli,
@@ -4916,6 +4917,55 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                 "required": REQUIRED_MIGRATION_DETECTIONS,
                 "text_renderer": migration_text_renderer,
                 "cli": migration_cli,
+            },
+        ),
+        _tooling_audit_check(
+            "migration_safety_text_contracts",
+            set(REQUIRED_MIGRATION_DETECTIONS) <= set(migration_detected)
+            and migration_cli["ok"]
+            and migration_cli.get("case_count") == migration_cli.get("allowed_backend_count")
+            and migration_cli.get("passing_case_count") == migration_cli.get("case_count")
+            and migration_cli.get("change_kind_count", 0) >= 3
+            and all(case.get("requires_approval") is True for case in migration_cli.get("cases", ()))
+            and migration_text_renderer["ok"]
+            and migration_text_renderer.get("summary_line_count") == 1
+            and migration_text_renderer.get("coverage_line_count") == 1
+            and migration_text_renderer.get("detected_family_line_count", 0) >= 1
+            and migration_text_renderer.get("missing_family_line_count", 0) >= 1
+            and migration_text_renderer.get("change_line_count", 0) >= 3
+            and migration_text_renderer.get("safe_alternative_line_count", 0) >= 2
+            and migration_text_renderer.get("approval_line_count", 0) >= 1
+            and migration_text_renderer.get("destructive_summary_line_count", 0) >= 1
+            and migration_text_renderer.get("json_fallback") is False,
+            "Migration tooling proves required detection families, backend profiles, approval posture, safe alternatives, and text safety markers.",
+            "docs/tooling.md#migration-planner",
+            {
+                "required_detection_count": len(REQUIRED_MIGRATION_DETECTIONS),
+                "detected_detection_count": len(tuple(migration_detected)),
+                "missing_detections": tuple(
+                    detection for detection in REQUIRED_MIGRATION_DETECTIONS if detection not in set(migration_detected)
+                ),
+                "cli": {
+                    "format": migration_cli.get("format"),
+                    "case_count": migration_cli.get("case_count"),
+                    "passing_case_count": migration_cli.get("passing_case_count"),
+                    "allowed_backend_count": migration_cli.get("allowed_backend_count"),
+                    "change_kind_count": migration_cli.get("change_kind_count"),
+                    "allowed_backends": migration_cli.get("allowed_backends"),
+                },
+                "text_renderer": {
+                    "format": migration_text_renderer.get("format"),
+                    "summary_line_count": migration_text_renderer.get("summary_line_count"),
+                    "coverage_line_count": migration_text_renderer.get("coverage_line_count"),
+                    "detected_family_line_count": migration_text_renderer.get("detected_family_line_count"),
+                    "missing_family_line_count": migration_text_renderer.get("missing_family_line_count"),
+                    "change_line_count": migration_text_renderer.get("change_line_count"),
+                    "safe_alternative_line_count": migration_text_renderer.get("safe_alternative_line_count"),
+                    "warning_line_count": migration_text_renderer.get("warning_line_count"),
+                    "approval_line_count": migration_text_renderer.get("approval_line_count"),
+                    "destructive_summary_line_count": migration_text_renderer.get("destructive_summary_line_count"),
+                    "json_fallback": migration_text_renderer.get("json_fallback"),
+                },
             },
         ),
         _tooling_audit_check(
@@ -5774,6 +5824,20 @@ def _tooling_audit_implementation_phases(**evidence: dict) -> dict:
                     "ok": set(REQUIRED_MIGRATION_DETECTIONS) <= set(evidence["migration_detected"])
                     and evidence["migration_cli"].get("ok") is True,
                     "evidence_format": evidence["migration_cli"].get("format"),
+                },
+                {
+                    "id": "migration_safety_text_contracts",
+                    "ok": set(REQUIRED_MIGRATION_DETECTIONS) <= set(evidence["migration_detected"])
+                    and evidence["migration_cli"].get("ok") is True
+                    and evidence["migration_cli"].get("case_count") == evidence["migration_cli"].get("allowed_backend_count")
+                    and evidence["migration_cli"].get("passing_case_count") == evidence["migration_cli"].get("case_count")
+                    and evidence["migration_text_renderer"].get("ok") is True
+                    and evidence["migration_text_renderer"].get("approval_line_count", 0) >= 1
+                    and evidence["migration_text_renderer"].get("safe_alternative_line_count", 0) >= 1,
+                    "evidence_formats": (
+                        evidence["migration_cli"].get("format"),
+                        evidence["migration_text_renderer"].get("format"),
+                    ),
                 },
                 {
                     "id": "natural_language_planner_contract",

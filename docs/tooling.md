@@ -1561,6 +1561,11 @@ change count, and mitigation guidance remain visible.
 `appgen.migration-cli-audit.v1` reports case, passing-case, allowed-backend,
 and change-kind counts so supported database profiles and rename-hint behavior
 are visible in release evidence.
+The aggregate tooling audit exposes migration safety and text evidence as
+`migration_safety_text_contracts`. This gate fails independently when required
+detection families are missing, supported backend profiles fail, destructive
+changes do not require approval, safe-alternative text disappears, or migration
+text output falls back to raw JSON.
 
 ## Natural-Language Change Planner
 

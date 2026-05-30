@@ -3913,7 +3913,17 @@ def test_tooling_implementation_phase_audit_maps_phase_exit_criteria_to_evidence
         designer_visual_edit_matrix=ok("appgen.designer-visual-edit-matrix.v1"),
         designer_sync_cli=ok("appgen.designer-sync-cli-audit.v1"),
         migration_detected=appgen_dsl.REQUIRED_MIGRATION_DETECTIONS,
-        migration_cli=ok("appgen.migration-cli-audit.v1"),
+        migration_cli={
+            **ok("appgen.migration-cli-audit.v1"),
+            "case_count": 2,
+            "passing_case_count": 2,
+            "allowed_backend_count": 2,
+        },
+        migration_text_renderer={
+            **ok("appgen.migration-plan-text-renderer.v1"),
+            "approval_line_count": 1,
+            "safe_alternative_line_count": 2,
+        },
         nl_plan={"ok": True, "format": "appgen.nl-plan.v1", "dsl_patch": "--- before\n+++ after"},
         nl_plan_contract=ok("appgen.nl-plan-contract-audit.v1"),
         nl_plan_cli=ok("appgen.nl-plan-cli-audit.v1"),
@@ -3969,6 +3979,7 @@ def test_tooling_implementation_phase_audit_maps_phase_exit_criteria_to_evidence
         "rename_and_code_actions",
         "studio_semantic_bridge",
         "frontend_browser_smoke_bridges",
+        "migration_safety_text_contracts",
         "release_and_package_verifiers",
         "package_manifest_handoff_contracts",
         "release_text_evidence_contracts",
@@ -4096,6 +4107,7 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
         "release_text_evidence_contracts",
         "graph_rendering_contracts",
         "explain_cli_contracts",
+        "migration_safety_text_contracts",
         "parser_golden_and_drift_gates",
         "tooling_doc_anchor_integrity",
         "non_goal_policy_guards",
@@ -4642,6 +4654,22 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert migration_check["detail"]["cli"]["case_count"] == migration_check["detail"]["cli"]["allowed_backend_count"]
     assert migration_check["detail"]["cli"]["passing_case_count"] == migration_check["detail"]["cli"]["case_count"]
     assert migration_check["detail"]["cli"]["change_kind_count"] >= 3
+    migration_safety_check = next(check for check in report["checks"] if check["id"] == "migration_safety_text_contracts")
+    assert migration_safety_check["detail"]["required_detection_count"] == len(appgen_dsl.REQUIRED_MIGRATION_DETECTIONS)
+    assert migration_safety_check["detail"]["detected_detection_count"] >= len(appgen_dsl.REQUIRED_MIGRATION_DETECTIONS)
+    assert migration_safety_check["detail"]["missing_detections"] == ()
+    assert migration_safety_check["detail"]["cli"]["format"] == "appgen.migration-cli-audit.v1"
+    assert migration_safety_check["detail"]["cli"]["case_count"] == migration_safety_check["detail"]["cli"]["allowed_backend_count"]
+    assert migration_safety_check["detail"]["cli"]["passing_case_count"] == migration_safety_check["detail"]["cli"]["case_count"]
+    assert migration_safety_check["detail"]["cli"]["change_kind_count"] >= 3
+    assert migration_safety_check["detail"]["text_renderer"]["format"] == "appgen.migration-plan-text-renderer.v1"
+    assert migration_safety_check["detail"]["text_renderer"]["summary_line_count"] == 1
+    assert migration_safety_check["detail"]["text_renderer"]["coverage_line_count"] == 1
+    assert migration_safety_check["detail"]["text_renderer"]["change_line_count"] == 3
+    assert migration_safety_check["detail"]["text_renderer"]["safe_alternative_line_count"] == 2
+    assert migration_safety_check["detail"]["text_renderer"]["approval_line_count"] == 1
+    assert migration_safety_check["detail"]["text_renderer"]["destructive_summary_line_count"] == 1
+    assert migration_safety_check["detail"]["text_renderer"]["json_fallback"] is False
     graph_check = next(check for check in report["checks"] if check["id"] == "graph_and_explain_tooling")
     assert graph_check["detail"]["cli"]["format"] == "appgen.graph-cli-format-audit.v1"
     assert graph_check["detail"]["cli"]["ok"] is True
@@ -5137,6 +5165,20 @@ def test_migration_plan_text_renderer_contract_proves_safety_log_markers() -> No
         "safe-alternative drop_field: Mark Invoice.legacy_code deprecated before dropping it.",
         "warning AGX1101: Destructive migration changes require approval.",
     } <= set(report["required_fragments"])
+
+
+def test_migration_cli_audit_covers_supported_backends_and_rename_hints(tmp_path: Path) -> None:
+    report = appgen_dsl._tooling_audit_migration_cli(tmp_path)
+
+    assert report["format"] == "appgen.migration-cli-audit.v1"
+    assert report["ok"] is True
+    assert report["case_count"] == report["allowed_backend_count"]
+    assert report["passing_case_count"] == report["case_count"]
+    assert report["allowed_backends"] == appgen_dsl.SUPPORTED_DATABASE_BACKENDS
+    assert report["change_kind_count"] >= 3
+    assert all(case["exit_code"] == 0 for case in report["cases"])
+    assert all(case["requires_approval"] is True for case in report["cases"])
+    assert all({"rename_table", "rename_field", "add_field"} <= set(case["change_kinds"]) for case in report["cases"])
 
 
 def test_lsp_service_text_renderer_contract_proves_editor_log_markers() -> None:
