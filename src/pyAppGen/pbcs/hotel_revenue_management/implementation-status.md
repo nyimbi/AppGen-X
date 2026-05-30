@@ -41,3 +41,10 @@ and expanded focused tests.
   worktree environment.
 - The package stays intentionally side-effect-free; the standalone app composes
   owned runtime behavior but does not perform external I/O.
+
+## Improve1 revenue control implementation
+
+- Added executable `revenue_control.py` covering all 50 improve1 hotel revenue capabilities with owned-table evidence, required evidence fields, AppGen-X event contract, and PostgreSQL/MySQL/MariaDB datastore boundaries.
+- Exposed the control contract through runtime release evidence, runtime capabilities, release readiness, validation, UI contract, and workbench rendering.
+- Added `tests/test_domain_behavior.py` to prove all 50 capabilities plus negative behavior for sellable inventory, BAR ladders, channel parity, overbooking limits, forecast overrides, inventory correction idempotency, governed agent skills, outbound AppGen-X events, cross-PBC boundaries, and go-live signoff.
+- Regenerated `IMPROVE1_TRACEABILITY.md` so each row maps feature 1-50 to `revenue_control.py`, UI, service/API, package tests, and release evidence.

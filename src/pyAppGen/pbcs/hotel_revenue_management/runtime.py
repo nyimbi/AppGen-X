@@ -2033,3 +2033,38 @@ def hotel_revenue_management_execute_domain_operation(operation: str, payload: d
     from .domain_depth import execute_domain_operation
 
     return execute_domain_operation(operation, payload)
+
+
+# Improve1 hotel revenue control extension.
+from .revenue_control import improve1_revenue_control_contract as hotel_revenue_management_improve1_revenue_control_contract
+
+_HOTEL_REVENUE_MANAGEMENT_BASE_RUNTIME_CAPABILITIES = hotel_revenue_management_runtime_capabilities
+_HOTEL_REVENUE_MANAGEMENT_BASE_RELEASE_EVIDENCE = hotel_revenue_management_build_release_evidence
+
+
+def hotel_revenue_management_build_release_evidence() -> dict:
+    evidence = dict(_HOTEL_REVENUE_MANAGEMENT_BASE_RELEASE_EVIDENCE())
+    revenue_control = hotel_revenue_management_improve1_revenue_control_contract()
+    checks = tuple(evidence.get('checks', ())) + (
+        {'id': 'improve1_revenue_control', 'ok': revenue_control['ok']},
+        {'id': 'pricing_inventory_release', 'ok': revenue_control['capability_count'] == 50 and revenue_control['event_contract'] == 'AppGen-X'},
+    )
+    return {**evidence, 'ok': evidence.get('ok') is True and all(check['ok'] for check in checks), 'checks': checks, 'revenue_control': revenue_control, 'blocking_gaps': tuple(check for check in checks if not check['ok'])}
+
+
+def hotel_revenue_management_runtime_capabilities() -> dict:
+    runtime = dict(_HOTEL_REVENUE_MANAGEMENT_BASE_RUNTIME_CAPABILITIES())
+    revenue_control = hotel_revenue_management_improve1_revenue_control_contract()
+    return {
+        **runtime,
+        'ok': runtime.get('ok') is True and revenue_control['ok'],
+        'revenue_control': revenue_control,
+        'improve1_capabilities': revenue_control['capabilities'],
+        'operations': tuple(dict.fromkeys(tuple(runtime.get('operations', ())) + ('improve1_revenue_control_contract', 'evaluate_revenue_control'))),
+        'owned_tables': tuple(dict.fromkeys(tuple(runtime.get('owned_tables', ())) + tuple(revenue_control['owned_tables']))),
+        'allowed_database_backends': revenue_control['allowed_database_backends'],
+        'event_contract': revenue_control['event_contract'],
+        'required_event_topic': revenue_control['required_event_topic'],
+        'stream_engine_picker_visible': False,
+        'side_effects': (),
+    }

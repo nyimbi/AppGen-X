@@ -170,3 +170,31 @@ def smoke_test() -> dict:
         "ok": ui["ok"] and workbench["ok"] and bool(ui["forms"]) and bool(workbench["controls"]),
         "side_effects": (),
     }
+
+
+# Improve1 hotel revenue UI control extension.
+from .revenue_control import improve1_revenue_control_contract as hotel_revenue_management_improve1_revenue_control_contract
+
+_HOTEL_REVENUE_MANAGEMENT_BASE_UI_CONTRACT = hotel_revenue_management_ui_contract
+_HOTEL_REVENUE_MANAGEMENT_BASE_RENDER_WORKBENCH = hotel_revenue_management_render_workbench
+
+
+def hotel_revenue_management_ui_contract() -> dict:
+    base = dict(_HOTEL_REVENUE_MANAGEMENT_BASE_UI_CONTRACT())
+    revenue_control = hotel_revenue_management_improve1_revenue_control_contract()
+    control_panels = tuple(item['evidence']['ui_surface'] for item in revenue_control['capabilities'])
+    service_actions = tuple(item['evidence']['service_api'] for item in revenue_control['capabilities'])
+    full_surface = dict(base.get('full_capability_surface', {}))
+    full_surface.update({
+        'revenue_control_panels': control_panels,
+        'revenue_control_service_actions': service_actions,
+        'revenue_control_tables': revenue_control['owned_tables'],
+        'revenue_control_agent_tools': tuple(f"hotel_revenue_management.agent.{item['slug']}" for item in revenue_control['capabilities']),
+    })
+    return {**base, 'ok': base.get('ok') is True and revenue_control['ok'], 'full_capability_surface': full_surface, 'revenue_control_contract': revenue_control, 'revenue_control_panels': control_panels, 'revenue_control_service_actions': service_actions, 'side_effects': ()}
+
+
+def hotel_revenue_management_render_workbench(state: dict | None = None, tenant: str = 'default') -> dict:
+    base = dict(_HOTEL_REVENUE_MANAGEMENT_BASE_RENDER_WORKBENCH(state=state, tenant=tenant))
+    revenue_control = hotel_revenue_management_improve1_revenue_control_contract()
+    return {**base, 'ok': base.get('ok') is True and revenue_control['ok'], 'revenue_control_panels': tuple(item['evidence']['ui_surface'] for item in revenue_control['capabilities']), 'revenue_control_service_actions': tuple(item['evidence']['service_api'] for item in revenue_control['capabilities']), 'agent_tools': tuple(f"hotel_revenue_management.agent.{item['slug']}" for item in revenue_control['capabilities']), 'side_effects': ()}

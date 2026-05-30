@@ -117,3 +117,36 @@ def validate_release_evidence() -> dict:
 def smoke_test() -> dict:
     validation = validate_release_evidence()
     return {"ok": validation["ok"], "validation": validation, "side_effects": ()}
+
+
+# Improve1 hotel revenue release evidence extension.
+from .revenue_control import improve1_revenue_control_contract
+
+_HOTEL_REVENUE_MANAGEMENT_PRE_CONTROL_BUILD_RELEASE_EVIDENCE = build_release_evidence
+_HOTEL_REVENUE_MANAGEMENT_PRE_CONTROL_RELEASE_READINESS_MANIFEST = release_readiness_manifest
+_HOTEL_REVENUE_MANAGEMENT_PRE_CONTROL_VALIDATE_RELEASE_EVIDENCE = validate_release_evidence
+
+
+def build_release_evidence() -> dict:
+    base = dict(_HOTEL_REVENUE_MANAGEMENT_PRE_CONTROL_BUILD_RELEASE_EVIDENCE())
+    revenue_control = improve1_revenue_control_contract()
+    checks = tuple(base.get('checks', ())) + (
+        {'id': 'improve1_revenue_control', 'ok': revenue_control['ok']},
+        {'id': 'pricing_inventory_release_pack', 'ok': revenue_control['capability_count'] == 50},
+    )
+    return {**base, 'ok': base.get('ok') is True and all(check['ok'] for check in checks), 'checks': checks, 'revenue_control': revenue_control, 'blocking_gaps': tuple(check for check in checks if not check['ok'])}
+
+
+def release_readiness_manifest() -> dict:
+    base = dict(_HOTEL_REVENUE_MANAGEMENT_PRE_CONTROL_RELEASE_READINESS_MANIFEST())
+    revenue_control = improve1_revenue_control_contract()
+    ok = base.get('ok') is True and revenue_control['ok']
+    sections = tuple(dict.fromkeys(tuple(base.get('sections', ())) + ('revenue_controls', 'pricing_inventory_release', 'release_rehearsal')))
+    return {**base, 'ok': ok, 'sections': sections, 'revenue_control': revenue_control, 'blocking_gaps': () if ok else ('revenue_control_failed',), 'side_effects': ()}
+
+
+def validate_release_evidence() -> dict:
+    base = dict(_HOTEL_REVENUE_MANAGEMENT_PRE_CONTROL_VALIDATE_RELEASE_EVIDENCE())
+    revenue_control = improve1_revenue_control_contract()
+    ok = base.get('ok') is True and revenue_control['ok']
+    return {**base, 'ok': ok, 'revenue_control': revenue_control, 'failed_checks': tuple(base.get('failed_checks', ())) + (() if revenue_control['ok'] else ('revenue_control_failed',)), 'blocking_gaps': tuple(base.get('blocking_gaps', ())) + (() if revenue_control['ok'] else ('revenue_control_failed',)), 'side_effects': ()}
