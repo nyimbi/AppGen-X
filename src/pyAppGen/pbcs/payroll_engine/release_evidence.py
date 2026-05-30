@@ -15,3 +15,39 @@ def validate_release_evidence()->dict:
  e=build_release_evidence(); m=release_readiness_manifest(); missing=tuple(s for s in m["required_sections"] if s not in m["sections"]); failed=tuple(c for c in m["checks"] if c.get("ok") is not True); boundary=tuple(g for g,f in (("schema_shared_table_access",e["schema"].get("shared_table_access") is not False),("service_shared_table_access",e["service"].get("shared_table_access") is not False),("api_shared_table_access",e["api"].get("shared_table_access") is not False),("repository_shared_table_access",e["repository"].get("shared_table_access") is not False)) if f); return {"ok":m["ok"] and e["pbc"]==m["pbc"] and not m["blocking_gaps"] and not missing and not failed and not boundary,"pbc":"payroll_engine","manifest":m,"missing_sections":missing,"failed_checks":failed,"boundary_gaps":boundary,"side_effects":()}
 def smoke_test()->dict:
  v=validate_release_evidence(); e=build_release_evidence(); return {"ok":v["ok"] and e["ok"],"validation":v,"evidence":e,"side_effects":()}
+
+
+# Improve1 payroll release evidence extension.
+from .payroll_control import improve1_payroll_control_contract as _improve1_payroll_control_contract
+
+_BASE_BUILD_RELEASE_EVIDENCE = build_release_evidence
+_BASE_RELEASE_READINESS_MANIFEST = release_readiness_manifest
+_BASE_VALIDATE_RELEASE_EVIDENCE = validate_release_evidence
+
+
+def build_release_evidence() -> dict:
+    evidence = dict(_BASE_BUILD_RELEASE_EVIDENCE())
+    control = _improve1_payroll_control_contract()
+    evidence["ok"] = bool(evidence.get("ok")) and control["ok"]
+    evidence["payroll_control"] = control
+    evidence["traceability"] = tuple(dict.fromkeys(tuple(evidence.get("traceability", ())) + ("improve1_payroll_control", "tests/test_domain_behavior.py")))
+    evidence["blocking_gaps"] = tuple(evidence.get("blocking_gaps", ())) + tuple(control.get("blocking_gaps", ()))
+    return evidence
+
+
+def release_readiness_manifest() -> dict:
+    manifest = dict(_BASE_RELEASE_READINESS_MANIFEST())
+    control = _improve1_payroll_control_contract()
+    manifest["ok"] = bool(manifest.get("ok")) and control["ok"]
+    manifest["payroll_control"] = control
+    manifest["blocking_gaps"] = tuple(manifest.get("blocking_gaps", ())) + tuple(control.get("blocking_gaps", ()))
+    return manifest
+
+
+def validate_release_evidence() -> dict:
+    validation = dict(_BASE_VALIDATE_RELEASE_EVIDENCE())
+    control = _improve1_payroll_control_contract()
+    validation["ok"] = bool(validation.get("ok")) and control["ok"]
+    validation["payroll_control"] = control
+    validation["failed_checks"] = tuple(validation.get("failed_checks", ())) + tuple(control.get("blocking_gaps", ()))
+    return validation

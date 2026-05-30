@@ -237,3 +237,31 @@ def payroll_engine_render_workbench(state:dict,*,tenant:str,principal_permission
  contract=payroll_engine_ui_contract(); snapshot=__import__("pyAppGen.pbcs.payroll_engine.runtime",fromlist=["payroll_engine_build_workbench_view"]).payroll_engine_build_workbench_view(state,tenant=tenant); perms=set(principal_permissions); visible=tuple(a for a,p in contract["action_permissions"].items() if p in perms); return {"format":"appgen.payroll-engine-workbench-render.v1","ok":True,"tenant":tenant,"route":"/workbench/pbcs/payroll_engine","fragments":contract["fragments"],"navigation":contract["standalone_app"]["navigation"],"forms":contract["forms"],"wizards":contract["wizards"],"controls":contract["controls"],"cards":({"key":"payroll_runs","value":snapshot["run_count"],"fragment":"PayrollRunConsole"},{"key":"gross_pay_total","value":snapshot["gross_pay_total"],"fragment":"PayslipReviewBoard"},{"key":"net_pay_total","value":snapshot["net_pay_total"],"fragment":"PayslipReviewBoard"},{"key":"deductions","value":snapshot["deduction_count"],"fragment":"DeductionEditor"},{"key":"benefits","value":snapshot["benefit_count"],"fragment":"BenefitAllocationPanel"},{"key":"filings","value":snapshot["filing_count"],"fragment":"PayrollFilingConsole"}),"visible_actions":visible,"locked_actions":tuple(a for a in contract["action_permissions"] if a not in visible),"configuration_bound":snapshot["configuration_bound"],"rules_bound":tuple(sorted(state.get("rules",{}))),"parameters_bound":tuple(sorted(state.get("parameters",{}))),"event_outbox_count":len(state.get("outbox",())),"inbox_count":snapshot["inbox_count"],"dead_letter_count":snapshot["dead_letter_count"],"binding_evidence":contract["binding_evidence"],"workbench":snapshot}
 def payroll_engine_render_standalone_app(state:dict,*,tenant:str,principal_permissions:tuple[str,...]|None=None)->dict:
  contract=payroll_engine_ui_contract(); perms=principal_permissions or tuple(sorted(set(contract["action_permissions"].values()))); rendered=payroll_engine_render_workbench(state,tenant=tenant,principal_permissions=perms); return {"ok":rendered["ok"],"pbc":"payroll_engine","shell":payroll_engine_standalone_app_contract(),"workbench":rendered,"side_effects":()}
+
+
+# Improve1 payroll control UI extension.
+from .payroll_control import improve1_payroll_control_contract as _improve1_payroll_control_contract
+
+_PAYROLL_ENGINE_BASE_UI_CONTRACT = payroll_engine_ui_contract
+_PAYROLL_ENGINE_BASE_RENDER_WORKBENCH = payroll_engine_render_workbench
+
+
+def payroll_engine_ui_contract() -> dict:
+    ui = dict(_PAYROLL_ENGINE_BASE_UI_CONTRACT())
+    control = _improve1_payroll_control_contract()
+    panels = tuple(item["evidence"]["ui_surface"] for item in control["capabilities"])
+    service_actions = tuple(item["evidence"]["service_api"] for item in control["capabilities"])
+    ui.update({"ok": ui.get("ok") is True and control["ok"], "payroll_control_contract": control, "payroll_control_panels": panels, "payroll_control_service_actions": service_actions, "stream_engine_picker_visible": False})
+    return ui
+
+
+def payroll_engine_render_workbench(state: dict | None = None, *, tenant: str = "smoke", principal_permissions: tuple[str, ...] | None = None) -> dict:
+    if state is None:
+        state = __import__("pyAppGen.pbcs.payroll_engine.runtime", fromlist=["payroll_engine_empty_state"]).payroll_engine_empty_state()
+    if principal_permissions is None:
+        contract = _PAYROLL_ENGINE_BASE_UI_CONTRACT()
+        principal_permissions = tuple(sorted(set(contract["action_permissions"].values())))
+    workbench = dict(_PAYROLL_ENGINE_BASE_RENDER_WORKBENCH(state, tenant=tenant, principal_permissions=principal_permissions))
+    control = _improve1_payroll_control_contract()
+    workbench.update({"ok": workbench.get("ok") is True and control["ok"], "payroll_control_panels": tuple(item["evidence"]["ui_surface"] for item in control["capabilities"]), "payroll_control_service_actions": tuple(item["evidence"]["service_api"] for item in control["capabilities"]), "payroll_control_agent_tools": tuple(f"payroll_engine.skills.{item['slug']}" for item in control["capabilities"])})
+    return workbench
