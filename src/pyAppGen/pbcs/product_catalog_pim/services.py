@@ -141,27 +141,100 @@ def smoke_test():
 
 
 
+
 def standalone_service_operation_contracts():
-    contracts=(
-        {'operation':'seed_demo_workspace','operation_kind':'command','method':'POST','path':'/app/product-catalog-pim/demo-workspace','table':'product_catalog_pim_product_configuration','wizard':'ProductLaunchIntakeWizard','permission':'product_catalog_pim.configure'},
-        {'operation':'build_workbench','operation_kind':'query','method':'GET','path':'/app/product-catalog-pim/workbench','table':'product_catalog_pim_product','wizard':None,'permission':'product_catalog_pim.read'},
-        {'operation':'register_product','operation_kind':'command','method':'POST','path':'/app/product-catalog-pim/products','table':'product_catalog_pim_product','wizard':'ProductLaunchIntakeWizard','permission':'product_catalog_pim.product'},
-        {'operation':'add_localized_content','operation_kind':'command','method':'POST','path':'/app/product-catalog-pim/content','table':'product_catalog_pim_product_locale_content','wizard':'ProductEnrichmentWizard','permission':'product_catalog_pim.enrich'},
-        {'operation':'publish_product','operation_kind':'command','method':'POST','path':'/app/product-catalog-pim/publications','table':'product_catalog_pim_catalog_publication','wizard':'CatalogPublicationWizard','permission':'product_catalog_pim.publish'},
-        {'operation':'generate_publication_proof','operation_kind':'command','method':'POST','path':'/app/product-catalog-pim/publication-proofs','table':'product_catalog_pim_product_publication_proof','wizard':'CatalogPublicationWizard','permission':'product_catalog_pim.audit'},
+    contracts = (
+        {'operation': 'configure_runtime', 'operation_kind': 'command', 'method': 'PUT', 'path': '/app/product-catalog-pim/configuration', 'table': 'product_catalog_pim_product_configuration', 'wizard': 'ProductLaunchIntakeWizard', 'permission': 'product_catalog_pim.configure'},
+        {'operation': 'set_parameter', 'operation_kind': 'command', 'method': 'POST', 'path': '/app/product-catalog-pim/parameters', 'table': 'product_catalog_pim_product_parameter', 'wizard': None, 'permission': 'product_catalog_pim.configure'},
+        {'operation': 'register_rule', 'operation_kind': 'command', 'method': 'POST', 'path': '/app/product-catalog-pim/rules', 'table': 'product_catalog_pim_product_rule', 'wizard': None, 'permission': 'product_catalog_pim.configure'},
+        {'operation': 'receive_event', 'operation_kind': 'command', 'method': 'POST', 'path': '/app/product-catalog-pim/events/inbox', 'table': 'product_catalog_pim_appgen_inbox_event', 'wizard': None, 'permission': 'product_catalog_pim.event'},
+        {'operation': 'seed_demo_workspace', 'operation_kind': 'command', 'method': 'POST', 'path': '/app/product-catalog-pim/demo-workspace', 'table': 'product_catalog_pim_product_configuration', 'wizard': 'ProductLaunchIntakeWizard', 'permission': 'product_catalog_pim.configure'},
+        {'operation': 'build_workbench', 'operation_kind': 'query', 'method': 'GET', 'path': '/app/product-catalog-pim/workbench', 'table': 'product_catalog_pim_product', 'wizard': None, 'permission': 'product_catalog_pim.read'},
+        {'operation': 'create_product_family', 'operation_kind': 'command', 'method': 'POST', 'path': '/app/product-catalog-pim/families', 'table': 'product_catalog_pim_product_family', 'wizard': 'ProductLaunchIntakeWizard', 'permission': 'product_catalog_pim.product'},
+        {'operation': 'register_product', 'operation_kind': 'command', 'method': 'POST', 'path': '/app/product-catalog-pim/products', 'table': 'product_catalog_pim_product', 'wizard': 'ProductLaunchIntakeWizard', 'permission': 'product_catalog_pim.product'},
+        {'operation': 'define_attribute_schema', 'operation_kind': 'command', 'method': 'POST', 'path': '/app/product-catalog-pim/attribute-schemas', 'table': 'product_catalog_pim_product_attribute_schema', 'wizard': 'ProductLaunchIntakeWizard', 'permission': 'product_catalog_pim.product'},
+        {'operation': 'set_product_attribute', 'operation_kind': 'command', 'method': 'POST', 'path': '/app/product-catalog-pim/attributes', 'table': 'product_catalog_pim_product_attribute', 'wizard': 'ProductEnrichmentWizard', 'permission': 'product_catalog_pim.enrich'},
+        {'operation': 'add_localized_content', 'operation_kind': 'command', 'method': 'POST', 'path': '/app/product-catalog-pim/content', 'table': 'product_catalog_pim_product_locale_content', 'wizard': 'ProductEnrichmentWizard', 'permission': 'product_catalog_pim.enrich'},
+        {'operation': 'attach_product_media', 'operation_kind': 'command', 'method': 'POST', 'path': '/app/product-catalog-pim/media', 'table': 'product_catalog_pim_product_media', 'wizard': 'ProductEnrichmentWizard', 'permission': 'product_catalog_pim.enrich'},
+        {'operation': 'add_price_metadata', 'operation_kind': 'command', 'method': 'POST', 'path': '/app/product-catalog-pim/prices', 'table': 'product_catalog_pim_product_price', 'wizard': 'SellabilityReadinessWizard', 'permission': 'product_catalog_pim.publish'},
+        {'operation': 'add_compliance_claim', 'operation_kind': 'command', 'method': 'POST', 'path': '/app/product-catalog-pim/compliance-claims', 'table': 'product_catalog_pim_product_compliance_claim', 'wizard': 'SellabilityReadinessWizard', 'permission': 'product_catalog_pim.enrich'},
+        {'operation': 'publish_product', 'operation_kind': 'command', 'method': 'POST', 'path': '/app/product-catalog-pim/publications', 'table': 'product_catalog_pim_catalog_publication', 'wizard': 'CatalogPublicationWizard', 'permission': 'product_catalog_pim.publish'},
+        {'operation': 'generate_publication_proof', 'operation_kind': 'command', 'method': 'POST', 'path': '/app/product-catalog-pim/publication-proofs', 'table': 'product_catalog_pim_product_publication_proof', 'wizard': 'CatalogPublicationWizard', 'permission': 'product_catalog_pim.audit'},
+        {'operation': 'run_control_tests', 'operation_kind': 'command', 'method': 'POST', 'path': '/app/product-catalog-pim/controls', 'table': 'product_catalog_pim_product_control_assertion', 'wizard': None, 'permission': 'product_catalog_pim.audit'},
+        {'operation': 'run_agent_skill', 'operation_kind': 'command', 'method': 'POST', 'path': '/app/product-catalog-pim/agent-sessions', 'table': 'product_catalog_pim_agent_session', 'wizard': None, 'permission': 'product_catalog_pim.read'},
     )
-    return {'format':'appgen.product-catalog-pim-standalone-service.v1','ok':all(i['table'].startswith('product_catalog_pim_') for i in contracts),'pbc':'product_catalog_pim','contracts':contracts,'operations':tuple(i['operation'] for i in contracts),'command_operations':tuple(i['operation'] for i in contracts if i['operation_kind']=='command'),'query_operations':tuple(i['operation'] for i in contracts if i['operation_kind']=='query'),'side_effects':()}
+    return {
+        'format': 'appgen.product-catalog-pim-standalone-service.v1',
+        'ok': all(item['table'].startswith('product_catalog_pim_') for item in contracts),
+        'pbc': 'product_catalog_pim',
+        'contracts': contracts,
+        'operations': tuple(item['operation'] for item in contracts),
+        'command_operations': tuple(item['operation'] for item in contracts if item['operation_kind'] == 'command'),
+        'query_operations': tuple(item['operation'] for item in contracts if item['operation_kind'] == 'query'),
+        'side_effects': (),
+    }
+
 
 class ProductCatalogPimStandaloneService:
-    def __init__(self,repository=None,database_path=':memory:'):
+    def __init__(self, repository=None, database_path=':memory:'):
         if repository is None:
             from .repository import ProductCatalogPimStandaloneRepository
-            repository=ProductCatalogPimStandaloneRepository(database_path=database_path)
-        self.repository=repository
-    def close(self): self.repository.close()
-    def seed_demo_workspace(self,tenant='tenant_demo'): return self.repository.seed_demo_workspace(tenant=tenant)
-    def build_workbench(self,tenant='tenant_demo'): return self.repository.build_workbench(tenant)
-    def register_product(self,tenant,product): return self.repository.register_product(tenant,product)
-    def add_localized_content(self,tenant,content): return self.repository.add_localized_content(tenant,content)
-    def publish_product(self,tenant,product_id,channels,locales,published_by='catalog_manager_1'): return self.repository.publish_product(tenant,product_id,tuple(channels),tuple(locales),published_by)
-    def generate_publication_proof(self,tenant,product_id,disclosure=('product_id','sku','lifecycle_state','completeness')): return self.repository.generate_publication_proof(tenant,product_id,tuple(disclosure))
+            repository = ProductCatalogPimStandaloneRepository(database_path=database_path)
+        self.repository = repository
+
+    def close(self):
+        self.repository.close()
+
+    def configure_runtime(self, tenant, configuration):
+        return self.repository.configure_runtime(tenant, configuration)
+
+    def set_parameter(self, tenant, name, value):
+        return self.repository.set_parameter(tenant, name, value)
+
+    def register_rule(self, tenant, rule):
+        return self.repository.register_rule(tenant, rule)
+
+    def receive_event(self, tenant, event):
+        return self.repository.receive_event(tenant, event)
+
+    def seed_demo_workspace(self, tenant='tenant_demo'):
+        return self.repository.seed_demo_workspace(tenant=tenant)
+
+    def build_workbench(self, tenant='tenant_demo'):
+        return self.repository.build_workbench(tenant)
+
+    def create_product_family(self, tenant, family):
+        return self.repository.create_product_family(tenant, family)
+
+    def register_product(self, tenant, product):
+        return self.repository.register_product(tenant, product)
+
+    def define_attribute_schema(self, tenant, schema):
+        return self.repository.define_attribute_schema(tenant, schema)
+
+    def set_product_attribute(self, tenant, product_id, name, value):
+        return self.repository.set_product_attribute(tenant, product_id, name, value)
+
+    def add_localized_content(self, tenant, content):
+        return self.repository.add_localized_content(tenant, content)
+
+    def attach_product_media(self, tenant, media):
+        return self.repository.attach_product_media(tenant, media)
+
+    def add_price_metadata(self, tenant, price):
+        return self.repository.add_price_metadata(tenant, price)
+
+    def add_compliance_claim(self, tenant, claim):
+        return self.repository.add_compliance_claim(tenant, claim)
+
+    def publish_product(self, tenant, product_id, channels, locales, published_by='catalog_manager_1'):
+        return self.repository.publish_product(tenant, product_id, tuple(channels), tuple(locales), published_by)
+
+    def generate_publication_proof(self, tenant, product_id, disclosure=('product_id', 'sku', 'lifecycle_state', 'completeness')):
+        return self.repository.generate_publication_proof(tenant, product_id, tuple(disclosure))
+
+    def run_control_tests(self, tenant):
+        return self.repository.run_control_tests(tenant)
+
+    def run_agent_skill(self, tenant, skill, payload):
+        return self.repository.run_agent_skill(tenant, skill, payload)

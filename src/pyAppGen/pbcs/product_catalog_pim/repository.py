@@ -41,7 +41,8 @@ class ProductCatalogPimStandaloneRepository:
     def _workflow(self,t,k,s,c,r): self._insert(WORKFLOW_TABLE,'workflow',(t,k,s,'completed' if r.get('ok') else 'blocked',_json(c),_json(r),_now()))
     def _control(self,t,k,r): self._insert(CONTROL_TABLE,'control',(t,k,int(bool(r.get('ok'))),_json(r),_now()))
     def _result(self,t,r):
-        if r.get('ok') is True and 'state' in r: self.save_state(t,r['state'])
+        if 'state' in r:
+            self.save_state(t,r['state'])
         return r
     def configure_runtime(self,t,c):
         seq=('allowed_channels','allowed_locales','allowed_media_roles','allowed_regions'); norm={**c,**{k:tuple(c.get(k,())) for k in seq}}
