@@ -66,3 +66,35 @@ def smoke_test():
         "validation": validation,
         "side_effects": (),
     }
+
+# Improve1 laboratory release evidence extension.
+from .lab_control import improve1_lab_control_contract
+
+_LABORATORY_INFORMATION_MANAGEMENT_PRE_CONTROL_BUILD_RELEASE_EVIDENCE = build_release_evidence
+_LABORATORY_INFORMATION_MANAGEMENT_PRE_CONTROL_RELEASE_READINESS_MANIFEST = release_readiness_manifest
+_LABORATORY_INFORMATION_MANAGEMENT_PRE_CONTROL_VALIDATE_RELEASE_EVIDENCE = validate_release_evidence
+
+
+def build_release_evidence():
+    base = dict(_LABORATORY_INFORMATION_MANAGEMENT_PRE_CONTROL_BUILD_RELEASE_EVIDENCE())
+    lab_control = improve1_lab_control_contract()
+    checks = tuple(base.get("checks", ())) + (
+        {"id": "improve1_lab_control", "ok": lab_control["ok"]},
+        {"id": "laboratory_release_pack", "ok": lab_control["capability_count"] == 50},
+    )
+    return {**base, "ok": base.get("ok") is True and all(check["ok"] for check in checks), "checks": checks, "lab_control": lab_control, "blocking_gaps": tuple(check for check in checks if not check["ok"])}
+
+
+def release_readiness_manifest():
+    base = dict(_LABORATORY_INFORMATION_MANAGEMENT_PRE_CONTROL_RELEASE_READINESS_MANIFEST())
+    lab_control = improve1_lab_control_contract()
+    ok = base.get("ok") is True and lab_control["ok"]
+    sections = tuple(dict.fromkeys(tuple(base.get("sections", ())) + ("laboratory_controls", "laboratory_release", "release_rehearsal")))
+    return {**base, "ok": ok, "sections": sections, "lab_control": lab_control, "blocking_gaps": () if ok else ("lab_control_failed",), "side_effects": ()}
+
+
+def validate_release_evidence():
+    base = dict(_LABORATORY_INFORMATION_MANAGEMENT_PRE_CONTROL_VALIDATE_RELEASE_EVIDENCE())
+    lab_control = improve1_lab_control_contract()
+    ok = base.get("ok") is True and lab_control["ok"]
+    return {**base, "ok": ok, "lab_control": lab_control, "failed_checks": tuple(base.get("failed_checks", ())) + (() if lab_control["ok"] else ("lab_control_failed",)), "blocking_gaps": tuple(base.get("blocking_gaps", ())) + (() if lab_control["ok"] else ("lab_control_failed",)), "side_effects": ()}

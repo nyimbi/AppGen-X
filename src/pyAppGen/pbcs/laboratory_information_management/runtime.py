@@ -267,3 +267,37 @@ def laboratory_information_management_runtime_smoke():
     }
 
 laboratory_information_management_execute_domain_operation = execute_domain_operation
+
+# Improve1 laboratory control extension.
+from .lab_control import improve1_lab_control_contract as laboratory_information_management_improve1_lab_control_contract
+
+_LABORATORY_INFORMATION_MANAGEMENT_BASE_RUNTIME_CAPABILITIES = laboratory_information_management_runtime_capabilities
+_LABORATORY_INFORMATION_MANAGEMENT_BASE_RELEASE_EVIDENCE = laboratory_information_management_build_release_evidence
+
+
+def laboratory_information_management_build_release_evidence():
+    evidence = dict(_LABORATORY_INFORMATION_MANAGEMENT_BASE_RELEASE_EVIDENCE())
+    lab_control = laboratory_information_management_improve1_lab_control_contract()
+    checks = tuple(evidence.get("checks", ())) + (
+        {"id": "improve1_lab_control", "ok": lab_control["ok"]},
+        {"id": "laboratory_release_pack", "ok": lab_control["capability_count"] == 50 and lab_control["event_contract"] == "AppGen-X"},
+    )
+    return {**evidence, "ok": evidence.get("ok") is True and all(check["ok"] for check in checks), "checks": checks, "lab_control": lab_control, "blocking_gaps": tuple(check for check in checks if not check["ok"])}
+
+
+def laboratory_information_management_runtime_capabilities():
+    runtime = dict(_LABORATORY_INFORMATION_MANAGEMENT_BASE_RUNTIME_CAPABILITIES())
+    lab_control = laboratory_information_management_improve1_lab_control_contract()
+    return {
+        **runtime,
+        "ok": runtime.get("ok") is True and lab_control["ok"],
+        "lab_control": lab_control,
+        "improve1_capabilities": lab_control["capabilities"],
+        "operations": tuple(dict.fromkeys(tuple(runtime.get("operations", ())) + ("improve1_lab_control_contract", "evaluate_lab_control"))),
+        "owned_tables": tuple(dict.fromkeys(tuple(runtime.get("owned_tables", ())) + tuple(lab_control["owned_tables"]))),
+        "allowed_database_backends": lab_control["allowed_database_backends"],
+        "event_contract": lab_control["event_contract"],
+        "required_event_topic": lab_control["required_event_topic"],
+        "stream_engine_picker_visible": False,
+        "side_effects": (),
+    }

@@ -127,3 +127,25 @@ def smoke_test() -> dict:
         "rendered": rendered,
         "side_effects": (),
     }
+
+# Improve1 laboratory UI control extension.
+from .lab_control import improve1_lab_control_contract as laboratory_information_management_improve1_lab_control_contract
+
+_LABORATORY_INFORMATION_MANAGEMENT_BASE_UI_CONTRACT = laboratory_information_management_ui_contract
+_LABORATORY_INFORMATION_MANAGEMENT_BASE_RENDER_WORKBENCH = laboratory_information_management_render_workbench
+
+
+def laboratory_information_management_ui_contract() -> dict:
+    base = dict(_LABORATORY_INFORMATION_MANAGEMENT_BASE_UI_CONTRACT())
+    lab_control = laboratory_information_management_improve1_lab_control_contract()
+    control_panels = tuple(item["evidence"]["ui_surface"] for item in lab_control["capabilities"])
+    service_actions = tuple(item["evidence"]["service_api"] for item in lab_control["capabilities"])
+    binding = dict(base.get("binding_evidence", {}))
+    binding.update({"lab_control_tables": lab_control["owned_tables"], "lab_control_panels": control_panels})
+    return {**base, "ok": base.get("ok") is True and lab_control["ok"], "binding_evidence": binding, "lab_control_contract": lab_control, "lab_control_panels": control_panels, "lab_control_service_actions": service_actions, "side_effects": ()}
+
+
+def laboratory_information_management_render_workbench() -> dict:
+    base = dict(_LABORATORY_INFORMATION_MANAGEMENT_BASE_RENDER_WORKBENCH())
+    lab_control = laboratory_information_management_improve1_lab_control_contract()
+    return {**base, "ok": base.get("ok") is True and lab_control["ok"], "lab_control_panels": tuple(item["evidence"]["ui_surface"] for item in lab_control["capabilities"]), "lab_control_service_actions": tuple(item["evidence"]["service_api"] for item in lab_control["capabilities"]), "lab_control_agent_tools": tuple(f"laboratory_information_management.agent.{item['slug']}" for item in lab_control["capabilities"]), "side_effects": ()}
