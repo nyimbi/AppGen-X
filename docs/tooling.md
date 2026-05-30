@@ -724,12 +724,15 @@ covered-fixture, missing-code, and blocking-gap evidence visible without JSON
 parsing. The renderer contract reports summary-line, required-code-line,
 covered-fixture-line, covered-code-line, missing-code-line, and
 blocking-gap-line counts so diagnostic release logs prove catalog coverage,
-fixture coverage, missing diagnostic coverage, and blocking fixture gaps.
+fixture coverage, missing diagnostic coverage, and blocking fixture gaps. It
+also reports required and emitted code lists for required registry codes,
+covered fixture codes, fixture-audit covered codes, fixture-audit missing codes,
+and blocking-gap ids, with named missing lists for each family.
 The aggregate tooling audit exposes this proof independently as
 `diagnostic_catalog_fixture_contracts`. That gate fails when required AGX codes
 lose fixture coverage, diagnostic shape or severity enforcement regresses, docs
 links disappear from the registry, text output hides catalog or fixture markers,
-or blocking fixture gaps stop being visible in release logs.
+or any named code or blocking fixture gap stops being visible in release logs.
 `appgen drift`
 summarizes the
 `appgen.semantic-drift-audit.v1` format, semantic-model format as

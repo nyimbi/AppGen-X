@@ -6530,6 +6530,31 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert diagnostic_contract_check["detail"]["text_renderer"]["covered_code_line_count"] >= 2
     assert diagnostic_contract_check["detail"]["text_renderer"]["missing_code_line_count"] >= 1
     assert diagnostic_contract_check["detail"]["text_renderer"]["blocking_gap_line_count"] >= 1
+    assert diagnostic_contract_check["detail"]["text_renderer"]["emitted_required_codes"] == (
+        diagnostic_contract_check["detail"]["text_renderer"]["required_codes"]
+    )
+    assert diagnostic_contract_check["detail"]["text_renderer"]["missing_required_code_count"] == 0
+    assert diagnostic_contract_check["detail"]["text_renderer"]["missing_required_codes"] == ()
+    assert diagnostic_contract_check["detail"]["text_renderer"]["emitted_covered_fixture_codes"] == (
+        diagnostic_contract_check["detail"]["text_renderer"]["required_covered_fixture_codes"]
+    )
+    assert diagnostic_contract_check["detail"]["text_renderer"]["missing_covered_fixture_code_count"] == 0
+    assert diagnostic_contract_check["detail"]["text_renderer"]["missing_covered_fixture_codes"] == ()
+    assert diagnostic_contract_check["detail"]["text_renderer"]["emitted_covered_codes"] == (
+        diagnostic_contract_check["detail"]["text_renderer"]["required_covered_codes"]
+    )
+    assert diagnostic_contract_check["detail"]["text_renderer"]["missing_covered_code_count"] == 0
+    assert diagnostic_contract_check["detail"]["text_renderer"]["missing_covered_codes"] == ()
+    assert diagnostic_contract_check["detail"]["text_renderer"]["emitted_missing_codes"] == (
+        diagnostic_contract_check["detail"]["text_renderer"]["required_missing_codes"]
+    )
+    assert diagnostic_contract_check["detail"]["text_renderer"]["missing_missing_code_count"] == 0
+    assert diagnostic_contract_check["detail"]["text_renderer"]["missing_missing_codes"] == ()
+    assert diagnostic_contract_check["detail"]["text_renderer"]["emitted_blocking_gap_ids"] == (
+        diagnostic_contract_check["detail"]["text_renderer"]["required_blocking_gap_ids"]
+    )
+    assert diagnostic_contract_check["detail"]["text_renderer"]["missing_blocking_gap_id_count"] == 0
+    assert diagnostic_contract_check["detail"]["text_renderer"]["missing_blocking_gap_ids"] == ()
     assert diagnostic_contract_check["detail"]["text_renderer"]["json_fallback"] is False
     lint_check = next(check for check in report["checks"] if check["id"] == "lint_directory_and_strict_profiles")
     assert lint_check["detail"]["directory_cli"]["format"] == "appgen.lint-directory-cli-audit.v1"
@@ -7553,6 +7578,26 @@ def test_diagnostics_text_renderer_contract_proves_catalog_and_fixture_log_marke
     assert report["covered_code_line_count"] == 2
     assert report["missing_code_line_count"] == 1
     assert report["blocking_gap_line_count"] == 1
+    assert report["required_codes"] == ("AGX0201", "AGX0303", "AGX9000")
+    assert report["emitted_required_codes"] == report["required_codes"]
+    assert report["missing_required_code_count"] == 0
+    assert report["missing_required_codes"] == ()
+    assert report["required_covered_fixture_codes"] == ("AGX0201", "AGX0303", "AGX9000")
+    assert report["emitted_covered_fixture_codes"] == report["required_covered_fixture_codes"]
+    assert report["missing_covered_fixture_code_count"] == 0
+    assert report["missing_covered_fixture_codes"] == ()
+    assert report["required_covered_codes"] == ("AGX0201", "AGX0303")
+    assert report["emitted_covered_codes"] == report["required_covered_codes"]
+    assert report["missing_covered_code_count"] == 0
+    assert report["missing_covered_codes"] == ()
+    assert report["required_missing_codes"] == ("AGX9000",)
+    assert report["emitted_missing_codes"] == report["required_missing_codes"]
+    assert report["missing_missing_code_count"] == 0
+    assert report["missing_missing_codes"] == ()
+    assert report["required_blocking_gap_ids"] == ("AGX9000",)
+    assert report["emitted_blocking_gap_ids"] == report["required_blocking_gap_ids"]
+    assert report["missing_blocking_gap_id_count"] == 0
+    assert report["missing_blocking_gap_ids"] == ()
     assert report["missing_fragments"] == ()
     assert report["json_fallback"] is False
     assert report["text_prefix"].startswith(

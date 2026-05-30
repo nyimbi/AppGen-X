@@ -3409,9 +3409,36 @@ def _diagnostics_text_renderer_contract() -> dict:
     covered_code_lines = tuple(line for line in lines if line.startswith("covered-code "))
     missing_code_lines = tuple(line for line in lines if line.startswith("missing-code "))
     gap_lines = tuple(line for line in lines if line.startswith("fail "))
+    emitted_required_codes = tuple(line.removeprefix("required-code ").strip() for line in required_code_lines)
+    emitted_covered_fixture_codes = tuple(
+        line.removeprefix("covered-fixture-code ").strip() for line in covered_fixture_lines
+    )
+    emitted_covered_codes = tuple(line.removeprefix("covered-code ").strip() for line in covered_code_lines)
+    emitted_missing_codes = tuple(line.removeprefix("missing-code ").strip() for line in missing_code_lines)
+    emitted_blocking_gap_ids = tuple(
+        line.removeprefix("fail ").split(":", 1)[0].strip() for line in gap_lines
+    )
+    required_codes = tuple(catalog_payload["required_codes"])
+    required_covered_fixture_codes = tuple(catalog_payload["covered_fixture_codes"])
+    required_covered_codes = tuple(fixture_payload["covered_codes"])
+    required_missing_codes = tuple(fixture_payload["missing_codes"])
+    required_blocking_gap_ids = tuple(gap["name"] for gap in fixture_payload["blocking_gaps"])
+    missing_required_codes = tuple(code for code in required_codes if code not in emitted_required_codes)
+    missing_covered_fixture_codes = tuple(
+        code for code in required_covered_fixture_codes if code not in emitted_covered_fixture_codes
+    )
+    missing_covered_codes = tuple(code for code in required_covered_codes if code not in emitted_covered_codes)
+    missing_missing_codes = tuple(code for code in required_missing_codes if code not in emitted_missing_codes)
+    missing_blocking_gap_ids = tuple(gap_id for gap_id in required_blocking_gap_ids if gap_id not in emitted_blocking_gap_ids)
     return {
         "format": "appgen.diagnostics-text-renderer.v1",
-        "ok": not missing and not text.lstrip().startswith("{"),
+        "ok": not missing
+        and not missing_required_codes
+        and not missing_covered_fixture_codes
+        and not missing_covered_codes
+        and not missing_missing_codes
+        and not missing_blocking_gap_ids
+        and not text.lstrip().startswith("{"),
         **_text_renderer_contract_counts(
             text,
             required_fragments,
@@ -3425,6 +3452,26 @@ def _diagnostics_text_renderer_contract() -> dict:
         "covered_code_line_count": len(covered_code_lines),
         "missing_code_line_count": len(missing_code_lines),
         "blocking_gap_line_count": len(gap_lines),
+        "required_codes": required_codes,
+        "emitted_required_codes": emitted_required_codes,
+        "missing_required_code_count": len(missing_required_codes),
+        "missing_required_codes": missing_required_codes,
+        "required_covered_fixture_codes": required_covered_fixture_codes,
+        "emitted_covered_fixture_codes": emitted_covered_fixture_codes,
+        "missing_covered_fixture_code_count": len(missing_covered_fixture_codes),
+        "missing_covered_fixture_codes": missing_covered_fixture_codes,
+        "required_covered_codes": required_covered_codes,
+        "emitted_covered_codes": emitted_covered_codes,
+        "missing_covered_code_count": len(missing_covered_codes),
+        "missing_covered_codes": missing_covered_codes,
+        "required_missing_codes": required_missing_codes,
+        "emitted_missing_codes": emitted_missing_codes,
+        "missing_missing_code_count": len(missing_missing_codes),
+        "missing_missing_codes": missing_missing_codes,
+        "required_blocking_gap_ids": required_blocking_gap_ids,
+        "emitted_blocking_gap_ids": emitted_blocking_gap_ids,
+        "missing_blocking_gap_id_count": len(missing_blocking_gap_ids),
+        "missing_blocking_gap_ids": missing_blocking_gap_ids,
         "json_fallback": text.lstrip().startswith("{"),
         "text_prefix": text[:240],
     }
@@ -4854,6 +4901,11 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and diagnostics_text_renderer.get("covered_code_line_count", 0) >= 2
             and diagnostics_text_renderer.get("missing_code_line_count", 0) >= 1
             and diagnostics_text_renderer.get("blocking_gap_line_count", 0) >= 1
+            and diagnostics_text_renderer.get("missing_required_code_count") == 0
+            and diagnostics_text_renderer.get("missing_covered_fixture_code_count") == 0
+            and diagnostics_text_renderer.get("missing_covered_code_count") == 0
+            and diagnostics_text_renderer.get("missing_missing_code_count") == 0
+            and diagnostics_text_renderer.get("missing_blocking_gap_id_count") == 0
             and diagnostics_text_renderer.get("json_fallback") is False,
             "Diagnostic catalog and fixture contracts prove required codes, shape fields, severity coverage, docs links, and text markers stay release-visible.",
             "docs/tooling.md#diagnostic-specification",
@@ -4890,6 +4942,28 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                     "covered_code_line_count": diagnostics_text_renderer.get("covered_code_line_count"),
                     "missing_code_line_count": diagnostics_text_renderer.get("missing_code_line_count"),
                     "blocking_gap_line_count": diagnostics_text_renderer.get("blocking_gap_line_count"),
+                    "required_codes": diagnostics_text_renderer.get("required_codes"),
+                    "emitted_required_codes": diagnostics_text_renderer.get("emitted_required_codes"),
+                    "missing_required_code_count": diagnostics_text_renderer.get("missing_required_code_count"),
+                    "missing_required_codes": diagnostics_text_renderer.get("missing_required_codes"),
+                    "required_covered_fixture_codes": diagnostics_text_renderer.get("required_covered_fixture_codes"),
+                    "emitted_covered_fixture_codes": diagnostics_text_renderer.get("emitted_covered_fixture_codes"),
+                    "missing_covered_fixture_code_count": diagnostics_text_renderer.get(
+                        "missing_covered_fixture_code_count"
+                    ),
+                    "missing_covered_fixture_codes": diagnostics_text_renderer.get("missing_covered_fixture_codes"),
+                    "required_covered_codes": diagnostics_text_renderer.get("required_covered_codes"),
+                    "emitted_covered_codes": diagnostics_text_renderer.get("emitted_covered_codes"),
+                    "missing_covered_code_count": diagnostics_text_renderer.get("missing_covered_code_count"),
+                    "missing_covered_codes": diagnostics_text_renderer.get("missing_covered_codes"),
+                    "required_missing_codes": diagnostics_text_renderer.get("required_missing_codes"),
+                    "emitted_missing_codes": diagnostics_text_renderer.get("emitted_missing_codes"),
+                    "missing_missing_code_count": diagnostics_text_renderer.get("missing_missing_code_count"),
+                    "missing_missing_codes": diagnostics_text_renderer.get("missing_missing_codes"),
+                    "required_blocking_gap_ids": diagnostics_text_renderer.get("required_blocking_gap_ids"),
+                    "emitted_blocking_gap_ids": diagnostics_text_renderer.get("emitted_blocking_gap_ids"),
+                    "missing_blocking_gap_id_count": diagnostics_text_renderer.get("missing_blocking_gap_id_count"),
+                    "missing_blocking_gap_ids": diagnostics_text_renderer.get("missing_blocking_gap_ids"),
                     "json_fallback": diagnostics_text_renderer.get("json_fallback"),
                 },
             },
