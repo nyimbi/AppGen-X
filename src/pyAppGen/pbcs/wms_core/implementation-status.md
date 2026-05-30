@@ -16,3 +16,8 @@ Implemented standalone packaging for `wms_core` on top of the existing warehouse
 
 - Runtime routes/services remain contract-first metadata surfaces; the standalone app executes the warehouse workflow through the runtime functions directly.
 - No real external database or carrier/inventory projections are contacted; the standalone app uses package-local state and AppGen-X event envelopes only.
+## 2026-05-30 Domain Behavior Traceability Slice
+
+- Bound all 50 improve1 rows to `tests/test_domain_behavior.py` executable WMS behavior evidence.
+- Added route, repository, standalone app, assistant document/CRUD planning, owned-boundary rejection, UI workbench, and release-evidence checks.
+- Validation: `/Volumes/Media/src/pjs/appgen/.venv/bin/pytest src/pyAppGen/pbcs/wms_core/tests`.
