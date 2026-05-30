@@ -3826,16 +3826,35 @@ def test_tooling_implementation_phase_audit_maps_phase_exit_criteria_to_evidence
             "antlr_integrity": {"format": "appgen.dsl-antlr-integrity.v1", "ok": True},
             "budget": {"format": "appgen.dsl-keyword-budget.v1", "ok": True},
         },
-        diagnostics=ok("appgen.diagnostic-catalog.v1"),
-        diagnostic_fixtures=ok("appgen.diagnostic-fixture-audit.v1"),
+        diagnostics={
+            **ok("appgen.diagnostic-catalog.v1"),
+            "missing_fixture_count": 0,
+            "catalog_shape_gap_count": 0,
+        },
+        diagnostic_fixtures={
+            **ok("appgen.diagnostic-fixture-audit.v1"),
+            "fixture_count": 9,
+            "passing_fixture_count": 9,
+            "missing_code_count": 0,
+            "blocking_gap_count": 0,
+            "shape_gap_count": 0,
+            "severity_gap_count": 0,
+        },
         parser_golden=ok("appgen.parser-golden-audit.v1"),
         drift=ok("appgen.semantic-drift-audit.v1"),
         test_strategy_cli=ok("appgen.test-strategy-cli-audit.v1"),
         module_boundaries=ok("appgen.module-boundary-audit.v1"),
         lint=ok("appgen.lint-report.v1"),
-        strict_lint=ok("appgen.lint-report.v1"),
+        strict_lint={**ok("appgen.lint-report.v1"), "strict": True},
         catalog_lint=ok("appgen.lint-report.v1"),
-        lint_directory_cli=ok("appgen.lint-directory-cli-audit.v1"),
+        lint_directory_cli={
+            **ok("appgen.lint-directory-cli-audit.v1"),
+            "scenario_count": 8,
+            "passing_scenario_count": 8,
+            "file_order_sorted": True,
+            "diagnostics_have_files": True,
+            "stage_separation": {"ok": True},
+        },
         formatted={"ok": True, "format": "appgen.format-result.v1", "idempotent": True},
         formatter_contract=ok("appgen.formatter-contract-audit.v1"),
         validation=ok("appgen.validate-report.v1"),
@@ -3993,6 +4012,8 @@ def test_tooling_implementation_phase_audit_maps_phase_exit_criteria_to_evidence
         "current_behavior_documented",
         "grammar_parser_sync_and_keyword_budget",
         "semantic_model_contract",
+        "diagnostic_catalog_fixture_contracts",
+        "lint_cli_directory_contracts",
         "formatter_idempotency",
         "cli_usage_failure_modes",
         "graph_json_mermaid_and_dot",
@@ -4555,6 +4576,33 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert cli_check["detail"]["invalid_choice_exit"]["traceback_free_count"] == (
         cli_check["detail"]["invalid_choice_exit"]["case_count"]
     )
+    diagnostic_contract_check = next(
+        check for check in report["checks"] if check["id"] == "diagnostic_catalog_fixture_contracts"
+    )
+    assert diagnostic_contract_check["detail"]["catalog_format"] == "appgen.diagnostic-catalog.v1"
+    assert diagnostic_contract_check["detail"]["fixture_format"] == "appgen.diagnostic-fixture-audit.v1"
+    assert diagnostic_contract_check["detail"]["required_code_count"] == (
+        diagnostic_contract_check["detail"]["covered_fixture_code_count"]
+    )
+    assert diagnostic_contract_check["detail"]["missing_fixture_count"] == 0
+    assert diagnostic_contract_check["detail"]["catalog_shape_gap_count"] == 0
+    assert diagnostic_contract_check["detail"]["diagnostic_shape_field_count"] >= 8
+    assert diagnostic_contract_check["detail"]["catalog_field_count"] >= 7
+    assert diagnostic_contract_check["detail"]["passing_fixture_count"] == diagnostic_contract_check["detail"]["fixture_count"]
+    assert diagnostic_contract_check["detail"]["missing_code_count"] == 0
+    assert diagnostic_contract_check["detail"]["blocking_gap_count"] == 0
+    assert diagnostic_contract_check["detail"]["shape_gap_count"] == 0
+    assert diagnostic_contract_check["detail"]["severity_gap_count"] == 0
+    assert diagnostic_contract_check["detail"]["report_format_count"] >= 4
+    assert diagnostic_contract_check["detail"]["docs_urls"]
+    assert diagnostic_contract_check["detail"]["text_renderer"]["format"] == "appgen.diagnostics-text-renderer.v1"
+    assert diagnostic_contract_check["detail"]["text_renderer"]["summary_line_count"] == 2
+    assert diagnostic_contract_check["detail"]["text_renderer"]["required_code_line_count"] >= 3
+    assert diagnostic_contract_check["detail"]["text_renderer"]["covered_fixture_line_count"] >= 3
+    assert diagnostic_contract_check["detail"]["text_renderer"]["covered_code_line_count"] >= 2
+    assert diagnostic_contract_check["detail"]["text_renderer"]["missing_code_line_count"] >= 1
+    assert diagnostic_contract_check["detail"]["text_renderer"]["blocking_gap_line_count"] >= 1
+    assert diagnostic_contract_check["detail"]["text_renderer"]["json_fallback"] is False
     lint_check = next(check for check in report["checks"] if check["id"] == "lint_directory_and_strict_profiles")
     assert lint_check["detail"]["directory_cli"]["format"] == "appgen.lint-directory-cli-audit.v1"
     assert lint_check["detail"]["directory_cli"]["ok"] is True
@@ -4565,6 +4613,32 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert lint_check["detail"]["directory_cli"]["normal_unknown_component_warning"]["ok"] is True
     assert lint_check["detail"]["directory_cli"]["strict_unknown_component_error"]["ok"] is True
     assert lint_check["detail"]["directory_cli"]["strict_catalog_component_success"]["ok"] is True
+    lint_contract_check = next(check for check in report["checks"] if check["id"] == "lint_cli_directory_contracts")
+    assert lint_contract_check["detail"]["lint_format"] == "appgen.lint-report.v1"
+    assert lint_contract_check["detail"]["strict"] is True
+    assert tuple(lint_contract_check["detail"]["catalog_components"]) == ("CustomGauge",)
+    assert lint_contract_check["detail"]["directory_cli"]["format"] == "appgen.lint-directory-cli-audit.v1"
+    assert lint_contract_check["detail"]["directory_cli"]["passing_scenario_count"] == (
+        lint_contract_check["detail"]["directory_cli"]["scenario_count"]
+    )
+    assert lint_contract_check["detail"]["directory_cli"]["stage_profile_count"] == 3
+    assert lint_contract_check["detail"]["directory_cli"]["source_mode"] == "directory"
+    assert lint_contract_check["detail"]["directory_cli"]["file_order_sorted"] is True
+    assert lint_contract_check["detail"]["directory_cli"]["file_relative_order"] == ("a.appgen", "nested/b.appgen")
+    assert lint_contract_check["detail"]["directory_cli"]["file_report_count"] == 2
+    assert lint_contract_check["detail"]["directory_cli"]["diagnostics_have_files"] is True
+    assert lint_contract_check["detail"]["directory_cli"]["warning_count"] >= 1
+    assert lint_contract_check["detail"]["directory_cli"]["normal_unknown_component_warning"]["ok"] is True
+    assert lint_contract_check["detail"]["directory_cli"]["strict_unknown_component_error"]["ok"] is True
+    assert lint_contract_check["detail"]["directory_cli"]["strict_catalog_component_success"]["ok"] is True
+    assert lint_contract_check["detail"]["directory_cli"]["previous_semantic_migration_preview"]["ok"] is True
+    assert lint_contract_check["detail"]["directory_cli"]["stage_separation"]["ok"] is True
+    assert lint_contract_check["detail"]["text_renderer"]["format"] == "appgen.lint-text-renderer.v1"
+    assert lint_contract_check["detail"]["text_renderer"]["source_file_line_count"] >= 1
+    assert lint_contract_check["detail"]["text_renderer"]["stage_line_count"] >= 1
+    assert lint_contract_check["detail"]["text_renderer"]["migration_preview_line_count"] >= 1
+    assert lint_contract_check["detail"]["text_renderer"]["diagnostic_line_count"] >= 1
+    assert lint_contract_check["detail"]["text_renderer"]["json_fallback"] is False
     test_strategy_check = next(check for check in report["checks"] if check["id"] == "parser_golden_and_drift_gates")
     assert test_strategy_check["detail"]["cli"]["format"] == "appgen.test-strategy-cli-audit.v1"
     assert test_strategy_check["detail"]["cli"]["ok"] is True

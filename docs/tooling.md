@@ -448,6 +448,11 @@ The same audit reports scenario, passing-scenario, and stage-profile counts so
 release evidence proves strict component gating, catalog success, migration
 preview, stage separation, warning diagnostics, and deterministic file ordering
 were all exercised.
+The aggregate tooling audit exposes this proof independently as
+`lint_cli_directory_contracts`. That gate fails when strict mode, component
+catalog allow-listing, deterministic directory discovery, file-scoped
+diagnostics, previous-semantic migration previews, stage separation, or
+human-readable lint markers regress.
 
 ### Linter Outputs
 
@@ -699,6 +704,11 @@ parsing. The renderer contract reports summary-line, required-code-line,
 covered-fixture-line, covered-code-line, missing-code-line, and
 blocking-gap-line counts so diagnostic release logs prove catalog coverage,
 fixture coverage, missing diagnostic coverage, and blocking fixture gaps.
+The aggregate tooling audit exposes this proof independently as
+`diagnostic_catalog_fixture_contracts`. That gate fails when required AGX codes
+lose fixture coverage, diagnostic shape or severity enforcement regresses, docs
+links disappear from the registry, text output hides catalog or fixture markers,
+or blocking fixture gaps stop being visible in release logs.
 `appgen drift`
 summarizes the
 `appgen.semantic-drift-audit.v1` format, semantic-model format as

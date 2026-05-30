@@ -4478,6 +4478,69 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             },
         ),
         _tooling_audit_check(
+            "diagnostic_catalog_fixture_contracts",
+            diagnostics["ok"]
+            and diagnostic_fixtures["ok"]
+            and diagnostics_text_renderer["ok"]
+            and diagnostics.get("required_code_count") == len(diagnostics.get("required_codes", ()))
+            and diagnostics.get("covered_fixture_code_count") == len(diagnostics.get("covered_fixture_codes", ()))
+            and diagnostics.get("missing_fixture_count") == 0
+            and diagnostics.get("catalog_shape_gap_count") == 0
+            and diagnostics.get("diagnostic_shape_field_count") == len(diagnostics.get("diagnostic_shape_fields", ()))
+            and diagnostics.get("catalog_field_count") == len(diagnostics.get("catalog_fields", ()))
+            and set(diagnostics.get("required_codes", ())) <= set(diagnostic_fixtures.get("covered_codes", ()))
+            and diagnostic_fixtures.get("passing_fixture_count") == diagnostic_fixtures.get("fixture_count")
+            and diagnostic_fixtures.get("missing_code_count") == 0
+            and diagnostic_fixtures.get("blocking_gap_count") == 0
+            and diagnostic_fixtures.get("shape_gap_count") == 0
+            and diagnostic_fixtures.get("severity_gap_count") == 0
+            and diagnostics_text_renderer.get("summary_line_count") == 2
+            and diagnostics_text_renderer.get("required_code_line_count", 0) >= 3
+            and diagnostics_text_renderer.get("covered_fixture_line_count", 0) >= 3
+            and diagnostics_text_renderer.get("covered_code_line_count", 0) >= 2
+            and diagnostics_text_renderer.get("missing_code_line_count", 0) >= 1
+            and diagnostics_text_renderer.get("blocking_gap_line_count", 0) >= 1
+            and diagnostics_text_renderer.get("json_fallback") is False,
+            "Diagnostic catalog and fixture contracts prove required codes, shape fields, severity coverage, docs links, and text markers stay release-visible.",
+            "docs/tooling.md#diagnostic-specification",
+            {
+                "catalog_format": diagnostics.get("format"),
+                "fixture_format": diagnostic_fixtures.get("format"),
+                "required_code_count": diagnostics.get("required_code_count"),
+                "covered_fixture_code_count": diagnostics.get("covered_fixture_code_count"),
+                "missing_fixture_count": diagnostics.get("missing_fixture_count"),
+                "catalog_shape_gap_count": diagnostics.get("catalog_shape_gap_count"),
+                "diagnostic_shape_field_count": diagnostics.get("diagnostic_shape_field_count"),
+                "catalog_field_count": diagnostics.get("catalog_field_count"),
+                "fixture_count": diagnostic_fixtures.get("fixture_count"),
+                "passing_fixture_count": diagnostic_fixtures.get("passing_fixture_count"),
+                "missing_code_count": diagnostic_fixtures.get("missing_code_count"),
+                "blocking_gap_count": diagnostic_fixtures.get("blocking_gap_count"),
+                "shape_gap_count": diagnostic_fixtures.get("shape_gap_count"),
+                "severity_gap_count": diagnostic_fixtures.get("severity_gap_count"),
+                "report_format_count": diagnostic_fixtures.get("report_format_count"),
+                "docs_urls": tuple(
+                    sorted(
+                        {
+                            item.get("docs_url")
+                            for item in diagnostics.get("diagnostics", ())
+                            if isinstance(item.get("docs_url"), str)
+                        }
+                    )
+                ),
+                "text_renderer": {
+                    "format": diagnostics_text_renderer.get("format"),
+                    "summary_line_count": diagnostics_text_renderer.get("summary_line_count"),
+                    "required_code_line_count": diagnostics_text_renderer.get("required_code_line_count"),
+                    "covered_fixture_line_count": diagnostics_text_renderer.get("covered_fixture_line_count"),
+                    "covered_code_line_count": diagnostics_text_renderer.get("covered_code_line_count"),
+                    "missing_code_line_count": diagnostics_text_renderer.get("missing_code_line_count"),
+                    "blocking_gap_line_count": diagnostics_text_renderer.get("blocking_gap_line_count"),
+                    "json_fallback": diagnostics_text_renderer.get("json_fallback"),
+                },
+            },
+        ),
+        _tooling_audit_check(
             "non_goal_policy_guards",
             non_goal_policy["ok"],
             "Non-goal policy guards reject secret literals, arbitrary runtime picker fields, and direct generated-code bypass prompts.",
@@ -4500,6 +4563,65 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                 "catalog": catalog_lint.get("component_catalog"),
                 "directory_cli": lint_directory_cli,
                 "text_renderer": lint_text_renderer,
+            },
+        ),
+        _tooling_audit_check(
+            "lint_cli_directory_contracts",
+            lint["ok"]
+            and strict_lint["ok"]
+            and strict_lint.get("strict") is True
+            and catalog_lint["ok"]
+            and tuple(catalog_lint.get("component_catalog", {}).get("components", ())) == ("CustomGauge",)
+            and lint_directory_cli["ok"]
+            and lint_directory_cli.get("passing_scenario_count") == lint_directory_cli.get("scenario_count")
+            and lint_directory_cli.get("source_mode") == "directory"
+            and lint_directory_cli.get("file_order_sorted") is True
+            and lint_directory_cli.get("file_report_count", 0) >= 2
+            and lint_directory_cli.get("diagnostics_have_files") is True
+            and lint_directory_cli.get("normal_unknown_component_warning", {}).get("ok") is True
+            and lint_directory_cli.get("strict_unknown_component_error", {}).get("ok") is True
+            and lint_directory_cli.get("strict_catalog_component_success", {}).get("ok") is True
+            and lint_directory_cli.get("previous_semantic_migration_preview", {}).get("ok") is True
+            and lint_directory_cli.get("stage_separation", {}).get("ok") is True
+            and lint_text_renderer["ok"]
+            and lint_text_renderer.get("source_file_line_count", 0) >= 1
+            and lint_text_renderer.get("stage_line_count", 0) >= 1
+            and lint_text_renderer.get("migration_preview_line_count", 0) >= 1
+            and lint_text_renderer.get("diagnostic_line_count", 0) >= 1
+            and lint_text_renderer.get("json_fallback") is False,
+            "Linter CLI and directory contracts prove strict profiles, catalog-gated components, deterministic source sets, migration preview, stage separation, and text markers.",
+            "docs/tooling.md#linter-specification",
+            {
+                "lint_format": lint.get("format"),
+                "strict": strict_lint.get("strict"),
+                "catalog_components": catalog_lint.get("component_catalog", {}).get("components"),
+                "directory_cli": {
+                    "format": lint_directory_cli.get("format"),
+                    "scenario_count": lint_directory_cli.get("scenario_count"),
+                    "passing_scenario_count": lint_directory_cli.get("passing_scenario_count"),
+                    "stage_profile_count": lint_directory_cli.get("stage_profile_count"),
+                    "source_mode": lint_directory_cli.get("source_mode"),
+                    "file_order_sorted": lint_directory_cli.get("file_order_sorted"),
+                    "file_relative_order": lint_directory_cli.get("file_relative_order"),
+                    "file_report_count": lint_directory_cli.get("file_report_count"),
+                    "diagnostics_have_files": lint_directory_cli.get("diagnostics_have_files"),
+                    "warning_count": lint_directory_cli.get("warning_count"),
+                    "normal_unknown_component_warning": lint_directory_cli.get("normal_unknown_component_warning"),
+                    "strict_unknown_component_error": lint_directory_cli.get("strict_unknown_component_error"),
+                    "strict_catalog_component_success": lint_directory_cli.get("strict_catalog_component_success"),
+                    "previous_semantic_migration_preview": lint_directory_cli.get("previous_semantic_migration_preview"),
+                    "stage_separation": lint_directory_cli.get("stage_separation"),
+                },
+                "text_renderer": {
+                    "format": lint_text_renderer.get("format"),
+                    "source_file_line_count": lint_text_renderer.get("source_file_line_count"),
+                    "stage_line_count": lint_text_renderer.get("stage_line_count"),
+                    "migration_preview_line_count": lint_text_renderer.get("migration_preview_line_count"),
+                    "diagnostic_line_count": lint_text_renderer.get("diagnostic_line_count"),
+                    "error_line_count": lint_text_renderer.get("error_line_count"),
+                    "warning_line_count": lint_text_renderer.get("warning_line_count"),
+                    "json_fallback": lint_text_renderer.get("json_fallback"),
+                },
             },
         ),
         _tooling_audit_check(
@@ -5715,11 +5837,39 @@ def _tooling_audit_implementation_phases(**evidence: dict) -> dict:
                     "evidence_formats": (evidence["diagnostics"].get("format"), evidence["diagnostic_fixtures"].get("format")),
                 },
                 {
+                    "id": "diagnostic_catalog_fixture_contracts",
+                    "ok": evidence["diagnostics"].get("ok") is True
+                    and evidence["diagnostic_fixtures"].get("ok") is True
+                    and evidence["diagnostics"].get("missing_fixture_count") == 0
+                    and evidence["diagnostics"].get("catalog_shape_gap_count") == 0
+                    and evidence["diagnostic_fixtures"].get("passing_fixture_count")
+                    == evidence["diagnostic_fixtures"].get("fixture_count")
+                    and evidence["diagnostic_fixtures"].get("missing_code_count") == 0
+                    and evidence["diagnostic_fixtures"].get("blocking_gap_count") == 0
+                    and evidence["diagnostic_fixtures"].get("shape_gap_count") == 0
+                    and evidence["diagnostic_fixtures"].get("severity_gap_count") == 0,
+                    "evidence_formats": (evidence["diagnostics"].get("format"), evidence["diagnostic_fixtures"].get("format")),
+                },
+                {
                     "id": "lint_profiles_and_directory_input",
                     "ok": evidence["lint"].get("ok") is True
                     and evidence["strict_lint"].get("ok") is True
                     and evidence["catalog_lint"].get("ok") is True
                     and evidence["lint_directory_cli"].get("ok") is True,
+                    "evidence_format": evidence["lint_directory_cli"].get("format"),
+                },
+                {
+                    "id": "lint_cli_directory_contracts",
+                    "ok": evidence["lint"].get("ok") is True
+                    and evidence["strict_lint"].get("ok") is True
+                    and evidence["strict_lint"].get("strict") is True
+                    and evidence["catalog_lint"].get("ok") is True
+                    and evidence["lint_directory_cli"].get("ok") is True
+                    and evidence["lint_directory_cli"].get("passing_scenario_count")
+                    == evidence["lint_directory_cli"].get("scenario_count")
+                    and evidence["lint_directory_cli"].get("file_order_sorted") is True
+                    and evidence["lint_directory_cli"].get("diagnostics_have_files") is True
+                    and evidence["lint_directory_cli"].get("stage_separation", {}).get("ok") is True,
                     "evidence_format": evidence["lint_directory_cli"].get("format"),
                 },
                 {
