@@ -791,6 +791,10 @@ target-detail-line, artifact-line, manifest-line, gap-line, diagnostic-line,
 warning-line, and error-line counts so release triage can identify whether
 validation checks, target mismatch details, generated handoff artifacts, or
 diagnostics disappeared from text output.
+The aggregate tooling audit exposes validation readiness independently as
+`validate_target_contracts`. That gate fails when target normalization,
+`target_compatibility`, `AGX0802` target diagnostics, or validate text markers
+for requested/app targets disappear.
 
 ### `appgen generate`
 
@@ -821,6 +825,12 @@ artifact-generation coverage. It also reports case ids, failing case ids,
 generation success cases, generation blocked cases, validation rejection cases,
 manifest case counts, artifact handoff case counts, and blocking-gap case
 counts so agents can review generation readiness without expanding every case.
+The aggregate tooling audit exposes generation handoff independently as
+`generate_artifact_policy_contracts`. That gate fails when successful
+generation stops writing manifests/artifacts, warning-only sources stop blocking
+by default, `--allow-warnings` stops permitting warning-only generation, lint
+errors become generatable, or generate text logs lose artifact, manifest,
+blocking-gap, or diagnostic markers.
 
 ### `appgen graph`
 

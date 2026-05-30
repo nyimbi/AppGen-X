@@ -3922,7 +3922,15 @@ def test_tooling_implementation_phase_audit_maps_phase_exit_criteria_to_evidence
             "organize_category_count": 7,
         },
         validation=ok("appgen.validate-report.v1"),
-        validate_generate_cli=ok("appgen.validate-generate-cli-audit.v1"),
+        validate_generate_cli={
+            **ok("appgen.validate-generate-cli-audit.v1"),
+            "validation_case_count": 3,
+            "validation_rejection_case_count": 2,
+            "generated_case_count": 4,
+            "generated_success_case_count": 2,
+            "generated_blocked_case_count": 2,
+            "artifact_handoff_case_count": 1,
+        },
         dsl_language_cli=ok("appgen.dsl-language-cli-audit.v1"),
         internal_error_exit=ok("appgen.internal-error-exit-audit.v1"),
         missing_input_exit=ok("appgen.missing-input-exit-audit.v1"),
@@ -4092,6 +4100,8 @@ def test_tooling_implementation_phase_audit_maps_phase_exit_criteria_to_evidence
         "component_publish_catalog_contracts",
         "formatter_idempotency",
         "formatter_write_organize_contracts",
+        "validate_target_contracts",
+        "generate_artifact_policy_contracts",
         "cli_usage_failure_modes",
         "graph_json_mermaid_and_dot",
         "graph_rendering_contracts",
@@ -4227,6 +4237,8 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
         "frontend_semantic_service_bridge",
         "frontend_interaction_audit_bridge",
         "cli_usage_failure_contracts",
+        "validate_target_contracts",
+        "generate_artifact_policy_contracts",
         "formatter_write_organize_contracts",
         "package_and_release_verifiers",
         "package_manifest_handoff_contracts",
@@ -4526,6 +4538,49 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert validate_cases["generate_writes_artifacts"]["artifact_paths_exist"] is True
     assert validate_cases["generate_writes_artifacts"]["manifest_exists"] is True
     assert validate_cases["generate_writes_artifacts"]["manifest_app_name"] == "ToolingAudit"
+    validate_target_check = next(check for check in report["checks"] if check["id"] == "validate_target_contracts")
+    assert validate_target_check["detail"]["validate"] == "appgen.validate-report.v1"
+    assert validate_target_check["detail"]["cli"]["format"] == "appgen.validate-generate-cli-audit.v1"
+    assert validate_target_check["detail"]["cli"]["validation_case_count"] == 3
+    assert validate_target_check["detail"]["cli"]["validation_rejection_case_count"] == 2
+    assert set(validate_target_check["detail"]["cli"]["validation_rejection_cases"]) == {
+        "validate_rejects_undeclared_targets",
+        "validate_rejects_unknown_targets",
+    }
+    assert validate_target_check["detail"]["text_renderer"]["format"] == "appgen.validate-generate-text-renderer.v1"
+    assert validate_target_check["detail"]["text_renderer"]["summary_line_count"] == 2
+    assert validate_target_check["detail"]["text_renderer"]["check_line_count"] == 2
+    assert validate_target_check["detail"]["text_renderer"]["passing_check_line_count"] == 1
+    assert validate_target_check["detail"]["text_renderer"]["failing_check_line_count"] == 1
+    assert validate_target_check["detail"]["text_renderer"]["target_detail_line_count"] == 2
+    assert validate_target_check["detail"]["text_renderer"]["error_line_count"] == 1
+    assert validate_target_check["detail"]["text_renderer"]["json_fallback"] is False
+    generate_policy_check = next(check for check in report["checks"] if check["id"] == "generate_artifact_policy_contracts")
+    assert generate_policy_check["detail"]["generate"]["format"] == "appgen.generate-report.v1"
+    assert generate_policy_check["detail"]["generate"]["generated"] is True
+    assert generate_policy_check["detail"]["generate"]["artifact_count"] > 0
+    assert generate_policy_check["detail"]["generate"]["manifest_exists"] is True
+    assert generate_policy_check["detail"]["cli"]["format"] == "appgen.validate-generate-cli-audit.v1"
+    assert generate_policy_check["detail"]["cli"]["generated_case_count"] == 4
+    assert generate_policy_check["detail"]["cli"]["generated_success_case_count"] == 2
+    assert set(generate_policy_check["detail"]["cli"]["generated_success_cases"]) == {
+        "generate_writes_artifacts",
+        "generate_allows_warnings_when_requested",
+    }
+    assert generate_policy_check["detail"]["cli"]["generated_blocked_case_count"] == 2
+    assert set(generate_policy_check["detail"]["cli"]["generated_blocked_cases"]) == {
+        "generate_blocks_warnings",
+        "generate_blocks_errors_even_when_warnings_allowed",
+    }
+    assert generate_policy_check["detail"]["cli"]["manifest_case_count"] >= 2
+    assert generate_policy_check["detail"]["cli"]["artifact_handoff_case_count"] >= 1
+    assert generate_policy_check["detail"]["cli"]["blocking_gap_case_count"] >= 2
+    assert generate_policy_check["detail"]["text_renderer"]["format"] == "appgen.validate-generate-text-renderer.v1"
+    assert generate_policy_check["detail"]["text_renderer"]["artifact_line_count"] >= 1
+    assert generate_policy_check["detail"]["text_renderer"]["manifest_line_count"] >= 1
+    assert generate_policy_check["detail"]["text_renderer"]["gap_line_count"] >= 1
+    assert generate_policy_check["detail"]["text_renderer"]["warning_line_count"] >= 1
+    assert generate_policy_check["detail"]["text_renderer"]["json_fallback"] is False
     assert cli_check["detail"]["format_write"]["format"] == "appgen.format-write-audit.v1"
     assert cli_check["detail"]["format_write"]["ok"] is True
     assert cli_check["detail"]["format_write"]["scenario_count"] == 5

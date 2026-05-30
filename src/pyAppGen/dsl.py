@@ -4843,6 +4843,112 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             },
         ),
         _tooling_audit_check(
+            "validate_target_contracts",
+            validation["ok"]
+            and validate_generate_cli["ok"]
+            and validate_generate_cli.get("validation_case_count") == 3
+            and validate_generate_cli.get("validation_rejection_case_count") == 2
+            and set(validate_generate_cli.get("validation_rejection_cases", ()))
+            == {"validate_rejects_undeclared_targets", "validate_rejects_unknown_targets"}
+            and all(
+                case.get("payload_format") == "appgen.validate-report.v1"
+                for case in validate_generate_cli.get("cases", ())
+                if str(case.get("case", "")).startswith("validate_")
+            )
+            and all(
+                "AGX0802" in case.get("diagnostic_codes", ())
+                for case in validate_generate_cli.get("cases", ())
+                if case.get("case") in {"validate_rejects_undeclared_targets", "validate_rejects_unknown_targets"}
+            )
+            and validate_generate_text_renderer["ok"]
+            and validate_generate_text_renderer.get("summary_line_count") == 2
+            and validate_generate_text_renderer.get("check_line_count") == 2
+            and validate_generate_text_renderer.get("passing_check_line_count") == 1
+            and validate_generate_text_renderer.get("failing_check_line_count") == 1
+            and validate_generate_text_renderer.get("target_detail_line_count") == 2
+            and validate_generate_text_renderer.get("error_line_count") == 1
+            and validate_generate_text_renderer.get("json_fallback") is False,
+            "Validation contracts prove requested/app target normalization, AGX0802 target failures, target-compatibility checks, and text diagnostics.",
+            "docs/tooling.md#appgen-validate",
+            {
+                "validate": validation.get("format"),
+                "cli": {
+                    "format": validate_generate_cli.get("format"),
+                    "validation_case_count": validate_generate_cli.get("validation_case_count"),
+                    "validation_rejection_case_count": validate_generate_cli.get("validation_rejection_case_count"),
+                    "validation_rejection_cases": validate_generate_cli.get("validation_rejection_cases"),
+                    "case_ids": validate_generate_cli.get("case_ids"),
+                },
+                "text_renderer": {
+                    "format": validate_generate_text_renderer.get("format"),
+                    "summary_line_count": validate_generate_text_renderer.get("summary_line_count"),
+                    "check_line_count": validate_generate_text_renderer.get("check_line_count"),
+                    "passing_check_line_count": validate_generate_text_renderer.get("passing_check_line_count"),
+                    "failing_check_line_count": validate_generate_text_renderer.get("failing_check_line_count"),
+                    "target_detail_line_count": validate_generate_text_renderer.get("target_detail_line_count"),
+                    "error_line_count": validate_generate_text_renderer.get("error_line_count"),
+                    "json_fallback": validate_generate_text_renderer.get("json_fallback"),
+                },
+            },
+        ),
+        _tooling_audit_check(
+            "generate_artifact_policy_contracts",
+            generation["ok"]
+            and generation.get("generated") is True
+            and generation.get("artifact_count", 0) > 0
+            and generation.get("manifest_exists") is True
+            and validate_generate_cli["ok"]
+            and validate_generate_cli.get("generated_case_count") == 4
+            and validate_generate_cli.get("generated_success_case_count") == 2
+            and set(validate_generate_cli.get("generated_success_cases", ()))
+            == {"generate_writes_artifacts", "generate_allows_warnings_when_requested"}
+            and validate_generate_cli.get("generated_blocked_case_count") == 2
+            and set(validate_generate_cli.get("generated_blocked_cases", ()))
+            == {"generate_blocks_warnings", "generate_blocks_errors_even_when_warnings_allowed"}
+            and validate_generate_cli.get("manifest_case_count") >= 2
+            and validate_generate_cli.get("artifact_handoff_case_count") >= 1
+            and validate_generate_cli.get("blocking_gap_case_count") >= 2
+            and not warning_generation_blocked["ok"]
+            and "lint_warnings" in warning_generation_blocked.get("blocking_gaps", ())
+            and warning_generation_allowed["ok"]
+            and warning_generation_allowed.get("allow_warnings") is True
+            and validate_generate_text_renderer["ok"]
+            and validate_generate_text_renderer.get("artifact_line_count") >= 1
+            and validate_generate_text_renderer.get("manifest_line_count") >= 1
+            and validate_generate_text_renderer.get("gap_line_count") >= 1
+            and validate_generate_text_renderer.get("warning_line_count") >= 1
+            and validate_generate_text_renderer.get("json_fallback") is False,
+            "Generation contracts prove artifact and manifest handoff, warnings block by default, allow-warnings permits warning-only sources, and errors still block.",
+            "docs/tooling.md#appgen-generate",
+            {
+                "generate": {
+                    "format": generation.get("format"),
+                    "generated": generation.get("generated"),
+                    "artifact_count": generation.get("artifact_count"),
+                    "manifest_exists": generation.get("manifest_exists"),
+                },
+                "cli": {
+                    "format": validate_generate_cli.get("format"),
+                    "generated_case_count": validate_generate_cli.get("generated_case_count"),
+                    "generated_success_case_count": validate_generate_cli.get("generated_success_case_count"),
+                    "generated_success_cases": validate_generate_cli.get("generated_success_cases"),
+                    "generated_blocked_case_count": validate_generate_cli.get("generated_blocked_case_count"),
+                    "generated_blocked_cases": validate_generate_cli.get("generated_blocked_cases"),
+                    "manifest_case_count": validate_generate_cli.get("manifest_case_count"),
+                    "artifact_handoff_case_count": validate_generate_cli.get("artifact_handoff_case_count"),
+                    "blocking_gap_case_count": validate_generate_cli.get("blocking_gap_case_count"),
+                },
+                "text_renderer": {
+                    "format": validate_generate_text_renderer.get("format"),
+                    "artifact_line_count": validate_generate_text_renderer.get("artifact_line_count"),
+                    "manifest_line_count": validate_generate_text_renderer.get("manifest_line_count"),
+                    "gap_line_count": validate_generate_text_renderer.get("gap_line_count"),
+                    "warning_line_count": validate_generate_text_renderer.get("warning_line_count"),
+                    "json_fallback": validate_generate_text_renderer.get("json_fallback"),
+                },
+            },
+        ),
+        _tooling_audit_check(
             "cli_usage_failure_contracts",
             internal_error_exit["ok"]
             and missing_input_exit["ok"]
@@ -6343,6 +6449,23 @@ def _tooling_audit_implementation_phases(**evidence: dict) -> dict:
                         evidence["dsl_language_cli"].get("format"),
                         evidence["cli_help_surface"].get("format"),
                     ),
+                },
+                {
+                    "id": "validate_target_contracts",
+                    "ok": evidence["validation"].get("ok") is True
+                    and evidence["validate_generate_cli"].get("ok") is True
+                    and evidence["validate_generate_cli"].get("validation_case_count") == 3
+                    and evidence["validate_generate_cli"].get("validation_rejection_case_count") == 2,
+                    "evidence_format": evidence["validate_generate_cli"].get("format"),
+                },
+                {
+                    "id": "generate_artifact_policy_contracts",
+                    "ok": evidence["validate_generate_cli"].get("ok") is True
+                    and evidence["validate_generate_cli"].get("generated_case_count") == 4
+                    and evidence["validate_generate_cli"].get("generated_success_case_count") == 2
+                    and evidence["validate_generate_cli"].get("generated_blocked_case_count") == 2
+                    and evidence["validate_generate_cli"].get("artifact_handoff_case_count", 0) >= 1,
+                    "evidence_format": evidence["validate_generate_cli"].get("format"),
                 },
                 {
                     "id": "cli_usage_failure_modes",
