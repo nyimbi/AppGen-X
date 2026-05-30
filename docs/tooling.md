@@ -1021,9 +1021,10 @@ counts, missing exit-criterion count, and the
 `appgen.tooling-implementation-phase-audit.v1` format marker.
 The implementation-phase audit reports phase ids, phase counts, passing-phase
 counts, exit-criterion ids, exit-criterion counts, passing-exit-criterion
-counts, per-phase exit-criterion counts, per-phase passing counts, per-phase
-missing counts, missing-phase counts, missing-exit-criterion counts, and
-missing-exit-criteria grouped by phase so completion claims can be reviewed
+counts, passing-exit-criterion ids, per-phase exit-criterion counts, per-phase
+passing ids and counts, per-phase missing counts, missing-phase counts,
+missing-exit-criterion counts, missing-exit-criteria grouped by phase, and
+evidence-format maps for each criterion so completion claims can be reviewed
 without expanding every nested criterion.
 
 ### `appgen package`
@@ -1966,6 +1967,12 @@ evidence. A phase is counted as complete only when every listed exit criterion
 has a current machine-readable proof from the CLI, semantic model, LSP, designer
 sync, migration planner, natural-language planner, release verifier, or fixture
 audit surfaces.
+The audit also exposes `passing_exit_criteria_by_phase`,
+`exit_criterion_evidence_formats_by_phase`, and
+`evidence_formats_by_criterion` on each phase. Those fields are intended for
+release dashboards and agents that need to prove which phase criteria are
+complete, which machine-readable reports supported them, and which named
+criteria still block completion.
 `appgen.implementation-phase-doc-alignment.v1` is embedded beside it through
 the `implementation_phase_doc_alignment_contracts` gate. It proves the seven
 documented phase headings, titles, and representative exit criteria remain

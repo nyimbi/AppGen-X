@@ -4598,6 +4598,12 @@ def test_tooling_implementation_phase_audit_maps_phase_exit_criteria_to_evidence
             **ok("appgen.lint-directory-cli-audit.v1"),
             "scenario_count": 8,
             "passing_scenario_count": 8,
+            "failing_scenario_count": 0,
+            "stage_profile_count": 3,
+            "passing_stage_profile_count": 3,
+            "failing_stage_profile_count": 0,
+            "missing_stage_name_count": 0,
+            "missing_severity_name_count": 0,
             "file_order_sorted": True,
             "diagnostics_have_files": True,
             "stage_separation": {"ok": True},
@@ -4606,9 +4612,14 @@ def test_tooling_implementation_phase_audit_maps_phase_exit_criteria_to_evidence
             **ok("appgen.component-publish-cli-audit.v1"),
             "case_count": 3,
             "passing_case_count": 3,
+            "failing_case_count": 0,
             "patch_format": "appgen.component-catalog-patch.v1",
             "side_effect_free": True,
             "write_performed": False,
+            "missing_catalog_exit_code": 1,
+            "missing_catalog_blocking_gaps": ("catalog_path_readable",),
+            "missing_catalog_side_effect_free": True,
+            "missing_catalog_write_performed": False,
         },
         formatted={"ok": True, "format": "appgen.format-result.v1", "idempotent": True},
         formatter_contract={
@@ -4740,8 +4751,14 @@ def test_tooling_implementation_phase_audit_maps_phase_exit_criteria_to_evidence
             },
             "frontend_semantic_service_format": "appgen.frontend-semantic-service-audit.v1",
             "frontend_semantic_service_audit": {"format": "appgen.frontend-semantic-service-audit.v1", "ok": True},
+            "frontend_semantic_missing_services": (),
+            "frontend_semantic_missing_surfaces": (),
+            "frontend_semantic_missing_surface_contracts": (),
             "frontend_interaction_format": "appgen.frontend-interaction-audit.v1",
             "frontend_interaction_audit": {"format": "appgen.frontend-interaction-audit.v1", "ok": True},
+            "frontend_interaction_missing_scenarios": (),
+            "frontend_interaction_missing_audit_inputs": (),
+            "frontend_interaction_missing_helpers": (),
         },
         designer=ok("appgen.designer-sync-report.v1"),
         designer_visual_edit_matrix=ok("appgen.designer-visual-edit-matrix.v1"),
@@ -4827,6 +4844,14 @@ def test_tooling_implementation_phase_audit_maps_phase_exit_criteria_to_evidence
         phase["id"]: len(phase["missing_exit_criteria"])
         for phase in report["phases"]
     }
+    assert report["passing_exit_criteria_by_phase"] == {
+        phase["id"]: phase["passing_exit_criteria"]
+        for phase in report["phases"]
+    }
+    assert report["exit_criterion_evidence_formats_by_phase"] == {
+        phase["id"]: phase["evidence_formats_by_criterion"]
+        for phase in report["phases"]
+    }
     assert set(report["exit_criterion_counts_by_phase"]) == set(report["phase_ids"])
     assert report["exit_criterion_count"] == sum(len(phase["exit_criteria"]) for phase in report["phases"])
     assert report["passing_exit_criterion_count"] == report["exit_criterion_count"]
@@ -4836,13 +4861,27 @@ def test_tooling_implementation_phase_audit_maps_phase_exit_criteria_to_evidence
     assert report["exit_criterion_ids"] == tuple(
         criterion["id"] for phase in report["phases"] for criterion in phase["exit_criteria"]
     )
+    assert report["passing_exit_criteria"] == report["exit_criterion_ids"]
     assert report["missing_exit_criterion_count"] == 0
     assert report["missing_exit_criteria"] == ()
     assert report["missing_exit_criteria_by_phase"] == {}
     assert report["missing_phase_count"] == 0
     assert report["missing_phases"] == ()
     assert len(report["phases"]) == 7
+    assert all(phase["passing_exit_criteria"] for phase in report["phases"])
+    assert all(
+        set(phase["passing_exit_criteria"]) == {criterion["id"] for criterion in phase["exit_criteria"]}
+        for phase in report["phases"]
+    )
     assert all(phase["missing_exit_criteria"] == () for phase in report["phases"])
+    assert all(phase["evidence_formats_by_criterion"] for phase in report["phases"])
+    assert report["exit_criterion_evidence_formats_by_phase"]["phase_5_ide_and_visual_designer_integration"][
+        "frontend_browser_smoke_bridges"
+    ] == (
+        "appgen.studio-browser-smoke-ci-contract.v1",
+        "appgen.frontend-semantic-service-audit.v1",
+        "appgen.frontend-interaction-audit.v1",
+    )
     assert {
         criterion["id"]
         for phase in report["phases"]
@@ -5115,6 +5154,16 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
         "phase_6_migration_natural_language_and_release_verifiers",
     }
     assert all(phase["missing_exit_criteria"] == () for phase in phase_check["detail"]["phases"])
+    assert all(phase["passing_exit_criteria"] for phase in phase_check["detail"]["phases"])
+    assert phase_check["detail"]["passing_exit_criteria"] == phase_check["detail"]["exit_criterion_ids"]
+    assert phase_check["detail"]["missing_exit_criteria_by_phase"] == {}
+    assert phase_check["detail"]["exit_criterion_evidence_formats_by_phase"][
+        "phase_5_ide_and_visual_designer_integration"
+    ]["frontend_browser_smoke_bridges"] == (
+        "appgen.studio-browser-smoke-ci-contract.v1",
+        "appgen.frontend-semantic-service-audit.v1",
+        "appgen.frontend-interaction-audit.v1",
+    )
     phase_doc_check = next(
         check for check in report["checks"] if check["id"] == "implementation_phase_doc_alignment_contracts"
     )

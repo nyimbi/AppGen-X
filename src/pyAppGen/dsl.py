@@ -7293,12 +7293,26 @@ def _tooling_audit_semantic_keys_present(semantic: dict) -> bool:
 def _tooling_audit_implementation_phases(**evidence: dict) -> dict:
     def phase(phase_id: str, title: str, criteria: tuple[dict, ...]) -> dict:
         missing = tuple(item["id"] for item in criteria if not item["ok"])
+        passing = tuple(item["id"] for item in criteria if item["ok"])
+        evidence_formats = {
+            item["id"]: tuple(
+                value
+                for value in (
+                    item.get("evidence_format"),
+                    *tuple(item.get("evidence_formats", ())),
+                )
+                if value
+            )
+            for item in criteria
+        }
         return {
             "id": phase_id,
             "title": title,
             "ok": not missing,
             "exit_criteria": criteria,
+            "passing_exit_criteria": passing,
             "missing_exit_criteria": missing,
+            "evidence_formats_by_criterion": evidence_formats,
         }
 
     semantic = evidence["semantic"]
@@ -7889,10 +7903,23 @@ def _tooling_audit_implementation_phases(**evidence: dict) -> dict:
         for item in phases
         if item["missing_exit_criteria"]
     }
+    passing_exit_criteria_by_phase = {
+        item["id"]: item["passing_exit_criteria"]
+        for item in phases
+    }
+    exit_criterion_evidence_formats_by_phase = {
+        item["id"]: item["evidence_formats_by_criterion"]
+        for item in phases
+    }
     missing_exit_criteria = tuple(
         criterion_id
         for item in phases
         for criterion_id in item["missing_exit_criteria"]
+    )
+    passing_exit_criteria = tuple(
+        criterion_id
+        for item in phases
+        for criterion_id in item["passing_exit_criteria"]
     )
     exit_criterion_counts_by_phase = {
         item["id"]: len(item["exit_criteria"])
@@ -7915,11 +7942,14 @@ def _tooling_audit_implementation_phases(**evidence: dict) -> dict:
         "exit_criterion_counts_by_phase": exit_criterion_counts_by_phase,
         "passing_exit_criterion_counts_by_phase": passing_exit_criterion_counts_by_phase,
         "missing_exit_criterion_counts_by_phase": missing_exit_criterion_counts_by_phase,
+        "passing_exit_criteria_by_phase": passing_exit_criteria_by_phase,
+        "exit_criterion_evidence_formats_by_phase": exit_criterion_evidence_formats_by_phase,
         "exit_criterion_count": sum(len(item["exit_criteria"]) for item in phases),
         "passing_exit_criterion_count": sum(
             1 for item in phases for criterion in item["exit_criteria"] if criterion["ok"]
         ),
         "exit_criterion_ids": exit_criterion_ids,
+        "passing_exit_criteria": passing_exit_criteria,
         "missing_exit_criterion_count": len(missing_exit_criteria),
         "missing_exit_criteria": missing_exit_criteria,
         "missing_exit_criteria_by_phase": missing_exit_criteria_by_phase,
