@@ -5316,8 +5316,25 @@ def test_package_invalid_target_audit_reports_failure_counts(tmp_path: Path) -> 
     assert report["case_count"] == 2
     assert report["passing_case_count"] == 2
     assert report["failing_case_count"] == 0
+    assert report["required_case_ids"] == ("package_invalid_target", "verify_invalid_target")
+    assert report["observed_case_ids"] == report["required_case_ids"]
+    assert report["missing_case_count"] == 0
+    assert report["missing_case_ids"] == ()
     assert report["invalid_choice_message_count"] == 2
+    assert report["invalid_choice_message_cases"] == report["required_case_ids"]
+    assert report["missing_invalid_choice_message_count"] == 0
+    assert report["missing_invalid_choice_message_cases"] == ()
     assert report["traceback_free_count"] == 2
+    assert report["traceback_free_cases"] == report["required_case_ids"]
+    assert report["missing_traceback_free_count"] == 0
+    assert report["missing_traceback_free_cases"] == ()
+    assert report["expected_exit_code_by_case"] == {
+        "package_invalid_target": 2,
+        "verify_invalid_target": 2,
+    }
+    assert report["exit_codes_by_case"] == report["expected_exit_code_by_case"]
+    assert report["missing_expected_exit_code_count"] == 0
+    assert report["missing_expected_exit_code_cases"] == ()
     assert report["case_ids"] == ("package_invalid_target", "verify_invalid_target")
     assert all(case["exit_code"] == 2 for case in report["cases"])
 
@@ -6672,8 +6689,12 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert package_check["detail"]["invalid_target"]["case_count"] == 2
     assert package_check["detail"]["invalid_target"]["passing_case_count"] == 2
     assert package_check["detail"]["invalid_target"]["failing_case_count"] == 0
+    assert package_check["detail"]["invalid_target"]["missing_case_count"] == 0
     assert package_check["detail"]["invalid_target"]["invalid_choice_message_count"] == 2
+    assert package_check["detail"]["invalid_target"]["missing_invalid_choice_message_count"] == 0
     assert package_check["detail"]["invalid_target"]["traceback_free_count"] == 2
+    assert package_check["detail"]["invalid_target"]["missing_traceback_free_count"] == 0
+    assert package_check["detail"]["invalid_target"]["missing_expected_exit_code_count"] == 0
     assert set(package_check["detail"]["invalid_target"]["case_ids"]) == {
         "package_invalid_target",
         "verify_invalid_target",

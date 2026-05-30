@@ -2023,7 +2023,11 @@ Deployment verifier:
 The package invalid-target audit reports case, passing-case, failing-case,
 invalid-choice-message, traceback-free, and case-id counts for unsupported
 `package` and `verify` target handling, so package tooling has explicit
-failure-path evidence in addition to successful target manifests.
+failure-path evidence in addition to successful target manifests. It also
+reports required, observed, and missing case ids; invalid-choice-message cases;
+traceback-free cases; expected exit codes by case; and missing expected-exit
+cases so unsupported target handling fails by named command path instead of only
+changing aggregate failure counts.
 
 ## Test Strategy
 

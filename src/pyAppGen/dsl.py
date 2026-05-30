@@ -6262,6 +6262,10 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and package_verify_cli["ok"]
             and release_text_renderer["ok"]
             and package_invalid_target["ok"]
+            and package_invalid_target.get("missing_case_count") == 0
+            and package_invalid_target.get("missing_invalid_choice_message_count") == 0
+            and package_invalid_target.get("missing_traceback_free_count") == 0
+            and package_invalid_target.get("missing_expected_exit_code_count") == 0
             and "appgen-release-evidence.json" in package_artifact_names
             and {
                 "appgen-package-web.json",
@@ -14186,15 +14190,49 @@ def _tooling_audit_package_invalid_target(tmp: Path, source: str) -> dict:
                 "stdout": output.getvalue().strip(),
             }
         )
+    required_case_ids = ("package_invalid_target", "verify_invalid_target")
+    observed_case_ids = tuple(case["case"] for case in cases)
+    missing_case_ids = tuple(case_id for case_id in required_case_ids if case_id not in observed_case_ids)
+    invalid_choice_message_cases = tuple(case["case"] for case in cases if case["invalid_choice_message"])
+    missing_invalid_choice_message_cases = tuple(
+        case_id for case_id in required_case_ids if case_id not in invalid_choice_message_cases
+    )
+    traceback_free_cases = tuple(case["case"] for case in cases if case["traceback_free"])
+    missing_traceback_free_cases = tuple(case_id for case_id in required_case_ids if case_id not in traceback_free_cases)
+    expected_exit_code_by_case = {case_id: 2 for case_id in required_case_ids}
+    exit_codes_by_case = {case["case"]: case["exit_code"] for case in cases}
+    missing_expected_exit_code_cases = tuple(
+        case_id
+        for case_id, expected_exit_code in expected_exit_code_by_case.items()
+        if exit_codes_by_case.get(case_id) != expected_exit_code
+    )
     return {
         "format": "appgen.package-invalid-target-audit.v1",
-        "ok": all(case["ok"] for case in cases),
+        "ok": all(case["ok"] for case in cases)
+        and not missing_case_ids
+        and not missing_invalid_choice_message_cases
+        and not missing_traceback_free_cases
+        and not missing_expected_exit_code_cases,
         "case_count": len(cases),
         "passing_case_count": sum(1 for case in cases if case["ok"]),
         "failing_case_count": sum(1 for case in cases if not case["ok"]),
+        "required_case_ids": required_case_ids,
+        "observed_case_ids": observed_case_ids,
+        "missing_case_count": len(missing_case_ids),
+        "missing_case_ids": missing_case_ids,
         "invalid_choice_message_count": sum(1 for case in cases if case["invalid_choice_message"]),
+        "invalid_choice_message_cases": invalid_choice_message_cases,
+        "missing_invalid_choice_message_count": len(missing_invalid_choice_message_cases),
+        "missing_invalid_choice_message_cases": missing_invalid_choice_message_cases,
         "traceback_free_count": sum(1 for case in cases if case["traceback_free"]),
-        "case_ids": tuple(case["case"] for case in cases),
+        "traceback_free_cases": traceback_free_cases,
+        "missing_traceback_free_count": len(missing_traceback_free_cases),
+        "missing_traceback_free_cases": missing_traceback_free_cases,
+        "expected_exit_code_by_case": expected_exit_code_by_case,
+        "exit_codes_by_case": exit_codes_by_case,
+        "missing_expected_exit_code_count": len(missing_expected_exit_code_cases),
+        "missing_expected_exit_code_cases": missing_expected_exit_code_cases,
+        "case_ids": observed_case_ids,
         "cases": tuple(cases),
     }
 
