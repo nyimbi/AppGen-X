@@ -47,6 +47,7 @@ from .domain_depth import (
     DOMAIN_WORKBENCH_VIEWS,
     domain_depth_contract,
 )
+from .soc_control import SOC_CONTROL_CAPABILITIES, improve1_soc_control_contract
 
 PBC_KEY = "cybersecurity_operations_center"
 SCHEMA_MAP = table_schema_map()
@@ -1219,6 +1220,7 @@ def cybersecurity_operations_center_build_release_evidence() -> dict[str, Any]:
     service = cybersecurity_operations_center_build_service_contract()
     api = cybersecurity_operations_center_build_api_contract()
     smoke = cybersecurity_operations_center_runtime_smoke()
+    soc_control = improve1_soc_control_contract()
     checks = (
         {"id": "pbc_source_artifact_contract", "ok": schema["ok"] and service["ok"] and api["ok"]},
         {"id": "pbc_implementation_release_audit", "ok": smoke["ok"]},
@@ -1227,6 +1229,7 @@ def cybersecurity_operations_center_build_release_evidence() -> dict[str, Any]:
         {"id": "incident_promotion", "ok": smoke["checks_by_id"]["record_security_incident"]},
         {"id": "evidence_custody", "ok": smoke["checks_by_id"]["record_response_evidence"]},
         {"id": "playbook_breakpoints", "ok": smoke["checks_by_id"]["simulate_playbook_run"]},
+        {"id": "soc_improve1_controls", "ok": soc_control["ok"]},
     )
     return {
         "format": "appgen.cybersecurity-operations-center-release-evidence.v2",
@@ -1244,6 +1247,7 @@ def cybersecurity_operations_center_build_release_evidence() -> dict[str, Any]:
             },
             "workbench_views": DOMAIN_WORKBENCH_VIEWS,
             "ui": CYBERSECURITY_OPERATIONS_CENTER_UI_FRAGMENT_KEYS,
+            "soc_improve1_controls": soc_control,
         },
         "blocking_gaps": tuple(check["id"] for check in checks if not check["ok"]),
     }
@@ -1375,6 +1379,7 @@ def cybersecurity_operations_center_runtime_capabilities() -> dict[str, Any]:
         "build_schema_contract",
         "build_service_contract",
         "build_release_evidence",
+        "improve1_soc_control_contract",
     )
     return {
         "format": "appgen.cybersecurity-operations-center-runtime-capabilities.v2",
@@ -1385,6 +1390,7 @@ def cybersecurity_operations_center_runtime_capabilities() -> dict[str, Any]:
         "allowed_database_backends": CYBERSECURITY_OPERATIONS_CENTER_ALLOWED_DATABASE_BACKENDS,
         "standard_features": CYBERSECURITY_OPERATIONS_CENTER_STANDARD_FEATURE_KEYS,
         "capabilities": CYBERSECURITY_OPERATIONS_CENTER_RUNTIME_CAPABILITY_KEYS,
+        "improve1_soc_control_capabilities": tuple(capability.slug for capability in SOC_CONTROL_CAPABILITIES),
         "operations": operations,
         "smoke": smoke,
         "world_class_domain_depth": domain,
@@ -1486,6 +1492,7 @@ def cybersecurity_operations_center_runtime_smoke() -> dict[str, Any]:
     detail = cybersecurity_operations_center_build_case_detail(consumed["state"], incident["record"]["id"])
     handoff = cybersecurity_operations_center_generate_handoff_packet(consumed["state"], tenant="tenant-smoke")
     assessment = cybersecurity_operations_center_run_advanced_assessment(consumed["state"], {"tenant": "tenant-smoke"})
+    soc_control = improve1_soc_control_contract()
     generated_app = {
         "ok": workbench["ok"] and detail["ok"] and handoff["ok"],
         "workbench": workbench["route"],
@@ -1507,6 +1514,7 @@ def cybersecurity_operations_center_runtime_smoke() -> dict[str, Any]:
         {"id": "build_case_detail", "ok": detail["ok"]},
         {"id": "generate_handoff_packet", "ok": handoff["ok"]},
         {"id": "run_advanced_assessment", "ok": assessment["ok"]},
+        {"id": "improve1_soc_control_contract", "ok": soc_control["ok"]},
     )
     return {
         "format": "appgen.cybersecurity-operations-center-runtime-smoke.v2",
@@ -1519,5 +1527,6 @@ def cybersecurity_operations_center_runtime_smoke() -> dict[str, Any]:
         "detail": detail,
         "handoff": handoff,
         "assessment": assessment,
+        "soc_control": soc_control,
         "side_effects": (),
     }

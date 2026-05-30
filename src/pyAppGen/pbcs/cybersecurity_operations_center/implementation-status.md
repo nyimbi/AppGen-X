@@ -39,3 +39,9 @@
 - Runtime persistence is modeled in package-local state rather than a live database adapter.
 - The package proves route/service/runtime behavior through focused tests, not through a running HTTP server.
 - Release evidence depends on package-local smoke/tests; repo-global audit wrappers were not modified because scope was explicitly limited to this package.
+
+## 2026-05-30 improve1 SOC-Control Execution Slice
+
+- Added `soc_control.py` as the side-effect-free executable proof layer for all 50 SOC improve1 backlog items.
+- Bound each feature to owned SOC tables, AppGen-X event lineage, UI fragment, service/API route, permission, agent skill, configuration guardrails, retry/dead-letter evidence, and release evidence.
+- Wired SOC controls into runtime capabilities, runtime smoke, release evidence, UI contracts, traceability artifacts, and focused package tests.

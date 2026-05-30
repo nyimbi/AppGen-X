@@ -9,6 +9,7 @@ from .config import governance_smoke_test
 from .handlers import handler_manifest
 from .runtime import cybersecurity_operations_center_build_release_evidence, cybersecurity_operations_center_runtime_smoke
 from .services import service_operation_manifest
+from .soc_control import improve1_soc_control_contract
 from .ui import cybersecurity_operations_center_ui_contract
 
 
@@ -34,6 +35,7 @@ def release_readiness_manifest() -> dict[str, Any]:
             "agent": agent_skill_manifest(),
             "chatbot": chatbot_interface_contract(),
             "governance": governance_smoke_test(),
+            "soc_control": improve1_soc_control_contract(),
         },
         "side_effects": (),
     }

@@ -12,6 +12,7 @@ from .domain_depth import (
     DOMAIN_RULES,
     domain_capability_surface_contract,
 )
+from .soc_control import improve1_soc_control_contract
 from .runtime import (
     cybersecurity_operations_center_build_case_detail,
     cybersecurity_operations_center_build_workbench_view,
@@ -133,8 +134,10 @@ def cybersecurity_operations_center_ui_contract() -> dict[str, Any]:
             "forms": _forms(),
             "wizards": _wizards(),
             "controls": _controls(),
+            "soc_control_panels": tuple(item["ui_surface"] for item in improve1_soc_control_contract()["capabilities"]),
             "coverage": surface["coverage"],
         },
+        "soc_control_contract": improve1_soc_control_contract(),
         "side_effects": (),
     }
 
