@@ -236,3 +236,25 @@ def smoke_test() -> dict:
         "standalone": standalone,
         "side_effects": (),
     }
+
+# Improve1 mining operations control UI extension.
+from .mining_operations_control import improve1_mining_operations_control_contract as _improve1_mining_operations_control_contract
+
+_MINING_OPERATIONS_MANAGEMENT_BASE_UI_CONTRACT = mining_operations_management_ui_contract
+_MINING_OPERATIONS_MANAGEMENT_BASE_RENDER_WORKBENCH = mining_operations_management_render_workbench
+
+
+def mining_operations_management_ui_contract():
+    ui = dict(_MINING_OPERATIONS_MANAGEMENT_BASE_UI_CONTRACT())
+    control = _improve1_mining_operations_control_contract()
+    panels = tuple(item["evidence"]["ui_surface"] for item in control["capabilities"])
+    service_actions = tuple(item["evidence"]["service_api"] for item in control["capabilities"])
+    ui.update({"ok": ui.get("ok") is True and control["ok"], "mining_operations_control_contract": control, "mining_operations_control_panels": panels, "mining_operations_control_service_actions": service_actions, "stream_engine_picker_visible": False})
+    return ui
+
+
+def mining_operations_management_render_workbench(summary: dict | None = None):
+    workbench = dict(_MINING_OPERATIONS_MANAGEMENT_BASE_RENDER_WORKBENCH(summary))
+    control = _improve1_mining_operations_control_contract()
+    workbench.update({"ok": workbench.get("ok") is True and control["ok"], "mining_operations_control_panels": tuple(item["evidence"]["ui_surface"] for item in control["capabilities"]), "mining_operations_control_service_actions": tuple(item["evidence"]["service_api"] for item in control["capabilities"]), "mining_operations_control_agent_tools": tuple(f"mining_operations_management.skills.{item['slug']}" for item in control["capabilities"])})
+    return workbench
