@@ -1,24 +1,22 @@
-# Nonprofit Program Impact Implementation Status
+# nonprofit_program_impact implementation status
 
-## Status
+## Improve1 executable controls
 
-Implemented as a package-local executable nonprofit impact slice with a standalone app surface, workbench forms, guided wizards, operational controls, release evidence, and focused tests, all inside `src/pyAppGen/pbcs/nonprofit_program_impact`.
+- Status: implemented for 50 of 50 improve1 backlog features.
+- Control module: `impact_control.py`.
+- Runtime wiring: `nonprofit_program_impact_runtime_capabilities()` exposes `impact_control` and `evaluate_impact_control`.
+- UI wiring: `nonprofit_program_impact_ui_contract()` and `nonprofit_program_impact_render_workbench()` expose 50 nonprofit-impact control panels, service actions, and agent tools.
+- Release evidence: `validate_release_evidence()` includes the impact control contract and blocks on failed improve1 controls.
+- Tests: `tests/test_domain_behavior.py` validates ownership, AppGen-X eventing, database backend allowlist, projection-only dependencies, human approval gates, agent preview gates, non-mutating simulations, and sensitive impact evidence gates.
 
-## Completed
+## Domain surface covered
 
-- Added package-local `standalone.py` with an in-memory service for program creation, beneficiary enrollment, service delivery, outcomes, evidence packs, donor reports, workbench metrics, and beneficiary timelines.
-- Added executable `forms.py`, `wizards.py`, and `controls.py` for nonprofit-specific app flows and guardrails.
-- Updated `ui.py`, `release_evidence.py`, `manifest.py`, and `__init__.py` to export the new standalone app surface.
-- Added package-local `README.md`, `implementation-plan.md`, and `implementation-status.md`.
-- Added focused standalone and app-surface tests under `tests/test_standalone.py`.
+The controls cover theory of change, results chains, beneficiary and cohort modeling, eligibility, intervention taxonomy, dosage and fidelity, outputs, outcomes, indicators, baselines and targets, surveys, sampling, consent, safeguarding, referrals, qualitative evidence, partner delivery, grant restrictions, donor attribution and freeze controls, equity disaggregation, longitudinal follow-up, negative outcomes, comparison groups, geography, dashboards, program and beneficiary UI, donor review, assistant skills, domain events, lineage, consumed-event effects, partner scorecards, release evidence, exception taxonomy, retention, access control, predictive risk, simulations, offline sync, localization, accessibility, fixtures, and go-live gates.
 
-## Verification Target
+## Boundary assertions
 
-- Package-local tests under `src/pyAppGen/pbcs/nonprofit_program_impact/tests`
-- Python compilation for the modified package
-- Import and smoke coverage for runtime, UI, release evidence, and the standalone app contract
-
-## Remaining Risks
-
-- The standalone service is still framework-light: it is executable and domain-specific, but it is not mounted as a live HTTP application.
-- `SPECIFICATION.md` remains broader than the implemented standalone slice, so the new package-local docs, release evidence, and tests are the more accurate description of the current behavior.
+- Database backends remain limited to PostgreSQL, MySQL, and MariaDB.
+- Eventing remains AppGen-X on `pbc.nonprofit_program_impact.events`.
+- No stream-engine picker is exposed.
+- Cross-PBC facts are represented through declared APIs, events, or projections, not shared table mutation.
+- All control evaluations are side-effect free and return release evidence.

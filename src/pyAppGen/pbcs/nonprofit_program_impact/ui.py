@@ -298,3 +298,37 @@ def smoke_test() -> dict:
         "rendered": rendered,
         "side_effects": (),
     }
+
+
+# Improve1 nonprofit impact control UI extension.
+from .impact_control import improve1_impact_control_contract as _improve1_impact_control_contract
+
+_NONPROFIT_PROGRAM_IMPACT_BASE_UI_CONTRACT = nonprofit_program_impact_ui_contract
+_NONPROFIT_PROGRAM_IMPACT_BASE_RENDER_WORKBENCH = nonprofit_program_impact_render_workbench
+
+
+def nonprofit_program_impact_ui_contract():
+    ui = dict(_NONPROFIT_PROGRAM_IMPACT_BASE_UI_CONTRACT())
+    control = _improve1_impact_control_contract()
+    panels = tuple(item["evidence"]["ui_surface"] for item in control["capabilities"])
+    service_actions = tuple(item["evidence"]["service_api"] for item in control["capabilities"])
+    ui.update({
+        "ok": ui.get("ok") is True and control["ok"],
+        "impact_control_contract": control,
+        "impact_control_panels": panels,
+        "impact_control_service_actions": service_actions,
+        "stream_engine_picker_visible": False,
+    })
+    return ui
+
+
+def nonprofit_program_impact_render_workbench(state=None, *, tenant: str = "tenant-smoke", principal_permissions: tuple[str, ...] = ()):
+    workbench = dict(_NONPROFIT_PROGRAM_IMPACT_BASE_RENDER_WORKBENCH(state, tenant=tenant, principal_permissions=principal_permissions))
+    control = _improve1_impact_control_contract()
+    workbench.update({
+        "ok": workbench.get("ok") is True and control["ok"],
+        "impact_control_panels": tuple(item["evidence"]["ui_surface"] for item in control["capabilities"]),
+        "impact_control_service_actions": tuple(item["evidence"]["service_api"] for item in control["capabilities"]),
+        "impact_control_agent_tools": tuple(f"nonprofit_program_impact.skills.{item['slug']}" for item in control["capabilities"]),
+    })
+    return workbench
