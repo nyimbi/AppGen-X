@@ -15,3 +15,25 @@ def mortgage_servicing_render_workbench():
     return {"ok":True,"pbc":PBC_KEY,"route":f"/workbench/pbcs/{PBC_KEY}","role_boards":ui["role_boards"],"operation_actions":full["operation_actions"],"table_browsers":full["table_browsers"],"forms":tuple(f["id"] for f in ui["forms"]),"wizards":tuple(w["id"] for w in ui["wizards"]),"exception_queues":full["edge_case_queues"],"side_effects":()}
 
 def smoke_test(): return {"ok":mortgage_servicing_ui_contract()["ok"] and mortgage_servicing_render_workbench()["ok"],"side_effects":()}
+
+# Improve1 mortgage servicing control UI extension.
+from .mortgage_servicing_control import improve1_mortgage_servicing_control_contract as _improve1_mortgage_servicing_control_contract
+
+_MORTGAGE_SERVICING_BASE_UI_CONTRACT = mortgage_servicing_ui_contract
+_MORTGAGE_SERVICING_BASE_RENDER_WORKBENCH = mortgage_servicing_render_workbench
+
+
+def mortgage_servicing_ui_contract():
+    ui = dict(_MORTGAGE_SERVICING_BASE_UI_CONTRACT())
+    control = _improve1_mortgage_servicing_control_contract()
+    panels = tuple(item["evidence"]["ui_surface"] for item in control["capabilities"])
+    service_actions = tuple(item["evidence"]["service_api"] for item in control["capabilities"])
+    ui.update({"ok": ui.get("ok") is True and control["ok"], "mortgage_servicing_control_contract": control, "mortgage_servicing_control_panels": panels, "mortgage_servicing_control_service_actions": service_actions, "stream_engine_picker_visible": False})
+    return ui
+
+
+def mortgage_servicing_render_workbench():
+    workbench = dict(_MORTGAGE_SERVICING_BASE_RENDER_WORKBENCH())
+    control = _improve1_mortgage_servicing_control_contract()
+    workbench.update({"ok": workbench.get("ok") is True and control["ok"], "mortgage_servicing_control_panels": tuple(item["evidence"]["ui_surface"] for item in control["capabilities"]), "mortgage_servicing_control_service_actions": tuple(item["evidence"]["service_api"] for item in control["capabilities"]), "mortgage_servicing_control_agent_tools": tuple(f"mortgage_servicing.skills.{item['slug']}" for item in control["capabilities"])})
+    return workbench

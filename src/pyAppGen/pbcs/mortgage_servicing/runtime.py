@@ -265,3 +265,29 @@ def mortgage_servicing_runtime_smoke():
     }
 
 mortgage_servicing_execute_domain_operation = execute_domain_operation
+
+# Improve1 mortgage servicing control extension.
+from .mortgage_servicing_control import improve1_mortgage_servicing_control_contract, evaluate_mortgage_servicing_control
+
+_MORTGAGE_SERVICING_BASE_RUNTIME_CAPABILITIES = mortgage_servicing_runtime_capabilities
+_MORTGAGE_SERVICING_BASE_BUILD_RELEASE_EVIDENCE = mortgage_servicing_build_release_evidence
+
+
+def mortgage_servicing_runtime_capabilities():
+    runtime = dict(_MORTGAGE_SERVICING_BASE_RUNTIME_CAPABILITIES())
+    control = improve1_mortgage_servicing_control_contract()
+    runtime["ok"] = bool(runtime.get("ok")) and control["ok"]
+    runtime["mortgage_servicing_control"] = control
+    runtime["operations"] = tuple(dict.fromkeys(tuple(runtime.get("operations", ())) + ("evaluate_mortgage_servicing_control", "improve1_mortgage_servicing_control_contract")))
+    runtime["owned_tables"] = tuple(dict.fromkeys(tuple(runtime.get("owned_tables", ())) + tuple(control["owned_tables"])))
+    return runtime
+
+
+def mortgage_servicing_build_release_evidence():
+    evidence = dict(_MORTGAGE_SERVICING_BASE_BUILD_RELEASE_EVIDENCE())
+    control = improve1_mortgage_servicing_control_contract()
+    artifacts = dict(evidence.get("generated_artifacts", {}))
+    artifacts["mortgage_servicing_control"] = {"contract": control["format"], "capability_count": control["capability_count"], "owned_tables": control["owned_tables"], "service_apis": tuple(item["evidence"]["service_api"] for item in control["capabilities"]), "ui_surfaces": tuple(item["evidence"]["ui_surface"] for item in control["capabilities"]), "test": "tests/test_domain_behavior.py"}
+    checks = tuple(evidence.get("checks", ())) + ({"id": "improve1_mortgage_servicing_control", "ok": control["ok"]},)
+    evidence.update({"ok": bool(evidence.get("ok")) and control["ok"], "checks": checks, "generated_artifacts": artifacts, "mortgage_servicing_control": control, "blocking_gaps": tuple(evidence.get("blocking_gaps", ())) + tuple(control.get("blocking_gaps", ()))})
+    return evidence
