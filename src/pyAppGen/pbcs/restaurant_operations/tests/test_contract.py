@@ -1,13 +1,15 @@
 from pyAppGen.pbcs.restaurant_operations import implementation_contract, package_discovery_plan, package_metadata_manifest, validate_package_metadata
-from pyAppGen.pbcs.restaurant_operations.schema_contract import build_schema_contract
-from pyAppGen.pbcs.restaurant_operations.service_contract import build_service_contract
+from pyAppGen.pbcs.restaurant_operations.agent import agent_skill_manifest, chatbot_interface_contract, datastore_crud_plan, document_instruction_plan, standalone_agent_workspace_contract
 from pyAppGen.pbcs.restaurant_operations.release_evidence import build_release_evidence, release_readiness_manifest, validate_release_evidence
 from pyAppGen.pbcs.restaurant_operations.events import event_contract_manifest, validate_event_contract
 from pyAppGen.pbcs.restaurant_operations.handlers import dispatch_event, handler_manifest
-from pyAppGen.pbcs.restaurant_operations.services import service_operation_contracts
-from pyAppGen.pbcs.restaurant_operations.routes import api_route_contracts, validate_api_route_contracts
+from pyAppGen.pbcs.restaurant_operations.routes import api_route_contracts, dispatch_standalone_route, standalone_route_contracts, validate_api_route_contracts
+from pyAppGen.pbcs.restaurant_operations.schema_contract import build_schema_contract
+from pyAppGen.pbcs.restaurant_operations.service_contract import build_service_contract
+from pyAppGen.pbcs.restaurant_operations.services import service_operation_contracts, standalone_service_operation_contracts
 from pyAppGen.pbcs.restaurant_operations.config import governance_smoke_test
-from pyAppGen.pbcs.restaurant_operations.agent import agent_skill_manifest, chatbot_interface_contract, document_instruction_plan, datastore_crud_plan
+from pyAppGen.pbcs.restaurant_operations.standalone import restaurant_operations_standalone_app_contract
+from pyAppGen.pbcs.restaurant_operations.ui import restaurant_operations_control_catalog, restaurant_operations_form_contracts, restaurant_operations_wizard_contracts
 
 
 def test_generated_schema_service_and_release_evidence():
@@ -27,8 +29,10 @@ def test_manifest_and_event_contract():
 def test_agent_chatbot_skills_are_executable():
     assert agent_skill_manifest()['ok'] is True
     assert chatbot_interface_contract()['ok'] is True
-    assert document_instruction_plan('doc', 'create')['ok'] is True
-    assert datastore_crud_plan('create')['ok'] is True
+    plan = document_instruction_plan('Update reservation waitlist notes and menu allergen labels', 'prepare governed preview')
+    assert plan['ok'] is True
+    assert standalone_agent_workspace_contract()['ok'] is True
+    assert datastore_crud_plan('create', table='restaurant_operations_governed_preview')['ok'] is True
     assert datastore_crud_plan('update', table='foreign_table')['ok'] is False
 
 
@@ -43,11 +47,17 @@ def test_service_and_route_surface_are_executable():
     assert service_operation_contracts()['ok'] is True
     assert api_route_contracts()['ok'] is True
     assert validate_api_route_contracts()['ok'] is True
-    assert service_operation_contracts()['operation_contract']
+    assert standalone_service_operation_contracts()['ok'] is True
+    assert standalone_route_contracts()['ok'] is True
+    floor_plan = dispatch_standalone_route('POST', '/app/restaurant-operations/floor-plan', {'tenant': 'tenant-contract', 'floor_plan_id': 'floor-contract', 'tables': ({'table_id': 'C1', 'seats': 4},)})
+    assert floor_plan['ok'] is True
 
 
 def test_configuration_permissions_and_seed_hooks_are_executable():
     assert governance_smoke_test()['ok'] is True
+    assert restaurant_operations_form_contracts()['ok'] is True
+    assert restaurant_operations_wizard_contracts()['ok'] is True
+    assert restaurant_operations_control_catalog()['ok'] is True
 
 
 def test_event_handlers_are_idempotent_and_retryable():
@@ -55,3 +65,10 @@ def test_event_handlers_are_idempotent_and_retryable():
     assert manifest['ok'] is True
     assert dispatch_event({'event_type': ('PolicyChanged', 'AuditEventSealed', 'OperationalKpiChanged')[0], 'idempotency_key': 'idem-restaurant_operations'})['ok'] is True
     assert dispatch_event({'event_type': 'Unexpected', 'idempotency_key': 'bad-restaurant_operations'})['dead_letter_table'].endswith('dead_letter_event')
+
+
+def test_standalone_app_contract_is_materialized():
+    contract = restaurant_operations_standalone_app_contract()
+    assert contract['ok'] is True
+    assert 'restaurant_operations_governed_preview' in contract['models']['table_keys']
+    assert 'DiningRoomFloorControl' in tuple(item['key'] for item in restaurant_operations_control_catalog()['contracts'])
