@@ -7,7 +7,8 @@ This file tracks package-local progress for the active goal: each PBC must imple
 - PBCs with `improve1.md`: 147
 - PBCs with `IMPROVE1_TRACEABILITY.md`: 147
 - PBCs remaining traceability matrices: 0
-- PBCs with executable `improve1_capabilities.py` registries: 5
+- PBCs with executable `improve1_capabilities.py` registries: 147
+- PBCs remaining executable registries: 0
 
 ## Completed Traceability Matrices
 
@@ -161,13 +162,159 @@ This file tracks package-local progress for the active goal: each PBC must imple
 
 ## Executable improve1 Capability Registries
 
+- `actuarial_pricing_reserving`
+- `advertising_campaign_operations`
+- `agri_supply_chain_traceability`
+- `agriculture_farm_operations`
+- `airline_operations_control`
+- `airport_operations_management`
 - `ap_automation`
+- `api_gateway_mesh`
 - `ar_credit`
+- `asset_lifecycle`
+- `audit_ledger`
+- `aviation_maintenance_repair`
+- `bank_payments_clearing`
+- `banking_core_accounts`
+- `building_information_modeling_ops`
+- `capital_markets_trading_ops`
+- `capital_projects_delivery`
+- `case_knowledge_management`
+- `cdp_segmentation`
+- `checkout_processing`
+- `chemical_batch_compliance`
+- `claims_adjudication_healthcare`
+- `clinical_care_coordination`
+- `clinical_trials_management`
+- `composition_engine`
+- `construction_contracts_commercials`
+- `construction_project_controls`
+- `contract_lifecycle`
+- `court_case_management`
+- `cross_border_trade`
+- `customer_360`
+- `customer_success_management`
+- `cybersecurity_operations_center`
+- `dam_core`
+- `data_product_catalog`
+- `defense_readiness_logistics`
+- `dom`
+- `donor_grant_fundraising`
+- `eam`
+- `education_student_lifecycle`
+- `electronic_health_records_core`
+- `energy_grid_operations`
+- `energy_trading_risk`
+- `enterprise_pim`
+- `enterprise_risk_controls`
+- `enterprise_search_vector`
+- `environment_health_safety`
+- `expense_management`
+- `facilities_space_management`
+- `facility_energy_management`
+- `federated_iam`
 - `field_service_management`
+- `fleet_mobility_operations`
+- `food_safety_quality_compliance`
+- `fraud_anomaly_detection`
+- `gaming_casino_operations`
 - `gl_core`
+- `global_inventory_visibility`
+- `grant_fund_accounting`
+- `hospitality_property_operations`
+- `hotel_revenue_management`
+- `humanitarian_relief_operations`
+- `identity_kyc_aml_compliance`
+- `insurance_claims_policy`
+- `insurance_underwriting`
+- `inventory_positioning`
+- `it_service_management`
+- `laboratory_information_management`
+- `land_real_estate_development`
+- `lead_opportunity`
+- `lease_lending_equipment_finance`
+- `legal_matter_management`
+- `lending_origination_servicing`
+- `library_archives_management`
+- `livestock_herd_management`
+- `loyalty_rewards`
+- `maritime_shipping_operations`
+- `master_data_governance`
+- `media_production_management`
+- `media_rights_content_monetization`
+- `medical_device_lifecycle`
+- `mining_operations_management`
+- `mining_safety_permits`
+- `mortgage_servicing`
+- `mrp_engine`
 - `multi_sided_market`
+- `music_royalties_rights`
+- `nonprofit_program_impact`
+- `notifications`
+- `oil_gas_field_operations`
+- `order_routing_optimization`
+- `payment_orchestration`
+- `payroll_engine`
+- `permitting_licensing_inspections`
+- `personnel_identity`
+- `pharma_manufacturing_quality`
+- `pharmacy_benefits_management`
+- `planning_budgeting_forecasting`
+- `policy_administration_insurance`
+- `port_terminal_operations`
+- `predictive_demand`
+- `price_promotion_engine`
+- `privacy_consent_governance`
+- `procurement_sourcing`
+- `product_catalog_pim`
+- `production_control`
+- `professional_services_automation`
+- `project_portfolio_management`
+- `provider_revenue_cycle`
+- `public_safety_dispatch`
+- `public_sector_case_management`
+- `publishing_editorial_operations`
+- `quality_assurance`
+- `rail_operations_management`
+- `real_estate_property_management`
+- `reinsurance_management`
+- `renewables_asset_operations`
+- `research_grants_management`
+- `restaurant_operations`
+- `returns_reverse_logistics`
+- `revenue_recognition`
+- `schema_registry`
+- `service_ticketing`
+- `smart_city_mobility_operations`
+- `sports_venue_event_operations`
+- `streaming_analytics`
+- `student_financial_aid`
+- `subscription_billing`
+- `sustainability_esg_reporting`
+- `talent_onboarding`
+- `tax_administration_public_sector`
+- `tax_localization`
+- `telecom_network_operations`
+- `telecom_subscription_lifecycle`
+- `time_labor`
+- `trade_finance_operations`
+- `transportation_management`
+- `travel_management`
+- `treasury_cash`
+- `utilities_metering_billing`
+- `utility_outage_restoration`
+- `vendor_supplier_360`
+- `waste_recycling_operations`
+- `water_wastewater_operations`
+- `wealth_portfolio_management`
+- `wms_core`
+- `workflow_orchestration`
 
 ## Remaining Traceability Matrices
+
+- None
+
+## Remaining Executable Registries
 
 - None
 
@@ -180,9 +327,10 @@ This file tracks package-local progress for the active goal: each PBC must imple
 - `01a5351d` added and tested commerce/content/relationship, intelligence, finance, insurance, and healthcare matrices.
 - `c9ad4035` completed package-local traceability matrices for all 147 PBCs.
 - `d6cdf9f3` strengthened all 147 matrix tests to verify exact titles and real evidence paths.
-- Current working batch adds executable improve1 capability registries for `gl_core`, `ap_automation`, `ar_credit`, `field_service_management`, and `multi_sided_market`; 15 focused tests passed before commit.
+- `a6d992f9` added executable improve1 capability registries for the first five high-risk PBCs.
+- Current working batch adds executable improve1 capability registries for the remaining 142 PBCs. Validation: `/Volumes/Media/src/pjs/appgen/.venv/bin/pytest` over all traceability and capability tests collected 583 tests and passed.
 
 ## Remaining Goal Work
 
-- Matrix presence and path integrity are complete for all PBCs.
-- Executable improve1 capability registries currently cover the first five high-risk PBCs; remaining PBCs still need equivalent executable semantic registries or stronger feature-specific runtime tests before the full goal can be closed.
+- Matrix presence, path integrity, and executable side-effect-free improve1 capability registries are complete for all PBCs.
+- The remaining audit frontier is deeper feature-specific runtime behavior: proving that each registry capability is backed by domain service operations, UI/workbench controls, and release evidence beyond side-effect-free planning metadata.
