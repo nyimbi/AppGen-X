@@ -2,109 +2,80 @@
 
 ## Purpose
 
-The `gaming_casino_operations` PBC is a packaged business capability for Players, tables, slots, compliance, responsible gaming, loyalty, payouts, and gaming floor operations. It owns schema, migrations, models, services, API contracts, AppGen-X event contracts, handlers, UI fragments, AI agent skills, configuration, rules, parameters, seed data, package metadata, tests, and release evidence. It composes with other AppGen-X PBCs only through declared APIs, AppGen-X events, or package-local projections.
+The `gaming_casino_operations` PBC is a standalone package-local implementation for casino-floor execution. Its stable identity is the `gaming_casino_operations` PBC key, and every package artifact, command, query, API route, event handler, workbench view, release check, and registration entrypoint is anchored to that identity. The package is deliberately scoped to owned operational records for patron enrollment, table operations, slot configuration, wager session evidence, payout approvals, responsible-gaming intervention, compliance command, and governed assistant support. The implementation is side-effect-free for discovery and self-registration and only mutates package-owned tables plus AppGen-X outbox, inbox, and dead-letter records.
 
-## Stable Identity
+## Stable Identity And Boundaries
 
-- PBC key: `gaming_casino_operations`.
-- Mesh: `relationship`.
-- Package directory: `src/pyAppGen/pbcs/gaming_casino_operations`.
-- Runtime entrypoint: `gaming_casino_operations_runtime_capabilities()`.
-- UI entrypoint: `gaming_casino_operations_ui_contract()`.
-- Source registration entrypoint: `implementation_contract()`.
-- Allowed database backends: PostgreSQL, MySQL, and MariaDB.
-- Eventing standard: fixed AppGen-X outbox/inbox event contract.
-- User-facing stream-engine selector: forbidden and hidden.
+The package lives in `src/pyAppGen/pbcs/gaming_casino_operations` and self-registers through `register_pbc`, `registration_plan`, `package_metadata_manifest`, `validate_package_metadata`, and `package_discovery_plan`. The PBC does not share or mutate foreign tables. Its owned boundary is explicit: every owned table begins with `gaming_casino_operations_`, every command writes only to those owned tables, and all foreign coordination is done through declared API routes, AppGen-X events, or local projections inside the workbench. Shared or foreign tables are rejected by the owned-boundary guard and by governed CRUD planning helpers.
 
-## Owned Datastore Boundary
+The owned tables are:
 
-- `gaming_casino_operations_player_profile`: owns player profile lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `gaming_casino_operations_table_game`: owns table game lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `gaming_casino_operations_slot_machine`: owns slot machine lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `gaming_casino_operations_wager_session`: owns wager session lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `gaming_casino_operations_payout`: owns payout lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `gaming_casino_operations_responsible_gaming_case`: owns responsible gaming case lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `gaming_casino_operations_gaming_compliance`: owns gaming compliance lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `gaming_casino_operations_gaming_casino_operations_policy_rule`: owns gaming casino operations policy rule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `gaming_casino_operations_gaming_casino_operations_runtime_parameter`: owns gaming casino operations runtime parameter lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `gaming_casino_operations_gaming_casino_operations_schema_extension`: owns gaming casino operations schema extension lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `gaming_casino_operations_gaming_casino_operations_control_assertion`: owns gaming casino operations control assertion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `gaming_casino_operations_gaming_casino_operations_governed_model`: owns gaming casino operations governed model lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `gaming_casino_operations_player_profile`
+- `gaming_casino_operations_table_game`
+- `gaming_casino_operations_slot_machine`
+- `gaming_casino_operations_wager_session`
+- `gaming_casino_operations_payout`
+- `gaming_casino_operations_responsible_gaming_case`
+- `gaming_casino_operations_gaming_compliance`
+- `gaming_casino_operations_policy_rule`
+- `gaming_casino_operations_runtime_parameter`
+- `gaming_casino_operations_schema_extension`
+- `gaming_casino_operations_control_assertion`
+- `gaming_casino_operations_governed_model`
+- `gaming_casino_operations_appgen_outbox_event`
+- `gaming_casino_operations_appgen_inbox_event`
+- `gaming_casino_operations_appgen_dead_letter_event`
 
-Runtime AppGen-X event tables are `gaming_casino_operations_appgen_outbox_event`, `gaming_casino_operations_appgen_inbox_event`, and `gaming_casino_operations_appgen_dead_letter_event`. The PBC does not mutate foreign tables. Dependencies are represented by consumed events ('PolicyChanged', 'CustomerUpdated', 'SupplierQualified') and API contracts ('POST /player-profiles', 'POST /table-games', 'POST /slot-machines', 'POST /wager-sessions', 'POST /payouts', 'GET /gaming-casino-operations-workbench').
+## Schema, Migration, And Model Generation
 
-## Executable Domain Operations
+The schema is hand-crafted and aligned across `models.py`, `schema_contract.py`, `runtime.py`, and `migrations/001_initial.sql`. The migration file contains concrete `CREATE TABLE` statements for every owned table. The model layer materializes field-level metadata for each owned table, including primary key, typed fields, descriptions, and the class name exposed through the schema contract. The model alignment smoke test ensures the runtime and release evidence see the same schema, migration, and model generation surface.
 
-- `create_player_profile`: validates policy, writes owned `gaming_casino_operations_player_profile` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `record_table_game`: validates policy, writes owned `gaming_casino_operations_table_game` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `review_slot_machine`: validates policy, writes owned `gaming_casino_operations_slot_machine` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `approve_wager_session`: validates policy, writes owned `gaming_casino_operations_wager_session` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `simulate_payout`: validates policy, writes owned `gaming_casino_operations_payout` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `create_responsible_gaming_case`: validates policy, writes owned `gaming_casino_operations_responsible_gaming_case` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `record_gaming_compliance`: validates policy, writes owned `gaming_casino_operations_gaming_compliance` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `review_gaming_casino_operations_policy_rule`: validates policy, writes owned `gaming_casino_operations_gaming_casino_operations_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `approve_gaming_casino_operations_runtime_parameter`: validates policy, writes owned `gaming_casino_operations_gaming_casino_operations_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `simulate_gaming_casino_operations_schema_extension`: validates policy, writes owned `gaming_casino_operations_gaming_casino_operations_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `create_gaming_casino_operations_control_assertion`: validates policy, writes owned `gaming_casino_operations_gaming_casino_operations_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `record_gaming_casino_operations_governed_model`: validates policy, writes owned `gaming_casino_operations_gaming_casino_operations_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_gaming_casino_operations_13`: validates policy, writes owned `gaming_casino_operations_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_gaming_casino_operations_14`: validates policy, writes owned `gaming_casino_operations_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_gaming_casino_operations_15`: validates policy, writes owned `gaming_casino_operations_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_gaming_casino_operations_16`: validates policy, writes owned `gaming_casino_operations_player_profile` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_gaming_casino_operations_17`: validates policy, writes owned `gaming_casino_operations_table_game` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_gaming_casino_operations_18`: validates policy, writes owned `gaming_casino_operations_slot_machine` records, emits AppGen-X events, and returns side-effect-free evidence.
+The player-profile schema carries identity confidence, age verification, restriction state, duplicate review state, and host context. The table-game schema carries pit, table number, game variant, shift ownership, opening bankroll, current bankroll, and dispute state. The slot-machine schema carries denomination, paytable version, operational state, jurisdiction approval state, fault state, and meter readings. The wager-session schema carries player, asset, session status, rating status, dispute flag, and betting metrics. The payout schema carries payout kind, source, amount, approval state, patron verification level, and suspicious-activity evidence. The responsible-gaming and compliance schemas carry owner, risk, severity, and intervention or case status. Policy rules, runtime parameters, schema extensions, control assertions, and governed models complete the owned governance surface.
 
-Every command is deterministic and side-effect-free in package tests. Each command returns target owned tables, emitted event evidence, idempotency keys, rule decisions, parameter reads, permissions, and audit hashes.
+## Services, Commands, Queries, And API Routes
 
-## Standard Table-Stakes Capabilities
+The service layer exposes both command and query operations. Command methods include `create_player_profile`, `apply_player_restriction`, `handle_table_game`, `handle_slot_machine`, `handle_wager_session`, `handle_payout`, `open_responsible_gaming_case`, `record_compliance_case`, `request_surveillance_review`, `create_control_assertion`, `register_governed_model`, and the workflow runners. Query methods include `build_workbench_view`, `query_workbench`, `run_advanced_assessment`, and document-intake or CRUD-planning helpers. Every command runs inside the `owned_datastore_plus_outbox` transaction boundary, and every query stays read-only.
 
-The package covers lifecycle intake, identity and classification, validation, approvals, exception handling, audit evidence, role-aware workbenches, assistant-guided task execution, configuration, rule compilation, bounded parameters, seed data, RBAC, route dispatch, typed events, idempotent handlers, retry, and dead-letter triage. It includes PostgreSQL, MySQL, and MariaDB backend allowlists and never exposes stream-engine pickers.
+The public API route contract includes `POST /player-profiles`, `POST /table-games`, `POST /slot-machines`, `POST /wager-sessions`, `POST /payouts`, and `GET /gaming-casino-operations-workbench`. The standalone route surface extends that with package-local app routes such as `POST /app/gaming-casino-operations/responsible-gaming-cases`, `POST /app/gaming-casino-operations/compliance-cases`, workflow routes for patron enrollment, table shift close, and jackpot hand-pay, and a `GET /app/gaming-casino-operations/workbench` route. Route contracts include service method binding, required permission, idempotency key, stream-engine-picker visibility set to false, and AppGen-X metadata.
 
-## Advanced Capabilities
+## Events, Handlers, Retry, And Dead-Letter Policy
 
-- Event-sourced operational history for Gaming and Casino Operations domain records.
-- Multi-tenant policy isolation with owned table boundaries.
-- Schema evolution resilience through package-local schema extensions.
-- Autonomous anomaly detection and specialist exception triage.
-- Semantic document and instruction understanding for professional intake.
-- Predictive risk scoring and confidence-ranked recommendations.
-- Counterfactual scenario simulation for policy and operational choices.
-- Cryptographic audit proofs for high-value records and decisions.
-- Continuous control testing over domain lifecycle events.
-- Carbon and sustainability awareness where operational decisions affect footprint.
-- Cross-PBC event federation through AppGen-X only.
-- Governed AI agent execution with human confirmation for mutations.
+The event contract is AppGen-X only. Emitted events are `GamingCasinoOperationsCreated`, `GamingCasinoOperationsUpdated`, `GamingCasinoOperationsApproved`, and `GamingCasinoOperationsExceptionOpened`. Consumed events are `PolicyChanged`, `CustomerUpdated`, and `SupplierQualified`. The event envelope builder produces an idempotency key, aggregate table, aggregate id, topic, tenant, and reaction metadata. The outbox, inbox, and dead-letter tables are first-class owned records.
 
-## Rules, Parameters, and Configuration
+Handlers are idempotent. `dispatch_event` records duplicate delivery, enforces a retry policy, and returns a dead-letter table when an unexpected event arrives. Runtime event ingestion also tracks state-local idempotency keys so repeated package discovery, release evidence, tests, and smoke runs remain stable. The dead-letter workbench queue is visible in the standalone UI and is included in release evidence. Retry, idempotency, dead-letter, inbox, and outbox language are all explicit in the package and in the release documentation.
 
-Rules are first-class artifacts: ('player_profile_policy', 'table_game_policy', 'slot_machine_policy', 'wager_session_policy', 'payout_policy', 'responsible_gaming_case_policy'). Parameters are bounded artifacts: ('quality_score_floor', 'materiality_threshold', 'approval_sla_hours', 'risk_threshold', 'forecast_horizon_days', 'workbench_limit'). Configuration includes database backend, event topic, retry limit, default policy, workbench limits, confirmation requirements for agent writes, and tenant isolation options.
+## UI, Workbench, Permissions, And RBAC
 
-## Public APIs and Services
+The UI contract includes the `GamingCasinoOperationsWorkbench`, `GamingCasinoOperationsDetail`, and `GamingCasinoOperationsAssistantPanel` fragments. The workbench blueprint defines forms, wizards, controls, queues, cards, alerts, and persona-specific views for floor supervisors, cage operations, slot operations, responsible-gaming staff, and compliance command. Forms cover patron enrollment review, slot fault recovery, payout approval, and responsible-gaming intervention. Wizards cover table shift close, jackpot hand-pay, and patron enrollment review. Controls cover restriction override, slot return to service, and payout release.
 
-APIs are ('POST /player-profiles', 'POST /table-games', 'POST /slot-machines', 'POST /wager-sessions', 'POST /payouts', 'GET /gaming-casino-operations-workbench'). Services preserve idempotency keys, permission names, owned table scopes, route metadata, and event mappings. Services write only to `gaming_casino_operations_` tables and package-local event tables.
+Permissions and RBAC are package-local. The permission manifest declares `gaming_casino_operations.read`, `gaming_casino_operations.create`, `gaming_casino_operations.update`, `gaming_casino_operations.approve`, and `gaming_casino_operations.admin`. Roles include operator, pit supervisor, cage supervisor, compliance officer, and auditor. Action permissions map each service command or query to a concrete permission, and the workbench UI binds actions to those permissions.
 
-## Events and Handlers
+## Rules, Parameters, Configuration, And Workflows
 
-Emitted events: ('GamingCasinoOperationsCreated', 'GamingCasinoOperationsUpdated', 'GamingCasinoOperationsApproved', 'GamingCasinoOperationsExceptionOpened'). Consumed events: ('PolicyChanged', 'CustomerUpdated', 'SupplierQualified'). Handlers require event IDs, ignore duplicates, record AppGen-X inbox entries, and write dead-letter evidence for unknown or exhausted events.
+Configuration is explicit and bounded. Supported datastore backends are PostgreSQL, MySQL, and MariaDB, and the event topic is fixed to AppGen-X. Runtime configuration includes property id, jurisdiction, retry limit, default policy, default currency, assistant mutation confirmation, and workbench limit. Parameters include `identity_confidence_floor`, `duplicate_review_threshold`, `table_variance_threshold`, `handpay_approval_threshold`, `suspicious_activity_threshold`, `cooling_off_hours`, and `workbench_limit`. Rules include `player_profile_policy`, `table_inventory_policy`, `slot_machine_policy`, `wager_session_policy`, `payout_approval_policy`, `responsible_gaming_policy`, and `compliance_case_policy`.
 
-## UI, Workbench, and Agent Skills
+Workflow coverage is explicit and executable. `gaming_casino_operations_patron_enrollment_workflow` handles identity evidence and duplicate review. `gaming_casino_operations_table_shift_close_workflow` handles variance review, supervisor signoff, and closure publication. `gaming_casino_operations_slot_fault_recovery_workflow` handles meter snapshot capture and return-to-service approval. `gaming_casino_operations_jackpot_handpay_workflow` handles payout creation, supervisor approval, and cage release. `gaming_casino_operations_responsible_gaming_intervention_workflow` handles risk review, intervention planning, and player restriction sync.
 
-Workbench views include ('player profile board', 'table game board', 'slot machine board', 'wager session board', 'payout board', 'responsible gaming case board', 'gaming compliance board'). The UI exposes operational queues, detail panels, rule editors, parameter editors, assistant panels, exception triage, analytics, and release evidence. The agent contributes `gaming_casino_operations_skills`, parses documents and instructions, produces governed CRUD previews, validates owned table boundaries, requires human confirmation for writes, and participates in the composed single application assistant.
+## Agent, Assistant, Chatbot, And CRUD Planning
 
-## Release Evidence and Tests
+The package includes a governed agent and assistant surface. `agent_skill_manifest` materializes casino-specific skills for patron identity triage, shift close guidance, jackpot evidence summary, and responsible-gaming intervention support. `chatbot_interface_contract` materializes the package-local chatbot and assistant entrypoint and explicitly keeps the stream engine picker hidden. `document_instruction_plan` parses document or instruction text and recommends the correct workflow, owned table set, and route candidate. `datastore_crud_plan` produces governed CRUD mutation previews for owned datastore tables only, rejects foreign tables, and requires confirmation for create, update, or delete mutation plans. `composed_agent_contribution` exposes the single agent skill namespace.
 
-Release readiness proves schema, migrations, models, service contracts, route contracts, AppGen-X eventing, idempotent handlers, retry/dead-letter evidence, UI surfaces, RBAC, configuration, rules, parameters, seed data, package metadata, side-effect-free registration, domain-depth operations, agent integration, and generation smoke readiness. Focused package tests cover schema/service/release evidence, event contracts, package metadata, route contracts, governance hooks, and idempotent handlers.
+## Release, Tests, Seed Data, And Standalone Application
+
+Release evidence is package-local and executable. `release_evidence.py` validates schema, service, events, standalone app surface, and documentation artifacts and records blocking gaps or boundary gaps. `RELEASE_EVIDENCE.md` summarizes release checks. Seed data is defined in `seed_data.py`. Contract tests live in `tests/test_contract.py`, and focused standalone package tests live in `tests/test_standalone.py`. The standalone app itself is composed in `standalone.py` through `GamingCasinoOperationsStandaloneApplication`, `gaming_casino_operations_standalone_app_contract`, `gaming_casino_operations_bootstrap_standalone_app`, and `gaming_casino_operations_standalone_app_smoke`.
+
+## Datastore And Event Policy
+
+The datastore policy is fixed: PostgreSQL, MySQL, and MariaDB are the only supported backends, and AppGen-X is the only supported event contract. The package does not expose any stream processor picker, alternate event bus, or shared-table escape hatch. The workbench, commands, queries, routes, agent skills, and release checks all assume this datastore and event policy.
 
 ## Manifest Traceability Appendix
 
-- tables: player_profile, table_game, slot_machine, wager_session, payout, responsible_gaming_case, gaming_compliance, gaming_casino_operations_policy_rule, gaming_casino_operations_runtime_parameter, gaming_casino_operations_schema_extension, gaming_casino_operations_control_assertion, gaming_casino_operations_governed_model
-- operations: create_player_profile, record_table_game, review_slot_machine, approve_wager_session, simulate_payout, create_responsible_gaming_case, record_gaming_compliance, review_gaming_casino_operations_policy_rule, approve_gaming_casino_operations_runtime_parameter, simulate_gaming_casino_operations_schema_extension, create_gaming_casino_operations_control_assertion, record_gaming_casino_operations_governed_model, operate_gaming_casino_operations_13, operate_gaming_casino_operations_14, operate_gaming_casino_operations_15, operate_gaming_casino_operations_16, operate_gaming_casino_operations_17, operate_gaming_casino_operations_18
+- tables: player_profile, table_game, slot_machine, wager_session, payout, responsible_gaming_case, gaming_compliance, policy_rule, runtime_parameter, schema_extension, control_assertion, governed_model
+- apis: POST /player-profiles, POST /table-games, POST /slot-machines, POST /wager-sessions, POST /payouts, GET /gaming-casino-operations-workbench
 - emits: GamingCasinoOperationsCreated, GamingCasinoOperationsUpdated, GamingCasinoOperationsApproved, GamingCasinoOperationsExceptionOpened
 - consumes: PolicyChanged, CustomerUpdated, SupplierQualified
-- rules: player_profile_policy, table_game_policy, slot_machine_policy, wager_session_policy, payout_policy, responsible_gaming_case_policy
-- parameters: quality_score_floor, materiality_threshold, approval_sla_hours, risk_threshold, forecast_horizon_days, workbench_limit
 - ui_fragments: GamingCasinoOperationsWorkbench, GamingCasinoOperationsDetail, GamingCasinoOperationsAssistantPanel
 - permissions: gaming_casino_operations.read, gaming_casino_operations.create, gaming_casino_operations.update, gaming_casino_operations.approve, gaming_casino_operations.admin
-- configuration: GAMING_CASINO_OPERATIONS_DATABASE_URL, GAMING_CASINO_OPERATIONS_EVENT_TOPIC, GAMING_CASINO_OPERATIONS_RETRY_LIMIT, GAMING_CASINO_OPERATIONS_DEFAULT_POLICY
+- configuration: GAMING_CASINO_OPERATIONS_DATABASE_URL, GAMING_CASINO_OPERATIONS_EVENT_TOPIC, GAMING_CASINO_OPERATIONS_RETRY_LIMIT, GAMING_CASINO_OPERATIONS_DEFAULT_POLICY, GAMING_CASINO_OPERATIONS_PROPERTY_ID, GAMING_CASINO_OPERATIONS_JURISDICTION
 - standard_features: player_profile_management, gaming_casino_operations_workflow, gaming_casino_operations_analytics, configuration_schema, rule_engine, parameter_engine, owned_schema_migrations_models, appgen_x_outbox_inbox_eventing, idempotent_handlers, retry_dead_letter_evidence, permissions, seed_data, workbench, agentic_document_instruction_intake, governed_datastore_crud, ai_agent_task_assistance, configuration_workbench, continuous_release_assurance
 - advanced_capabilities: gaming_casino_operations_event_sourced_operational_history, gaming_casino_operations_multi_tenant_policy_isolation, gaming_casino_operations_schema_evolution_resilience, gaming_casino_operations_autonomous_anomaly_detection, gaming_casino_operations_semantic_document_instruction_understanding, gaming_casino_operations_predictive_risk_scoring, gaming_casino_operations_counterfactual_scenario_simulation, gaming_casino_operations_cryptographic_audit_proofs, gaming_casino_operations_continuous_control_testing, gaming_casino_operations_carbon_and_sustainability_awareness, gaming_casino_operations_cross_pbc_event_federation, gaming_casino_operations_governed_ai_agent_execution
