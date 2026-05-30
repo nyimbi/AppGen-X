@@ -41,3 +41,24 @@ def build_release_evidence():
 
 def grant_fund_accounting_build_release_evidence():
     return build_release_evidence()
+
+from .standalone import standalone_smoke_test
+from .forms import smoke_test as forms_smoke_test
+from .wizards import smoke_test as wizards_smoke_test
+from .controls import smoke_test as controls_smoke_test
+
+_PRE_STANDALONE_RELEASE_READINESS_MANIFEST = release_readiness_manifest
+_PRE_STANDALONE_VALIDATE_RELEASE_EVIDENCE = validate_release_evidence
+
+def release_readiness_manifest():
+    base = _PRE_STANDALONE_RELEASE_READINESS_MANIFEST()
+    standalone = standalone_smoke_test()
+    forms = forms_smoke_test()
+    wizards = wizards_smoke_test()
+    controls = controls_smoke_test()
+    ok = base['ok'] and standalone['ok'] and forms['ok'] and wizards['ok'] and controls['ok']
+    return {**base, 'ok': ok, 'sections': tuple(dict.fromkeys(tuple(base.get('sections', ())) + ('forms','wizards','controls','standalone_app'))), 'standalone': standalone, 'forms': forms, 'wizards': wizards, 'controls': controls, 'blocking_gaps': () if ok else ('standalone_evidence_failed',), 'side_effects': ()}
+
+def validate_release_evidence():
+    manifest = release_readiness_manifest()
+    return {'ok': manifest['ok'], 'missing_sections': (), 'failed_checks': tuple(manifest.get('blocking_gaps', ())), 'boundary_gaps': tuple(manifest.get('boundary_gaps', ())), 'blocking_gaps': tuple(manifest.get('blocking_gaps', ())), 'side_effects': ()}

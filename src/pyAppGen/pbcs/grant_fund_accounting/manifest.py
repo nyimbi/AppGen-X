@@ -56,7 +56,7 @@ PBC_MANIFEST = {'advanced_capabilities': ('grant_fund_accounting_event_sourced_o
  'datastore_backend': 'postgresql',
  'description': 'Restricted funds, grant budgets, donor rules, allowable costs, reimbursement '
                 'claims, compliance reporting, and audit trails.',
- 'docs': ('SPECIFICATION.md', 'RELEASE_EVIDENCE.md'),
+ 'docs': ('SPECIFICATION.md', 'RELEASE_EVIDENCE.md', 'README.md', 'implementation-plan.md', 'implementation-status.md'),
  'emits': ('GrantAwarded',
            'ReimbursementClaimPrepared',
            'FundRestrictionApplied',
@@ -98,9 +98,9 @@ PBC_MANIFEST = {'advanced_capabilities': ('grant_fund_accounting_event_sourced_o
             'grant_compliance_report',
             'fund_audit_trail'),
  'template': 'accounting',
- 'tests': ('tests/test_contract.py',),
+ 'tests': ('tests/test_contract.py', 'tests/test_standalone.py'),
  'ui_fragments': ('GrantFundAccountingWorkbench',
                   'GrantFundAccountingDetail',
                   'GrantFundAccountingAssistantPanel'),
  'version': '1.0.0',
- 'workflows': ('grant_award_workflow', 'grant_fund_accounting_approval_workflow')}
+ 'workflows': ('grant_award_workflow', 'grant_fund_accounting_approval_workflow', 'grant_award_intake_workflow', 'grant_cost_allowability_workflow', 'grant_drawdown_reconciliation_workflow', 'grant_funder_report_workflow', 'grant_closeout_workflow')}
