@@ -297,3 +297,34 @@ def smoke_test() -> dict:
         "standalone": standalone,
         "side_effects": (),
     }
+
+# Improve1 port control UI extension.
+from .port_control import improve1_port_control_contract as _improve1_port_control_contract
+
+_PORT_CONTROL_BASE_UI_CONTRACT = port_terminal_operations_ui_contract
+_PORT_CONTROL_BASE_RENDER_WORKBENCH = port_terminal_operations_render_workbench
+
+
+def port_terminal_operations_ui_contract() -> dict:
+    ui = dict(_PORT_CONTROL_BASE_UI_CONTRACT())
+    control = _improve1_port_control_contract()
+    ui.update({
+        "ok": ui.get("ok") is True and control["ok"],
+        "port_control_contract": control,
+        "port_control_panels": tuple(item["evidence"]["ui_surface"] for item in control["capabilities"]),
+        "port_control_service_actions": tuple(item["evidence"]["service_api"] for item in control["capabilities"]),
+        "stream_engine_picker_visible": False,
+    })
+    return ui
+
+
+def port_terminal_operations_render_workbench(*args, **kwargs) -> dict:
+    workbench = dict(_PORT_CONTROL_BASE_RENDER_WORKBENCH(*args, **kwargs))
+    control = _improve1_port_control_contract()
+    workbench.update({
+        "ok": workbench.get("ok") is True and control["ok"],
+        "port_control_panels": tuple(item["evidence"]["ui_surface"] for item in control["capabilities"]),
+        "port_control_service_actions": tuple(item["evidence"]["service_api"] for item in control["capabilities"]),
+        "port_control_agent_tools": tuple(f"port_terminal_operations.skills.{item['slug']}" for item in control["capabilities"]),
+    })
+    return workbench
