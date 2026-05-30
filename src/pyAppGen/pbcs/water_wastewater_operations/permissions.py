@@ -1,15 +1,17 @@
-PBC_KEY = 'water_wastewater_operations'
-PERMISSIONS = ('water_wastewater_operations.read',
- 'water_wastewater_operations.create',
- 'water_wastewater_operations.update',
- 'water_wastewater_operations.approve',
- 'water_wastewater_operations.admin')
+from .runtime import water_wastewater_operations_permissions_contract
+
+PBC_KEY = "water_wastewater_operations"
+
 
 def permission_manifest():
-    return {'ok': True, 'pbc': PBC_KEY, 'permissions': PERMISSIONS, 'roles': ('operator','approver','auditor'), 'side_effects': ()}
+    return water_wastewater_operations_permissions_contract()
+
 
 def authorize(permission, actor=None):
-    return {'ok': permission in PERMISSIONS or permission == f'{PBC_KEY}.operate', 'permission': permission, 'actor': dict(actor or {}), 'side_effects': ()}
+    manifest = permission_manifest()
+    allowed = permission in manifest["permissions"] or permission in manifest["action_permissions"].values()
+    return {"ok": allowed, "permission": permission, "actor": dict(actor or {}), "side_effects": ()}
+
 
 def smoke_test():
-    return {'ok': permission_manifest()['ok'] and authorize(PERMISSIONS[0])['ok'], 'side_effects': ()}
+    return {"ok": permission_manifest()["ok"] and authorize(f"{PBC_KEY}.operate")["ok"], "side_effects": ()}
