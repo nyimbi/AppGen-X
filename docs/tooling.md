@@ -618,6 +618,12 @@ expected-message counts, stdout-empty counts where required, command-family
 coverage for missing inputs, and traceback-free counts so release evidence
 proves failure behavior across the CLI surface instead of only recording exit
 codes.
+They also publish required, observed, and missing case ids; missing-input command
+families and missing command-family names; cases missing the expected
+`path does not exist`, required-option, or `invalid choice` messages; and the
+expected required-option message family by case. The aggregate gate fails on any
+missing named case, missing command family, missing expected message, or
+traceback-bearing failure path.
 The aggregate tooling audit exposes those failure paths as a separate
 `cli_usage_failure_contracts` gate. It reports internal-error mode counts,
 missing-input case/stdout/traceback counts, missing-required-option case

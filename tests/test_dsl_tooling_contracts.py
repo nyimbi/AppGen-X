@@ -6030,6 +6030,12 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert cli_usage_check["detail"]["internal_error_exit"]["traceback_free_mode_count"] == 2
     assert cli_usage_check["detail"]["missing_input_exit"]["format"] == "appgen.missing-input-exit-audit.v1"
     assert cli_usage_check["detail"]["missing_input_exit"]["failing_case_count"] == 0
+    assert cli_usage_check["detail"]["missing_input_exit"]["missing_case_count"] == 0
+    assert cli_usage_check["detail"]["missing_input_exit"]["missing_case_ids"] == ()
+    assert cli_usage_check["detail"]["missing_input_exit"]["missing_command_family_count"] == 0
+    assert cli_usage_check["detail"]["missing_input_exit"]["missing_command_families"] == ()
+    assert cli_usage_check["detail"]["missing_input_exit"]["missing_path_message_missing_count"] == 0
+    assert cli_usage_check["detail"]["missing_input_exit"]["missing_path_message_missing_cases"] == ()
     assert cli_usage_check["detail"]["missing_input_exit"]["stdout_empty_count"] == (
         cli_usage_check["detail"]["missing_input_exit"]["case_count"]
     )
@@ -6037,11 +6043,19 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
         "appgen.missing-required-option-exit-audit.v1"
     )
     assert cli_usage_check["detail"]["missing_required_option_exit"]["failing_case_count"] == 0
+    assert cli_usage_check["detail"]["missing_required_option_exit"]["missing_case_count"] == 0
+    assert cli_usage_check["detail"]["missing_required_option_exit"]["missing_case_ids"] == ()
+    assert cli_usage_check["detail"]["missing_required_option_exit"]["missing_expected_message_count"] == 0
+    assert cli_usage_check["detail"]["missing_required_option_exit"]["missing_expected_message_cases"] == ()
     assert cli_usage_check["detail"]["invalid_choice_exit"]["format"] == "appgen.invalid-choice-exit-audit.v1"
     assert cli_usage_check["detail"]["invalid_choice_exit"]["failing_case_count"] == 0
+    assert cli_usage_check["detail"]["invalid_choice_exit"]["missing_case_count"] == 0
+    assert cli_usage_check["detail"]["invalid_choice_exit"]["missing_case_ids"] == ()
     assert cli_usage_check["detail"]["invalid_choice_exit"]["invalid_choice_message_count"] == (
         cli_usage_check["detail"]["invalid_choice_exit"]["case_count"]
     )
+    assert cli_usage_check["detail"]["invalid_choice_exit"]["missing_invalid_choice_message_count"] == 0
+    assert cli_usage_check["detail"]["invalid_choice_exit"]["missing_invalid_choice_message_cases"] == ()
     assert cli_usage_check["detail"]["cli_help_surface"]["format"] == "appgen.cli-help-surface-audit.v1"
     assert cli_usage_check["detail"]["cli_help_surface"]["documented_missing_subcommands"] == ()
     assert cli_usage_check["detail"]["cli_help_surface"]["help_missing_subcommands"] == ()
@@ -6082,10 +6096,20 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     )
     assert cli_check["detail"]["missing_input_exit"]["failing_case_count"] == 0
     assert cli_check["detail"]["missing_input_exit"]["failing_cases"] == ()
+    assert cli_check["detail"]["missing_input_exit"]["observed_case_ids"] == (
+        cli_check["detail"]["missing_input_exit"]["required_case_ids"]
+    )
+    assert cli_check["detail"]["missing_input_exit"]["missing_case_count"] == 0
+    assert cli_check["detail"]["missing_input_exit"]["missing_case_ids"] == ()
     assert cli_check["detail"]["missing_input_exit"]["case_ids"] == tuple(
         case["name"] for case in cli_check["detail"]["missing_input_exit"]["cases"]
     )
     assert cli_check["detail"]["missing_input_exit"]["command_family_count"] >= 14
+    assert set(cli_check["detail"]["missing_input_exit"]["required_command_families"]) <= set(
+        cli_check["detail"]["missing_input_exit"]["command_families"]
+    )
+    assert cli_check["detail"]["missing_input_exit"]["missing_command_family_count"] == 0
+    assert cli_check["detail"]["missing_input_exit"]["missing_command_families"] == ()
     assert cli_check["detail"]["missing_input_exit"]["missing_path_message_count"] == (
         cli_check["detail"]["missing_input_exit"]["case_count"]
     )
@@ -6095,6 +6119,8 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert cli_check["detail"]["missing_input_exit"]["traceback_free_count"] == (
         cli_check["detail"]["missing_input_exit"]["case_count"]
     )
+    assert cli_check["detail"]["missing_input_exit"]["missing_path_message_missing_count"] == 0
+    assert cli_check["detail"]["missing_input_exit"]["missing_path_message_missing_cases"] == ()
     assert cli_check["detail"]["missing_required_option_exit"]["format"] == (
         "appgen.missing-required-option-exit-audit.v1"
     )
@@ -6107,6 +6133,11 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     )
     assert cli_check["detail"]["missing_required_option_exit"]["failing_case_count"] == 0
     assert cli_check["detail"]["missing_required_option_exit"]["failing_cases"] == ()
+    assert cli_check["detail"]["missing_required_option_exit"]["observed_case_ids"] == (
+        cli_check["detail"]["missing_required_option_exit"]["required_case_ids"]
+    )
+    assert cli_check["detail"]["missing_required_option_exit"]["missing_case_count"] == 0
+    assert cli_check["detail"]["missing_required_option_exit"]["missing_case_ids"] == ()
     assert cli_check["detail"]["missing_required_option_exit"]["case_ids"] == tuple(
         case["name"] for case in cli_check["detail"]["missing_required_option_exit"]["cases"]
     )
@@ -6119,6 +6150,8 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert cli_check["detail"]["missing_required_option_exit"]["traceback_free_count"] == (
         cli_check["detail"]["missing_required_option_exit"]["case_count"]
     )
+    assert cli_check["detail"]["missing_required_option_exit"]["missing_expected_message_count"] == 0
+    assert cli_check["detail"]["missing_required_option_exit"]["missing_expected_message_cases"] == ()
     assert {
         "generate_missing_out",
         "nl_plan_missing_prompt",
@@ -6142,6 +6175,11 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     )
     assert cli_check["detail"]["invalid_choice_exit"]["failing_case_count"] == 0
     assert cli_check["detail"]["invalid_choice_exit"]["failing_cases"] == ()
+    assert cli_check["detail"]["invalid_choice_exit"]["observed_case_ids"] == (
+        cli_check["detail"]["invalid_choice_exit"]["required_case_ids"]
+    )
+    assert cli_check["detail"]["invalid_choice_exit"]["missing_case_count"] == 0
+    assert cli_check["detail"]["invalid_choice_exit"]["missing_case_ids"] == ()
     assert cli_check["detail"]["invalid_choice_exit"]["case_ids"] == tuple(
         case["name"] for case in cli_check["detail"]["invalid_choice_exit"]["cases"]
     )
@@ -6154,6 +6192,8 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert cli_check["detail"]["invalid_choice_exit"]["traceback_free_count"] == (
         cli_check["detail"]["invalid_choice_exit"]["case_count"]
     )
+    assert cli_check["detail"]["invalid_choice_exit"]["missing_invalid_choice_message_count"] == 0
+    assert cli_check["detail"]["invalid_choice_exit"]["missing_invalid_choice_message_cases"] == ()
     diagnostic_contract_check = next(
         check for check in report["checks"] if check["id"] == "diagnostic_catalog_fixture_contracts"
     )
@@ -7891,9 +7931,15 @@ def test_missing_input_audit_covers_file_based_commands(tmp_path: Path) -> None:
     assert audit["case_count"] == len(audit["cases"])
     assert audit["passing_case_count"] == audit["case_count"]
     assert audit["failing_case_count"] == 0
+    assert audit["observed_case_ids"] == audit["required_case_ids"]
+    assert audit["missing_case_count"] == 0
+    assert audit["missing_case_ids"] == ()
     assert audit["case_ids"] == tuple(case["name"] for case in audit["cases"])
     assert audit["failing_cases"] == ()
     assert audit["command_family_count"] == len(audit["command_families"])
+    assert set(audit["required_command_families"]) <= set(audit["command_families"])
+    assert audit["missing_command_family_count"] == 0
+    assert audit["missing_command_families"] == ()
     assert {
         "lint",
         "format",
@@ -7913,6 +7959,8 @@ def test_missing_input_audit_covers_file_based_commands(tmp_path: Path) -> None:
         "drift",
     } <= set(audit["command_families"])
     assert audit["missing_path_message_count"] == audit["case_count"]
+    assert audit["missing_path_message_missing_count"] == 0
+    assert audit["missing_path_message_missing_cases"] == ()
     assert audit["stdout_empty_count"] == audit["case_count"]
     assert audit["traceback_free_count"] == audit["case_count"]
     assert {
@@ -8095,9 +8143,14 @@ def test_invalid_choice_audit_covers_graph_formats_and_backend_choices(tmp_path:
     assert audit["case_count"] == len(audit["cases"])
     assert audit["passing_case_count"] == audit["case_count"]
     assert audit["failing_case_count"] == 0
+    assert audit["observed_case_ids"] == audit["required_case_ids"]
+    assert audit["missing_case_count"] == 0
+    assert audit["missing_case_ids"] == ()
     assert audit["case_ids"] == tuple(case["name"] for case in audit["cases"])
     assert audit["failing_cases"] == ()
     assert audit["invalid_choice_message_count"] == audit["case_count"]
+    assert audit["missing_invalid_choice_message_count"] == 0
+    assert audit["missing_invalid_choice_message_cases"] == ()
     assert audit["stdout_empty_count"] == audit["case_count"]
     assert audit["traceback_free_count"] == audit["case_count"]
     assert {
@@ -8124,9 +8177,15 @@ def test_missing_required_option_audit_covers_required_cli_options(tmp_path: Pat
     assert audit["case_count"] == len(audit["cases"])
     assert audit["passing_case_count"] == audit["case_count"]
     assert audit["failing_case_count"] == 0
+    assert audit["observed_case_ids"] == audit["required_case_ids"]
+    assert audit["missing_case_count"] == 0
+    assert audit["missing_case_ids"] == ()
     assert audit["case_ids"] == tuple(case["name"] for case in audit["cases"])
     assert audit["failing_cases"] == ()
     assert audit["expected_message_count"] == audit["case_count"]
+    assert audit["missing_expected_message_count"] == 0
+    assert audit["missing_expected_message_cases"] == ()
+    assert audit["expected_messages_by_case"]["explain_missing_selector"] == "one of the arguments"
     assert audit["stdout_empty_count"] == audit["case_count"]
     assert audit["traceback_free_count"] == audit["case_count"]
     assert {
