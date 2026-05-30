@@ -113,3 +113,31 @@ def identity_kyc_aml_compliance_render_workbench(state=None, tenant="default"):
 
 def smoke_test():
     return {"ok": identity_kyc_aml_compliance_ui_contract()["ok"] and identity_kyc_aml_compliance_render_workbench()["ok"], "side_effects": ()}
+
+
+# Improve1 identity KYC AML UI control extension.
+from .identity_control import improve1_identity_control_contract as identity_kyc_aml_compliance_improve1_identity_control_contract
+
+_IDENTITY_KYC_AML_COMPLIANCE_BASE_UI_CONTRACT = identity_kyc_aml_compliance_ui_contract
+_IDENTITY_KYC_AML_COMPLIANCE_BASE_RENDER_WORKBENCH = identity_kyc_aml_compliance_render_workbench
+
+
+def identity_kyc_aml_compliance_ui_contract():
+    base = dict(_IDENTITY_KYC_AML_COMPLIANCE_BASE_UI_CONTRACT())
+    identity_control = identity_kyc_aml_compliance_improve1_identity_control_contract()
+    control_panels = tuple(item['evidence']['ui_surface'] for item in identity_control['capabilities'])
+    service_actions = tuple(item['evidence']['service_api'] for item in identity_control['capabilities'])
+    full_surface = dict(base.get('full_capability_surface', {}))
+    full_surface.update({
+        'identity_control_panels': control_panels,
+        'identity_control_service_actions': service_actions,
+        'identity_control_tables': identity_control['owned_tables'],
+        'identity_control_agent_tools': tuple(f"identity_kyc_aml_compliance.agent.{item['slug']}" for item in identity_control['capabilities']),
+    })
+    return {**base, 'ok': base.get('ok') is True and identity_control['ok'], 'full_capability_surface': full_surface, 'identity_control_contract': identity_control, 'identity_control_panels': control_panels, 'identity_control_service_actions': service_actions, 'side_effects': ()}
+
+
+def identity_kyc_aml_compliance_render_workbench(state=None, tenant='default'):
+    base = dict(_IDENTITY_KYC_AML_COMPLIANCE_BASE_RENDER_WORKBENCH(state=state, tenant=tenant))
+    identity_control = identity_kyc_aml_compliance_improve1_identity_control_contract()
+    return {**base, 'ok': base.get('ok') is True and identity_control['ok'], 'identity_control_panels': tuple(item['evidence']['ui_surface'] for item in identity_control['capabilities']), 'identity_control_service_actions': tuple(item['evidence']['service_api'] for item in identity_control['capabilities']), 'agent_tools': tuple(f"identity_kyc_aml_compliance.agent.{item['slug']}" for item in identity_control['capabilities']), 'side_effects': ()}

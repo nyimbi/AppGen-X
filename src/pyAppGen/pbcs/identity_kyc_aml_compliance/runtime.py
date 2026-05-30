@@ -1985,3 +1985,38 @@ def identity_kyc_aml_compliance_runtime_smoke() -> dict:
         "release": release,
         "side_effects": (),
     }
+
+
+# Improve1 identity KYC AML control extension.
+from .identity_control import improve1_identity_control_contract as identity_kyc_aml_compliance_improve1_identity_control_contract
+
+_IDENTITY_KYC_AML_COMPLIANCE_BASE_RUNTIME_CAPABILITIES = identity_kyc_aml_compliance_runtime_capabilities
+_IDENTITY_KYC_AML_COMPLIANCE_BASE_RELEASE_EVIDENCE = identity_kyc_aml_compliance_build_release_evidence
+
+
+def identity_kyc_aml_compliance_build_release_evidence() -> dict:
+    evidence = dict(_IDENTITY_KYC_AML_COMPLIANCE_BASE_RELEASE_EVIDENCE())
+    identity_control = identity_kyc_aml_compliance_improve1_identity_control_contract()
+    checks = tuple(evidence.get('checks', ())) + (
+        {'id': 'improve1_identity_control', 'ok': identity_control['ok']},
+        {'id': 'kyc_aml_control_release', 'ok': identity_control['capability_count'] == 50 and identity_control['event_contract'] == 'AppGen-X'},
+    )
+    return {**evidence, 'ok': evidence.get('ok') is True and all(check['ok'] for check in checks), 'checks': checks, 'identity_control': identity_control, 'blocking_gaps': tuple(check for check in checks if not check['ok'])}
+
+
+def identity_kyc_aml_compliance_runtime_capabilities() -> dict:
+    runtime = dict(_IDENTITY_KYC_AML_COMPLIANCE_BASE_RUNTIME_CAPABILITIES())
+    identity_control = identity_kyc_aml_compliance_improve1_identity_control_contract()
+    return {
+        **runtime,
+        'ok': runtime.get('ok') is True and identity_control['ok'],
+        'identity_control': identity_control,
+        'improve1_capabilities': identity_control['capabilities'],
+        'operations': tuple(dict.fromkeys(tuple(runtime.get('operations', ())) + ('improve1_identity_control_contract', 'evaluate_identity_control'))),
+        'owned_tables': tuple(dict.fromkeys(tuple(runtime.get('owned_tables', ())) + tuple(identity_control['owned_tables']))),
+        'allowed_database_backends': identity_control['allowed_database_backends'],
+        'event_contract': identity_control['event_contract'],
+        'required_event_topic': identity_control['required_event_topic'],
+        'stream_engine_picker_visible': False,
+        'side_effects': (),
+    }
