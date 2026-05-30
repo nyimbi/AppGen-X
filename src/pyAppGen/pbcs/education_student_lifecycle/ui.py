@@ -1,3 +1,4 @@
+from .student_lifecycle_control import improve1_student_lifecycle_control_contract
 from .domain_depth import DOMAIN_ADVANCED_CAPABILITIES, DOMAIN_EDGE_CASES, DOMAIN_OPERATIONS, DOMAIN_OWNED_TABLES, DOMAIN_PARAMETERS, DOMAIN_RULES, domain_capability_surface_contract
 from .student_lifecycle_app import controls_contract, forms_contract, single_pbc_app_contract, wizards_contract
 
@@ -10,6 +11,7 @@ def education_student_lifecycle_ui_contract():
         "ok": True,
         "pbc": PBC_KEY,
         "fragments": ("EducationStudentLifecycleWorkbench", "EducationStudentLifecycleDetail", "EducationStudentLifecycleAssistantPanel"),
+        "student_lifecycle_control_contract": improve1_student_lifecycle_control_contract(),
         "configuration_editor": True,
         "stream_engine_picker_visible": False,
         "action_permissions": (
@@ -31,6 +33,7 @@ def education_student_lifecycle_ui_contract():
             "table_browsers": DOMAIN_OWNED_TABLES,
             "edge_case_queues": DOMAIN_EDGE_CASES,
             "agent_tools": tuple(f"{PBC_KEY}_skills.{op}" for op in DOMAIN_OPERATIONS),
+            "student_lifecycle_control_panels": tuple(item["ui_surface"] for item in improve1_student_lifecycle_control_contract()["capabilities"]),
             "navigation_sections": ("admissions", "enrollment", "progression", "advising", "graduation", "assistant", "release_evidence"),
             "coverage": surface["coverage"],
         },

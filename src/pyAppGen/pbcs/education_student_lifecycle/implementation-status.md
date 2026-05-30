@@ -24,3 +24,8 @@ Implemented for the current pass.
 - `pytest` is not installed in this worktree, so the focused suite was executed through a manual package-local runner instead of `pytest`.
 - Package tests prove deterministic business behavior, but do not open a browser against a generated app.
 - Future passes should add richer accommodation masking, cohort analytics, petition committee routing, and external scheduling/LMS/API projections through declared boundaries.
+
+
+## 2026-05-30 improve1 Student-Lifecycle Control Execution Slice
+
+Added a package-local `student_lifecycle_control.py` execution layer binding all 50 improve1 features to owned student lifecycle tables, declared API/event/projection dependencies, AppGen-X event evidence, UI surfaces, service routes, agent skills, configuration metadata, retry/dead-letter proof, release artifacts, and focused package-local domain behavior tests. Runtime, UI, release evidence, capability registry artifacts, and the traceability matrix now expose the executable student lifecycle control contract.

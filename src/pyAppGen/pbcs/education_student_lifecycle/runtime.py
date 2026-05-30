@@ -6,6 +6,7 @@ from copy import deepcopy
 import hashlib
 
 from .domain_depth import DOMAIN_OPERATIONS, DOMAIN_OWNED_TABLES, domain_depth_contract, execute_domain_operation
+from .student_lifecycle_control import EDUCATION_STUDENT_LIFECYCLE_CONTROL_CAPABILITIES, improve1_student_lifecycle_control_contract
 from .student_lifecycle_app import (
     OWNED_TABLES as APP_OWNED_TABLES,
     controls_contract,
@@ -255,6 +256,7 @@ def education_student_lifecycle_build_api_contract():
 def education_student_lifecycle_build_release_evidence():
     app_contract = single_pbc_app_contract()
     app_smoke = student_lifecycle_app_smoke_test()
+    student_lifecycle_control = improve1_student_lifecycle_control_contract()
     checks = (
         {"id": "schema_models_migrations", "ok": True},
         {"id": "service_api_events", "ok": True},
@@ -263,6 +265,7 @@ def education_student_lifecycle_build_release_evidence():
         {"id": "single_pbc_domain_app", "ok": app_contract["ok"]},
         {"id": "forms_wizards_controls", "ok": bool(app_contract["forms"]) and bool(app_contract["wizards"]) and bool(app_contract["controls"])},
         {"id": "student_lifecycle_app_smoke", "ok": app_smoke["ok"]},
+        {"id": "student_lifecycle_improve1_control_contract", "ok": student_lifecycle_control["ok"]},
     )
     return {
         "format": "appgen.education-student-lifecycle-release-evidence.v1",
@@ -279,6 +282,7 @@ def education_student_lifecycle_build_release_evidence():
             "wizards": wizards_contract()["wizards"],
             "controls": controls_contract()["controls"],
             "single_pbc_app": app_contract,
+            "student_lifecycle_control": student_lifecycle_control,
         },
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }
@@ -325,6 +329,7 @@ def education_student_lifecycle_runtime_capabilities():
         "query_workbench",
         "run_advanced_assessment",
         "parse_document_instruction",
+        "improve1_student_lifecycle_control_contract",
     ) + tuple(DOMAIN_OPERATIONS)
     return {
         "format": "appgen.education-student-lifecycle-runtime-capabilities.v1",
@@ -335,6 +340,7 @@ def education_student_lifecycle_runtime_capabilities():
         "allowed_database_backends": EDUCATION_STUDENT_LIFECYCLE_ALLOWED_DATABASE_BACKENDS,
         "standard_features": EDUCATION_STUDENT_LIFECYCLE_STANDARD_FEATURE_KEYS,
         "capabilities": EDUCATION_STUDENT_LIFECYCLE_RUNTIME_CAPABILITY_KEYS,
+        "improve1_student_lifecycle_control_capabilities": tuple(capability.slug for capability in EDUCATION_STUDENT_LIFECYCLE_CONTROL_CAPABILITIES),
         "operations": operations,
         "forms": forms_contract()["forms"],
         "wizards": wizards_contract()["wizards"],
@@ -366,6 +372,7 @@ def education_student_lifecycle_runtime_smoke():
     boundary = education_student_lifecycle_verify_owned_table_boundary(EDUCATION_STUDENT_LIFECYCLE_OWNED_TABLES + ("foreign_table",))
     domain = domain_depth_contract()
     app_smoke = student_lifecycle_app_smoke_test()
+    student_lifecycle_control = improve1_student_lifecycle_control_contract()
     checks = (
         {"id": "configure_runtime", "ok": cfg["ok"]},
         {"id": "set_parameter", "ok": param["ok"]},
@@ -381,5 +388,21 @@ def education_student_lifecycle_runtime_smoke():
         {"id": "owned_boundary_rejects_foreign_table", "ok": boundary["ok"] is False},
         {"id": "domain_depth", "ok": domain["ok"]},
         {"id": "single_pbc_app_smoke", "ok": app_smoke["ok"]},
+        {"id": "improve1_student_lifecycle_control_contract", "ok": student_lifecycle_control["ok"]},
     ) + tuple({"id": capability, "ok": True} for capability in EDUCATION_STUDENT_LIFECYCLE_RUNTIME_CAPABILITY_KEYS)
-    return {"format": "appgen.education-student-lifecycle-runtime-smoke.v1", "ok": all(check["ok"] for check in checks), "checks": checks, "configuration": cfg, "command": command, "schema": schema, "service": service, "release": release, "workbench": workbench, "domain": domain, "single_pbc_app": app_smoke, "side_effects": ()}
+    return {
+        "format": "appgen.education-student-lifecycle-runtime-smoke.v1",
+        "ok": all(check["ok"] for check in checks),
+        "checks": checks,
+        "checks_by_id": {check["id"]: check["ok"] for check in checks},
+        "configuration": cfg,
+        "command": command,
+        "schema": schema,
+        "service": service,
+        "release": release,
+        "workbench": workbench,
+        "domain": domain,
+        "single_pbc_app": app_smoke,
+        "student_lifecycle_control": student_lifecycle_control,
+        "side_effects": (),
+    }
