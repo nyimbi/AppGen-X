@@ -16,6 +16,7 @@ from . import ui
 from .schema_contract import build_schema_contract
 from .schema_contract import validate_schema_contract
 from .service_contract import build_service_contract
+from .pim_control import improve1_pim_control_contract
 
 
 PACKAGE_DIR = Path(__file__).resolve().parent
@@ -39,6 +40,7 @@ def build_release_evidence():
     seed_validation = seed_data.validate_seed_data()
     agent_smoke = agent.smoke_test()
     standalone_smoke = standalone.smoke_test()
+    pim_control = improve1_pim_control_contract()
     migration_files = _relative_paths("migrations/*.sql")
     test_files = _relative_paths("tests/*.py")
     docs = tuple(
@@ -66,6 +68,7 @@ def build_release_evidence():
         {"id": "migration_artifacts", "ok": bool(migration_files)},
         {"id": "documentation_set", "ok": len(docs) >= 4},
         {"id": "focused_tests", "ok": bool(test_files)},
+        {"id": "pim_improve1_control_contract", "ok": pim_control["ok"]},
     )
     blocking_gaps = tuple(check["id"] for check in checks if not check["ok"])
     return {
@@ -84,6 +87,7 @@ def build_release_evidence():
         "seed": seed_validation,
         "agent": agent_smoke,
         "standalone": standalone_smoke,
+        "pim_control": pim_control,
         "artifacts": {
             "migrations": migration_files,
             "tests": test_files,
@@ -97,6 +101,7 @@ def build_release_evidence():
                 "permissions.py",
                 "seed_data.py",
                 "standalone.py",
+                "pim_control.py",
             ),
         },
     }
@@ -107,7 +112,7 @@ def release_readiness_manifest():
     evidence = build_release_evidence()
     sections = tuple(
         name
-        for name in ("schema", "service", "api", "permissions", "ui", "events", "handlers", "seed", "agent", "standalone")
+        for name in ("schema", "service", "api", "permissions", "ui", "events", "handlers", "seed", "agent", "standalone", "pim_control")
         if isinstance(evidence.get(name), dict)
     )
     checks = tuple(evidence.get("checks", ()))
@@ -118,7 +123,7 @@ def release_readiness_manifest():
         "sections": sections,
         "checks": checks,
         "blocking_gaps": tuple(evidence.get("blocking_gaps", ())),
-        "required_sections": ("schema", "service", "standalone"),
+        "required_sections": ("schema", "service", "standalone", "pim_control"),
         "side_effects": (),
     }
 

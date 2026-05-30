@@ -5,6 +5,7 @@ from __future__ import annotations
 from .runtime import ENTERPRISE_PIM_OWNED_TABLES
 from .runtime import ENTERPRISE_PIM_REQUIRED_EVENT_TOPIC
 from .runtime import enterprise_pim_permissions_contract
+from .pim_control import improve1_pim_control_contract
 
 
 ENTERPRISE_PIM_UI_FRAGMENT_KEYS = (
@@ -153,6 +154,10 @@ def enterprise_pim_ui_contract() -> dict:
             "outbox_status": "visible",
             "dead_letter_status": "visible",
         },
+        "pim_control_contract": improve1_pim_control_contract(),
+        "full_capability_surface": {
+            "pim_control_panels": tuple(item["evidence"]["ui_surface"] for item in improve1_pim_control_contract()["capabilities"]),
+        },
         "binding_evidence": {
             "owned_tables": ENTERPRISE_PIM_OWNED_TABLES,
             "outbox_table": "enterprise_pim_appgen_outbox_event",
@@ -203,6 +208,10 @@ def enterprise_pim_render_workbench(
         "parameters_bound": tuple(sorted(state["parameters"])),
         "dependency_schemas_bound": tuple(sorted(state["dependency_schemas"])),
         "event_outbox_count": len(state["outbox"]),
+        "pim_control_contract": improve1_pim_control_contract(),
+        "full_capability_surface": {
+            "pim_control_panels": tuple(item["evidence"]["ui_surface"] for item in improve1_pim_control_contract()["capabilities"]),
+        },
         "binding_evidence": {
             "owned_tables": ENTERPRISE_PIM_OWNED_TABLES,
             "outbox_table": "enterprise_pim_appgen_outbox_event",

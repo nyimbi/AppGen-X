@@ -26,3 +26,7 @@
 ## Remaining Gaps
 
 - Existing `tests/test_contract.py` remains pytest-style, but `pytest` is not installed in this environment, so focused unittest verification was used instead.
+
+## 2026-05-30 improve1 PIM-Control Execution Slice
+
+Added package-local `pim_control.py` as executable improve1 proof for all 50 Enterprise PIM backlog features: taxonomy readiness, node lifecycle, relationship integrity, classification workflow, taxonomy publication simulation, attribute/group/option/inheritance/validation governance, quality signals, localized content lifecycle and versions, translation memory, locale fallback, completeness, validation and approvals, publication readiness and channel policy, dependency schemas/projections across media, price, tax, inventory, search, catalog and commerce boundaries, product relationships, bundles, variants, assortments, stewardship, exceptions, autonomous enrichment, semantic instruction parsing, AppGen-X inbox/outbox reliability, cross-PBC boundary proof, master-data proofs, immutable audit, policy screening, taxonomy optimization, workflow allocation, anomaly detection, readiness forecasting, model governance, carbon-aware enrichment, workbench/cockpit coverage, continuous controls, readiness scoring, and end-to-end publication proof. Runtime, UI, and release evidence now expose this control contract, and `tests/test_domain_behavior.py` verifies full positive coverage plus taxonomy, dependency, publication, agent, boundary, localization, control, readiness, and end-to-end guardrails.

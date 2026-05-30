@@ -7,6 +7,8 @@ import json
 import math
 import re
 
+from .pim_control import PIM_CONTROL_CAPABILITIES, improve1_pim_control_contract
+
 
 ENTERPRISE_PIM_REQUIRED_EVENT_TOPIC = "appgen.enterprise-pim.events"
 ENTERPRISE_PIM_ALLOWED_DATABASE_BACKENDS = ("postgresql", "mysql", "mariadb")
@@ -302,7 +304,9 @@ def enterprise_pim_runtime_capabilities() -> dict:
             "permissions_contract",
             "build_workbench_view",
             "verify_owned_table_boundary",
+            "improve1_pim_control_contract",
         ),
+        "improve1_pim_control_capabilities": tuple(capability.slug for capability in PIM_CONTROL_CAPABILITIES),
         "smoke": smoke,
     }
 
@@ -606,6 +610,7 @@ def enterprise_pim_runtime_smoke() -> dict:
     schema = enterprise_pim_build_schema_contract()
     service = enterprise_pim_build_service_contract()
     release = enterprise_pim_build_release_evidence()
+    pim_control = improve1_pim_control_contract()
     federation = enterprise_pim_federate_master_data_view(state, "tax_100", systems=("catalog", "media", "pricing", "tax", "inventory"))
     resilience = enterprise_pim_run_resilience_drill(state, "dependency_timeout")
     crypto = enterprise_pim_rotate_crypto_epoch(state, "dilithium3_simulated")
@@ -653,9 +658,10 @@ def enterprise_pim_runtime_smoke() -> dict:
         {"id": "pim_anomaly_detection", "ok": anomaly["ok"] and anomaly["entropy"] >= 0},
         {"id": "stochastic_enrichment_exposure_modeling", "ok": stochastic["ok"] and stochastic["tail_risk"] > 0},
         {"id": "governed_ml_model_evidence", "ok": model["governance"]["regulated"] and model["metadata"]["auc"] >= 0.9},
+        {"id": "improve1_pim_control_contract", "ok": pim_control["ok"]},
     )
     blocking_gaps = tuple(check for check in checks if not check["ok"])
-    return {"format": "appgen.enterprise-pim-runtime-smoke.v1", "ok": not blocking_gaps, "checks": checks, "blocking_gaps": blocking_gaps}
+    return {"format": "appgen.enterprise-pim-runtime-smoke.v1", "ok": not blocking_gaps, "checks": checks, "checks_by_id": {check["id"]: check["ok"] for check in checks}, "pim_control": pim_control, "blocking_gaps": blocking_gaps}
 
 
 def enterprise_pim_empty_state() -> dict:
@@ -1388,6 +1394,7 @@ def enterprise_pim_build_service_contract() -> dict:
 
 
 def enterprise_pim_build_release_evidence() -> dict:
+    pim_control = improve1_pim_control_contract()
     schema = enterprise_pim_build_schema_contract()
     service = enterprise_pim_build_service_contract()
     api = enterprise_pim_build_api_contract()
@@ -1402,6 +1409,7 @@ def enterprise_pim_build_release_evidence() -> dict:
         {"id": "backend_allowlist", "ok": schema["datastore_backends"] == ENTERPRISE_PIM_ALLOWED_DATABASE_BACKENDS and api["database_backends"] == ENTERPRISE_PIM_ALLOWED_DATABASE_BACKENDS},
         {"id": "no_shared_table_access", "ok": schema["shared_table_access"] is False and api["shared_table_access"] is False and service["external_dependencies"]["shared_tables"] == ()},
         {"id": "ui_workbench_evidence", "ok": ui["ok"] and "PimConfigurationPanel" in ui["fragments"] and ui["stream_engine_picker_visible"] is False},
+        {"id": "pim_improve1_control_contract", "ok": pim_control["ok"]},
     )
     blocking_gaps = tuple(check for check in checks if not check["ok"])
     return {
@@ -1414,6 +1422,7 @@ def enterprise_pim_build_release_evidence() -> dict:
         "service": service,
         "api": api,
         "permissions": permissions,
+        "pim_control": pim_control,
     }
 
 
