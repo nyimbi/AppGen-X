@@ -3925,8 +3925,32 @@ def test_tooling_implementation_phase_audit_maps_phase_exit_criteria_to_evidence
             "safe_alternative_line_count": 2,
         },
         nl_plan={"ok": True, "format": "appgen.nl-plan.v1", "dsl_patch": "--- before\n+++ after"},
-        nl_plan_contract=ok("appgen.nl-plan-contract-audit.v1"),
-        nl_plan_cli=ok("appgen.nl-plan-cli-audit.v1"),
+        nl_plan_contract={
+            **ok("appgen.nl-plan-contract-audit.v1"),
+            "case_count": 14,
+            "passing_case_count": 14,
+            "accepted_case_count": 13,
+            "rejected_case_count": 1,
+            "required_operation_count": 13,
+            "observed_operation_kind_count": 13,
+            "token_budget_case_count": 14,
+            "blocking_gaps": (),
+        },
+        nl_plan_cli={
+            **ok("appgen.nl-plan-cli-audit.v1"),
+            "accepted_case_count": 13,
+            "accepted_passing_case_count": 13,
+            "accepted_operation_kind_count": 13,
+            "accepted_patch_bytes": 100,
+            "accepted_test_count": 13,
+            "accepted_token_budget_notes": 13,
+            "accepted_text_has_report_format": True,
+            "accepted_text_has_lint_format": True,
+            "accepted_text_has_migration_format": True,
+            "accepted_text_has_token_notes": True,
+            "rejected_diagnostic_codes": ("AGX1201",),
+            "blocking_cases": (),
+        },
         release=ok("appgen.release-verifier-report.v1"),
         package=ok("appgen.release-verifier-report.v1"),
         package_verify_cli={
@@ -3980,6 +4004,8 @@ def test_tooling_implementation_phase_audit_maps_phase_exit_criteria_to_evidence
         "studio_semantic_bridge",
         "frontend_browser_smoke_bridges",
         "migration_safety_text_contracts",
+        "natural_language_operation_contracts",
+        "natural_language_cli_agent_contracts",
         "release_and_package_verifiers",
         "package_manifest_handoff_contracts",
         "release_text_evidence_contracts",
@@ -4801,6 +4827,42 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert nl_check["detail"]["cli"]["accepted_test_count"] > 0
     assert nl_check["detail"]["cli"]["accepted_token_budget_notes"] > 0
     assert "AGX1201" in nl_check["detail"]["cli"]["rejected_diagnostic_codes"]
+    nl_operation_check = next(check for check in report["checks"] if check["id"] == "natural_language_operation_contracts")
+    assert nl_operation_check["detail"]["format"] == "appgen.nl-plan-contract-audit.v1"
+    assert nl_operation_check["detail"]["passing_case_count"] == nl_operation_check["detail"]["case_count"]
+    assert nl_operation_check["detail"]["accepted_case_count"] == nl_operation_check["detail"]["required_operation_count"]
+    assert nl_operation_check["detail"]["accepted_case_count"] == len(
+        nl_operation_check["detail"]["required_edit_operations"]
+    )
+    assert nl_operation_check["detail"]["rejected_case_count"] == 1
+    assert nl_operation_check["detail"]["observed_operation_kind_count"] >= (
+        nl_operation_check["detail"]["required_operation_count"]
+    )
+    assert nl_operation_check["detail"]["token_budget_case_count"] == nl_operation_check["detail"]["case_count"]
+    assert nl_operation_check["detail"]["blocking_gaps"] == ()
+    nl_cli_agent_check = next(check for check in report["checks"] if check["id"] == "natural_language_cli_agent_contracts")
+    assert nl_cli_agent_check["detail"]["format"] == "appgen.nl-plan-cli-audit.v1"
+    assert nl_cli_agent_check["detail"]["accepted_case_count"] == nl_operation_check["detail"]["required_operation_count"]
+    assert nl_cli_agent_check["detail"]["accepted_passing_case_count"] == (
+        nl_cli_agent_check["detail"]["accepted_case_count"]
+    )
+    assert nl_cli_agent_check["detail"]["accepted_operation_kind_count"] >= (
+        nl_operation_check["detail"]["required_operation_count"]
+    )
+    assert nl_cli_agent_check["detail"]["accepted_patch_bytes"] > 0
+    assert nl_cli_agent_check["detail"]["accepted_test_count"] >= nl_cli_agent_check["detail"]["accepted_case_count"]
+    assert nl_cli_agent_check["detail"]["accepted_token_budget_notes"] >= (
+        nl_cli_agent_check["detail"]["accepted_case_count"]
+    )
+    assert nl_cli_agent_check["detail"]["migration_format"] == "appgen.migration-plan.v1"
+    assert nl_cli_agent_check["detail"]["accepted_text_has_report_format"] is True
+    assert nl_cli_agent_check["detail"]["accepted_text_has_lint_format"] is True
+    assert nl_cli_agent_check["detail"]["accepted_text_has_migration_format"] is True
+    assert nl_cli_agent_check["detail"]["accepted_text_test_plan_line_count"] > 0
+    assert nl_cli_agent_check["detail"]["accepted_text_has_token_notes"] is True
+    assert nl_cli_agent_check["detail"]["accepted_text_token_note_line_count"] > 0
+    assert "AGX1201" in nl_cli_agent_check["detail"]["rejected_diagnostic_codes"]
+    assert nl_cli_agent_check["detail"]["blocking_cases"] == ()
     assert all(check["section"].startswith("docs/tooling.md#") for check in report["checks"])
     assert cli_json.returncode == 0, cli_json.stderr
     assert json.loads(cli_json.stdout)["format"] == "appgen.tooling-audit.v1"

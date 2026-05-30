@@ -4986,6 +4986,86 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             },
         ),
         _tooling_audit_check(
+            "natural_language_operation_contracts",
+            nl_plan_contract["ok"]
+            and nl_plan_contract.get("passing_case_count") == nl_plan_contract.get("case_count")
+            and nl_plan_contract.get("accepted_case_count") == nl_plan_contract.get("required_operation_count")
+            and nl_plan_contract.get("accepted_case_count") == len(nl_plan_contract.get("required_edit_operations", ()))
+            and nl_plan_contract.get("rejected_case_count") >= 1
+            and nl_plan_contract.get("observed_operation_kind_count", 0)
+            >= nl_plan_contract.get("required_operation_count", 0)
+            and nl_plan_contract.get("token_budget_case_count") == nl_plan_contract.get("case_count")
+            and not nl_plan_contract.get("blocking_gaps")
+            and all(
+                case.get("accepted") is False
+                or (
+                    case.get("patch_bytes", 0) > 0
+                    and case.get("lint_ok") is True
+                    and case.get("migration_format") == "appgen.migration-plan.v1"
+                    and case.get("test_count", 0) > 0
+                    and case.get("token_budget_note_count", 0) > 0
+                )
+                for case in nl_plan_contract.get("cases", ())
+            ),
+            "Natural-language operation contracts prove every documented edit operation maps to bounded DSL patches with lint, migration, tests, token notes, and rejection diagnostics.",
+            "docs/tooling.md#natural-language-change-planner",
+            {
+                "format": nl_plan_contract.get("format"),
+                "case_count": nl_plan_contract.get("case_count"),
+                "passing_case_count": nl_plan_contract.get("passing_case_count"),
+                "accepted_case_count": nl_plan_contract.get("accepted_case_count"),
+                "rejected_case_count": nl_plan_contract.get("rejected_case_count"),
+                "required_operation_count": nl_plan_contract.get("required_operation_count"),
+                "observed_operation_kind_count": nl_plan_contract.get("observed_operation_kind_count"),
+                "token_budget_case_count": nl_plan_contract.get("token_budget_case_count"),
+                "required_edit_operations": nl_plan_contract.get("required_edit_operations"),
+                "blocking_gaps": nl_plan_contract.get("blocking_gaps"),
+            },
+        ),
+        _tooling_audit_check(
+            "natural_language_cli_agent_contracts",
+            nl_plan_cli["ok"]
+            and nl_plan_cli.get("accepted_case_count") == nl_plan_contract.get("required_operation_count")
+            and nl_plan_cli.get("accepted_passing_case_count") == nl_plan_cli.get("accepted_case_count")
+            and nl_plan_cli.get("accepted_operation_kind_count", 0) >= nl_plan_contract.get("required_operation_count", 0)
+            and nl_plan_cli.get("accepted_patch_bytes", 0) > 0
+            and nl_plan_cli.get("accepted_test_count", 0) >= nl_plan_cli.get("accepted_case_count", 0)
+            and nl_plan_cli.get("accepted_token_budget_notes", 0) >= nl_plan_cli.get("accepted_case_count", 0)
+            and nl_plan_cli.get("migration_format") == "appgen.migration-plan.v1"
+            and nl_plan_cli.get("accepted_text_has_report_format") is True
+            and nl_plan_cli.get("accepted_text_has_lint_format") is True
+            and nl_plan_cli.get("accepted_text_has_migration_format") is True
+            and bool(nl_plan_cli.get("accepted_text_test_plan_lines"))
+            and nl_plan_cli.get("accepted_text_has_token_notes") is True
+            and bool(nl_plan_cli.get("accepted_text_token_note_lines"))
+            and "AGX1201" in nl_plan_cli.get("rejected_diagnostic_codes", ())
+            and not nl_plan_cli.get("blocking_cases"),
+            "Natural-language CLI and agent contracts prove JSON and text handoffs expose patch, lint, migration, tests, token notes, and bounded rejection evidence.",
+            "docs/tooling.md#natural-language-change-planner",
+            {
+                "format": nl_plan_cli.get("format"),
+                "case_count": nl_plan_cli.get("case_count"),
+                "accepted_case_count": nl_plan_cli.get("accepted_case_count"),
+                "accepted_passing_case_count": nl_plan_cli.get("accepted_passing_case_count"),
+                "rejected_case_count": nl_plan_cli.get("rejected_case_count"),
+                "text_case_count": nl_plan_cli.get("text_case_count"),
+                "accepted_operation_kind_count": nl_plan_cli.get("accepted_operation_kind_count"),
+                "accepted_patch_bytes": nl_plan_cli.get("accepted_patch_bytes"),
+                "accepted_test_count": nl_plan_cli.get("accepted_test_count"),
+                "accepted_token_budget_notes": nl_plan_cli.get("accepted_token_budget_notes"),
+                "migration_format": nl_plan_cli.get("migration_format"),
+                "accepted_text_prefix": nl_plan_cli.get("accepted_text_prefix"),
+                "accepted_text_has_report_format": nl_plan_cli.get("accepted_text_has_report_format"),
+                "accepted_text_has_lint_format": nl_plan_cli.get("accepted_text_has_lint_format"),
+                "accepted_text_has_migration_format": nl_plan_cli.get("accepted_text_has_migration_format"),
+                "accepted_text_test_plan_line_count": len(nl_plan_cli.get("accepted_text_test_plan_lines", ())),
+                "accepted_text_has_token_notes": nl_plan_cli.get("accepted_text_has_token_notes"),
+                "accepted_text_token_note_line_count": len(nl_plan_cli.get("accepted_text_token_note_lines", ())),
+                "rejected_diagnostic_codes": nl_plan_cli.get("rejected_diagnostic_codes"),
+                "blocking_cases": nl_plan_cli.get("blocking_cases"),
+            },
+        ),
+        _tooling_audit_check(
             "package_and_release_verifiers",
             release["ok"]
             and package["ok"]
@@ -5850,6 +5930,43 @@ def _tooling_audit_implementation_phases(**evidence: dict) -> dict:
                         evidence["nl_plan_contract"].get("format"),
                         evidence["nl_plan_cli"].get("format"),
                     ),
+                },
+                {
+                    "id": "natural_language_operation_contracts",
+                    "ok": evidence["nl_plan_contract"].get("ok") is True
+                    and evidence["nl_plan_contract"].get("passing_case_count")
+                    == evidence["nl_plan_contract"].get("case_count")
+                    and evidence["nl_plan_contract"].get("accepted_case_count")
+                    == evidence["nl_plan_contract"].get("required_operation_count")
+                    and evidence["nl_plan_contract"].get("rejected_case_count", 0) >= 1
+                    and evidence["nl_plan_contract"].get("observed_operation_kind_count", 0)
+                    >= evidence["nl_plan_contract"].get("required_operation_count", 0)
+                    and evidence["nl_plan_contract"].get("token_budget_case_count")
+                    == evidence["nl_plan_contract"].get("case_count")
+                    and not evidence["nl_plan_contract"].get("blocking_gaps"),
+                    "evidence_format": evidence["nl_plan_contract"].get("format"),
+                },
+                {
+                    "id": "natural_language_cli_agent_contracts",
+                    "ok": evidence["nl_plan_cli"].get("ok") is True
+                    and evidence["nl_plan_cli"].get("accepted_case_count")
+                    == evidence["nl_plan_contract"].get("required_operation_count")
+                    and evidence["nl_plan_cli"].get("accepted_passing_case_count")
+                    == evidence["nl_plan_cli"].get("accepted_case_count")
+                    and evidence["nl_plan_cli"].get("accepted_operation_kind_count", 0)
+                    >= evidence["nl_plan_contract"].get("required_operation_count", 0)
+                    and evidence["nl_plan_cli"].get("accepted_patch_bytes", 0) > 0
+                    and evidence["nl_plan_cli"].get("accepted_test_count", 0)
+                    >= evidence["nl_plan_cli"].get("accepted_case_count", 0)
+                    and evidence["nl_plan_cli"].get("accepted_token_budget_notes", 0)
+                    >= evidence["nl_plan_cli"].get("accepted_case_count", 0)
+                    and evidence["nl_plan_cli"].get("accepted_text_has_report_format") is True
+                    and evidence["nl_plan_cli"].get("accepted_text_has_lint_format") is True
+                    and evidence["nl_plan_cli"].get("accepted_text_has_migration_format") is True
+                    and evidence["nl_plan_cli"].get("accepted_text_has_token_notes") is True
+                    and "AGX1201" in evidence["nl_plan_cli"].get("rejected_diagnostic_codes", ())
+                    and not evidence["nl_plan_cli"].get("blocking_cases"),
+                    "evidence_format": evidence["nl_plan_cli"].get("format"),
                 },
                 {
                     "id": "release_and_package_verifiers",

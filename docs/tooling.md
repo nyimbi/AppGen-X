@@ -1633,6 +1633,12 @@ rejected with `AGX1201` instead of generating code. The contract audit reports
 case, passing-case, accepted-case, rejected-case, required-operation,
 observed-operation-kind, and token-budget-case counts so the natural-language
 development vector stays measurable before the CLI layer is involved.
+The aggregate tooling audit exposes this proof independently as
+`natural_language_operation_contracts`. That gate fails when any documented
+operation cannot be represented as DSL, accepted requests omit patch, lint,
+migration, test, or token-budget evidence, unsupported requests stop emitting
+`AGX1201`, or the observed operation family no longer covers the documented
+surface.
 The CLI proof mirrors the same operation family through
 `appgen.nl-plan-cli-audit.v1`: each supported edit operation is exercised
 through `appgen nl-plan --json`, then checked for the expected operation kind,
@@ -1645,6 +1651,13 @@ format markers, PostgreSQL backend marker, generated test-plan entries as
 accepted, accepted-passing, rejected, text-case, and accepted-operation-kind
 counts so token-efficient agent workflows can verify breadth without expanding
 every generated patch.
+The aggregate tooling audit exposes this proof independently as
+`natural_language_cli_agent_contracts`. That gate fails when JSON output stops
+carrying bounded DSL patches, accepted text output hides report, lint,
+migration, test-plan, or token-budget markers, rejected prompts stop returning
+`AGX1201`, or blocking cases appear. This is the release gate for Claude Code,
+OpenAI Codex, OpenCode, Ollama, vLLM, and small local models using natural
+language as a first-class development vector.
 
 The test-strategy CLI audit reports case, passing-case, required-surface,
 observed-surface, and doctor-check counts across diagnostics, parser golden,
