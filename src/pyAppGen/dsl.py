@@ -6409,11 +6409,19 @@ def _tooling_audit_missing_input_exit(tmp: Path) -> dict:
                 "stdout_empty": stdout_empty,
             }
         )
+    failing_cases = tuple(result["name"] for result in results if not result["ok"])
+    case_ids = tuple(result["name"] for result in results)
+    command_families = tuple(dict.fromkeys(str(argv[0]) for _, argv in cases))
     return {
         "format": "appgen.missing-input-exit-audit.v1",
-        "ok": all(result["ok"] for result in results),
+        "ok": not failing_cases,
         "case_count": len(results),
         "passing_case_count": sum(1 for result in results if result["ok"]),
+        "failing_case_count": len(failing_cases),
+        "case_ids": case_ids,
+        "failing_cases": failing_cases,
+        "command_family_count": len(command_families),
+        "command_families": command_families,
         "missing_path_message_count": sum(1 for result in results if "path does not exist" in result["stderr"]),
         "stdout_empty_count": sum(1 for result in results if result["stdout_empty"]),
         "traceback_free_count": sum(1 for result in results if "Traceback" not in result["stderr"]),
@@ -6451,12 +6459,18 @@ def _tooling_audit_missing_required_option_exit(tmp: Path) -> dict:
                 "stdout": output.getvalue().strip(),
             }
         )
+    failing_cases = tuple(result["name"] for result in results if not result["ok"])
+    case_ids = tuple(result["name"] for result in results)
     return {
         "format": "appgen.missing-required-option-exit-audit.v1",
-        "ok": all(result["ok"] for result in results),
+        "ok": not failing_cases,
         "case_count": len(results),
         "passing_case_count": sum(1 for result in results if result["ok"]),
+        "failing_case_count": len(failing_cases),
+        "case_ids": case_ids,
+        "failing_cases": failing_cases,
         "expected_message_count": sum(1 for result in results if result["expected_message"] in result["stderr"]),
+        "stdout_empty_count": sum(1 for result in results if not result["stdout"]),
         "traceback_free_count": sum(1 for result in results if "Traceback" not in result["stderr"]),
         "cases": tuple(results),
     }
@@ -6495,12 +6509,18 @@ def _tooling_audit_invalid_choice_exit(tmp: Path) -> dict:
                 "stdout": output.getvalue().strip(),
             }
         )
+    failing_cases = tuple(result["name"] for result in results if not result["ok"])
+    case_ids = tuple(result["name"] for result in results)
     return {
         "format": "appgen.invalid-choice-exit-audit.v1",
-        "ok": all(result["ok"] for result in results),
+        "ok": not failing_cases,
         "case_count": len(results),
         "passing_case_count": sum(1 for result in results if result["ok"]),
+        "failing_case_count": len(failing_cases),
+        "case_ids": case_ids,
+        "failing_cases": failing_cases,
         "invalid_choice_message_count": sum(1 for result in results if "invalid choice" in result["stderr"]),
+        "stdout_empty_count": sum(1 for result in results if not result["stdout"]),
         "traceback_free_count": sum(1 for result in results if "Traceback" not in result["stderr"]),
         "cases": tuple(results),
     }

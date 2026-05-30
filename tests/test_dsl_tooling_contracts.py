@@ -4270,6 +4270,12 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert cli_check["detail"]["missing_input_exit"]["passing_case_count"] == (
         cli_check["detail"]["missing_input_exit"]["case_count"]
     )
+    assert cli_check["detail"]["missing_input_exit"]["failing_case_count"] == 0
+    assert cli_check["detail"]["missing_input_exit"]["failing_cases"] == ()
+    assert cli_check["detail"]["missing_input_exit"]["case_ids"] == tuple(
+        case["name"] for case in cli_check["detail"]["missing_input_exit"]["cases"]
+    )
+    assert cli_check["detail"]["missing_input_exit"]["command_family_count"] >= 15
     assert cli_check["detail"]["missing_input_exit"]["missing_path_message_count"] == (
         cli_check["detail"]["missing_input_exit"]["case_count"]
     )
@@ -4289,7 +4295,15 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert cli_check["detail"]["missing_required_option_exit"]["passing_case_count"] == (
         cli_check["detail"]["missing_required_option_exit"]["case_count"]
     )
+    assert cli_check["detail"]["missing_required_option_exit"]["failing_case_count"] == 0
+    assert cli_check["detail"]["missing_required_option_exit"]["failing_cases"] == ()
+    assert cli_check["detail"]["missing_required_option_exit"]["case_ids"] == tuple(
+        case["name"] for case in cli_check["detail"]["missing_required_option_exit"]["cases"]
+    )
     assert cli_check["detail"]["missing_required_option_exit"]["expected_message_count"] == (
+        cli_check["detail"]["missing_required_option_exit"]["case_count"]
+    )
+    assert cli_check["detail"]["missing_required_option_exit"]["stdout_empty_count"] == (
         cli_check["detail"]["missing_required_option_exit"]["case_count"]
     )
     assert cli_check["detail"]["missing_required_option_exit"]["traceback_free_count"] == (
@@ -4316,7 +4330,15 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert cli_check["detail"]["invalid_choice_exit"]["passing_case_count"] == (
         cli_check["detail"]["invalid_choice_exit"]["case_count"]
     )
+    assert cli_check["detail"]["invalid_choice_exit"]["failing_case_count"] == 0
+    assert cli_check["detail"]["invalid_choice_exit"]["failing_cases"] == ()
+    assert cli_check["detail"]["invalid_choice_exit"]["case_ids"] == tuple(
+        case["name"] for case in cli_check["detail"]["invalid_choice_exit"]["cases"]
+    )
     assert cli_check["detail"]["invalid_choice_exit"]["invalid_choice_message_count"] == (
+        cli_check["detail"]["invalid_choice_exit"]["case_count"]
+    )
+    assert cli_check["detail"]["invalid_choice_exit"]["stdout_empty_count"] == (
         cli_check["detail"]["invalid_choice_exit"]["case_count"]
     )
     assert cli_check["detail"]["invalid_choice_exit"]["traceback_free_count"] == (
@@ -5275,6 +5297,26 @@ def test_missing_input_audit_covers_file_based_commands(tmp_path: Path) -> None:
     assert audit["ok"] is True
     assert audit["case_count"] == len(audit["cases"])
     assert audit["passing_case_count"] == audit["case_count"]
+    assert audit["failing_case_count"] == 0
+    assert audit["case_ids"] == tuple(case["name"] for case in audit["cases"])
+    assert audit["failing_cases"] == ()
+    assert audit["command_family_count"] == len(audit["command_families"])
+    assert {
+        "lint",
+        "format",
+        "validate",
+        "graph",
+        "graph-suite",
+        "explain",
+        "generate",
+        "migration-plan",
+        "nl-plan",
+        "lsp",
+        "verify",
+        "package",
+        "designer-sync",
+        "drift",
+    } <= set(audit["command_families"])
     assert audit["missing_path_message_count"] == audit["case_count"]
     assert audit["stdout_empty_count"] == audit["case_count"]
     assert audit["traceback_free_count"] == audit["case_count"]
@@ -5435,7 +5477,11 @@ def test_invalid_choice_audit_covers_graph_formats_and_backend_choices(tmp_path:
     assert audit["ok"] is True
     assert audit["case_count"] == len(audit["cases"])
     assert audit["passing_case_count"] == audit["case_count"]
+    assert audit["failing_case_count"] == 0
+    assert audit["case_ids"] == tuple(case["name"] for case in audit["cases"])
+    assert audit["failing_cases"] == ()
     assert audit["invalid_choice_message_count"] == audit["case_count"]
+    assert audit["stdout_empty_count"] == audit["case_count"]
     assert audit["traceback_free_count"] == audit["case_count"]
     assert {
         "lint_backend",
@@ -5460,7 +5506,11 @@ def test_missing_required_option_audit_covers_required_cli_options(tmp_path: Pat
     assert audit["ok"] is True
     assert audit["case_count"] == len(audit["cases"])
     assert audit["passing_case_count"] == audit["case_count"]
+    assert audit["failing_case_count"] == 0
+    assert audit["case_ids"] == tuple(case["name"] for case in audit["cases"])
+    assert audit["failing_cases"] == ()
     assert audit["expected_message_count"] == audit["case_count"]
+    assert audit["stdout_empty_count"] == audit["case_count"]
     assert audit["traceback_free_count"] == audit["case_count"]
     assert {
         "generate_missing_out",

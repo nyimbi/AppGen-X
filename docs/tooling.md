@@ -597,9 +597,11 @@ publication names, plus the required `appgen explain` selector family
 `appgen.missing-input-exit-audit.v1`, `appgen.invalid-choice-exit-audit.v1`,
 and `appgen.internal-error-exit-audit.v1` cover file-not-found, unsupported
 choice, and controlled internal-error paths. These audits report case or mode
-counts, passing counts, expected-message counts, stdout-empty counts where
-required, and traceback-free counts so release evidence proves failure behavior
-across the CLI surface instead of only recording exit codes.
+counts, passing counts, failing-case counts, exact case ids, failing-case ids,
+expected-message counts, stdout-empty counts where required, command-family
+coverage for missing inputs, and traceback-free counts so release evidence
+proves failure behavior across the CLI surface instead of only recording exit
+codes.
 
 ### `appgen lint`
 
