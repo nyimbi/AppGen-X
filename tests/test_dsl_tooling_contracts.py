@@ -3850,9 +3850,30 @@ def test_tooling_implementation_phase_audit_maps_phase_exit_criteria_to_evidence
         graph_cli=ok("appgen.graph-cli-audit.v1"),
         graph_suite_cli=ok("appgen.graph-suite-cli-audit.v1"),
         explain_cli=ok("appgen.explain-cli-audit.v1"),
-        lsp=ok("appgen.lsp-service.v1"),
-        lsp_rpc=ok("appgen.lsp-json-rpc-audit.v1"),
-        lsp_stdio=ok("appgen.lsp-stdio-transport-audit.v1"),
+        lsp={
+            **ok("appgen.lsp-service.v1"),
+            "completionCoverage": {
+                "format": "appgen.completion-coverage.v1",
+                "missing": (),
+                "missing_source_count": 0,
+            },
+        },
+        lsp_rpc={
+            **ok("appgen.lsp-json-rpc-audit.v1"),
+            "provider_count": 9,
+            "enabled_provider_count": 9,
+            "request_check_count": 8,
+            "passing_request_check_count": 8,
+        },
+        lsp_stdio={
+            **ok("appgen.lsp-stdio-transport-audit.v1"),
+            "missing_response_ids": (),
+        },
+        lsp_text_renderer={
+            **ok("appgen.lsp-service-text-renderer.v1"),
+            "navigation_line_count": 2,
+            "completion_line_count": 2,
+        },
         lsp_rename_cli=ok("appgen.lsp-rename-cli-audit.v1"),
         quick_fix=ok("appgen.lsp-code-action-apply.v1"),
         code_action_apply_audit=ok("appgen.lsp-code-action-apply-audit.v1"),
@@ -3923,6 +3944,8 @@ def test_tooling_implementation_phase_audit_maps_phase_exit_criteria_to_evidence
         "formatter_idempotency",
         "cli_usage_failure_modes",
         "graph_json_mermaid_and_dot",
+        "lsp_transport_rpc_contracts",
+        "lsp_navigation_completion_contracts",
         "rename_and_code_actions",
         "studio_semantic_bridge",
         "frontend_browser_smoke_bridges",
@@ -4040,6 +4063,8 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
         "dsl_language_cli_contracts",
         "implementation_phase_exit_criteria",
         "language_server_core_features",
+        "lsp_transport_rpc_contracts",
+        "lsp_navigation_completion_contracts",
         "ide_visual_designer_round_trip",
         "vscode_extension_surface",
         "studio_semantic_service",
@@ -4230,6 +4255,34 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
         "code_action_request",
         "formatting_request",
     } <= {check["check"] for check in lsp_check["detail"]["rpc"]["checks"]}
+    lsp_transport_check = next(check for check in report["checks"] if check["id"] == "lsp_transport_rpc_contracts")
+    assert lsp_transport_check["detail"]["rpc"]["format"] == "appgen.lsp-json-rpc-audit.v1"
+    assert lsp_transport_check["detail"]["rpc"]["provider_count"] == 9
+    assert lsp_transport_check["detail"]["rpc"]["enabled_provider_count"] == 9
+    assert lsp_transport_check["detail"]["rpc"]["request_check_count"] == 8
+    assert lsp_transport_check["detail"]["rpc"]["passing_request_check_count"] == 8
+    assert lsp_transport_check["detail"]["rpc"]["blocking_gap_count"] == 0
+    assert lsp_transport_check["detail"]["stdio"]["format"] == "appgen.lsp-stdio-transport-audit.v1"
+    assert lsp_transport_check["detail"]["stdio"]["request_message_count"] == 4
+    assert lsp_transport_check["detail"]["stdio"]["missing_response_ids"] == ()
+    assert lsp_transport_check["detail"]["stdio"]["completion_response_count"] == 1
+    assert lsp_transport_check["detail"]["stdio"]["workspace_symbol_response_count"] == 1
+    assert lsp_transport_check["detail"]["stdio"]["shutdown_response_count"] == 1
+    lsp_navigation_check = next(check for check in report["checks"] if check["id"] == "lsp_navigation_completion_contracts")
+    assert lsp_navigation_check["detail"]["completion_coverage"]["format"] == "appgen.completion-coverage.v1"
+    assert lsp_navigation_check["detail"]["completion_coverage"]["missing_source_count"] == 0
+    assert lsp_navigation_check["detail"]["completion_coverage"]["required_source_count"] == (
+        lsp_navigation_check["detail"]["completion_coverage"]["detected_source_count"]
+    )
+    assert lsp_navigation_check["detail"]["symbol_coverage"]["format"] == "appgen.lsp-symbol-coverage.v1"
+    assert lsp_navigation_check["detail"]["symbol_coverage"]["document_missing_kind_count"] == 0
+    assert lsp_navigation_check["detail"]["symbol_coverage"]["workspace_missing_kind_count"] == 0
+    assert lsp_navigation_check["detail"]["text_renderer"]["format"] == "appgen.lsp-service-text-renderer.v1"
+    assert lsp_navigation_check["detail"]["text_renderer"]["completion_line_count"] >= 1
+    assert lsp_navigation_check["detail"]["text_renderer"]["navigation_line_count"] >= 1
+    assert lsp_navigation_check["detail"]["text_renderer"]["formatting_line_count"] >= 1
+    assert lsp_navigation_check["detail"]["text_renderer"]["hover_line_count"] >= 1
+    assert lsp_navigation_check["detail"]["text_renderer"]["json_fallback"] is False
     quick_fix_check = next(check for check in report["checks"] if check["id"] == "lsp_quick_fix_application")
     assert quick_fix_check["detail"]["cli"]["format"] == "appgen.lsp-code-action-cli-audit.v1"
     assert quick_fix_check["detail"]["cli"]["ok"] is True

@@ -1160,6 +1160,13 @@ and workspace-symbol LSP surfaces, so editor navigation cannot silently lag
 behind the semantic model.
 The renderer contract reports fragment and marker counts for service, coverage,
 navigation, formatting, rename, blocker, and hover lines.
+The aggregate tooling audit exposes two narrower language-server gates in
+addition to `language_server_core_features`. `lsp_transport_rpc_contracts`
+proves JSON-RPC provider breadth and stdio `Content-Length` framing, including
+diagnostics publication, completion, workspace-symbol, and shutdown responses.
+`lsp_navigation_completion_contracts` proves completion coverage, LSP symbol
+coverage, navigation, formatting, hover, and text-summary evidence remain
+complete and reviewable.
 Rename text output includes the `appgen.lsp-rename.v1` contract format, whether
 the rename was blocked, blocker count, the nested `appgen.migration-plan.v1`
 migration-preview as `migration_format=...`, and whether that migration preview

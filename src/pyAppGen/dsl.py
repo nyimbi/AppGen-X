@@ -4388,6 +4388,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
         lsp=lsp,
         lsp_rpc=lsp_rpc,
         lsp_stdio=lsp_stdio,
+        lsp_text_renderer=lsp_text_renderer,
         lsp_rename_cli=lsp_rename_cli,
         quick_fix=quick_fix,
         code_action_apply_audit=code_action_apply_audit,
@@ -4645,6 +4646,92 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                 "rpc": lsp_rpc,
                 "stdio": lsp_stdio,
                 "rename_cli": lsp_rename_cli,
+            },
+        ),
+        _tooling_audit_check(
+            "lsp_transport_rpc_contracts",
+            lsp_rpc["ok"]
+            and lsp_rpc.get("provider_count") == lsp_rpc.get("enabled_provider_count")
+            and lsp_rpc.get("provider_count", 0) >= 9
+            and lsp_rpc.get("request_check_count") == lsp_rpc.get("passing_request_check_count")
+            and lsp_rpc.get("request_check_count", 0) >= 8
+            and lsp_rpc.get("blocking_gap_count") == 0
+            and lsp_stdio["ok"]
+            and lsp_stdio.get("missing_response_ids") == ()
+            and lsp_stdio.get("request_message_count", 0) >= 4
+            and lsp_stdio.get("id_response_count", 0) >= lsp_stdio.get("request_message_count", 0)
+            and lsp_stdio.get("diagnostic_publication_count", 0) >= 1
+            and lsp_stdio.get("completion_response_count", 0) >= 1
+            and lsp_stdio.get("workspace_symbol_response_count", 0) >= 1
+            and lsp_stdio.get("shutdown_response_count", 0) >= 1,
+            "Language server JSON-RPC providers and stdio framing cover editor requests, diagnostics publication, completion, workspace symbols, and shutdown.",
+            "docs/tooling.md#language-server-specification",
+            {
+                "rpc": {
+                    "format": lsp_rpc.get("format"),
+                    "provider_count": lsp_rpc.get("provider_count"),
+                    "enabled_provider_count": lsp_rpc.get("enabled_provider_count"),
+                    "request_check_count": lsp_rpc.get("request_check_count"),
+                    "passing_request_check_count": lsp_rpc.get("passing_request_check_count"),
+                    "code_action_count": lsp_rpc.get("code_action_count"),
+                    "formatting_edit_count": lsp_rpc.get("formatting_edit_count"),
+                    "blocking_gap_count": lsp_rpc.get("blocking_gap_count"),
+                },
+                "stdio": {
+                    "format": lsp_stdio.get("format"),
+                    "request_message_count": lsp_stdio.get("request_message_count"),
+                    "response_count": lsp_stdio.get("response_count"),
+                    "id_response_count": lsp_stdio.get("id_response_count"),
+                    "notification_count": lsp_stdio.get("notification_count"),
+                    "diagnostic_publication_count": lsp_stdio.get("diagnostic_publication_count"),
+                    "missing_response_ids": lsp_stdio.get("missing_response_ids"),
+                    "completion_response_count": lsp_stdio.get("completion_response_count"),
+                    "workspace_symbol_response_count": lsp_stdio.get("workspace_symbol_response_count"),
+                    "shutdown_response_count": lsp_stdio.get("shutdown_response_count"),
+                },
+            },
+        ),
+        _tooling_audit_check(
+            "lsp_navigation_completion_contracts",
+            lsp.get("completionCoverage", {}).get("missing") == ()
+            and lsp.get("completionCoverage", {}).get("missing_source_count") == 0
+            and lsp_symbol_coverage["ok"] is True
+            and lsp_symbol_coverage.get("document_missing_kind_count") == 0
+            and lsp_symbol_coverage.get("workspace_missing_kind_count") == 0
+            and lsp_text_renderer["ok"]
+            and lsp_text_renderer.get("completion_line_count", 0) >= 1
+            and lsp_text_renderer.get("navigation_line_count", 0) >= 1
+            and lsp_text_renderer.get("formatting_line_count", 0) >= 1
+            and lsp_text_renderer.get("hover_line_count", 0) >= 1
+            and lsp_text_renderer.get("json_fallback") is False,
+            "Language server completion, symbol, navigation, formatting, hover, and text-summary evidence remain complete and reviewable.",
+            "docs/tooling.md#language-server-specification",
+            {
+                "service_format": lsp.get("format"),
+                "completion_coverage": {
+                    "format": lsp.get("completionCoverage", {}).get("format"),
+                    "required_source_count": lsp.get("completionCoverage", {}).get("required_source_count"),
+                    "detected_source_count": lsp.get("completionCoverage", {}).get("detected_source_count"),
+                    "missing_source_count": lsp.get("completionCoverage", {}).get("missing_source_count"),
+                    "label_count": lsp.get("completionCoverage", {}).get("label_count"),
+                },
+                "symbol_coverage": {
+                    "format": lsp_symbol_coverage.get("format"),
+                    "document_missing_kind_count": lsp_symbol_coverage.get("document_missing_kind_count"),
+                    "workspace_missing_kind_count": lsp_symbol_coverage.get("workspace_missing_kind_count"),
+                    "document_symbol_count": lsp_symbol_coverage.get("document_symbol_count"),
+                    "workspace_symbol_count": lsp_symbol_coverage.get("workspace_symbol_count"),
+                },
+                "text_renderer": {
+                    "format": lsp_text_renderer.get("format"),
+                    "completion_line_count": lsp_text_renderer.get("completion_line_count"),
+                    "completion_missing_line_count": lsp_text_renderer.get("completion_missing_line_count"),
+                    "navigation_line_count": lsp_text_renderer.get("navigation_line_count"),
+                    "formatting_line_count": lsp_text_renderer.get("formatting_line_count"),
+                    "hover_line_count": lsp_text_renderer.get("hover_line_count"),
+                    "rename_blocker_line_count": lsp_text_renderer.get("rename_blocker_line_count"),
+                    "json_fallback": lsp_text_renderer.get("json_fallback"),
+                },
             },
         ),
         _tooling_audit_check(
@@ -5491,6 +5578,29 @@ def _tooling_audit_implementation_phases(**evidence: dict) -> dict:
                         evidence["lsp"].get("format"),
                         evidence["lsp_rpc"].get("format"),
                         evidence["lsp_stdio"].get("format"),
+                    ),
+                },
+                {
+                    "id": "lsp_transport_rpc_contracts",
+                    "ok": evidence["lsp_rpc"].get("ok") is True
+                    and evidence["lsp_rpc"].get("provider_count") == evidence["lsp_rpc"].get("enabled_provider_count")
+                    and evidence["lsp_rpc"].get("request_check_count") == evidence["lsp_rpc"].get("passing_request_check_count")
+                    and evidence["lsp_stdio"].get("ok") is True
+                    and evidence["lsp_stdio"].get("missing_response_ids") == (),
+                    "evidence_formats": (evidence["lsp_rpc"].get("format"), evidence["lsp_stdio"].get("format")),
+                },
+                {
+                    "id": "lsp_navigation_completion_contracts",
+                    "ok": evidence["lsp"].get("completionCoverage", {}).get("missing") == ()
+                    and evidence["lsp"].get("completionCoverage", {}).get("missing_source_count") == 0
+                    and evidence["symbol_coverage"].get("missing") == ()
+                    and evidence["lsp_text_renderer"].get("ok") is True
+                    and evidence["lsp_text_renderer"].get("navigation_line_count", 0) >= 1
+                    and evidence["lsp_text_renderer"].get("completion_line_count", 0) >= 1,
+                    "evidence_formats": (
+                        evidence["lsp"].get("completionCoverage", {}).get("format"),
+                        evidence["symbol_coverage"].get("format"),
+                        evidence["lsp_text_renderer"].get("format"),
                     ),
                 },
                 {
