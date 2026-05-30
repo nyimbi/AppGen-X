@@ -4,8 +4,16 @@ from __future__ import annotations
 
 import pytest
 
+from .. import agent
+from .. import release_evidence
+from .. import routes
 from .. import runtime
 from .. import ui
+from ..repository import TransportationManagementRepository
+from ..repository import transportation_management_repository_contract
+from ..standalone import TransportationManagementStandaloneApp
+from ..standalone import smoke_test as standalone_smoke_test
+from ..standalone import standalone_app_manifest
 from ..services import StatefulTransportationManagementService
 from ..services import runtime_service_manifest
 from ..services import service_operation_manifest
@@ -258,3 +266,73 @@ def test_transportation_event_handlers_retry_dead_letter_service_and_boundary_gu
         service.configure_runtime({**_configuration(), "database_backend": "sqlite"})
     with pytest.raises(ValueError, match="AppGen-X event contract"):
         service.configure_runtime({**_configuration(), "stream_engine_picker": "user_choice"})
+
+
+def test_transportation_routes_repository_agent_standalone_and_release_surfaces_are_executable() -> None:
+    route_validation = routes.validate_api_route_contracts()
+    shipment_dispatch = routes.dispatch_route(
+        "POST",
+        "/api/pbc/transportation_management/transportation/shipments",
+        {"tenant": TENANT, "shipment_id": "ship-route-001"},
+    )
+    workbench_dispatch = routes.dispatch_route(
+        "GET",
+        "/api/pbc/transportation_management/transportation/workbench",
+        {"tenant": TENANT},
+    )
+
+    assert route_validation["ok"] is True
+    assert all(contract["event_contract"] == "AppGen-X" for contract in route_validation["contracts"])
+    assert all(contract["stream_engine_picker_visible"] is False for contract in route_validation["contracts"])
+    assert all(contract["shared_table_access"] is False for contract in route_validation["contracts"])
+    assert shipment_dispatch["ok"] is True
+    assert shipment_dispatch["result"]["outbox_table"] == "transportation_management_appgen_outbox_event"
+    assert workbench_dispatch["ok"] is True
+    assert workbench_dispatch["result"]["read_only"] is True
+
+    skills = agent.agent_skill_manifest()
+    chatbot = agent.chatbot_interface_contract()
+    document_plan = agent.document_instruction_plan(
+        "Create a BOS shipment, select an expedited carrier, plan the route, and capture delivery proof.",
+        "Validate carrier policy, ETA confidence, telematics events, and freight audit controls first.",
+    )
+    create_plan = agent.datastore_crud_plan(
+        "create",
+        "transportation_management_shipment",
+        {"shipment_id": "ship-agent-001", "origin": "NYC", "destination": "BOS"},
+    )
+    blocked_plan = agent.datastore_crud_plan("delete", "wms_core_pick_task", {})
+    contribution = agent.composed_agent_contribution()
+
+    assert skills["ok"] is True
+    assert chatbot["ok"] is True
+    assert document_plan["ok"] is True
+    assert create_plan["ok"] is True and create_plan["requires_confirmation"] is True
+    assert blocked_plan["ok"] is False
+    assert contribution["ok"] is True
+    assert "transportation_management_crud" in contribution["dsl_tools"]
+
+    app = TransportationManagementStandaloneApp()
+    loaded = app.load_demo_workspace(tenant=TENANT)
+    rendered = app.render_workbench(tenant=TENANT)
+    read_model = TransportationManagementRepository(app.state).read_model(TENANT)
+    binding = TransportationManagementRepository(app.state).form_binding_plan("shipment_creation_form")
+
+    assert standalone_app_manifest()["ok"] is True
+    assert standalone_smoke_test()["ok"] is True
+    assert transportation_management_repository_contract()["ok"] is True
+    assert loaded["ok"] is True
+    assert rendered["ok"] is True
+    assert rendered["shell"]["app_id"] == "transportation_management_one_pbc_app"
+    assert read_model["shipment"]["shipment_count"] == 1
+    assert read_model["carrier"]["carrier_count"] >= 2
+    assert read_model["route"]["route_count"] == 1
+    assert read_model["tracking"]["delivered_count"] == 1
+    assert binding["ok"] is True
+    assert binding["event_contract"] == "AppGen-X"
+
+    release_validation = release_evidence.validate_release_evidence()
+    release_smoke = release_evidence.smoke_test()
+    assert release_validation["ok"] is True
+    assert release_smoke["ok"] is True
+    assert release_smoke["evidence"]["repository"]["shared_table_access"] is False
