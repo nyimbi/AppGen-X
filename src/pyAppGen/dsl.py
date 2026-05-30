@@ -8259,6 +8259,89 @@ agent Builder { provider: LocalModel; tools: read, schema }
         )
     )
 
+    hover_depth_uri = "memory://hover-depth.appgen"
+    hover_depth_source = """
+app HoverDepth { targets: web }
+table Customer { id: int pk; name: string }
+table Invoice {
+  id: int pk
+  customer_id: int -> Customer.id [many-to-one]
+  lookup customer_name (customer.name)
+}
+view InvoiceForm for Invoice {
+  Main: customer.name, customer_id
+}
+"""
+
+    def hover_depth_position(marker: str, offset: int = 0) -> dict:
+        index = hover_depth_source.index(marker) + offset
+        return {
+            "line": hover_depth_source.count("\n", 0, index),
+            "character": index - hover_depth_source.rfind("\n", 0, index) - 1,
+        }
+
+    lsp_server_handle_message(
+        {
+            "jsonrpc": "2.0",
+            "method": "textDocument/didOpen",
+            "params": {
+                "textDocument": {
+                    "uri": hover_depth_uri,
+                    "languageId": "appgen",
+                    "version": 1,
+                    "text": hover_depth_source,
+                }
+            },
+        },
+        documents,
+    )
+    relationship_hover_responses, _ = lsp_server_handle_message(
+        {
+            "jsonrpc": "2.0",
+            "id": 41,
+            "method": "textDocument/hover",
+            "params": {
+                "textDocument": {"uri": hover_depth_uri},
+                "position": hover_depth_position("customer_id: int"),
+            },
+        },
+        documents,
+    )
+    lookup_hover_responses, _ = lsp_server_handle_message(
+        {
+            "jsonrpc": "2.0",
+            "id": 42,
+            "method": "textDocument/hover",
+            "params": {
+                "textDocument": {"uri": hover_depth_uri},
+                "position": hover_depth_position("customer.name, customer_id"),
+            },
+        },
+        documents,
+    )
+    relationship_hover_text = (
+        relationship_hover_responses[0].get("result", {}).get("contents", {}).get("value", "")
+        if relationship_hover_responses
+        else ""
+    )
+    lookup_hover_text = (
+        lookup_hover_responses[0].get("result", {}).get("contents", {}).get("value", "")
+        if lookup_hover_responses
+        else ""
+    )
+    checks.append(
+        _release_check(
+            "hover_relationship_lookup_depth",
+            "appgen.lsp-relationship-hover.v1" in relationship_hover_text
+            and "relationship `Invoice.customer_id` -> `Customer.id`" in relationship_hover_text
+            and "many-to-one" in relationship_hover_text
+            and "appgen.lsp-lookup-hover.v1" in lookup_hover_text
+            and "lookup `customer.name`" in lookup_hover_text
+            and "Invoice.customer_id" in lookup_hover_text
+            and "Customer.name" in lookup_hover_text,
+        )
+    )
+
     definition_context_uri = "memory://definition-context.appgen"
     definition_context_source = """
 app DefinitionContext { targets: web }
@@ -13271,6 +13354,14 @@ def lsp_hover_dsl(text: str, *, source_name: str | None = None, position: dict |
         contents.append(f"{symbol['kind']} `{symbol['name']}`")
         if symbol.get("detail"):
             contents.append(json.dumps(symbol["detail"], sort_keys=True, default=list))
+        relationship_hover = _lsp_relationship_hover_for_symbol(text, symbol, source_name=source_name)
+        if relationship_hover:
+            contents.append(f"relationship `{relationship_hover['source']}` -> `{relationship_hover['target']}`")
+            contents.append(json.dumps(relationship_hover, sort_keys=True, default=list))
+    lookup_hover = _lsp_lookup_hover_at_position(text, position, source_name=source_name)
+    if lookup_hover:
+        contents.append(f"lookup `{lookup_hover['path']}` from `{lookup_hover['table']}`")
+        contents.append(json.dumps(lookup_hover, sort_keys=True, default=list))
     pbc_metadata = _lsp_pbc_catalog_metadata_for_token(token)
     if pbc_metadata:
         contents.append(f"PBC `{token}`: {pbc_metadata['label']}")
@@ -13287,6 +13378,74 @@ def lsp_hover_dsl(text: str, *, source_name: str | None = None, position: dict |
         "contents": tuple(contents),
         "range": _lsp_token_range(text, position, token),
     }
+
+
+def _lsp_relationship_hover_for_symbol(source: str, symbol: dict, *, source_name: str | None = None) -> dict | None:
+    if symbol.get("kind") != "field":
+        return None
+    parent = str(symbol.get("parent") or "")
+    if not parent.startswith("table."):
+        return None
+    table_name = parent.split(".", 1)[1]
+    field_name = str(symbol.get("name") or "")
+    semantic = semantic_model_dsl(source, source_name=source_name)
+    field = semantic.get("tables", {}).get(table_name, {}).get("fields", {}).get(field_name, {})
+    relationship = field.get("relationship")
+    if not relationship:
+        return None
+    return {
+        "format": "appgen.lsp-relationship-hover.v1",
+        "source": f"{table_name}.{field_name}",
+        "target": f"{relationship.get('target_table')}.{relationship.get('target_field')}",
+        "target_table": relationship.get("target_table"),
+        "target_field": relationship.get("target_field"),
+        "cardinality": relationship.get("cardinality"),
+        "alias": relationship.get("alias"),
+    }
+
+
+def _lsp_lookup_hover_at_position(source: str, position: dict | None, *, source_name: str | None = None) -> dict | None:
+    index = _lsp_position_to_index(source, position)
+    if index is None:
+        return None
+    lookup_path = _lsp_dotted_path_at_index(source, index)
+    if not lookup_path:
+        return None
+    semantic = semantic_model_dsl(source, source_name=source_name)
+    table_name = None
+    view_name = _source_enclosing_block_name(source, "view", index)
+    if view_name:
+        table_name = semantic.get("views", {}).get(view_name, {}).get("table")
+    if table_name is None:
+        table_name = _source_enclosing_block_name(source, "table", index)
+    if not table_name:
+        return None
+    lookup = semantic.get("tables", {}).get(table_name, {}).get("lookup_paths", {}).get(lookup_path)
+    if not lookup:
+        return None
+    return {
+        "format": "appgen.lsp-lookup-hover.v1",
+        "table": table_name,
+        "path": lookup_path,
+        "valid": lookup.get("valid") is True,
+        "chain": tuple(lookup.get("chain", ())),
+    }
+
+
+def _lsp_dotted_path_at_index(source: str, index: int) -> str | None:
+    text = source or ""
+    if index < 0 or index > len(text):
+        return None
+    left = index
+    while left > 0 and (text[left - 1] == "." or text[left - 1] == "_" or text[left - 1].isalnum()):
+        left -= 1
+    right = index
+    while right < len(text) and (text[right] == "." or text[right] == "_" or text[right].isalnum()):
+        right += 1
+    candidate = text[left:right].strip(".")
+    if "." not in candidate or not re.match(r"^[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)+$", candidate):
+        return None
+    return candidate
 
 
 def _lsp_pbc_catalog_metadata_for_token(token: str) -> dict | None:

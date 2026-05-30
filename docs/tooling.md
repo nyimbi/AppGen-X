@@ -1302,7 +1302,11 @@ Hover depth is executable. Hovering a registered PBC key returns
 sample API/event contracts. Hovering a symbol that participates in a diagnostic
 returns the diagnostic code plus the same explanation object used by
 `appgen explain --diagnostic`, so IDEs and agents can show the cause and docs
-target without duplicating diagnostic registries.
+target without duplicating diagnostic registries. Relationship fields expose
+`appgen.lsp-relationship-hover.v1` target-table metadata, and database-backed
+lookup paths expose `appgen.lsp-lookup-hover.v1` resolution chains. The JSON-RPC
+audit checks this as `hover_relationship_lookup_depth`, so field relationship
+and lookup hover regressions fail the tooling release gate.
 
 Workspace symbol search includes catalog-backed results. In addition to open
 DSL declarations, `workspace/symbol` returns `catalog://pbc/...` locations for

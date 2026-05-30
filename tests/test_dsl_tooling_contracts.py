@@ -1375,6 +1375,42 @@ def test_lsp_hover_exposes_pbc_catalog_metadata_and_diagnostic_explanation() -> 
     assert any("database-backed form binding" in item for item in diagnostic_hover["contents"])
 
 
+def test_lsp_hover_exposes_relationship_targets_and_lookup_resolution() -> None:
+    source = """
+app HoverDetails { targets: web }
+table Customer { id: int pk; name: string }
+table Invoice {
+  id: int pk
+  customer_id: int -> Customer.id [many-to-one]
+  lookup customer_name (customer.name)
+}
+view InvoiceForm for Invoice {
+  Main: customer.name, customer_id
+}
+"""
+
+    relationship_hover = appgen_dsl.lsp_hover_dsl(
+        source,
+        source_name="hover-details.appgen",
+        position=_position_of(source, "customer_id: int"),
+    )
+    lookup_hover = appgen_dsl.lsp_hover_dsl(
+        source,
+        source_name="hover-details.appgen",
+        position=_position_of(source, "customer.name, customer_id"),
+    )
+
+    assert relationship_hover["format"] == "appgen.lsp-hover.v1"
+    assert relationship_hover["ok"] is True
+    assert any("relationship `Invoice.customer_id` -> `Customer.id`" in item for item in relationship_hover["contents"])
+    assert any('"format": "appgen.lsp-relationship-hover.v1"' in item for item in relationship_hover["contents"])
+    assert any('"cardinality": "many-to-one"' in item and '"alias": "customer"' in item for item in relationship_hover["contents"])
+    assert lookup_hover["ok"] is True
+    assert any("lookup `customer.name`" in item for item in lookup_hover["contents"])
+    assert any('"format": "appgen.lsp-lookup-hover.v1"' in item for item in lookup_hover["contents"])
+    assert any('"chain": ["Invoice.customer_id", "Customer.name"]' in item for item in lookup_hover["contents"])
+
+
 def test_lsp_workspace_symbols_include_pbc_catalog_metadata_and_contracts() -> None:
     direct = appgen_dsl.lsp_workspace_symbols_dsl(
         "app WorkspaceCatalog { targets: web }\ntable CatalogProbe { id: int pk }\n",
@@ -1618,6 +1654,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
     assert "enterprise_definition_context" in {check["check"] for check in audit["checks"]}
     assert "lexical_reference_scope" in {check["check"] for check in audit["checks"]}
     assert "completion_context_filtering" in {check["check"] for check in audit["checks"]}
+    assert "hover_relationship_lookup_depth" in {check["check"] for check in audit["checks"]}
     assert capabilities["completionProvider"]["triggerCharacters"]
     assert capabilities["hoverProvider"] is True
     assert capabilities["definitionProvider"] is True
@@ -5109,6 +5146,7 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert {
         "did_change_diagnostics",
         "completion_context_filtering",
+        "hover_relationship_lookup_depth",
         "enterprise_definition_context",
         "lexical_reference_scope",
         "code_action_request",
