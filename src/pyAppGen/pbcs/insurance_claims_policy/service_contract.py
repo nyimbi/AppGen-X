@@ -1,36 +1,40 @@
 """Service contract for the insurance_claims_policy PBC."""
 
+from __future__ import annotations
 
-def build_service_contract():
-    return {'format': 'appgen.insurance-claims-policy-service-contract.v1', 'ok': True, 'pbc': 'insurance_claims_policy', 'command_methods': ('command_insurance_policy', 'configure_runtime', 'set_parameter', 'register_rule'), 'query_methods': ('query_workbench',), 'shared_table_access': False, 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'}
+from .services import service_operation_contracts
 
-
-def insurance_claims_policy_build_service_contract():
-    return build_service_contract()
+PBC_KEY = "insurance_claims_policy"
 
 
-def validate_service_contract():
-    contract = build_service_contract()
-    return {'ok': contract['ok'] and bool(contract['command_methods']) and bool(contract['query_methods']) and contract['shared_table_access'] is False, 'contract': contract, 'side_effects': ()}
-
-
-def smoke_test():
-    return validate_service_contract()
-
-from .domain_depth import DOMAIN_OPERATIONS, domain_depth_contract
-
-_BASE_BUILD_SERVICE_CONTRACT = build_service_contract
-
-def build_service_contract():
-    base = dict(_BASE_BUILD_SERVICE_CONTRACT())
-    domain = domain_depth_contract()
+def build_service_contract() -> dict:
+    contracts = service_operation_contracts()
     return {
-        **base,
-        'ok': base.get('ok') is True and domain['ok'],
-        'command_methods': tuple(dict.fromkeys(tuple(base.get('command_methods', ())) + tuple(DOMAIN_OPERATIONS))),
-        'world_class_domain_depth': domain,
+        "format": "appgen.insurance-claims-policy-service-contract.v1",
+        "ok": contracts["ok"],
+        "pbc": PBC_KEY,
+        "command_methods": contracts["command_operations"],
+        "query_methods": contracts["query_operations"],
+        "shared_table_access": False,
+        "transaction_boundary": "owned_datastore_plus_outbox",
+        "event_contract": "AppGen-X",
+        "contracts": contracts["contracts"],
+        "side_effects": (),
     }
 
 
-def insurance_claims_policy_build_service_contract():
+def insurance_claims_policy_build_service_contract() -> dict:
     return build_service_contract()
+
+
+def validate_service_contract() -> dict:
+    contract = build_service_contract()
+    return {
+        "ok": contract["ok"] and bool(contract["command_methods"]) and bool(contract["query_methods"]) and contract["shared_table_access"] is False,
+        "contract": contract,
+        "side_effects": (),
+    }
+
+
+def smoke_test() -> dict:
+    return validate_service_contract()
