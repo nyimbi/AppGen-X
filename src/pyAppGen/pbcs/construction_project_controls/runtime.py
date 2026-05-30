@@ -7,6 +7,7 @@ import hashlib
 import re
 
 from .domain_depth import DOMAIN_OPERATIONS, domain_depth_contract, execute_domain_operation
+from .project_control import PROJECT_CONTROL_CAPABILITIES, improve1_project_control_contract
 
 PBC_KEY = "construction_project_controls"
 
@@ -1923,6 +1924,7 @@ def construction_project_controls_build_single_pbc_app_contract():
 
 def construction_project_controls_build_release_evidence():
     scorecard = construction_project_controls_build_go_live_scorecard()
+    project_control = improve1_project_control_contract()
     checks = (
         {"id": "schema_models_migrations", "ok": True},
         {"id": "service_api_events_handlers", "ok": True},
@@ -1930,6 +1932,7 @@ def construction_project_controls_build_release_evidence():
         {"id": "wbs_progress_earned_value_slice", "ok": True},
         {"id": "assistant_document_instruction_governance", "ok": True},
         {"id": "go_live_scorecard", "ok": scorecard["ok"]},
+        {"id": "improve1_project_control", "ok": project_control["ok"]},
     )
     return {
         "format": "appgen.construction-project-controls-release-evidence.v1",
@@ -1950,6 +1953,12 @@ def construction_project_controls_build_release_evidence():
             "wizards": CONSTRUCTION_PROJECT_CONTROLS_WIZARD_KEYS,
             "controls": CONSTRUCTION_PROJECT_CONTROLS_CONTROL_KEYS,
             "scorecard": scorecard["scorecard"],
+            "improve1_project_control": {
+                "capability_count": project_control["capability_count"],
+                "capabilities": project_control["capabilities"],
+                "event_contract": project_control["event_contract"],
+                "database_backends": project_control["database_backends"],
+            },
         },
         "blocking_gaps": tuple(check["id"] for check in checks if not check["ok"]),
     }
@@ -2083,10 +2092,12 @@ def construction_project_controls_runtime_capabilities():
         "run_advanced_assessment",
         "parse_document_instruction",
         "build_go_live_scorecard",
-    ) + tuple(DOMAIN_OPERATIONS)
+        "improve1_project_control_contract",
+    ) + tuple(PROJECT_CONTROL_CAPABILITIES) + tuple(DOMAIN_OPERATIONS)
+    project_control = improve1_project_control_contract()
     return {
         "format": "appgen.construction-project-controls-runtime-capabilities.v1",
-        "ok": smoke["ok"] and domain["ok"],
+        "ok": smoke["ok"] and domain["ok"] and project_control["ok"],
         "pbc": PBC_KEY,
         "implementation_directory": f"src/pyAppGen/pbcs/{PBC_KEY}",
         "owned_tables": CONSTRUCTION_PROJECT_CONTROLS_OWNED_TABLES,
@@ -2096,6 +2107,7 @@ def construction_project_controls_runtime_capabilities():
         "operations": operations,
         "smoke": smoke,
         "world_class_domain_depth": domain,
+        "improve1_project_control": project_control,
         "database_backends": CONSTRUCTION_PROJECT_CONTROLS_ALLOWED_DATABASE_BACKENDS,
         "event_contract": "AppGen-X",
         "stream_engine_picker_visible": False,
@@ -2203,6 +2215,7 @@ def construction_project_controls_runtime_smoke():
     workbench = construction_project_controls_query_workbench(dead["state"], {"tenant": "tenant-smoke"})
     detail = construction_project_controls_get_construction_project_detail(dead["state"], "CP-001")
     app = construction_project_controls_build_single_pbc_app_contract()
+    project_control = improve1_project_control_contract()
     checks = (
         {"id": "configure_runtime", "ok": configured["ok"]},
         {"id": "create_project", "ok": created["ok"]},
@@ -2218,6 +2231,7 @@ def construction_project_controls_runtime_smoke():
         {"id": "query_workbench", "ok": workbench["ok"]},
         {"id": "get_project_detail", "ok": detail["ok"]},
         {"id": "single_pbc_app_contract", "ok": app["ok"]},
+        {"id": "improve1_project_control", "ok": project_control["ok"]},
     ) + tuple(
         {"id": capability, "ok": True}
         for capability in CONSTRUCTION_PROJECT_CONTROLS_RUNTIME_CAPABILITY_KEYS
@@ -2229,6 +2243,7 @@ def construction_project_controls_runtime_smoke():
         "project": detail if detail["ok"] else None,
         "workbench": workbench,
         "app_contract": app,
+        "improve1_project_control": project_control,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
         "side_effects": (),
     }

@@ -31,3 +31,10 @@ Implemented as a package-local executable construction controls slice inside `sr
 
 - The slice is still framework-light: services and routes are executable facades, not mounted HTTP handlers.
 - `SPECIFICATION.md` remains broader than the newly implemented slice, so the new `README.md`, tests, and release evidence are the more accurate description of the current package behavior.
+
+## 2026-05-30 improve1 Project-Control Execution Slice
+
+- Added `project_control.py` as side-effect-free executable proof for all 50 improve1 construction project-controls capabilities.
+- Bound each feature to owned tables, AppGen-X event metadata, UI/API route surfaces, agent skills, configuration handles, retry/dead-letter evidence, and traceability artifacts.
+- Added package-local domain behavior tests for WBS hierarchy, baseline approval, progress evidence, schedule quality, change approval, assistant/document governance, adjacent-system boundaries, closeout blockers, and go-live readiness.
+- Updated runtime, UI, release evidence, and improve1 traceability so every feature row points to executable project-control behavior and `tests/test_domain_behavior.py`.

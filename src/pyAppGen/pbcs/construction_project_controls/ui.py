@@ -10,6 +10,7 @@ from .domain_depth import (
     DOMAIN_RULES,
     domain_capability_surface_contract,
 )
+from .project_control import improve1_project_control_contract
 from .runtime import (
     CONSTRUCTION_PROJECT_CONTROLS_UI_FRAGMENT_KEYS,
     construction_project_controls_build_controls_contract,
@@ -27,6 +28,7 @@ def construction_project_controls_ui_contract():
     wizards = construction_project_controls_build_wizards_contract()
     controls = construction_project_controls_build_controls_contract()
     workbench = construction_project_controls_build_workbench_view()
+    project_control = improve1_project_control_contract()
     return {
         "ok": True,
         "pbc": PBC_KEY,
@@ -44,6 +46,18 @@ def construction_project_controls_ui_contract():
         "wizards": wizards["wizards"],
         "controls": controls["controls"],
         "workbench": workbench,
+        "project_control_panels": tuple(
+            {
+                "capability": sample["capability"],
+                "feature_number": sample["feature_number"],
+                "title": sample["title"],
+                "target_table": sample["target_table"],
+                "route": sample["route"],
+                "permission": sample["permission"],
+            }
+            for sample in project_control["samples"]
+        ),
+        "project_control_contract": project_control,
         "persona_tabs": (
             "schedule",
             "cost",
