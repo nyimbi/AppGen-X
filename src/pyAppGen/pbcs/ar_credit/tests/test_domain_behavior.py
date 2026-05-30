@@ -4,9 +4,15 @@ from __future__ import annotations
 
 import pytest
 
+from .. import agent
+from .. import release_evidence
+from .. import routes
 from .. import runtime
 from ..services import ArCreditService
 from ..services import service_operation_manifest
+from ..repository import ArCreditRepository
+from ..standalone import ArCreditStandaloneApp
+from ..standalone import workbench_smoke_test
 from ..ui import ar_credit_render_workbench
 from ..ui import ar_credit_ui_contract
 
@@ -204,6 +210,112 @@ def test_ar_adjustments_collections_and_ui_surfaces_are_executable():
     assert "invoice_to_cash_cycle" in tuple(wizard["wizard_id"] for wizard in rendered["wizards"])
     assert "cash_receipt_application" in tuple(form["form_id"] for form in rendered["forms"])
     assert rendered["cards"][2]["key"] == "open_balance"
+
+
+
+def test_ar_agent_routes_repository_standalone_and_release_surfaces_are_executable():
+    service = service_with_customer()
+    issue_invoice(service, "ar_inv_route", amount=400.0)
+
+    route_validation = routes.validate_api_route_contracts()
+    route_dispatch = routes.dispatch_route(
+        "POST",
+        "/api/pbc/ar_credit/ar/invoices",
+        {"invoice": invoice_payload("ar_inv_route_002", amount=250.0)},
+        service=service,
+    )
+    skills = agent.agent_skill_manifest()
+    document_plan = agent.document_instruction_plan(
+        "Customer asks for credit review and remittance matching guidance.",
+        "Review invoice readiness, apply cash, and build collections follow-up.",
+    )
+    crud_plan = agent.datastore_crud_plan(
+        "create",
+        table="ar_invoice",
+        payload={"invoice_id": "ar_inv_agent", "customer_id": "cust-ar-001"},
+    )
+    blocked_crud = agent.datastore_crud_plan("delete", table="ap_automation_invoice", payload={"invoice_id": "bad"})
+    invoice_preview = agent.invoice_readiness_preview({"state": service.state, "invoice": invoice_payload("ar_inv_preview", amount=50.0)})
+    cash_preview = agent.cash_application_preview(
+        {
+            "state": service.state,
+            "receipt": {
+                "receipt_id": "rcpt-agent-preview",
+                "tenant": "tenant_ar",
+                "customer_id": "cust-ar-001",
+                "amount": 270.0,
+                "currency": "USD",
+                "remittance_text": "PAY ar_inv_route_002 amount 270",
+            },
+        }
+    )
+    contribution = agent.composed_agent_contribution()
+
+    repository = ArCreditRepository()
+    try:
+        applied = repository.apply_migrations()
+        saved = repository.save_state("tenant_ar", service.state, captured_at="2026-05-30T00:00:00Z")
+        loaded_state = repository.load_state("tenant_ar")
+        run = repository.record_workflow_run(
+            run_id="ar-credit-domain-proof",
+            tenant="tenant_ar",
+            workflow_name="domain_behavior",
+            status="completed",
+            summary={"invoice_count": len(service.state["invoices"])},
+            created_at="2026-05-30T00:00:00Z",
+        )
+        runs = repository.list_workflow_runs(tenant="tenant_ar")
+        manifest = repository.database_manifest()
+    finally:
+        repository.close()
+
+    app = ArCreditStandaloneApp(tenant="tenant_demo")
+    try:
+        loaded = app.load_demo_workspace(tenant="tenant_demo")
+        rendered = app.render_workbench(tenant="tenant_demo")
+        controls = app.control_center(tenant="tenant_demo")
+        release_snapshot = app.release_snapshot(tenant="tenant_demo")
+        latest_release = app.repository.latest_release_snapshot(tenant="tenant_demo")
+    finally:
+        app.close()
+
+    release_validation = release_evidence.validate_release_evidence()
+    release_smoke = release_evidence.smoke_test()
+    workbench_smoke = workbench_smoke_test()
+
+    assert route_validation["ok"] is True
+    assert all(contract["event_contract"] == "AppGen-X" for contract in route_validation["contracts"])
+    assert all(contract["stream_engine_picker_visible"] is False for contract in route_validation["contracts"])
+    assert all(contract["shared_table_access"] is False for contract in route_validation["contracts"])
+    assert route_dispatch["ok"] is True
+    assert route_dispatch["result"]["event_contract"] == "AppGen-X"
+    assert route_dispatch["result"]["side_effects"] == ()
+    assert skills["ok"] is True
+    assert document_plan["ok"] is True
+    assert {"execute_receipt_application", "build_collections_follow_up"} <= {item["operation"] for item in document_plan["workflow_suggestions"]}
+    assert crud_plan["ok"] is True
+    assert crud_plan["requires_confirmation"] is True
+    assert crud_plan["event_contract"] == "AppGen-X"
+    assert blocked_crud["ok"] is False
+    assert invoice_preview["ok"] is True
+    assert cash_preview["ok"] is True
+    assert contribution["ok"] is True
+    assert "ar_credit_workflow_previews" in contribution["dsl_tools"]
+    assert applied == ("create_runtime_snapshot", "create_workflow_run", "create_release_snapshot")
+    assert saved["ok"] is True
+    assert loaded_state["invoices"]["ar_inv_route"]["customer_id"] == "cust-ar-001"
+    assert run["ok"] is True
+    assert runs[0]["workflow_name"] == "domain_behavior"
+    assert manifest["ok"] is True
+    assert manifest["shared_table_access"] is False
+    assert loaded["ok"] is True
+    assert rendered["ok"] is True
+    assert controls["ok"] is True
+    assert release_snapshot["ok"] is True
+    assert latest_release is not None
+    assert release_validation["ok"] is True
+    assert release_smoke["ok"] is True
+    assert workbench_smoke["ok"] is True
 
 
 def test_ar_event_retry_dead_letter_contract_and_configuration_guards():
