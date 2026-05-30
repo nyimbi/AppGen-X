@@ -4462,6 +4462,23 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
         "package_and_release_verifiers",
     )
     assert all(item["evidence_format"] for item in priority_check["detail"]["priorities"])
+    section_coverage_check = next(check for check in report["checks"] if check["id"] == "tooling_section_coverage_contracts")
+    assert section_coverage_check["detail"]["format"] == "appgen.tooling-section-coverage-audit.v1"
+    assert section_coverage_check["detail"]["ok"] is True
+    assert section_coverage_check["detail"]["required_section_count"] == 18
+    assert section_coverage_check["detail"]["covered_section_count"] == (
+        section_coverage_check["detail"]["required_section_count"]
+    )
+    assert section_coverage_check["detail"]["missing_section_count"] == 0
+    assert section_coverage_check["detail"]["missing_sections"] == ()
+    assert section_coverage_check["detail"]["stale_mapping_count"] == 0
+    assert {
+        "goals",
+        "core-architecture",
+        "cli-contracts",
+        "implementation-phases",
+        "priority-order",
+    } <= set(section_coverage_check["detail"]["covered_sections"])
     vscode_check = next(check for check in report["checks"] if check["id"] == "vscode_extension_surface")
     assert vscode_check["detail"]["checks"]["diagnostics_collection"] is True
     assert vscode_check["detail"]["checks"]["cli_command_contracts"] is True

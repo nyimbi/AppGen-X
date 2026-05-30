@@ -6100,6 +6100,20 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             priority_order_contracts,
         ),
     )
+    section_coverage = _tooling_audit_section_coverage(root, checks)
+    checks = checks + (
+        _tooling_audit_check(
+            "tooling_section_coverage_contracts",
+            section_coverage["ok"]
+            and section_coverage.get("required_section_count") == 18
+            and section_coverage.get("covered_section_count") == section_coverage.get("required_section_count")
+            and section_coverage.get("missing_section_count") == 0
+            and section_coverage.get("stale_mapping_count") == 0,
+            "Every major docs/tooling.md section is mapped to at least one executable tooling-audit gate.",
+            "docs/tooling.md#appgen-tooling-audit",
+            section_coverage,
+        ),
+    )
     text_renderer = _tooling_audit_text_renderer_contract()
     checks = checks + (
         _tooling_audit_check(
@@ -6423,6 +6437,102 @@ def _tooling_audit_doc_anchor_integrity(root: Path, section_refs: Iterable[str])
         "missing_runtime_formats": missing_runtime_formats,
         "missing_test_formats": missing_test_formats,
     }
+
+
+def _tooling_audit_section_coverage(root: Path, checks: Iterable[dict]) -> dict:
+    docs_text = (root / "docs" / "tooling.md").read_text(encoding="utf-8")
+    headings = {
+        _heading_anchor(match.group(1)): match.group(1)
+        for match in re.finditer(r"^##\s+(.+)$", docs_text, flags=re.M)
+    }
+    required = {
+        "goals": ("shared_semantic_model", "implementation_phase_exit_criteria"),
+        "non-goals": ("non_goal_policy_guards",),
+        "core-architecture": ("module_boundaries",),
+        "semantic-model-contract": ("shared_semantic_model", "semantic_drift_surface_contracts"),
+        "diagnostic-specification": ("diagnostic_registry_and_fixtures", "diagnostic_catalog_fixture_contracts"),
+        "linter-specification": ("lint_directory_and_strict_profiles", "lint_cli_directory_contracts"),
+        "formatter-specification": ("formatter_idempotent", "formatter_write_organize_contracts"),
+        "cli-contracts": (
+            "dsl_language_cli_contracts",
+            "cli_validation_and_generation_contracts",
+            "cli_usage_failure_contracts",
+            "cli_help_alias_contracts",
+        ),
+        "language-server-specification": (
+            "language_server_core_features",
+            "lsp_transport_rpc_contracts",
+            "lsp_navigation_completion_contracts",
+            "lsp_quick_fix_application",
+        ),
+        "ide-integration": (
+            "ide_visual_designer_round_trip",
+            "vscode_extension_surface",
+            "studio_semantic_service",
+            "frontend_semantic_service_bridge",
+            "frontend_interaction_audit_bridge",
+        ),
+        "graph-tooling": ("graph_and_explain_tooling", "graph_rendering_contracts", "explain_cli_contracts"),
+        "migration-planner": ("migration_detection_coverage", "migration_safety_text_contracts"),
+        "natural-language-change-planner": (
+            "natural_language_patch_planner",
+            "natural_language_operation_contracts",
+            "natural_language_cli_agent_contracts",
+        ),
+        "package-and-verifier-tooling": (
+            "package_and_release_verifiers",
+            "package_manifest_handoff_contracts",
+            "release_text_evidence_contracts",
+            "pbc_manifest_catalog_commands",
+            "pbc_publish_side_effect_contracts",
+        ),
+        "test-strategy": (
+            "parser_golden_and_drift_gates",
+            "test_strategy_family_contracts",
+            "parser_golden_fixture_contracts",
+            "semantic_drift_surface_contracts",
+        ),
+        "implementation-phases": (
+            "implementation_phase_exit_criteria",
+            "implementation_phase_doc_alignment_contracts",
+        ),
+        "contributor-task-breakdown": ("contributor_task_breakdown_contracts",),
+        "priority-order": ("priority_order_contracts",),
+    }
+    check_ids = {check.get("id") for check in checks}
+    missing_headings = tuple(section for section in required if section not in headings)
+    missing_gate_sections = tuple(
+        section for section, gate_ids in required.items() if section in headings and not set(gate_ids) <= check_ids
+    )
+    stale_mappings = tuple(
+        {
+            "section": section,
+            "missing_gates": tuple(gate_id for gate_id in gate_ids if gate_id not in check_ids),
+        }
+        for section, gate_ids in required.items()
+        if any(gate_id not in check_ids for gate_id in gate_ids)
+    )
+    missing_sections = tuple(dict.fromkeys((*missing_headings, *missing_gate_sections)))
+    covered_sections = tuple(section for section in required if section not in missing_sections)
+    return {
+        "format": "appgen.tooling-section-coverage-audit.v1",
+        "ok": not missing_sections and not stale_mappings,
+        "required_section_count": len(required),
+        "covered_section_count": len(covered_sections),
+        "missing_section_count": len(missing_sections),
+        "required_sections": tuple(required),
+        "covered_sections": covered_sections,
+        "missing_sections": missing_sections,
+        "stale_mapping_count": len(stale_mappings),
+        "stale_mappings": stale_mappings,
+        "heading_count": len(headings),
+        "source_of_truth": "docs/tooling.md",
+    }
+
+
+def _heading_anchor(title: str) -> str:
+    slug = re.sub(r"[^\w\s-]", "", title.lower(), flags=re.UNICODE)
+    return re.sub(r"\s+", "-", slug).strip("-")
 
 
 def _tooling_audit_doc_refs(value: object) -> tuple[str, ...]:
