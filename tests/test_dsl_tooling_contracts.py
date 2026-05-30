@@ -6324,6 +6324,41 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert formatter_gate["detail"]["text_renderer"]["write_flag_line_count"] == 1
     assert formatter_gate["detail"]["text_renderer"]["idempotence_line_count"] == 1
     assert formatter_gate["detail"]["text_renderer"]["organize_line_count"] == 1
+    assert formatter_gate["detail"]["text_renderer"]["emitted_write_paths"] == formatter_gate["detail"][
+        "text_renderer"
+    ]["required_write_paths"]
+    assert formatter_gate["detail"]["text_renderer"]["missing_write_path_count"] == 0
+    assert formatter_gate["detail"]["text_renderer"]["missing_write_paths"] == ()
+    assert formatter_gate["detail"]["text_renderer"]["emitted_write_requested_values"] == formatter_gate["detail"][
+        "text_renderer"
+    ]["required_write_requested_values"]
+    assert formatter_gate["detail"]["text_renderer"]["missing_write_requested_value_count"] == 0
+    assert formatter_gate["detail"]["text_renderer"]["missing_write_requested_values"] == ()
+    assert formatter_gate["detail"]["text_renderer"]["emitted_written_values"] == formatter_gate["detail"][
+        "text_renderer"
+    ]["required_written_values"]
+    assert formatter_gate["detail"]["text_renderer"]["missing_written_value_count"] == 0
+    assert formatter_gate["detail"]["text_renderer"]["missing_written_values"] == ()
+    assert formatter_gate["detail"]["text_renderer"]["emitted_organize_values"] == formatter_gate["detail"][
+        "text_renderer"
+    ]["required_organize_values"]
+    assert formatter_gate["detail"]["text_renderer"]["missing_organize_value_count"] == 0
+    assert formatter_gate["detail"]["text_renderer"]["missing_organize_values"] == ()
+    assert formatter_gate["detail"]["text_renderer"]["emitted_idempotence_states"] == formatter_gate["detail"][
+        "text_renderer"
+    ]["required_idempotence_states"]
+    assert formatter_gate["detail"]["text_renderer"]["missing_idempotence_state_count"] == 0
+    assert formatter_gate["detail"]["text_renderer"]["missing_idempotence_states"] == ()
+    assert formatter_gate["detail"]["text_renderer"]["emitted_diagnostic_codes"] == formatter_gate["detail"][
+        "text_renderer"
+    ]["required_diagnostic_codes"]
+    assert formatter_gate["detail"]["text_renderer"]["missing_diagnostic_code_count"] == 0
+    assert formatter_gate["detail"]["text_renderer"]["missing_diagnostic_codes"] == ()
+    assert formatter_gate["detail"]["text_renderer"]["emitted_diagnostic_severities"] == formatter_gate["detail"][
+        "text_renderer"
+    ]["required_diagnostic_severities"]
+    assert formatter_gate["detail"]["text_renderer"]["missing_diagnostic_severity_count"] == 0
+    assert formatter_gate["detail"]["text_renderer"]["missing_diagnostic_severities"] == ()
     assert formatter_gate["detail"]["text_renderer"]["json_fallback"] is False
     assert cli_check["detail"]["internal_error_exit"]["format"] == "appgen.internal-error-exit-audit.v1"
     assert cli_check["detail"]["internal_error_exit"]["ok"] is True
@@ -7909,6 +7944,34 @@ def test_format_text_renderer_contract_proves_write_and_idempotence_log_markers(
     assert report["write_flag_line_count"] == 1
     assert report["idempotence_line_count"] == 1
     assert report["organize_line_count"] == 1
+    assert report["required_write_paths"] == ("apps/sales.appgen",)
+    assert report["emitted_write_paths"] == report["required_write_paths"]
+    assert report["missing_write_path_count"] == 0
+    assert report["missing_write_paths"] == ()
+    assert report["required_write_requested_values"] == ("True",)
+    assert report["emitted_write_requested_values"] == report["required_write_requested_values"]
+    assert report["missing_write_requested_value_count"] == 0
+    assert report["missing_write_requested_values"] == ()
+    assert report["required_written_values"] == ("True",)
+    assert report["emitted_written_values"] == report["required_written_values"]
+    assert report["missing_written_value_count"] == 0
+    assert report["missing_written_values"] == ()
+    assert report["required_organize_values"] == ("True",)
+    assert report["emitted_organize_values"] == report["required_organize_values"]
+    assert report["missing_organize_value_count"] == 0
+    assert report["missing_organize_values"] == ()
+    assert report["required_idempotence_states"] == ("not-idempotent",)
+    assert report["emitted_idempotence_states"] == report["required_idempotence_states"]
+    assert report["missing_idempotence_state_count"] == 0
+    assert report["missing_idempotence_states"] == ()
+    assert report["required_diagnostic_codes"] == ("AGX0201",)
+    assert report["emitted_diagnostic_codes"] == report["required_diagnostic_codes"]
+    assert report["missing_diagnostic_code_count"] == 0
+    assert report["missing_diagnostic_codes"] == ()
+    assert report["required_diagnostic_severities"] == ("warning",)
+    assert report["emitted_diagnostic_severities"] == report["required_diagnostic_severities"]
+    assert report["missing_diagnostic_severity_count"] == 0
+    assert report["missing_diagnostic_severities"] == ()
     assert report["missing_fragments"] == ()
     assert report["json_fallback"] is False
     assert report["text_prefix"].startswith("format changed: format=appgen.format-result.v1")

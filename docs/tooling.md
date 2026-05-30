@@ -775,7 +775,10 @@ header, mutation posture, write path, and diagnostic markers. It also reports
 summary-line, write-path-line, diagnostic-line, warning-line, error-line,
 write-flag-line, idempotence-line, and organize-line counts so formatter text
 logs prove mutation posture, write status, idempotence, organize mode, and
-diagnostics remain visible.
+diagnostics remain visible. It also publishes required and emitted write paths,
+write-requested values, written values, organize values, idempotence states,
+diagnostic codes, and diagnostic severities with named missing lists, so
+formatter release logs fail on the exact hidden mutation or diagnostic marker.
 `--organize` enables the optional table-body organization profile: identity
 fields and spreads, business keys, relationships, editable scalar fields,
 calculated fields, audit fields, and directives are ordered inside each table

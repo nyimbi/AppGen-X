@@ -2526,9 +2526,59 @@ def _format_text_renderer_contract() -> dict:
     summary_lines = tuple(line for line in lines if line.startswith("format "))
     write_path_lines = tuple(line for line in lines if line.startswith("write_path "))
     diagnostic_lines = tuple(line for line in lines if line.startswith(("warning ", "error ")))
+    emitted_write_paths = tuple(line.removeprefix("write_path ").strip() for line in write_path_lines)
+    emitted_diagnostic_codes = tuple(line.split()[1].rstrip(":") for line in diagnostic_lines if len(line.split()) >= 2)
+    emitted_diagnostic_severities = tuple(line.split()[0] for line in diagnostic_lines if line.split())
+    emitted_write_requested_values = tuple()
+    emitted_written_values = tuple()
+    emitted_organize_values = tuple()
+    emitted_idempotence_states = tuple()
+    for line in summary_lines:
+        if "not-idempotent" in line:
+            emitted_idempotence_states = (*emitted_idempotence_states, "not-idempotent")
+        elif "idempotent" in line:
+            emitted_idempotence_states = (*emitted_idempotence_states, "idempotent")
+        for part in line.split():
+            if part.startswith("write_requested="):
+                emitted_write_requested_values = (
+                    *emitted_write_requested_values,
+                    part.removeprefix("write_requested="),
+                )
+            elif part.startswith("written="):
+                emitted_written_values = (*emitted_written_values, part.removeprefix("written="))
+            elif part.startswith("organize="):
+                emitted_organize_values = (*emitted_organize_values, part.removeprefix("organize="))
+    required_write_paths = (payload["write_path"],)
+    required_write_requested_values = (str(payload["write_requested"]),)
+    required_written_values = (str(payload["written"]),)
+    required_organize_values = (str(payload["organize"]),)
+    required_idempotence_states = ("idempotent" if payload["idempotent"] else "not-idempotent",)
+    required_diagnostic_codes = tuple(diagnostic["code"] for diagnostic in payload["diagnostics"])
+    required_diagnostic_severities = tuple(diagnostic["severity"] for diagnostic in payload["diagnostics"])
+    missing_write_paths = tuple(path for path in required_write_paths if path not in emitted_write_paths)
+    missing_write_requested_values = tuple(
+        value for value in required_write_requested_values if value not in emitted_write_requested_values
+    )
+    missing_written_values = tuple(value for value in required_written_values if value not in emitted_written_values)
+    missing_organize_values = tuple(value for value in required_organize_values if value not in emitted_organize_values)
+    missing_idempotence_states = tuple(
+        state for state in required_idempotence_states if state not in emitted_idempotence_states
+    )
+    missing_diagnostic_codes = tuple(code for code in required_diagnostic_codes if code not in emitted_diagnostic_codes)
+    missing_diagnostic_severities = tuple(
+        severity for severity in required_diagnostic_severities if severity not in emitted_diagnostic_severities
+    )
     return {
         "format": "appgen.format-text-renderer.v1",
-        "ok": not missing and not text.lstrip().startswith("{"),
+        "ok": not missing
+        and not missing_write_paths
+        and not missing_write_requested_values
+        and not missing_written_values
+        and not missing_organize_values
+        and not missing_idempotence_states
+        and not missing_diagnostic_codes
+        and not missing_diagnostic_severities
+        and not text.lstrip().startswith("{"),
         **_text_renderer_contract_counts(
             text,
             required_fragments,
@@ -2544,6 +2594,34 @@ def _format_text_renderer_contract() -> dict:
         "write_flag_line_count": sum(1 for line in summary_lines if "write_requested=True" in line and "written=True" in line),
         "idempotence_line_count": sum(1 for line in summary_lines if "idempotent" in line or "not-idempotent" in line),
         "organize_line_count": sum(1 for line in summary_lines if "organize=True" in line),
+        "required_write_paths": required_write_paths,
+        "emitted_write_paths": emitted_write_paths,
+        "missing_write_path_count": len(missing_write_paths),
+        "missing_write_paths": missing_write_paths,
+        "required_write_requested_values": required_write_requested_values,
+        "emitted_write_requested_values": emitted_write_requested_values,
+        "missing_write_requested_value_count": len(missing_write_requested_values),
+        "missing_write_requested_values": missing_write_requested_values,
+        "required_written_values": required_written_values,
+        "emitted_written_values": emitted_written_values,
+        "missing_written_value_count": len(missing_written_values),
+        "missing_written_values": missing_written_values,
+        "required_organize_values": required_organize_values,
+        "emitted_organize_values": emitted_organize_values,
+        "missing_organize_value_count": len(missing_organize_values),
+        "missing_organize_values": missing_organize_values,
+        "required_idempotence_states": required_idempotence_states,
+        "emitted_idempotence_states": emitted_idempotence_states,
+        "missing_idempotence_state_count": len(missing_idempotence_states),
+        "missing_idempotence_states": missing_idempotence_states,
+        "required_diagnostic_codes": required_diagnostic_codes,
+        "emitted_diagnostic_codes": emitted_diagnostic_codes,
+        "missing_diagnostic_code_count": len(missing_diagnostic_codes),
+        "missing_diagnostic_codes": missing_diagnostic_codes,
+        "required_diagnostic_severities": required_diagnostic_severities,
+        "emitted_diagnostic_severities": emitted_diagnostic_severities,
+        "missing_diagnostic_severity_count": len(missing_diagnostic_severities),
+        "missing_diagnostic_severities": missing_diagnostic_severities,
         "json_fallback": text.lstrip().startswith("{"),
         "text_prefix": text[:240],
     }
@@ -5421,6 +5499,13 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and format_text_renderer.get("write_flag_line_count") == 1
             and format_text_renderer.get("idempotence_line_count") == 1
             and format_text_renderer.get("organize_line_count") == 1
+            and format_text_renderer.get("missing_write_path_count") == 0
+            and format_text_renderer.get("missing_write_requested_value_count") == 0
+            and format_text_renderer.get("missing_written_value_count") == 0
+            and format_text_renderer.get("missing_organize_value_count") == 0
+            and format_text_renderer.get("missing_idempotence_state_count") == 0
+            and format_text_renderer.get("missing_diagnostic_code_count") == 0
+            and format_text_renderer.get("missing_diagnostic_severity_count") == 0
             and format_text_renderer.get("json_fallback") is False,
             "Formatter write and organize contracts prove check/write modes, table organization categories, idempotence, comments, diagnostics, and text markers.",
             "docs/tooling.md#appgen-format",
@@ -5464,6 +5549,38 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                     "write_flag_line_count": format_text_renderer.get("write_flag_line_count"),
                     "idempotence_line_count": format_text_renderer.get("idempotence_line_count"),
                     "organize_line_count": format_text_renderer.get("organize_line_count"),
+                    "required_write_paths": format_text_renderer.get("required_write_paths"),
+                    "emitted_write_paths": format_text_renderer.get("emitted_write_paths"),
+                    "missing_write_path_count": format_text_renderer.get("missing_write_path_count"),
+                    "missing_write_paths": format_text_renderer.get("missing_write_paths"),
+                    "required_write_requested_values": format_text_renderer.get("required_write_requested_values"),
+                    "emitted_write_requested_values": format_text_renderer.get("emitted_write_requested_values"),
+                    "missing_write_requested_value_count": format_text_renderer.get(
+                        "missing_write_requested_value_count"
+                    ),
+                    "missing_write_requested_values": format_text_renderer.get("missing_write_requested_values"),
+                    "required_written_values": format_text_renderer.get("required_written_values"),
+                    "emitted_written_values": format_text_renderer.get("emitted_written_values"),
+                    "missing_written_value_count": format_text_renderer.get("missing_written_value_count"),
+                    "missing_written_values": format_text_renderer.get("missing_written_values"),
+                    "required_organize_values": format_text_renderer.get("required_organize_values"),
+                    "emitted_organize_values": format_text_renderer.get("emitted_organize_values"),
+                    "missing_organize_value_count": format_text_renderer.get("missing_organize_value_count"),
+                    "missing_organize_values": format_text_renderer.get("missing_organize_values"),
+                    "required_idempotence_states": format_text_renderer.get("required_idempotence_states"),
+                    "emitted_idempotence_states": format_text_renderer.get("emitted_idempotence_states"),
+                    "missing_idempotence_state_count": format_text_renderer.get("missing_idempotence_state_count"),
+                    "missing_idempotence_states": format_text_renderer.get("missing_idempotence_states"),
+                    "required_diagnostic_codes": format_text_renderer.get("required_diagnostic_codes"),
+                    "emitted_diagnostic_codes": format_text_renderer.get("emitted_diagnostic_codes"),
+                    "missing_diagnostic_code_count": format_text_renderer.get("missing_diagnostic_code_count"),
+                    "missing_diagnostic_codes": format_text_renderer.get("missing_diagnostic_codes"),
+                    "required_diagnostic_severities": format_text_renderer.get("required_diagnostic_severities"),
+                    "emitted_diagnostic_severities": format_text_renderer.get("emitted_diagnostic_severities"),
+                    "missing_diagnostic_severity_count": format_text_renderer.get(
+                        "missing_diagnostic_severity_count"
+                    ),
+                    "missing_diagnostic_severities": format_text_renderer.get("missing_diagnostic_severities"),
                     "json_fallback": format_text_renderer.get("json_fallback"),
                 },
             },
