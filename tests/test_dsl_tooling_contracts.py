@@ -529,6 +529,32 @@ def test_appgen_component_publish_subcommand_emits_side_effect_free_catalog_patc
     assert "catalog-count before=1 after=2 existing=1" in text_result.stdout
 
 
+def test_component_publish_cli_audit_covers_patch_text_and_missing_catalog(tmp_path: Path) -> None:
+    audit = appgen_dsl._tooling_audit_component_publish_cli(tmp_path)
+
+    assert audit["format"] == "appgen.component-publish-cli-audit.v1"
+    assert audit["ok"] is True
+    assert audit["case_count"] == 3
+    assert audit["passing_case_count"] == audit["case_count"]
+    assert audit["failing_case_count"] == 0
+    assert audit["failing_cases"] == ()
+    assert audit["patch_format"] == "appgen.component-catalog-patch.v1"
+    assert audit["operation"] == "upsert_component"
+    assert audit["component"] == "CustomGauge"
+    assert audit["component_icon"] == "custom-gauge"
+    assert audit["before_count"] == 1
+    assert audit["after_count"] == 2
+    assert audit["existing_catalog_count"] == 1
+    assert audit["side_effect_free"] is True
+    assert audit["write_performed"] is False
+    assert audit["text_has_report_format"] is True
+    assert audit["text_has_patch_format"] is True
+    assert audit["text_has_side_effect_markers"] is True
+    assert audit["text_has_existing_catalog"] is True
+    assert audit["missing_catalog_exit_code"] == 1
+    assert "catalog_path_readable" in audit["missing_catalog_blocking_gaps"]
+
+
 def test_lint_directory_audit_covers_strict_component_cli_gate(tmp_path: Path) -> None:
     report = appgen_dsl._tooling_audit_lint_directory_cli(tmp_path, TOOLING_SAMPLE)
 
@@ -3875,6 +3901,14 @@ def test_tooling_implementation_phase_audit_maps_phase_exit_criteria_to_evidence
             "diagnostics_have_files": True,
             "stage_separation": {"ok": True},
         },
+        component_publish_cli={
+            **ok("appgen.component-publish-cli-audit.v1"),
+            "case_count": 3,
+            "passing_case_count": 3,
+            "patch_format": "appgen.component-catalog-patch.v1",
+            "side_effect_free": True,
+            "write_performed": False,
+        },
         formatted={"ok": True, "format": "appgen.format-result.v1", "idempotent": True},
         formatter_contract={
             **ok("appgen.formatter-contract-audit.v1"),
@@ -4015,6 +4049,14 @@ def test_tooling_implementation_phase_audit_maps_phase_exit_criteria_to_evidence
             "target_status_line_count": 2,
             "artifact_line_count": 2,
         },
+        pbc_publish_cli={
+            **ok("appgen.pbc-publish-cli-audit.v1"),
+            "case_count": 2,
+            "passing_case_count": 2,
+            "side_effect_free": True,
+            "write_performed": False,
+            "release_evidence_ok": True,
+        },
     )
 
     assert report["format"] == "appgen.tooling-implementation-phase-audit.v1"
@@ -4047,6 +4089,7 @@ def test_tooling_implementation_phase_audit_maps_phase_exit_criteria_to_evidence
         "semantic_model_contract",
         "diagnostic_catalog_fixture_contracts",
         "lint_cli_directory_contracts",
+        "component_publish_catalog_contracts",
         "formatter_idempotency",
         "formatter_write_organize_contracts",
         "cli_usage_failure_modes",
@@ -4064,6 +4107,7 @@ def test_tooling_implementation_phase_audit_maps_phase_exit_criteria_to_evidence
         "release_and_package_verifiers",
         "package_manifest_handoff_contracts",
         "release_text_evidence_contracts",
+        "pbc_publish_side_effect_contracts",
     }
 
 
@@ -4197,6 +4241,8 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
         "tooling_doc_anchor_integrity",
         "non_goal_policy_guards",
         "tooling_audit_text_renderer",
+        "component_publish_catalog_contracts",
+        "pbc_publish_side_effect_contracts",
     } <= {check["id"] for check in report["checks"]}
     semantic_check = next(check for check in report["checks"] if check["id"] == "shared_semantic_model")
     assert semantic_check["detail"]["contract_counts"]["required_top_level_field_count"] == 20
@@ -4705,6 +4751,30 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert lint_contract_check["detail"]["text_renderer"]["migration_preview_line_count"] >= 1
     assert lint_contract_check["detail"]["text_renderer"]["diagnostic_line_count"] >= 1
     assert lint_contract_check["detail"]["text_renderer"]["json_fallback"] is False
+    component_publish_check = next(check for check in report["checks"] if check["id"] == "component_publish_catalog_contracts")
+    assert component_publish_check["detail"]["cli"]["format"] == "appgen.component-publish-cli-audit.v1"
+    assert component_publish_check["detail"]["cli"]["passing_case_count"] == component_publish_check["detail"]["cli"]["case_count"]
+    assert component_publish_check["detail"]["cli"]["patch_format"] == "appgen.component-catalog-patch.v1"
+    assert component_publish_check["detail"]["cli"]["operation"] == "upsert_component"
+    assert component_publish_check["detail"]["cli"]["component"] == "CustomGauge"
+    assert component_publish_check["detail"]["cli"]["component_icon"] == "custom-gauge"
+    assert component_publish_check["detail"]["cli"]["before_count"] == 1
+    assert component_publish_check["detail"]["cli"]["after_count"] == 2
+    assert component_publish_check["detail"]["cli"]["side_effect_free"] is True
+    assert component_publish_check["detail"]["cli"]["write_performed"] is False
+    assert component_publish_check["detail"]["cli"]["text_has_report_format"] is True
+    assert component_publish_check["detail"]["cli"]["text_has_patch_format"] is True
+    assert component_publish_check["detail"]["cli"]["text_has_side_effect_markers"] is True
+    assert component_publish_check["detail"]["cli"]["text_has_existing_catalog"] is True
+    assert component_publish_check["detail"]["cli"]["missing_catalog_exit_code"] == 1
+    assert "catalog_path_readable" in component_publish_check["detail"]["cli"]["missing_catalog_blocking_gaps"]
+    assert component_publish_check["detail"]["text_renderer"]["format"] == "appgen.component-publish-text-renderer.v1"
+    assert component_publish_check["detail"]["text_renderer"]["summary_line_count"] == 1
+    assert component_publish_check["detail"]["text_renderer"]["catalog_line_count"] >= 2
+    assert component_publish_check["detail"]["text_renderer"]["side_effect_line_count"] == 1
+    assert component_publish_check["detail"]["text_renderer"]["patch_contract_line_count"] == 1
+    assert component_publish_check["detail"]["text_renderer"]["existing_catalog_line_count"] == 1
+    assert component_publish_check["detail"]["text_renderer"]["json_fallback"] is False
     test_strategy_check = next(check for check in report["checks"] if check["id"] == "parser_golden_and_drift_gates")
     assert test_strategy_check["detail"]["cli"]["format"] == "appgen.test-strategy-cli-audit.v1"
     assert test_strategy_check["detail"]["cli"]["ok"] is True
@@ -4859,6 +4929,41 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert release_text_check["detail"]["blocking_gap_line_count"] == 1
     assert release_text_check["detail"]["artifact_line_count"] == 2
     assert release_text_check["detail"]["json_fallback"] is False
+    pbc_publish_check = next(check for check in report["checks"] if check["id"] == "pbc_publish_side_effect_contracts")
+    assert pbc_publish_check["detail"]["catalog"]["format"] == "appgen.pbc-verifier-catalog.v1"
+    assert pbc_publish_check["detail"]["catalog"]["count"] > 0
+    assert pbc_publish_check["detail"]["text_cli"]["format"] == "appgen.pbc-cli-text-audit.v1"
+    assert pbc_publish_check["detail"]["text_cli"]["passing_case_count"] == pbc_publish_check["detail"]["text_cli"]["case_count"]
+    assert pbc_publish_check["detail"]["text_cli"]["json_fallback_count"] == 0
+    assert pbc_publish_check["detail"]["publish_cli"]["format"] == "appgen.pbc-publish-cli-audit.v1"
+    assert pbc_publish_check["detail"]["publish_cli"]["passing_case_count"] == (
+        pbc_publish_check["detail"]["publish_cli"]["case_count"]
+    )
+    assert pbc_publish_check["detail"]["publish_cli"]["payload_format"] == "appgen.pbc-publish-report.v1"
+    assert pbc_publish_check["detail"]["publish_cli"]["pbc"] == "gl_core"
+    assert pbc_publish_check["detail"]["publish_cli"]["target_mode"] == "file"
+    assert pbc_publish_check["detail"]["publish_cli"]["side_effect_free"] is True
+    assert pbc_publish_check["detail"]["publish_cli"]["write_performed"] is False
+    assert pbc_publish_check["detail"]["publish_cli"]["catalog_patch_count"] >= 1
+    assert pbc_publish_check["detail"]["publish_cli"]["release_evidence_format"] == "appgen.pbc-package-verifier.v1"
+    assert pbc_publish_check["detail"]["publish_cli"]["release_evidence_ok"] is True
+    assert pbc_publish_check["detail"]["publish_cli"]["passing_check_count"] == (
+        pbc_publish_check["detail"]["publish_cli"]["check_count"]
+    )
+    assert pbc_publish_check["detail"]["publish_cli"]["blocking_gap_count"] == 0
+    assert pbc_publish_check["detail"]["publish_cli"]["text_has_catalog_path"] is True
+    assert pbc_publish_check["detail"]["publish_cli"]["text_has_side_effect_markers"] is True
+    assert pbc_publish_check["detail"]["publish_cli"]["text_has_catalog_patch"] is True
+    assert pbc_publish_check["detail"]["publish_cli"]["text_has_check_status"] is True
+    assert pbc_publish_check["detail"]["publish_cli"]["text_json_fallback"] is False
+    assert pbc_publish_check["detail"]["publish_text_renderer"]["format"] == "appgen.pbc-publish-text-renderer.v1"
+    assert pbc_publish_check["detail"]["publish_text_renderer"]["summary_line_count"] == 1
+    assert pbc_publish_check["detail"]["publish_text_renderer"]["catalog_path_line_count"] == 1
+    assert pbc_publish_check["detail"]["publish_text_renderer"]["side_effect_line_count"] == 1
+    assert pbc_publish_check["detail"]["publish_text_renderer"]["catalog_patch_line_count"] >= 1
+    assert pbc_publish_check["detail"]["publish_text_renderer"]["passing_check_line_count"] >= 4
+    assert pbc_publish_check["detail"]["publish_text_renderer"]["failing_check_line_count"] == 0
+    assert pbc_publish_check["detail"]["publish_text_renderer"]["json_fallback"] is False
     migration_check = next(check for check in report["checks"] if check["id"] == "migration_detection_coverage")
     assert migration_check["detail"]["cli"]["format"] == "appgen.migration-cli-audit.v1"
     assert migration_check["detail"]["cli"]["ok"] is True
@@ -5157,6 +5262,16 @@ def test_pbc_publish_text_renderer_contract_proves_side_effect_free_log_markers(
 
     assert report["format"] == "appgen.pbc-publish-text-renderer.v1"
     assert report["ok"] is True
+    assert report["required_fragment_count"] == len(report["required_fragments"])
+    assert report["missing_fragment_count"] == 0
+    assert report["marker_line_count"] >= 8
+    assert report["summary_line_count"] == 1
+    assert report["catalog_path_line_count"] == 1
+    assert report["side_effect_line_count"] == 1
+    assert report["catalog_patch_line_count"] == 1
+    assert report["check_line_count"] == 4
+    assert report["passing_check_line_count"] == 4
+    assert report["failing_check_line_count"] == 0
     assert report["missing_fragments"] == ()
     assert report["json_fallback"] is False
     assert report["text_prefix"].startswith("pbc publish ok: gl_core -> local")
@@ -5169,6 +5284,32 @@ def test_pbc_publish_text_renderer_contract_proves_side_effect_free_log_markers(
         "ok catalog_patch_available",
         "ok publish_is_side_effect_free",
     } <= set(report["required_fragments"])
+
+
+def test_pbc_publish_cli_audit_covers_side_effect_free_file_catalog(tmp_path: Path) -> None:
+    audit = appgen_dsl._tooling_audit_pbc_publish_cli(tmp_path)
+
+    assert audit["format"] == "appgen.pbc-publish-cli-audit.v1"
+    assert audit["ok"] is True
+    assert audit["case_count"] == 2
+    assert audit["passing_case_count"] == audit["case_count"]
+    assert audit["failing_case_count"] == 0
+    assert audit["failing_cases"] == ()
+    assert audit["payload_format"] == "appgen.pbc-publish-report.v1"
+    assert audit["pbc"] == "gl_core"
+    assert audit["target_mode"] == "file"
+    assert audit["side_effect_free"] is True
+    assert audit["write_performed"] is False
+    assert audit["catalog_patch_count"] >= 1
+    assert audit["release_evidence_format"] == "appgen.pbc-package-verifier.v1"
+    assert audit["release_evidence_ok"] is True
+    assert audit["passing_check_count"] == audit["check_count"]
+    assert audit["blocking_gap_count"] == 0
+    assert audit["text_has_catalog_path"] is True
+    assert audit["text_has_side_effect_markers"] is True
+    assert audit["text_has_catalog_patch"] is True
+    assert audit["text_has_check_status"] is True
+    assert audit["text_json_fallback"] is False
 
 
 def test_diagnostics_text_renderer_contract_proves_catalog_and_fixture_log_markers() -> None:

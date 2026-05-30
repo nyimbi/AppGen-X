@@ -1080,6 +1080,12 @@ summary, catalog metadata, side-effect posture, and patch contract. It also
 reports summary-line, catalog-line, side-effect-line, patch-contract-line, and
 existing-catalog-line counts so component publication logs prove catalog
 context and non-mutating publication posture did not disappear.
+The aggregate tooling audit exposes this proof independently as
+`component_publish_catalog_contracts`. That gate fails when
+`appgen component-publish` stops returning an `appgen.component-catalog-patch.v1`
+upsert plan, stops deriving component icons, mutates catalogs implicitly, hides
+existing catalog context in text mode, or accepts a missing catalog path without
+a blocking gap.
 
 ### `appgen pbc`
 
@@ -1105,6 +1111,12 @@ prove publish text logs expose the target catalog mode, catalog path as
 `catalog_path ...`, side-effect-free flag, write-performed flag, catalog patch
 entries as `catalog-patch ...`, and per-check publication status without
 loading a package during renderer verification or parsing JSON.
+The aggregate tooling audit exposes this proof independently as
+`pbc_publish_side_effect_contracts`. That gate fails when PBC list/verify text
+falls back to JSON, publish stops attaching `appgen.pbc-package-verifier.v1`
+release evidence, catalog publication stops being side-effect-free, file
+catalog paths or catalog patches disappear from text output, or any PBC publish
+check reports a blocking gap.
 
 ### `appgen nl-plan`
 

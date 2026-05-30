@@ -2585,11 +2585,29 @@ def _pbc_publish_text_renderer_contract() -> dict:
         "ok publish_is_side_effect_free",
     )
     missing = tuple(fragment for fragment in required_fragments if fragment not in text)
+    lines = tuple(line for line in text.splitlines() if line.strip())
+    summary_lines = tuple(line for line in lines if line.startswith("pbc publish "))
+    catalog_path_lines = tuple(line for line in lines if line.startswith("catalog_path "))
+    side_effect_lines = tuple(line for line in lines if "side_effect_free=" in line and "write_performed=" in line)
+    catalog_patch_lines = tuple(line for line in lines if line.startswith("catalog-patch "))
+    check_lines = tuple(line for line in lines if line.startswith(("ok ", "fail ")))
     return {
         "format": "appgen.pbc-publish-text-renderer.v1",
         "ok": not missing and not text.lstrip().startswith("{"),
+        **_text_renderer_contract_counts(
+            text,
+            required_fragments,
+            marker_prefixes=("pbc publish ", "catalog_path ", "side_effect_free=", "catalog-patch ", "ok ", "fail "),
+        ),
         "required_fragments": required_fragments,
         "missing_fragments": missing,
+        "summary_line_count": len(summary_lines),
+        "catalog_path_line_count": len(catalog_path_lines),
+        "side_effect_line_count": len(side_effect_lines),
+        "catalog_patch_line_count": len(catalog_patch_lines),
+        "check_line_count": len(check_lines),
+        "passing_check_line_count": sum(1 for line in check_lines if line.startswith("ok ")),
+        "failing_check_line_count": sum(1 for line in check_lines if line.startswith("fail ")),
         "json_fallback": text.lstrip().startswith("{"),
         "text_prefix": text[:240],
     }
@@ -4292,6 +4310,8 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
         missing_required_option_exit = _tooling_audit_missing_required_option_exit(Path(tmp))
         invalid_choice_exit = _tooling_audit_invalid_choice_exit(Path(tmp))
         lint_directory_cli = _tooling_audit_lint_directory_cli(Path(tmp), source)
+        component_publish_cli = _tooling_audit_component_publish_cli(Path(tmp))
+        pbc_publish_cli = _tooling_audit_pbc_publish_cli(Path(tmp))
         validate_generate_cli = _tooling_audit_validate_generate_cli(Path(tmp), source)
         designer_sync_cli = _tooling_audit_designer_sync_cli(Path(tmp), source)
         lsp_apply_cli = _tooling_audit_lsp_apply_code_action_cli(Path(tmp))
@@ -4371,6 +4391,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
         strict_lint=strict_lint,
         catalog_lint=catalog_lint,
         lint_directory_cli=lint_directory_cli,
+        component_publish_cli=component_publish_cli,
         formatted=formatted,
         formatter_contract=formatter_contract,
         format_write=format_write,
@@ -4410,6 +4431,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
         package=package,
         package_verify_cli=package_verify_cli,
         release_text_renderer=release_text_renderer,
+        pbc_publish_cli=pbc_publish_cli,
         parser_golden_text_renderer=parser_golden_text_renderer,
         drift_text_renderer=drift_text_renderer,
         doctor=doctor,
@@ -4635,6 +4657,64 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             "Component publication text mode exposes side-effect-free catalog patch evidence for reusable visual components.",
             "docs/tooling.md#appgen-component-publish",
             component_publish_text_renderer,
+        ),
+        _tooling_audit_check(
+            "component_publish_catalog_contracts",
+            component_publish_cli["ok"]
+            and component_publish_cli.get("passing_case_count") == component_publish_cli.get("case_count")
+            and component_publish_cli.get("patch_format") == "appgen.component-catalog-patch.v1"
+            and component_publish_cli.get("operation") == "upsert_component"
+            and component_publish_cli.get("component") == "CustomGauge"
+            and component_publish_cli.get("component_icon") == "custom-gauge"
+            and component_publish_cli.get("before_count") == 1
+            and component_publish_cli.get("after_count") == 2
+            and component_publish_cli.get("side_effect_free") is True
+            and component_publish_cli.get("write_performed") is False
+            and component_publish_cli.get("text_has_report_format") is True
+            and component_publish_cli.get("text_has_patch_format") is True
+            and component_publish_cli.get("text_has_side_effect_markers") is True
+            and component_publish_cli.get("text_has_existing_catalog") is True
+            and component_publish_cli.get("missing_catalog_exit_code") == 1
+            and "catalog_path_readable" in component_publish_cli.get("missing_catalog_blocking_gaps", ())
+            and component_publish_text_renderer["ok"]
+            and component_publish_text_renderer.get("summary_line_count") == 1
+            and component_publish_text_renderer.get("catalog_line_count", 0) >= 2
+            and component_publish_text_renderer.get("side_effect_line_count") == 1
+            and component_publish_text_renderer.get("patch_contract_line_count") == 1
+            and component_publish_text_renderer.get("existing_catalog_line_count") == 1
+            and component_publish_text_renderer.get("json_fallback") is False,
+            "Component publication contracts prove reusable component catalog patches are side-effect-free, iconized, text-visible, and reject missing catalogs.",
+            "docs/tooling.md#appgen-component-publish",
+            {
+                "cli": {
+                    "format": component_publish_cli.get("format"),
+                    "case_count": component_publish_cli.get("case_count"),
+                    "passing_case_count": component_publish_cli.get("passing_case_count"),
+                    "patch_format": component_publish_cli.get("patch_format"),
+                    "operation": component_publish_cli.get("operation"),
+                    "component": component_publish_cli.get("component"),
+                    "component_icon": component_publish_cli.get("component_icon"),
+                    "before_count": component_publish_cli.get("before_count"),
+                    "after_count": component_publish_cli.get("after_count"),
+                    "side_effect_free": component_publish_cli.get("side_effect_free"),
+                    "write_performed": component_publish_cli.get("write_performed"),
+                    "text_has_report_format": component_publish_cli.get("text_has_report_format"),
+                    "text_has_patch_format": component_publish_cli.get("text_has_patch_format"),
+                    "text_has_side_effect_markers": component_publish_cli.get("text_has_side_effect_markers"),
+                    "text_has_existing_catalog": component_publish_cli.get("text_has_existing_catalog"),
+                    "missing_catalog_exit_code": component_publish_cli.get("missing_catalog_exit_code"),
+                    "missing_catalog_blocking_gaps": component_publish_cli.get("missing_catalog_blocking_gaps"),
+                },
+                "text_renderer": {
+                    "format": component_publish_text_renderer.get("format"),
+                    "summary_line_count": component_publish_text_renderer.get("summary_line_count"),
+                    "catalog_line_count": component_publish_text_renderer.get("catalog_line_count"),
+                    "side_effect_line_count": component_publish_text_renderer.get("side_effect_line_count"),
+                    "patch_contract_line_count": component_publish_text_renderer.get("patch_contract_line_count"),
+                    "existing_catalog_line_count": component_publish_text_renderer.get("existing_catalog_line_count"),
+                    "json_fallback": component_publish_text_renderer.get("json_fallback"),
+                },
+            },
         ),
         _tooling_audit_check(
             "formatter_idempotent",
@@ -5423,6 +5503,85 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             },
         ),
         _tooling_audit_check(
+            "pbc_publish_side_effect_contracts",
+            pbc_catalog["ok"]
+            and pbc_catalog.get("count", 0) > 0
+            and pbc_cli_text["ok"]
+            and pbc_cli_text.get("passing_case_count") == pbc_cli_text.get("case_count")
+            and pbc_cli_text.get("json_fallback_count") == 0
+            and pbc_publish_cli["ok"]
+            and pbc_publish_cli.get("passing_case_count") == pbc_publish_cli.get("case_count")
+            and pbc_publish_cli.get("payload_format") == "appgen.pbc-publish-report.v1"
+            and pbc_publish_cli.get("pbc") == "gl_core"
+            and pbc_publish_cli.get("target_mode") == "file"
+            and pbc_publish_cli.get("side_effect_free") is True
+            and pbc_publish_cli.get("write_performed") is False
+            and pbc_publish_cli.get("catalog_patch_count", 0) >= 1
+            and pbc_publish_cli.get("release_evidence_format") == "appgen.pbc-package-verifier.v1"
+            and pbc_publish_cli.get("release_evidence_ok") is True
+            and pbc_publish_cli.get("passing_check_count") == pbc_publish_cli.get("check_count")
+            and pbc_publish_cli.get("blocking_gap_count") == 0
+            and pbc_publish_cli.get("text_has_catalog_path") is True
+            and pbc_publish_cli.get("text_has_side_effect_markers") is True
+            and pbc_publish_cli.get("text_has_catalog_patch") is True
+            and pbc_publish_cli.get("text_has_check_status") is True
+            and pbc_publish_cli.get("text_json_fallback") is False
+            and pbc_publish_text_renderer["ok"]
+            and pbc_publish_text_renderer.get("summary_line_count") == 1
+            and pbc_publish_text_renderer.get("catalog_path_line_count") == 1
+            and pbc_publish_text_renderer.get("side_effect_line_count") == 1
+            and pbc_publish_text_renderer.get("catalog_patch_line_count", 0) >= 1
+            and pbc_publish_text_renderer.get("passing_check_line_count", 0) >= 4
+            and pbc_publish_text_renderer.get("failing_check_line_count") == 0
+            and pbc_publish_text_renderer.get("json_fallback") is False,
+            "PBC publish contracts prove package-backed catalog publication is side-effect-free, release-evidence-backed, and visible in text logs.",
+            "docs/tooling.md#appgen-pbc",
+            {
+                "catalog": {
+                    "format": pbc_catalog.get("format"),
+                    "count": pbc_catalog.get("count"),
+                },
+                "text_cli": {
+                    "format": pbc_cli_text.get("format"),
+                    "case_count": pbc_cli_text.get("case_count"),
+                    "passing_case_count": pbc_cli_text.get("passing_case_count"),
+                    "json_fallback_count": pbc_cli_text.get("json_fallback_count"),
+                },
+                "publish_cli": {
+                    "format": pbc_publish_cli.get("format"),
+                    "case_count": pbc_publish_cli.get("case_count"),
+                    "passing_case_count": pbc_publish_cli.get("passing_case_count"),
+                    "payload_format": pbc_publish_cli.get("payload_format"),
+                    "pbc": pbc_publish_cli.get("pbc"),
+                    "target_mode": pbc_publish_cli.get("target_mode"),
+                    "catalog_path": pbc_publish_cli.get("catalog_path"),
+                    "side_effect_free": pbc_publish_cli.get("side_effect_free"),
+                    "write_performed": pbc_publish_cli.get("write_performed"),
+                    "catalog_patch_count": pbc_publish_cli.get("catalog_patch_count"),
+                    "release_evidence_format": pbc_publish_cli.get("release_evidence_format"),
+                    "release_evidence_ok": pbc_publish_cli.get("release_evidence_ok"),
+                    "check_count": pbc_publish_cli.get("check_count"),
+                    "passing_check_count": pbc_publish_cli.get("passing_check_count"),
+                    "blocking_gap_count": pbc_publish_cli.get("blocking_gap_count"),
+                    "text_has_catalog_path": pbc_publish_cli.get("text_has_catalog_path"),
+                    "text_has_side_effect_markers": pbc_publish_cli.get("text_has_side_effect_markers"),
+                    "text_has_catalog_patch": pbc_publish_cli.get("text_has_catalog_patch"),
+                    "text_has_check_status": pbc_publish_cli.get("text_has_check_status"),
+                    "text_json_fallback": pbc_publish_cli.get("text_json_fallback"),
+                },
+                "publish_text_renderer": {
+                    "format": pbc_publish_text_renderer.get("format"),
+                    "summary_line_count": pbc_publish_text_renderer.get("summary_line_count"),
+                    "catalog_path_line_count": pbc_publish_text_renderer.get("catalog_path_line_count"),
+                    "side_effect_line_count": pbc_publish_text_renderer.get("side_effect_line_count"),
+                    "catalog_patch_line_count": pbc_publish_text_renderer.get("catalog_patch_line_count"),
+                    "passing_check_line_count": pbc_publish_text_renderer.get("passing_check_line_count"),
+                    "failing_check_line_count": pbc_publish_text_renderer.get("failing_check_line_count"),
+                    "json_fallback": pbc_publish_text_renderer.get("json_fallback"),
+                },
+            },
+        ),
+        _tooling_audit_check(
             "parser_golden_and_drift_gates",
             parser_golden["ok"]
             and parser_golden_text_renderer["ok"]
@@ -6135,6 +6294,16 @@ def _tooling_audit_implementation_phases(**evidence: dict) -> dict:
                     "evidence_format": evidence["lint_directory_cli"].get("format"),
                 },
                 {
+                    "id": "component_publish_catalog_contracts",
+                    "ok": evidence["component_publish_cli"].get("ok") is True
+                    and evidence["component_publish_cli"].get("passing_case_count")
+                    == evidence["component_publish_cli"].get("case_count")
+                    and evidence["component_publish_cli"].get("patch_format") == "appgen.component-catalog-patch.v1"
+                    and evidence["component_publish_cli"].get("side_effect_free") is True
+                    and evidence["component_publish_cli"].get("write_performed") is False,
+                    "evidence_format": evidence["component_publish_cli"].get("format"),
+                },
+                {
                     "id": "formatter_idempotency",
                     "ok": evidence["formatted"].get("idempotent") is True
                     and evidence["formatter_contract"].get("ok") is True,
@@ -6423,6 +6592,16 @@ def _tooling_audit_implementation_phases(**evidence: dict) -> dict:
                     and evidence["release_text_renderer"].get("target_status_line_count", 0) >= 2
                     and evidence["release_text_renderer"].get("artifact_line_count", 0) >= 2,
                     "evidence_format": evidence["release_text_renderer"].get("format"),
+                },
+                {
+                    "id": "pbc_publish_side_effect_contracts",
+                    "ok": evidence["pbc_publish_cli"].get("ok") is True
+                    and evidence["pbc_publish_cli"].get("passing_case_count")
+                    == evidence["pbc_publish_cli"].get("case_count")
+                    and evidence["pbc_publish_cli"].get("side_effect_free") is True
+                    and evidence["pbc_publish_cli"].get("write_performed") is False
+                    and evidence["pbc_publish_cli"].get("release_evidence_ok") is True,
+                    "evidence_format": evidence["pbc_publish_cli"].get("format"),
                 },
             ),
         ),
@@ -7916,6 +8095,91 @@ def _tooling_audit_invalid_choice_exit(tmp: Path) -> dict:
     }
 
 
+def _tooling_audit_component_publish_cli(tmp: Path) -> dict:
+    catalog_path = tmp / "component-catalog.json"
+    missing_catalog_path = tmp / "missing-component-catalog.json"
+    catalog_path.write_text(json.dumps({"components": [{"name": "ExistingBox"}]}, indent=2), encoding="utf-8")
+
+    json_exit, json_payload = _tooling_cli_json_case(
+        ("component-publish", "--component", "CustomGauge", "--catalog", str(catalog_path), "--json")
+    )
+    text_exit, text_output = _tooling_cli_text_case(
+        ("component-publish", "--component", "CustomGauge", "--catalog", str(catalog_path))
+    )
+    missing_exit, missing_payload = _tooling_cli_json_case(
+        ("component-publish", "--component", "CustomGauge", "--catalog", str(missing_catalog_path), "--json")
+    )
+    patch = json_payload.get("catalog_patch", {})
+    catalog = json_payload.get("catalog", {})
+    text_lines = tuple(line for line in text_output.splitlines() if line.strip())
+    cases = (
+        {
+            "case": "json_publish_patch",
+            "ok": json_exit == 0
+            and json_payload.get("format") == "appgen.component-publish-report.v1"
+            and json_payload.get("ok") is True
+            and json_payload.get("component") == "CustomGauge"
+            and catalog.get("components") == ["ExistingBox"]
+            and patch.get("format") == "appgen.component-catalog-patch.v1"
+            and patch.get("operation") == "upsert_component"
+            and patch.get("component", {}).get("icon") == "custom-gauge"
+            and patch.get("before_count") == 1
+            and patch.get("after_count") == 2
+            and patch.get("side_effect_free") is True
+            and patch.get("write_performed") is False
+            and not json_payload.get("blocking_gaps"),
+        },
+        {
+            "case": "text_publish_markers",
+            "ok": text_exit == 0
+            and text_output.startswith("component-publish ok: format=appgen.component-publish-report.v1")
+            and "patch_format=appgen.component-catalog-patch.v1" in text_output
+            and "side_effect_free=True" in text_output
+            and "write_performed=False" in text_output
+            and "catalog-count before=1 after=2 existing=1" in text_output
+            and "catalog-existing ExistingBox" in text_output
+            and not text_output.lstrip().startswith("{"),
+        },
+        {
+            "case": "missing_catalog_rejected",
+            "ok": missing_exit == 1
+            and missing_payload.get("format") == "appgen.component-publish-report.v1"
+            and missing_payload.get("ok") is False
+            and "catalog_path_readable" in set(missing_payload.get("blocking_gaps", ()))
+            and missing_payload.get("catalog_patch", {}).get("side_effect_free") is True
+            and missing_payload.get("catalog_patch", {}).get("write_performed") is False,
+        },
+    )
+    failing_cases = tuple(case["case"] for case in cases if not case["ok"])
+    return {
+        "format": "appgen.component-publish-cli-audit.v1",
+        "ok": not failing_cases,
+        "case_count": len(cases),
+        "passing_case_count": sum(1 for case in cases if case["ok"]),
+        "failing_case_count": len(failing_cases),
+        "failing_cases": failing_cases,
+        "payload_format": json_payload.get("format"),
+        "patch_format": patch.get("format"),
+        "operation": patch.get("operation"),
+        "component": json_payload.get("component"),
+        "component_icon": patch.get("component", {}).get("icon"),
+        "before_count": patch.get("before_count"),
+        "after_count": patch.get("after_count"),
+        "existing_catalog_count": catalog.get("count"),
+        "side_effect_free": patch.get("side_effect_free"),
+        "write_performed": patch.get("write_performed"),
+        "text_exit_code": text_exit,
+        "text_line_count": len(text_lines),
+        "text_has_report_format": text_output.startswith("component-publish ok: format=appgen.component-publish-report.v1"),
+        "text_has_patch_format": "patch_format=appgen.component-catalog-patch.v1" in text_output,
+        "text_has_side_effect_markers": "side_effect_free=True" in text_output and "write_performed=False" in text_output,
+        "text_has_existing_catalog": "catalog-existing ExistingBox" in text_output,
+        "missing_catalog_exit_code": missing_exit,
+        "missing_catalog_blocking_gaps": missing_payload.get("blocking_gaps", ()),
+        "cases": cases,
+    }
+
+
 def _tooling_audit_lint_directory_cli(tmp: Path, source: str) -> dict:
     source_dir = tmp / "lint-directory"
     nested_dir = source_dir / "nested"
@@ -8390,6 +8654,84 @@ def _tooling_audit_pbc_cli_text() -> dict:
     return {
         "format": "appgen.pbc-cli-text-audit.v1",
         "ok": all(case["ok"] for case in cases),
+        "case_count": len(cases),
+        "passing_case_count": sum(1 for case in cases if case["ok"]),
+        "failing_case_count": sum(1 for case in cases if not case["ok"]),
+        "json_fallback_count": sum(1 for case in cases if case.get("json_fallback")),
+        "cases": cases,
+    }
+
+
+def _tooling_audit_pbc_publish_cli(tmp: Path) -> dict:
+    catalog_path = tmp / "pbc-catalog.json"
+    pbc_ref = "src/pyAppGen/pbcs/gl_core"
+    json_exit, json_payload = _tooling_cli_json_case(
+        ("pbc", "publish", pbc_ref, "--catalog", "file", "--catalog-path", str(catalog_path), "--json")
+    )
+    text_exit, text_output = _tooling_cli_text_case(
+        ("pbc", "publish", pbc_ref, "--catalog", "file", "--catalog-path", str(catalog_path))
+    )
+    patch = json_payload.get("catalog_patch", {}) or {}
+    target = json_payload.get("target", {}) or {}
+    release_evidence = json_payload.get("release_evidence", {}) or {}
+    checks = tuple(json_payload.get("checks", ()))
+    cases = (
+        {
+            "case": "json_publish_plan",
+            "ok": json_exit == 0
+            and json_payload.get("format") == "appgen.pbc-publish-report.v1"
+            and json_payload.get("ok") is True
+            and json_payload.get("pbc") == "gl_core"
+            and target.get("mode") == "file"
+            and target.get("catalog_path") == str(catalog_path)
+            and target.get("side_effect_free") is True
+            and target.get("write_performed") is False
+            and "gl_core" in patch
+            and release_evidence.get("format") == "appgen.pbc-package-verifier.v1"
+            and release_evidence.get("ok") is True
+            and len(checks) >= 6
+            and all(check.get("ok") is True for check in checks)
+            and not json_payload.get("blocking_gaps"),
+        },
+        {
+            "case": "text_publish_markers",
+            "ok": text_exit == 0
+            and text_output.startswith("pbc publish ok: gl_core -> file")
+            and f"catalog_path {catalog_path}" in text_output
+            and "side_effect_free=True write_performed=False" in text_output
+            and "catalog-patch gl_core:" in text_output
+            and "ok manifest_validates" in text_output
+            and "ok publish_is_side_effect_free" in text_output
+            and not text_output.lstrip().startswith("{"),
+        },
+    )
+    failing_cases = tuple(case["case"] for case in cases if not case["ok"])
+    return {
+        "format": "appgen.pbc-publish-cli-audit.v1",
+        "ok": not failing_cases,
+        "case_count": len(cases),
+        "passing_case_count": sum(1 for case in cases if case["ok"]),
+        "failing_case_count": len(failing_cases),
+        "failing_cases": failing_cases,
+        "payload_format": json_payload.get("format"),
+        "pbc": json_payload.get("pbc"),
+        "target_mode": target.get("mode"),
+        "catalog_path": target.get("catalog_path"),
+        "side_effect_free": target.get("side_effect_free"),
+        "write_performed": target.get("write_performed"),
+        "catalog_patch_count": len(patch),
+        "release_evidence_format": release_evidence.get("format"),
+        "release_evidence_ok": release_evidence.get("ok"),
+        "check_count": len(checks),
+        "passing_check_count": sum(1 for check in checks if check.get("ok") is True),
+        "blocking_gap_count": len(json_payload.get("blocking_gaps", ())),
+        "text_exit_code": text_exit,
+        "text_has_catalog_path": f"catalog_path {catalog_path}" in text_output,
+        "text_has_side_effect_markers": "side_effect_free=True write_performed=False" in text_output,
+        "text_has_catalog_patch": "catalog-patch gl_core:" in text_output,
+        "text_has_check_status": "ok manifest_validates" in text_output
+        and "ok publish_is_side_effect_free" in text_output,
+        "text_json_fallback": text_output.lstrip().startswith("{"),
         "cases": cases,
     }
 
