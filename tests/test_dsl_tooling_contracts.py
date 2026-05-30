@@ -3985,8 +3985,39 @@ def test_tooling_implementation_phase_audit_maps_phase_exit_criteria_to_evidence
         },
         lsp_rename_cli=ok("appgen.lsp-rename-cli-audit.v1"),
         quick_fix=ok("appgen.lsp-code-action-apply.v1"),
-        code_action_apply_audit=ok("appgen.lsp-code-action-apply-audit.v1"),
-        lsp_apply_cli=ok("appgen.lsp-code-action-cli-audit.v1"),
+        code_action_apply_audit={
+            **ok("appgen.lsp-code-action-apply-audit.v1"),
+            "case_count": 15,
+            "passing_case_count": 15,
+            "required_action_count": 15,
+            "observed_action_count": 15,
+            "required_action_ids": tuple(f"action_{index}" for index in range(15)),
+            "observed_action_ids": tuple(f"action_{index}" for index in range(15)),
+            "missing_required_action_count": 0,
+            "applied_edit_count": 15,
+            "lint_passing_case_count": 15,
+            "lint_failing_case_count": 0,
+            "blocking_gap_count": 0,
+        },
+        lsp_apply_cli={
+            **ok("appgen.lsp-code-action-cli-audit.v1"),
+            "case_count": 15,
+            "passing_case_count": 15,
+            "required_action_ids": tuple(f"action_{index}" for index in range(15)),
+            "missing_required_action_count": 0,
+            "applied_edit_count": 15,
+            "lint_passing_case_count": 15,
+            "lint_failing_case_count": 0,
+            "changed_case_count": 15,
+            "unchanged_case_count": 0,
+            "blocking_gap_count": 0,
+        },
+        code_action_text_renderer={
+            **ok("appgen.lsp-code-action-text-renderer.v1"),
+            "json_fallback": False,
+            "edit_line_count": 1,
+            "available_action_line_count": 1,
+        },
         vscode=ok("appgen.vscode-extension-audit.v1"),
         studio={
             **ok("appgen.studio-semantic-service-audit.v1"),
@@ -4109,6 +4140,8 @@ def test_tooling_implementation_phase_audit_maps_phase_exit_criteria_to_evidence
         "lsp_transport_rpc_contracts",
         "lsp_navigation_completion_contracts",
         "rename_and_code_actions",
+        "quick_fix_family_coverage",
+        "quick_fix_cli_and_text_contracts",
         "studio_semantic_bridge",
         "frontend_browser_smoke_bridges",
         "migration_safety_text_contracts",
@@ -4508,6 +4541,31 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert all(case["lint_format"] == "appgen.lint-report.v1" for case in quick_fix_check["detail"]["cli"]["cases"])
     assert all(case["lint_ok"] is True for case in quick_fix_check["detail"]["cli"]["cases"])
     assert all(case["forbidden_removed"] for case in quick_fix_check["detail"]["cli"]["cases"])
+    quick_fix_coverage = next(check for check in report["checks"] if check["id"] == "lsp_quick_fix_coverage_contracts")
+    assert quick_fix_coverage["ok"] is True
+    assert quick_fix_coverage["detail"]["format"] == "appgen.lsp-code-action-apply-audit.v1"
+    assert quick_fix_coverage["detail"]["required_action_count"] >= 15
+    assert quick_fix_coverage["detail"]["passing_case_count"] == quick_fix_coverage["detail"]["case_count"]
+    assert quick_fix_coverage["detail"]["missing_required_action_count"] == 0
+    assert quick_fix_coverage["detail"]["blocking_gap_count"] == 0
+    quick_fix_cli = next(check for check in report["checks"] if check["id"] == "lsp_quick_fix_cli_contracts")
+    assert quick_fix_cli["ok"] is True
+    assert quick_fix_cli["detail"]["cli"]["format"] == "appgen.lsp-code-action-cli-audit.v1"
+    assert tuple(quick_fix_cli["detail"]["cli"]["required_action_ids"]) == tuple(
+        quick_fix_cli["detail"]["application_required_action_ids"]
+    )
+    assert quick_fix_cli["detail"]["cli"]["missing_required_action_count"] == 0
+    assert quick_fix_cli["detail"]["cli"]["changed_case_count"] == quick_fix_cli["detail"]["cli"]["case_count"]
+    assert quick_fix_cli["detail"]["cli"]["blocking_gap_count"] == 0
+    quick_fix_text = next(check for check in report["checks"] if check["id"] == "lsp_quick_fix_text_contracts")
+    assert quick_fix_text["ok"] is True
+    assert quick_fix_text["detail"]["format"] == "appgen.lsp-code-action-text-renderer.v1"
+    assert quick_fix_text["detail"]["success_summary_line_count"] >= 1
+    assert quick_fix_text["detail"]["failure_summary_line_count"] >= 1
+    assert quick_fix_text["detail"]["edit_line_count"] >= 1
+    assert quick_fix_text["detail"]["available_action_line_count"] >= 1
+    assert quick_fix_text["detail"]["diagnostic_line_count"] >= 1
+    assert quick_fix_text["detail"]["json_fallback"] is False
     cli_check = next(check for check in report["checks"] if check["id"] == "cli_validation_and_generation_contracts")
     assert cli_check["detail"]["validate_generate_cli"]["format"] == "appgen.validate-generate-cli-audit.v1"
     assert cli_check["detail"]["validate_generate_cli"]["ok"] is True
@@ -5668,6 +5726,14 @@ def test_lsp_code_action_text_renderer_contract_proves_quick_fix_log_markers() -
     assert report["required_fragment_count"] == len(report["required_fragments"])
     assert report["missing_fragment_count"] == 0
     assert report["marker_line_count"] >= 6
+    assert report["success_summary_line_count"] == 1
+    assert report["failure_summary_line_count"] == 1
+    assert report["title_line_count"] == 1
+    assert report["edit_line_count"] == 1
+    assert report["available_action_line_count"] == 1
+    assert report["diagnostic_line_count"] == 1
+    assert report["lint_status_line_count"] == 2
+    assert report["changed_status_line_count"] == 2
     assert report["missing_fragments"] == ()
     assert report["json_fallback"] is False
     assert report["text_prefix"].startswith(

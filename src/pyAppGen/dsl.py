@@ -3730,6 +3730,7 @@ def _lsp_code_action_text_renderer_contract() -> dict:
         _emit_tooling_payload(success_payload, as_json=False)
         _emit_tooling_payload(failure_payload, as_json=False)
     text = output.getvalue()
+    lines = tuple(line for line in text.splitlines() if line.strip())
     required_fragments = (
         "lsp-code-action ok: format=appgen.lsp-code-action-apply.v1 action=create_operation_from_handler changed=True edits=1 lint_ok=True",
         "title Create operation SubmitInvoice",
@@ -3747,6 +3748,14 @@ def _lsp_code_action_text_renderer_contract() -> dict:
             required_fragments,
             marker_prefixes=("lsp-code-action ", "title ", "edit ", "available-actions ", "warning ", "error "),
         ),
+        "success_summary_line_count": sum(1 for line in lines if line.startswith("lsp-code-action ok:")),
+        "failure_summary_line_count": sum(1 for line in lines if line.startswith("lsp-code-action failed:")),
+        "title_line_count": sum(1 for line in lines if line.startswith("title ")),
+        "edit_line_count": sum(1 for line in lines if line.startswith("edit ")),
+        "available_action_line_count": sum(1 for line in lines if line.startswith("available-actions ")),
+        "diagnostic_line_count": sum(1 for line in lines if line.startswith(("warning ", "error "))),
+        "lint_status_line_count": sum(1 for line in lines if " lint_ok=" in line),
+        "changed_status_line_count": sum(1 for line in lines if " changed=" in line),
         "required_fragments": required_fragments,
         "missing_fragments": missing,
         "json_fallback": text.lstrip().startswith("{"),
@@ -4415,6 +4424,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
         lsp_rename_cli=lsp_rename_cli,
         quick_fix=quick_fix,
         code_action_apply_audit=code_action_apply_audit,
+        code_action_text_renderer=code_action_text_renderer,
         lsp_apply_cli=lsp_apply_cli,
         vscode=vscode,
         studio=studio,
@@ -5228,6 +5238,58 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                 "text_renderer": code_action_text_renderer,
                 "cli": lsp_apply_cli,
             },
+        ),
+        _tooling_audit_check(
+            "lsp_quick_fix_coverage_contracts",
+            code_action_apply_audit["ok"]
+            and code_action_apply_audit.get("passing_case_count") == code_action_apply_audit.get("case_count")
+            and code_action_apply_audit.get("required_action_count", 0) >= 15
+            and code_action_apply_audit.get("observed_action_count") == code_action_apply_audit.get("required_action_count")
+            and code_action_apply_audit.get("missing_required_action_count") == 0
+            and code_action_apply_audit.get("applied_edit_count", 0) >= code_action_apply_audit.get("case_count", 0)
+            and code_action_apply_audit.get("lint_passing_case_count") == code_action_apply_audit.get("case_count")
+            and code_action_apply_audit.get("lint_failing_case_count") == 0
+            and code_action_apply_audit.get("blocking_gap_count") == 0,
+            "Required quick-fix families apply as linted DSL patches with measurable case, action, edit, lint, diagnostic, and blocking-gap evidence.",
+            "docs/tooling.md#code-actions",
+            code_action_apply_audit,
+        ),
+        _tooling_audit_check(
+            "lsp_quick_fix_cli_contracts",
+            lsp_apply_cli["ok"]
+            and tuple(lsp_apply_cli.get("required_action_ids", ()))
+            == tuple(code_action_apply_audit.get("required_action_ids", ()))
+            and lsp_apply_cli.get("passing_case_count") == lsp_apply_cli.get("case_count")
+            and lsp_apply_cli.get("missing_required_action_count") == 0
+            and lsp_apply_cli.get("applied_edit_count", 0) >= lsp_apply_cli.get("case_count", 0)
+            and lsp_apply_cli.get("lint_passing_case_count") == lsp_apply_cli.get("case_count")
+            and lsp_apply_cli.get("lint_failing_case_count") == 0
+            and lsp_apply_cli.get("changed_case_count") == lsp_apply_cli.get("case_count")
+            and lsp_apply_cli.get("unchanged_case_count") == 0
+            and lsp_apply_cli.get("blocking_gap_count") == 0,
+            "The appgen lsp --apply-code-action CLI remains at parity with the in-process quick-fix contract for agent and editor integrations.",
+            "docs/tooling.md#code-actions",
+            {
+                "cli": lsp_apply_cli,
+                "application_required_action_ids": code_action_apply_audit.get("required_action_ids", ()),
+            },
+        ),
+        _tooling_audit_check(
+            "lsp_quick_fix_text_contracts",
+            code_action_text_renderer["ok"]
+            and code_action_text_renderer.get("missing_fragment_count") == 0
+            and code_action_text_renderer.get("success_summary_line_count", 0) >= 1
+            and code_action_text_renderer.get("failure_summary_line_count", 0) >= 1
+            and code_action_text_renderer.get("title_line_count", 0) >= 1
+            and code_action_text_renderer.get("edit_line_count", 0) >= 1
+            and code_action_text_renderer.get("available_action_line_count", 0) >= 1
+            and code_action_text_renderer.get("diagnostic_line_count", 0) >= 1
+            and code_action_text_renderer.get("lint_status_line_count", 0) >= 2
+            and code_action_text_renderer.get("changed_status_line_count", 0) >= 2
+            and code_action_text_renderer.get("json_fallback") is False,
+            "Human-readable quick-fix logs expose success, failure, title, edit, lint, changed, available-action, and diagnostic evidence without JSON parsing.",
+            "docs/tooling.md#code-actions",
+            code_action_text_renderer,
         ),
         _tooling_audit_check(
             "ide_visual_designer_round_trip",
@@ -6566,12 +6628,40 @@ def _tooling_audit_implementation_phases(**evidence: dict) -> dict:
                     "ok": evidence["lsp_rename_cli"].get("ok") is True
                     and evidence["quick_fix"].get("ok") is True
                     and evidence["code_action_apply_audit"].get("ok") is True
-                    and evidence["lsp_apply_cli"].get("ok") is True,
+                    and evidence["lsp_apply_cli"].get("ok") is True
+                    and evidence["code_action_text_renderer"].get("ok") is True,
                     "evidence_formats": (
                         evidence["lsp_rename_cli"].get("format"),
                         evidence["quick_fix"].get("format"),
                         evidence["code_action_apply_audit"].get("format"),
                         evidence["lsp_apply_cli"].get("format"),
+                        evidence["code_action_text_renderer"].get("format"),
+                    ),
+                },
+                {
+                    "id": "quick_fix_family_coverage",
+                    "ok": evidence["code_action_apply_audit"].get("ok") is True
+                    and evidence["code_action_apply_audit"].get("required_action_count", 0) >= 15
+                    and evidence["code_action_apply_audit"].get("passing_case_count")
+                    == evidence["code_action_apply_audit"].get("case_count")
+                    and evidence["code_action_apply_audit"].get("missing_required_action_count") == 0
+                    and evidence["code_action_apply_audit"].get("blocking_gap_count") == 0,
+                    "evidence_format": evidence["code_action_apply_audit"].get("format"),
+                },
+                {
+                    "id": "quick_fix_cli_and_text_contracts",
+                    "ok": evidence["lsp_apply_cli"].get("ok") is True
+                    and tuple(evidence["lsp_apply_cli"].get("required_action_ids", ()))
+                    == tuple(evidence["code_action_apply_audit"].get("required_action_ids", ()))
+                    and evidence["lsp_apply_cli"].get("missing_required_action_count") == 0
+                    and evidence["lsp_apply_cli"].get("blocking_gap_count") == 0
+                    and evidence["code_action_text_renderer"].get("ok") is True
+                    and evidence["code_action_text_renderer"].get("json_fallback") is False
+                    and evidence["code_action_text_renderer"].get("edit_line_count", 0) >= 1
+                    and evidence["code_action_text_renderer"].get("available_action_line_count", 0) >= 1,
+                    "evidence_formats": (
+                        evidence["lsp_apply_cli"].get("format"),
+                        evidence["code_action_text_renderer"].get("format"),
                     ),
                 },
                 {
