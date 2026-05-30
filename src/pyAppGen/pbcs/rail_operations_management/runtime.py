@@ -43,6 +43,8 @@ RAIL_OPERATIONS_MANAGEMENT_STANDARD_FEATURE_KEYS = (
     'sla_and_reliability_analytics',
     'agentic_document_instruction_intake',
     'governed_datastore_crud',
+    'permissions_rbac',
+    'seed_data_bootstrap',
     'configuration_workbench',
     'continuous_release_assurance',
 )
