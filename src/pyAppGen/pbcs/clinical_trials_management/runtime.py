@@ -11,6 +11,7 @@ from .domain_depth import DOMAIN_OPERATIONS
 from .domain_depth import DOMAIN_OWNED_TABLES
 from .domain_depth import domain_depth_contract
 from .domain_depth import execute_domain_operation
+from .trial_control import improve1_trial_control_contract
 
 PBC_KEY = "clinical_trials_management"
 CLINICAL_TRIALS_MANAGEMENT_OWNED_TABLES = DOMAIN_OWNED_TABLES
@@ -1092,6 +1093,7 @@ def clinical_trials_management_build_release_evidence():
         {"id": "workbench_surface", "ok": True},
         {"id": "assistant_preview_guarded", "ok": True},
         {"id": "release_simulation_ready", "ok": True},
+        {"id": "improve1_trial_control", "ok": improve1_trial_control_contract()["ok"]},
     )
     return {
         "format": "appgen.clinical-trials-management-release-evidence.v1",
@@ -1108,6 +1110,7 @@ def clinical_trials_management_build_release_evidence():
             },
             "handlers": ("dispatch_event",),
             "ui": CLINICAL_TRIALS_MANAGEMENT_UI_FRAGMENT_KEYS,
+            "improve1_trial_control": improve1_trial_control_contract(),
         },
         "blocking_gaps": (),
     }
@@ -1399,6 +1402,7 @@ def clinical_trials_management_runtime_capabilities():
         "run_control_tests",
         "verify_formal_invariants",
         "full_release_simulation",
+        "improve1_trial_control_contract",
     ) + tuple(DOMAIN_OPERATIONS)
     return {
         "format": "appgen.clinical-trials-management-runtime-capabilities.v1",
@@ -1412,6 +1416,7 @@ def clinical_trials_management_runtime_capabilities():
         "operations": operations,
         "smoke": smoke,
         "world_class_domain_depth": domain,
+        "improve1_trial_control": improve1_trial_control_contract(),
         "database_backends": CLINICAL_TRIALS_MANAGEMENT_ALLOWED_DATABASE_BACKENDS,
         "event_contract": "AppGen-X",
         "stream_engine_picker_visible": False,
@@ -1430,6 +1435,7 @@ def clinical_trials_management_runtime_smoke():
     boundary = clinical_trials_management_verify_owned_table_boundary(("trial_protocol", "study_site", "foreign_table"))
     control_tests = clinical_trials_management_run_control_tests(state)
     invariants = clinical_trials_management_verify_formal_invariants(state)
+    trial_control = improve1_trial_control_contract()
     event = clinical_trials_management_receive_event(
         state,
         {"tenant": "tenant-smoke", "event_type": CLINICAL_TRIALS_MANAGEMENT_CONSUMED_EVENT_TYPES[0], "idempotency_key": "policy-smoke"},
@@ -1452,6 +1458,7 @@ def clinical_trials_management_runtime_smoke():
         {"id": "boundary_accepts_owned_aliases", "ok": boundary["ok"] is False and "foreign_table" in boundary["invalid_references"]},
         {"id": "control_tests", "ok": control_tests["ok"]},
         {"id": "formal_invariants", "ok": invariants["ok"]},
+        {"id": "improve1_trial_control", "ok": trial_control["ok"]},
         {"id": "receive_event", "ok": event["ok"]},
         {"id": "idempotent_duplicate", "ok": duplicate.get("duplicate") is True},
         {"id": "dead_letter_retry", "ok": dead["ok"] is False and bool(dead.get("dead_letter_table"))},
@@ -1469,6 +1476,7 @@ def clinical_trials_management_runtime_smoke():
         "workbench": workbench,
         "control_tests": control_tests,
         "invariants": invariants,
+        "improve1_trial_control": trial_control,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
         "side_effects": (),
     }

@@ -12,6 +12,8 @@ from .runtime import CLINICAL_TRIALS_MANAGEMENT_RUNTIME_TABLES
 from .runtime import clinical_trials_management_build_workbench_view
 from .runtime import clinical_trials_management_runtime_smoke
 from .wizards import clinical_trials_management_wizard_catalog
+from .trial_control import TRIAL_CONTROL_CAPABILITIES
+from .trial_control import improve1_trial_control_contract
 
 
 CLINICAL_TRIALS_MANAGEMENT_UI_FRAGMENT_KEYS = (
@@ -154,6 +156,8 @@ def clinical_trials_management_ui_contract() -> dict:
             "inbox_status": "visible",
             "dead_letter_status": "visible",
         },
+        "trial_control_panels": tuple(f"trial_control_{capability}" for capability in TRIAL_CONTROL_CAPABILITIES),
+        "trial_control_contract": improve1_trial_control_contract(),
         "workbench_binding_evidence": {
             "owned_tables": CLINICAL_TRIALS_MANAGEMENT_OWNED_TABLES,
             "runtime_tables": CLINICAL_TRIALS_MANAGEMENT_RUNTIME_TABLES,
@@ -163,6 +167,7 @@ def clinical_trials_management_ui_contract() -> dict:
             "form_ids": forms["form_ids"],
             "wizard_ids": wizards["wizard_ids"],
             "control_ids": controls["control_ids"],
+            "trial_control_count": len(TRIAL_CONTROL_CAPABILITIES),
         },
     }
 
