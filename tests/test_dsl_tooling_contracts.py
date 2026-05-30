@@ -1698,6 +1698,29 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
     assert audit["formatting_edit_count"] >= 1
     assert audit["blocking_gap_count"] == 0
     assert audit["blocking_gaps"] == ()
+    assert audit["method_contract_count"] == 11
+    assert audit["passing_method_contract_count"] == audit["method_contract_count"]
+    assert audit["missing_method_contract_count"] == 0
+    assert audit["missing_method_contracts"] == ()
+    assert set(audit["method_contract_names"]) == {
+        "textDocument/didOpen",
+        "textDocument/didChange",
+        "textDocument/completion",
+        "textDocument/hover",
+        "textDocument/definition",
+        "textDocument/references",
+        "textDocument/documentSymbol",
+        "textDocument/rename",
+        "textDocument/codeAction",
+        "textDocument/formatting",
+        "workspace/symbol",
+    }
+    assert all(detail["advertised"] for detail in audit["method_contracts"].values())
+    assert all(detail["exercised"] for detail in audit["method_contracts"].values())
+    assert audit["method_contracts"]["textDocument/didOpen"]["provider"] == "notification"
+    assert audit["method_contracts"]["textDocument/didChange"]["provider"] == "notification"
+    assert audit["method_contracts"]["textDocument/codeAction"]["check"] == "code_action_request"
+    assert audit["method_contracts"]["textDocument/formatting"]["check"] == "formatting_request"
     assert "enterprise_definition_context" in {check["check"] for check in audit["checks"]}
     assert "lexical_reference_scope" in {check["check"] for check in audit["checks"]}
     assert audit["lexical_reference_scope_ok"] is True
@@ -5508,6 +5531,29 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert lsp_transport_check["detail"]["rpc"]["enabled_provider_count"] == 9
     assert lsp_transport_check["detail"]["rpc"]["request_check_count"] == 8
     assert lsp_transport_check["detail"]["rpc"]["passing_request_check_count"] == 8
+    assert lsp_transport_check["detail"]["rpc"]["method_contract_count"] == 11
+    assert lsp_transport_check["detail"]["rpc"]["passing_method_contract_count"] == (
+        lsp_transport_check["detail"]["rpc"]["method_contract_count"]
+    )
+    assert lsp_transport_check["detail"]["rpc"]["missing_method_contract_count"] == 0
+    assert lsp_transport_check["detail"]["rpc"]["missing_method_contracts"] == ()
+    assert set(lsp_transport_check["detail"]["rpc"]["method_contracts"]) == {
+        "textDocument/didOpen",
+        "textDocument/didChange",
+        "textDocument/completion",
+        "textDocument/hover",
+        "textDocument/definition",
+        "textDocument/references",
+        "textDocument/documentSymbol",
+        "textDocument/rename",
+        "textDocument/codeAction",
+        "textDocument/formatting",
+        "workspace/symbol",
+    }
+    assert all(
+        detail["advertised"] and detail["exercised"]
+        for detail in lsp_transport_check["detail"]["rpc"]["method_contracts"].values()
+    )
     assert lsp_transport_check["detail"]["rpc"]["blocking_gap_count"] == 0
     assert lsp_transport_check["detail"]["stdio"]["format"] == "appgen.lsp-stdio-transport-audit.v1"
     assert lsp_transport_check["detail"]["stdio"]["request_message_count"] == 4

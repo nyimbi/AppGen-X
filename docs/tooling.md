@@ -1211,7 +1211,14 @@ missing-provider, request-check, passing-request-check, code-action,
 formatting-edit, and blocking-gap counts plus provider names, missing provider
 names, and request-check ids so release evidence proves the language server
 surface is broad enough for editor and agent workflows rather than merely
-returning an initialize response. The audit also checks
+returning an initialize response. The same JSON-RPC audit checks the documented
+LSP method matrix. For every method in the capabilities table, it
+reports the method name, provider/notification source, advertised status,
+exercised status, backing check id, passing method count, and missing method
+count. The aggregate `lsp_transport_rpc_contracts` gate fails if any documented
+method is not both advertised where applicable and exercised by the JSON-RPC
+audit.
+It also checks
 `workspace_document_scan_and_rename`, which opens multiple DSL buffers and
 proves definition, references, completion, workspace symbol, and rename
 requests resolve across open documents without concatenating source files.

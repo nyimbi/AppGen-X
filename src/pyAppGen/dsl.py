@@ -5431,6 +5431,8 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and lsp_rpc.get("provider_count", 0) >= 9
             and lsp_rpc.get("request_check_count") == lsp_rpc.get("passing_request_check_count")
             and lsp_rpc.get("request_check_count", 0) >= 8
+            and lsp_rpc.get("method_contract_count") == lsp_rpc.get("passing_method_contract_count")
+            and lsp_rpc.get("missing_method_contract_count") == 0
             and lsp_rpc.get("blocking_gap_count") == 0
             and lsp_stdio["ok"]
             and lsp_stdio.get("missing_response_ids") == ()
@@ -5449,6 +5451,11 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                     "enabled_provider_count": lsp_rpc.get("enabled_provider_count"),
                     "request_check_count": lsp_rpc.get("request_check_count"),
                     "passing_request_check_count": lsp_rpc.get("passing_request_check_count"),
+                    "method_contract_count": lsp_rpc.get("method_contract_count"),
+                    "passing_method_contract_count": lsp_rpc.get("passing_method_contract_count"),
+                    "missing_method_contract_count": lsp_rpc.get("missing_method_contract_count"),
+                    "missing_method_contracts": lsp_rpc.get("missing_method_contracts"),
+                    "method_contracts": lsp_rpc.get("method_contracts"),
                     "code_action_count": lsp_rpc.get("code_action_count"),
                     "formatting_edit_count": lsp_rpc.get("formatting_edit_count"),
                     "blocking_gap_count": lsp_rpc.get("blocking_gap_count"),
@@ -9557,6 +9564,78 @@ composition Suite {
         "formatting": capabilities.get("documentFormattingProvider") is True,
         "workspace_symbols": bool(capabilities.get("workspaceSymbolProvider")),
     }
+    check_ok_by_name = {check["check"]: check["ok"] for check in checks}
+    method_contracts = {
+        "textDocument/didOpen": {
+            "advertised": True,
+            "exercised": check_ok_by_name.get("did_open_diagnostics") is True,
+            "provider": "notification",
+            "check": "did_open_diagnostics",
+        },
+        "textDocument/didChange": {
+            "advertised": True,
+            "exercised": check_ok_by_name.get("did_change_diagnostics") is True,
+            "provider": "notification",
+            "check": "did_change_diagnostics",
+        },
+        "textDocument/completion": {
+            "advertised": provider_flags["completion"],
+            "exercised": check_ok_by_name.get("completion") is True,
+            "provider": "completionProvider",
+            "check": "completion",
+        },
+        "textDocument/hover": {
+            "advertised": provider_flags["hover"],
+            "exercised": check_ok_by_name.get("hover") is True,
+            "provider": "hoverProvider",
+            "check": "hover",
+        },
+        "textDocument/definition": {
+            "advertised": provider_flags["definition"],
+            "exercised": check_ok_by_name.get("definition") is True,
+            "provider": "definitionProvider",
+            "check": "definition",
+        },
+        "textDocument/references": {
+            "advertised": provider_flags["references"],
+            "exercised": check_ok_by_name.get("references") is True,
+            "provider": "referencesProvider",
+            "check": "references",
+        },
+        "textDocument/documentSymbol": {
+            "advertised": provider_flags["document_symbols"],
+            "exercised": check_ok_by_name.get("document_symbols") is True,
+            "provider": "documentSymbolProvider",
+            "check": "document_symbols",
+        },
+        "textDocument/rename": {
+            "advertised": provider_flags["rename"],
+            "exercised": check_ok_by_name.get("rename") is True,
+            "provider": "renameProvider",
+            "check": "rename",
+        },
+        "textDocument/codeAction": {
+            "advertised": provider_flags["code_actions"],
+            "exercised": check_ok_by_name.get("code_action_request") is True,
+            "provider": "codeActionProvider",
+            "check": "code_action_request",
+        },
+        "textDocument/formatting": {
+            "advertised": provider_flags["formatting"],
+            "exercised": check_ok_by_name.get("formatting_request") is True,
+            "provider": "documentFormattingProvider",
+            "check": "formatting_request",
+        },
+        "workspace/symbol": {
+            "advertised": provider_flags["workspace_symbols"],
+            "exercised": check_ok_by_name.get("workspace_symbol") is True,
+            "provider": "workspaceSymbolProvider",
+            "check": "workspace_symbol",
+        },
+    }
+    missing_method_contracts = tuple(
+        method for method, detail in method_contracts.items() if not (detail["advertised"] and detail["exercised"])
+    )
     failing_checks = tuple(check["check"] for check in checks if not check["ok"])
     request_check_ids = tuple(name for name, _, _ in request_checks)
     missing_providers = tuple(name for name, enabled in provider_flags.items() if not enabled)
@@ -9575,6 +9654,14 @@ composition Suite {
         "request_check_count": len(request_checks),
         "passing_request_check_count": sum(1 for check in checks if check["check"] in request_check_ids and check["ok"]),
         "request_check_ids": request_check_ids,
+        "method_contracts": method_contracts,
+        "method_contract_names": tuple(method_contracts),
+        "method_contract_count": len(method_contracts),
+        "passing_method_contract_count": sum(
+            1 for detail in method_contracts.values() if detail["advertised"] and detail["exercised"]
+        ),
+        "missing_method_contract_count": len(missing_method_contracts),
+        "missing_method_contracts": missing_method_contracts,
         "completion_context_names": completion_context_names,
         "completion_context_count": len(completion_context_results),
         "passing_completion_context_count": sum(1 for case in completion_context_results if case["ok"]),
