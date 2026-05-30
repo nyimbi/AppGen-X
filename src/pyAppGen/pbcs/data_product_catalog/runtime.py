@@ -28,6 +28,7 @@ from .blueprint import (
 )
 from .agent import document_instruction_plan
 from .config import compile_rule, evaluate_rule
+from .data_product_control import DATA_PRODUCT_CONTROL_CAPABILITIES, improve1_data_product_control_contract
 from .domain_depth import domain_depth_contract, domain_depth_smoke_test
 from .ui import data_product_catalog_render_workbench
 
@@ -371,6 +372,7 @@ def data_product_catalog_runtime_smoke() -> dict:
     release = data_product_catalog_build_release_evidence()
     boundary = data_product_catalog_verify_owned_table_boundary(OWNED_TABLES)
     bad_boundary = data_product_catalog_verify_owned_table_boundary(tuple(OWNED_TABLES) + ("foreign_table",))
+    data_product_control = improve1_data_product_control_contract()
     return {
         "format": "appgen.data-product-catalog-runtime-smoke.v1",
         "ok": config["ok"]
@@ -386,8 +388,11 @@ def data_product_catalog_runtime_smoke() -> dict:
         and service["ok"]
         and release["ok"]
         and boundary["ok"]
-        and bad_boundary["ok"] is False,
-        "checks": tuple({"id": capability, "ok": True} for capability in RUNTIME_CAPABILITIES),
+        and bad_boundary["ok"] is False
+        and data_product_control["ok"],
+        "checks": tuple({"id": capability, "ok": True} for capability in RUNTIME_CAPABILITIES) + ({"id": "improve1_data_product_control_contract", "ok": data_product_control["ok"]},),
+        "checks_by_id": {**{capability: True for capability in RUNTIME_CAPABILITIES}, "improve1_data_product_control_contract": data_product_control["ok"]},
+        "data_product_control": data_product_control,
         "state": dead["state"],
         "side_effects": (),
     }
@@ -404,6 +409,7 @@ def data_product_catalog_runtime_capabilities() -> dict:
         "owned_tables": OWNED_TABLES,
         "allowed_database_backends": ALLOWED_DATABASE_BACKENDS,
         "capabilities": RUNTIME_CAPABILITIES,
+        "improve1_data_product_control_capabilities": tuple(capability.slug for capability in DATA_PRODUCT_CONTROL_CAPABILITIES),
         "standard_features": STANDARD_FEATURES,
         "operations": (
             "configure_runtime",
@@ -424,7 +430,7 @@ def data_product_catalog_runtime_capabilities() -> dict:
             "parse_document_instruction",
         )
         + tuple(item["name"] for item in OPERATION_BLUEPRINTS)
-        + ("domain_depth_contract", "execute_domain_operation"),
+        + ("domain_depth_contract", "execute_domain_operation", "improve1_data_product_control_contract"),
         "domain_advanced_capabilities": ADVANCED_CAPABILITIES,
         "world_class_domain_depth": domain,
         "domain_depth_smoke": domain_depth_smoke_test(),

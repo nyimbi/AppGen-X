@@ -32,3 +32,9 @@ Recorded validation:
 - direct execution of `pbc_source_artifact_contract`, `pbc_implementation_release_audit`, and `pbc_generation_smoke_audit`
 
 Detailed results are recorded in `RELEASE_EVIDENCE.md`.
+
+## 2026-05-30 improve1 Data-Product-Control Execution Slice
+
+- Added `data_product_control.py` as the side-effect-free executable proof layer for all 50 data product catalog improve1 backlog items.
+- Bound each feature to owned data-product tables, AppGen-X event lineage, UI fragment, service/API route, permission, agent skill, configuration guardrails, retry/dead-letter evidence, and release evidence.
+- Wired data-product controls into runtime capabilities, runtime smoke, release evidence, UI contracts, traceability artifacts, and focused package tests.

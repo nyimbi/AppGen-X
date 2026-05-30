@@ -1,6 +1,7 @@
 """UI fragments for the data_product_catalog PBC."""
 from __future__ import annotations
 
+from .data_product_control import improve1_data_product_control_contract
 from .blueprint import (
     CONTROL_BLUEPRINTS,
     FORM_BLUEPRINTS,
@@ -29,6 +30,8 @@ def data_product_catalog_ui_contract() -> dict:
         "configuration_editor": True,
         "action_permissions": PERMISSIONS,
         "stream_engine_picker_visible": False,
+        "data_product_control_contract": improve1_data_product_control_contract(),
+        "data_product_control_panels": tuple(item["ui_surface"] for item in improve1_data_product_control_contract()["capabilities"]),
         "full_capability_surface": capability_surface,
         "side_effects": (),
     }

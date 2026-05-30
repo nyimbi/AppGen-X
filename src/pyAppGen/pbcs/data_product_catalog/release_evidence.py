@@ -7,6 +7,7 @@ from .agent import agent_skill_manifest, chatbot_interface_contract
 from .blueprint import EXPECTED_ARTIFACT_FILES, OWNED_TABLES, PBC_KEY
 from .capability_assurance import validate_table_stakes_capability_coverage
 from .config import configuration_manifest, governance_smoke_test, parameter_manifest, rule_manifest
+from .data_product_control import improve1_data_product_control_contract
 from .domain_depth import domain_depth_contract, domain_depth_smoke_test
 from .events import event_contract_manifest, validate_event_contract
 from .handlers import handler_manifest
@@ -56,6 +57,7 @@ def build_release_evidence() -> dict:
     capability = validate_table_stakes_capability_coverage()
     domain = domain_depth_contract()
     domain_smoke = domain_depth_smoke_test()
+    data_product_control = improve1_data_product_control_contract()
     checks = (
         {"id": "source_artifacts", "ok": source_artifact["ok"]},
         {"id": "schema_models_migrations", "ok": schema["ok"] and len(schema["tables"]) >= 20},
@@ -70,6 +72,7 @@ def build_release_evidence() -> dict:
         {"id": "seed_data", "ok": seed["ok"]},
         {"id": "table_stakes_capability_coverage", "ok": capability["ok"]},
         {"id": "world_class_domain_depth", "ok": domain["ok"] and domain_smoke["ok"]},
+        {"id": "data_product_improve1_control_contract", "ok": data_product_control["ok"]},
     )
     return {
         "format": "appgen.data-product-catalog-release-evidence.v1",
@@ -79,6 +82,7 @@ def build_release_evidence() -> dict:
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
         "boundary_gaps": (),
         "source_artifact_contract": source_artifact,
+        "data_product_control": data_product_control,
         "side_effects": (),
     }
 
