@@ -7156,6 +7156,7 @@ def _tooling_audit_graph_cli_formats(tmp: Path, source: str) -> dict:
     source_path.write_text(source, encoding="utf-8")
     cases = (
         ("er_mermaid", "er", "mermaid", ("graph", str(source_path), "--kind", "er", "--format", "mermaid")),
+        ("lookup_json", "lookup", "json", ("graph", str(source_path), "--kind", "lookup", "--format", "json")),
         ("workflow_json", "workflow", "json", ("graph", str(source_path), "--kind", "workflow", "--format", "json")),
         (
             "workflow_mermaid",
@@ -7163,7 +7164,17 @@ def _tooling_audit_graph_cli_formats(tmp: Path, source: str) -> dict:
             "mermaid",
             ("graph", str(source_path), "--kind", "workflow", "--format", "mermaid"),
         ),
+        ("handler_mermaid", "handler", "mermaid", ("graph", str(source_path), "--kind", "handler", "--format", "mermaid")),
         ("pbc_dot", "pbc", "dot", ("graph", str(source_path), "--kind", "pbc", "--format", "dot")),
+        ("security_dot", "security", "dot", ("graph", str(source_path), "--kind", "security", "--format", "dot")),
+        ("agent_json", "agent", "json", ("graph", str(source_path), "--kind", "agent", "--format", "json")),
+        (
+            "deployment_dot",
+            "deployment",
+            "dot",
+            ("graph", str(source_path), "--kind", "deployment", "--format", "dot"),
+        ),
+        ("package_mermaid", "package", "mermaid", ("graph", str(source_path), "--kind", "package", "--format", "mermaid")),
     )
     results = []
     for case_id, graph_kind, output_format, argv in cases:
@@ -7194,13 +7205,35 @@ def _tooling_audit_graph_cli_formats(tmp: Path, source: str) -> dict:
                 "stdout_prefix": stdout[:80],
             }
         )
+    failing_cases = tuple(result["case"] for result in results if not result["ok"])
+    case_ids = tuple(result["case"] for result in results)
+    covered_kinds = tuple(dict.fromkeys(result["kind"] for result in results))
+    covered_formats = tuple(dict.fromkeys(result["format"] for result in results))
+    missing_required_kinds = tuple(kind for kind in REQUIRED_GRAPH_KINDS if kind not in covered_kinds)
     return {
         "format": "appgen.graph-cli-format-audit.v1",
-        "ok": all(result["ok"] for result in results),
+        "ok": not failing_cases and not missing_required_kinds,
         "case_count": len(results),
         "passing_case_count": sum(1 for result in results if result["ok"]),
-        "graph_kind_count": len({result["kind"] for result in results}),
-        "output_format_count": len({result["format"] for result in results}),
+        "failing_case_count": len(failing_cases),
+        "case_ids": case_ids,
+        "failing_cases": failing_cases,
+        "graph_kind_count": len(covered_kinds),
+        "covered_graph_kinds": covered_kinds,
+        "missing_required_kind_count": len(missing_required_kinds),
+        "missing_required_kinds": missing_required_kinds,
+        "output_format_count": len(covered_formats),
+        "covered_output_formats": covered_formats,
+        "json_case_count": sum(1 for result in results if result["format"] == "json"),
+        "mermaid_case_count": sum(1 for result in results if result["format"] == "mermaid"),
+        "dot_case_count": sum(1 for result in results if result["format"] == "dot"),
+        "payload_format_case_count": sum(1 for result in results if result.get("payload_format") == "appgen.graph-report.v1"),
+        "text_marker_case_count": sum(
+            1
+            for result in results
+            if result["format"] in {"mermaid", "dot"}
+            and (result["stdout_prefix"].startswith("graph TD") or result["stdout_prefix"].startswith("digraph appgen"))
+        ),
         "cases": tuple(results),
     }
 
@@ -7238,6 +7271,13 @@ def _tooling_audit_graph_suite_cli(tmp: Path, source: str) -> dict:
         for kind, formats in rendering_formats_by_kind.items()
         if set(GRAPH_TEXT_FORMATS) - set(formats)
     )
+    missing_required_kinds = tuple(kind for kind in REQUIRED_GRAPH_KINDS if kind not in required_kinds)
+    text_fragments = (
+        "graph-suite ok: format=appgen.graph-suite-report.v1",
+        "graph-kinds ",
+        "graph-formats json, mermaid, dot",
+    )
+    missing_text_fragments = tuple(fragment for fragment in text_fragments if fragment not in text_stdout)
     return {
         "format": "appgen.graph-suite-cli-audit.v1",
         "ok": json_exit_code == 0
@@ -7245,22 +7285,26 @@ def _tooling_audit_graph_suite_cli(tmp: Path, source: str) -> dict:
         and json_payload.get("ok") is True
         and set(REQUIRED_GRAPH_KINDS) <= set(required_kinds)
         and set(GRAPH_TEXT_FORMATS) <= set(output_formats)
+        and not missing_required_kinds
         and not missing_renderings
         and text_exit_code == 0
-        and text_stdout.startswith("graph-suite ok: format=appgen.graph-suite-report.v1")
-        and "graph-kinds " in text_stdout
-        and "graph-formats json, mermaid, dot" in text_stdout,
+        and not missing_text_fragments,
         "required_kind_count": len(required_kinds),
+        "missing_required_kind_count": len(missing_required_kinds),
         "output_format_count": len(output_formats),
         "missing_rendering_count": len(missing_renderings),
         "json_exit_code": json_exit_code,
         "text_exit_code": text_exit_code,
         "payload_format": json_payload.get("format"),
         "required_kinds": required_kinds,
+        "missing_required_kinds": missing_required_kinds,
         "formats": output_formats,
         "rendering_kind_count": len(renderings),
         "rendering_formats_by_kind": rendering_formats_by_kind,
         "missing_renderings": missing_renderings,
+        "text_fragment_count": len(text_fragments),
+        "missing_text_fragment_count": len(missing_text_fragments),
+        "missing_text_fragments": missing_text_fragments,
         "text_has_report_format": text_stdout.startswith("graph-suite ok: format=appgen.graph-suite-report.v1"),
         "text_has_kinds": "graph-kinds " in text_stdout,
         "text_has_formats": "graph-formats json, mermaid, dot" in text_stdout,

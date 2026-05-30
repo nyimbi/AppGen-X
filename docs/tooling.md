@@ -787,10 +787,14 @@ envelope format, so release logs remain reviewable without parsing JSON.
 `appgen.graph-suite-cli-audit.v1` reports `rendering_formats_by_kind` and
 `missing_renderings` so CI can prove every required graph kind has JSON,
 Mermaid, and DOT renderings rather than relying on a count alone.
-`appgen.graph-cli-format-audit.v1` reports case, passing-case, graph-kind, and
-output-format counts, and the graph-suite CLI audit reports required-kind,
-output-format, and missing-rendering counts, so graph release evidence captures
-both individual examples and full suite coverage.
+`appgen.graph-cli-format-audit.v1` reports case, passing-case, failing-case,
+case-id, failing-case, covered-kind, missing-required-kind, covered-format,
+JSON-case, Mermaid-case, DOT-case, payload-format, and text-marker counts
+across every required graph kind, so graph release evidence captures both
+individual CLI examples and full graph breadth. The graph-suite CLI audit
+reports required-kind, missing-required-kind, output-format,
+missing-rendering, text-fragment, and missing-text-fragment counts, so CI can
+prove JSON and text release logs preserve the same graph contract markers.
 The in-process `appgen.graph-suite-report.v1` also reports required, present,
 and missing graph-kind counts; format, graph-report, rendering,
 expected-rendering, missing-rendering, diagnostic, check, passing-check, and

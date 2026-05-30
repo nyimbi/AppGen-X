@@ -4412,21 +4412,31 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     graph_check = next(check for check in report["checks"] if check["id"] == "graph_and_explain_tooling")
     assert graph_check["detail"]["cli"]["format"] == "appgen.graph-cli-format-audit.v1"
     assert graph_check["detail"]["cli"]["ok"] is True
-    assert graph_check["detail"]["cli"]["case_count"] == 4
-    assert graph_check["detail"]["cli"]["passing_case_count"] == 4
-    assert graph_check["detail"]["cli"]["graph_kind_count"] >= 3
+    assert graph_check["detail"]["cli"]["case_count"] == 10
+    assert graph_check["detail"]["cli"]["passing_case_count"] == 10
+    assert graph_check["detail"]["cli"]["failing_case_count"] == 0
+    assert graph_check["detail"]["cli"]["graph_kind_count"] == len(appgen_dsl.REQUIRED_GRAPH_KINDS)
+    assert graph_check["detail"]["cli"]["missing_required_kind_count"] == 0
     assert graph_check["detail"]["cli"]["output_format_count"] == 3
     assert {
         "er_mermaid",
+        "lookup_json",
         "workflow_json",
         "workflow_mermaid",
+        "handler_mermaid",
         "pbc_dot",
+        "security_dot",
+        "agent_json",
+        "deployment_dot",
+        "package_mermaid",
     } <= {case["case"] for case in graph_check["detail"]["cli"]["cases"]}
     assert graph_check["detail"]["suite_cli"]["format"] == "appgen.graph-suite-cli-audit.v1"
     assert graph_check["detail"]["suite_cli"]["ok"] is True
     assert graph_check["detail"]["suite_cli"]["required_kind_count"] == len(graph_check["detail"]["suite_cli"]["required_kinds"])
+    assert graph_check["detail"]["suite_cli"]["missing_required_kind_count"] == 0
     assert graph_check["detail"]["suite_cli"]["output_format_count"] == len(graph_check["detail"]["suite_cli"]["formats"])
     assert graph_check["detail"]["suite_cli"]["missing_rendering_count"] == 0
+    assert graph_check["detail"]["suite_cli"]["missing_text_fragment_count"] == 0
     assert set(graph_check["detail"]["suite_cli"]["required_kinds"]) >= {
         "er",
         "lookup",
@@ -5342,18 +5352,48 @@ def test_graph_cli_audit_covers_documented_graph_examples(tmp_path: Path) -> Non
     assert audit["ok"] is True
     assert audit["case_count"] == len(audit["cases"])
     assert audit["passing_case_count"] == audit["case_count"]
-    assert audit["graph_kind_count"] >= 3
+    assert audit["failing_case_count"] == 0
+    assert audit["case_ids"] == tuple(case["case"] for case in audit["cases"])
+    assert audit["failing_cases"] == ()
+    assert audit["graph_kind_count"] == len(appgen_dsl.REQUIRED_GRAPH_KINDS)
+    assert set(audit["covered_graph_kinds"]) == set(appgen_dsl.REQUIRED_GRAPH_KINDS)
+    assert audit["missing_required_kind_count"] == 0
+    assert audit["missing_required_kinds"] == ()
     assert audit["output_format_count"] == 3
-    assert {"er_mermaid", "workflow_json", "workflow_mermaid", "pbc_dot"} <= set(cases)
+    assert set(audit["covered_output_formats"]) == {"mermaid", "json", "dot"}
+    assert audit["json_case_count"] == 3
+    assert audit["mermaid_case_count"] == 4
+    assert audit["dot_case_count"] == 3
+    assert audit["payload_format_case_count"] == audit["json_case_count"]
+    assert audit["text_marker_case_count"] == audit["mermaid_case_count"] + audit["dot_case_count"]
+    assert {
+        "er_mermaid",
+        "lookup_json",
+        "workflow_json",
+        "workflow_mermaid",
+        "handler_mermaid",
+        "pbc_dot",
+        "security_dot",
+        "agent_json",
+        "deployment_dot",
+        "package_mermaid",
+    } <= set(cases)
     assert cases["er_mermaid"]["kind"] == "er"
     assert cases["er_mermaid"]["format"] == "mermaid"
+    assert cases["lookup_json"]["kind"] == "lookup"
+    assert cases["lookup_json"]["payload_format"] == "appgen.graph-report.v1"
     assert cases["workflow_json"]["kind"] == "workflow"
     assert cases["workflow_json"]["format"] == "json"
     assert cases["workflow_json"]["payload_format"] == "appgen.graph-report.v1"
+    assert cases["handler_mermaid"]["stdout_prefix"].startswith("graph TD")
     assert cases["workflow_mermaid"]["stdout_prefix"].startswith("graph TD")
     assert cases["pbc_dot"]["kind"] == "pbc"
     assert cases["pbc_dot"]["format"] == "dot"
     assert cases["pbc_dot"]["stdout_prefix"].startswith("digraph appgen")
+    assert cases["security_dot"]["stdout_prefix"].startswith("digraph appgen")
+    assert cases["agent_json"]["payload_format"] == "appgen.graph-report.v1"
+    assert cases["deployment_dot"]["stdout_prefix"].startswith("digraph appgen")
+    assert cases["package_mermaid"]["stdout_prefix"].startswith("graph TD")
     assert all(case["exit_code"] == 0 for case in cases.values())
 
 
@@ -5363,6 +5403,8 @@ def test_graph_suite_cli_audit_proves_all_required_renderings(tmp_path: Path) ->
     assert audit["format"] == "appgen.graph-suite-cli-audit.v1"
     assert audit["ok"] is True
     assert audit["required_kind_count"] == len(audit["required_kinds"])
+    assert audit["missing_required_kind_count"] == 0
+    assert audit["missing_required_kinds"] == ()
     assert audit["output_format_count"] == len(audit["formats"])
     assert audit["missing_rendering_count"] == 0
     assert set(audit["required_kinds"]) == set(appgen_dsl.REQUIRED_GRAPH_KINDS)
@@ -5372,6 +5414,12 @@ def test_graph_suite_cli_audit_proves_all_required_renderings(tmp_path: Path) ->
         set(formats) == {"json", "mermaid", "dot"}
         for formats in audit["rendering_formats_by_kind"].values()
     )
+    assert audit["text_fragment_count"] == 3
+    assert audit["missing_text_fragment_count"] == 0
+    assert audit["missing_text_fragments"] == ()
+    assert audit["text_has_report_format"] is True
+    assert audit["text_has_kinds"] is True
+    assert audit["text_has_formats"] is True
 
 
 def test_invalid_choice_audit_covers_graph_formats_and_backend_choices(tmp_path: Path) -> None:
