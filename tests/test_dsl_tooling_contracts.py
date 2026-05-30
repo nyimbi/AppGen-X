@@ -4209,6 +4209,16 @@ def test_test_strategy_cli_audit_requires_generator_drift_surface(tmp_path: Path
     assert report["case_count"] == len(report["cases"])
     assert report["passing_case_count"] == report["case_count"]
     assert report["failing_case_count"] == 0
+    assert report["required_case_ids"] == (
+        "diagnostics_catalog",
+        "diagnostics_audit_fixtures",
+        "parser_golden",
+        "semantic_drift",
+        "doctor",
+    )
+    assert report["observed_case_ids"] == report["required_case_ids"]
+    assert report["missing_case_count"] == 0
+    assert report["missing_case_ids"] == ()
     assert report["case_ids"] == tuple(case["case"] for case in report["cases"])
     assert report["failing_cases"] == ()
     assert report["required_surface_count"] == 6
@@ -4217,6 +4227,16 @@ def test_test_strategy_cli_audit_requires_generator_drift_surface(tmp_path: Path
     assert report["missing_surfaces"] == ()
     assert set(report["required_surfaces"]) <= set(report["observed_surfaces"])
     assert report["payload_format_count"] == len(report["payload_formats"])
+    assert report["expected_payload_formats_by_case"] == {
+        "diagnostics_catalog": "appgen.diagnostic-catalog.v1",
+        "diagnostics_audit_fixtures": "appgen.diagnostic-fixture-audit.v1",
+        "parser_golden": "appgen.parser-golden-audit.v1",
+        "semantic_drift": "appgen.semantic-drift-audit.v1",
+        "doctor": "appgen.doctor-report.v1",
+    }
+    assert report["payload_formats_by_case"] == report["expected_payload_formats_by_case"]
+    assert report["missing_payload_format_case_count"] == 0
+    assert report["missing_payload_format_cases"] == ()
     assert set(report["payload_formats"]) >= {
         "appgen.diagnostic-catalog.v1",
         "appgen.diagnostic-fixture-audit.v1",
@@ -6319,6 +6339,11 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert test_strategy_check["detail"]["cli"]["case_count"] == len(test_strategy_check["detail"]["cli"]["cases"])
     assert test_strategy_check["detail"]["cli"]["passing_case_count"] == test_strategy_check["detail"]["cli"]["case_count"]
     assert test_strategy_check["detail"]["cli"]["failing_case_count"] == 0
+    assert test_strategy_check["detail"]["cli"]["observed_case_ids"] == (
+        test_strategy_check["detail"]["cli"]["required_case_ids"]
+    )
+    assert test_strategy_check["detail"]["cli"]["missing_case_count"] == 0
+    assert test_strategy_check["detail"]["cli"]["missing_case_ids"] == ()
     assert test_strategy_check["detail"]["cli"]["case_ids"] == tuple(
         case["case"] for case in test_strategy_check["detail"]["cli"]["cases"]
     )
@@ -6332,6 +6357,11 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert test_strategy_check["detail"]["cli"]["payload_format_count"] == len(
         test_strategy_check["detail"]["cli"]["payload_formats"]
     )
+    assert test_strategy_check["detail"]["cli"]["payload_formats_by_case"] == (
+        test_strategy_check["detail"]["cli"]["expected_payload_formats_by_case"]
+    )
+    assert test_strategy_check["detail"]["cli"]["missing_payload_format_case_count"] == 0
+    assert test_strategy_check["detail"]["cli"]["missing_payload_format_cases"] == ()
     assert test_strategy_check["detail"]["cli"]["doctor_check_count"] > 0
     assert {
         "diagnostics_catalog",

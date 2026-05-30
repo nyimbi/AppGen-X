@@ -1903,6 +1903,10 @@ doctor-check counts across diagnostics, parser golden, semantic drift, and
 doctor gates, so release evidence proves the generator, IDE, LSP, graph, and
 release-verifier surfaces share the same semantic model without expanding every
 nested report.
+It also reports required, observed, and missing case ids plus expected and
+observed payload formats by case, so diagnostics, parser-golden, drift, and
+doctor evidence cannot disappear or drift format while the aggregate case count
+still looks correct.
 This keeps agent-facing development paths honest; a capability is not counted
 as available just because an in-process helper can produce it.
 The aggregate tooling audit also publishes

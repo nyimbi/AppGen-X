@@ -6495,8 +6495,10 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and drift_text_renderer.get("digest_line_count", 0) >= 1
             and drift_text_renderer.get("json_fallback") is False
             and test_strategy_cli["ok"]
+            and test_strategy_cli.get("missing_case_count") == 0
             and test_strategy_cli.get("observed_surface_count", 0) >= 6
             and test_strategy_cli.get("missing_surface_count") == 0
+            and test_strategy_cli.get("missing_payload_format_case_count") == 0
             and test_strategy_cli.get("failing_case_count") == 0,
             "Semantic drift contracts prove CLI, LSP, Studio, graph, generator, release, and tests consume the shared semantic model with text evidence.",
             "docs/tooling.md#test-strategy",
@@ -6528,6 +6530,14 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                     "required_surfaces": test_strategy_cli.get("required_surfaces"),
                     "observed_surfaces": test_strategy_cli.get("observed_surfaces"),
                     "missing_surfaces": test_strategy_cli.get("missing_surfaces"),
+                    "required_case_ids": test_strategy_cli.get("required_case_ids"),
+                    "observed_case_ids": test_strategy_cli.get("observed_case_ids"),
+                    "missing_case_count": test_strategy_cli.get("missing_case_count"),
+                    "missing_case_ids": test_strategy_cli.get("missing_case_ids"),
+                    "expected_payload_formats_by_case": test_strategy_cli.get("expected_payload_formats_by_case"),
+                    "payload_formats_by_case": test_strategy_cli.get("payload_formats_by_case"),
+                    "missing_payload_format_case_count": test_strategy_cli.get("missing_payload_format_case_count"),
+                    "missing_payload_format_cases": test_strategy_cli.get("missing_payload_format_cases"),
                     "failing_case_count": test_strategy_cli.get("failing_case_count"),
                     "case_ids": test_strategy_cli.get("case_ids"),
                     "payload_format_count": test_strategy_cli.get("payload_format_count"),
@@ -12242,14 +12252,47 @@ def _tooling_audit_test_strategy_cli(tmp: Path, source: str) -> dict:
     observed_surfaces = tuple(drift_payload.get("surfaces", ()))
     missing_surfaces = tuple(surface for surface in drift_required_surfaces if surface not in set(observed_surfaces))
     failing_cases = tuple(case["case"] for case in cases if not case["ok"])
+    required_case_ids = (
+        "diagnostics_catalog",
+        "diagnostics_audit_fixtures",
+        "parser_golden",
+        "semantic_drift",
+        "doctor",
+    )
+    observed_case_ids = tuple(case["case"] for case in cases)
+    missing_case_ids = tuple(case_id for case_id in required_case_ids if case_id not in observed_case_ids)
+    expected_payload_formats_by_case = {
+        "diagnostics_catalog": "appgen.diagnostic-catalog.v1",
+        "diagnostics_audit_fixtures": "appgen.diagnostic-fixture-audit.v1",
+        "parser_golden": "appgen.parser-golden-audit.v1",
+        "semantic_drift": "appgen.semantic-drift-audit.v1",
+        "doctor": "appgen.doctor-report.v1",
+    }
+    payload_formats_by_case = {
+        case["case"]: case.get("payload_format")
+        for case in cases
+        if case["case"] in expected_payload_formats_by_case
+    }
+    missing_payload_format_cases = tuple(
+        case_id
+        for case_id, expected_format in expected_payload_formats_by_case.items()
+        if payload_formats_by_case.get(case_id) != expected_format
+    )
     payload_formats = tuple(dict.fromkeys(case.get("payload_format") for case in cases if case.get("payload_format")))
     return {
         "format": "appgen.test-strategy-cli-audit.v1",
-        "ok": all(case["ok"] for case in cases) and not missing_surfaces,
+        "ok": all(case["ok"] for case in cases)
+        and not missing_surfaces
+        and not missing_case_ids
+        and not missing_payload_format_cases,
         "case_count": len(cases),
         "passing_case_count": sum(1 for case in cases if case["ok"]),
         "failing_case_count": len(failing_cases),
-        "case_ids": tuple(case["case"] for case in cases),
+        "required_case_ids": required_case_ids,
+        "observed_case_ids": observed_case_ids,
+        "missing_case_count": len(missing_case_ids),
+        "missing_case_ids": missing_case_ids,
+        "case_ids": observed_case_ids,
         "failing_cases": failing_cases,
         "required_surface_count": len(drift_required_surfaces),
         "observed_surface_count": len(observed_surfaces),
@@ -12257,6 +12300,10 @@ def _tooling_audit_test_strategy_cli(tmp: Path, source: str) -> dict:
         "required_surfaces": drift_required_surfaces,
         "observed_surfaces": observed_surfaces,
         "missing_surfaces": missing_surfaces,
+        "expected_payload_formats_by_case": expected_payload_formats_by_case,
+        "payload_formats_by_case": payload_formats_by_case,
+        "missing_payload_format_case_count": len(missing_payload_format_cases),
+        "missing_payload_format_cases": missing_payload_format_cases,
         "payload_format_count": len(payload_formats),
         "payload_formats": payload_formats,
         "doctor_check_count": len(doctor_payload.get("checks", ())),
