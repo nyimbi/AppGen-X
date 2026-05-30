@@ -24,3 +24,17 @@
 - The standalone app is still in-memory runtime evidence, not persisted relational execution.
 - Document-intake planning produces governed drafts and previews only; it does not auto-apply mutations.
 - The workflow and assistant surfaces are package-local projections, not cross-PBC orchestration.
+
+## improve1 Full Traceability Evidence
+
+- Current slice branch: `pbc/improve1-full-traceability`.
+- Domain behavior evidence: `tests/test_domain_behavior.py`.
+- Matrix binding: every row in `IMPROVE1_TRACEABILITY.md` now names `tests/test_domain_behavior.py` alongside the existing contract and standalone tests.
+- Capability registry binding: every feature in `improve1_capabilities.py` now includes `tests/test_domain_behavior.py` in `test_artifacts`.
+- Behavioral coverage: planting-window classification, preplant readiness gates, crop-plan conflict detection, blocked-operation exception routing, assistant recommendations, idempotent inbox handling, dead-letter retry evidence, owned schema extension rejection, stateful service execution, route dispatch, UI workbench rendering, document/CRUD agent plans, standalone app evidence, package discovery, and domain-depth operation execution.
+
+## Verification Log
+
+- Passed: `/Volumes/Media/src/pjs/appgen/.venv/bin/pytest src/pyAppGen/pbcs/agriculture_farm_operations/tests` (21 passed).
+- Passed: improve1 traceability/capability/runtime sweep (877 passed).
+- Passed: `git diff --check -- src/pyAppGen/pbcs`.
