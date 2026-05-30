@@ -1502,6 +1502,39 @@ deploy Production {
     assert deployment_definition["ok"] is True
     assert deployment_definition["location"]["range"]["start"]["line"] == unit_decl_line
 
+
+def test_lsp_references_preserve_lexical_code_scope() -> None:
+    source = """
+app ReferenceScope { targets: web }
+table Invoice { id: int pk }
+view InvoiceForm for Invoice {
+  Main: id
+  on Save -> SubmitInvoice
+}
+operation SubmitInvoice { draft -> done }
+audit ReferenceAudit {
+  evidence: "SubmitInvoice"
+}
+// SubmitInvoice remains in this comment
+/* SubmitInvoice remains in this block comment */
+"""
+
+    references = appgen_dsl.lsp_references_dsl(
+        source,
+        source_name="reference-scope.appgen",
+        position=_position_of(source, "SubmitInvoice {"),
+    )
+
+    assert references["format"] == "appgen.lsp-references.v1"
+    assert references["ok"] is True
+    assert len(references["locations"]) == 2
+    assert all(location["uri"] == "reference-scope.appgen" for location in references["locations"])
+    assert {location["range"]["start"]["line"] for location in references["locations"]} == {
+        source.count("\n", 0, source.index("on Save -> SubmitInvoice")),
+        source.count("\n", 0, source.index("operation SubmitInvoice")),
+    }
+
+
 def test_lsp_references_include_pbc_catalog_contract_indexes() -> None:
     pbc_source = """
     app ReferenceCatalog { targets: web }
@@ -1583,6 +1616,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
     assert audit["blocking_gap_count"] == 0
     assert audit["blocking_gaps"] == ()
     assert "enterprise_definition_context" in {check["check"] for check in audit["checks"]}
+    assert "lexical_reference_scope" in {check["check"] for check in audit["checks"]}
     assert capabilities["completionProvider"]["triggerCharacters"]
     assert capabilities["hoverProvider"] is True
     assert capabilities["definitionProvider"] is True
@@ -4988,6 +5022,7 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert {
         "did_change_diagnostics",
         "enterprise_definition_context",
+        "lexical_reference_scope",
         "code_action_request",
         "formatting_request",
     } <= {check["check"] for check in lsp_check["detail"]["rpc"]["checks"]}

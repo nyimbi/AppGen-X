@@ -8195,6 +8195,83 @@ deploy Production {
         )
     )
 
+    reference_scope_uri = "memory://reference-scope.appgen"
+    reference_scope_source = """
+app ReferenceScope { targets: web }
+table Invoice { id: int pk }
+view InvoiceForm for Invoice {
+  Main: id
+  on Save -> SubmitInvoice
+}
+operation SubmitInvoice { draft -> done }
+audit ReferenceAudit {
+  evidence: "SubmitInvoice"
+}
+// SubmitInvoice remains in this comment
+/* SubmitInvoice remains in this block comment */
+"""
+
+    def reference_position(marker: str, offset: int = 0) -> dict:
+        index = reference_scope_source.index(marker) + offset
+        return {
+            "line": reference_scope_source.count("\n", 0, index),
+            "character": index - reference_scope_source.rfind("\n", 0, index) - 1,
+        }
+
+    lsp_server_handle_message(
+        {
+            "jsonrpc": "2.0",
+            "method": "textDocument/didOpen",
+            "params": {
+                "textDocument": {
+                    "uri": reference_scope_uri,
+                    "languageId": "appgen",
+                    "version": 1,
+                    "text": reference_scope_source,
+                }
+            },
+        },
+        documents,
+    )
+    reference_scope_responses, _ = lsp_server_handle_message(
+        {
+            "jsonrpc": "2.0",
+            "id": 24,
+            "method": "textDocument/references",
+            "params": {
+                "textDocument": {"uri": reference_scope_uri},
+                "position": reference_position("operation SubmitInvoice", len("operation ")),
+            },
+        },
+        documents,
+    )
+    reference_scope_locations = tuple(
+        location
+        for location in (reference_scope_responses[0].get("result", ()) if reference_scope_responses else ())
+        if location.get("uri") == reference_scope_uri
+    )
+    reference_scope_lines = {
+        location.get("range", {}).get("start", {}).get("line")
+        for location in reference_scope_locations
+    }
+    expected_reference_lines = {
+        reference_scope_source.count("\n", 0, reference_scope_source.index("on Save -> SubmitInvoice")),
+        reference_scope_source.count("\n", 0, reference_scope_source.index("operation SubmitInvoice")),
+    }
+    excluded_reference_lines = {
+        reference_scope_source.count("\n", 0, reference_scope_source.index('evidence: "SubmitInvoice"')),
+        reference_scope_source.count("\n", 0, reference_scope_source.index("// SubmitInvoice")),
+        reference_scope_source.count("\n", 0, reference_scope_source.index("/* SubmitInvoice")),
+    }
+    checks.append(
+        _release_check(
+            "lexical_reference_scope",
+            len(reference_scope_locations) == 2
+            and reference_scope_lines == expected_reference_lines
+            and not (reference_scope_lines & excluded_reference_lines),
+        )
+    )
+
     lsp_server_handle_message(
         {
             "jsonrpc": "2.0",
@@ -14150,15 +14227,60 @@ def _lsp_diagnostic_for_token(source: str, token: str, *, source_name: str | Non
 def _lsp_occurrence_ranges(source: str, token: str) -> tuple[dict, ...]:
     if not token:
         return ()
-    ranges = []
-    for line_index, line in enumerate(source.splitlines()):
-        for match in re.finditer(rf"\b{re.escape(token)}\b", line):
-            ranges.append(
-                {
-                    "start": {"line": line_index + 1, "character": match.start()},
-                    "end": {"line": line_index + 1, "character": match.end()},
-                }
-            )
+    ranges: list[dict] = []
+    text = source or ""
+    index = 0
+    while index < len(text):
+        char = text[index]
+        if text.startswith("//", index):
+            end = text.find("\n", index)
+            if end < 0:
+                break
+            index = end
+            continue
+        if char == "#":
+            end = text.find("\n", index)
+            if end < 0:
+                break
+            index = end
+            continue
+        if text.startswith("/*", index):
+            end = text.find("*/", index + 2)
+            if end < 0:
+                break
+            index = end + 2
+            continue
+        if char in {"'", '"'}:
+            quote = char
+            index += 1
+            escaped = False
+            while index < len(text):
+                current = text[index]
+                if escaped:
+                    escaped = False
+                elif current == "\\":
+                    escaped = True
+                elif current == quote:
+                    index += 1
+                    break
+                index += 1
+            continue
+        if char == "_" or char.isalpha():
+            start = index
+            index += 1
+            while index < len(text) and (text[index] == "_" or text[index].isalnum()):
+                index += 1
+            if text[start:index] == token:
+                start_line, start_character = _line_column_for_index(text, start)
+                end_line, end_character = _line_column_for_index(text, index)
+                ranges.append(
+                    {
+                        "start": {"line": start_line + 1, "character": start_character},
+                        "end": {"line": end_line + 1, "character": end_character},
+                    }
+                )
+            continue
+        index += 1
     return tuple(ranges)
 
 

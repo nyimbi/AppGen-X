@@ -1323,6 +1323,9 @@ agent asks for references to a PBC key or catalog API/event contract,
 `textDocument/references` returns ordinary workspace occurrences plus the
 matching `catalog://pbc/...` index location, which keeps generated PBC contracts
 discoverable without making catalog entries look like editable DSL source.
+Reference locations are lexical code references: comments, string literals, and
+block comments are preserved as authoring evidence and must not be returned as
+symbol references.
 
 Rename safety is an executable gate. The language service still returns the
 candidate workspace edit and migration preview, but `textDocument/rename`
