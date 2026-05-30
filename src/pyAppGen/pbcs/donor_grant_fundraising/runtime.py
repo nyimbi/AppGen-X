@@ -8,6 +8,7 @@ from pathlib import Path
 
 from .domain_depth import DOMAIN_OPERATIONS, DOMAIN_OWNED_TABLES, domain_depth_contract, execute_domain_operation, domain_depth_smoke_test
 from .fundraising_app import controls_contract, forms_contract, fundraising_app_smoke_test, single_pbc_app_contract, wizards_contract
+from .fundraising_control import FUNDRAISING_CONTROL_CAPABILITIES, improve1_fundraising_control_contract
 
 PBC_KEY = "donor_grant_fundraising"
 DONOR_GRANT_FUNDRAISING_BUSINESS_TABLES = (
@@ -341,6 +342,7 @@ def donor_grant_fundraising_build_service_contract() -> dict:
             "command_donor",
             "run_advanced_assessment",
             "parse_document_instruction",
+        "improve1_fundraising_control_contract",
         )
         + DONOR_GRANT_FUNDRAISING_APP_COMMANDS
         + DOMAIN_OPERATIONS,
@@ -374,6 +376,7 @@ def donor_grant_fundraising_build_release_evidence() -> dict:
     from .standalone import standalone_manifest, standalone_smoke_test
 
     standalone = standalone_smoke_test()
+    fundraising_control = improve1_fundraising_control_contract()
     checks = (
         {"id": "schema_models_migrations", "ok": schema["ok"] and migration_alignment_ok},
         {"id": "service_api_events", "ok": donor_grant_fundraising_build_service_contract()["ok"] and route_contract["ok"]},
@@ -383,6 +386,7 @@ def donor_grant_fundraising_build_release_evidence() -> dict:
         {"id": "forms_wizards_controls", "ok": bool(app_contract["forms"]) and bool(app_contract["wizards"]) and bool(app_contract["controls"])},
         {"id": "fundraising_app_smoke", "ok": app_smoke["ok"]},
         {"id": "standalone_application_shell", "ok": standalone_manifest()["ok"] and standalone["ok"]},
+        {"id": "fundraising_improve1_control_contract", "ok": fundraising_control["ok"]},
     )
     return {
         "format": "appgen.donor-grant-fundraising-release-evidence.v1",
@@ -401,6 +405,7 @@ def donor_grant_fundraising_build_release_evidence() -> dict:
             "ui": DONOR_GRANT_FUNDRAISING_UI_FRAGMENT_KEYS,
             "single_pbc_app": app_contract,
             "standalone": standalone_manifest(),
+            "fundraising_control": fundraising_control,
         },
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }
@@ -472,6 +477,7 @@ def donor_grant_fundraising_runtime_capabilities() -> dict:
         "query_workbench",
         "run_advanced_assessment",
         "parse_document_instruction",
+        "improve1_fundraising_control_contract",
     ) + DONOR_GRANT_FUNDRAISING_APP_COMMANDS + DONOR_GRANT_FUNDRAISING_APP_QUERY_METHODS + tuple(DOMAIN_OPERATIONS)
     return {
         "format": "appgen.donor-grant-fundraising-runtime-capabilities.v1",
@@ -482,6 +488,7 @@ def donor_grant_fundraising_runtime_capabilities() -> dict:
         "allowed_database_backends": DONOR_GRANT_FUNDRAISING_ALLOWED_DATABASE_BACKENDS,
         "standard_features": DONOR_GRANT_FUNDRAISING_STANDARD_FEATURE_KEYS,
         "capabilities": DONOR_GRANT_FUNDRAISING_STANDARD_FEATURE_KEYS + DONOR_GRANT_FUNDRAISING_RUNTIME_CAPABILITY_KEYS,
+        "improve1_fundraising_control_capabilities": tuple(capability.slug for capability in FUNDRAISING_CONTROL_CAPABILITIES),
         "operations": operations,
         "forms": forms_contract()["forms"],
         "wizards": wizards_contract()["wizards"],
@@ -521,6 +528,7 @@ def donor_grant_fundraising_runtime_smoke() -> dict:
     from .standalone import standalone_smoke_test
 
     standalone = standalone_smoke_test()
+    fundraising_control = improve1_fundraising_control_contract()
     checks = (
         {"id": "configure_runtime", "ok": cfg["ok"]},
         {"id": "set_parameter", "ok": param["ok"]},
@@ -539,11 +547,13 @@ def donor_grant_fundraising_runtime_smoke() -> dict:
         {"id": "domain_depth", "ok": domain["ok"]},
         {"id": "single_pbc_fundraising_app", "ok": app_smoke["ok"]},
         {"id": "standalone_shell", "ok": standalone["ok"]},
+        {"id": "improve1_fundraising_control_contract", "ok": fundraising_control["ok"]},
     ) + tuple({"id": capability, "ok": True} for capability in DONOR_GRANT_FUNDRAISING_RUNTIME_CAPABILITY_KEYS)
     return {
         "format": "appgen.donor-grant-fundraising-runtime-smoke.v1",
         "ok": all(check["ok"] for check in checks),
         "checks": checks,
+        "checks_by_id": {check["id"]: check["ok"] for check in checks},
         "configuration": cfg,
         "command": command,
         "schema": schema,
@@ -554,6 +564,7 @@ def donor_grant_fundraising_runtime_smoke() -> dict:
         "domain_depth": domain,
         "single_pbc_app": app_smoke,
         "standalone": standalone,
+        "fundraising_control": fundraising_control,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
         "side_effects": (),
     }

@@ -24,3 +24,9 @@ Implemented for the standalone PBC pass.
 - The package proves standalone behavior in-process; it does not launch a browser or generated app shell.
 - The route layer remains package-local and synthetic; a future pass could bind these contracts into the higher-level HTTP generator once shared-generator work is allowed.
 - The migration is contract-aligned and domain-specific, but not yet exercised against a live database engine in this isolated PBC-only pass.
+
+## 2026-05-30 improve1 Fundraising-Control Execution Slice
+
+- Added `fundraising_control.py` as the side-effect-free executable proof layer for all 50 donor grant fundraising improve1 backlog items.
+- Bound each feature to owned donor, campaign, pledge, gift, restriction, grant, stewardship, proposal, acknowledgement, review, budget, policy, control, event, and model tables plus UI fragments, service/API routes, permissions, agent skills, configuration guardrails, retry/dead-letter evidence, and release evidence.
+- Wired fundraising controls into runtime capabilities, runtime smoke, release evidence, UI contracts, traceability artifacts, and focused package tests.

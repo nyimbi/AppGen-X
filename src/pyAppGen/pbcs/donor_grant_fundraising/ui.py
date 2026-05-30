@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from .fundraising_control import improve1_fundraising_control_contract
 from .domain_depth import DOMAIN_ADVANCED_CAPABILITIES, DOMAIN_EDGE_CASES, DOMAIN_OPERATIONS, DOMAIN_OWNED_TABLES, DOMAIN_PARAMETERS, DOMAIN_RULES, domain_capability_surface_contract
 from .fundraising_app import controls_contract, forms_contract, single_pbc_app_contract, wizards_contract
 
@@ -18,6 +19,7 @@ def donor_grant_fundraising_ui_contract() -> dict:
         ),
         "configuration_editor": True,
         "stream_engine_picker_visible": False,
+        "fundraising_control_contract": improve1_fundraising_control_contract(),
         "action_permissions": (
             "donor_grant_fundraising.read",
             "donor_grant_fundraising.create",
@@ -49,6 +51,7 @@ def donor_grant_fundraising_ui_contract() -> dict:
                 "assistant",
                 "release_evidence",
             ),
+            "fundraising_control_panels": tuple(item["ui_surface"] for item in improve1_fundraising_control_contract()["capabilities"]),
             "coverage": surface["coverage"],
         },
         "binding_evidence": {
