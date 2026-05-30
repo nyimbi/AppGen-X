@@ -58,7 +58,7 @@ PBC_MANIFEST = {'advanced_capabilities': ('maritime_shipping_operations_event_so
  'datastore_backend': 'postgresql',
  'description': 'Voyages, vessels, cargo, charter parties, port calls, demurrage, bunkers, and '
                 'marine operations',
- 'docs': ('SPECIFICATION.md', 'RELEASE_EVIDENCE.md'),
+ 'docs': ('SPECIFICATION.md', 'RELEASE_EVIDENCE.md', 'README.md', 'implementation-plan.md', 'implementation-status.md'),
  'emits': ('MaritimeShippingOperationsCreated',
            'MaritimeShippingOperationsUpdated',
            'MaritimeShippingOperationsApproved',
@@ -104,10 +104,16 @@ PBC_MANIFEST = {'advanced_capabilities': ('maritime_shipping_operations_event_so
             'maritime_shipping_operations_control_assertion',
             'maritime_shipping_operations_governed_model'),
  'template': 'logistics',
- 'tests': ('tests/test_contract.py',),
+ 'tests': ('tests/test_contract.py', 'tests/test_standalone.py'),
  'ui_fragments': ('MaritimeShippingOperationsWorkbench',
                   'MaritimeShippingOperationsDetail',
                   'MaritimeShippingOperationsAssistantPanel'),
  'version': '1.0.0',
  'workflows': ('maritime_shipping_operations_create_voyage_workflow',
-               'maritime_shipping_operations_record_vessel_workflow')}
+               'maritime_shipping_operations_record_vessel_workflow',
+               'maritime_shipping_operations_booking_to_bill_workflow',
+               'maritime_shipping_operations_port_call_execution_workflow',
+               'maritime_shipping_operations_laytime_demurrage_workflow',
+               'maritime_shipping_operations_bunker_carbon_workflow',
+               'maritime_shipping_operations_compliance_restriction_workflow',
+               'maritime_shipping_operations_schedule_recovery_workflow')}
