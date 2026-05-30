@@ -1,15 +1,15 @@
-# Professional Services Automation Standalone Implementation Status
+# Professional Services Automation Implementation Status
 
-## Completed
+## improve1 executable completion
 
-- Added package-local forms for engagement intake, SOW parsing, staffing, time/expense review, billing readiness, and assistant preview.
-- Added wizards for engagement launch, margin recovery, delivery-risk triage, and assistant-guided change preview.
-- Added controls for release readiness, scope boundary, billing gate, and assistant guardrails.
-- Added standalone one-PBC app composition, bootstrap state, workflow catalog, and smoke validation.
-- Wired standalone metadata into UI, release evidence, manifest, and package exports.
-- Added focused standalone tests and documentation artifacts required by release evidence.
+- Implemented `psa_control.py` as the package-local executable contract for all 50 improve1 backlog features.
+- Every feature maps to a PSA-owned control table, required fields, UI panel, service/API route, test evidence, AppGen-X event contract proof, declared API/event/projection dependencies, and release evidence.
+- Runtime, UI, and release evidence surfaces expose the control contract without stream-engine pickers, shared-table access, or non-owned datastore assumptions.
+- `tests/test_domain_behavior.py` verifies engagement lifecycle, archetypes, SOW semantic extraction, obligation ledgers, scope/change control, role architecture, skill graphs, staffing optimization, utilization forecasts, soft bookings, subcontractor governance, rate cards, time/expense controls, milestones, deliverables, client acceptance, billing readiness, leakage, margins, fixed-price/retainer controls, delivery risk, client health, exceptions, change orders, close, project-to-cash handoff, fairness, career staffing, playbooks, knowledge reuse, retrospectives, proposal handoff, kickoff readiness, demand forecasting, simulations, model governance, control assertions, boundary proof, dead-letter replay, carbon planning, agent skills, role workbenches, executive cockpit, and release matrix proof.
 
-## Remaining Risks
+## constraints
 
-- The standalone app currently composes deterministic runtime and domain-operation evidence rather than a separate persistent store.
-- Repo-wide audits still depend on the broader package contracts remaining stable; this change keeps those contracts intact but does not refactor them.
+- Datastore backends remain restricted to PostgreSQL, MySQL, and MariaDB.
+- Eventing remains AppGen-X only.
+- Cross-PBC data is declared as API/event/projection dependencies, not shared tables.
+- Agent-assisted PSA flows remain side-effect-free previews unless human approval is present.
