@@ -254,3 +254,38 @@ def grant_fund_accounting_runtime_capabilities():
         'domain_advanced_capabilities': tuple(domain['advanced_capabilities']),
         'side_effects': (),
     }
+
+
+# Improve1 grant accounting control extension.
+from .grant_control import improve1_grant_control_contract as grant_fund_accounting_improve1_grant_control_contract
+
+_GRANT_FUND_ACCOUNTING_DOMAIN_RUNTIME_CAPABILITIES = grant_fund_accounting_runtime_capabilities
+_GRANT_FUND_ACCOUNTING_DOMAIN_BUILD_RELEASE_EVIDENCE = grant_fund_accounting_build_release_evidence
+
+
+def grant_fund_accounting_build_release_evidence():
+    evidence = dict(_GRANT_FUND_ACCOUNTING_DOMAIN_BUILD_RELEASE_EVIDENCE())
+    grant_control = grant_fund_accounting_improve1_grant_control_contract()
+    checks = tuple(evidence.get('checks', ())) + (
+        {'id': 'improve1_grant_control', 'ok': grant_control['ok']},
+        {'id': 'grant_funder_readiness', 'ok': grant_control['capability_count'] == 50 and grant_control['event_contract'] == 'AppGen-X'},
+    )
+    return {**evidence, 'ok': evidence.get('ok') is True and all(check['ok'] for check in checks), 'checks': checks, 'grant_control': grant_control, 'blocking_gaps': tuple(check for check in checks if not check['ok'])}
+
+
+def grant_fund_accounting_runtime_capabilities():
+    runtime = dict(_GRANT_FUND_ACCOUNTING_DOMAIN_RUNTIME_CAPABILITIES())
+    grant_control = grant_fund_accounting_improve1_grant_control_contract()
+    return {
+        **runtime,
+        'ok': runtime.get('ok') is True and grant_control['ok'],
+        'grant_control': grant_control,
+        'improve1_capabilities': grant_control['capabilities'],
+        'operations': tuple(dict.fromkeys(tuple(runtime.get('operations', ())) + ('improve1_grant_control_contract', 'evaluate_grant_control'))),
+        'owned_tables': tuple(dict.fromkeys(tuple(runtime.get('owned_tables', ())) + tuple(grant_control['owned_tables']))),
+        'allowed_database_backends': grant_control['allowed_database_backends'],
+        'event_contract': grant_control['event_contract'],
+        'required_event_topic': grant_control['required_event_topic'],
+        'stream_engine_picker_visible': False,
+        'side_effects': (),
+    }

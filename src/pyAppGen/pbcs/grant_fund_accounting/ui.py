@@ -66,3 +66,48 @@ def smoke_test():
     base = _BASE_GRANT_FUND_ACCOUNTING_SMOKE_TEST()
     standalone = grant_fund_accounting_standalone_ui_contract()
     return {'ok': base['ok'] and standalone['ok'], 'base': base, 'standalone': standalone, 'side_effects': ()}
+
+
+# Improve1 grant accounting UI control extension.
+from .grant_control import improve1_grant_control_contract as grant_fund_accounting_improve1_grant_control_contract
+
+_GRANT_FUND_ACCOUNTING_STANDALONE_UI_CONTRACT = grant_fund_accounting_ui_contract
+_GRANT_FUND_ACCOUNTING_STANDALONE_RENDER_WORKBENCH = grant_fund_accounting_render_workbench
+
+
+def grant_fund_accounting_ui_contract():
+    base = dict(_GRANT_FUND_ACCOUNTING_STANDALONE_UI_CONTRACT())
+    grant_control = grant_fund_accounting_improve1_grant_control_contract()
+    control_panels = tuple(item['evidence']['ui_surface'] for item in grant_control['capabilities'])
+    service_actions = tuple(item['evidence']['service_api'] for item in grant_control['capabilities'])
+    full_surface = dict(base.get('full_capability_surface', {}))
+    full_surface.update({
+        'grant_control_panels': control_panels,
+        'grant_control_service_actions': service_actions,
+        'grant_control_tables': grant_control['owned_tables'],
+        'grant_control_agent_tools': tuple(f"grant_fund_accounting.agent.{item['slug']}" for item in grant_control['capabilities']),
+    })
+    return {
+        **base,
+        'ok': base.get('ok') is True and grant_control['ok'],
+        'full_capability_surface': full_surface,
+        'grant_control_contract': grant_control,
+        'grant_control_panels': control_panels,
+        'grant_control_service_actions': service_actions,
+        'side_effects': (),
+    }
+
+
+def grant_fund_accounting_render_workbench(state=None):
+    base = dict(_GRANT_FUND_ACCOUNTING_STANDALONE_RENDER_WORKBENCH(state=state))
+    grant_control = grant_fund_accounting_improve1_grant_control_contract()
+    panels = tuple(item['evidence']['ui_surface'] for item in grant_control['capabilities'])
+    return {
+        **base,
+        'ok': base.get('ok') is True and grant_control['ok'],
+        'panels': tuple(dict.fromkeys(tuple(base.get('panels', ())) + panels)),
+        'grant_control_panels': panels,
+        'grant_control_service_actions': tuple(item['evidence']['service_api'] for item in grant_control['capabilities']),
+        'agent_tools': tuple(dict.fromkeys(tuple(base.get('agent_tools', ())) + tuple(f"grant_fund_accounting.agent.{item['slug']}" for item in grant_control['capabilities']))),
+        'side_effects': (),
+    }
