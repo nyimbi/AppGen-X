@@ -4790,6 +4790,11 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and tuple(catalog_lint.get("component_catalog", {}).get("components", ())) == ("CustomGauge",)
             and lint_directory_cli["ok"]
             and lint_directory_cli.get("passing_scenario_count") == lint_directory_cli.get("scenario_count")
+            and lint_directory_cli.get("failing_scenario_count") == 0
+            and lint_directory_cli.get("passing_stage_profile_count") == lint_directory_cli.get("stage_profile_count")
+            and lint_directory_cli.get("failing_stage_profile_count") == 0
+            and lint_directory_cli.get("missing_stage_name_count") == 0
+            and lint_directory_cli.get("missing_severity_name_count") == 0
             and lint_directory_cli.get("source_mode") == "directory"
             and lint_directory_cli.get("file_order_sorted") is True
             and lint_directory_cli.get("file_report_count", 0) >= 2
@@ -4815,7 +4820,17 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                     "format": lint_directory_cli.get("format"),
                     "scenario_count": lint_directory_cli.get("scenario_count"),
                     "passing_scenario_count": lint_directory_cli.get("passing_scenario_count"),
+                    "failing_scenario_count": lint_directory_cli.get("failing_scenario_count"),
+                    "failing_scenarios": lint_directory_cli.get("failing_scenarios"),
+                    "scenario_ids": lint_directory_cli.get("scenario_ids"),
                     "stage_profile_count": lint_directory_cli.get("stage_profile_count"),
+                    "passing_stage_profile_count": lint_directory_cli.get("passing_stage_profile_count"),
+                    "failing_stage_profile_count": lint_directory_cli.get("failing_stage_profile_count"),
+                    "stage_profile_ids": lint_directory_cli.get("stage_profile_ids"),
+                    "missing_stage_name_count": lint_directory_cli.get("missing_stage_name_count"),
+                    "missing_stage_names": lint_directory_cli.get("missing_stage_names"),
+                    "missing_severity_name_count": lint_directory_cli.get("missing_severity_name_count"),
+                    "missing_severity_names": lint_directory_cli.get("missing_severity_names"),
                     "source_mode": lint_directory_cli.get("source_mode"),
                     "file_order_sorted": lint_directory_cli.get("file_order_sorted"),
                     "file_relative_order": lint_directory_cli.get("file_relative_order"),
@@ -4859,12 +4874,15 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and component_publish_cli.get("after_count") == 2
             and component_publish_cli.get("side_effect_free") is True
             and component_publish_cli.get("write_performed") is False
+            and component_publish_cli.get("failing_case_count") == 0
             and component_publish_cli.get("text_has_report_format") is True
             and component_publish_cli.get("text_has_patch_format") is True
             and component_publish_cli.get("text_has_side_effect_markers") is True
             and component_publish_cli.get("text_has_existing_catalog") is True
             and component_publish_cli.get("missing_catalog_exit_code") == 1
             and "catalog_path_readable" in component_publish_cli.get("missing_catalog_blocking_gaps", ())
+            and component_publish_cli.get("missing_catalog_side_effect_free") is True
+            and component_publish_cli.get("missing_catalog_write_performed") is False
             and component_publish_text_renderer["ok"]
             and component_publish_text_renderer.get("summary_line_count") == 1
             and component_publish_text_renderer.get("catalog_line_count", 0) >= 2
@@ -4879,6 +4897,8 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                     "format": component_publish_cli.get("format"),
                     "case_count": component_publish_cli.get("case_count"),
                     "passing_case_count": component_publish_cli.get("passing_case_count"),
+                    "failing_case_count": component_publish_cli.get("failing_case_count"),
+                    "case_ids": component_publish_cli.get("case_ids"),
                     "patch_format": component_publish_cli.get("patch_format"),
                     "operation": component_publish_cli.get("operation"),
                     "component": component_publish_cli.get("component"),
@@ -4893,6 +4913,8 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                     "text_has_existing_catalog": component_publish_cli.get("text_has_existing_catalog"),
                     "missing_catalog_exit_code": component_publish_cli.get("missing_catalog_exit_code"),
                     "missing_catalog_blocking_gaps": component_publish_cli.get("missing_catalog_blocking_gaps"),
+                    "missing_catalog_side_effect_free": component_publish_cli.get("missing_catalog_side_effect_free"),
+                    "missing_catalog_write_performed": component_publish_cli.get("missing_catalog_write_performed"),
                 },
                 "text_renderer": {
                     "format": component_publish_text_renderer.get("format"),
@@ -7345,6 +7367,12 @@ def _tooling_audit_implementation_phases(**evidence: dict) -> dict:
                     and evidence["lint_directory_cli"].get("ok") is True
                     and evidence["lint_directory_cli"].get("passing_scenario_count")
                     == evidence["lint_directory_cli"].get("scenario_count")
+                    and evidence["lint_directory_cli"].get("failing_scenario_count") == 0
+                    and evidence["lint_directory_cli"].get("passing_stage_profile_count")
+                    == evidence["lint_directory_cli"].get("stage_profile_count")
+                    and evidence["lint_directory_cli"].get("failing_stage_profile_count") == 0
+                    and evidence["lint_directory_cli"].get("missing_stage_name_count") == 0
+                    and evidence["lint_directory_cli"].get("missing_severity_name_count") == 0
                     and evidence["lint_directory_cli"].get("file_order_sorted") is True
                     and evidence["lint_directory_cli"].get("diagnostics_have_files") is True
                     and evidence["lint_directory_cli"].get("stage_separation", {}).get("ok") is True,
@@ -7355,9 +7383,15 @@ def _tooling_audit_implementation_phases(**evidence: dict) -> dict:
                     "ok": evidence["component_publish_cli"].get("ok") is True
                     and evidence["component_publish_cli"].get("passing_case_count")
                     == evidence["component_publish_cli"].get("case_count")
+                    and evidence["component_publish_cli"].get("failing_case_count") == 0
                     and evidence["component_publish_cli"].get("patch_format") == "appgen.component-catalog-patch.v1"
                     and evidence["component_publish_cli"].get("side_effect_free") is True
-                    and evidence["component_publish_cli"].get("write_performed") is False,
+                    and evidence["component_publish_cli"].get("write_performed") is False
+                    and evidence["component_publish_cli"].get("missing_catalog_exit_code") == 1
+                    and "catalog_path_readable"
+                    in set(evidence["component_publish_cli"].get("missing_catalog_blocking_gaps", ()))
+                    and evidence["component_publish_cli"].get("missing_catalog_side_effect_free") is True
+                    and evidence["component_publish_cli"].get("missing_catalog_write_performed") is False,
                     "evidence_format": evidence["component_publish_cli"].get("format"),
                 },
                 {
@@ -10307,6 +10341,7 @@ def _tooling_audit_component_publish_cli(tmp: Path) -> dict:
         "passing_case_count": sum(1 for case in cases if case["ok"]),
         "failing_case_count": len(failing_cases),
         "failing_cases": failing_cases,
+        "case_ids": tuple(case["case"] for case in cases),
         "payload_format": json_payload.get("format"),
         "patch_format": patch.get("format"),
         "operation": patch.get("operation"),
@@ -10325,6 +10360,8 @@ def _tooling_audit_component_publish_cli(tmp: Path) -> dict:
         "text_has_existing_catalog": "catalog-existing ExistingBox" in text_output,
         "missing_catalog_exit_code": missing_exit,
         "missing_catalog_blocking_gaps": missing_payload.get("blocking_gaps", ()),
+        "missing_catalog_side_effect_free": missing_payload.get("catalog_patch", {}).get("side_effect_free"),
+        "missing_catalog_write_performed": missing_payload.get("catalog_patch", {}).get("write_performed"),
         "cases": cases,
     }
 
@@ -10455,6 +10492,72 @@ view CustomerForm for Customer {
         and semantic_payload.get("stages", {}).get("semantic", {}).get("error", 0) >= 1,
         "policy": policy_exit_code == 0 and policy_payload.get("stages", {}).get("policy", {}).get("warning", 0) >= 1,
     }
+    scenario_results = (
+        {
+            "id": "strict_directory_json",
+            "ok": exit_code == 0 and payload.get("format") == "appgen.lint-report.v1",
+            "exit_code": exit_code,
+            "payload_format": payload.get("format"),
+        },
+        {
+            "id": "warning_directory_files",
+            "ok": warning_diagnostics_have_files,
+            "exit_code": warning_exit_code,
+            "diagnostic_count": len(warning_diagnostics),
+        },
+        {
+            "id": "normal_unknown_component_warning",
+            "ok": normal_unknown_component_warning,
+            "exit_code": normal_unknown_exit_code,
+            "diagnostic_codes": tuple(item.get("code") for item in normal_unknown_diagnostics),
+        },
+        {
+            "id": "strict_unknown_component_error",
+            "ok": strict_unknown_component_error,
+            "exit_code": strict_unknown_exit_code,
+            "diagnostic_codes": tuple(item.get("code") for item in strict_unknown_diagnostics),
+        },
+        {
+            "id": "strict_catalog_component_success",
+            "ok": strict_catalog_component_success,
+            "exit_code": strict_catalog_exit_code,
+            "catalog_components": tuple(strict_catalog_payload.get("component_catalog", {}).get("components", ())),
+        },
+        {
+            "id": "previous_semantic_migration_preview",
+            "ok": migration_lint_success,
+            "exit_code": migration_exit_code,
+            "detected": tuple(migration_preview.get("coverage", {}).get("detected", ())),
+        },
+        {
+            "id": "stage_separation_profiles",
+            "ok": all(stage_separation.values()),
+            "exit_code": 0 if all(stage_separation.values()) else 1,
+            "profiles": tuple(name for name, ok in stage_separation.items() if ok),
+        },
+        {
+            "id": "directory_file_order_and_reports",
+            "ok": file_order_sorted and len(file_reports) == 2,
+            "exit_code": exit_code,
+            "file_relative_order": file_relative_order,
+        },
+    )
+    failing_scenarios = tuple(result["id"] for result in scenario_results if not result["ok"])
+    required_stage_names = ("syntax", "semantic", "policy")
+    required_severity_names = ("error", "warning", "info", "hint")
+    observed_stage_names = tuple(syntax_payload.get("stage_names", ()))
+    observed_severity_names = tuple(syntax_payload.get("severity_names", ()))
+    missing_stage_names = tuple(name for name in required_stage_names if name not in observed_stage_names)
+    missing_severity_names = tuple(name for name in required_severity_names if name not in observed_severity_names)
+    stage_profile_results = tuple(
+        {
+            "id": stage,
+            "ok": ok,
+            "exit_code": {"syntax": syntax_exit_code, "semantic": semantic_exit_code, "policy": policy_exit_code}[stage],
+            "expected_severity": {"syntax": "error", "semantic": "error", "policy": "warning"}[stage],
+        }
+        for stage, ok in stage_separation.items()
+    )
     return {
         "format": "appgen.lint-directory-cli-audit.v1",
         "ok": exit_code == 0
@@ -10476,23 +10579,28 @@ view CustomerForm for Customer {
         and strict_unknown_component_error
         and strict_catalog_component_success
         and migration_lint_success
-        and all(stage_separation.values()),
-        "scenario_count": 8,
-        "passing_scenario_count": sum(
-            1
-            for ok in (
-                exit_code == 0 and payload.get("format") == "appgen.lint-report.v1",
-                warning_diagnostics_have_files,
-                normal_unknown_component_warning,
-                strict_unknown_component_error,
-                strict_catalog_component_success,
-                migration_lint_success,
-                all(stage_separation.values()),
-                file_order_sorted and len(file_reports) == 2,
-            )
-            if ok
-        ),
+        and all(stage_separation.values())
+        and not missing_stage_names
+        and not missing_severity_names,
+        "scenario_count": len(scenario_results),
+        "passing_scenario_count": sum(1 for result in scenario_results if result["ok"]),
+        "failing_scenario_count": len(failing_scenarios),
+        "failing_scenarios": failing_scenarios,
+        "scenario_ids": tuple(result["id"] for result in scenario_results),
+        "scenarios": scenario_results,
         "stage_profile_count": len(stage_separation),
+        "passing_stage_profile_count": sum(1 for result in stage_profile_results if result["ok"]),
+        "failing_stage_profile_count": sum(1 for result in stage_profile_results if not result["ok"]),
+        "stage_profile_ids": tuple(result["id"] for result in stage_profile_results),
+        "stage_profiles": stage_profile_results,
+        "required_stage_names": required_stage_names,
+        "observed_stage_names": observed_stage_names,
+        "missing_stage_name_count": len(missing_stage_names),
+        "missing_stage_names": missing_stage_names,
+        "required_severity_names": required_severity_names,
+        "observed_severity_names": observed_severity_names,
+        "missing_severity_name_count": len(missing_severity_names),
+        "missing_severity_names": missing_severity_names,
         "exit_code": exit_code,
         "payload_format": payload.get("format"),
         "source_mode": payload.get("source_mode"),

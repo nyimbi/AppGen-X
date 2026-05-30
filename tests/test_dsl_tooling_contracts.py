@@ -538,6 +538,7 @@ def test_component_publish_cli_audit_covers_patch_text_and_missing_catalog(tmp_p
     assert audit["passing_case_count"] == audit["case_count"]
     assert audit["failing_case_count"] == 0
     assert audit["failing_cases"] == ()
+    assert audit["case_ids"] == ("json_publish_patch", "text_publish_markers", "missing_catalog_rejected")
     assert audit["patch_format"] == "appgen.component-catalog-patch.v1"
     assert audit["operation"] == "upsert_component"
     assert audit["component"] == "CustomGauge"
@@ -553,6 +554,8 @@ def test_component_publish_cli_audit_covers_patch_text_and_missing_catalog(tmp_p
     assert audit["text_has_existing_catalog"] is True
     assert audit["missing_catalog_exit_code"] == 1
     assert "catalog_path_readable" in audit["missing_catalog_blocking_gaps"]
+    assert audit["missing_catalog_side_effect_free"] is True
+    assert audit["missing_catalog_write_performed"] is False
 
 
 def test_lint_directory_audit_covers_strict_component_cli_gate(tmp_path: Path) -> None:
@@ -562,7 +565,26 @@ def test_lint_directory_audit_covers_strict_component_cli_gate(tmp_path: Path) -
     assert report["ok"] is True
     assert report["scenario_count"] == 8
     assert report["passing_scenario_count"] == report["scenario_count"]
+    assert report["failing_scenario_count"] == 0
+    assert report["failing_scenarios"] == ()
+    assert report["scenario_ids"] == (
+        "strict_directory_json",
+        "warning_directory_files",
+        "normal_unknown_component_warning",
+        "strict_unknown_component_error",
+        "strict_catalog_component_success",
+        "previous_semantic_migration_preview",
+        "stage_separation_profiles",
+        "directory_file_order_and_reports",
+    )
     assert report["stage_profile_count"] == 3
+    assert report["passing_stage_profile_count"] == report["stage_profile_count"]
+    assert report["failing_stage_profile_count"] == 0
+    assert report["stage_profile_ids"] == ("syntax", "semantic", "policy")
+    assert report["missing_stage_name_count"] == 0
+    assert report["missing_stage_names"] == ()
+    assert report["missing_severity_name_count"] == 0
+    assert report["missing_severity_names"] == ()
     assert report["file_order_sorted"] is True
     assert report["file_relative_order"] == ("a.appgen", "nested/b.appgen")
     assert report["normal_unknown_component_warning"]["ok"] is True
@@ -5645,7 +5667,14 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert lint_contract_check["detail"]["directory_cli"]["passing_scenario_count"] == (
         lint_contract_check["detail"]["directory_cli"]["scenario_count"]
     )
+    assert lint_contract_check["detail"]["directory_cli"]["failing_scenario_count"] == 0
+    assert lint_contract_check["detail"]["directory_cli"]["failing_scenarios"] == ()
     assert lint_contract_check["detail"]["directory_cli"]["stage_profile_count"] == 3
+    assert lint_contract_check["detail"]["directory_cli"]["passing_stage_profile_count"] == 3
+    assert lint_contract_check["detail"]["directory_cli"]["failing_stage_profile_count"] == 0
+    assert lint_contract_check["detail"]["directory_cli"]["stage_profile_ids"] == ("syntax", "semantic", "policy")
+    assert lint_contract_check["detail"]["directory_cli"]["missing_stage_name_count"] == 0
+    assert lint_contract_check["detail"]["directory_cli"]["missing_severity_name_count"] == 0
     assert lint_contract_check["detail"]["directory_cli"]["source_mode"] == "directory"
     assert lint_contract_check["detail"]["directory_cli"]["file_order_sorted"] is True
     assert lint_contract_check["detail"]["directory_cli"]["file_relative_order"] == ("a.appgen", "nested/b.appgen")
@@ -5666,6 +5695,12 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     component_publish_check = next(check for check in report["checks"] if check["id"] == "component_publish_catalog_contracts")
     assert component_publish_check["detail"]["cli"]["format"] == "appgen.component-publish-cli-audit.v1"
     assert component_publish_check["detail"]["cli"]["passing_case_count"] == component_publish_check["detail"]["cli"]["case_count"]
+    assert component_publish_check["detail"]["cli"]["failing_case_count"] == 0
+    assert component_publish_check["detail"]["cli"]["case_ids"] == (
+        "json_publish_patch",
+        "text_publish_markers",
+        "missing_catalog_rejected",
+    )
     assert component_publish_check["detail"]["cli"]["patch_format"] == "appgen.component-catalog-patch.v1"
     assert component_publish_check["detail"]["cli"]["operation"] == "upsert_component"
     assert component_publish_check["detail"]["cli"]["component"] == "CustomGauge"
@@ -5680,6 +5715,8 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert component_publish_check["detail"]["cli"]["text_has_existing_catalog"] is True
     assert component_publish_check["detail"]["cli"]["missing_catalog_exit_code"] == 1
     assert "catalog_path_readable" in component_publish_check["detail"]["cli"]["missing_catalog_blocking_gaps"]
+    assert component_publish_check["detail"]["cli"]["missing_catalog_side_effect_free"] is True
+    assert component_publish_check["detail"]["cli"]["missing_catalog_write_performed"] is False
     assert component_publish_check["detail"]["text_renderer"]["format"] == "appgen.component-publish-text-renderer.v1"
     assert component_publish_check["detail"]["text_renderer"]["summary_line_count"] == 1
     assert component_publish_check["detail"]["text_renderer"]["catalog_line_count"] >= 2

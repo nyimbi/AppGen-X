@@ -418,7 +418,10 @@ counts, plus `fixes_available`, so release evidence can prove report breadth
 without expanding every diagnostic item.
 `appgen.lint-directory-cli-audit.v1` proves that syntax errors, semantic
 reference errors, and policy warnings are reported through distinct stage
-buckets.
+buckets. It publishes named scenario ids, failing-scenario counts, named
+failing scenarios, stage-profile ids, passing/failing stage-profile counts, and
+required/observed/missing stage and severity names so release evidence can show
+which exact lint contract regressed without replaying the full CLI log.
 
 ### Linter Inputs
 
@@ -1113,7 +1116,10 @@ The aggregate tooling audit exposes this proof independently as
 `appgen component-publish` stops returning an `appgen.component-catalog-patch.v1`
 upsert plan, stops deriving component icons, mutates catalogs implicitly, hides
 existing catalog context in text mode, or accepts a missing catalog path without
-a blocking gap.
+a blocking gap. The CLI audit publishes named case ids, failing-case counts,
+missing-catalog exit status, missing-catalog blocking gaps, and side-effect
+markers for the rejected missing-catalog path so the release gate proves even
+failure paths remain non-mutating.
 
 ### `appgen pbc`
 
