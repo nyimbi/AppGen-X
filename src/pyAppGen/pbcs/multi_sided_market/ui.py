@@ -31,3 +31,25 @@ def multi_sided_market_render_workbench(state=None, *, tenant='default', princip
 def smoke_test():
     rendered = multi_sided_market_render_workbench({'outbox': ()}, principal_permissions=('multi_sided_market.create',))
     contract = multi_sided_market_ui_contract(); return {'ok': contract['ok'] and rendered['ok'] and bool(contract['forms']) and bool(contract['wizards']) and bool(contract['controls']) and contract['single_pbc_app']['ok'], 'contract': contract, 'rendered': rendered, 'side_effects': ()}
+
+# Improve1 multi-sided market control UI extension.
+from .market_control import improve1_market_control_contract as _improve1_market_control_contract
+
+_MULTI_SIDED_MARKET_BASE_UI_CONTRACT = multi_sided_market_ui_contract
+_MULTI_SIDED_MARKET_BASE_RENDER_WORKBENCH = multi_sided_market_render_workbench
+
+
+def multi_sided_market_ui_contract():
+    ui = dict(_MULTI_SIDED_MARKET_BASE_UI_CONTRACT())
+    control = _improve1_market_control_contract()
+    panels = tuple(item["evidence"]["ui_surface"] for item in control["capabilities"])
+    service_actions = tuple(item["evidence"]["service_api"] for item in control["capabilities"])
+    ui.update({"ok": ui.get("ok") is True and control["ok"], "market_control_contract": control, "market_control_panels": panels, "market_control_service_actions": service_actions, "stream_engine_picker_visible": False})
+    return ui
+
+
+def multi_sided_market_render_workbench(state=None, *, tenant='default', principal_permissions=()):
+    workbench = dict(_MULTI_SIDED_MARKET_BASE_RENDER_WORKBENCH(state, tenant=tenant, principal_permissions=principal_permissions))
+    control = _improve1_market_control_contract()
+    workbench.update({"ok": workbench.get("ok") is True and control["ok"], "market_control_panels": tuple(item["evidence"]["ui_surface"] for item in control["capabilities"]), "market_control_service_actions": tuple(item["evidence"]["service_api"] for item in control["capabilities"]), "market_control_agent_tools": tuple(f"multi_sided_market.skills.{item['slug']}" for item in control["capabilities"])})
+    return workbench

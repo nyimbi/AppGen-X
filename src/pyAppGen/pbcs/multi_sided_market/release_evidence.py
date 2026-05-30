@@ -90,3 +90,35 @@ def validate_release_evidence():
 def smoke_test():
     validation = validate_release_evidence()
     return {"ok": validation["ok"], "validation": validation, "side_effects": ()}
+
+# Improve1 multi-sided market control release evidence extension.
+from .market_control import improve1_market_control_contract as _market_control_contract
+
+_MULTI_SIDED_MARKET_BASE_BUILD_RELEASE_EVIDENCE = build_release_evidence
+_MULTI_SIDED_MARKET_BASE_RELEASE_READINESS_MANIFEST = release_readiness_manifest
+_MULTI_SIDED_MARKET_BASE_VALIDATE_RELEASE_EVIDENCE = validate_release_evidence
+
+
+def build_release_evidence():
+    evidence = dict(_MULTI_SIDED_MARKET_BASE_BUILD_RELEASE_EVIDENCE())
+    control = _market_control_contract()
+    checks = tuple(evidence.get("checks", ())) + ({"id": "market_control_contract", "ok": control["ok"]}, {"id": "market_control_traceability", "ok": control["capability_count"] == 50})
+    evidence.update({"market_control": control, "multi_sided_market_controls": tuple(item["evidence"] for item in control["capabilities"]), "checks": checks, "blocking_gaps": tuple(check for check in checks if check.get("ok") is not True)})
+    evidence["ok"] = not evidence["blocking_gaps"]
+    return evidence
+
+
+def release_readiness_manifest():
+    manifest = dict(_MULTI_SIDED_MARKET_BASE_RELEASE_READINESS_MANIFEST())
+    evidence = build_release_evidence()
+    manifest.update({"ok": evidence["ok"], "evidence": evidence, "sections": tuple(dict.fromkeys(tuple(manifest.get("sections", ())) + ("market_control", "improve1_traceability"))), "blocking_gaps": evidence["blocking_gaps"]})
+    return manifest
+
+
+def validate_release_evidence():
+    base = dict(_MULTI_SIDED_MARKET_BASE_VALIDATE_RELEASE_EVIDENCE())
+    evidence = build_release_evidence()
+    control = evidence["market_control"]
+    failed = tuple(check for check in evidence["checks"] if check.get("ok") is not True)
+    base.update({"ok": base.get("ok") is True and evidence["ok"] and control["ok"] and not failed, "failed_checks": tuple(base.get("failed_checks", ())) + failed, "market_control": control})
+    return base
