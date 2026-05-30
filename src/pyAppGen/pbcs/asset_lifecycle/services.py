@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from . import runtime as asset_runtime
 from .depreciation_engine import build_schedule_version
 from .manifest import PBC_MANIFEST
 from .runtime import ASSET_LIFECYCLE_REQUIRED_EVENT_TOPIC
@@ -186,7 +187,10 @@ def operation_plan(operation_name, payload=None):
 
 
 class AssetLifecycleService:
-    """Side-effect-free facade for route-bound operations and slice previews."""
+    """Runtime-backed facade for route-bound asset lifecycle operations."""
+
+    def __init__(self, state=None):
+        self.state = state or asset_runtime.asset_lifecycle_empty_state()
 
     def _execute(self, operation_name, payload):
         plan = operation_plan(operation_name, payload)
@@ -223,9 +227,97 @@ class AssetLifecycleService:
         return result
 
     def _command(self, command_name, payload):
-        return self._execute(command_name, payload)
+        try:
+            result = self._execute_runtime_command(command_name, dict(payload or {}))
+        except (KeyError, TypeError):
+            return self._execute(command_name, payload)
+        if isinstance(result, dict) and "state" in result:
+            self.state = result["state"]
+        return result
 
     def _query(self, query_name, payload):
+        try:
+            return self._execute_runtime_query(query_name, dict(payload or {}))
+        except (KeyError, TypeError):
+            return self._execute(query_name, payload)
+
+    def _execute_runtime_command(self, command_name, payload):
+        if command_name == "command_assets":
+            return asset_runtime.asset_lifecycle_register_asset(self.state, payload.get("asset", payload))
+        if command_name == "command_assets_asset_id_service":
+            return asset_runtime.asset_lifecycle_place_asset_in_service(
+                self.state,
+                payload["asset_id"],
+                service_date=payload["service_date"],
+            )
+        if command_name == "command_assets_asset_id_depreciation_schedules":
+            return asset_runtime.asset_lifecycle_build_depreciation_schedule(
+                self.state,
+                payload["asset_id"],
+                method=payload.get("method", "straight_line"),
+            )
+        if command_name == "command_depreciation_runs":
+            return asset_runtime.asset_lifecycle_run_depreciation(
+                self.state,
+                run_id=payload["run_id"],
+                period=payload["period"],
+            )
+        if command_name == "command_assets_asset_id_transfers":
+            return asset_runtime.asset_lifecycle_transfer_asset(
+                self.state,
+                payload["asset_id"],
+                location=payload["location"],
+                cost_center=payload["cost_center"],
+                approved_by=payload["approved_by"],
+            )
+        if command_name == "command_assets_asset_id_revaluations":
+            return asset_runtime.asset_lifecycle_revalue_asset(
+                self.state,
+                payload["asset_id"],
+                fair_value=payload["fair_value"],
+                approved_by=payload["approved_by"],
+            )
+        if command_name == "command_assets_asset_id_impairments":
+            return asset_runtime.asset_lifecycle_impair_asset(
+                self.state,
+                payload["asset_id"],
+                recoverable_amount=payload["recoverable_amount"],
+                approved_by=payload["approved_by"],
+            )
+        if command_name == "command_assets_asset_id_maintenance_adjustments":
+            return asset_runtime.asset_lifecycle_record_maintenance_adjustment(
+                self.state,
+                payload["asset_id"],
+                useful_life_delta_months=payload["useful_life_delta_months"],
+                evidence=payload["evidence"],
+            )
+        if command_name == "command_assets_asset_id_retirements":
+            return asset_runtime.asset_lifecycle_retire_asset(
+                self.state,
+                payload["asset_id"],
+                proceeds=payload["proceeds"],
+                approved_by=payload["approved_by"],
+            )
+        if command_name == "command_assets_events_inbox":
+            return asset_runtime.asset_lifecycle_receive_event(self.state, payload.get("event", payload))
+        return self._execute(command_name, payload)
+
+    def _execute_runtime_query(self, query_name, payload):
+        if query_name == "query_assets":
+            tenant = payload.get("tenant")
+            assets = tuple(
+                asset
+                for asset in self.state.get("assets", {}).values()
+                if tenant is None or asset.get("tenant") == tenant
+            )
+            return {"ok": True, "assets": assets, "count": len(assets), "side_effects": ()}
+        if query_name == "query_assets_asset_id_risk":
+            return asset_runtime.asset_lifecycle_estimate_useful_life(
+                self.state,
+                payload["asset_id"],
+                operating_hours=float(payload.get("operating_hours", 0)),
+                maintenance_score=float(payload.get("maintenance_score", 0.8)),
+            )
         return self._execute(query_name, payload)
 
     def command_assets(self, payload=None):
@@ -317,6 +409,7 @@ def service_operation_manifest():
         "operation_contracts": contracts["contracts"],
         "transaction_boundary": "owned_datastore_plus_outbox",
         "outbox_table": EVENT_CONTRACT["outbox_table"],
+        "event_contract": EVENT_CONTRACT,
         "side_effects": (),
     }
 
