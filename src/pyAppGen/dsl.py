@@ -4374,6 +4374,10 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
         validation=validation,
         validate_generate_cli=validate_generate_cli,
         dsl_language_cli=dsl_language_cli,
+        internal_error_exit=internal_error_exit,
+        missing_input_exit=missing_input_exit,
+        missing_required_option_exit=missing_required_option_exit,
+        invalid_choice_exit=invalid_choice_exit,
         cli_help_surface=cli_help_surface,
         graphs=graphs,
         graph_cli=graph_cli,
@@ -4545,6 +4549,52 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                 "generate": generation.get("format"),
                 "warning_block": warning_generation_blocked.get("blocking_gaps"),
                 "allow_warnings": warning_generation_allowed.get("allow_warnings"),
+            },
+        ),
+        _tooling_audit_check(
+            "cli_usage_failure_contracts",
+            internal_error_exit["ok"]
+            and missing_input_exit["ok"]
+            and missing_required_option_exit["ok"]
+            and invalid_choice_exit["ok"]
+            and cli_help_surface["ok"],
+            "CLI usage and controlled-failure paths emit documented, traceback-free contracts for internal errors, missing inputs, required options, invalid choices, and discoverable help.",
+            "docs/tooling.md#cli-contracts",
+            {
+                "internal_error_exit": {
+                    "format": internal_error_exit.get("format"),
+                    "mode_count": internal_error_exit.get("mode_count"),
+                    "passing_mode_count": internal_error_exit.get("passing_mode_count"),
+                    "traceback_free_mode_count": internal_error_exit.get("traceback_free_mode_count"),
+                },
+                "missing_input_exit": {
+                    "format": missing_input_exit.get("format"),
+                    "case_count": missing_input_exit.get("case_count"),
+                    "passing_case_count": missing_input_exit.get("passing_case_count"),
+                    "failing_case_count": missing_input_exit.get("failing_case_count"),
+                    "stdout_empty_count": missing_input_exit.get("stdout_empty_count"),
+                    "traceback_free_count": missing_input_exit.get("traceback_free_count"),
+                },
+                "missing_required_option_exit": {
+                    "format": missing_required_option_exit.get("format"),
+                    "case_count": missing_required_option_exit.get("case_count"),
+                    "passing_case_count": missing_required_option_exit.get("passing_case_count"),
+                    "failing_case_count": missing_required_option_exit.get("failing_case_count"),
+                },
+                "invalid_choice_exit": {
+                    "format": invalid_choice_exit.get("format"),
+                    "case_count": invalid_choice_exit.get("case_count"),
+                    "passing_case_count": invalid_choice_exit.get("passing_case_count"),
+                    "failing_case_count": invalid_choice_exit.get("failing_case_count"),
+                    "invalid_choice_message_count": invalid_choice_exit.get("invalid_choice_message_count"),
+                },
+                "cli_help_surface": {
+                    "format": cli_help_surface.get("format"),
+                    "documented_subcommand_count": cli_help_surface.get("documented_subcommand_count"),
+                    "listed_subcommand_count": cli_help_surface.get("listed_subcommand_count"),
+                    "documented_missing_subcommands": cli_help_surface.get("documented_missing_subcommands"),
+                    "failing_option_surface_count": cli_help_surface.get("failing_option_surface_count"),
+                },
             },
         ),
         _tooling_audit_check(
@@ -5281,6 +5331,19 @@ def _tooling_audit_implementation_phases(**evidence: dict) -> dict:
                         evidence["validate_generate_cli"].get("format"),
                         evidence["dsl_language_cli"].get("format"),
                         evidence["cli_help_surface"].get("format"),
+                    ),
+                },
+                {
+                    "id": "cli_usage_failure_modes",
+                    "ok": evidence["internal_error_exit"].get("ok") is True
+                    and evidence["missing_input_exit"].get("ok") is True
+                    and evidence["missing_required_option_exit"].get("ok") is True
+                    and evidence["invalid_choice_exit"].get("ok") is True,
+                    "evidence_formats": (
+                        evidence["internal_error_exit"].get("format"),
+                        evidence["missing_input_exit"].get("format"),
+                        evidence["missing_required_option_exit"].get("format"),
+                        evidence["invalid_choice_exit"].get("format"),
                     ),
                 },
                 {

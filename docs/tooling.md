@@ -608,6 +608,11 @@ expected-message counts, stdout-empty counts where required, command-family
 coverage for missing inputs, and traceback-free counts so release evidence
 proves failure behavior across the CLI surface instead of only recording exit
 codes.
+The aggregate tooling audit exposes those failure paths as a separate
+`cli_usage_failure_contracts` gate. It reports internal-error mode counts,
+missing-input case/stdout/traceback counts, missing-required-option case
+counts, invalid-choice message counts, and help-surface discovery counts, and
+it can fail independently from the validation/generation gate.
 DSL language-quality commands are first-class CLI contracts: `appgen
 dsl-quality`, `appgen dsl-antlr`, `appgen dsl-authoring-gate <file>`, and
 `appgen dsl-language-service <file>` expose the same grammar, parser, keyword,

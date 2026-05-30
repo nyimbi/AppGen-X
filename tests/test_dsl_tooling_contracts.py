@@ -3841,6 +3841,10 @@ def test_tooling_implementation_phase_audit_maps_phase_exit_criteria_to_evidence
         validation=ok("appgen.validate-report.v1"),
         validate_generate_cli=ok("appgen.validate-generate-cli-audit.v1"),
         dsl_language_cli=ok("appgen.dsl-language-cli-audit.v1"),
+        internal_error_exit=ok("appgen.internal-error-exit-audit.v1"),
+        missing_input_exit=ok("appgen.missing-input-exit-audit.v1"),
+        missing_required_option_exit=ok("appgen.missing-required-option-exit-audit.v1"),
+        invalid_choice_exit=ok("appgen.invalid-choice-exit-audit.v1"),
         cli_help_surface=ok("appgen.cli-help-surface-audit.v1"),
         graphs=ok("appgen.graph-suite-report.v1"),
         graph_cli=ok("appgen.graph-cli-audit.v1"),
@@ -3905,6 +3909,7 @@ def test_tooling_implementation_phase_audit_maps_phase_exit_criteria_to_evidence
         "grammar_parser_sync_and_keyword_budget",
         "semantic_model_contract",
         "formatter_idempotency",
+        "cli_usage_failure_modes",
         "graph_json_mermaid_and_dot",
         "rename_and_code_actions",
         "studio_semantic_bridge",
@@ -4026,6 +4031,7 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
         "studio_semantic_service",
         "frontend_semantic_service_bridge",
         "frontend_interaction_audit_bridge",
+        "cli_usage_failure_contracts",
         "package_and_release_verifiers",
         "parser_golden_and_drift_gates",
         "tooling_doc_anchor_integrity",
@@ -4317,6 +4323,27 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert cli_check["detail"]["internal_error_exit"]["text_exit_code"] == 3
     assert cli_check["detail"]["internal_error_exit"]["json_traceback_free"] is True
     assert cli_check["detail"]["internal_error_exit"]["text_traceback_free"] is True
+    cli_usage_check = next(check for check in report["checks"] if check["id"] == "cli_usage_failure_contracts")
+    assert cli_usage_check["detail"]["internal_error_exit"]["format"] == "appgen.internal-error-exit-audit.v1"
+    assert cli_usage_check["detail"]["internal_error_exit"]["passing_mode_count"] == 2
+    assert cli_usage_check["detail"]["internal_error_exit"]["traceback_free_mode_count"] == 2
+    assert cli_usage_check["detail"]["missing_input_exit"]["format"] == "appgen.missing-input-exit-audit.v1"
+    assert cli_usage_check["detail"]["missing_input_exit"]["failing_case_count"] == 0
+    assert cli_usage_check["detail"]["missing_input_exit"]["stdout_empty_count"] == (
+        cli_usage_check["detail"]["missing_input_exit"]["case_count"]
+    )
+    assert cli_usage_check["detail"]["missing_required_option_exit"]["format"] == (
+        "appgen.missing-required-option-exit-audit.v1"
+    )
+    assert cli_usage_check["detail"]["missing_required_option_exit"]["failing_case_count"] == 0
+    assert cli_usage_check["detail"]["invalid_choice_exit"]["format"] == "appgen.invalid-choice-exit-audit.v1"
+    assert cli_usage_check["detail"]["invalid_choice_exit"]["failing_case_count"] == 0
+    assert cli_usage_check["detail"]["invalid_choice_exit"]["invalid_choice_message_count"] == (
+        cli_usage_check["detail"]["invalid_choice_exit"]["case_count"]
+    )
+    assert cli_usage_check["detail"]["cli_help_surface"]["format"] == "appgen.cli-help-surface-audit.v1"
+    assert cli_usage_check["detail"]["cli_help_surface"]["documented_missing_subcommands"] == ()
+    assert cli_usage_check["detail"]["cli_help_surface"]["failing_option_surface_count"] == 0
     assert cli_check["detail"]["missing_input_exit"]["format"] == "appgen.missing-input-exit-audit.v1"
     assert cli_check["detail"]["missing_input_exit"]["ok"] is True
     assert cli_check["detail"]["missing_input_exit"]["case_count"] == len(
