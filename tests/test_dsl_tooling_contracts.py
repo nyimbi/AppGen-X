@@ -1784,6 +1784,112 @@ audit RenameAudit { evidence: "total" }
     assert any(item["code"] == "AGX1101" for item in rename["blockers"])
 
 
+def test_lsp_enterprise_rename_candidates_scope_pbc_contract_package_and_deployment_units() -> None:
+    source = """
+app EnterpriseRefactors { targets: web }
+table Ledger { id: int pk; gl_core: string }
+view LedgerForm for Ledger {
+  Main: id
+  on Save -> JournalPosted
+}
+pbc gl_core { datastore: postgresql }
+pbc ap_automation { datastore: postgresql }
+event InvoiceApproved { topic: ap.invoice }
+event JournalPosted { topic: finance.journal }
+api LedgerApi { POST "/journal" -> JournalPosted }
+operation JournalPosted { draft -> done }
+operation SubmitInvoice { draft -> done }
+operation PostInvoice { draft -> done }
+composition Suite {
+  include pbc gl_core version 1.0.0
+  include pbc ap_automation version 1.0.0
+  connect ap_automation domain_event InvoiceApproved -> gl_core domain_event JournalPosted
+}
+package FinanceRelease { target: web; smoke: launch }
+deploy Production {
+  unit gl_core as microservice
+  unit SubmitInvoice as worker
+  health gl_core "/healthz"
+  health SubmitInvoice "/worker-health"
+  resource gl_core cpu "500m"
+  resource SubmitInvoice cpu "250m"
+  env gl_core DATABASE_URL
+  env SubmitInvoice QUEUE_URL
+}
+llm LocalModel { provider: ollama; mode: local }
+agent Assistant { provider: LocalModel; tools: read }
+audit RenameAudit { evidence: "gl_core JournalPosted FinanceRelease SubmitInvoice" }
+// gl_core JournalPosted FinanceRelease SubmitInvoice remain in this comment
+"""
+
+    pbc_report = lsp_service_dsl(
+        source,
+        source_name="enterprise-rename.appgen",
+        position=_position_of(source, "gl_core {"),
+        rename_to="ledger_core",
+    )["rename"]
+    pbc_change = pbc_report["workspace_edit"]["changes"]["enterprise-rename.appgen"][0]["newText"]
+    assert pbc_report["blocked"] is True
+    assert pbc_report["lexical_scope"] == "pbc_declarations_and_targets"
+    assert pbc_report["occurrence_count"] == 7
+    assert "pbc ledger_core" in pbc_change
+    assert "include pbc ledger_core" in pbc_change
+    assert "-> ledger_core domain_event JournalPosted" in pbc_change
+    assert "unit ledger_core as microservice" in pbc_change
+    assert 'health ledger_core "/healthz"' in pbc_change
+    assert "resource ledger_core cpu" in pbc_change
+    assert "env ledger_core DATABASE_URL" in pbc_change
+    assert "gl_core: string" in pbc_change
+    assert 'evidence: "gl_core JournalPosted FinanceRelease SubmitInvoice"' in pbc_change
+
+    event_report = lsp_service_dsl(
+        source,
+        source_name="enterprise-rename.appgen",
+        position=_position_of(source, "JournalPosted {"),
+        rename_to="LedgerPosted",
+    )["rename"]
+    event_change = event_report["workspace_edit"]["changes"]["enterprise-rename.appgen"][0]["newText"]
+    assert event_report["ok"] is True
+    assert event_report["lexical_scope"] == "event_declarations_and_targets"
+    assert event_report["occurrence_count"] == 3
+    assert "event LedgerPosted" in event_change
+    assert 'POST "/journal" -> LedgerPosted' in event_change
+    assert "domain_event LedgerPosted" in event_change
+    assert "operation JournalPosted" in event_change
+    assert "on Save -> JournalPosted" in event_change
+
+    package_report = lsp_service_dsl(
+        source,
+        source_name="enterprise-rename.appgen",
+        position=_position_of(source, "FinanceRelease {"),
+        rename_to="WebRelease",
+    )["rename"]
+    package_change = package_report["workspace_edit"]["changes"]["enterprise-rename.appgen"][0]["newText"]
+    assert package_report["ok"] is True
+    assert package_report["lexical_scope"] == "package_declarations_and_targets"
+    assert package_report["occurrence_count"] == 1
+    assert "package WebRelease" in package_change
+    assert 'evidence: "gl_core JournalPosted FinanceRelease SubmitInvoice"' in package_change
+
+    unit_report = lsp_service_dsl(
+        source,
+        source_name="enterprise-rename.appgen",
+        position=_position_of(source, "SubmitInvoice as worker"),
+        rename_to="PostInvoice",
+    )["rename"]
+    unit_change = unit_report["workspace_edit"]["changes"]["enterprise-rename.appgen"][0]["newText"]
+    assert unit_report["ok"] is True
+    assert unit_report["lexical_scope"] == "deployment_unit_declarations_and_targets"
+    assert unit_report["occurrence_count"] == 4
+    assert "unit PostInvoice as worker" in unit_change
+    assert 'health PostInvoice "/worker-health"' in unit_change
+    assert "resource PostInvoice cpu" in unit_change
+    assert "env PostInvoice QUEUE_URL" in unit_change
+    assert "operation SubmitInvoice" in unit_change
+    assert "operation PostInvoice" in unit_change
+    assert "// gl_core JournalPosted FinanceRelease SubmitInvoice remain in this comment" in unit_change
+
+
 def test_lsp_service_exposes_code_action_for_missing_handler_target() -> None:
     source = """
     app Bad { targets: web }
@@ -2155,8 +2261,8 @@ def test_lsp_rename_cli_audit_covers_safe_and_blocked_renames(tmp_path: Path) ->
 
     assert report["format"] == "appgen.lsp-rename-cli-audit.v1"
     assert report["ok"] is True
-    assert report["scenario_count"] == 7
-    assert report["passing_scenario_count"] == 7
+    assert report["scenario_count"] == 11
+    assert report["passing_scenario_count"] == 11
     assert report["blocked_code_count"] >= 1
     assert report["blocked_fix_count"] >= 1
     assert report["safe_ok"] is True
@@ -2188,6 +2294,26 @@ def test_lsp_rename_cli_audit_covers_safe_and_blocked_renames(tmp_path: Path) ->
     assert report["view_operation_preserved"] is True
     assert report["view_string_preserved"] is True
     assert report["view_comment_preserved"] is True
+    assert report["pbc_scope_ok"] is True
+    assert report["pbc_scope"] == "pbc_declarations_and_targets"
+    assert report["pbc_occurrence_count"] == 7
+    assert report["pbc_blocked"] is True
+    assert report["pbc_field_preserved"] is True
+    assert report["pbc_deployment_unit_updated"] is True
+    assert report["pbc_string_preserved"] is True
+    assert report["event_scope_ok"] is True
+    assert report["event_scope"] == "event_declarations_and_targets"
+    assert report["event_occurrence_count"] == 3
+    assert report["event_operation_preserved"] is True
+    assert report["event_handler_preserved"] is True
+    assert report["package_scope_ok"] is True
+    assert report["package_scope"] == "package_declarations_and_targets"
+    assert report["package_occurrence_count"] == 1
+    assert report["package_string_preserved"] is True
+    assert report["deployment_scope_ok"] is True
+    assert report["deployment_scope"] == "deployment_unit_declarations_and_targets"
+    assert report["deployment_occurrence_count"] == 4
+    assert report["deployment_operation_preserved"] is True
     assert report["field_scope_ok"] is True
     assert report["field_scope"] == "field_declarations_and_bindings"
     assert report["field_occurrence_count"] == 4
@@ -4771,6 +4897,15 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert lsp_check["detail"]["rename_cli"]["view_occurrence_count"] == 2
     assert lsp_check["detail"]["rename_cli"]["view_field_preserved"] is True
     assert lsp_check["detail"]["rename_cli"]["view_operation_preserved"] is True
+    assert lsp_check["detail"]["rename_cli"]["pbc_scope_ok"] is True
+    assert lsp_check["detail"]["rename_cli"]["pbc_scope"] == "pbc_declarations_and_targets"
+    assert lsp_check["detail"]["rename_cli"]["pbc_occurrence_count"] == 7
+    assert lsp_check["detail"]["rename_cli"]["event_scope_ok"] is True
+    assert lsp_check["detail"]["rename_cli"]["event_scope"] == "event_declarations_and_targets"
+    assert lsp_check["detail"]["rename_cli"]["package_scope_ok"] is True
+    assert lsp_check["detail"]["rename_cli"]["package_scope"] == "package_declarations_and_targets"
+    assert lsp_check["detail"]["rename_cli"]["deployment_scope_ok"] is True
+    assert lsp_check["detail"]["rename_cli"]["deployment_scope"] == "deployment_unit_declarations_and_targets"
     assert lsp_check["detail"]["rename_cli"]["field_scope_ok"] is True
     assert lsp_check["detail"]["rename_cli"]["field_scope"] == "field_declarations_and_bindings"
     assert lsp_check["detail"]["rename_cli"]["field_occurrence_count"] == 4

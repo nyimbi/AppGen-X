@@ -8710,6 +8710,128 @@ audit RenameAudit { evidence: "InvoiceForm" }
         and any(item.get("code") == "AGX1101" for item in view_rename.get("blockers", ()))
     )
 
+    def run_rename_case(filename: str, case_source: str, needle: str, new_name: str) -> tuple[int, dict, str]:
+        case_path = tmp / filename
+        case_path.write_text(case_source, encoding="utf-8")
+        case_position = _tooling_lsp_position(case_source, needle)
+        case_position_arg = f"{case_position['line']}:{case_position['character']}"
+        case_output = io.StringIO()
+        with contextlib.redirect_stdout(case_output):
+            case_exit = dsl_tooling_cli(
+                (
+                    "lsp",
+                    str(case_path),
+                    "--position",
+                    case_position_arg,
+                    "--rename",
+                    new_name,
+                    "--json",
+                )
+            )
+        try:
+            case_payload = json.loads(case_output.getvalue())
+        except json.JSONDecodeError:
+            case_payload = {}
+        case_rename = case_payload.get("rename", {})
+        case_changes = case_rename.get("workspace_edit", {}).get("changes", {}).get(str(case_path), ())
+        case_patched_text = case_changes[0].get("newText", "") if case_changes else ""
+        return case_exit, case_rename, case_patched_text
+
+    enterprise_source = """
+app EnterpriseRefactors { targets: web }
+table Ledger { id: int pk; gl_core: string }
+view LedgerForm for Ledger {
+  Main: id
+  on Save -> JournalPosted
+}
+pbc gl_core { datastore: postgresql }
+pbc ap_automation { datastore: postgresql }
+event InvoiceApproved { topic: ap.invoice }
+event JournalPosted { topic: finance.journal }
+api LedgerApi { POST "/journal" -> JournalPosted }
+operation JournalPosted { draft -> done }
+operation SubmitInvoice { draft -> done }
+operation PostInvoice { draft -> done }
+composition Suite {
+  include pbc gl_core version 1.0.0
+  include pbc ap_automation version 1.0.0
+  connect ap_automation domain_event InvoiceApproved -> gl_core domain_event JournalPosted
+}
+package FinanceRelease { target: web; smoke: launch }
+deploy Production {
+  unit gl_core as microservice
+  unit SubmitInvoice as worker
+  health gl_core "/healthz"
+  health SubmitInvoice "/worker-health"
+  resource gl_core cpu "500m"
+  resource SubmitInvoice cpu "250m"
+  env gl_core DATABASE_URL
+  env SubmitInvoice QUEUE_URL
+}
+llm LocalModel { provider: ollama; mode: local }
+agent Assistant { provider: LocalModel; tools: read }
+audit RenameAudit { evidence: "gl_core JournalPosted FinanceRelease SubmitInvoice" }
+// gl_core JournalPosted FinanceRelease SubmitInvoice remain in this comment
+"""
+    pbc_exit, pbc_rename, pbc_patched_text = run_rename_case(
+        "lsp-rename-pbc.appgen", enterprise_source, "gl_core {", "ledger_core"
+    )
+    pbc_scope_ok = (
+        pbc_exit == 0
+        and pbc_rename.get("format") == "appgen.lsp-rename.v1"
+        and pbc_rename.get("blocked") is True
+        and pbc_rename.get("lexical_scope") == "pbc_declarations_and_targets"
+        and pbc_rename.get("occurrence_count") == 7
+        and "pbc ledger_core" in pbc_patched_text
+        and "include pbc ledger_core" in pbc_patched_text
+        and "-> ledger_core domain_event JournalPosted" in pbc_patched_text
+        and "unit ledger_core as microservice" in pbc_patched_text
+        and "gl_core: string" in pbc_patched_text
+        and 'evidence: "gl_core JournalPosted FinanceRelease SubmitInvoice"' in pbc_patched_text
+    )
+    event_exit, event_rename, event_patched_text = run_rename_case(
+        "lsp-rename-event.appgen", enterprise_source, "JournalPosted {", "LedgerPosted"
+    )
+    event_scope_ok = (
+        event_exit == 0
+        and event_rename.get("format") == "appgen.lsp-rename.v1"
+        and event_rename.get("ok") is True
+        and event_rename.get("lexical_scope") == "event_declarations_and_targets"
+        and event_rename.get("occurrence_count") == 3
+        and "event LedgerPosted" in event_patched_text
+        and 'POST "/journal" -> LedgerPosted' in event_patched_text
+        and "domain_event LedgerPosted" in event_patched_text
+        and "operation JournalPosted" in event_patched_text
+        and "on Save -> JournalPosted" in event_patched_text
+    )
+    package_exit, package_rename, package_patched_text = run_rename_case(
+        "lsp-rename-package.appgen", enterprise_source, "FinanceRelease {", "WebRelease"
+    )
+    package_scope_ok = (
+        package_exit == 0
+        and package_rename.get("format") == "appgen.lsp-rename.v1"
+        and package_rename.get("ok") is True
+        and package_rename.get("lexical_scope") == "package_declarations_and_targets"
+        and package_rename.get("occurrence_count") == 1
+        and "package WebRelease" in package_patched_text
+        and 'evidence: "gl_core JournalPosted FinanceRelease SubmitInvoice"' in package_patched_text
+    )
+    deployment_exit, deployment_rename, deployment_patched_text = run_rename_case(
+        "lsp-rename-deployment-unit.appgen", enterprise_source, "SubmitInvoice as worker", "PostInvoice"
+    )
+    deployment_scope_ok = (
+        deployment_exit == 0
+        and deployment_rename.get("format") == "appgen.lsp-rename.v1"
+        and deployment_rename.get("ok") is True
+        and deployment_rename.get("lexical_scope") == "deployment_unit_declarations_and_targets"
+        and deployment_rename.get("occurrence_count") == 4
+        and "unit PostInvoice as worker" in deployment_patched_text
+        and 'health PostInvoice "/worker-health"' in deployment_patched_text
+        and "resource PostInvoice cpu" in deployment_patched_text
+        and "env PostInvoice QUEUE_URL" in deployment_patched_text
+        and "operation SubmitInvoice" in deployment_patched_text
+    )
+
     field_source = """
 app RenameFields { targets: web }
 table Invoice {
@@ -8857,11 +8979,35 @@ view InvoiceForm for Invoice {
 
     return {
         "format": "appgen.lsp-rename-cli-audit.v1",
-        "ok": safe_ok and lexical_scope_ok and table_scope_ok and view_scope_ok and field_scope_ok and blocked_ok and blocked_text_ok,
-        "scenario_count": 7,
+        "ok": (
+            safe_ok
+            and lexical_scope_ok
+            and table_scope_ok
+            and view_scope_ok
+            and pbc_scope_ok
+            and event_scope_ok
+            and package_scope_ok
+            and deployment_scope_ok
+            and field_scope_ok
+            and blocked_ok
+            and blocked_text_ok
+        ),
+        "scenario_count": 11,
         "passing_scenario_count": sum(
             1
-            for ok in (safe_ok, lexical_scope_ok, table_scope_ok, view_scope_ok, field_scope_ok, blocked_ok, blocked_text_ok)
+            for ok in (
+                safe_ok,
+                lexical_scope_ok,
+                table_scope_ok,
+                view_scope_ok,
+                pbc_scope_ok,
+                event_scope_ok,
+                package_scope_ok,
+                deployment_scope_ok,
+                field_scope_ok,
+                blocked_ok,
+                blocked_text_ok,
+            )
             if ok
         ),
         "blocked_code_count": len(blocked_codes),
@@ -8898,6 +9044,26 @@ view InvoiceForm for Invoice {
         "view_operation_preserved": "operation InvoiceForm" in view_patched_text,
         "view_string_preserved": 'evidence: "InvoiceForm"' in view_patched_text,
         "view_comment_preserved": "// InvoiceForm remains in this comment" in view_patched_text,
+        "pbc_scope_ok": pbc_scope_ok,
+        "pbc_scope": pbc_rename.get("lexical_scope"),
+        "pbc_occurrence_count": pbc_rename.get("occurrence_count"),
+        "pbc_blocked": pbc_rename.get("blocked"),
+        "pbc_field_preserved": "gl_core: string" in pbc_patched_text,
+        "pbc_deployment_unit_updated": "unit ledger_core as microservice" in pbc_patched_text,
+        "pbc_string_preserved": 'evidence: "gl_core JournalPosted FinanceRelease SubmitInvoice"' in pbc_patched_text,
+        "event_scope_ok": event_scope_ok,
+        "event_scope": event_rename.get("lexical_scope"),
+        "event_occurrence_count": event_rename.get("occurrence_count"),
+        "event_operation_preserved": "operation JournalPosted" in event_patched_text,
+        "event_handler_preserved": "on Save -> JournalPosted" in event_patched_text,
+        "package_scope_ok": package_scope_ok,
+        "package_scope": package_rename.get("lexical_scope"),
+        "package_occurrence_count": package_rename.get("occurrence_count"),
+        "package_string_preserved": 'evidence: "gl_core JournalPosted FinanceRelease SubmitInvoice"' in package_patched_text,
+        "deployment_scope_ok": deployment_scope_ok,
+        "deployment_scope": deployment_rename.get("lexical_scope"),
+        "deployment_occurrence_count": deployment_rename.get("occurrence_count"),
+        "deployment_operation_preserved": "operation SubmitInvoice" in deployment_patched_text,
         "field_scope_ok": field_scope_ok,
         "field_scope": field_rename.get("lexical_scope"),
         "field_occurrence_count": field_rename.get("occurrence_count"),
@@ -13384,7 +13550,7 @@ def _replace_symbol_identifier_occurrences(source: str, token: str, new_name: st
         if table_name:
             text, count = _replace_field_identifier_occurrences(source, token, new_name, table_name)
             return text, count, "field_declarations_and_bindings"
-    if symbol_kind in {"operation", "flow", "table", "view"}:
+    if symbol_kind in {"operation", "flow", "table", "view", "pbc", "api", "event", "package", "deployment_unit"}:
         return (*_replace_identifier_occurrences_scoped(source, token, new_name, scope=symbol_kind), f"{symbol_kind}_declarations_and_targets")
     text, count = _replace_identifier_occurrences(source, token, new_name)
     return text, count, "code_identifiers"
@@ -13561,6 +13727,30 @@ def _rename_occurrence_in_scope(source: str, start: int, end: int, scope: str | 
         if re.search(r"\bview\s+$", before[-80:]):
             return True
         if re.search(r"\bitem\s+[A-Za-z_][A-Za-z0-9_]*\s*->\s*$", before[-120:]):
+            return True
+    if scope == "pbc":
+        if re.search(r"\bpbc\s+$", before[-80:]):
+            return True
+        if re.search(r"\binclude\s+pbc\s+$", before[-120:]):
+            return True
+        if re.search(r"\bconnect\s+$", before[-80:]):
+            return True
+        if re.search(r"->\s*$", before[-40:]) and re.match(r"\s+(?:api|domain_event|command)\b", after):
+            return True
+        if re.search(r"\b(?:unit|health|resource|env)\s+$", before[-80:]):
+            return True
+    if scope in {"api", "event"}:
+        if re.search(rf"\b{scope}\s+$", before[-80:]):
+            return True
+        if re.search(r"\b(?:api|domain_event|command)\s+$", before[-80:]):
+            return True
+        if re.search(r"->\s*$", before[-40:]) and _source_enclosing_block_name(source, "api", start):
+            return True
+    if scope == "package":
+        if re.search(r"\bpackage\s+$", before[-80:]):
+            return True
+    if scope == "deployment_unit":
+        if re.search(r"\b(?:unit|health|resource|env)\s+$", before[-80:]):
             return True
     return False
 
@@ -13794,6 +13984,18 @@ def _lsp_positional_symbol(source: str, token: str, position: dict | None, candi
         return candidate("flow")
     if re.search(r"\boperation\s+$", line_prefix):
         return candidate("operation")
+    if re.search(r"\bpbc\s+$", line_prefix):
+        return candidate("pbc")
+    if re.search(r"\bpackage\s+$", line_prefix):
+        return candidate("package")
+    if re.search(r"\bapi\s+$", line_prefix):
+        return candidate("api")
+    if re.search(r"\bevent\s+$", line_prefix):
+        return candidate("event")
+    if re.search(r"\bunit\s+$", line_prefix):
+        deploy_name = _source_enclosing_block_name(source, "deploy", index)
+        if deploy_name:
+            return candidate("deployment_unit", f"deploy.{deploy_name}")
     if re.search(rf"^\s*{re.escape(token)}\s*:", line):
         table_name = _source_enclosing_block_name(source, "table", index)
         if table_name:

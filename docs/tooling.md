@@ -1256,6 +1256,15 @@ on other tables, handler targets, lookup-path leaf names, operation names,
 comments, and string literals. Field rename candidates are still routed through
 the migration safety gate, so inferred rename candidates that need an explicit
 hint remain visible but blocked.
+Enterprise-surface renames are also scoped. PBC key renames update PBC
+declarations, composition includes, composition connection endpoints, and
+deployment unit/health/resource/env targets that deploy the PBC while preserving
+same-named fields and non-code evidence. Event and API contract renames update
+contract declarations and composition/API references while preserving
+same-named operations and handlers. Package renames update package declarations
+without rewriting evidence text. Deployment-unit renames update the unit plus
+its health, resource, and environment declarations while preserving the
+operation or PBC declaration that the unit points at.
 
 ### Capabilities
 
