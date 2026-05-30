@@ -213,3 +213,26 @@ def smoke_test() -> dict:
         "rendered": rendered,
         "side_effects": (),
     }
+
+
+# Improve1 medical device control UI extension.
+from .medical_device_control import improve1_medical_device_control_contract as _improve1_medical_device_control_contract
+
+_MEDICAL_DEVICE_LIFECYCLE_BASE_UI_CONTRACT = medical_device_lifecycle_ui_contract
+_MEDICAL_DEVICE_LIFECYCLE_BASE_RENDER_WORKBENCH = medical_device_lifecycle_render_workbench
+
+
+def medical_device_lifecycle_ui_contract():
+    ui = dict(_MEDICAL_DEVICE_LIFECYCLE_BASE_UI_CONTRACT())
+    control = _improve1_medical_device_control_contract()
+    panels = tuple(item["evidence"]["ui_surface"] for item in control["capabilities"])
+    service_actions = tuple(item["evidence"]["service_api"] for item in control["capabilities"])
+    ui.update({"ok": ui.get("ok") is True and control["ok"], "medical_device_control_contract": control, "medical_device_control_panels": panels, "medical_device_control_service_actions": service_actions, "stream_engine_picker_visible": False})
+    return ui
+
+
+def medical_device_lifecycle_render_workbench(summary: dict | None = None, *, tenant: str = "default", principal_permissions: tuple[str, ...] = ()):
+    workbench = dict(_MEDICAL_DEVICE_LIFECYCLE_BASE_RENDER_WORKBENCH(summary, tenant=tenant, principal_permissions=principal_permissions))
+    control = _improve1_medical_device_control_contract()
+    workbench.update({"ok": workbench.get("ok") is True and control["ok"], "medical_device_control_panels": tuple(item["evidence"]["ui_surface"] for item in control["capabilities"]), "medical_device_control_service_actions": tuple(item["evidence"]["service_api"] for item in control["capabilities"]), "medical_device_control_agent_tools": tuple(f"medical_device_lifecycle.skills.{item['slug']}" for item in control["capabilities"])})
+    return workbench
