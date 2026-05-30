@@ -1215,6 +1215,10 @@ returning an initialize response. The audit also checks
 `workspace_document_scan_and_rename`, which opens multiple DSL buffers and
 proves definition, references, completion, workspace symbol, and rename
 requests resolve across open documents without concatenating source files.
+It also promotes lexical reference-scope evidence into the aggregate navigation
+gate: expected code-reference line counts, matched line counts, excluded
+comment/string match counts, and the exact expected/excluded line sets are
+reported so a reference request cannot silently degrade into broad text search.
 The stdio audit reports request-message, response, id-response, notification,
 method, diagnostic-publication, total-message, notification-message,
 expected-id, missing-response-id, completion-response, workspace-symbol-response,
@@ -1252,14 +1256,15 @@ proves every required semantic symbol kind also appears in both document-symbol
 and workspace-symbol LSP surfaces, so editor navigation cannot silently lag
 behind the semantic model.
 The renderer contract reports fragment and marker counts for service, coverage,
-navigation, formatting, rename, blocker, and hover lines.
+navigation, definition, reference, formatting, rename, blocker, and hover lines.
 The aggregate tooling audit exposes two narrower language-server gates in
 addition to `language_server_core_features`. `lsp_transport_rpc_contracts`
 proves JSON-RPC provider breadth and stdio `Content-Length` framing, including
 diagnostics publication, completion, workspace-symbol, and shutdown responses.
 `lsp_navigation_completion_contracts` proves completion coverage, LSP symbol
-coverage, navigation, formatting, hover, and text-summary evidence remain
-complete and reviewable.
+coverage, lexical reference scoping, definition/reference text markers,
+navigation, formatting, hover, and text-summary evidence remain complete and
+reviewable.
 Rename text output includes the `appgen.lsp-rename.v1` contract format, whether
 the rename was blocked, blocker count, the nested `appgen.migration-plan.v1`
 migration-preview as `migration_format=...`, and whether that migration preview

@@ -1700,6 +1700,16 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
     assert audit["blocking_gaps"] == ()
     assert "enterprise_definition_context" in {check["check"] for check in audit["checks"]}
     assert "lexical_reference_scope" in {check["check"] for check in audit["checks"]}
+    assert audit["lexical_reference_scope_ok"] is True
+    assert audit["reference_scope_location_count"] == 2
+    assert audit["reference_scope_expected_line_count"] == 2
+    assert audit["reference_scope_matched_line_count"] == audit["reference_scope_expected_line_count"]
+    assert audit["reference_scope_excluded_match_count"] == 0
+    assert set(audit["reference_scope_lines"]) == set(audit["reference_scope_expected_lines"])
+    assert not (set(audit["reference_scope_lines"]) & set(audit["reference_scope_excluded_lines"]))
+    lexical_check = next(check for check in audit["checks"] if check["check"] == "lexical_reference_scope")
+    assert lexical_check["detail"]["reference_scope_location_count"] == 2
+    assert lexical_check["detail"]["reference_scope_excluded_match_count"] == 0
     assert "completion_context_filtering" in {check["check"] for check in audit["checks"]}
     assert "hover_relationship_lookup_depth" in {check["check"] for check in audit["checks"]}
     assert "hover_handler_target_depth" in {check["check"] for check in audit["checks"]}
@@ -5436,10 +5446,26 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert lsp_navigation_check["detail"]["symbol_coverage"]["format"] == "appgen.lsp-symbol-coverage.v1"
     assert lsp_navigation_check["detail"]["symbol_coverage"]["document_missing_kind_count"] == 0
     assert lsp_navigation_check["detail"]["symbol_coverage"]["workspace_missing_kind_count"] == 0
+    assert lsp_navigation_check["detail"]["reference_scope"]["format"] == "appgen.lsp-json-rpc-audit.v1"
+    assert lsp_navigation_check["detail"]["reference_scope"]["lexical_reference_scope_ok"] is True
+    assert lsp_navigation_check["detail"]["reference_scope"]["location_count"] == 2
+    assert lsp_navigation_check["detail"]["reference_scope"]["matched_line_count"] == (
+        lsp_navigation_check["detail"]["reference_scope"]["expected_line_count"]
+    )
+    assert lsp_navigation_check["detail"]["reference_scope"]["excluded_match_count"] == 0
+    assert set(lsp_navigation_check["detail"]["reference_scope"]["lines"]) == set(
+        lsp_navigation_check["detail"]["reference_scope"]["expected_lines"]
+    )
+    assert not (
+        set(lsp_navigation_check["detail"]["reference_scope"]["lines"])
+        & set(lsp_navigation_check["detail"]["reference_scope"]["excluded_lines"])
+    )
     assert lsp_navigation_check["detail"]["text_renderer"]["format"] == "appgen.lsp-service-text-renderer.v1"
     assert lsp_navigation_check["detail"]["text_renderer"]["service_count_line_count"] == 1
     assert lsp_navigation_check["detail"]["text_renderer"]["completion_line_count"] >= 1
     assert lsp_navigation_check["detail"]["text_renderer"]["navigation_line_count"] >= 1
+    assert lsp_navigation_check["detail"]["text_renderer"]["definition_line_count"] >= 1
+    assert lsp_navigation_check["detail"]["text_renderer"]["reference_line_count"] >= 1
     assert lsp_navigation_check["detail"]["text_renderer"]["formatting_line_count"] >= 1
     assert lsp_navigation_check["detail"]["text_renderer"]["hover_line_count"] >= 1
     assert lsp_navigation_check["detail"]["text_renderer"]["json_fallback"] is False
@@ -6850,6 +6876,8 @@ def test_lsp_service_text_renderer_contract_proves_editor_log_markers() -> None:
     assert report["completion_line_count"] == 2
     assert report["completion_missing_line_count"] == 1
     assert report["navigation_line_count"] == 2
+    assert report["definition_line_count"] == 1
+    assert report["reference_line_count"] == 1
     assert report["formatting_line_count"] == 1
     assert report["rename_line_count"] == 1
     assert report["rename_blocker_line_count"] == 1

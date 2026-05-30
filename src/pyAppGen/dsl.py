@@ -3708,6 +3708,8 @@ def _lsp_service_text_renderer_contract() -> dict:
     navigation_lines = tuple(
         line for line in lines if line.startswith(("definition ", "references "))
     )
+    definition_lines = tuple(line for line in lines if line.startswith("definition "))
+    reference_lines = tuple(line for line in lines if line.startswith("references "))
     formatting_lines = tuple(line for line in lines if line.startswith("formatting "))
     rename_lines = tuple(line for line in lines if line.startswith("rename "))
     rename_blocker_lines = tuple(
@@ -3745,6 +3747,8 @@ def _lsp_service_text_renderer_contract() -> dict:
             1 for line in completion_lines if line.startswith("completion-missing ")
         ),
         "navigation_line_count": len(navigation_lines),
+        "definition_line_count": len(definition_lines),
+        "reference_line_count": len(reference_lines),
         "formatting_line_count": len(formatting_lines),
         "rename_line_count": len(rename_lines),
         "rename_blocker_line_count": len(rename_blocker_lines),
@@ -5470,10 +5474,16 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and lsp_symbol_coverage["ok"] is True
             and lsp_symbol_coverage.get("document_missing_kind_count") == 0
             and lsp_symbol_coverage.get("workspace_missing_kind_count") == 0
+            and lsp_rpc.get("lexical_reference_scope_ok") is True
+            and lsp_rpc.get("reference_scope_location_count") == lsp_rpc.get("reference_scope_expected_line_count")
+            and lsp_rpc.get("reference_scope_matched_line_count") == lsp_rpc.get("reference_scope_expected_line_count")
+            and lsp_rpc.get("reference_scope_excluded_match_count") == 0
             and lsp_text_renderer["ok"]
             and lsp_text_renderer.get("service_count_line_count", 0) >= 1
             and lsp_text_renderer.get("completion_line_count", 0) >= 1
             and lsp_text_renderer.get("navigation_line_count", 0) >= 1
+            and lsp_text_renderer.get("definition_line_count", 0) >= 1
+            and lsp_text_renderer.get("reference_line_count", 0) >= 1
             and lsp_text_renderer.get("formatting_line_count", 0) >= 1
             and lsp_text_renderer.get("hover_line_count", 0) >= 1
             and lsp_text_renderer.get("json_fallback") is False,
@@ -5495,12 +5505,25 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                     "document_symbol_count": lsp_symbol_coverage.get("document_symbol_count"),
                     "workspace_symbol_count": lsp_symbol_coverage.get("workspace_symbol_count"),
                 },
+                "reference_scope": {
+                    "format": lsp_rpc.get("format"),
+                    "lexical_reference_scope_ok": lsp_rpc.get("lexical_reference_scope_ok"),
+                    "location_count": lsp_rpc.get("reference_scope_location_count"),
+                    "expected_line_count": lsp_rpc.get("reference_scope_expected_line_count"),
+                    "matched_line_count": lsp_rpc.get("reference_scope_matched_line_count"),
+                    "excluded_match_count": lsp_rpc.get("reference_scope_excluded_match_count"),
+                    "lines": lsp_rpc.get("reference_scope_lines"),
+                    "expected_lines": lsp_rpc.get("reference_scope_expected_lines"),
+                    "excluded_lines": lsp_rpc.get("reference_scope_excluded_lines"),
+                },
                 "text_renderer": {
                     "format": lsp_text_renderer.get("format"),
                     "service_count_line_count": lsp_text_renderer.get("service_count_line_count"),
                     "completion_line_count": lsp_text_renderer.get("completion_line_count"),
                     "completion_missing_line_count": lsp_text_renderer.get("completion_missing_line_count"),
                     "navigation_line_count": lsp_text_renderer.get("navigation_line_count"),
+                    "definition_line_count": lsp_text_renderer.get("definition_line_count"),
+                    "reference_line_count": lsp_text_renderer.get("reference_line_count"),
                     "formatting_line_count": lsp_text_renderer.get("formatting_line_count"),
                     "hover_line_count": lsp_text_renderer.get("hover_line_count"),
                     "rename_blocker_line_count": lsp_text_renderer.get("rename_blocker_line_count"),
@@ -9054,12 +9077,26 @@ audit ReferenceAudit {
         reference_scope_source.count("\n", 0, reference_scope_source.index("// SubmitInvoice")),
         reference_scope_source.count("\n", 0, reference_scope_source.index("/* SubmitInvoice")),
     }
+    reference_scope_matched_lines = reference_scope_lines & expected_reference_lines
+    reference_scope_excluded_matches = reference_scope_lines & excluded_reference_lines
+    lexical_reference_scope_ok = (
+        len(reference_scope_locations) == 2
+        and reference_scope_lines == expected_reference_lines
+        and not reference_scope_excluded_matches
+    )
     checks.append(
         _release_check(
             "lexical_reference_scope",
-            len(reference_scope_locations) == 2
-            and reference_scope_lines == expected_reference_lines
-            and not (reference_scope_lines & excluded_reference_lines),
+            lexical_reference_scope_ok,
+            detail={
+                "reference_scope_location_count": len(reference_scope_locations),
+                "reference_scope_expected_line_count": len(expected_reference_lines),
+                "reference_scope_matched_line_count": len(reference_scope_matched_lines),
+                "reference_scope_excluded_match_count": len(reference_scope_excluded_matches),
+                "reference_scope_lines": tuple(sorted(reference_scope_lines)),
+                "reference_scope_expected_lines": tuple(sorted(expected_reference_lines)),
+                "reference_scope_excluded_lines": tuple(sorted(excluded_reference_lines)),
+            },
         )
     )
 
@@ -9141,6 +9178,14 @@ audit ReferenceAudit {
         "request_check_count": len(request_checks),
         "passing_request_check_count": sum(1 for check in checks if check["check"] in request_check_ids and check["ok"]),
         "request_check_ids": request_check_ids,
+        "lexical_reference_scope_ok": lexical_reference_scope_ok,
+        "reference_scope_location_count": len(reference_scope_locations),
+        "reference_scope_expected_line_count": len(expected_reference_lines),
+        "reference_scope_matched_line_count": len(reference_scope_matched_lines),
+        "reference_scope_excluded_match_count": len(reference_scope_excluded_matches),
+        "reference_scope_lines": tuple(sorted(reference_scope_lines)),
+        "reference_scope_expected_lines": tuple(sorted(expected_reference_lines)),
+        "reference_scope_excluded_lines": tuple(sorted(excluded_reference_lines)),
         "code_action_count": len(code_actions),
         "formatting_edit_count": len(formatting_edits),
         "checks": checks,
