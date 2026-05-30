@@ -33,3 +33,10 @@ Validation commands for this slice:
 ## Remaining Risks
 
 The runtime and app contracts are executable and side-effect-free, but this slice does not add a live HTTP server, browser-rendered frontend, or external customs/broker/carrier adapters. Those should remain later integration layers over this owned PBC surface.
+
+## 2026-05-30 improve1 Trade-Control Execution Slice
+
+- Added `trade_control.py` as side-effect-free executable proof for all 50 improve1 cross-border trade capabilities.
+- Bound each feature to owned trade tables, AppGen-X event metadata, UI/API route surfaces, agent skills, configuration handles, retry/dead-letter evidence, and traceability artifacts.
+- Added package-local domain behavior tests for HS classification, landed cost, denied-party screening, export control, customs declarations, release gates, document packets, event reliability, boundary proof, schema extension governance, continuous controls, agent-safe plans, readiness, and end-to-end customs release.
+- Updated runtime, UI, release evidence, and improve1 traceability so every feature row points to executable trade-control behavior and `tests/test_domain_behavior.py`.

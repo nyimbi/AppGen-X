@@ -9,6 +9,7 @@ from .runtime import CROSS_BORDER_TRADE_REQUIRED_EVENT_TOPIC
 from .runtime import cross_border_trade_build_workbench_view
 from .runtime import cross_border_trade_permissions_contract
 from .app_surface import single_pbc_trade_app_contract, trade_controls_contract, trade_forms_contract, trade_wizards_contract
+from .trade_control import improve1_trade_control_contract
 
 
 CROSS_BORDER_TRADE_UI_FRAGMENT_KEYS = (
@@ -33,6 +34,7 @@ CROSS_BORDER_TRADE_UI_FRAGMENT_KEYS = (
 def cross_border_trade_ui_contract() -> dict:
     permissions = cross_border_trade_permissions_contract()
     single_pbc_app = single_pbc_trade_app_contract()
+    trade_control = improve1_trade_control_contract()
     return {
         "format": "appgen.cross-border-trade-ui-contract.v1",
         "ok": True,
@@ -167,6 +169,8 @@ def cross_border_trade_ui_contract() -> dict:
             ),
             "compiled_evidence_required": True,
         },
+        "trade_control_panels": tuple({"capability": sample["capability"], "feature_number": sample["feature_number"], "title": sample["title"], "target_table": sample["target_table"], "route": sample["route"], "permission": sample["permission"]} for sample in trade_control["samples"]),
+        "trade_control_contract": trade_control,
         "event_surfaces": {
             "emits": CROSS_BORDER_TRADE_EMITTED_EVENT_TYPES,
             "consumes": CROSS_BORDER_TRADE_CONSUMED_EVENT_TYPES,

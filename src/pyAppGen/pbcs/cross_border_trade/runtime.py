@@ -8,6 +8,8 @@ import json
 import math
 import re
 
+from .trade_control import TRADE_CONTROL_CAPABILITIES, improve1_trade_control_contract
+
 
 CROSS_BORDER_TRADE_REQUIRED_EVENT_TOPIC = "appgen.cross_border_trade.events"
 CROSS_BORDER_TRADE_ALLOWED_DATABASE_BACKENDS = ("postgresql", "mysql", "mariadb")
@@ -234,12 +236,13 @@ _DEFAULT_BROKERS = (
 
 def cross_border_trade_runtime_capabilities() -> dict:
     smoke = cross_border_trade_runtime_smoke()
+    trade_control = improve1_trade_control_contract()
     from .app_surface import single_pbc_trade_app_contract
 
     app = single_pbc_trade_app_contract()
     return {
         "format": "appgen.cross-border-trade-runtime-capabilities.v1",
-        "ok": smoke["ok"],
+        "ok": smoke["ok"] and trade_control["ok"],
         "pbc": "cross_border_trade",
         "implementation_directory": "src/pyAppGen/pbcs/cross_border_trade",
         "required_event_topic": CROSS_BORDER_TRADE_REQUIRED_EVENT_TOPIC,
@@ -251,6 +254,7 @@ def cross_border_trade_runtime_capabilities() -> dict:
         "capabilities": CROSS_BORDER_TRADE_RUNTIME_CAPABILITY_KEYS,
         "standard_features": CROSS_BORDER_TRADE_STANDARD_FEATURE_KEYS,
         "single_pbc_app": app,
+        "improve1_trade_control": trade_control,
         "forms": app["forms"],
         "wizards": app["wizards"],
         "controls": app["controls"],
@@ -281,6 +285,8 @@ def cross_border_trade_runtime_capabilities() -> dict:
             "ui_binding_contract",
             "run_control_tests",
             "verify_owned_table_boundary",
+            "improve1_trade_control_contract",
+            *TRADE_CONTROL_CAPABILITIES,
         ),
         "smoke": smoke,
     }
@@ -571,6 +577,7 @@ def cross_border_trade_runtime_smoke() -> dict:
     service = cross_border_trade_build_service_contract()
     ui_contract = cross_border_trade_ui_contract()
     ui_binding = cross_border_trade_ui_binding_contract()
+    trade_control = improve1_trade_control_contract()
     resilience = cross_border_trade_run_resilience_drill(state, "broker_api_timeout")
     rotated = cross_border_trade_rotate_crypto_epoch(state, "dilithium3_simulated")
     carbon = cross_border_trade_optimize_carbon_aware_broker_route(_DEFAULT_BROKERS)
@@ -656,6 +663,7 @@ def cross_border_trade_runtime_smoke() -> dict:
         {"id": "rule_engine", "ok": bool(state["rules"]) and all(rule["compiled_hash"] for rule in state["rules"].values())},
         {"id": "seed_data", "ok": state["seed_data"]["owned_tables"] == CROSS_BORDER_TRADE_OWNED_TABLES},
         {"id": "single_pbc_domain_app", "ok": app_surface["ok"] is True},
+        {"id": "improve1_trade_control", "ok": trade_control["ok"]},
         {
             "id": "workbench_ui",
             "ok": workbench["binding_evidence"]["owned_tables"] == CROSS_BORDER_TRADE_OWNED_TABLES
@@ -673,6 +681,7 @@ def cross_border_trade_runtime_smoke() -> dict:
         "blocking_gaps": blocking_gaps,
         "workbench": workbench,
         "single_pbc_app": app_surface,
+        "improve1_trade_control": trade_control,
     }
 
 
@@ -2054,6 +2063,7 @@ def cross_border_trade_build_release_evidence() -> dict:
     ui_binding = cross_border_trade_ui_binding_contract()
     control = _cross_border_trade_release_control_evidence()
     smoke = cross_border_trade_runtime_smoke()
+    trade_control = improve1_trade_control_contract()
     checks = (
         {"id": "owned_schema_depth", "ok": schema["ok"] and len(schema["tables"]) >= 15},
         {"id": "migration_per_owned_table", "ok": len(schema["migrations"]) == len(schema["tables"])},
@@ -2081,6 +2091,7 @@ def cross_border_trade_build_release_evidence() -> dict:
         },
         {"id": "duplicate_idempotency_evidence", "ok": control["summary"]["duplicate_status"] == "duplicate"},
         {"id": "runtime_smoke", "ok": smoke["ok"]},
+        {"id": "improve1_trade_control", "ok": trade_control["ok"]},
     )
     return {
         "format": "appgen.cross-border-trade-release-evidence.v1",
@@ -2092,6 +2103,7 @@ def cross_border_trade_build_release_evidence() -> dict:
         "permissions": permissions,
         "ui_binding": ui_binding,
         "control": control,
+        "improve1_trade_control": trade_control,
         "smoke": smoke,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }
