@@ -5480,6 +5480,10 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and lsp_rpc.get("reference_scope_excluded_match_count") == 0
             and lsp_rpc.get("missing_hover_surface_count") == 0
             and lsp_rpc.get("observed_hover_surface_count") == lsp_rpc.get("required_hover_surface_count")
+            and lsp_rpc.get("missing_completion_context_count") == 0
+            and lsp_rpc.get("passing_completion_context_count") == lsp_rpc.get("completion_context_count")
+            and lsp_rpc.get("completion_context_missing_label_count") == 0
+            and lsp_rpc.get("completion_context_forbidden_label_count") == 0
             and lsp_rpc.get("workspace_symbol_catalog_missing_query_count") == 0
             and lsp_rpc.get("workspace_symbol_catalog_pbc_result_count", 0) >= 1
             and lsp_rpc.get("workspace_symbol_catalog_contract_result_count", 0) >= 1
@@ -5535,6 +5539,19 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                     "observed_surface_count": lsp_rpc.get("observed_hover_surface_count"),
                     "missing_surface_count": lsp_rpc.get("missing_hover_surface_count"),
                     "surface_checks": lsp_rpc.get("hover_surface_checks"),
+                },
+                "completion_contexts": {
+                    "format": lsp_rpc.get("format"),
+                    "context_names": lsp_rpc.get("completion_context_names"),
+                    "context_count": lsp_rpc.get("completion_context_count"),
+                    "passing_context_count": lsp_rpc.get("passing_completion_context_count"),
+                    "missing_context_count": lsp_rpc.get("missing_completion_context_count"),
+                    "missing_contexts": lsp_rpc.get("missing_completion_contexts"),
+                    "missing_label_count": lsp_rpc.get("completion_context_missing_label_count"),
+                    "forbidden_label_count": lsp_rpc.get("completion_context_forbidden_label_count"),
+                    "missing_labels": lsp_rpc.get("completion_context_missing_labels"),
+                    "forbidden_labels": lsp_rpc.get("completion_context_forbidden_labels"),
+                    "results": lsp_rpc.get("completion_context_results"),
                 },
                 "workspace_symbol_catalog": {
                     "format": lsp_rpc.get("format"),
@@ -8900,7 +8917,29 @@ agent Builder { provider: LocalModel; tools: read, schema }
         _release_check(
             "completion_context_filtering",
             all(case["ok"] for case in completion_context_results),
+            detail={
+                "contexts": tuple(case["context"] for case in completion_context_results),
+                "failing_contexts": tuple(case["context"] for case in completion_context_results if not case["ok"]),
+            },
         )
+    )
+    completion_context_names = tuple(case["context"] for case in completion_context_results)
+    failing_completion_contexts = tuple(case["context"] for case in completion_context_results if not case["ok"])
+    completion_context_missing_labels = {
+        case["context"]: case["missing_labels"]
+        for case in completion_context_results
+        if case["missing_labels"]
+    }
+    completion_context_forbidden_labels = {
+        case["context"]: case["forbidden_labels"]
+        for case in completion_context_results
+        if case["forbidden_labels"]
+    }
+    completion_context_missing_label_count = sum(
+        len(case["missing_labels"]) for case in completion_context_results
+    )
+    completion_context_forbidden_label_count = sum(
+        len(case["forbidden_labels"]) for case in completion_context_results
     )
 
     pbc_hover_source = """
@@ -9536,6 +9575,18 @@ composition Suite {
         "request_check_count": len(request_checks),
         "passing_request_check_count": sum(1 for check in checks if check["check"] in request_check_ids and check["ok"]),
         "request_check_ids": request_check_ids,
+        "completion_context_names": completion_context_names,
+        "completion_context_count": len(completion_context_results),
+        "passing_completion_context_count": sum(1 for case in completion_context_results if case["ok"]),
+        "failing_completion_context_count": len(failing_completion_contexts),
+        "failing_completion_contexts": failing_completion_contexts,
+        "missing_completion_context_count": len(failing_completion_contexts),
+        "missing_completion_contexts": failing_completion_contexts,
+        "completion_context_missing_label_count": completion_context_missing_label_count,
+        "completion_context_forbidden_label_count": completion_context_forbidden_label_count,
+        "completion_context_missing_labels": completion_context_missing_labels,
+        "completion_context_forbidden_labels": completion_context_forbidden_labels,
+        "completion_context_results": tuple(completion_context_results),
         "workspace_symbol_catalog_queries": tuple(catalog_workspace_queries),
         "workspace_symbol_catalog_query_count": len(catalog_workspace_queries),
         "workspace_symbol_catalog_passing_query_count": sum(1 for ok in catalog_workspace_queries.values() if ok),

@@ -1425,7 +1425,10 @@ targets, deployment units, LLM providers, and agent skills.
 JSON-RPC completion requests must also report the detected cursor context and
 filter labels to the relevant completion family; top-level, table, view, flow,
 composition, deployment, package, and agent contexts are release-audited
-through `completion_context_filtering`.
+through `completion_context_filtering`. The audit publishes the context names,
+passing and missing context counts, missing expected labels, and forbidden label
+leaks. The aggregate `lsp_navigation_completion_contracts` gate fails unless all
+eight contexts pass with zero missing labels and zero forbidden labels.
 
 ### Code Actions
 

@@ -1711,6 +1711,27 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
     assert lexical_check["detail"]["reference_scope_location_count"] == 2
     assert lexical_check["detail"]["reference_scope_excluded_match_count"] == 0
     assert "completion_context_filtering" in {check["check"] for check in audit["checks"]}
+    assert audit["completion_context_count"] == 8
+    assert audit["passing_completion_context_count"] == audit["completion_context_count"]
+    assert audit["missing_completion_context_count"] == 0
+    assert audit["missing_completion_contexts"] == ()
+    assert audit["completion_context_missing_label_count"] == 0
+    assert audit["completion_context_forbidden_label_count"] == 0
+    assert set(audit["completion_context_names"]) == {
+        "top_level",
+        "table",
+        "view",
+        "flow",
+        "composition",
+        "deploy",
+        "package",
+        "agent",
+    }
+    assert audit["completion_context_missing_labels"] == {}
+    assert audit["completion_context_forbidden_labels"] == {}
+    assert all(result["ok"] for result in audit["completion_context_results"])
+    assert all(not result["missing_labels"] for result in audit["completion_context_results"])
+    assert all(not result["forbidden_labels"] for result in audit["completion_context_results"])
     assert "hover_relationship_lookup_depth" in {check["check"] for check in audit["checks"]}
     assert "hover_handler_target_depth" in {check["check"] for check in audit["checks"]}
     assert "hover_catalog_diagnostic_depth" in {check["check"] for check in audit["checks"]}
@@ -5535,6 +5556,34 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
         lsp_navigation_check["detail"]["hover_depth"]["required_surfaces"]
     )
     assert all(lsp_navigation_check["detail"]["hover_depth"]["surface_checks"].values())
+    assert lsp_navigation_check["detail"]["completion_contexts"]["format"] == "appgen.lsp-json-rpc-audit.v1"
+    assert lsp_navigation_check["detail"]["completion_contexts"]["context_count"] == 8
+    assert lsp_navigation_check["detail"]["completion_contexts"]["passing_context_count"] == (
+        lsp_navigation_check["detail"]["completion_contexts"]["context_count"]
+    )
+    assert lsp_navigation_check["detail"]["completion_contexts"]["missing_context_count"] == 0
+    assert lsp_navigation_check["detail"]["completion_contexts"]["missing_contexts"] == ()
+    assert lsp_navigation_check["detail"]["completion_contexts"]["missing_label_count"] == 0
+    assert lsp_navigation_check["detail"]["completion_contexts"]["forbidden_label_count"] == 0
+    assert set(lsp_navigation_check["detail"]["completion_contexts"]["context_names"]) == {
+        "top_level",
+        "table",
+        "view",
+        "flow",
+        "composition",
+        "deploy",
+        "package",
+        "agent",
+    }
+    assert lsp_navigation_check["detail"]["completion_contexts"]["missing_labels"] == {}
+    assert lsp_navigation_check["detail"]["completion_contexts"]["forbidden_labels"] == {}
+    assert all(result["ok"] for result in lsp_navigation_check["detail"]["completion_contexts"]["results"])
+    assert all(
+        not result["missing_labels"] for result in lsp_navigation_check["detail"]["completion_contexts"]["results"]
+    )
+    assert all(
+        not result["forbidden_labels"] for result in lsp_navigation_check["detail"]["completion_contexts"]["results"]
+    )
     assert lsp_navigation_check["detail"]["workspace_symbol_catalog"]["format"] == "appgen.lsp-json-rpc-audit.v1"
     assert lsp_navigation_check["detail"]["workspace_symbol_catalog"]["query_count"] == 2
     assert lsp_navigation_check["detail"]["workspace_symbol_catalog"]["passing_query_count"] == (
