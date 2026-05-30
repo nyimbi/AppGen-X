@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from .defense_control import improve1_defense_control_contract
 from .defense_app import controls_contract, forms_contract, single_pbc_app_contract, workflow_contracts, wizards_contract
 from .domain_depth import (
     DOMAIN_ADVANCED_CAPABILITIES,
@@ -28,6 +29,7 @@ def defense_readiness_logistics_ui_contract() -> dict:
         "single_pbc_app": single_pbc_app_contract(),
         "configuration_editor": True,
         "stream_engine_picker_visible": False,
+        "defense_control_contract": improve1_defense_control_contract(),
         "action_permissions": (
             f"{PBC_KEY}.read",
             f"{PBC_KEY}.create",
@@ -44,6 +46,7 @@ def defense_readiness_logistics_ui_contract() -> dict:
             "edge_case_queues": DOMAIN_EDGE_CASES,
             "agent_tools": tuple(f"{PBC_KEY}_skills.{name}" for name in DOMAIN_OPERATIONS),
             "navigation_sections": ("overview", "operations", "workflows", "edge_case_triage", "advanced_intelligence", "release_evidence"),
+            "defense_control_panels": tuple(item["ui_surface"] for item in improve1_defense_control_contract()["capabilities"]),
             "coverage": surface["coverage"],
         },
         "side_effects": (),

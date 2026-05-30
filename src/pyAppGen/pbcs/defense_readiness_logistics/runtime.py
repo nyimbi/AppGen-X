@@ -17,6 +17,7 @@ from .defense_app import (
     wizards_contract,
     controls_contract,
 )
+from .defense_control import DEFENSE_CONTROL_CAPABILITIES, improve1_defense_control_contract
 from .domain_depth import domain_depth_contract, domain_depth_smoke_test
 from .events import CONSUMED, EMITTED, DEFAULT_TOPIC, event_contract_manifest, smoke_test as event_smoke_test, validate_event_contract
 from .handlers import handler_manifest, smoke_test as handler_smoke_test
@@ -248,6 +249,7 @@ def defense_readiness_logistics_build_release_evidence() -> dict:
     seed = seed_plan()
     app_smoke = defense_app_smoke_test()
     domain = domain_depth_contract()
+    defense_control = improve1_defense_control_contract()
     checks = (
         {"id": "schema_models_migrations", "ok": schema["ok"]},
         {"id": "service_contract", "ok": services["ok"]},
@@ -260,6 +262,7 @@ def defense_readiness_logistics_build_release_evidence() -> dict:
         {"id": "seed_data", "ok": seed["ok"]},
         {"id": "domain_depth", "ok": domain["ok"]},
         {"id": "single_pbc_domain_app", "ok": app_smoke["ok"] and single_pbc_app_contract()["ok"]},
+        {"id": "defense_improve1_control_contract", "ok": defense_control["ok"]},
     )
     return {
         "format": "appgen.defense-readiness-logistics-release-evidence.v1",
@@ -280,6 +283,7 @@ def defense_readiness_logistics_build_release_evidence() -> dict:
             "assistant": chatbot_interface_contract(),
             "seed": seed,
             "migration_alignment": migration_alignment_contract(),
+            "defense_control": defense_control,
         },
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }
@@ -321,6 +325,7 @@ def defense_readiness_logistics_runtime_capabilities() -> dict:
         "verify_owned_table_boundary",
         "run_advanced_assessment",
         "parse_document_instruction",
+        "improve1_defense_control_contract",
     )
     return {
         "format": "appgen.defense-readiness-logistics-runtime-capabilities.v1",
@@ -331,6 +336,7 @@ def defense_readiness_logistics_runtime_capabilities() -> dict:
         "allowed_database_backends": DEFENSE_READINESS_LOGISTICS_ALLOWED_DATABASE_BACKENDS,
         "standard_features": DEFENSE_READINESS_LOGISTICS_STANDARD_FEATURE_KEYS,
         "capabilities": DEFENSE_READINESS_LOGISTICS_RUNTIME_CAPABILITY_KEYS,
+        "improve1_defense_control_capabilities": tuple(capability.slug for capability in DEFENSE_CONTROL_CAPABILITIES),
         "operations": operations,
         "forms": forms_contract()["forms"],
         "wizards": wizards_contract()["wizards"],
@@ -371,6 +377,7 @@ def defense_readiness_logistics_runtime_smoke() -> dict:
         },
     )
     workbench = defense_readiness_logistics_query_workbench(command["state"])
+    defense_control = improve1_defense_control_contract()
     checks = (
         {"id": "configuration", "ok": configured["ok"]},
         {"id": "parameter", "ok": parameter["ok"]},
@@ -388,5 +395,6 @@ def defense_readiness_logistics_runtime_smoke() -> dict:
         {"id": "governance_smoke", "ok": governance_smoke_test()["ok"]},
         {"id": "domain_depth_smoke", "ok": domain_depth_smoke_test()["ok"]},
         {"id": "app_smoke", "ok": defense_app_smoke_test()["ok"]},
+        {"id": "improve1_defense_control_contract", "ok": defense_control["ok"]},
     )
-    return {"ok": all(check["ok"] for check in checks), "checks": checks, "side_effects": ()}
+    return {"ok": all(check["ok"] for check in checks), "checks": checks, "checks_by_id": {check["id"]: check["ok"] for check in checks}, "defense_control": defense_control, "side_effects": ()}
