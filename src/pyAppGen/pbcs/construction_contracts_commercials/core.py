@@ -8,6 +8,9 @@ import hashlib
 import re
 from typing import Any
 
+from .commercial_control import COMMERCIAL_CONTROL_CAPABILITIES
+from .commercial_control import improve1_commercial_control_contract
+
 PBC_KEY = "construction_contracts_commercials"
 CONSTRUCTION_CONTRACTS_COMMERCIALS_ALLOWED_DATABASE_BACKENDS = ("postgresql", "mysql", "mariadb")
 CONSTRUCTION_CONTRACTS_COMMERCIALS_REQUIRED_EVENT_TOPIC = "pbc.construction_contracts_commercials.events"
@@ -1657,6 +1660,8 @@ def construction_contracts_commercials_ui_contract() -> dict[str, Any]:
             "close_final_account": "construction_contracts_commercials.close_final_account",
         },
         "agent_skills": AGENT_SKILLS,
+        "commercial_control_panels": tuple(f"commercial_control_{capability}" for capability in COMMERCIAL_CONTROL_CAPABILITIES),
+        "commercial_control_contract": improve1_commercial_control_contract(),
         "side_effects": (),
     }
 
@@ -2304,6 +2309,7 @@ def construction_contracts_commercials_build_release_evidence() -> dict[str, Any
         {"id": "agent_document_crud", "ok": agent_skill_manifest()["ok"] and document_instruction_plan("pay application", "create claim")["ok"]},
         {"id": "permissions_and_rules", "ok": permissions["ok"] and rule_manifest()["ok"] and parameter_manifest()["ok"]},
         {"id": "seed_and_boundary", "ok": validate_seed_data()["ok"] and construction_contracts_commercials_verify_owned_table_boundary(CONSTRUCTION_CONTRACTS_COMMERCIALS_OWNED_TABLES + ("foreign_table",))["ok"] is False},
+        {"id": "improve1_commercial_control", "ok": improve1_commercial_control_contract()["ok"]},
     )
     return {
         "format": "appgen.construction-contracts-commercials-release-evidence.v2",
@@ -2321,6 +2327,7 @@ def construction_contracts_commercials_build_release_evidence() -> dict[str, Any
             "handlers": ("receive_event", "dispatch_event"),
             "ui": CONSTRUCTION_CONTRACTS_COMMERCIALS_UI_FRAGMENT_KEYS,
             "simulation": simulation,
+            "improve1_commercial_control": improve1_commercial_control_contract(),
         },
         "blocking_gaps": tuple(check["id"] for check in checks if not check["ok"]),
     }
@@ -2343,8 +2350,10 @@ def construction_contracts_commercials_runtime_capabilities() -> dict[str, Any]:
             "build_schema_contract",
             "build_service_contract",
             "build_release_evidence",
+            "improve1_commercial_control_contract",
         ),
         "smoke": smoke,
+        "improve1_commercial_control": improve1_commercial_control_contract(),
         "database_backends": CONSTRUCTION_CONTRACTS_COMMERCIALS_ALLOWED_DATABASE_BACKENDS,
         "event_contract": "AppGen-X",
         "stream_engine_picker_visible": False,
@@ -2364,6 +2373,7 @@ def construction_contracts_commercials_runtime_smoke() -> dict[str, Any]:
     schema = construction_contracts_commercials_build_schema_contract()
     release = construction_contracts_commercials_build_release_evidence()
     ui = construction_contracts_commercials_ui_contract()
+    commercial_control = improve1_commercial_control_contract()
     checks = (
         {"id": "configure_runtime", "ok": configured["ok"]},
         {"id": "set_parameter", "ok": parameter["ok"]},
@@ -2372,6 +2382,7 @@ def construction_contracts_commercials_runtime_smoke() -> dict[str, Any]:
         {"id": "schema", "ok": schema["ok"]},
         {"id": "release", "ok": release["ok"]},
         {"id": "ui", "ok": ui["ok"]},
+        {"id": "improve1_commercial_control", "ok": commercial_control["ok"]},
     )
     return {
         "format": "appgen.construction-contracts-commercials-runtime-smoke.v2",
@@ -2381,6 +2392,7 @@ def construction_contracts_commercials_runtime_smoke() -> dict[str, Any]:
         "schema": schema,
         "release": release,
         "ui": ui,
+        "improve1_commercial_control": commercial_control,
         "blocking_gaps": tuple(check["id"] for check in checks if not check["ok"]),
         "side_effects": (),
     }

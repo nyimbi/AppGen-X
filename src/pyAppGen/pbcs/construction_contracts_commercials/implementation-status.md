@@ -19,3 +19,11 @@
 - The slice remains intentionally in-memory and contract-driven; it does not include a real persistence adapter or HTTP server binding inside this PBC.
 - `SPECIFICATION.md` remains broader than the implemented executable subset and may still describe ambitions beyond the current standalone slice.
 - Release evidence should be refreshed if additional standalone routes, forms, or governed operations are added later.
+
+## improve1 Commercial Control Completion Pass
+
+Added `commercial_control.py` as the package-local executable control layer for all 50 manually curated improve1 items. Each control now carries required construction-commercial evidence fields, owned-table targeting, AppGen-X event metadata, rule and parameter handles, retry/dead-letter evidence, agent skill exposure, UI route metadata, and package-boundary checks.
+
+The new `tests/test_domain_behavior.py` proves all 50 controls execute side-effect-free and validates construction-specific failure modes for invalid contract lifecycle transitions, unsupported pricing bases, schedule-of-values overclaiming, uncertified payment event requests, unapproved variation value increases, missing lien waivers, unapproved agent review/CRUD, low-confidence document ingestion, unauthorized roles, unredacted contractor portal notes, and overlap with external schedule/cost/finance/document ownership. `core.py` and `runtime.py` now expose the commercial-control contract as release evidence, runtime smoke evidence, and 50 UI commercial-control panels.
+
+Validation pending in this slice: focused construction-commercial tests, improve1 sweep, and `git diff --check`.
