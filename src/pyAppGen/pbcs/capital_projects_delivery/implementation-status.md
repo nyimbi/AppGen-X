@@ -75,3 +75,14 @@ Result:
 
 - Validation stayed focused on this PBC package. Broader repository regression, lint, and end-to-end suites outside `capital_projects_delivery` were not run.
 - The standalone app remains a package-local deterministic shell rather than a live HTTP server or database-backed deployment target in this scope.
+
+## improve1 Full Traceability Evidence
+
+- Added `project_control.py` with 50 side-effect-free capital project controls covering stage gates, WBS, estimates, schedules, milestones, package cost, progress, CPI/SPI, changes, warnings, risks, opportunities, permits, long leads, package readiness, field constraints, EPC interfaces, mechanical completion, punch lists, commissioning, handover, funding, contingency, productivity, weather, quality hold points, sequencing, review packs, release scenarios, assistant skills, document intake, events, idempotency, dead letters, configuration, policy rules, assertions, schema extensions, governed semantics, portfolio rollups, cross-PBC boundaries, startup, operations handover, onboarding, assurance, and closeout.
+- Bound the improve1 control contract into `runtime.py` release evidence and `ui.py` project-control panels so generated applications surface the full domain control set.
+- Updated `IMPROVE1_TRACEABILITY.md` and `improve1_capabilities.py` so every feature 1-50 maps to `project_control.py`, package UI, service/API surface, `tests/test_domain_behavior.py`, and release evidence.
+
+Validation:
+- `/Volumes/Media/src/pjs/appgen/.venv/bin/pytest src/pyAppGen/pbcs/capital_projects_delivery/tests` -> 27 passed.
+- Improve1 repository sweep -> 877 passed, 197 warnings limited to existing deprecation warnings outside this PBC slice.
+- `git diff --check -- src/pyAppGen/pbcs` -> passed with no output.

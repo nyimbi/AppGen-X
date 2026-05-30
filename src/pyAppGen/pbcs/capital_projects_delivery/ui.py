@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from .project_control import PROJECT_CONTROL_CAPABILITIES, improve1_project_control_contract
 from .domain_depth import (
     DOMAIN_ADVANCED_CAPABILITIES,
     DOMAIN_EDGE_CASES,
@@ -104,7 +105,9 @@ def capital_projects_delivery_ui_contract():
             "operation_actions": DOMAIN_OPERATIONS,
             "rule_editors": DOMAIN_RULES,
             "parameter_editors": DOMAIN_PARAMETERS,
-            "advanced_panels": DOMAIN_ADVANCED_CAPABILITIES,
+            "advanced_panels": DOMAIN_ADVANCED_CAPABILITIES + PROJECT_CONTROL_CAPABILITIES,
+            "project_control_panels": tuple(f"project_control_{capability}" for capability in PROJECT_CONTROL_CAPABILITIES),
+            "project_control_contract": improve1_project_control_contract(),
             "table_browsers": DOMAIN_OWNED_TABLES,
             "edge_case_queues": DOMAIN_EDGE_CASES,
             "agent_tools": tuple(f"{PBC_KEY}_skills.{op}" for op in DOMAIN_OPERATIONS),

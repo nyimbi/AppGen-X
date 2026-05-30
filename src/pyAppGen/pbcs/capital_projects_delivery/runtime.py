@@ -4,6 +4,7 @@ from __future__ import annotations
 from copy import deepcopy
 import hashlib
 
+from .project_control import improve1_project_control_contract
 from .domain_depth import (
     DOMAIN_OPERATIONS,
     domain_depth_contract,
@@ -906,6 +907,7 @@ def capital_projects_delivery_build_release_evidence():
         {"id": "pbc_source_artifact_contract", "ok": True},
         {"id": "pbc_implementation_release_audit", "ok": True},
         {"id": "pbc_generation_smoke_audit", "ok": True},
+        {"id": "improve1_project_control", "ok": improve1_project_control_contract()["capability_count"] == 50},
     )
     return {
         "format": "appgen.capital-projects-delivery-release-evidence.v1",
@@ -927,6 +929,7 @@ def capital_projects_delivery_build_release_evidence():
             "controls": CAPITAL_PROJECTS_DELIVERY_CONTROL_KEYS,
             "workflows": workflow_contracts["workflows"],
             "standalone_entrypoint": "capital_projects_delivery.standalone.CapitalProjectsDeliveryStandaloneApp",
+            "improve1_project_control": improve1_project_control_contract(),
         },
         "blocking_gaps": (),
     }
