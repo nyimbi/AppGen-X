@@ -6882,18 +6882,43 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
         "qualified_handler_text",
         "qualified_handler_json",
     )
+    assert explain_contract_check["detail"]["required_case_ids"] == explain_contract_check["detail"]["case_ids"]
+    assert explain_contract_check["detail"]["observed_case_ids"] == explain_contract_check["detail"]["case_ids"]
+    assert explain_contract_check["detail"]["missing_case_count"] == 0
+    assert explain_contract_check["detail"]["missing_case_ids"] == ()
+    assert explain_contract_check["detail"]["output_modes_by_case"] == explain_contract_check["detail"][
+        "expected_output_modes_by_case"
+    ]
+    assert explain_contract_check["detail"]["missing_output_mode_case_count"] == 0
+    assert explain_contract_check["detail"]["missing_output_mode_cases"] == ()
     assert explain_contract_check["detail"]["exit_failure_count"] == 0
     assert explain_contract_check["detail"]["text_case_count"] == 3
     assert explain_contract_check["detail"]["json_case_count"] == 3
     assert explain_contract_check["detail"]["missing_report_format_count"] == 0
+    assert explain_contract_check["detail"]["required_report_format_cases"] == explain_contract_check["detail"][
+        "case_ids"
+    ]
+    assert explain_contract_check["detail"]["report_format_cases"] == explain_contract_check["detail"]["case_ids"]
+    assert explain_contract_check["detail"]["missing_report_format_cases"] == ()
     assert explain_contract_check["detail"]["text_report_format_case_count"] == 3
     assert explain_contract_check["detail"]["json_report_format_case_count"] == 3
+    assert explain_contract_check["detail"]["required_text_markers_by_case"]["field_symbol_text"].startswith(
+        "explain symbol ok: format=appgen.explain-report.v1"
+    )
+    assert explain_contract_check["detail"]["missing_text_marker_count"] == 0
+    assert explain_contract_check["detail"]["missing_text_marker_cases"] == ()
+    assert explain_contract_check["detail"]["missing_text_markers_by_case"] == {}
     assert explain_contract_check["detail"]["navigation_detail_case_count"] == 3
     assert explain_contract_check["detail"]["navigation_detail_cases"] == (
         "field_symbol_json",
         "diagnostic_json",
         "qualified_handler_json",
     )
+    assert explain_contract_check["detail"]["required_navigation_detail_cases"] == explain_contract_check["detail"][
+        "navigation_detail_cases"
+    ]
+    assert explain_contract_check["detail"]["missing_navigation_detail_case_count"] == 0
+    assert explain_contract_check["detail"]["missing_navigation_detail_cases"] == ()
     assert explain_contract_check["detail"]["symbol_navigation_detail_count"] == 1
     assert explain_contract_check["detail"]["diagnostic_navigation_detail_count"] == 1
     assert explain_contract_check["detail"]["handler_navigation_detail_count"] == 1
@@ -8118,13 +8143,47 @@ def test_explain_cli_audit_covers_text_and_json_modes(tmp_path: Path) -> None:
     assert audit["failing_case_count"] == 0
     assert audit["failing_cases"] == ()
     assert audit["case_ids"] == tuple(case["case"] for case in audit["cases"])
+    expected_case_ids = (
+        "field_symbol_text",
+        "field_symbol_json",
+        "diagnostic_text",
+        "diagnostic_json",
+        "qualified_handler_text",
+        "qualified_handler_json",
+    )
+    assert audit["required_case_ids"] == expected_case_ids
+    assert audit["observed_case_ids"] == expected_case_ids
+    assert audit["missing_case_count"] == 0
+    assert audit["missing_case_ids"] == ()
+    assert audit["expected_output_modes_by_case"] == {
+        "field_symbol_text": "text",
+        "field_symbol_json": "json",
+        "diagnostic_text": "text",
+        "diagnostic_json": "json",
+        "qualified_handler_text": "text",
+        "qualified_handler_json": "json",
+    }
+    assert audit["output_modes_by_case"] == audit["expected_output_modes_by_case"]
+    assert audit["missing_output_mode_case_count"] == 0
+    assert audit["missing_output_mode_cases"] == ()
     assert audit["exit_failure_count"] == 0
     assert audit["text_case_count"] == 3
     assert audit["json_case_count"] == 3
     assert audit["report_format_case_count"] == audit["case_count"]
     assert audit["missing_report_format_count"] == 0
+    assert audit["required_report_format_cases"] == expected_case_ids
+    assert audit["report_format_cases"] == expected_case_ids
+    assert audit["missing_report_format_cases"] == ()
     assert audit["text_report_format_case_count"] == audit["text_case_count"]
     assert audit["json_report_format_case_count"] == audit["json_case_count"]
+    assert audit["required_text_markers_by_case"] == {
+        "field_symbol_text": "explain symbol ok: format=appgen.explain-report.v1 Invoice.customer_id",
+        "diagnostic_text": "explain diagnostic ok: format=appgen.explain-report.v1 AGX0303",
+        "qualified_handler_text": "explain handler ok: format=appgen.explain-report.v1 InvoiceForm.Save",
+    }
+    assert audit["missing_text_marker_count"] == 0
+    assert audit["missing_text_marker_cases"] == ()
+    assert audit["missing_text_markers_by_case"] == {}
     assert audit["symbol_case_count"] == 2
     assert audit["diagnostic_case_count"] == 2
     assert audit["handler_case_count"] == 2
@@ -8134,17 +8193,13 @@ def test_explain_cli_audit_covers_text_and_json_modes(tmp_path: Path) -> None:
         "diagnostic_json",
         "qualified_handler_json",
     )
+    assert audit["required_navigation_detail_cases"] == audit["navigation_detail_cases"]
+    assert audit["missing_navigation_detail_case_count"] == 0
+    assert audit["missing_navigation_detail_cases"] == ()
     assert audit["symbol_navigation_detail_count"] == 1
     assert audit["diagnostic_navigation_detail_count"] == 1
     assert audit["handler_navigation_detail_count"] == 1
-    assert {
-        "field_symbol_text",
-        "field_symbol_json",
-        "diagnostic_text",
-        "diagnostic_json",
-        "qualified_handler_text",
-        "qualified_handler_json",
-    } <= set(cases)
+    assert set(expected_case_ids) <= set(cases)
     assert all(case["exit_code"] == 0 for case in cases.values())
     assert all(case["has_report_format"] is True for case in cases.values())
     assert cases["field_symbol_text"]["stdout_prefix"].startswith(

@@ -5501,16 +5501,21 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and explain_cli.get("case_count") == 6
             and explain_cli.get("passing_case_count") == explain_cli.get("case_count")
             and explain_cli.get("failing_case_count") == 0
+            and explain_cli.get("missing_case_count") == 0
+            and explain_cli.get("missing_output_mode_case_count") == 0
             and explain_cli.get("exit_failure_count") == 0
             and explain_cli.get("text_case_count") == 3
             and explain_cli.get("json_case_count") == 3
             and explain_cli.get("missing_report_format_count") == 0
+            and not explain_cli.get("missing_report_format_cases")
             and explain_cli.get("text_report_format_case_count") == explain_cli.get("text_case_count")
             and explain_cli.get("json_report_format_case_count") == explain_cli.get("json_case_count")
+            and explain_cli.get("missing_text_marker_count") == 0
             and explain_cli.get("symbol_case_count") == 2
             and explain_cli.get("diagnostic_case_count") == 2
             and explain_cli.get("handler_case_count") == 2
             and explain_cli.get("navigation_detail_case_count") == 3
+            and explain_cli.get("missing_navigation_detail_case_count") == 0
             and explain_cli.get("symbol_navigation_detail_count") == 1
             and explain_cli.get("diagnostic_navigation_detail_count") == 1
             and explain_cli.get("handler_navigation_detail_count") == 1
@@ -5524,14 +5529,32 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                 "failing_case_count": explain_cli.get("failing_case_count"),
                 "failing_cases": explain_cli.get("failing_cases"),
                 "case_ids": explain_cli.get("case_ids"),
+                "required_case_ids": explain_cli.get("required_case_ids"),
+                "observed_case_ids": explain_cli.get("observed_case_ids"),
+                "missing_case_count": explain_cli.get("missing_case_count"),
+                "missing_case_ids": explain_cli.get("missing_case_ids"),
+                "expected_output_modes_by_case": explain_cli.get("expected_output_modes_by_case"),
+                "output_modes_by_case": explain_cli.get("output_modes_by_case"),
+                "missing_output_mode_case_count": explain_cli.get("missing_output_mode_case_count"),
+                "missing_output_mode_cases": explain_cli.get("missing_output_mode_cases"),
                 "exit_failure_count": explain_cli.get("exit_failure_count"),
                 "text_case_count": explain_cli.get("text_case_count"),
                 "json_case_count": explain_cli.get("json_case_count"),
                 "missing_report_format_count": explain_cli.get("missing_report_format_count"),
+                "required_report_format_cases": explain_cli.get("required_report_format_cases"),
+                "report_format_cases": explain_cli.get("report_format_cases"),
+                "missing_report_format_cases": explain_cli.get("missing_report_format_cases"),
                 "text_report_format_case_count": explain_cli.get("text_report_format_case_count"),
                 "json_report_format_case_count": explain_cli.get("json_report_format_case_count"),
+                "required_text_markers_by_case": explain_cli.get("required_text_markers_by_case"),
+                "missing_text_marker_count": explain_cli.get("missing_text_marker_count"),
+                "missing_text_marker_cases": explain_cli.get("missing_text_marker_cases"),
+                "missing_text_markers_by_case": explain_cli.get("missing_text_markers_by_case"),
                 "navigation_detail_case_count": explain_cli.get("navigation_detail_case_count"),
                 "navigation_detail_cases": explain_cli.get("navigation_detail_cases"),
+                "required_navigation_detail_cases": explain_cli.get("required_navigation_detail_cases"),
+                "missing_navigation_detail_case_count": explain_cli.get("missing_navigation_detail_case_count"),
+                "missing_navigation_detail_cases": explain_cli.get("missing_navigation_detail_cases"),
                 "symbol_navigation_detail_count": explain_cli.get("symbol_navigation_detail_count"),
                 "diagnostic_navigation_detail_count": explain_cli.get("diagnostic_navigation_detail_count"),
                 "handler_navigation_detail_count": explain_cli.get("handler_navigation_detail_count"),
@@ -12953,6 +12976,7 @@ def _tooling_audit_explain_cli_formats(tmp: Path, source: str) -> dict:
         results.append(
             {
                 "case": case_id,
+                "output_mode": "json" if case_id.endswith("_json") else "text",
                 "ok": exit_code == 0 and (json_ok or text_ok),
                 "exit_code": exit_code,
                 "has_report_format": "format=appgen.explain-report.v1" in stdout
@@ -12970,12 +12994,39 @@ def _tooling_audit_explain_cli_formats(tmp: Path, source: str) -> dict:
         )
     failing_cases = tuple(result["case"] for result in results if not result["ok"])
     case_ids = tuple(result["case"] for result in results)
+    required_case_ids = tuple(case_id for case_id, _ in cases)
+    missing_case_ids = tuple(case_id for case_id in required_case_ids if case_id not in case_ids)
+    expected_output_modes_by_case = {
+        case_id: "json" if case_id.endswith("_json") else "text" for case_id, _ in cases
+    }
+    output_modes_by_case = {result["case"]: result["output_mode"] for result in results}
+    missing_output_mode_cases = tuple(
+        case_id
+        for case_id, expected_mode in expected_output_modes_by_case.items()
+        if output_modes_by_case.get(case_id) != expected_mode
+    )
     text_report_format_cases = tuple(
         result["case"] for result in results if result["case"].endswith("_text") and result["has_report_format"]
     )
     json_report_format_cases = tuple(
         result["case"] for result in results if result["case"].endswith("_json") and result["has_report_format"]
     )
+    required_report_format_cases = required_case_ids
+    report_format_cases = tuple(result["case"] for result in results if result["has_report_format"])
+    missing_report_format_cases = tuple(
+        case_id for case_id in required_report_format_cases if case_id not in report_format_cases
+    )
+    required_text_markers_by_case = {
+        "field_symbol_text": "explain symbol ok: format=appgen.explain-report.v1 Invoice.customer_id",
+        "diagnostic_text": "explain diagnostic ok: format=appgen.explain-report.v1 AGX0303",
+        "qualified_handler_text": "explain handler ok: format=appgen.explain-report.v1 InvoiceForm.Save",
+    }
+    missing_text_markers_by_case = {
+        result["case"]: required_text_markers_by_case[result["case"]]
+        for result in results
+        if result["case"] in required_text_markers_by_case
+        and not result["stdout_prefix"].startswith(required_text_markers_by_case[result["case"]])
+    }
     navigation_detail_cases = tuple(
         result["case"]
         for result in results
@@ -12983,28 +13034,55 @@ def _tooling_audit_explain_cli_formats(tmp: Path, source: str) -> dict:
         or result["diagnostic_docs_url"]
         or result["handler_match_count"]
     )
+    required_navigation_detail_cases = ("field_symbol_json", "diagnostic_json", "qualified_handler_json")
+    missing_navigation_detail_cases = tuple(
+        case_id for case_id in required_navigation_detail_cases if case_id not in navigation_detail_cases
+    )
     return {
         "format": "appgen.explain-cli-audit.v1",
-        "ok": all(result["ok"] for result in results),
+        "ok": all(result["ok"] for result in results)
+        and not missing_case_ids
+        and not missing_output_mode_cases
+        and not missing_report_format_cases
+        and not missing_text_markers_by_case
+        and not missing_navigation_detail_cases,
         "case_count": len(results),
         "passing_case_count": sum(1 for result in results if result["ok"]),
         "failing_case_count": len(failing_cases),
         "failing_cases": failing_cases,
         "case_ids": case_ids,
+        "required_case_ids": required_case_ids,
+        "observed_case_ids": case_ids,
+        "missing_case_count": len(missing_case_ids),
+        "missing_case_ids": missing_case_ids,
+        "expected_output_modes_by_case": expected_output_modes_by_case,
+        "output_modes_by_case": output_modes_by_case,
+        "missing_output_mode_case_count": len(missing_output_mode_cases),
+        "missing_output_mode_cases": missing_output_mode_cases,
         "exit_failure_count": sum(1 for result in results if result["exit_code"] != 0),
         "text_case_count": sum(1 for result in results if result["case"].endswith("_text")),
         "json_case_count": sum(1 for result in results if result["case"].endswith("_json")),
         "report_format_case_count": sum(1 for result in results if result["has_report_format"]),
         "missing_report_format_count": sum(1 for result in results if not result["has_report_format"]),
+        "required_report_format_cases": required_report_format_cases,
+        "report_format_cases": report_format_cases,
+        "missing_report_format_cases": missing_report_format_cases,
         "text_report_format_case_count": len(text_report_format_cases),
         "json_report_format_case_count": len(json_report_format_cases),
         "text_report_format_cases": text_report_format_cases,
         "json_report_format_cases": json_report_format_cases,
+        "required_text_markers_by_case": required_text_markers_by_case,
+        "missing_text_marker_count": len(missing_text_markers_by_case),
+        "missing_text_marker_cases": tuple(missing_text_markers_by_case),
+        "missing_text_markers_by_case": missing_text_markers_by_case,
         "symbol_case_count": sum(1 for result in results if "symbol" in result["case"]),
         "diagnostic_case_count": sum(1 for result in results if "diagnostic" in result["case"]),
         "handler_case_count": sum(1 for result in results if "handler" in result["case"]),
         "navigation_detail_case_count": len(navigation_detail_cases),
         "navigation_detail_cases": navigation_detail_cases,
+        "required_navigation_detail_cases": required_navigation_detail_cases,
+        "missing_navigation_detail_case_count": len(missing_navigation_detail_cases),
+        "missing_navigation_detail_cases": missing_navigation_detail_cases,
         "symbol_navigation_detail_count": sum(1 for result in results if result["symbol_id"] and result["symbol_parent"]),
         "diagnostic_navigation_detail_count": sum(
             1 for result in results if result["diagnostic_title"] and result["diagnostic_docs_url"]

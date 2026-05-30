@@ -953,15 +953,21 @@ release evidence can prove all six explain modes remain covered. It also
 reports failing-case names, case ids, text and JSON report-format counts,
 navigation-detail case names, and symbol, diagnostic, and handler navigation
 detail counts so explain regressions identify the exact missing mode or
-navigational payload. JSON mode also reports `symbol_id`, `symbol_kind`,
+navigational payload. It also reports required, observed, and missing case ids;
+expected and observed output modes by case; required and missing report-format
+case names; required and missing text-mode markers; and required versus missing
+navigation-detail cases, so a missing explain example, text/JSON mode drift,
+lost envelope marker, or lost navigation payload fails by name. JSON mode also
+reports `symbol_id`, `symbol_kind`,
 `symbol_parent`, `symbol_reference_count`, `diagnostic_title`,
 `diagnostic_docs_url`, `handler_match_count`, and `handler_edges` from JSON
 mode so CLI release evidence carries the same navigational details as IDE
 integrations.
 The aggregate tooling audit exposes explain behavior as
 `explain_cli_contracts`, which fails independently when symbol, diagnostic, or
-handler text/JSON modes lose the `appgen.explain-report.v1` marker, navigation
-details, or graph/explain text renderer evidence.
+handler text/JSON modes lose the `appgen.explain-report.v1` marker, named text
+markers, navigation details, output-mode contracts, or graph/explain text
+renderer evidence.
 
 ### `appgen doctor`
 
