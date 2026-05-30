@@ -5225,9 +5225,28 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert report["doc_anchor_integrity"]["ok"] is True
     assert report["doc_anchor_integrity"]["missing_sections"] == ()
     assert report["doc_anchor_integrity"]["documented_contract_format_count"] >= 50
+    assert report["doc_anchor_integrity"]["runtime_covered_format_count"] == (
+        report["doc_anchor_integrity"]["documented_contract_format_count"]
+    )
+    assert report["doc_anchor_integrity"]["test_covered_format_count"] == (
+        report["doc_anchor_integrity"]["documented_contract_format_count"]
+    )
     assert report["doc_anchor_integrity"]["missing_runtime_formats"] == ()
+    assert report["doc_anchor_integrity"]["runtime_reference_gap_count"] == 0
     assert report["doc_anchor_integrity"]["missing_test_formats"] == ()
+    assert report["doc_anchor_integrity"]["test_reference_gap_count"] == 0
+    assert report["doc_anchor_integrity"]["minimum_runtime_format_reference_count"] >= 1
+    assert report["doc_anchor_integrity"]["minimum_test_format_reference_count"] >= 1
     assert "appgen.studio-semantic-service.v1" in report["doc_anchor_integrity"]["documented_contract_formats"]
+    assert report["doc_anchor_integrity"]["format_reference_matrix"]["appgen.studio-semantic-service.v1"][
+        "docs"
+    ] >= 1
+    assert report["doc_anchor_integrity"]["format_reference_matrix"]["appgen.studio-semantic-service.v1"][
+        "runtime"
+    ] >= 1
+    assert report["doc_anchor_integrity"]["format_reference_matrix"]["appgen.studio-semantic-service.v1"][
+        "tests"
+    ] >= 1
     assert "docs/tooling.md#cli-contracts" in report["doc_anchor_integrity"]["referenced_sections"]
     assert "docs/tooling.md#diagnostic-specification" in report["doc_anchor_integrity"]["referenced_sections"]
     assert "docs/tooling.md#linter-rules-by-domain" in report["doc_anchor_integrity"]["referenced_sections"]
@@ -5243,6 +5262,12 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert anchor_check["detail"]["missing_sections"] == ()
     assert anchor_check["detail"]["missing_runtime_formats"] == ()
     assert anchor_check["detail"]["missing_test_formats"] == ()
+    assert anchor_check["detail"]["runtime_covered_format_count"] == (
+        anchor_check["detail"]["documented_contract_format_count"]
+    )
+    assert anchor_check["detail"]["test_covered_format_count"] == anchor_check["detail"]["documented_contract_format_count"]
+    assert anchor_check["detail"]["runtime_reference_gap_count"] == 0
+    assert anchor_check["detail"]["test_reference_gap_count"] == 0
     module_check = next(check for check in report["checks"] if check["id"] == "module_boundaries")
     assert module_check["detail"]["format"] == "appgen.module-boundary-audit.v1"
     assert module_check["detail"]["ok"] is True
@@ -7275,13 +7300,27 @@ def test_tooling_doc_anchor_audit_proves_documented_contract_formats() -> None:
     assert report["ok"] is True
     assert report["missing_sections"] == ()
     assert report["documented_contract_format_count"] >= 50
+    assert report["runtime_covered_format_count"] == report["documented_contract_format_count"]
+    assert report["test_covered_format_count"] == report["documented_contract_format_count"]
     assert report["missing_runtime_formats"] == ()
+    assert report["runtime_reference_gap_count"] == 0
     assert report["missing_test_formats"] == ()
+    assert report["test_reference_gap_count"] == 0
+    assert report["minimum_runtime_format_reference_count"] >= 1
+    assert report["minimum_test_format_reference_count"] >= 1
     assert {
         "appgen.tooling-audit.v1",
         "appgen.tooling-doc-anchor-audit.v1",
         "appgen.studio-semantic-service.v1",
     } <= set(report["documented_contract_formats"])
+    for format_name in (
+        "appgen.tooling-audit.v1",
+        "appgen.tooling-doc-anchor-audit.v1",
+        "appgen.studio-semantic-service.v1",
+    ):
+        assert report["format_reference_matrix"][format_name]["docs"] >= 1
+        assert report["format_reference_matrix"][format_name]["runtime"] >= 1
+        assert report["format_reference_matrix"][format_name]["tests"] >= 1
 
 
 def test_top_level_help_exposes_tooling_subcommands_and_apg_alias() -> None:

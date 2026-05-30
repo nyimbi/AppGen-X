@@ -992,7 +992,11 @@ logs remain useful without requiring JSON parsing. The report embeds
 `docs/tooling.md#...` section reference resolves to a real heading anchor in
 this document. The same audit extracts every `appgen.*.v1` contract format
 named in this document and reports missing runtime or test references, so a
-documented contract cannot silently drift into prose-only status. The audit
+documented contract cannot silently drift into prose-only status. It also
+publishes a per-format reference matrix with documentation, runtime, and test
+reference counts, covered runtime/test format counts, missing-reference gap
+counts, and minimum runtime/test reference counts so release reviewers can see
+which exact contract format lost implementation or test provenance. The audit
 renderer also embeds `appgen.tooling-section-coverage-audit.v1` through the
 `tooling_section_coverage_contracts` gate, proving every major `##` section and
 every concrete `###` subsection in this specification has at least one executable

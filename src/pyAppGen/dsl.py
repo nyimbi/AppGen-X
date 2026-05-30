@@ -6507,7 +6507,13 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
     checks = checks + (
         _tooling_audit_check(
             "tooling_doc_anchor_integrity",
-            doc_anchor_integrity["ok"],
+            doc_anchor_integrity["ok"]
+            and doc_anchor_integrity.get("runtime_covered_format_count")
+            == doc_anchor_integrity.get("documented_contract_format_count")
+            and doc_anchor_integrity.get("test_covered_format_count")
+            == doc_anchor_integrity.get("documented_contract_format_count")
+            and doc_anchor_integrity.get("runtime_reference_gap_count") == 0
+            and doc_anchor_integrity.get("test_reference_gap_count") == 0,
             "Tooling audit section references resolve to headings in docs/tooling.md.",
             "docs/tooling.md#appgen-tooling-audit",
             doc_anchor_integrity,
@@ -6805,8 +6811,32 @@ def _tooling_audit_doc_anchor_integrity(root: Path, section_refs: Iterable[str])
         for ref in referenced
         if ref.startswith("docs/tooling.md#") and ref.rsplit("#", 1)[-1] not in anchors
     )
-    missing_runtime_formats = tuple(format_name for format_name in documented_formats if format_name not in runtime_text)
-    missing_test_formats = tuple(format_name for format_name in documented_formats if format_name not in tooling_tests_text)
+    docs_reference_counts = {format_name: docs_text.count(format_name) for format_name in documented_formats}
+    runtime_reference_counts = {format_name: runtime_text.count(format_name) for format_name in documented_formats}
+    test_reference_counts = {
+        format_name: tooling_tests_text.count(format_name)
+        for format_name in documented_formats
+    }
+    missing_runtime_formats = tuple(
+        format_name for format_name, count in runtime_reference_counts.items() if count == 0
+    )
+    missing_test_formats = tuple(
+        format_name for format_name, count in test_reference_counts.items() if count == 0
+    )
+    runtime_covered_formats = tuple(
+        format_name for format_name, count in runtime_reference_counts.items() if count > 0
+    )
+    test_covered_formats = tuple(
+        format_name for format_name, count in test_reference_counts.items() if count > 0
+    )
+    format_reference_matrix = {
+        format_name: {
+            "docs": docs_reference_counts[format_name],
+            "runtime": runtime_reference_counts[format_name],
+            "tests": test_reference_counts[format_name],
+        }
+        for format_name in documented_formats
+    }
     return {
         "format": "appgen.tooling-doc-anchor-audit.v1",
         "ok": not missing and not missing_runtime_formats and not missing_test_formats,
@@ -6816,8 +6846,20 @@ def _tooling_audit_doc_anchor_integrity(root: Path, section_refs: Iterable[str])
         "missing_sections": missing,
         "documented_contract_formats": documented_formats,
         "documented_contract_format_count": len(documented_formats),
+        "runtime_covered_formats": runtime_covered_formats,
+        "runtime_covered_format_count": len(runtime_covered_formats),
+        "test_covered_formats": test_covered_formats,
+        "test_covered_format_count": len(test_covered_formats),
         "missing_runtime_formats": missing_runtime_formats,
+        "runtime_reference_gap_count": len(missing_runtime_formats),
         "missing_test_formats": missing_test_formats,
+        "test_reference_gap_count": len(missing_test_formats),
+        "docs_format_reference_counts": docs_reference_counts,
+        "runtime_format_reference_counts": runtime_reference_counts,
+        "test_format_reference_counts": test_reference_counts,
+        "format_reference_matrix": format_reference_matrix,
+        "minimum_runtime_format_reference_count": min(runtime_reference_counts.values(), default=0),
+        "minimum_test_format_reference_count": min(test_reference_counts.values(), default=0),
     }
 
 
