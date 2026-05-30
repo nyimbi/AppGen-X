@@ -43,3 +43,23 @@ def build_release_evidence():
 
 def field_service_management_build_release_evidence():
     return build_release_evidence()
+
+
+from .field_control import improve1_field_control_contract
+
+_FIELD_SERVICE_MANAGEMENT_DOMAIN_RELEASE_EVIDENCE = build_release_evidence
+
+
+def build_release_evidence():
+    base = dict(_FIELD_SERVICE_MANAGEMENT_DOMAIN_RELEASE_EVIDENCE())
+    field_control = improve1_field_control_contract()
+    checks = tuple(base.get('checks', ())) + (
+        {'id': 'improve1_field_control_contract', 'ok': field_control['ok']},
+        {'id': 'improve1_field_control_capability_count', 'ok': field_control['capability_count'] == 50},
+        {'id': 'improve1_field_control_release_boundary', 'ok': not field_control['blocking_gaps']},
+    )
+    return {**base, 'ok': base.get('ok') is True and all(check['ok'] for check in checks), 'checks': checks, 'field_control': field_control, 'blocking_gaps': tuple(check for check in checks if not check['ok']), 'sections': tuple(dict.fromkeys(tuple(base.get('sections', ())) + ('field_control',))), 'side_effects': ()}
+
+
+def field_service_management_build_release_evidence():
+    return build_release_evidence()

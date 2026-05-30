@@ -82,3 +82,25 @@ def standalone_ui_smoke_test():
     contract = field_service_management_ui_contract()
     rendered = field_service_management_render_workbench()
     return {'ok': contract['ok'] and rendered['ok'] and bool(contract['forms']) and bool(contract['wizards']) and bool(contract['controls']) and contract['single_pbc_app']['ok'], 'contract': contract, 'rendered': rendered, 'side_effects': ()}
+
+
+# Improve1 field-service control coverage is part of the visible workbench contract.
+from .field_control import improve1_field_control_contract
+
+_FIELD_SERVICE_MANAGEMENT_FULL_UI_CONTRACT = field_service_management_ui_contract
+_FIELD_SERVICE_MANAGEMENT_FULL_RENDER_WORKBENCH = field_service_management_render_workbench
+
+
+def field_service_management_ui_contract():
+    base = dict(_FIELD_SERVICE_MANAGEMENT_FULL_UI_CONTRACT())
+    field_control = improve1_field_control_contract()
+    full_surface = dict(base.get('full_capability_surface', {}))
+    full_surface['field_control_panels'] = tuple(item['evidence']['ui_surface'] for item in field_control['capabilities'])
+    full_surface['field_control_service_actions'] = tuple(item['evidence']['service_api'] for item in field_control['capabilities'])
+    return {**base, 'ok': base.get('ok') is True and field_control['ok'], 'full_capability_surface': full_surface, 'field_control_contract': field_control, 'stream_engine_picker_visible': False}
+
+
+def field_service_management_render_workbench(state=None):
+    base = dict(_FIELD_SERVICE_MANAGEMENT_FULL_RENDER_WORKBENCH(state=state))
+    field_control = improve1_field_control_contract()
+    return {**base, 'ok': base.get('ok') is True and field_control['ok'], 'panels': tuple(dict.fromkeys(tuple(base.get('panels', ())) + tuple(item['evidence']['ui_surface'] for item in field_control['capabilities']))), 'field_control_actions': tuple(item['evidence']['service_api'] for item in field_control['capabilities']), 'field_control_contract': field_control, 'stream_engine_picker_visible': False}

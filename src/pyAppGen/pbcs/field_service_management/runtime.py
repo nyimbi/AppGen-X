@@ -412,3 +412,39 @@ def field_service_management_runtime_capabilities():
         'field_workforce_ui_surfaces': FIELD_WORKFORCE_UI_SURFACES,
         'side_effects': (),
     }
+
+
+# Field service improve1 control extension with per-feature executable evidence.
+from .field_control import improve1_field_control_contract as field_service_management_improve1_field_control_contract
+
+_FIELD_SERVICE_MANAGEMENT_WORKFORCE_BUILD_RELEASE_EVIDENCE = field_service_management_build_release_evidence
+_FIELD_SERVICE_MANAGEMENT_WORKFORCE_RUNTIME_CAPABILITIES = field_service_management_runtime_capabilities
+
+
+def field_service_management_build_release_evidence():
+    evidence = dict(_FIELD_SERVICE_MANAGEMENT_WORKFORCE_BUILD_RELEASE_EVIDENCE())
+    field_control = field_service_management_improve1_field_control_contract()
+    checks = tuple(evidence.get('checks', ())) + (
+        {'id': 'improve1_field_control_contract', 'ok': field_control['ok']},
+        {'id': 'improve1_field_control_capability_count', 'ok': field_control['capability_count'] == 50},
+        {'id': 'improve1_field_control_boundary', 'ok': not field_control['blocking_gaps'] and field_control['stream_engine_picker_visible'] is False},
+    )
+    return {**evidence, 'ok': evidence.get('ok') is True and all(check['ok'] for check in checks), 'checks': checks, 'field_control': field_control, 'blocking_gaps': tuple(check for check in checks if not check['ok']), 'side_effects': ()}
+
+
+def field_service_management_runtime_capabilities():
+    runtime = dict(_FIELD_SERVICE_MANAGEMENT_WORKFORCE_RUNTIME_CAPABILITIES())
+    field_control = field_service_management_improve1_field_control_contract()
+    return {
+        **runtime,
+        'ok': runtime.get('ok') is True and field_control['ok'],
+        'field_control': field_control,
+        'operations': tuple(runtime.get('operations', ())) + ('improve1_field_control_contract',),
+        'improve1_field_control_capabilities': tuple(item['slug'] for item in field_control['capabilities']),
+        'owned_tables': tuple(dict.fromkeys(tuple(runtime.get('owned_tables', ())) + tuple(field_control['owned_tables']))),
+        'allowed_database_backends': field_control['allowed_database_backends'],
+        'event_contract': field_control['event_contract'],
+        'required_event_topic': field_control['required_event_topic'],
+        'stream_engine_picker_visible': False,
+        'side_effects': (),
+    }
