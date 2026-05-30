@@ -267,3 +267,43 @@ def music_royalties_rights_runtime_smoke():
     }
 
 music_royalties_rights_execute_domain_operation = execute_domain_operation
+
+
+# Improve1 music royalties control extension.
+from .royalties_rights_control import improve1_royalties_rights_control_contract, evaluate_royalties_rights_control
+
+_MUSIC_ROYALTIES_RIGHTS_BASE_RUNTIME_CAPABILITIES = music_royalties_rights_runtime_capabilities
+_MUSIC_ROYALTIES_RIGHTS_BASE_BUILD_RELEASE_EVIDENCE = music_royalties_rights_build_release_evidence
+
+
+def music_royalties_rights_runtime_capabilities():
+    runtime = dict(_MUSIC_ROYALTIES_RIGHTS_BASE_RUNTIME_CAPABILITIES())
+    control = improve1_royalties_rights_control_contract()
+    runtime["ok"] = bool(runtime.get("ok")) and control["ok"]
+    runtime["royalties_rights_control"] = control
+    runtime["operations"] = tuple(dict.fromkeys(tuple(runtime.get("operations", ())) + ("evaluate_royalties_rights_control", "improve1_royalties_rights_control_contract")))
+    runtime["improve1_control_owned_tables"] = control["owned_tables"]
+    return runtime
+
+
+def music_royalties_rights_build_release_evidence():
+    evidence = dict(_MUSIC_ROYALTIES_RIGHTS_BASE_BUILD_RELEASE_EVIDENCE())
+    control = improve1_royalties_rights_control_contract()
+    artifacts = dict(evidence.get("generated_artifacts", {}))
+    artifacts["royalties_rights_control"] = {
+        "contract": control["format"],
+        "capability_count": control["capability_count"],
+        "owned_tables": control["owned_tables"],
+        "service_apis": tuple(item["evidence"]["service_api"] for item in control["capabilities"]),
+        "ui_surfaces": tuple(item["evidence"]["ui_surface"] for item in control["capabilities"]),
+        "test": "tests/test_domain_behavior.py",
+    }
+    checks = tuple(evidence.get("checks", ())) + ({"id": "improve1_royalties_rights_control", "ok": control["ok"]},)
+    evidence.update({
+        "ok": bool(evidence.get("ok")) and control["ok"],
+        "checks": checks,
+        "generated_artifacts": artifacts,
+        "royalties_rights_control": control,
+        "blocking_gaps": tuple(evidence.get("blocking_gaps", ())) + tuple(control.get("blocking_gaps", ())),
+    })
+    return evidence
