@@ -735,7 +735,12 @@ the tooling audit to prove validation and generation text logs keep target,
 semantic-model, diagnostic, artifact, manifest, and blocking-gap evidence
 visible without JSON parsing. Its renderer contract reports fragment and marker
 counts across both validation and generation summaries so target failures,
-artifacts, manifests, gaps, and diagnostics are measurable in release logs.
+artifacts, manifests, gaps, and diagnostics are measurable in release logs. It
+also reports summary-line, check-line, passing-check-line, failing-check-line,
+target-detail-line, artifact-line, manifest-line, gap-line, diagnostic-line,
+warning-line, and error-line counts so release triage can identify whether
+validation checks, target mismatch details, generated handoff artifacts, or
+diagnostics disappeared from text output.
 
 ### `appgen generate`
 

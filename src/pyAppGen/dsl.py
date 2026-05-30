@@ -2533,6 +2533,13 @@ def _validate_generate_text_renderer_contract() -> dict:
         "warning AGX0404: Unknown visual component CustomGauge.",
     )
     missing = tuple(fragment for fragment in required_fragments if fragment not in text)
+    lines = tuple(line for line in text.splitlines() if line.strip())
+    summary_lines = tuple(line for line in lines if line.startswith(("validate ", "generate ")))
+    check_lines = tuple(line for line in lines if line.startswith(("ok ", "fail ")))
+    target_detail_lines = tuple(line for line in lines if line.startswith(("unknown-targets ", "missing-targets ")))
+    artifact_lines = tuple(line for line in lines if line.startswith("artifact "))
+    gap_lines = tuple(line for line in lines if line.startswith("gap "))
+    diagnostic_lines = tuple(line for line in lines if line.startswith(("warning ", "error ")))
     return {
         "format": "appgen.validate-generate-text-renderer.v1",
         "ok": not missing and not text.lstrip().startswith("{"),
@@ -2543,6 +2550,17 @@ def _validate_generate_text_renderer_contract() -> dict:
         ),
         "required_fragments": required_fragments,
         "missing_fragments": missing,
+        "summary_line_count": len(summary_lines),
+        "check_line_count": len(check_lines),
+        "passing_check_line_count": sum(1 for line in check_lines if line.startswith("ok ")),
+        "failing_check_line_count": sum(1 for line in check_lines if line.startswith("fail ")),
+        "target_detail_line_count": len(target_detail_lines),
+        "artifact_line_count": len(artifact_lines),
+        "manifest_line_count": sum(1 for line in lines if line.startswith("manifest ")),
+        "gap_line_count": len(gap_lines),
+        "diagnostic_line_count": len(diagnostic_lines),
+        "warning_line_count": sum(1 for line in diagnostic_lines if line.startswith("warning ")),
+        "error_line_count": sum(1 for line in diagnostic_lines if line.startswith("error ")),
         "json_fallback": text.lstrip().startswith("{"),
         "text_prefix": text[:240],
     }

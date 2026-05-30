@@ -4753,6 +4753,17 @@ def test_validate_generate_text_renderer_contract_proves_readiness_log_markers()
     assert report["required_fragment_count"] == len(report["required_fragments"])
     assert report["missing_fragment_count"] == 0
     assert report["marker_line_count"] >= 10
+    assert report["summary_line_count"] == 2
+    assert report["check_line_count"] == 2
+    assert report["passing_check_line_count"] == 1
+    assert report["failing_check_line_count"] == 1
+    assert report["target_detail_line_count"] == 2
+    assert report["artifact_line_count"] == 1
+    assert report["manifest_line_count"] == 1
+    assert report["gap_line_count"] == 1
+    assert report["diagnostic_line_count"] == 2
+    assert report["warning_line_count"] == 1
+    assert report["error_line_count"] == 1
     assert report["missing_fragments"] == ()
     assert report["json_fallback"] is False
     assert report["text_prefix"].startswith(
