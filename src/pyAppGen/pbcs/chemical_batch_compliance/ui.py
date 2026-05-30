@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from .chemical_control import CHEMICAL_CONTROL_CAPABILITIES, improve1_chemical_control_contract
 from .domain_depth import DOMAIN_ADVANCED_CAPABILITIES
 from .domain_depth import DOMAIN_EDGE_CASES
 from .domain_depth import DOMAIN_OPERATIONS
@@ -38,7 +39,9 @@ def chemical_batch_compliance_ui_contract() -> dict:
             "operation_actions": DOMAIN_OPERATIONS,
             "rule_editors": DOMAIN_RULES,
             "parameter_editors": DOMAIN_PARAMETERS,
-            "advanced_panels": DOMAIN_ADVANCED_CAPABILITIES,
+            "advanced_panels": DOMAIN_ADVANCED_CAPABILITIES + CHEMICAL_CONTROL_CAPABILITIES,
+            "chemical_control_panels": tuple(f"chemical_control_{capability}" for capability in CHEMICAL_CONTROL_CAPABILITIES),
+            "chemical_control_contract": improve1_chemical_control_contract(),
             "table_browsers": DOMAIN_OWNED_TABLES,
             "edge_case_queues": DOMAIN_EDGE_CASES,
             "agent_tools": tuple(f"{PBC_KEY}_skills.{op}" for op in DOMAIN_OPERATIONS),

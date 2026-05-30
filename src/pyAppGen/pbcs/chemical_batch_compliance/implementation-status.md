@@ -38,4 +38,14 @@ Additional focused audit command covered source artifact, package-local, specifi
 ## Remaining Risks
 
 - This implementation is package-local and deterministic; live database adapters, external lab integrations, equipment telemetry, and browser-rendered UI verification remain future integration work.
-- The PBC has explicit extension surfaces for additional `improve1.md` items such as stability programs, environmental permits, waste manifests, cleaning validation, and campaign planning, but those are not wired to external systems in this slice.
+
+## improve1 Full Traceability Evidence
+
+- Added `chemical_control.py` with 50 side-effect-free chemical batch controls covering recipe revisions, potency and tolerance, material substitution, electronic batch execution, line clearance, dispense reconciliation, process parameters, sampling, custody, QC specs, OOS/OOT, CAPA, rework, genealogy, stability, SDS obligations and revisions, hazardous storage, GHS labeling, PPE/permit gating, environmental permits, waste, regulatory dossiers, jurisdiction thresholds, impurities, CoA/source checks, campaign changeover, cleaning validation, calibration, review-by-exception, disposition, expiry, external labs, domain events, API hardening, specialized workbenches, agent SDS/deviation skills, agent guardrails, counterfactuals, anomaly detection, continuous controls, sealed evidence packs, tenant isolation, recall drills, and domain-complete release gates.
+- Bound the chemical control contract into `runtime.py` release evidence and `ui.py` chemical-control panels so generated applications surface the full chemical batch compliance domain control set.
+- Updated `IMPROVE1_TRACEABILITY.md` and `improve1_capabilities.py` so every feature 1-50 maps to `chemical_control.py`, package UI, service/API surface, `tests/test_domain_behavior.py`, and release evidence.
+
+Validation:
+- `/Volumes/Media/src/pjs/appgen/.venv/bin/pytest src/pyAppGen/pbcs/chemical_batch_compliance/tests` -> 23 passed.
+- Improve1 repository sweep -> 877 passed, 197 warnings limited to existing deprecation warnings outside this PBC slice.
+- `git diff --check -- src/pyAppGen/pbcs` -> passed with no output.
