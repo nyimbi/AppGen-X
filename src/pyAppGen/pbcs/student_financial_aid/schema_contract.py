@@ -1,1 +1,1 @@
-from .runtime import student_financial_aid_build_schema_contract as build_schema_contract
+from .slice_app import build_schema_contract

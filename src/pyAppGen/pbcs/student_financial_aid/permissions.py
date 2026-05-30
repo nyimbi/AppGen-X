@@ -1,15 +1,32 @@
-PBC_KEY = 'student_financial_aid'
-PERMISSIONS = ('student_financial_aid.read',
- 'student_financial_aid.create',
- 'student_financial_aid.update',
- 'student_financial_aid.approve',
- 'student_financial_aid.admin')
+from __future__ import annotations
 
-def permission_manifest():
-    return {'ok': True, 'pbc': PBC_KEY, 'permissions': PERMISSIONS, 'roles': ('operator','approver','auditor'), 'side_effects': ()}
+from .slice_app import PBC_KEY, PERMISSIONS
 
-def authorize(permission, actor=None):
-    return {'ok': permission in PERMISSIONS or permission == f'{PBC_KEY}.operate', 'permission': permission, 'actor': dict(actor or {}), 'side_effects': ()}
 
-def smoke_test():
-    return {'ok': permission_manifest()['ok'] and authorize(PERMISSIONS[0])['ok'], 'side_effects': ()}
+def permission_manifest() -> dict:
+    return {
+        'ok': True,
+        'pbc': PBC_KEY,
+        'permissions': PERMISSIONS,
+        'roles': ('reader', 'operator', 'approver', 'admin'),
+        'side_effects': (),
+    }
+
+
+def authorize(permission: str, granted_permissions=None) -> dict:
+    granted = set(granted_permissions or PERMISSIONS)
+    return {
+        'ok': permission in granted,
+        'permission': permission,
+        'granted_permissions': tuple(sorted(granted)),
+        'side_effects': (),
+    }
+
+
+def permissions_contract() -> dict:
+    return permission_manifest()
+
+
+def smoke_test() -> dict:
+    manifest = permission_manifest()
+    return {'ok': manifest['ok'] and authorize(f'{PBC_KEY}.read')['ok'], 'side_effects': ()}

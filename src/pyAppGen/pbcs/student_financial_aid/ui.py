@@ -1,17 +1,97 @@
-from .domain_depth import domain_capability_surface_contract, DOMAIN_OPERATIONS, DOMAIN_RULES, DOMAIN_PARAMETERS, DOMAIN_ADVANCED_CAPABILITIES, DOMAIN_OWNED_TABLES, DOMAIN_EDGE_CASES
+"""UI fragments for the student_financial_aid PBC."""
+from __future__ import annotations
+
+from .slice_app import BUSINESS_TABLES, DOMAIN_OPERATIONS, PARAMETER_KEYS, RULE_KEYS, build_standalone_app, build_ui_contract
+
 PBC_KEY = 'student_financial_aid'
+UI_FRAGMENTS = tuple(build_ui_contract()['fragments'])
 
-def student_financial_aid_ui_contract():
-    surface = domain_capability_surface_contract()
-    return {'ok': True, 'pbc': PBC_KEY, 'fragments': ('StudentFinancialAidWorkbench', 'StudentFinancialAidDetail', 'StudentFinancialAidAssistantPanel'), 'configuration_editor': True, 'stream_engine_picker_visible': False, 'action_permissions': ('student_financial_aid.read',
- 'student_financial_aid.create',
- 'student_financial_aid.update',
- 'student_financial_aid.approve',
- 'student_financial_aid.admin'), 'full_capability_surface': {'operation_actions': DOMAIN_OPERATIONS, 'rule_editors': DOMAIN_RULES, 'parameter_editors': DOMAIN_PARAMETERS, 'advanced_panels': DOMAIN_ADVANCED_CAPABILITIES, 'table_browsers': DOMAIN_OWNED_TABLES, 'edge_case_queues': DOMAIN_EDGE_CASES, 'agent_tools': tuple(f'{PBC_KEY}_skills.{op}' for op in DOMAIN_OPERATIONS), 'navigation_sections': ('overview','operations','edge_case_triage','advanced_intelligence','release_evidence'), 'coverage': surface['coverage']}, 'side_effects': ()}
 
-def student_financial_aid_render_workbench():
-    ui = student_financial_aid_ui_contract(); full = ui['full_capability_surface']
-    return {'ok': True, 'pbc': PBC_KEY, 'route': f'/workbench/pbcs/{PBC_KEY}', 'operation_actions': full['operation_actions'], 'table_browsers': full['table_browsers'], 'side_effects': ()}
+def student_financial_aid_ui_contract() -> dict:
+    contract = build_ui_contract()
+    return {
+        **contract,
+        'configuration_editor': True,
+        'stream_engine_picker_visible': False,
+        'full_capability_surface': {
+            'operation_actions': tuple(DOMAIN_OPERATIONS),
+            'rule_editors': tuple(RULE_KEYS),
+            'parameter_editors': tuple(PARAMETER_KEYS),
+            'advanced_panels': tuple(contract['advanced_panels']),
+            'edge_case_queues': (
+                'verification_overdue',
+                'sap_suspension',
+                'overaward_detected',
+                'return_of_funds_required',
+                'appeal_pending_committee',
+                'idempotency_replay',
+            ),
+            'table_browsers': tuple(BUSINESS_TABLES),
+            'navigation_sections': (
+                'aid_year_setup',
+                'intake_and_verification',
+                'need_and_packaging',
+                'disbursement_and_returns',
+                'appeals_and_compliance',
+                'agent_assistant',
+                'release_evidence',
+            ),
+        },
+        'operation_actions': tuple(DOMAIN_OPERATIONS),
+        'rule_editors': tuple(RULE_KEYS),
+        'parameter_editors': tuple(PARAMETER_KEYS),
+        'edge_case_queues': (
+            'verification_overdue',
+            'sap_suspension',
+            'overaward_detected',
+            'return_of_funds_required',
+            'appeal_pending_committee',
+            'idempotency_replay',
+        ),
+        'table_browsers': tuple(BUSINESS_TABLES),
+        'navigation_sections': (
+            'aid_year_setup',
+            'intake_and_verification',
+            'need_and_packaging',
+            'disbursement_and_returns',
+            'appeals_and_compliance',
+            'agent_assistant',
+            'release_evidence',
+        ),
+    }
 
-def smoke_test():
-    return {'ok': student_financial_aid_ui_contract()['ok'] and student_financial_aid_render_workbench()['ok'], 'side_effects': ()}
+
+def student_financial_aid_render_workbench(state: dict | None = None) -> dict:
+    tenant = (state or {}).get('tenant', 'default')
+    workbench = build_standalone_app().build_workbench_view(tenant=tenant)
+    return {
+        'ok': workbench['ok'],
+        'pbc': PBC_KEY,
+        'view': workbench['view'],
+        'panels': workbench['panels'],
+        'forms': workbench['forms'],
+        'wizards': workbench['wizards'],
+        'controls': workbench['controls'],
+        'summary': workbench['summary'],
+        'configuration_editor': True,
+        'stream_engine_picker_visible': False,
+        'action_permissions': tuple(student_financial_aid_ui_contract()['action_permissions']),
+        'advanced_panels': tuple(student_financial_aid_ui_contract()['advanced_panels']),
+        'agent_tools': (
+            'student_financial_aid_plan_document_changes',
+            'student_financial_aid_preview_mutation',
+            'student_financial_aid_explain_need_analysis',
+        ),
+        'side_effects': (),
+    }
+
+
+def smoke_test() -> dict:
+    contract = student_financial_aid_ui_contract()
+    workbench = student_financial_aid_render_workbench({'tenant': 'tenant-smoke'})
+    return {
+        'ok': contract['ok'] and workbench['ok'] and bool(workbench['forms']) and bool(workbench['wizards']) and bool(workbench['controls']),
+        'contract': contract,
+        'workbench': workbench,
+        'side_effects': (),
+    }

@@ -2,107 +2,135 @@
 
 ## Purpose
 
-The `student_financial_aid` PBC is a packaged business capability for Aid eligibility, awards, verification, disbursement, satisfactory progress, compliance, and student funding. It owns schema, migrations, models, services, API contracts, AppGen-X event contracts, handlers, UI fragments, AI agent skills, configuration, rules, parameters, seed data, package metadata, tests, and release evidence. It composes with other AppGen-X PBCs only through declared APIs, AppGen-X events, or package-local projections.
+The `student_financial_aid` package is an executable packaged business capability for aid-year setup, student aid profile intake, FAFSA/ISIR-equivalent application capture, dependency and verification review, satisfactory academic progress, cost-of-attendance budgeting, need analysis, award packaging, disbursement scheduling, refund and return controls, overaward handling, professional judgment, appeals, compliance, communications, and governed assistant previews. The package owns its schema, migration, models, services, API routes, AppGen-X event contract, handlers, workbench/UI metadata, permissions, configuration hooks, seed plan, tests, side-effect-free registration, and release evidence.
 
 ## Stable Identity
 
-- PBC key: `student_financial_aid`.
-- Mesh: `finops`.
-- Package directory: `src/pyAppGen/pbcs/student_financial_aid`.
-- Runtime entrypoint: `student_financial_aid_runtime_capabilities()`.
-- UI entrypoint: `student_financial_aid_ui_contract()`.
-- Source registration entrypoint: `implementation_contract()`.
-- Allowed database backends: PostgreSQL, MySQL, and MariaDB.
-- Eventing standard: fixed AppGen-X outbox/inbox event contract.
-- User-facing stream-engine selector: forbidden and hidden.
+- PBC key: `student_financial_aid`
+- Mesh: `finops`
+- Package directory: `src/pyAppGen/pbcs/student_financial_aid`
+- Runtime entrypoint: `student_financial_aid_runtime_capabilities()`
+- Package registration entrypoint: `implementation_contract()`
+- Event contract: AppGen-X only
+- Allowed database backends: PostgreSQL, MySQL, MariaDB
+- Stream engine picker: always hidden and forbidden
 
-## Owned Datastore Boundary
+This PBC is intentionally self-contained. It does not write foreign or shared tables, and it does not require edits to global generation or language modules to function.
 
-- `student_financial_aid_aid_application`: owns aid application lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `student_financial_aid_eligibility_review`: owns eligibility review lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `student_financial_aid_award_package`: owns award package lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `student_financial_aid_verification_item`: owns verification item lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `student_financial_aid_disbursement`: owns disbursement lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `student_financial_aid_sap_status`: owns sap status lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `student_financial_aid_aid_compliance`: owns aid compliance lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `student_financial_aid_student_financial_aid_policy_rule`: owns student financial aid policy rule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `student_financial_aid_student_financial_aid_runtime_parameter`: owns student financial aid runtime parameter lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `student_financial_aid_student_financial_aid_schema_extension`: owns student financial aid schema extension lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `student_financial_aid_student_financial_aid_control_assertion`: owns student financial aid control assertion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `student_financial_aid_student_financial_aid_governed_model`: owns student financial aid governed model lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+## Owned Table Boundary
 
-Runtime AppGen-X event tables are `student_financial_aid_appgen_outbox_event`, `student_financial_aid_appgen_inbox_event`, and `student_financial_aid_appgen_dead_letter_event`. The PBC does not mutate foreign tables. Dependencies are represented by consumed events ('PolicyChanged', 'AuditEventSealed', 'OperationalKpiChanged') and API contracts ('POST /aid-applications', 'POST /eligibility-reviews', 'POST /award-packages', 'POST /verification-items', 'POST /disbursements', 'GET /student-financial-aid-workbench').
+The package owns the following database-backed artifacts and treats them as the only mutation targets for commands, routes, and assistant CRUD previews:
 
-## Executable Domain Operations
+- `student_financial_aid_aid_year`
+- `student_financial_aid_student_aid_profile`
+- `student_financial_aid_aid_application`
+- `student_financial_aid_dependency_review`
+- `student_financial_aid_verification_item`
+- `student_financial_aid_document_artifact`
+- `student_financial_aid_sap_evaluation`
+- `student_financial_aid_cost_of_attendance_budget`
+- `student_financial_aid_need_analysis`
+- `student_financial_aid_award_package`
+- `student_financial_aid_award_line`
+- `student_financial_aid_scholarship_resource`
+- `student_financial_aid_grant_eligibility`
+- `student_financial_aid_loan_offer`
+- `student_financial_aid_work_study_plan`
+- `student_financial_aid_disbursement_schedule`
+- `student_financial_aid_refund_return_case`
+- `student_financial_aid_overaward_case`
+- `student_financial_aid_professional_judgment_case`
+- `student_financial_aid_aid_appeal`
+- `student_financial_aid_aid_compliance_obligation`
+- `student_financial_aid_communication_log`
+- `student_financial_aid_policy_rule`
+- `student_financial_aid_runtime_parameter`
+- `student_financial_aid_schema_extension`
+- `student_financial_aid_control_assertion`
+- `student_financial_aid_governed_model`
+- `student_financial_aid_appgen_outbox_event`
+- `student_financial_aid_appgen_inbox_event`
+- `student_financial_aid_appgen_dead_letter_event`
 
-- `create_aid_application`: validates policy, writes owned `student_financial_aid_aid_application` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `record_eligibility_review`: validates policy, writes owned `student_financial_aid_eligibility_review` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `review_award_package`: validates policy, writes owned `student_financial_aid_award_package` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `approve_verification_item`: validates policy, writes owned `student_financial_aid_verification_item` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `simulate_disbursement`: validates policy, writes owned `student_financial_aid_disbursement` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `create_sap_status`: validates policy, writes owned `student_financial_aid_sap_status` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `record_aid_compliance`: validates policy, writes owned `student_financial_aid_aid_compliance` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `review_student_financial_aid_policy_rule`: validates policy, writes owned `student_financial_aid_student_financial_aid_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `approve_student_financial_aid_runtime_parameter`: validates policy, writes owned `student_financial_aid_student_financial_aid_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `simulate_student_financial_aid_schema_extension`: validates policy, writes owned `student_financial_aid_student_financial_aid_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `create_student_financial_aid_control_assertion`: validates policy, writes owned `student_financial_aid_student_financial_aid_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `record_student_financial_aid_governed_model`: validates policy, writes owned `student_financial_aid_student_financial_aid_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_student_financial_aid_13`: validates policy, writes owned `student_financial_aid_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_student_financial_aid_14`: validates policy, writes owned `student_financial_aid_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_student_financial_aid_15`: validates policy, writes owned `student_financial_aid_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_student_financial_aid_16`: validates policy, writes owned `student_financial_aid_aid_application` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_student_financial_aid_17`: validates policy, writes owned `student_financial_aid_eligibility_review` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_student_financial_aid_18`: validates policy, writes owned `student_financial_aid_award_package` records, emits AppGen-X events, and returns side-effect-free evidence.
+Shared or foreign tables are explicitly out of scope. Cross-PBC collaboration is represented only through declared APIs, event consumption, or read-only projection dependencies.
 
-Every command is deterministic and side-effect-free in package tests. Each command returns target owned tables, emitted event evidence, idempotency keys, rule decisions, parameter reads, permissions, and audit hashes.
+## Schema, Migrations, and Models
 
-## Standard Table-Stakes Capabilities
+`migrations/001_initial.sql` defines the complete owned schema. Every table uses a consistent owned-record envelope with identity, tenant boundary, aid-year reference, subject references, status, lifecycle stage, amount, currency, JSON payload, and timestamps. The schema contract and model contract are generated from the same owned table list in `slice_app.py`, so the migration, schema, service, and UI surfaces remain aligned.
 
-The package covers lifecycle intake, identity and classification, validation, approvals, exception handling, audit evidence, role-aware workbenches, assistant-guided task execution, configuration, rule compilation, bounded parameters, seed data, RBAC, route dispatch, typed events, idempotent handlers, retry, and dead-letter triage. It includes PostgreSQL, MySQL, and MariaDB backend allowlists and never exposes stream-engine pickers.
+The package-local model contract is intentionally simple. It exposes one model artifact per owned table and keeps field shapes stable for generation, audit, and smoke coverage. This is enough for database-backed contract artifacts and source ownership evidence without expanding into a shared ORM layer.
 
-## Advanced Capabilities
+## Command and Query Services
 
-- Event-sourced operational history for Student Financial Aid domain records.
-- Multi-tenant policy isolation with owned table boundaries.
-- Schema evolution resilience through package-local schema extensions.
-- Autonomous anomaly detection and specialist exception triage.
-- Semantic document and instruction understanding for professional intake.
-- Predictive risk scoring and confidence-ranked recommendations.
-- Counterfactual scenario simulation for policy and operational choices.
-- Cryptographic audit proofs for high-value records and decisions.
-- Continuous control testing over domain lifecycle events.
-- Carbon and sustainability awareness where operational decisions affect footprint.
-- Cross-PBC event federation through AppGen-X only.
-- Governed AI agent execution with human confirmation for mutations.
+The service surface exposes explicit command and query operations. Major commands include aid year setup, student aid profile creation, aid application intake, dependency and verification review, document registration, sap evaluation, cost-of-attendance capture, need analysis, award packaging, disbursement scheduling, refund and return review, professional judgment submission, appeal recording, compliance obligation tracking, and communication logging.
+
+Each command stays inside the owned datastore plus outbox boundary. Queries expose workbench summaries and build workbench metadata from the same owned records. Service contracts describe operation kind, transaction boundary, event contract, and table scope. API route contracts map stable HTTP-style endpoints onto that same service surface.
+
+## Events, Inbox/Outbox, Idempotency, and Retry
+
+AppGen-X is the only event contract. The package emits:
+
+- `StudentFinancialAidCreated`
+- `StudentFinancialAidUpdated`
+- `StudentFinancialAidApproved`
+- `StudentFinancialAidExceptionOpened`
+
+The package consumes:
+
+- `PolicyChanged`
+- `AuditEventSealed`
+- `OperationalKpiChanged`
+
+The handler layer requires idempotency keys, suppresses duplicates, and sends unexpected event types to the dead-letter table with retry metadata. This means event handling, outbox evidence, inbox evidence, dead-letter evidence, and retry posture are all visible to audits.
 
 ## Rules, Parameters, and Configuration
 
-Rules are first-class artifacts: ('aid_application_policy', 'eligibility_review_policy', 'award_package_policy', 'verification_item_policy', 'disbursement_policy', 'sap_status_policy'). Parameters are bounded artifacts: ('quality_score_floor', 'materiality_threshold', 'approval_sla_hours', 'risk_threshold', 'forecast_horizon_days', 'workbench_limit'). Configuration includes database backend, event topic, retry limit, default policy, workbench limits, confirmation requirements for agent writes, and tenant isolation options.
+Rules are explicit compiled artifacts, not hidden behavior. The package defines policies for aid-year controls, dependency review, verification resolution, sap, need analysis, packaging, disbursement, return of funds, professional judgment, appeals, and compliance. Parameters such as workbench limits, verification deadlines, sap thresholds, loan caps, work-study caps, packaging buffers, and communication SLAs are bounded and editable through configuration contracts.
 
-## Public APIs and Services
+Configuration stays bounded as well. The package validates database backend selection against PostgreSQL, MySQL, and MariaDB only. It enforces the AppGen-X topic, never exposes a stream picker, and keeps side effects out of package discovery and metadata validation.
 
-APIs are ('POST /aid-applications', 'POST /eligibility-reviews', 'POST /award-packages', 'POST /verification-items', 'POST /disbursements', 'GET /student-financial-aid-workbench'). Services preserve idempotency keys, permission names, owned table scopes, route metadata, and event mappings. Services write only to `student_financial_aid_` tables and package-local event tables.
+## UI, Workbench, Permissions, and Controls
 
-## Events and Handlers
+The workbench is organized around real student-aid operations instead of placeholder boards. Navigation sections cover aid-year setup, intake and verification, need and packaging, disbursement and returns, appeals and compliance, agent assistance, and release evidence. Forms, wizards, and controls are all package-owned and aligned with the core workflows.
 
-Emitted events: ('StudentFinancialAidCreated', 'StudentFinancialAidUpdated', 'StudentFinancialAidApproved', 'StudentFinancialAidExceptionOpened'). Consumed events: ('PolicyChanged', 'AuditEventSealed', 'OperationalKpiChanged'). Handlers require event IDs, ignore duplicates, record AppGen-X inbox entries, and write dead-letter evidence for unknown or exhausted events.
+UI fragments include `StudentFinancialAidWorkbench`, `StudentFinancialAidDetail`, and `StudentFinancialAidAssistantPanel`. Permissions and RBAC are explicit: read, create, update, approve, admin, and operate. Controls include rule editors, parameter editors, an award matrix preview, a disbursement gate checklist, an event replay console, and an assistant mutation guard.
 
-## UI, Workbench, and Agent Skills
+## Agent and Assistant Skills
 
-Workbench views include ('aid application board', 'eligibility review board', 'award package board', 'verification item board', 'disbursement board', 'sap status board', 'aid compliance board'). The UI exposes operational queues, detail panels, rule editors, parameter editors, assistant panels, exception triage, analytics, and release evidence. The agent contributes `student_financial_aid_skills`, parses documents and instructions, produces governed CRUD previews, validates owned table boundaries, requires human confirmation for writes, and participates in the composed single application assistant.
+The package contributes a governed assistant skill namespace. The assistant can guide users, read records, plan document changes, preview mutations, explain need analysis, and preview disbursement readiness. Document instruction intake is semantically aware of dependency, tax, sap, and appeal language, but it never mutates data directly. Instead it returns a mutation preview, candidate owned tables, extracted fields, and a requirement for human confirmation.
 
-## Release Evidence and Tests
+This means the package satisfies agent, assistant, chatbot, skill, document, datastore, CRUD, and mutation-preview requirements without expanding beyond owned boundaries.
 
-Release readiness proves schema, migrations, models, service contracts, route contracts, AppGen-X eventing, idempotent handlers, retry/dead-letter evidence, UI surfaces, RBAC, configuration, rules, parameters, seed data, package metadata, side-effect-free registration, domain-depth operations, agent integration, and generation smoke readiness. Focused package tests cover schema/service/release evidence, event contracts, package metadata, route contracts, governance hooks, and idempotent handlers.
+## Side-Effect-Free Registration and Release Readiness
+
+`register_pbc()`, `registration_plan()`, `package_metadata_manifest()`, and `validate_package_metadata()` keep discovery and registration side-effect free. The source package advertises its implementation directory, artifacts, docs, tests, capabilities, standard features, advanced features, and AppGen-X posture without mutating global registries during validation.
+
+Release readiness is driven by three local audits:
+
+- `pbc_source_artifact_contract`
+- `pbc_implementation_release_audit`
+- `pbc_generation_smoke_audit`
+
+These audits confirm source artifact presence, owned schema and migration integrity, service and route coherence, event and handler posture, UI/workbench coverage, governed assistant previews, and generated model/route evidence.
+
+## Standard and Advanced Capability Coverage
+
+Standard capabilities include aid year setup, profile management, FAFSA/ISIR-equivalent intake, dependency review, verification tracking, document tracking, sap monitoring, cost-of-attendance budgeting, need analysis, award packaging, scholarship/grant/loan/work-study management, disbursement and return controls, professional judgment and appeals, compliance and communications, rules, parameters, configuration, workbench, permissions, seed data, and continuous release assurance.
+
+Advanced capabilities include event-sourced operational history, multi-tenant policy isolation, schema evolution resilience, anomaly detection, semantic document understanding, predictive risk scoring, counterfactual packaging simulation, cryptographic audit proofs, continuous control testing, carbon awareness, cross-PBC federation through AppGen-X, and governed AI agent execution.
+
+## Tests and Evidence
+
+Focused tests cover schema, service, release evidence, package metadata, route dispatch, governance, event idempotency, the standalone slice app workflow bundle, and external runtime compatibility through `tests/test_pbc_student_financial_aid_runtime.py`. Seed planning is package-local. Release evidence and implementation status record the exact verification commands and outcomes.
 
 ## Manifest Traceability Appendix
 
+Legacy catalog compatibility values retained for audit traceability:
+
 - tables: aid_application, eligibility_review, award_package, verification_item, disbursement, sap_status, aid_compliance, student_financial_aid_policy_rule, student_financial_aid_runtime_parameter, student_financial_aid_schema_extension, student_financial_aid_control_assertion, student_financial_aid_governed_model
-- operations: create_aid_application, record_eligibility_review, review_award_package, approve_verification_item, simulate_disbursement, create_sap_status, record_aid_compliance, review_student_financial_aid_policy_rule, approve_student_financial_aid_runtime_parameter, simulate_student_financial_aid_schema_extension, create_student_financial_aid_control_assertion, record_student_financial_aid_governed_model, operate_student_financial_aid_13, operate_student_financial_aid_14, operate_student_financial_aid_15, operate_student_financial_aid_16, operate_student_financial_aid_17, operate_student_financial_aid_18
+- apis: POST /aid-applications, POST /eligibility-reviews, POST /award-packages, POST /verification-items, POST /disbursements, GET /student-financial-aid-workbench
 - emits: StudentFinancialAidCreated, StudentFinancialAidUpdated, StudentFinancialAidApproved, StudentFinancialAidExceptionOpened
 - consumes: PolicyChanged, AuditEventSealed, OperationalKpiChanged
-- rules: aid_application_policy, eligibility_review_policy, award_package_policy, verification_item_policy, disbursement_policy, sap_status_policy
-- parameters: quality_score_floor, materiality_threshold, approval_sla_hours, risk_threshold, forecast_horizon_days, workbench_limit
 - ui_fragments: StudentFinancialAidWorkbench, StudentFinancialAidDetail, StudentFinancialAidAssistantPanel
 - permissions: student_financial_aid.read, student_financial_aid.create, student_financial_aid.update, student_financial_aid.approve, student_financial_aid.admin
 - configuration: STUDENT_FINANCIAL_AID_DATABASE_URL, STUDENT_FINANCIAL_AID_EVENT_TOPIC, STUDENT_FINANCIAL_AID_RETRY_LIMIT, STUDENT_FINANCIAL_AID_DEFAULT_POLICY
