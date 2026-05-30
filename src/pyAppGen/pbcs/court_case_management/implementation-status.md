@@ -34,3 +34,10 @@ Validation commands for this slice:
 ## Remaining Risks
 
 This pass implements the standalone app foundation and main operational controls. Future work should add deeper service-of-process, continuance, appeals, transcript, subpoena, public/internal docket projection, and judge reassignment workflows.
+
+## 2026-05-30 improve1 Court-Control Execution Slice
+
+- Added `court_control.py` as side-effect-free executable proof for all 50 improve1 court case-management capabilities.
+- Bound each feature to owned court tables, AppGen-X event metadata, UI/API route surfaces, agent skills, configuration handles, retry/dead-letter evidence, and traceability artifacts.
+- Added package-local domain behavior tests for case numbering, filing intake, docket integrity, orders, hearings, sealed records, public projections, appeals, agent triage, typed procedural events, cross-PBC boundaries, retention holds, tenant isolation, simulation, and post-judgment closure.
+- Updated runtime, UI, release evidence, and improve1 traceability so every feature row points to executable court-control behavior and `tests/test_domain_behavior.py`.

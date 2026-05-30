@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from .domain_depth import DOMAIN_ADVANCED_CAPABILITIES, DOMAIN_EDGE_CASES, DOMAIN_OPERATIONS, DOMAIN_OWNED_TABLES, DOMAIN_PARAMETERS, DOMAIN_RULES, domain_capability_surface_contract
 from .court_operations_app import controls_contract, forms_contract, single_pbc_app_contract, wizards_contract
+from .court_control import improve1_court_control_contract
 
 PBC_KEY = "court_case_management"
 WORKBENCH_QUEUES = (
@@ -20,6 +21,7 @@ DETAIL_SECTIONS = ("summary", "timeline", "parties", "filings", "evidence", "hea
 
 def court_case_management_ui_contract() -> dict:
     surface = domain_capability_surface_contract()
+    court_control = improve1_court_control_contract()
     return {
         "ok": True,
         "pbc": PBC_KEY,
@@ -50,6 +52,8 @@ def court_case_management_ui_contract() -> dict:
         },
         "workbench_queues": WORKBENCH_QUEUES,
         "detail_sections": DETAIL_SECTIONS,
+        "court_control_panels": tuple({"capability": sample["capability"], "feature_number": sample["feature_number"], "title": sample["title"], "target_table": sample["target_table"], "route": sample["route"], "permission": sample["permission"]} for sample in court_control["samples"]),
+        "court_control_contract": court_control,
         "side_effects": (),
     }
 
@@ -57,12 +61,15 @@ def court_case_management_ui_contract() -> dict:
 def court_case_management_render_workbench() -> dict:
     ui_contract = court_case_management_ui_contract()
     full = ui_contract["full_capability_surface"]
+    court_control = ui_contract["court_control_contract"]
     return {
         "ok": True,
         "pbc": PBC_KEY,
         "route": f"/workbench/pbcs/{PBC_KEY}",
         "queues": WORKBENCH_QUEUES,
         "detail_sections": DETAIL_SECTIONS,
+        "court_control_panels": tuple({"capability": sample["capability"], "feature_number": sample["feature_number"], "title": sample["title"], "target_table": sample["target_table"], "route": sample["route"], "permission": sample["permission"]} for sample in court_control["samples"]),
+        "court_control_contract": court_control,
         "operation_actions": full["operation_actions"],
         "forms": ui_contract["forms"],
         "wizards": ui_contract["wizards"],

@@ -5,6 +5,7 @@ from copy import deepcopy
 import hashlib
 
 from .court_operations_app import controls_contract, court_operations_smoke_test, forms_contract, single_pbc_app_contract, wizards_contract
+from .court_control import COURT_CONTROL_CAPABILITIES, improve1_court_control_contract
 from .domain_depth import DOMAIN_OPERATIONS, domain_depth_contract
 
 PBC_KEY = 'court_case_management'
@@ -210,6 +211,7 @@ def court_case_management_build_release_evidence():
     implementation = pbc_implementation_release_audit()
     generation = pbc_generation_smoke_audit()
     docs = documentation_presence()
+    court_control = improve1_court_control_contract()
     checks = (
         {'id': 'schema_models_migrations', 'ok': True},
         {'id': 'service_api_events', 'ok': True},
@@ -219,6 +221,7 @@ def court_case_management_build_release_evidence():
         {'id': 'implementation_audit', 'ok': implementation['ok']},
         {'id': 'generation_audit', 'ok': generation['ok']},
         {'id': 'documentation_presence', 'ok': docs['ok']},
+        {'id': 'improve1_court_control', 'ok': court_control['ok']},
     )
     return {
         'format': 'appgen.court-case-management-release-evidence.v1',
@@ -231,6 +234,7 @@ def court_case_management_build_release_evidence():
             'events': {'contract': 'AppGen-X', 'emits': COURT_CASE_MANAGEMENT_EMITTED_EVENT_TYPES, 'consumes': COURT_CASE_MANAGEMENT_CONSUMED_EVENT_TYPES},
             'handlers': ('receive_event',),
             'ui': COURT_CASE_MANAGEMENT_UI_FRAGMENT_KEYS,
+            'improve1_court_control': {'capability_count': court_control['capability_count'], 'capabilities': court_control['capabilities'], 'event_contract': court_control['event_contract'], 'database_backends': court_control['database_backends']},
         },
         'audits': {
             'pbc_source_artifact_contract': source,
@@ -257,6 +261,7 @@ def court_case_management_verify_owned_table_boundary(references=()):
 def court_case_management_runtime_capabilities():
     domain = domain_depth_contract()
     smoke = court_case_management_runtime_smoke()
+    court_control = improve1_court_control_contract()
     operations = (
         'configure_runtime',
         'set_parameter',
@@ -273,10 +278,11 @@ def court_case_management_runtime_capabilities():
         'query_workbench',
         'run_advanced_assessment',
         'parse_document_instruction',
-    ) + tuple(DOMAIN_OPERATIONS)
+        'improve1_court_control_contract',
+    ) + tuple(COURT_CONTROL_CAPABILITIES) + tuple(DOMAIN_OPERATIONS)
     return {
         'format': 'appgen.court-case-management-runtime-capabilities.v1',
-        'ok': smoke['ok'] and domain['ok'],
+        'ok': smoke['ok'] and domain['ok'] and court_control['ok'],
         'pbc': PBC_KEY,
         'implementation_directory': f'src/pyAppGen/pbcs/{PBC_KEY}',
         'owned_tables': COURT_CASE_MANAGEMENT_OWNED_TABLES,
@@ -290,6 +296,7 @@ def court_case_management_runtime_capabilities():
         'single_pbc_app': single_pbc_app_contract(),
         'smoke': smoke,
         'world_class_domain_depth': domain,
+        'improve1_court_control': court_control,
         'database_backends': COURT_CASE_MANAGEMENT_ALLOWED_DATABASE_BACKENDS,
         'event_contract': 'AppGen-X',
         'stream_engine_picker_visible': False,
@@ -313,6 +320,7 @@ def court_case_management_runtime_smoke():
     workbench = court_case_management_build_workbench_view()
     app_smoke = court_operations_smoke_test()
     boundary = court_case_management_verify_owned_table_boundary(COURT_CASE_MANAGEMENT_OWNED_TABLES + ('foreign_table',))
+    court_control = improve1_court_control_contract()
     checks = (
         {'id': 'configure_runtime', 'ok': cfg['ok']},
         {'id': 'set_parameter', 'ok': param['ok']},
@@ -327,5 +335,6 @@ def court_case_management_runtime_smoke():
         {'id': 'build_workbench_view', 'ok': workbench['ok']},
         {'id': 'single_pbc_court_operations_app', 'ok': app_smoke['ok']},
         {'id': 'owned_boundary_rejects_foreign_table', 'ok': boundary['ok'] is False},
+        {'id': 'improve1_court_control', 'ok': court_control['ok']},
     )
-    return {'ok': all(check['ok'] for check in checks), 'checks': checks, 'release': release, 'single_pbc_app': app_smoke, 'side_effects': ()}
+    return {'ok': all(check['ok'] for check in checks), 'checks': checks, 'release': release, 'single_pbc_app': app_smoke, 'improve1_court_control': court_control, 'side_effects': ()}
