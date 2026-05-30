@@ -285,3 +285,34 @@ def rail_operations_management_render_workbench(state: dict | None = None, tenan
 def smoke_test():
     rendered = rail_operations_management_render_workbench()
     return {'ok': rail_operations_management_ui_contract()['ok'] and rendered['ok'], 'side_effects': ()}
+
+# Improve1 rail operations control UI extension.
+from .rail_operations_control import improve1_rail_operations_control_contract as _improve1_rail_operations_control_contract
+
+_RAIL_OPERATIONS_CONTROL_BASE_UI_CONTRACT = rail_operations_management_ui_contract
+_RAIL_OPERATIONS_CONTROL_BASE_RENDER_WORKBENCH = rail_operations_management_render_workbench
+
+
+def rail_operations_management_ui_contract() -> dict:
+    ui = dict(_RAIL_OPERATIONS_CONTROL_BASE_UI_CONTRACT())
+    control = _improve1_rail_operations_control_contract()
+    ui.update({
+        "ok": ui.get("ok") is True and control["ok"],
+        "rail_operations_control_contract": control,
+        "rail_operations_control_panels": tuple(item["evidence"]["ui_surface"] for item in control["capabilities"]),
+        "rail_operations_control_service_actions": tuple(item["evidence"]["service_api"] for item in control["capabilities"]),
+        "stream_engine_picker_visible": False,
+    })
+    return ui
+
+
+def rail_operations_management_render_workbench(*args, **kwargs) -> dict:
+    workbench = dict(_RAIL_OPERATIONS_CONTROL_BASE_RENDER_WORKBENCH(*args, **kwargs))
+    control = _improve1_rail_operations_control_contract()
+    workbench.update({
+        "ok": workbench.get("ok") is True and control["ok"],
+        "rail_operations_control_panels": tuple(item["evidence"]["ui_surface"] for item in control["capabilities"]),
+        "rail_operations_control_service_actions": tuple(item["evidence"]["service_api"] for item in control["capabilities"]),
+        "rail_operations_control_agent_tools": tuple(f"rail_operations_management.skills.{item['slug']}" for item in control["capabilities"]),
+    })
+    return workbench
