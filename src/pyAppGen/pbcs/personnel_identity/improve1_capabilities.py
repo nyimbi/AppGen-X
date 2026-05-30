@@ -648,3 +648,16 @@ def validate_improve1_capabilities(expected_titles: tuple[str, ...]) -> dict:
         "registry_ok": registry["ok"],
         "side_effects": (),
     }
+
+
+# Improve1 identity_control traceability augmentation.
+def _augment_with_identity_control_artifacts() -> None:
+    for capability in IMPROVE1_CAPABILITIES:
+        object.__setattr__(capability, "model_artifacts", tuple(dict.fromkeys(capability.model_artifacts + ("identity_control.py",))))
+        object.__setattr__(capability, "ui_artifacts", tuple(dict.fromkeys(capability.ui_artifacts + ("ui.py",))))
+        object.__setattr__(capability, "service_artifacts", tuple(dict.fromkeys(capability.service_artifacts + ("identity_control.py", "runtime.py"))))
+        object.__setattr__(capability, "test_artifacts", tuple(dict.fromkeys(capability.test_artifacts + ("tests/test_domain_behavior.py",))))
+        object.__setattr__(capability, "evidence_artifacts", tuple(dict.fromkeys(capability.evidence_artifacts + ("IMPROVE1_TRACEABILITY.md",))))
+
+
+_augment_with_identity_control_artifacts()

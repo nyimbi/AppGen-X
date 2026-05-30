@@ -341,3 +341,29 @@ def smoke_test():
     binding_evidence = contract.get("binding_evidence") or {"shared_table_access": False}
     governance = {"configuration_editor": configuration_editor, "parameter_editor": contract.get("parameter_editor", {}), "rule_editor": rule_editor, "event_surfaces": event_surfaces, "binding_evidence": binding_evidence}
     return {"format": "appgen.pbc-ui-smoke-test.v1", "ok": contract.get("ok") is True and rendered.get("ok") is True and bool(contract.get("fragments")) and bool(contract.get("routes")) and bool(contract.get("forms")) and bool(contract.get("wizards")) and bool(contract.get("controls")) and bool(cards) and bool(contract.get("action_permissions")) and bool(configuration_editor) and configuration_editor.get("stream_engine_picker_visible", configuration_editor.get("user_facing_stream_engine_picker", False)) is False and bool(contract.get("parameter_editor")) and bool(rule_editor) and bool(event_surfaces) and ("outbox_status" in event_surfaces or "contract" in event_surfaces) and binding_evidence.get("shared_table_access") is not True and not binding_evidence.get("shared_tables", ()), "manifest": {"fragments": contract.get("fragments", ()), "routes": contract.get("routes", ()), "forms": tuple(item["key"] for item in contract.get("forms", ())), "wizards": tuple(item["key"] for item in contract.get("wizards", ())), "controls": tuple(item["key"] for item in contract.get("controls", ()))}, "contract": contract, "governance": governance, "rendered": rendered, "cards": cards, "side_effects": ()}
+
+
+# Improve1 identity control UI extension.
+from .identity_control import improve1_identity_control_contract as _improve1_identity_control_contract
+
+_PERSONNEL_IDENTITY_BASE_UI_CONTRACT = personnel_identity_ui_contract
+_PERSONNEL_IDENTITY_BASE_RENDER_WORKBENCH = personnel_identity_render_workbench
+
+
+def personnel_identity_ui_contract() -> dict:
+    ui = dict(_PERSONNEL_IDENTITY_BASE_UI_CONTRACT())
+    control = _improve1_identity_control_contract()
+    ui.update({"ok": ui.get("ok") is True and control["ok"], "identity_control_contract": control, "identity_control_panels": tuple(item["evidence"]["ui_surface"] for item in control["capabilities"]), "identity_control_service_actions": tuple(item["evidence"]["service_api"] for item in control["capabilities"]), "stream_engine_picker_visible": False})
+    return ui
+
+
+def personnel_identity_render_workbench(state: dict | None = None, *, tenant: str = "smoke", principal_permissions: tuple[str, ...] | None = None) -> dict:
+    if state is None:
+        state = __import__("pyAppGen.pbcs.personnel_identity.runtime", fromlist=["personnel_identity_empty_state"]).personnel_identity_empty_state()
+    if principal_permissions is None:
+        contract = _PERSONNEL_IDENTITY_BASE_UI_CONTRACT()
+        principal_permissions = tuple(sorted(set(contract["action_permissions"].values())))
+    workbench = dict(_PERSONNEL_IDENTITY_BASE_RENDER_WORKBENCH(state, tenant=tenant, principal_permissions=principal_permissions))
+    control = _improve1_identity_control_contract()
+    workbench.update({"ok": workbench.get("ok") is True and control["ok"], "identity_control_panels": tuple(item["evidence"]["ui_surface"] for item in control["capabilities"]), "identity_control_service_actions": tuple(item["evidence"]["service_api"] for item in control["capabilities"]), "identity_control_agent_tools": tuple(f"personnel_identity.skills.{item['slug']}" for item in control["capabilities"])})
+    return workbench

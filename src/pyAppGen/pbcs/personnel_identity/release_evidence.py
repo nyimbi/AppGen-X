@@ -65,3 +65,39 @@ def smoke_test() -> dict:
     validation = validate_release_evidence()
     evidence = build_release_evidence()
     return {"ok": validation["ok"] and evidence["ok"], "validation": validation, "evidence": evidence, "side_effects": ()}
+
+
+# Improve1 identity release evidence extension.
+from .identity_control import improve1_identity_control_contract as _improve1_identity_control_contract
+
+_BASE_BUILD_RELEASE_EVIDENCE = build_release_evidence
+_BASE_RELEASE_READINESS_MANIFEST = release_readiness_manifest
+_BASE_VALIDATE_RELEASE_EVIDENCE = validate_release_evidence
+
+
+def build_release_evidence() -> dict:
+    evidence = dict(_BASE_BUILD_RELEASE_EVIDENCE())
+    control = _improve1_identity_control_contract()
+    evidence["ok"] = bool(evidence.get("ok")) and control["ok"]
+    evidence["identity_control"] = control
+    evidence["traceability"] = tuple(dict.fromkeys(tuple(evidence.get("traceability", ())) + ("improve1_identity_control", "tests/test_domain_behavior.py")))
+    evidence["blocking_gaps"] = tuple(evidence.get("blocking_gaps", ())) + tuple(control.get("blocking_gaps", ()))
+    return evidence
+
+
+def release_readiness_manifest() -> dict:
+    manifest = dict(_BASE_RELEASE_READINESS_MANIFEST())
+    control = _improve1_identity_control_contract()
+    manifest["ok"] = bool(manifest.get("ok")) and control["ok"]
+    manifest["identity_control"] = control
+    manifest["blocking_gaps"] = tuple(manifest.get("blocking_gaps", ())) + tuple(control.get("blocking_gaps", ()))
+    return manifest
+
+
+def validate_release_evidence() -> dict:
+    validation = dict(_BASE_VALIDATE_RELEASE_EVIDENCE())
+    control = _improve1_identity_control_contract()
+    validation["ok"] = bool(validation.get("ok")) and control["ok"]
+    validation["identity_control"] = control
+    validation["failed_checks"] = tuple(validation.get("failed_checks", ())) + tuple(control.get("blocking_gaps", ()))
+    return validation
