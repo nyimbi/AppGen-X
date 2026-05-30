@@ -7417,6 +7417,41 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert explain_contract_check["detail"]["handler_case_count"] == 2
     assert explain_contract_check["detail"]["text_renderer"]["format"] == "appgen.graph-explain-text-renderer.v1"
     assert explain_contract_check["detail"]["text_renderer"]["missing_fragment_count"] == 0
+    assert explain_contract_check["detail"]["text_renderer"]["emitted_graph_kinds"] == (
+        explain_contract_check["detail"]["text_renderer"]["required_graph_kinds"]
+    )
+    assert explain_contract_check["detail"]["text_renderer"]["missing_graph_kind_count"] == 0
+    assert explain_contract_check["detail"]["text_renderer"]["missing_graph_kinds"] == ()
+    assert explain_contract_check["detail"]["text_renderer"]["emitted_graph_formats"] == (
+        explain_contract_check["detail"]["text_renderer"]["required_graph_formats"]
+    )
+    assert explain_contract_check["detail"]["text_renderer"]["missing_graph_format_count"] == 0
+    assert explain_contract_check["detail"]["text_renderer"]["missing_graph_formats"] == ()
+    assert explain_contract_check["detail"]["text_renderer"]["emitted_check_ids"] == (
+        explain_contract_check["detail"]["text_renderer"]["required_check_ids"]
+    )
+    assert explain_contract_check["detail"]["text_renderer"]["missing_check_id_count"] == 0
+    assert explain_contract_check["detail"]["text_renderer"]["missing_check_ids"] == ()
+    assert explain_contract_check["detail"]["text_renderer"]["emitted_symbol_ids"] == (
+        explain_contract_check["detail"]["text_renderer"]["required_symbol_ids"]
+    )
+    assert explain_contract_check["detail"]["text_renderer"]["missing_symbol_id_count"] == 0
+    assert explain_contract_check["detail"]["text_renderer"]["missing_symbol_ids"] == ()
+    assert explain_contract_check["detail"]["text_renderer"]["emitted_diagnostic_codes"] == (
+        explain_contract_check["detail"]["text_renderer"]["required_diagnostic_codes"]
+    )
+    assert explain_contract_check["detail"]["text_renderer"]["missing_diagnostic_code_count"] == 0
+    assert explain_contract_check["detail"]["text_renderer"]["missing_diagnostic_codes"] == ()
+    assert explain_contract_check["detail"]["text_renderer"]["emitted_docs_urls"] == (
+        explain_contract_check["detail"]["text_renderer"]["required_docs_urls"]
+    )
+    assert explain_contract_check["detail"]["text_renderer"]["missing_docs_url_count"] == 0
+    assert explain_contract_check["detail"]["text_renderer"]["missing_docs_urls"] == ()
+    assert explain_contract_check["detail"]["text_renderer"]["emitted_handler_edges"] == (
+        explain_contract_check["detail"]["text_renderer"]["required_handler_edges"]
+    )
+    assert explain_contract_check["detail"]["text_renderer"]["missing_handler_edge_count"] == 0
+    assert explain_contract_check["detail"]["text_renderer"]["missing_handler_edges"] == ()
     assert explain_contract_check["detail"]["text_renderer"]["json_fallback"] is False
     nl_check = next(check for check in report["checks"] if check["id"] == "natural_language_patch_planner")
     assert nl_check["detail"]["cli"]["format"] == "appgen.nl-plan-cli-audit.v1"
@@ -8241,6 +8276,37 @@ def test_lsp_service_text_renderer_contract_proves_editor_log_markers() -> None:
     assert report["required_fragment_count"] == len(report["required_fragments"])
     assert report["missing_fragment_count"] == 0
     assert report["marker_line_count"] >= 11
+    assert report["required_graph_kinds"] == ("er", "lookup", "workflow")
+    assert report["emitted_graph_kinds"] == report["required_graph_kinds"]
+    assert report["missing_graph_kind_count"] == 0
+    assert report["missing_graph_kinds"] == ()
+    assert report["required_graph_formats"] == ("json", "mermaid", "dot")
+    assert report["emitted_graph_formats"] == report["required_graph_formats"]
+    assert report["missing_graph_format_count"] == 0
+    assert report["missing_graph_formats"] == ()
+    assert report["required_check_ids"] == ("er_graph", "workflow_graph")
+    assert report["emitted_check_ids"] == report["required_check_ids"]
+    assert report["missing_check_id_count"] == 0
+    assert report["missing_check_ids"] == ()
+    assert report["required_symbol_ids"] == ("table.Invoice",)
+    assert report["emitted_symbol_ids"] == report["required_symbol_ids"]
+    assert report["missing_symbol_id_count"] == 0
+    assert report["missing_symbol_ids"] == ()
+    assert report["required_diagnostic_codes"] == ("AGX0303",)
+    assert report["emitted_diagnostic_codes"] == report["required_diagnostic_codes"]
+    assert report["missing_diagnostic_code_count"] == 0
+    assert report["missing_diagnostic_codes"] == ()
+    assert report["required_docs_urls"] == ("docs/tooling.md#linter-rules-by-domain",)
+    assert report["emitted_docs_urls"] == report["required_docs_urls"]
+    assert report["missing_docs_url_count"] == 0
+    assert report["missing_docs_urls"] == ()
+    assert report["required_handler_edges"] == (
+        "InvoiceForm.Save -> SubmitInvoice [operation]",
+        "SubmitInvoice -> InvoicePosted [event]",
+    )
+    assert report["emitted_handler_edges"] == report["required_handler_edges"]
+    assert report["missing_handler_edge_count"] == 0
+    assert report["missing_handler_edges"] == ()
     assert report["missing_fragments"] == ()
     assert report["json_fallback"] is False
     assert report["summary_line_count"] == 1

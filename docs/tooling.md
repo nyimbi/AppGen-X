@@ -927,6 +927,10 @@ prove graph-suite and explain logs keep graph kind, graph format, check,
 symbol, diagnostic-doc, and handler-edge evidence visible without JSON parsing.
 Its contract reports required-fragment, missing-fragment, output-line, and
 marker-line counts across graph-suite, symbol, diagnostic, and handler summaries.
+It also publishes required and emitted graph kinds, graph formats, graph check
+ids, symbol ids, diagnostic codes, diagnostic docs URLs, and handler edges with
+named missing lists, so graph/explain release logs fail on the exact hidden
+review marker.
 The aggregate tooling audit exposes graph rendering as its own
 `graph_rendering_contracts` gate. It fails independently when a required graph
 kind is missing, JSON/Mermaid/DOT renderings drift, graph CLI cases fail, or
