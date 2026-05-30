@@ -4597,16 +4597,38 @@ def _tooling_audit_text_renderer_contract() -> dict:
         "implementation-phases 1 missing=0 format=appgen.tooling-implementation-phase-audit.v1",
     )
     missing = tuple(fragment for fragment in required_fragments if fragment not in text)
+    lines = tuple(line for line in text.splitlines() if line.strip())
+    check_lines = tuple(line for line in lines if line.startswith(("ok ", "fail ")))
+    detail_format_lines = tuple(line for line in check_lines if "formats=appgen." in line)
+    section_lines = tuple(line for line in lines if line.startswith("section docs/tooling.md#"))
+    blocking_gap_lines = tuple(line for line in lines if line.startswith("blocking-gap "))
+    implementation_phase_lines = tuple(line for line in lines if line.startswith("implementation-phases "))
     return {
         "format": "appgen.tooling-audit-text-renderer.v1",
         "ok": not missing and not text.lstrip().startswith("{"),
         **_text_renderer_contract_counts(
             text,
             required_fragments,
-            marker_prefixes=("tooling-audit ", "blocking-gap ", "source=", "section ", "formats=", "implementation-phases "),
+            marker_prefixes=(
+                "tooling-audit ",
+                "blocking-gap ",
+                "source=",
+                "section ",
+                "formats=",
+                "implementation-phases ",
+                "ok ",
+                "fail ",
+            ),
         ),
         "required_fragments": required_fragments,
         "missing_fragments": missing,
+        "check_line_count": len(check_lines),
+        "passing_check_line_count": sum(1 for line in check_lines if line.startswith("ok ")),
+        "failing_check_line_count": sum(1 for line in check_lines if line.startswith("fail ")),
+        "detail_format_line_count": len(detail_format_lines),
+        "section_line_count": len(section_lines),
+        "blocking_gap_line_count": len(blocking_gap_lines),
+        "implementation_phase_line_count": len(implementation_phase_lines),
         "json_fallback": text.lstrip().startswith("{"),
         "text_prefix": text[:240],
     }

@@ -905,8 +905,12 @@ implementation-phase marker visible without requiring the full audit to run,
 including the explicitly called-out non-goal policy and documentation-anchor
 audit format markers.
 Its contract reports fragment and marker counts for top-level summaries, source
-markers, section markers, embedded format markers, blocking gaps, and
-implementation-phase evidence.
+markers, section markers, embedded format markers, check lines, blocking gaps,
+and implementation-phase evidence. It also reports check-line,
+passing-check-line, failing-check-line, detail-format-line, section-line,
+blocking-gap-line, and implementation-phase-line counts so release triage can
+see whether a human log lost checks, sections, embedded audit formats, or
+failure markers.
 When implementation-phase evidence is present, the text output also reports the
 number of audited phases, missing phase count, and the
 `appgen.tooling-implementation-phase-audit.v1` format marker.
