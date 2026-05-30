@@ -711,7 +711,11 @@ distinguish complete text coverage from a partially rendered summary.
 It also reports source-file-line, stage-line, migration-line,
 migration-preview-line, migration-detected-line, diagnostic-line, error-line,
 and warning-line counts so lint release logs prove source coverage, stage
-coverage, migration preview evidence, and diagnostic severity visibility.
+coverage, migration preview evidence, and diagnostic severity visibility. It
+also publishes required and emitted source files, stage names, detected
+migration families, diagnostic codes, and diagnostic severities with named
+missing lists for each family, so a partially rendered lint summary fails by the
+exact hidden source, stage, migration family, code, or severity.
 `appgen diagnostics`
 text output summarizes the `appgen.diagnostic-catalog.v1` format in the header,
 registry coverage, required registry codes as `required-code ...`, covered

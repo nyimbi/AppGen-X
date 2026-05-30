@@ -6598,6 +6598,31 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert lint_contract_check["detail"]["text_renderer"]["stage_line_count"] >= 1
     assert lint_contract_check["detail"]["text_renderer"]["migration_preview_line_count"] >= 1
     assert lint_contract_check["detail"]["text_renderer"]["diagnostic_line_count"] >= 1
+    assert lint_contract_check["detail"]["text_renderer"]["emitted_source_files"] == (
+        lint_contract_check["detail"]["text_renderer"]["required_source_files"]
+    )
+    assert lint_contract_check["detail"]["text_renderer"]["missing_source_file_count"] == 0
+    assert lint_contract_check["detail"]["text_renderer"]["missing_source_files"] == ()
+    assert lint_contract_check["detail"]["text_renderer"]["emitted_stage_names"] == (
+        lint_contract_check["detail"]["text_renderer"]["required_stage_names"]
+    )
+    assert lint_contract_check["detail"]["text_renderer"]["missing_stage_name_count"] == 0
+    assert lint_contract_check["detail"]["text_renderer"]["missing_stage_names"] == ()
+    assert lint_contract_check["detail"]["text_renderer"]["emitted_migration_families"] == (
+        lint_contract_check["detail"]["text_renderer"]["required_migration_families"]
+    )
+    assert lint_contract_check["detail"]["text_renderer"]["missing_migration_family_count"] == 0
+    assert lint_contract_check["detail"]["text_renderer"]["missing_migration_families"] == ()
+    assert lint_contract_check["detail"]["text_renderer"]["emitted_diagnostic_codes"] == (
+        lint_contract_check["detail"]["text_renderer"]["required_diagnostic_codes"]
+    )
+    assert lint_contract_check["detail"]["text_renderer"]["missing_diagnostic_code_count"] == 0
+    assert lint_contract_check["detail"]["text_renderer"]["missing_diagnostic_codes"] == ()
+    assert lint_contract_check["detail"]["text_renderer"]["emitted_diagnostic_severities"] == (
+        lint_contract_check["detail"]["text_renderer"]["required_diagnostic_severities"]
+    )
+    assert lint_contract_check["detail"]["text_renderer"]["missing_diagnostic_severity_count"] == 0
+    assert lint_contract_check["detail"]["text_renderer"]["missing_diagnostic_severities"] == ()
     assert lint_contract_check["detail"]["text_renderer"]["json_fallback"] is False
     component_publish_check = next(check for check in report["checks"] if check["id"] == "component_publish_catalog_contracts")
     assert component_publish_check["detail"]["cli"]["format"] == "appgen.component-publish-cli-audit.v1"
@@ -7630,6 +7655,26 @@ def test_lint_text_renderer_contract_proves_stage_and_migration_log_markers() ->
     assert report["diagnostic_line_count"] == 2
     assert report["error_line_count"] == 1
     assert report["warning_line_count"] == 1
+    assert report["required_source_files"] == ("apps/sales.appgen", "apps/inventory.appgen")
+    assert report["emitted_source_files"] == report["required_source_files"]
+    assert report["missing_source_file_count"] == 0
+    assert report["missing_source_files"] == ()
+    assert report["required_stage_names"] == ("syntax", "semantic", "policy")
+    assert report["emitted_stage_names"] == report["required_stage_names"]
+    assert report["missing_stage_name_count"] == 0
+    assert report["missing_stage_names"] == ()
+    assert report["required_migration_families"] == ("relationships", "tables")
+    assert report["emitted_migration_families"] == report["required_migration_families"]
+    assert report["missing_migration_family_count"] == 0
+    assert report["missing_migration_families"] == ()
+    assert report["required_diagnostic_codes"] == ("AGX0402", "AGX0701")
+    assert report["emitted_diagnostic_codes"] == report["required_diagnostic_codes"]
+    assert report["missing_diagnostic_code_count"] == 0
+    assert report["missing_diagnostic_codes"] == ()
+    assert report["required_diagnostic_severities"] == ("error", "warning")
+    assert report["emitted_diagnostic_severities"] == report["required_diagnostic_severities"]
+    assert report["missing_diagnostic_severity_count"] == 0
+    assert report["missing_diagnostic_severities"] == ()
     assert report["missing_fragments"] == ()
     assert report["json_fallback"] is False
     assert report["text_prefix"].startswith("lint failed: format=appgen.lint-report.v1")

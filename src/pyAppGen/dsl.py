@@ -2421,9 +2421,39 @@ def _lint_text_renderer_contract() -> dict:
     stage_lines = tuple(line for line in lines if line.startswith("stages "))
     migration_lines = tuple(line for line in lines if line.startswith("migration-"))
     diagnostic_lines = tuple(line for line in lines if line.startswith(("error ", "warning ")))
+    emitted_source_files = tuple(line.removeprefix("source-file ").strip() for line in source_file_lines)
+    emitted_stage_names = tuple()
+    if stage_lines:
+        emitted_stage_names = tuple(part.split("=", 1)[0] for part in stage_lines[0].removeprefix("stages ").split())
+    emitted_migration_families = tuple()
+    for line in migration_lines:
+        if line.startswith("migration-detected "):
+            emitted_migration_families = tuple(item.strip() for item in line.removeprefix("migration-detected ").split(","))
+    emitted_diagnostic_codes = tuple(line.split()[1].rstrip(":") for line in diagnostic_lines if len(line.split()) >= 2)
+    emitted_diagnostic_severities = tuple(line.split()[0] for line in diagnostic_lines if line.split())
+    required_source_files = tuple(payload["files"])
+    required_stage_names = tuple(payload["stage_names"])
+    required_migration_families = tuple(sorted(payload["migration_preview"]["coverage"]["detected"]))
+    required_diagnostic_codes = tuple(diagnostic["code"] for diagnostic in payload["diagnostics"])
+    required_diagnostic_severities = tuple(diagnostic["severity"] for diagnostic in payload["diagnostics"])
+    missing_source_files = tuple(path for path in required_source_files if path not in emitted_source_files)
+    missing_stage_names = tuple(stage for stage in required_stage_names if stage not in emitted_stage_names)
+    missing_migration_families = tuple(
+        family for family in required_migration_families if family not in emitted_migration_families
+    )
+    missing_diagnostic_codes = tuple(code for code in required_diagnostic_codes if code not in emitted_diagnostic_codes)
+    missing_diagnostic_severities = tuple(
+        severity for severity in required_diagnostic_severities if severity not in emitted_diagnostic_severities
+    )
     return {
         "format": "appgen.lint-text-renderer.v1",
-        "ok": not missing and not text.lstrip().startswith("{"),
+        "ok": not missing
+        and not missing_source_files
+        and not missing_stage_names
+        and not missing_migration_families
+        and not missing_diagnostic_codes
+        and not missing_diagnostic_severities
+        and not text.lstrip().startswith("{"),
         **_text_renderer_contract_counts(
             text,
             required_fragments,
@@ -2439,6 +2469,26 @@ def _lint_text_renderer_contract() -> dict:
         "diagnostic_line_count": len(diagnostic_lines),
         "error_line_count": sum(1 for line in diagnostic_lines if line.startswith("error ")),
         "warning_line_count": sum(1 for line in diagnostic_lines if line.startswith("warning ")),
+        "required_source_files": required_source_files,
+        "emitted_source_files": emitted_source_files,
+        "missing_source_file_count": len(missing_source_files),
+        "missing_source_files": missing_source_files,
+        "required_stage_names": required_stage_names,
+        "emitted_stage_names": emitted_stage_names,
+        "missing_stage_name_count": len(missing_stage_names),
+        "missing_stage_names": missing_stage_names,
+        "required_migration_families": required_migration_families,
+        "emitted_migration_families": emitted_migration_families,
+        "missing_migration_family_count": len(missing_migration_families),
+        "missing_migration_families": missing_migration_families,
+        "required_diagnostic_codes": required_diagnostic_codes,
+        "emitted_diagnostic_codes": emitted_diagnostic_codes,
+        "missing_diagnostic_code_count": len(missing_diagnostic_codes),
+        "missing_diagnostic_codes": missing_diagnostic_codes,
+        "required_diagnostic_severities": required_diagnostic_severities,
+        "emitted_diagnostic_severities": emitted_diagnostic_severities,
+        "missing_diagnostic_severity_count": len(missing_diagnostic_severities),
+        "missing_diagnostic_severities": missing_diagnostic_severities,
         "json_fallback": text.lstrip().startswith("{"),
         "text_prefix": text[:240],
     }
@@ -5021,6 +5071,11 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and lint_text_renderer.get("stage_line_count", 0) >= 1
             and lint_text_renderer.get("migration_preview_line_count", 0) >= 1
             and lint_text_renderer.get("diagnostic_line_count", 0) >= 1
+            and lint_text_renderer.get("missing_source_file_count") == 0
+            and lint_text_renderer.get("missing_stage_name_count") == 0
+            and lint_text_renderer.get("missing_migration_family_count") == 0
+            and lint_text_renderer.get("missing_diagnostic_code_count") == 0
+            and lint_text_renderer.get("missing_diagnostic_severity_count") == 0
             and lint_text_renderer.get("json_fallback") is False,
             "Linter CLI and directory contracts prove strict profiles, catalog-gated components, deterministic source sets, migration preview, stage separation, and text markers.",
             "docs/tooling.md#linter-specification",
@@ -5063,6 +5118,28 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                     "diagnostic_line_count": lint_text_renderer.get("diagnostic_line_count"),
                     "error_line_count": lint_text_renderer.get("error_line_count"),
                     "warning_line_count": lint_text_renderer.get("warning_line_count"),
+                    "required_source_files": lint_text_renderer.get("required_source_files"),
+                    "emitted_source_files": lint_text_renderer.get("emitted_source_files"),
+                    "missing_source_file_count": lint_text_renderer.get("missing_source_file_count"),
+                    "missing_source_files": lint_text_renderer.get("missing_source_files"),
+                    "required_stage_names": lint_text_renderer.get("required_stage_names"),
+                    "emitted_stage_names": lint_text_renderer.get("emitted_stage_names"),
+                    "missing_stage_name_count": lint_text_renderer.get("missing_stage_name_count"),
+                    "missing_stage_names": lint_text_renderer.get("missing_stage_names"),
+                    "required_migration_families": lint_text_renderer.get("required_migration_families"),
+                    "emitted_migration_families": lint_text_renderer.get("emitted_migration_families"),
+                    "missing_migration_family_count": lint_text_renderer.get("missing_migration_family_count"),
+                    "missing_migration_families": lint_text_renderer.get("missing_migration_families"),
+                    "required_diagnostic_codes": lint_text_renderer.get("required_diagnostic_codes"),
+                    "emitted_diagnostic_codes": lint_text_renderer.get("emitted_diagnostic_codes"),
+                    "missing_diagnostic_code_count": lint_text_renderer.get("missing_diagnostic_code_count"),
+                    "missing_diagnostic_codes": lint_text_renderer.get("missing_diagnostic_codes"),
+                    "required_diagnostic_severities": lint_text_renderer.get("required_diagnostic_severities"),
+                    "emitted_diagnostic_severities": lint_text_renderer.get("emitted_diagnostic_severities"),
+                    "missing_diagnostic_severity_count": lint_text_renderer.get(
+                        "missing_diagnostic_severity_count"
+                    ),
+                    "missing_diagnostic_severities": lint_text_renderer.get("missing_diagnostic_severities"),
                     "json_fallback": lint_text_renderer.get("json_fallback"),
                 },
             },
