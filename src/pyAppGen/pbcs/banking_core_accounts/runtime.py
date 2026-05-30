@@ -4,6 +4,7 @@ from __future__ import annotations
 from copy import deepcopy
 import hashlib
 
+from .account_control import improve1_account_control_contract
 from .domain_depth import (
     DOMAIN_OPERATIONS,
     domain_depth_contract,
@@ -635,6 +636,7 @@ def banking_core_accounts_build_release_evidence():
             {"id": "single_pbc_app_surface", "ok": True},
             {"id": "lifecycle_state_machine", "ok": True},
             {"id": "retry_dead_letter", "ok": True},
+            {"id": "improve1_account_control", "ok": improve1_account_control_contract()["capability_count"] == 50},
         ),
         "generated_artifacts": {
             "migrations": banking_core_accounts_build_schema_contract()["migrations"],
@@ -651,6 +653,7 @@ def banking_core_accounts_build_release_evidence():
             },
             "handlers": ("receive_event",),
             "ui": BANKING_CORE_ACCOUNTS_UI_FRAGMENT_KEYS,
+            "improve1_account_control": improve1_account_control_contract(),
         },
         "blocking_gaps": (),
     }

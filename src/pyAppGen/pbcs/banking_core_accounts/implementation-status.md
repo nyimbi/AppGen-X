@@ -81,5 +81,23 @@ Result:
 
 ## Remaining Risks
 
-- The current slice focuses on deposit-account lifecycle and one-PBC usability. Balance decomposition, hold waterfalls, overdraft rules, and statement operations remain backlog items from `improve1.md`.
+- The earlier lifecycle-only slice has been superseded by `account_control.py`, which now covers balance decomposition, hold waterfalls, overdraft rules, statements, mandates, restrictions, reconciliation, assistant behavior, sealing, and release gates from `improve1.md`.
 - Permission planning is executable metadata for this standalone slice; it is not yet connected to a shared auth provider or external identity system.
+
+## improve1 Full Traceability Evidence
+
+Branch: `pbc/improve1-full-traceability`
+
+Current slice evidence:
+
+- Added `account_control.py` as executable, side-effect-free domain code for all 50 `improve1.md` banking-core account controls.
+- Bound account-control evidence into `runtime.py` release evidence and `ui.py` account-control panels so every feature has a surfaced workbench/control entry.
+- Added `tests/test_domain_behavior.py` to exercise all 50 control primitives plus runtime, UI, route, service, agent, database-backend, and owned-table boundary behavior.
+- Updated `IMPROVE1_TRACEABILITY.md` so all 50 rows point to `account_control.py` and `tests/test_domain_behavior.py` as direct executable evidence.
+- Updated `improve1_capabilities.py` so every capability registry row names the account-control artifact and domain behavior test.
+
+Verification log:
+
+- Passed: `/Volumes/Media/src/pjs/appgen/.venv/bin/pytest src/pyAppGen/pbcs/banking_core_accounts/tests` (`21 passed`).
+- Passed: improve1 traceability/capability/runtime sweep across all PBCs (`877 passed`).
+- Passed: `git diff --check -- src/pyAppGen/pbcs`.
