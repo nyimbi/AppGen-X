@@ -5213,6 +5213,7 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert lsp_navigation_check["detail"]["symbol_coverage"]["document_missing_kind_count"] == 0
     assert lsp_navigation_check["detail"]["symbol_coverage"]["workspace_missing_kind_count"] == 0
     assert lsp_navigation_check["detail"]["text_renderer"]["format"] == "appgen.lsp-service-text-renderer.v1"
+    assert lsp_navigation_check["detail"]["text_renderer"]["service_count_line_count"] == 1
     assert lsp_navigation_check["detail"]["text_renderer"]["completion_line_count"] >= 1
     assert lsp_navigation_check["detail"]["text_renderer"]["navigation_line_count"] >= 1
     assert lsp_navigation_check["detail"]["text_renderer"]["formatting_line_count"] >= 1
@@ -5443,11 +5444,19 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     )
     assert cli_usage_check["detail"]["cli_help_surface"]["format"] == "appgen.cli-help-surface-audit.v1"
     assert cli_usage_check["detail"]["cli_help_surface"]["documented_missing_subcommands"] == ()
+    assert cli_usage_check["detail"]["cli_help_surface"]["help_missing_subcommands"] == ()
+    assert cli_usage_check["detail"]["cli_help_surface"]["listed_subcommand_count"] == (
+        cli_usage_check["detail"]["cli_help_surface"]["help_listed_subcommand_count"]
+    )
     assert cli_usage_check["detail"]["cli_help_surface"]["failing_option_surface_count"] == 0
+    assert cli_usage_check["detail"]["cli_help_surface"]["missing_option_count"] == 0
     cli_help_gate = next(check for check in report["checks"] if check["id"] == "cli_help_alias_contracts")
     assert cli_help_gate["ok"] is True
     assert cli_help_gate["detail"]["format"] == "appgen.cli-help-surface-audit.v1"
     assert cli_help_gate["detail"]["help_exit_code"] == 0
+    assert cli_help_gate["detail"]["listed_subcommand_count"] == (
+        cli_help_gate["detail"]["required_subcommand_count"]
+    )
     assert cli_help_gate["detail"]["documented_missing_subcommand_count"] == 0
     assert cli_help_gate["detail"]["help_missing_subcommand_count"] == 0
     assert cli_help_gate["detail"]["passing_option_surface_count"] == (
@@ -5458,6 +5467,7 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert cli_help_gate["detail"]["missing_option_count"] == 0
     assert cli_help_gate["detail"]["command_alias_count"] == 2
     assert cli_help_gate["detail"]["entrypoint_dispatch_count"] == 2
+    assert cli_help_gate["detail"]["failing_entrypoint_dispatch_count"] == 0
     assert cli_help_gate["detail"]["alias_contract"]["format"] == "appgen.cli-alias-contract.v1"
     assert cli_help_gate["detail"]["alias_contract"]["shared_target"] == "pyAppGen.__main__:main"
     assert cli_help_gate["detail"]["module_entrypoint"]["ok"] is True
@@ -6495,6 +6505,7 @@ def test_lsp_service_text_renderer_contract_proves_editor_log_markers() -> None:
     assert report["missing_fragments"] == ()
     assert report["json_fallback"] is False
     assert report["summary_line_count"] == 1
+    assert report["service_count_line_count"] == 1
     assert report["source_line_count"] == 1
     assert report["completion_line_count"] == 2
     assert report["completion_missing_line_count"] == 1
@@ -6508,6 +6519,7 @@ def test_lsp_service_text_renderer_contract_proves_editor_log_markers() -> None:
         "lsp ok: format=appgen.lsp-service.v1 semantic_format=appgen.semantic-model.v1"
     )
     assert {
+        "service_counts completion_sources=5/6 missing_completion_sources=1 references=2 document_symbols=2 workspace_symbols=1 code_actions=1 formatting_edits=1 rename_edits=0",
         "source_of_truth=appgen.semantic-model.v1",
         "completion_coverage format=appgen.completion-coverage.v1 missing=1",
         "completion-missing agent_actions",
@@ -6717,6 +6729,7 @@ def test_top_level_help_exposes_tooling_subcommands_and_apg_alias() -> None:
     assert audit["script_targets"]["apg"] == audit["script_targets"]["appgen"]
     assert audit["command_alias_count"] == 2
     assert audit["entrypoint_dispatch_count"] == 2
+    assert audit["failing_entrypoint_dispatch_count"] == 0
     assert audit["alias_contract"]["format"] == "appgen.cli-alias-contract.v1"
     assert audit["alias_contract"]["ok"] is True
     assert audit["alias_contract"]["commands"] == ("appgen", "apg")
@@ -6739,6 +6752,7 @@ def test_top_level_help_exposes_tooling_subcommands_and_apg_alias() -> None:
     assert audit["documented_missing_subcommand_count"] == 0
     assert audit["documented_missing_subcommands"] == ()
     assert audit["help_listed_subcommand_count"] == audit["required_subcommand_count"]
+    assert audit["listed_subcommand_count"] == audit["required_subcommand_count"]
     assert audit["help_missing_subcommand_count"] == 0
     assert audit["help_missing_subcommands"] == ()
     assert audit["subcommand_option_help_ok"] is True

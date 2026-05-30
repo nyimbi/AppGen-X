@@ -3553,12 +3553,29 @@ def _emit_lsp_service_text(payload: dict) -> None:
     code_actions = payload.get("codeAction", {}).get("actions", ())
     symbols = payload.get("documentSymbol", {}).get("symbols", ())
     workspace_symbols = payload.get("workspaceSymbol", {}).get("symbols", ())
+    counts = payload.get("service_counts") or {}
     print(
         f"lsp {status}: format={payload.get('format')} "
         f"semantic_format={payload.get('semantic_model_format')} "
-        f"diagnostics={len(diagnostics)} completions={len(completions)} "
-        f"actions={len(code_actions)} symbols={len(symbols)} workspace_symbols={len(workspace_symbols)}"
+        f"diagnostics={counts.get('diagnostic_count', len(diagnostics))} "
+        f"completions={counts.get('completion_count', len(completions))} "
+        f"actions={counts.get('code_action_count', len(code_actions))} "
+        f"symbols={counts.get('document_symbol_count', len(symbols))} "
+        f"workspace_symbols={counts.get('workspace_symbol_count', len(workspace_symbols))}"
     )
+    if counts:
+        print(
+            "service_counts "
+            f"completion_sources={counts.get('completion_detected_source_count', 0)}/"
+            f"{counts.get('completion_required_source_count', 0)} "
+            f"missing_completion_sources={counts.get('completion_missing_source_count', 0)} "
+            f"references={counts.get('reference_count', 0)} "
+            f"document_symbols={counts.get('document_symbol_count', 0)} "
+            f"workspace_symbols={counts.get('workspace_symbol_count', 0)} "
+            f"code_actions={counts.get('code_action_count', 0)} "
+            f"formatting_edits={counts.get('formatting_edit_count', 0)} "
+            f"rename_edits={counts.get('rename_edit_count', 0)}"
+        )
     capabilities = payload.get("capabilities", {})
     if capabilities:
         print(f"source_of_truth={capabilities.get('source_of_truth')}")
@@ -3615,6 +3632,19 @@ def _lsp_service_text_renderer_contract() -> dict:
         "codeAction": {"actions": ({"title": "Create operation"},)},
         "documentSymbol": {"symbols": ({"name": "Invoice"}, {"name": "InvoiceForm"})},
         "workspaceSymbol": {"symbols": ({"name": "Customer"},)},
+        "service_counts": {
+            "diagnostic_count": 2,
+            "completion_count": 2,
+            "completion_required_source_count": 6,
+            "completion_detected_source_count": 5,
+            "completion_missing_source_count": 1,
+            "reference_count": 2,
+            "document_symbol_count": 2,
+            "workspace_symbol_count": 1,
+            "code_action_count": 1,
+            "formatting_edit_count": 1,
+            "rename_edit_count": 0,
+        },
         "capabilities": {"source_of_truth": "appgen.semantic-model.v1"},
         "completionCoverage": {
             "format": "appgen.completion-coverage.v1",
@@ -3652,6 +3682,7 @@ def _lsp_service_text_renderer_contract() -> dict:
     text = output.getvalue()
     required_fragments = (
         "lsp ok: format=appgen.lsp-service.v1 semantic_format=appgen.semantic-model.v1 diagnostics=2 completions=2 actions=1 symbols=2 workspace_symbols=1",
+        "service_counts completion_sources=5/6 missing_completion_sources=1 references=2 document_symbols=2 workspace_symbols=1 code_actions=1 formatting_edits=1 rename_edits=0",
         "source_of_truth=appgen.semantic-model.v1",
         "completion_coverage format=appgen.completion-coverage.v1 missing=1",
         "completion-missing agent_actions",
@@ -3668,6 +3699,7 @@ def _lsp_service_text_renderer_contract() -> dict:
     lines = tuple(line for line in text.splitlines() if line.strip())
     summary_lines = tuple(line for line in lines if line.startswith("lsp "))
     source_lines = tuple(line for line in lines if line.startswith("source_of_truth="))
+    service_count_lines = tuple(line for line in lines if line.startswith("service_counts "))
     completion_lines = tuple(
         line
         for line in lines
@@ -3689,12 +3721,24 @@ def _lsp_service_text_renderer_contract() -> dict:
         **_text_renderer_contract_counts(
             text,
             required_fragments,
-            marker_prefixes=("lsp ", "source_of_truth", "completion_", "definition ", "references ", "formatting ", "rename ", "rename-blocker ", "hover"),
+            marker_prefixes=(
+                "lsp ",
+                "service_counts ",
+                "source_of_truth",
+                "completion_",
+                "definition ",
+                "references ",
+                "formatting ",
+                "rename ",
+                "rename-blocker ",
+                "hover",
+            ),
         ),
         "required_fragments": required_fragments,
         "missing_fragments": missing,
         "json_fallback": text.lstrip().startswith("{"),
         "summary_line_count": len(summary_lines),
+        "service_count_line_count": len(service_count_lines),
         "source_line_count": len(source_lines),
         "completion_line_count": len(completion_lines),
         "completion_missing_line_count": sum(
@@ -5134,8 +5178,11 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                     "format": cli_help_surface.get("format"),
                     "documented_subcommand_count": cli_help_surface.get("documented_subcommand_count"),
                     "listed_subcommand_count": cli_help_surface.get("listed_subcommand_count"),
+                    "help_listed_subcommand_count": cli_help_surface.get("help_listed_subcommand_count"),
                     "documented_missing_subcommands": cli_help_surface.get("documented_missing_subcommands"),
+                    "help_missing_subcommands": cli_help_surface.get("help_missing_subcommands"),
                     "failing_option_surface_count": cli_help_surface.get("failing_option_surface_count"),
+                    "missing_option_count": cli_help_surface.get("missing_option_count"),
                 },
             },
         ),
@@ -5162,6 +5209,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                 "format": cli_help_surface.get("format"),
                 "help_exit_code": cli_help_surface.get("help_exit_code"),
                 "required_subcommand_count": cli_help_surface.get("required_subcommand_count"),
+                "listed_subcommand_count": cli_help_surface.get("listed_subcommand_count"),
                 "documented_missing_subcommand_count": cli_help_surface.get("documented_missing_subcommand_count"),
                 "help_missing_subcommand_count": cli_help_surface.get("help_missing_subcommand_count"),
                 "subcommand_option_surface_count": cli_help_surface.get("subcommand_option_surface_count"),
@@ -5172,6 +5220,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                 "missing_option_count": cli_help_surface.get("missing_option_count"),
                 "command_alias_count": cli_help_surface.get("command_alias_count"),
                 "entrypoint_dispatch_count": cli_help_surface.get("entrypoint_dispatch_count"),
+                "failing_entrypoint_dispatch_count": cli_help_surface.get("failing_entrypoint_dispatch_count"),
                 "alias_contract": cli_help_surface.get("alias_contract"),
                 "module_entrypoint": cli_help_surface.get("module_entrypoint"),
                 "repo_alias_command": cli_help_surface.get("repo_alias_command"),
@@ -5357,6 +5406,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and lsp_symbol_coverage.get("document_missing_kind_count") == 0
             and lsp_symbol_coverage.get("workspace_missing_kind_count") == 0
             and lsp_text_renderer["ok"]
+            and lsp_text_renderer.get("service_count_line_count", 0) >= 1
             and lsp_text_renderer.get("completion_line_count", 0) >= 1
             and lsp_text_renderer.get("navigation_line_count", 0) >= 1
             and lsp_text_renderer.get("formatting_line_count", 0) >= 1
@@ -5382,6 +5432,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                 },
                 "text_renderer": {
                     "format": lsp_text_renderer.get("format"),
+                    "service_count_line_count": lsp_text_renderer.get("service_count_line_count"),
                     "completion_line_count": lsp_text_renderer.get("completion_line_count"),
                     "completion_missing_line_count": lsp_text_renderer.get("completion_missing_line_count"),
                     "navigation_line_count": lsp_text_renderer.get("navigation_line_count"),
@@ -12054,6 +12105,9 @@ def _tooling_audit_cli_help_surface(root: Path) -> dict:
         "alias_declared": alias_declared,
         "command_alias_count": len(alias_contract["commands"]),
         "entrypoint_dispatch_count": sum(1 for ok in (module_dispatches_tooling, repo_alias_dispatches_tooling) if ok),
+        "failing_entrypoint_dispatch_count": sum(
+            1 for ok in (module_dispatches_tooling, repo_alias_dispatches_tooling) if not ok
+        ),
         "script_targets": {"appgen": scripts.get("appgen"), "apg": scripts.get("apg")},
         "alias_contract": {
             **alias_contract,
@@ -12071,6 +12125,7 @@ def _tooling_audit_cli_help_surface(root: Path) -> dict:
         "documented_missing_subcommand_count": len(documented_missing_subcommands),
         "documented_missing_subcommands": documented_missing_subcommands,
         "help_listed_subcommand_count": len(required_subcommands) - len(help_missing_subcommands),
+        "listed_subcommand_count": len(required_subcommands) - len(help_missing_subcommands),
         "help_missing_subcommand_count": len(help_missing_subcommands),
         "help_missing_subcommands": help_missing_subcommands,
         "subcommand_option_help_ok": subcommand_option_help_ok,

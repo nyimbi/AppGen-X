@@ -596,11 +596,13 @@ entrypoint, and repo-alias execution evidence, so release evidence can prove CLI
 discoverability breadth without scraping nested help payloads.
 The audit also emits missing documented-subcommand details, option help
 exit-failure details, per-command missing-option details, command-alias counts,
-entrypoint-dispatch counts, failing-option-surface counts, and top-level help
-byte counts. These detail lists must be empty, `entrypoint_dispatch_count` must
-prove both module and repo-local alias dispatch, and `passing_option_surface_count` must equal
-`subcommand_option_surface_count`, before the CLI help surface is considered
-tooling-complete.
+entrypoint-dispatch counts, failing-entrypoint-dispatch counts,
+failing-option-surface counts, listed-subcommand counts, and top-level help byte
+counts. These detail lists must be empty, `entrypoint_dispatch_count` must prove
+both module and repo-local alias dispatch,
+`failing_entrypoint_dispatch_count` must be zero, and
+`passing_option_surface_count` must equal `subcommand_option_surface_count`,
+before the CLI help surface is considered tooling-complete.
 `appgen.missing-required-option-exit-audit.v1` covers required command options,
 including generator output directories, natural-language prompts, and component
 publication names, plus the required `appgen explain` selector family
@@ -1211,13 +1213,13 @@ contract format/status, reference contract format/location count, formatting
 contract format/edit count, and rename status when a rename is requested.
 `appgen.lsp-service-text-renderer.v1` is embedded in the tooling audit to prove
 those editor-service summaries keep diagnostics, completions, actions, symbols,
-source-of-truth, navigation, formatting, hover content as `hover ...`,
-completion coverage gaps as `completion-missing ...`, and rename safety markers
-visible without JSON parsing. The contract also reports summary-line,
-source-line, completion-line, completion-missing-line, navigation-line,
-formatting-line, rename-line, rename-blocker-line, hover-summary-line, and
-hover-line counts so text-mode regressions identify the missing service surface
-directly.
+source-of-truth, service-count summaries, navigation, formatting, hover content
+as `hover ...`, completion coverage gaps as `completion-missing ...`, and rename
+safety markers visible without JSON parsing. The contract also reports
+summary-line, service-count-line, source-line, completion-line,
+completion-missing-line, navigation-line, formatting-line, rename-line,
+rename-blocker-line, hover-summary-line, and hover-line counts so text-mode
+regressions identify the missing service surface directly.
 The JSON service payload also carries `service_counts` with diagnostic,
 completion, required/detected/missing completion-source, hover-content,
 reference, document-symbol, LSP symbol-coverage, code-action, formatting-edit,
