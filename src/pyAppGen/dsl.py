@@ -4309,9 +4309,122 @@ def _lsp_service_text_renderer_contract() -> dict:
     )
     hover_summary_lines = tuple(line for line in lines if line.startswith("hover_items="))
     hover_lines = tuple(line for line in lines if line.startswith("hover "))
+    required_text_surfaces = (
+        "service_counts",
+        "source_of_truth",
+        "completion_coverage",
+        "completion_missing",
+        "definition",
+        "references",
+        "formatting",
+        "rename",
+        "rename_blocker",
+        "hover_summary",
+        "hover_content",
+    )
+    emitted_text_surfaces = tuple(
+        surface
+        for surface, present in (
+            ("service_counts", bool(service_count_lines)),
+            ("source_of_truth", bool(source_lines)),
+            (
+                "completion_coverage",
+                any(line.startswith("completion_coverage ") for line in completion_lines),
+            ),
+            (
+                "completion_missing",
+                any(line.startswith("completion-missing ") for line in completion_lines),
+            ),
+            ("definition", bool(definition_lines)),
+            ("references", bool(reference_lines)),
+            ("formatting", bool(formatting_lines)),
+            ("rename", bool(rename_lines)),
+            ("rename_blocker", bool(rename_blocker_lines)),
+            ("hover_summary", bool(hover_summary_lines)),
+            ("hover_content", bool(hover_lines)),
+        )
+        if present
+    )
+    missing_text_surfaces = tuple(
+        surface for surface in required_text_surfaces if surface not in emitted_text_surfaces
+    )
+    required_editor_contract_formats = (
+        "appgen.lsp-service.v1",
+        "appgen.semantic-model.v1",
+        "appgen.completion-coverage.v1",
+        "appgen.lsp-definition.v1",
+        "appgen.lsp-references.v1",
+        "appgen.lsp-formatting.v1",
+        "appgen.lsp-rename.v1",
+        "appgen.migration-plan.v1",
+    )
+    emitted_editor_contract_formats = tuple(
+        contract_format
+        for contract_format in required_editor_contract_formats
+        if contract_format in text
+    )
+    missing_editor_contract_formats = tuple(
+        contract_format
+        for contract_format in required_editor_contract_formats
+        if contract_format not in emitted_editor_contract_formats
+    )
+    required_navigation_surfaces = ("definition", "references")
+    emitted_navigation_surfaces = tuple(
+        surface
+        for surface, present in (
+            ("definition", bool(definition_lines)),
+            ("references", bool(reference_lines)),
+        )
+        if present
+    )
+    missing_navigation_surfaces = tuple(
+        surface for surface in required_navigation_surfaces if surface not in emitted_navigation_surfaces
+    )
+    required_completion_gaps = ("agent_actions",)
+    emitted_completion_gaps = tuple(
+        line.removeprefix("completion-missing ").strip()
+        for line in completion_lines
+        if line.startswith("completion-missing ")
+    )
+    missing_completion_gaps = tuple(
+        gap for gap in required_completion_gaps if gap not in emitted_completion_gaps
+    )
+    required_hover_items = ("table Invoice", "field total")
+    emitted_hover_items = tuple(line.removeprefix("hover ").strip() for line in hover_lines)
+    missing_hover_items = tuple(
+        item for item in required_hover_items if item not in emitted_hover_items
+    )
+    required_rename_blocker_codes = ("AGX1101",)
+    emitted_rename_blocker_codes = tuple(
+        line.split(":", 1)[0].removeprefix("rename-blocker ").strip()
+        for line in rename_blocker_lines
+    )
+    missing_rename_blocker_codes = tuple(
+        code for code in required_rename_blocker_codes if code not in emitted_rename_blocker_codes
+    )
+    required_rename_fix_ids = ("add_rename_hint",)
+    emitted_rename_fix_ids = tuple(
+        fix_id
+        for line in rename_blocker_lines
+        for fix_id in line.partition(" fixes=")[2].split(",")
+        if fix_id
+    )
+    missing_rename_fix_ids = tuple(
+        fix_id for fix_id in required_rename_fix_ids if fix_id not in emitted_rename_fix_ids
+    )
     return {
         "format": "appgen.lsp-service-text-renderer.v1",
-        "ok": not missing and not text.lstrip().startswith("{"),
+        "ok": not (
+            missing
+            or missing_text_surfaces
+            or missing_editor_contract_formats
+            or missing_navigation_surfaces
+            or missing_completion_gaps
+            or missing_hover_items
+            or missing_rename_blocker_codes
+            or missing_rename_fix_ids
+            or text.lstrip().startswith("{")
+        ),
         **_text_renderer_contract_counts(
             text,
             required_fragments,
@@ -4331,6 +4444,34 @@ def _lsp_service_text_renderer_contract() -> dict:
         "required_fragments": required_fragments,
         "missing_fragments": missing,
         "json_fallback": text.lstrip().startswith("{"),
+        "required_text_surfaces": required_text_surfaces,
+        "emitted_text_surfaces": emitted_text_surfaces,
+        "missing_text_surfaces": missing_text_surfaces,
+        "missing_text_surface_count": len(missing_text_surfaces),
+        "required_editor_contract_formats": required_editor_contract_formats,
+        "emitted_editor_contract_formats": emitted_editor_contract_formats,
+        "missing_editor_contract_formats": missing_editor_contract_formats,
+        "missing_editor_contract_format_count": len(missing_editor_contract_formats),
+        "required_navigation_surfaces": required_navigation_surfaces,
+        "emitted_navigation_surfaces": emitted_navigation_surfaces,
+        "missing_navigation_surfaces": missing_navigation_surfaces,
+        "missing_navigation_surface_count": len(missing_navigation_surfaces),
+        "required_completion_gaps": required_completion_gaps,
+        "emitted_completion_gaps": emitted_completion_gaps,
+        "missing_completion_gaps": missing_completion_gaps,
+        "missing_completion_gap_count": len(missing_completion_gaps),
+        "required_hover_items": required_hover_items,
+        "emitted_hover_items": emitted_hover_items,
+        "missing_hover_items": missing_hover_items,
+        "missing_hover_item_count": len(missing_hover_items),
+        "required_rename_blocker_codes": required_rename_blocker_codes,
+        "emitted_rename_blocker_codes": emitted_rename_blocker_codes,
+        "missing_rename_blocker_codes": missing_rename_blocker_codes,
+        "missing_rename_blocker_code_count": len(missing_rename_blocker_codes),
+        "required_rename_fix_ids": required_rename_fix_ids,
+        "emitted_rename_fix_ids": emitted_rename_fix_ids,
+        "missing_rename_fix_ids": missing_rename_fix_ids,
+        "missing_rename_fix_id_count": len(missing_rename_fix_ids),
         "summary_line_count": len(summary_lines),
         "service_count_line_count": len(service_count_lines),
         "source_line_count": len(source_lines),
@@ -6502,13 +6643,13 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and lsp_rpc.get("catalog_reference_pbc_catalog_count", 0) >= 1
             and lsp_rpc.get("catalog_reference_event_catalog_count", 0) >= 1
             and lsp_text_renderer["ok"]
-            and lsp_text_renderer.get("service_count_line_count", 0) >= 1
-            and lsp_text_renderer.get("completion_line_count", 0) >= 1
-            and lsp_text_renderer.get("navigation_line_count", 0) >= 1
-            and lsp_text_renderer.get("definition_line_count", 0) >= 1
-            and lsp_text_renderer.get("reference_line_count", 0) >= 1
-            and lsp_text_renderer.get("formatting_line_count", 0) >= 1
-            and lsp_text_renderer.get("hover_line_count", 0) >= 1
+            and lsp_text_renderer.get("missing_text_surface_count") == 0
+            and lsp_text_renderer.get("missing_editor_contract_format_count") == 0
+            and lsp_text_renderer.get("missing_navigation_surface_count") == 0
+            and lsp_text_renderer.get("missing_completion_gap_count") == 0
+            and lsp_text_renderer.get("missing_hover_item_count") == 0
+            and lsp_text_renderer.get("missing_rename_blocker_code_count") == 0
+            and lsp_text_renderer.get("missing_rename_fix_id_count") == 0
             and lsp_text_renderer.get("json_fallback") is False,
             "Language server completion, symbol, navigation, formatting, hover, and text-summary evidence remain complete and reviewable.",
             "docs/tooling.md#language-server-specification",
@@ -6609,6 +6750,52 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                     "formatting_line_count": lsp_text_renderer.get("formatting_line_count"),
                     "hover_line_count": lsp_text_renderer.get("hover_line_count"),
                     "rename_blocker_line_count": lsp_text_renderer.get("rename_blocker_line_count"),
+                    "required_text_surfaces": lsp_text_renderer.get("required_text_surfaces"),
+                    "emitted_text_surfaces": lsp_text_renderer.get("emitted_text_surfaces"),
+                    "missing_text_surfaces": lsp_text_renderer.get("missing_text_surfaces"),
+                    "missing_text_surface_count": lsp_text_renderer.get("missing_text_surface_count"),
+                    "required_editor_contract_formats": lsp_text_renderer.get(
+                        "required_editor_contract_formats"
+                    ),
+                    "emitted_editor_contract_formats": lsp_text_renderer.get(
+                        "emitted_editor_contract_formats"
+                    ),
+                    "missing_editor_contract_formats": lsp_text_renderer.get(
+                        "missing_editor_contract_formats"
+                    ),
+                    "missing_editor_contract_format_count": lsp_text_renderer.get(
+                        "missing_editor_contract_format_count"
+                    ),
+                    "required_navigation_surfaces": lsp_text_renderer.get("required_navigation_surfaces"),
+                    "emitted_navigation_surfaces": lsp_text_renderer.get("emitted_navigation_surfaces"),
+                    "missing_navigation_surfaces": lsp_text_renderer.get("missing_navigation_surfaces"),
+                    "missing_navigation_surface_count": lsp_text_renderer.get(
+                        "missing_navigation_surface_count"
+                    ),
+                    "required_completion_gaps": lsp_text_renderer.get("required_completion_gaps"),
+                    "emitted_completion_gaps": lsp_text_renderer.get("emitted_completion_gaps"),
+                    "missing_completion_gaps": lsp_text_renderer.get("missing_completion_gaps"),
+                    "missing_completion_gap_count": lsp_text_renderer.get("missing_completion_gap_count"),
+                    "required_hover_items": lsp_text_renderer.get("required_hover_items"),
+                    "emitted_hover_items": lsp_text_renderer.get("emitted_hover_items"),
+                    "missing_hover_items": lsp_text_renderer.get("missing_hover_items"),
+                    "missing_hover_item_count": lsp_text_renderer.get("missing_hover_item_count"),
+                    "required_rename_blocker_codes": lsp_text_renderer.get(
+                        "required_rename_blocker_codes"
+                    ),
+                    "emitted_rename_blocker_codes": lsp_text_renderer.get(
+                        "emitted_rename_blocker_codes"
+                    ),
+                    "missing_rename_blocker_codes": lsp_text_renderer.get(
+                        "missing_rename_blocker_codes"
+                    ),
+                    "missing_rename_blocker_code_count": lsp_text_renderer.get(
+                        "missing_rename_blocker_code_count"
+                    ),
+                    "required_rename_fix_ids": lsp_text_renderer.get("required_rename_fix_ids"),
+                    "emitted_rename_fix_ids": lsp_text_renderer.get("emitted_rename_fix_ids"),
+                    "missing_rename_fix_ids": lsp_text_renderer.get("missing_rename_fix_ids"),
+                    "missing_rename_fix_id_count": lsp_text_renderer.get("missing_rename_fix_id_count"),
                     "json_fallback": lsp_text_renderer.get("json_fallback"),
                 },
             },
@@ -9206,8 +9393,13 @@ def _tooling_audit_implementation_phases(**evidence: dict) -> dict:
                     and evidence["lsp"].get("completionCoverage", {}).get("missing_source_count") == 0
                     and evidence["symbol_coverage"].get("missing") == ()
                     and evidence["lsp_text_renderer"].get("ok") is True
-                    and evidence["lsp_text_renderer"].get("navigation_line_count", 0) >= 1
-                    and evidence["lsp_text_renderer"].get("completion_line_count", 0) >= 1,
+                    and evidence["lsp_text_renderer"].get("missing_text_surface_count") == 0
+                    and evidence["lsp_text_renderer"].get("missing_editor_contract_format_count") == 0
+                    and evidence["lsp_text_renderer"].get("missing_navigation_surface_count") == 0
+                    and evidence["lsp_text_renderer"].get("missing_completion_gap_count") == 0
+                    and evidence["lsp_text_renderer"].get("missing_hover_item_count") == 0
+                    and evidence["lsp_text_renderer"].get("missing_rename_blocker_code_count") == 0
+                    and evidence["lsp_text_renderer"].get("missing_rename_fix_id_count") == 0,
                     "evidence_formats": (
                         evidence["lsp"].get("completionCoverage", {}).get("format"),
                         evidence["symbol_coverage"].get("format"),

@@ -5077,6 +5077,13 @@ def test_tooling_implementation_phase_audit_maps_phase_exit_criteria_to_evidence
             **ok("appgen.lsp-service-text-renderer.v1"),
             "navigation_line_count": 2,
             "completion_line_count": 2,
+            "missing_text_surface_count": 0,
+            "missing_editor_contract_format_count": 0,
+            "missing_navigation_surface_count": 0,
+            "missing_completion_gap_count": 0,
+            "missing_hover_item_count": 0,
+            "missing_rename_blocker_code_count": 0,
+            "missing_rename_fix_id_count": 0,
         },
         lsp_rename_cli=ok("appgen.lsp-rename-cli-audit.v1"),
         quick_fix=ok("appgen.lsp-code-action-apply.v1"),
@@ -6050,6 +6057,43 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert lsp_navigation_check["detail"]["text_renderer"]["reference_line_count"] >= 1
     assert lsp_navigation_check["detail"]["text_renderer"]["formatting_line_count"] >= 1
     assert lsp_navigation_check["detail"]["text_renderer"]["hover_line_count"] >= 1
+    assert lsp_navigation_check["detail"]["text_renderer"]["missing_text_surface_count"] == 0
+    assert lsp_navigation_check["detail"]["text_renderer"]["missing_text_surfaces"] == ()
+    assert lsp_navigation_check["detail"]["text_renderer"]["emitted_text_surfaces"] == (
+        "service_counts",
+        "source_of_truth",
+        "completion_coverage",
+        "completion_missing",
+        "definition",
+        "references",
+        "formatting",
+        "rename",
+        "rename_blocker",
+        "hover_summary",
+        "hover_content",
+    )
+    assert lsp_navigation_check["detail"]["text_renderer"]["missing_editor_contract_format_count"] == 0
+    assert lsp_navigation_check["detail"]["text_renderer"]["missing_editor_contract_formats"] == ()
+    assert lsp_navigation_check["detail"]["text_renderer"]["emitted_editor_contract_formats"] == (
+        "appgen.lsp-service.v1",
+        "appgen.semantic-model.v1",
+        "appgen.completion-coverage.v1",
+        "appgen.lsp-definition.v1",
+        "appgen.lsp-references.v1",
+        "appgen.lsp-formatting.v1",
+        "appgen.lsp-rename.v1",
+        "appgen.migration-plan.v1",
+    )
+    assert lsp_navigation_check["detail"]["text_renderer"]["missing_navigation_surface_count"] == 0
+    assert lsp_navigation_check["detail"]["text_renderer"]["missing_navigation_surfaces"] == ()
+    assert lsp_navigation_check["detail"]["text_renderer"]["missing_completion_gap_count"] == 0
+    assert lsp_navigation_check["detail"]["text_renderer"]["missing_completion_gaps"] == ()
+    assert lsp_navigation_check["detail"]["text_renderer"]["missing_hover_item_count"] == 0
+    assert lsp_navigation_check["detail"]["text_renderer"]["missing_hover_items"] == ()
+    assert lsp_navigation_check["detail"]["text_renderer"]["missing_rename_blocker_code_count"] == 0
+    assert lsp_navigation_check["detail"]["text_renderer"]["missing_rename_blocker_codes"] == ()
+    assert lsp_navigation_check["detail"]["text_renderer"]["missing_rename_fix_id_count"] == 0
+    assert lsp_navigation_check["detail"]["text_renderer"]["missing_rename_fix_ids"] == ()
     assert lsp_navigation_check["detail"]["text_renderer"]["json_fallback"] is False
     quick_fix_check = next(check for check in report["checks"] if check["id"] == "lsp_quick_fix_application")
     assert quick_fix_check["detail"]["cli"]["format"] == "appgen.lsp-code-action-cli-audit.v1"
@@ -8276,37 +8320,55 @@ def test_lsp_service_text_renderer_contract_proves_editor_log_markers() -> None:
     assert report["required_fragment_count"] == len(report["required_fragments"])
     assert report["missing_fragment_count"] == 0
     assert report["marker_line_count"] >= 11
-    assert report["required_graph_kinds"] == ("er", "lookup", "workflow")
-    assert report["emitted_graph_kinds"] == report["required_graph_kinds"]
-    assert report["missing_graph_kind_count"] == 0
-    assert report["missing_graph_kinds"] == ()
-    assert report["required_graph_formats"] == ("json", "mermaid", "dot")
-    assert report["emitted_graph_formats"] == report["required_graph_formats"]
-    assert report["missing_graph_format_count"] == 0
-    assert report["missing_graph_formats"] == ()
-    assert report["required_check_ids"] == ("er_graph", "workflow_graph")
-    assert report["emitted_check_ids"] == report["required_check_ids"]
-    assert report["missing_check_id_count"] == 0
-    assert report["missing_check_ids"] == ()
-    assert report["required_symbol_ids"] == ("table.Invoice",)
-    assert report["emitted_symbol_ids"] == report["required_symbol_ids"]
-    assert report["missing_symbol_id_count"] == 0
-    assert report["missing_symbol_ids"] == ()
-    assert report["required_diagnostic_codes"] == ("AGX0303",)
-    assert report["emitted_diagnostic_codes"] == report["required_diagnostic_codes"]
-    assert report["missing_diagnostic_code_count"] == 0
-    assert report["missing_diagnostic_codes"] == ()
-    assert report["required_docs_urls"] == ("docs/tooling.md#linter-rules-by-domain",)
-    assert report["emitted_docs_urls"] == report["required_docs_urls"]
-    assert report["missing_docs_url_count"] == 0
-    assert report["missing_docs_urls"] == ()
-    assert report["required_handler_edges"] == (
-        "InvoiceForm.Save -> SubmitInvoice [operation]",
-        "SubmitInvoice -> InvoicePosted [event]",
+    assert report["required_text_surfaces"] == (
+        "service_counts",
+        "source_of_truth",
+        "completion_coverage",
+        "completion_missing",
+        "definition",
+        "references",
+        "formatting",
+        "rename",
+        "rename_blocker",
+        "hover_summary",
+        "hover_content",
     )
-    assert report["emitted_handler_edges"] == report["required_handler_edges"]
-    assert report["missing_handler_edge_count"] == 0
-    assert report["missing_handler_edges"] == ()
+    assert report["emitted_text_surfaces"] == report["required_text_surfaces"]
+    assert report["missing_text_surface_count"] == 0
+    assert report["missing_text_surfaces"] == ()
+    assert report["required_editor_contract_formats"] == (
+        "appgen.lsp-service.v1",
+        "appgen.semantic-model.v1",
+        "appgen.completion-coverage.v1",
+        "appgen.lsp-definition.v1",
+        "appgen.lsp-references.v1",
+        "appgen.lsp-formatting.v1",
+        "appgen.lsp-rename.v1",
+        "appgen.migration-plan.v1",
+    )
+    assert report["emitted_editor_contract_formats"] == report["required_editor_contract_formats"]
+    assert report["missing_editor_contract_format_count"] == 0
+    assert report["missing_editor_contract_formats"] == ()
+    assert report["required_navigation_surfaces"] == ("definition", "references")
+    assert report["emitted_navigation_surfaces"] == report["required_navigation_surfaces"]
+    assert report["missing_navigation_surface_count"] == 0
+    assert report["missing_navigation_surfaces"] == ()
+    assert report["required_completion_gaps"] == ("agent_actions",)
+    assert report["emitted_completion_gaps"] == report["required_completion_gaps"]
+    assert report["missing_completion_gap_count"] == 0
+    assert report["missing_completion_gaps"] == ()
+    assert report["required_hover_items"] == ("table Invoice", "field total")
+    assert report["emitted_hover_items"] == report["required_hover_items"]
+    assert report["missing_hover_item_count"] == 0
+    assert report["missing_hover_items"] == ()
+    assert report["required_rename_blocker_codes"] == ("AGX1101",)
+    assert report["emitted_rename_blocker_codes"] == report["required_rename_blocker_codes"]
+    assert report["missing_rename_blocker_code_count"] == 0
+    assert report["missing_rename_blocker_codes"] == ()
+    assert report["required_rename_fix_ids"] == ("add_rename_hint",)
+    assert report["emitted_rename_fix_ids"] == report["required_rename_fix_ids"]
+    assert report["missing_rename_fix_id_count"] == 0
+    assert report["missing_rename_fix_ids"] == ()
     assert report["missing_fragments"] == ()
     assert report["json_fallback"] is False
     assert report["summary_line_count"] == 1

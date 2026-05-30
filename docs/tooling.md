@@ -1333,6 +1333,16 @@ summary-line, service-count-line, source-line, completion-line,
 completion-missing-line, navigation-line, formatting-line, rename-line,
 rename-blocker-line, hover-summary-line, and hover-line counts so text-mode
 regressions identify the missing service surface directly.
+Those counts are backed by named evidence, not accepted on their own. The
+renderer publishes required, emitted, missing, and missing-count fields for
+text surfaces (`service_counts`, `source_of_truth`, completion coverage and
+missing-source markers, definition, references, formatting, rename,
+rename-blocker, hover summary, and hover content), embedded editor contract
+formats, navigation surfaces, completion gaps, hover items, rename blocker
+codes, and rename fix ids. The aggregate
+`lsp_navigation_completion_contracts` gate fails unless every named list has
+zero missing entries, so a renderer cannot satisfy the release audit by printing
+an unrelated line with the right prefix.
 The JSON service payload also carries `service_counts` with diagnostic,
 completion, required/detected/missing completion-source, hover-content,
 reference, document-symbol, LSP symbol-coverage, code-action, formatting-edit,

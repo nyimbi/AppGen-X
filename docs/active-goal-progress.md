@@ -3981,3 +3981,15 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   both CLI quick-fix cases, focused non-PBC LSP code-action CLI audit test
   (`1 passed`), scoped diff whitespace check, and restricted-name scan outside
   archive, Git internals, and active PBC paths.
+- Current LSP text-renderer audit hardening pass replaces prefix/count-only
+  evidence with named required, emitted, and missing evidence for editor-service
+  text output. `appgen.lsp-service-text-renderer.v1` now proves service-count,
+  source-of-truth, completion coverage, completion-missing, definition,
+  reference, formatting, rename, rename-blocker, hover-summary, hover-content,
+  embedded contract-format, navigation-surface, completion-gap, hover-item,
+  blocker-code, and fix-id coverage. Verification passed: Python compile for
+  the touched DSL and tests, focused LSP text-renderer contract test
+  (`1 passed`), implementation-phase evidence test (`1 passed`), aggregate
+  tooling audit (`1 passed`, with the known active-PBC `datetime.utcnow()`
+  warnings only), scoped diff whitespace check, and restricted-name scan outside
+  archive, Git internals, and active PBC paths.
