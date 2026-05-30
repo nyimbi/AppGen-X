@@ -5619,16 +5619,38 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
         _tooling_audit_check(
             "frontend_semantic_service_bridge",
             studio.get("frontend_semantic_service_audit", {}).get("ok") is True
+            and studio.get("frontend_semantic_service_count", 0)
+            >= studio.get("frontend_semantic_required_service_count", 0)
+            and studio.get("frontend_semantic_surface_count", 0)
+            >= studio.get("frontend_semantic_required_surface_count", 0)
+            and studio.get("frontend_semantic_surface_contract_count", 0)
+            >= studio.get("frontend_semantic_required_surface_contract_count", 0)
             and studio.get("frontend_semantic_missing_service_count") == 0
             and studio.get("frontend_semantic_missing_surface_count") == 0
-            and studio.get("frontend_semantic_missing_surface_contract_count") == 0,
+            and studio.get("frontend_semantic_missing_surface_contract_count") == 0
+            and studio.get("frontend_semantic_missing_services") == ()
+            and studio.get("frontend_semantic_missing_surfaces") == ()
+            and studio.get("frontend_semantic_missing_surface_contracts") == (),
             "Frontend semantic-service bridge exposes required Studio service evidence, surface ids, surface contracts, and panel render hooks.",
             "docs/tooling.md#appgen-x-studio-monaco",
             {
                 "format": studio.get("frontend_semantic_service_format"),
                 "audit": studio.get("frontend_semantic_service_audit"),
+                "required_services": studio.get("frontend_semantic_required_services"),
+                "services": studio.get("frontend_semantic_services"),
+                "missing_services": studio.get("frontend_semantic_missing_services"),
+                "required_surfaces": studio.get("frontend_semantic_required_surfaces"),
+                "surfaces": studio.get("frontend_semantic_surfaces"),
+                "missing_surfaces": studio.get("frontend_semantic_missing_surfaces"),
+                "required_surface_contracts": studio.get("frontend_semantic_required_surface_contracts"),
+                "surface_contracts": studio.get("frontend_semantic_surface_contracts"),
+                "missing_surface_contracts": studio.get("frontend_semantic_missing_surface_contracts"),
                 "service_count": studio.get("frontend_semantic_service_count"),
+                "required_service_count": studio.get("frontend_semantic_required_service_count"),
                 "surface_count": studio.get("frontend_semantic_surface_count"),
+                "required_surface_count": studio.get("frontend_semantic_required_surface_count"),
+                "surface_contract_count": studio.get("frontend_semantic_surface_contract_count"),
+                "required_surface_contract_count": studio.get("frontend_semantic_required_surface_contract_count"),
                 "missing_service_count": studio.get("frontend_semantic_missing_service_count"),
                 "missing_surface_count": studio.get("frontend_semantic_missing_surface_count"),
                 "missing_surface_contract_count": studio.get("frontend_semantic_missing_surface_contract_count"),
@@ -5637,15 +5659,38 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
         _tooling_audit_check(
             "frontend_interaction_audit_bridge",
             studio.get("frontend_interaction_audit", {}).get("ok") is True
+            and studio.get("frontend_interaction_scenario_count", 0)
+            >= studio.get("frontend_interaction_required_scenario_count", 0)
+            and studio.get("frontend_interaction_audit_input_count", 0)
+            >= studio.get("frontend_interaction_required_audit_input_count", 0)
+            and studio.get("frontend_interaction_helper_count", 0)
+            >= studio.get("frontend_interaction_required_helper_count", 0)
             and studio.get("frontend_interaction_missing_scenario_count") == 0
             and studio.get("frontend_interaction_missing_audit_input_count") == 0
-            and studio.get("frontend_interaction_missing_helper_count") == 0,
+            and studio.get("frontend_interaction_missing_helper_count") == 0
+            and studio.get("frontend_interaction_missing_scenarios") == ()
+            and studio.get("frontend_interaction_missing_audit_inputs") == ()
+            and studio.get("frontend_interaction_missing_helpers") == (),
             "Frontend interaction audit covers palette, drag payload, device/data workbench, status rail, and semantic-service bridge scenarios.",
             "docs/tooling.md#appgen-x-studio-monaco",
             {
                 "format": studio.get("frontend_interaction_format"),
                 "audit": studio.get("frontend_interaction_audit"),
+                "required_scenarios": studio.get("frontend_interaction_required_scenarios"),
+                "scenarios": studio.get("frontend_interaction_scenarios"),
+                "missing_scenarios": studio.get("frontend_interaction_missing_scenarios"),
+                "required_audit_inputs": studio.get("frontend_interaction_required_audit_inputs"),
+                "audit_inputs": studio.get("frontend_interaction_audit_inputs"),
+                "missing_audit_inputs": studio.get("frontend_interaction_missing_audit_inputs"),
+                "required_helpers": studio.get("frontend_interaction_required_helpers"),
+                "helpers": studio.get("frontend_interaction_helpers"),
+                "missing_helpers": studio.get("frontend_interaction_missing_helpers"),
                 "scenario_count": studio.get("frontend_interaction_scenario_count"),
+                "required_scenario_count": studio.get("frontend_interaction_required_scenario_count"),
+                "audit_input_count": studio.get("frontend_interaction_audit_input_count"),
+                "required_audit_input_count": studio.get("frontend_interaction_required_audit_input_count"),
+                "helper_count": studio.get("frontend_interaction_helper_count"),
+                "required_helper_count": studio.get("frontend_interaction_required_helper_count"),
                 "missing_scenario_count": studio.get("frontend_interaction_missing_scenario_count"),
                 "missing_audit_input_count": studio.get("frontend_interaction_missing_audit_input_count"),
                 "missing_helper_count": studio.get("frontend_interaction_missing_helper_count"),
@@ -7693,7 +7738,25 @@ def _tooling_audit_implementation_phases(**evidence: dict) -> dict:
                     "ok": evidence["studio"].get("browser_smoke_checks", {}).get("frontend_semantic_service_bridge") is True
                     and evidence["studio"].get("browser_smoke_checks", {}).get("frontend_interaction_audit_bridge") is True
                     and evidence["studio"].get("frontend_semantic_service_audit", {}).get("ok") is True
-                    and evidence["studio"].get("frontend_interaction_audit", {}).get("ok") is True,
+                    and evidence["studio"].get("frontend_interaction_audit", {}).get("ok") is True
+                    and evidence["studio"].get("frontend_semantic_missing_services") == ()
+                    and evidence["studio"].get("frontend_semantic_missing_surfaces") == ()
+                    and evidence["studio"].get("frontend_semantic_missing_surface_contracts") == ()
+                    and evidence["studio"].get("frontend_interaction_missing_scenarios") == ()
+                    and evidence["studio"].get("frontend_interaction_missing_audit_inputs") == ()
+                    and evidence["studio"].get("frontend_interaction_missing_helpers") == (),
+                    "missing_semantic_services": evidence["studio"].get("frontend_semantic_missing_services"),
+                    "missing_semantic_surfaces": evidence["studio"].get("frontend_semantic_missing_surfaces"),
+                    "missing_semantic_surface_contracts": evidence["studio"].get(
+                        "frontend_semantic_missing_surface_contracts"
+                    ),
+                    "missing_interaction_scenarios": evidence["studio"].get(
+                        "frontend_interaction_missing_scenarios"
+                    ),
+                    "missing_interaction_audit_inputs": evidence["studio"].get(
+                        "frontend_interaction_missing_audit_inputs"
+                    ),
+                    "missing_interaction_helpers": evidence["studio"].get("frontend_interaction_missing_helpers"),
                     "evidence_formats": (
                         evidence["studio"].get("browser_smoke_format"),
                         evidence["studio"].get("frontend_semantic_service_format"),
@@ -8150,8 +8213,14 @@ def _tooling_audit_studio_semantic_service(source: str) -> dict:
         and browser_smoke_checks.get("frontend_interaction_audit_bridge") is True
         and frontend_semantic.get("format") == "appgen.frontend-semantic-service-audit.v1"
         and frontend_semantic.get("ok") is True
+        and not frontend_semantic.get("missing_services", ())
+        and not frontend_semantic.get("missing_surfaces", ())
+        and not frontend_semantic.get("missing_surface_contracts", ())
         and frontend_interaction.get("format") == "appgen.frontend-interaction-audit.v1"
-        and frontend_interaction.get("ok") is True,
+        and frontend_interaction.get("ok") is True
+        and not frontend_interaction.get("missing_scenarios", ())
+        and not frontend_interaction.get("missing_audit_inputs", ())
+        and not frontend_interaction.get("missing_helpers", ()),
     }
     blocking_gaps = tuple(name for name, ok in checks.items() if not ok)
     return {
@@ -8193,13 +8262,46 @@ def _tooling_audit_studio_semantic_service(source: str) -> dict:
         "frontend_semantic_service_audit": frontend_semantic,
         "frontend_semantic_service_format": frontend_semantic.get("format"),
         "frontend_semantic_service_count": frontend_semantic.get("service_count"),
+        "frontend_semantic_required_service_count": frontend_semantic.get("required_service_count"),
+        "frontend_semantic_services": tuple(frontend_semantic.get("services", ())),
+        "frontend_semantic_required_services": tuple(frontend_semantic.get("required_services", ())),
+        "frontend_semantic_missing_services": tuple(frontend_semantic.get("missing_services", ())),
         "frontend_semantic_surface_count": frontend_semantic.get("surface_count"),
+        "frontend_semantic_required_surface_count": frontend_semantic.get("required_surface_count"),
+        "frontend_semantic_surfaces": tuple(frontend_semantic.get("surfaces", ())),
+        "frontend_semantic_required_surfaces": tuple(frontend_semantic.get("required_surfaces", ())),
+        "frontend_semantic_missing_surfaces": tuple(frontend_semantic.get("missing_surfaces", ())),
+        "frontend_semantic_surface_contract_count": frontend_semantic.get("surface_contract_count"),
+        "frontend_semantic_required_surface_contract_count": frontend_semantic.get(
+            "required_surface_contract_count"
+        ),
+        "frontend_semantic_surface_contracts": tuple(frontend_semantic.get("surface_contracts", ())),
+        "frontend_semantic_required_surface_contracts": tuple(
+            frontend_semantic.get("required_surface_contracts", ())
+        ),
+        "frontend_semantic_missing_surface_contracts": tuple(
+            frontend_semantic.get("missing_surface_contracts", ())
+        ),
         "frontend_semantic_missing_service_count": frontend_semantic.get("missing_service_count"),
         "frontend_semantic_missing_surface_count": frontend_semantic.get("missing_surface_count"),
         "frontend_semantic_missing_surface_contract_count": frontend_semantic.get("missing_surface_contract_count"),
         "frontend_interaction_audit": frontend_interaction,
         "frontend_interaction_format": frontend_interaction.get("format"),
         "frontend_interaction_scenario_count": frontend_interaction.get("scenario_count"),
+        "frontend_interaction_required_scenario_count": frontend_interaction.get("required_scenario_count"),
+        "frontend_interaction_scenarios": tuple(frontend_interaction.get("scenarios", ())),
+        "frontend_interaction_required_scenarios": tuple(frontend_interaction.get("required_scenarios", ())),
+        "frontend_interaction_missing_scenarios": tuple(frontend_interaction.get("missing_scenarios", ())),
+        "frontend_interaction_audit_input_count": frontend_interaction.get("audit_input_count"),
+        "frontend_interaction_required_audit_input_count": frontend_interaction.get("required_audit_input_count"),
+        "frontend_interaction_audit_inputs": tuple(frontend_interaction.get("audit_inputs", ())),
+        "frontend_interaction_required_audit_inputs": tuple(frontend_interaction.get("required_audit_inputs", ())),
+        "frontend_interaction_missing_audit_inputs": tuple(frontend_interaction.get("missing_audit_inputs", ())),
+        "frontend_interaction_helper_count": frontend_interaction.get("helper_count"),
+        "frontend_interaction_required_helper_count": frontend_interaction.get("required_helper_count"),
+        "frontend_interaction_helpers": tuple(frontend_interaction.get("helpers", ())),
+        "frontend_interaction_required_helpers": tuple(frontend_interaction.get("required_helpers", ())),
+        "frontend_interaction_missing_helpers": tuple(frontend_interaction.get("missing_helpers", ())),
         "frontend_interaction_missing_scenario_count": frontend_interaction.get("missing_scenario_count"),
         "frontend_interaction_missing_audit_input_count": frontend_interaction.get("missing_audit_input_count"),
         "frontend_interaction_missing_helper_count": frontend_interaction.get("missing_helper_count"),

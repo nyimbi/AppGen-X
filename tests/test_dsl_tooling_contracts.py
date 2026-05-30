@@ -4209,7 +4209,21 @@ def test_studio_semantic_service_audit_proves_panel_contracts() -> None:
     assert report["frontend_semantic_service_format"] == "appgen.frontend-semantic-service-audit.v1"
     assert report["frontend_semantic_service_audit"]["ok"] is True
     assert report["frontend_semantic_service_count"] == 4
+    assert report["frontend_semantic_required_service_count"] == 4
+    assert set(report["frontend_semantic_required_services"]) <= set(report["frontend_semantic_services"])
+    assert report["frontend_semantic_missing_services"] == ()
     assert report["frontend_semantic_surface_count"] == len(report["required_surfaces"])
+    assert report["frontend_semantic_required_surface_count"] == len(report["required_surfaces"])
+    assert set(report["frontend_semantic_required_surfaces"]) <= set(report["frontend_semantic_surfaces"])
+    assert report["frontend_semantic_missing_surfaces"] == ()
+    assert report["frontend_semantic_surface_contract_count"] == len(report["frontend_semantic_required_surface_contracts"])
+    assert report["frontend_semantic_required_surface_contract_count"] == len(
+        report["frontend_semantic_required_surface_contracts"]
+    )
+    assert set(report["frontend_semantic_required_surface_contracts"]) <= set(
+        report["frontend_semantic_surface_contracts"]
+    )
+    assert report["frontend_semantic_missing_surface_contracts"] == ()
     assert report["frontend_semantic_missing_service_count"] == 0
     assert report["frontend_semantic_missing_surface_count"] == 0
     assert report["frontend_semantic_missing_surface_contract_count"] == 0
@@ -4218,6 +4232,23 @@ def test_studio_semantic_service_audit_proves_panel_contracts() -> None:
     assert report["frontend_interaction_format"] == "appgen.frontend-interaction-audit.v1"
     assert report["frontend_interaction_audit"]["ok"] is True
     assert report["frontend_interaction_scenario_count"] == 8
+    assert report["frontend_interaction_required_scenario_count"] == 8
+    assert set(report["frontend_interaction_required_scenarios"]) <= set(report["frontend_interaction_scenarios"])
+    assert report["frontend_interaction_missing_scenarios"] == ()
+    assert report["frontend_interaction_audit_input_count"] == len(
+        report["frontend_interaction_required_audit_inputs"]
+    )
+    assert report["frontend_interaction_required_audit_input_count"] == len(
+        report["frontend_interaction_required_audit_inputs"]
+    )
+    assert set(report["frontend_interaction_required_audit_inputs"]) <= set(
+        report["frontend_interaction_audit_inputs"]
+    )
+    assert report["frontend_interaction_missing_audit_inputs"] == ()
+    assert report["frontend_interaction_helper_count"] == len(report["frontend_interaction_required_helpers"])
+    assert report["frontend_interaction_required_helper_count"] == len(report["frontend_interaction_required_helpers"])
+    assert set(report["frontend_interaction_required_helpers"]) <= set(report["frontend_interaction_helpers"])
+    assert report["frontend_interaction_missing_helpers"] == ()
     assert report["frontend_interaction_missing_scenario_count"] == 0
     assert report["frontend_interaction_missing_audit_input_count"] == 0
     assert report["frontend_interaction_missing_helper_count"] == 0
@@ -5202,6 +5233,20 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     frontend_semantic_check = next(check for check in report["checks"] if check["id"] == "frontend_semantic_service_bridge")
     assert frontend_semantic_check["detail"]["format"] == "appgen.frontend-semantic-service-audit.v1"
     assert frontend_semantic_check["detail"]["audit"]["ok"] is True
+    assert set(frontend_semantic_check["detail"]["required_services"]) <= set(frontend_semantic_check["detail"]["services"])
+    assert frontend_semantic_check["detail"]["missing_services"] == ()
+    assert set(frontend_semantic_check["detail"]["required_surfaces"]) <= set(frontend_semantic_check["detail"]["surfaces"])
+    assert frontend_semantic_check["detail"]["missing_surfaces"] == ()
+    assert set(frontend_semantic_check["detail"]["required_surface_contracts"]) <= set(
+        frontend_semantic_check["detail"]["surface_contracts"]
+    )
+    assert frontend_semantic_check["detail"]["missing_surface_contracts"] == ()
+    assert frontend_semantic_check["detail"]["service_count"] == frontend_semantic_check["detail"]["required_service_count"]
+    assert frontend_semantic_check["detail"]["surface_count"] == frontend_semantic_check["detail"]["required_surface_count"]
+    assert (
+        frontend_semantic_check["detail"]["surface_contract_count"]
+        == frontend_semantic_check["detail"]["required_surface_contract_count"]
+    )
     assert frontend_semantic_check["detail"]["missing_service_count"] == 0
     assert frontend_semantic_check["detail"]["missing_surface_count"] == 0
     assert frontend_semantic_check["detail"]["missing_surface_contract_count"] == 0
@@ -5209,6 +5254,27 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert frontend_interaction_check["detail"]["format"] == "appgen.frontend-interaction-audit.v1"
     assert frontend_interaction_check["detail"]["audit"]["ok"] is True
     assert frontend_interaction_check["detail"]["scenario_count"] == 8
+    assert set(frontend_interaction_check["detail"]["required_scenarios"]) <= set(
+        frontend_interaction_check["detail"]["scenarios"]
+    )
+    assert frontend_interaction_check["detail"]["missing_scenarios"] == ()
+    assert set(frontend_interaction_check["detail"]["required_audit_inputs"]) <= set(
+        frontend_interaction_check["detail"]["audit_inputs"]
+    )
+    assert frontend_interaction_check["detail"]["missing_audit_inputs"] == ()
+    assert set(frontend_interaction_check["detail"]["required_helpers"]) <= set(
+        frontend_interaction_check["detail"]["helpers"]
+    )
+    assert frontend_interaction_check["detail"]["missing_helpers"] == ()
+    assert (
+        frontend_interaction_check["detail"]["scenario_count"]
+        == frontend_interaction_check["detail"]["required_scenario_count"]
+    )
+    assert (
+        frontend_interaction_check["detail"]["audit_input_count"]
+        == frontend_interaction_check["detail"]["required_audit_input_count"]
+    )
+    assert frontend_interaction_check["detail"]["helper_count"] == frontend_interaction_check["detail"]["required_helper_count"]
     assert frontend_interaction_check["detail"]["missing_scenario_count"] == 0
     assert frontend_interaction_check["detail"]["missing_audit_input_count"] == 0
     assert frontend_interaction_check["detail"]["missing_helper_count"] == 0
