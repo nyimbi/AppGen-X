@@ -8607,6 +8607,58 @@ deploy Production {
         and "// SubmitInvoice should remain in this comment" in lexical_patched_text
     )
 
+    table_source = """
+app RenameTables { targets: web }
+table Customer { id: int pk; name: string }
+table Invoice { id: int pk; Customer: string; customer_id: int -> Customer.id }
+view CustomerForm for Customer { Main: id }
+operation SubmitCustomer { draft -> done }
+api CustomerApi { on Create -> SubmitCustomer }
+report CustomerReport { source Customer -> CustomerApi }
+audit RenameAudit { evidence: "Customer" }
+// Customer remains in this comment
+"""
+    table_path = tmp / "lsp-rename-table.appgen"
+    table_path.write_text(table_source, encoding="utf-8")
+    table_position = _tooling_lsp_position(table_source, "Customer {")
+    table_position_arg = f"{table_position['line']}:{table_position['character']}"
+    table_output = io.StringIO()
+    with contextlib.redirect_stdout(table_output):
+        table_exit = dsl_tooling_cli(
+            (
+                "lsp",
+                str(table_path),
+                "--position",
+                table_position_arg,
+                "--rename",
+                "Account",
+                "--json",
+            )
+        )
+    try:
+        table_payload = json.loads(table_output.getvalue())
+    except json.JSONDecodeError:
+        table_payload = {}
+    table_rename = table_payload.get("rename", {})
+    table_changes = table_rename.get("workspace_edit", {}).get("changes", {}).get(str(table_path), ())
+    table_patched_text = table_changes[0].get("newText", "") if table_changes else ""
+    table_scope_ok = (
+        table_exit == 0
+        and table_payload.get("format") == "appgen.lsp-service.v1"
+        and table_rename.get("format") == "appgen.lsp-rename.v1"
+        and table_rename.get("blocked") is True
+        and table_rename.get("lexical_scope") == "table_declarations_and_targets"
+        and table_rename.get("occurrence_count") == 4
+        and "table Account" in table_patched_text
+        and "customer_id: int -> Account.id" in table_patched_text
+        and "view CustomerForm for Account" in table_patched_text
+        and "source Account -> CustomerApi" in table_patched_text
+        and "Customer: string" in table_patched_text
+        and 'evidence: "Customer"' in table_patched_text
+        and "// Customer remains in this comment" in table_patched_text
+        and any(item.get("code") == "AGX1101" for item in table_rename.get("blockers", ()))
+    )
+
     risk_source = """
 app RenameRisk { targets: web }
 
@@ -8690,9 +8742,9 @@ view InvoiceForm for Invoice {
 
     return {
         "format": "appgen.lsp-rename-cli-audit.v1",
-        "ok": safe_ok and lexical_scope_ok and blocked_ok and blocked_text_ok,
-        "scenario_count": 4,
-        "passing_scenario_count": sum(1 for ok in (safe_ok, lexical_scope_ok, blocked_ok, blocked_text_ok) if ok),
+        "ok": safe_ok and lexical_scope_ok and table_scope_ok and blocked_ok and blocked_text_ok,
+        "scenario_count": 5,
+        "passing_scenario_count": sum(1 for ok in (safe_ok, lexical_scope_ok, table_scope_ok, blocked_ok, blocked_text_ok) if ok),
         "blocked_code_count": len(blocked_codes),
         "blocked_fix_count": len(blocked_fixes),
         "exit_code": exit_code,
@@ -8712,6 +8764,13 @@ view InvoiceForm for Invoice {
         "lexical_field_preserved": "SubmitInvoice: string" in lexical_patched_text,
         "lexical_string_preserved": 'evidence: "SubmitInvoice"' in lexical_patched_text,
         "lexical_comment_preserved": "// SubmitInvoice should remain in this comment" in lexical_patched_text,
+        "table_scope_ok": table_scope_ok,
+        "table_scope": table_rename.get("lexical_scope"),
+        "table_occurrence_count": table_rename.get("occurrence_count"),
+        "table_blocked": table_rename.get("blocked"),
+        "table_field_preserved": "Customer: string" in table_patched_text,
+        "table_string_preserved": 'evidence: "Customer"' in table_patched_text,
+        "table_comment_preserved": "// Customer remains in this comment" in table_patched_text,
         "blocked_ok": blocked_ok,
         "blocked_exit_code": risk_exit,
         "blocked_payload_format": risk_payload.get("format"),
@@ -13183,7 +13242,7 @@ def lsp_rename_dsl_documents(
 
 def _replace_symbol_identifier_occurrences(source: str, token: str, new_name: str, symbol: dict | None) -> tuple[str, int, str]:
     symbol_kind = (symbol or {}).get("kind")
-    if symbol_kind in {"operation", "flow"}:
+    if symbol_kind in {"operation", "flow", "table"}:
         return (*_replace_identifier_occurrences_scoped(source, token, new_name, scope=symbol_kind), f"{symbol_kind}_declarations_and_targets")
     text, count = _replace_identifier_occurrences(source, token, new_name)
     return text, count, "code_identifiers"
@@ -13273,6 +13332,15 @@ def _rename_occurrence_in_scope(source: str, start: int, end: int, scope: str | 
         if re.search(r"->\s*$", before[-40:]) and not re.match(r"\s*\.", after):
             return True
         if re.search(r"\b(?:unit|health|resource|env)\s+$", before[-80:]):
+            return True
+    if scope == "table":
+        if re.search(r"\btable\s+$", before[-80:]):
+            return True
+        if re.search(r"\bfor\s+$", before[-80:]):
+            return True
+        if re.search(r"->\s*$", before[-40:]) and re.match(r"\s*\.", after):
+            return True
+        if re.search(r"\bsource\s+$", before[-80:]):
             return True
     return False
 
