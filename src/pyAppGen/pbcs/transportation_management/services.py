@@ -1,5 +1,7 @@
 """Command service layer for the transportation_management PBC."""
 
+from . import runtime
+
 EVENT_CONTRACT = {'contract': 'appgen_event_contract', 'runtime_profile_visibility': 'read_only_platform_metadata', 'adapter': 'appgen_event_adapter', 'topic': 'pbc.transportation_management.events', 'inbox_topic': 'pbc.transportation_management.inbox', 'outbox_table': 'transportation_management_appgen_outbox_event', 'inbox_table': 'transportation_management_appgen_inbox_event', 'dead_letter_table': 'transportation_management_appgen_dead_letter_event', 'emitted': ({'event_type': 'CarrierRegistered', 'schema': 'transportation_management.carrier_registered.emitted.v1', 'topic': 'pbc.transportation_management.events', 'outbox_table': 'transportation_management_appgen_outbox_event', 'payload_fields': ('event_id', 'occurred_at', 'pbc', 'data')}, {'event_type': 'ShipmentCreated', 'schema': 'transportation_management.shipment_created.emitted.v1', 'topic': 'pbc.transportation_management.events', 'outbox_table': 'transportation_management_appgen_outbox_event', 'payload_fields': ('event_id', 'occurred_at', 'pbc', 'data')}, {'event_type': 'CarrierSelected', 'schema': 'transportation_management.carrier_selected.emitted.v1', 'topic': 'pbc.transportation_management.events', 'outbox_table': 'transportation_management_appgen_outbox_event', 'payload_fields': ('event_id', 'occurred_at', 'pbc', 'data')}, {'event_type': 'FreightRoutePlanned', 'schema': 'transportation_management.freight_route_planned.emitted.v1', 'topic': 'pbc.transportation_management.events', 'outbox_table': 'transportation_management_appgen_outbox_event', 'payload_fields': ('event_id', 'occurred_at', 'pbc', 'data')}, {'event_type': 'ShipmentDispatched', 'schema': 'transportation_management.shipment_dispatched.emitted.v1', 'topic': 'pbc.transportation_management.events', 'outbox_table': 'transportation_management_appgen_outbox_event', 'payload_fields': ('event_id', 'occurred_at', 'pbc', 'data')}, {'event_type': 'EtaUpdated', 'schema': 'transportation_management.eta_updated.emitted.v1', 'topic': 'pbc.transportation_management.events', 'outbox_table': 'transportation_management_appgen_outbox_event', 'payload_fields': ('event_id', 'occurred_at', 'pbc', 'data')}, {'event_type': 'InboundArrived', 'schema': 'transportation_management.inbound_arrived.emitted.v1', 'topic': 'pbc.transportation_management.events', 'outbox_table': 'transportation_management_appgen_outbox_event', 'payload_fields': ('event_id', 'occurred_at', 'pbc', 'data')}, {'event_type': 'ShipmentDelivered', 'schema': 'transportation_management.shipment_delivered.emitted.v1', 'topic': 'pbc.transportation_management.events', 'outbox_table': 'transportation_management_appgen_outbox_event', 'payload_fields': ('event_id', 'occurred_at', 'pbc', 'data')}), 'consumed': ({'event_type': 'Packed', 'schema': 'transportation_management.packed.consumed.v1', 'topic': 'pbc.transportation_management.inbox', 'inbox_table': 'transportation_management_appgen_inbox_event', 'payload_fields': ('event_id', 'occurred_at', 'source_pbc', 'data')}, {'event_type': 'PurchaseOrderIssued', 'schema': 'transportation_management.purchase_order_issued.consumed.v1', 'topic': 'pbc.transportation_management.inbox', 'inbox_table': 'transportation_management_appgen_inbox_event', 'payload_fields': ('event_id', 'occurred_at', 'source_pbc', 'data')}, {'event_type': 'ReturnAuthorized', 'schema': 'transportation_management.return_authorized.consumed.v1', 'topic': 'pbc.transportation_management.inbox', 'inbox_table': 'transportation_management_appgen_inbox_event', 'payload_fields': ('event_id', 'occurred_at', 'source_pbc', 'data')}, {'event_type': 'InventoryTransferRequested', 'schema': 'transportation_management.inventory_transfer_requested.consumed.v1', 'topic': 'pbc.transportation_management.inbox', 'inbox_table': 'transportation_management_appgen_inbox_event', 'payload_fields': ('event_id', 'occurred_at', 'source_pbc', 'data')}, {'event_type': 'AccessPolicyChanged', 'schema': 'transportation_management.access_policy_changed.consumed.v1', 'topic': 'pbc.transportation_management.inbox', 'inbox_table': 'transportation_management_appgen_inbox_event', 'payload_fields': ('event_id', 'occurred_at', 'source_pbc', 'data')}), 'retry_policy': {'name': 'transportation_management_default_retry', 'max_attempts': 5, 'backoff': 'exponential'}, 'idempotency': {'key_fields': ('event_type', 'event_id', 'handler'), 'storage': 'transportation_management_appgen_inbox_event'}}
 
 
@@ -149,4 +151,142 @@ def smoke_test():
         'manifest': manifest,
         'result': result,
         'side_effects': (),
+    }
+
+
+class StatefulTransportationManagementService:
+    """Runtime-backed transportation service for one-PBC applications."""
+
+    def __init__(self, state=None):
+        self.state = state or runtime.transportation_management_empty_state()
+
+    def _finalize(self, operation_name, result, payload=None):
+        if "state" in result:
+            self.state = result["state"]
+        return {
+            **result,
+            "operation": operation_name,
+            "payload": dict(payload or {}),
+            "transaction_boundary": "owned_datastore_plus_outbox",
+            "event_contract": "AppGen-X",
+            "side_effects": (),
+        }
+
+    def configure_runtime(self, payload=None):
+        return self._finalize("configure_runtime", runtime.transportation_management_configure_runtime(self.state, payload or {}), payload)
+
+    def set_parameter(self, payload=None):
+        payload = dict(payload or {})
+        result = runtime.transportation_management_set_parameter(self.state, payload["name"], payload["value"])
+        return self._finalize("set_parameter", result, payload)
+
+    def register_rule(self, payload=None):
+        return self._finalize("register_rule", runtime.transportation_management_register_rule(self.state, payload or {}), payload)
+
+    def register_schema_extension(self, payload=None):
+        payload = dict(payload or {})
+        result = runtime.transportation_management_register_schema_extension(self.state, payload["table"], payload["fields"])
+        return self._finalize("register_schema_extension", result, payload)
+
+    def receive_event(self, payload=None):
+        return self._finalize("receive_event", runtime.transportation_management_receive_event(self.state, payload or {}), payload)
+
+    def register_carrier(self, payload=None):
+        return self._finalize("register_carrier", runtime.transportation_management_register_carrier(self.state, payload or {}), payload)
+
+    def create_shipment(self, payload=None):
+        return self._finalize("create_shipment", runtime.transportation_management_create_shipment(self.state, payload or {}), payload)
+
+    def select_carrier(self, payload=None):
+        payload = dict(payload or {})
+        result = runtime.transportation_management_select_carrier(self.state, payload["shipment_id"])
+        return self._finalize("select_carrier", result, payload)
+
+    def plan_route(self, payload=None):
+        payload = dict(payload or {})
+        result = runtime.transportation_management_plan_route(
+            self.state,
+            payload["shipment_id"],
+            distance_miles=payload["distance_miles"],
+            stops=tuple(payload["stops"]),
+        )
+        return self._finalize("plan_route", result, payload)
+
+    def dispatch_shipment(self, payload=None):
+        payload = dict(payload or {})
+        result = runtime.transportation_management_dispatch_shipment(self.state, payload["shipment_id"], tender_id=payload["tender_id"])
+        return self._finalize("dispatch_shipment", result, payload)
+
+    def record_tracking_event(self, payload=None):
+        payload = dict(payload or {})
+        result = runtime.transportation_management_record_tracking_event(self.state, payload["shipment_id"], payload["event"])
+        return self._finalize("record_tracking_event", result, payload)
+
+    def confirm_inbound_arrival(self, payload=None):
+        payload = dict(payload or {})
+        result = runtime.transportation_management_confirm_inbound_arrival(self.state, payload["shipment_id"], facility=payload["facility"])
+        return self._finalize("confirm_inbound_arrival", result, payload)
+
+    def confirm_delivery(self, payload=None):
+        payload = dict(payload or {})
+        result = runtime.transportation_management_confirm_delivery(self.state, payload["shipment_id"], proof_id=payload["proof_id"])
+        return self._finalize("confirm_delivery", result, payload)
+
+    def calculate_eta(self, payload=None):
+        payload = dict(payload or {})
+        result = runtime.transportation_management_calculate_eta(self.state, payload["shipment_id"], average_speed_mph=payload["average_speed_mph"])
+        return self._finalize("calculate_eta", result, payload)
+
+    def generate_delivery_proof(self, payload=None):
+        payload = dict(payload or {})
+        result = runtime.transportation_management_generate_delivery_proof(
+            self.state,
+            payload["shipment_id"],
+            disclosure=tuple(payload.get("disclosure", ("shipment_id", "carrier_id", "status"))),
+        )
+        return self._finalize("generate_delivery_proof", result, payload)
+
+    def screen_policy(self, payload=None):
+        payload = dict(payload or {})
+        result = runtime.transportation_management_screen_policy(self.state, payload["shipment_id"], restricted_carriers=tuple(payload.get("restricted_carriers", ())))
+        return self._finalize("screen_policy", result, payload)
+
+    def build_workbench_view(self, payload=None):
+        payload = dict(payload or {})
+        result = runtime.transportation_management_build_workbench_view(self.state, tenant=payload["tenant"])
+        return self._finalize("build_workbench_view", result, payload)
+
+
+def runtime_service_manifest():
+    """Return the stateful transportation service surface used by one-PBC apps."""
+    operations = (
+        "configure_runtime",
+        "set_parameter",
+        "register_rule",
+        "register_schema_extension",
+        "receive_event",
+        "register_carrier",
+        "create_shipment",
+        "select_carrier",
+        "plan_route",
+        "dispatch_shipment",
+        "record_tracking_event",
+        "confirm_inbound_arrival",
+        "confirm_delivery",
+        "calculate_eta",
+        "generate_delivery_proof",
+        "screen_policy",
+        "build_workbench_view",
+    )
+    return {
+        "ok": all(callable(getattr(StatefulTransportationManagementService(), operation)) for operation in operations),
+        "pbc": "transportation_management",
+        "service_class": StatefulTransportationManagementService.__name__,
+        "operations": operations,
+        "transaction_boundary": "owned_datastore_plus_outbox",
+        "event_contract": "AppGen-X",
+        "outbox_table": "transportation_management_appgen_outbox_event",
+        "inbox_table": "transportation_management_appgen_inbox_event",
+        "dead_letter_table": "transportation_management_dead_letter_event",
+        "side_effects": (),
     }
