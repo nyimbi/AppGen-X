@@ -3901,6 +3901,13 @@ def test_tooling_implementation_phase_audit_maps_phase_exit_criteria_to_evidence
             "passing_task_count": 22,
             "missing_task_count": 0,
         },
+        priority_order_contracts={
+            **ok("appgen.priority-order-contract-audit.v1"),
+            "priority_count": 10,
+            "passing_priority_count": 10,
+            "missing_priority_count": 0,
+            "document_order_matches": True,
+        },
         module_boundaries=ok("appgen.module-boundary-audit.v1"),
         lint=ok("appgen.lint-report.v1"),
         strict_lint={**ok("appgen.lint-report.v1"), "strict": True},
@@ -4150,6 +4157,7 @@ def test_tooling_implementation_phase_audit_maps_phase_exit_criteria_to_evidence
         "grammar_parser_sync_and_keyword_budget",
         "test_strategy_family_contracts",
         "contributor_task_breakdown_contracts",
+        "priority_order_contracts",
         "semantic_model_contract",
         "diagnostic_catalog_fixture_contracts",
         "lint_cli_directory_contracts",
@@ -4431,6 +4439,29 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
         "cross_tool_drift_tests",
     } <= set(contributor_check["detail"]["task_names"])
     assert all(task["evidence_format"] for task in contributor_check["detail"]["tasks"])
+    priority_check = next(check for check in report["checks"] if check["id"] == "priority_order_contracts")
+    assert priority_check["detail"]["format"] == "appgen.priority-order-contract-audit.v1"
+    assert priority_check["detail"]["ok"] is True
+    assert priority_check["detail"]["priority_count"] == 10
+    assert priority_check["detail"]["passing_priority_count"] == priority_check["detail"]["priority_count"]
+    assert priority_check["detail"]["missing_priority_count"] == 0
+    assert priority_check["detail"]["missing_priorities"] == ()
+    assert priority_check["detail"]["documented_item_count"] == 10
+    assert priority_check["detail"]["document_order_matches"] is True
+    assert priority_check["detail"]["documented_items"] == priority_check["detail"]["expected_items"]
+    assert priority_check["detail"]["priority_ids"] == (
+        "shared_parser_and_semantic_model",
+        "diagnostic_registry_and_linter",
+        "formatter",
+        "cli_json_contracts",
+        "graph_and_explain_tooling",
+        "language_server",
+        "vscode_and_monaco_integration",
+        "migration_planner",
+        "natural_language_dsl_diff_planner",
+        "package_and_release_verifiers",
+    )
+    assert all(item["evidence_format"] for item in priority_check["detail"]["priorities"])
     vscode_check = next(check for check in report["checks"] if check["id"] == "vscode_extension_surface")
     assert vscode_check["detail"]["checks"]["diagnostics_collection"] is True
     assert vscode_check["detail"]["checks"]["cli_command_contracts"] is True

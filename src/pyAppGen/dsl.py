@@ -4453,6 +4453,34 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
         drift=drift,
         test_strategy_cli=test_strategy_cli,
     )
+    priority_order_contracts = _tooling_audit_priority_order_contracts(
+        root,
+        semantic=semantic,
+        symbol_coverage=symbol_coverage,
+        lint=lint,
+        diagnostics=diagnostics,
+        diagnostic_fixtures=diagnostic_fixtures,
+        formatter_contract=formatter_contract,
+        dsl_language_cli=dsl_language_cli,
+        cli_help_surface=cli_help_surface,
+        validate_generate_cli=validate_generate_cli,
+        graphs=graphs,
+        graph_cli=graph_cli,
+        graph_suite_cli=graph_suite_cli,
+        explain_cli=explain_cli,
+        lsp=lsp,
+        lsp_rpc=lsp_rpc,
+        lsp_stdio=lsp_stdio,
+        vscode=vscode,
+        studio=studio,
+        migration_cli=migration_cli,
+        migration_text_renderer=migration_text_renderer,
+        nl_plan_contract=nl_plan_contract,
+        nl_plan_cli=nl_plan_cli,
+        release=release,
+        package=package,
+        package_verify_cli=package_verify_cli,
+    )
     implementation_phases = _tooling_audit_implementation_phases(
         semantic=semantic,
         symbol_coverage=symbol_coverage,
@@ -4513,6 +4541,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
         drift_text_renderer=drift_text_renderer,
         test_family_contracts=test_family_contracts,
         contributor_task_contracts=contributor_task_contracts,
+        priority_order_contracts=priority_order_contracts,
         doctor=doctor,
         doctor_text_renderer=doctor_text_renderer,
     )
@@ -6059,6 +6088,17 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             "docs/tooling.md#contributor-task-breakdown",
             contributor_task_contracts,
         ),
+        _tooling_audit_check(
+            "priority_order_contracts",
+            priority_order_contracts["ok"]
+            and priority_order_contracts.get("priority_count") == 10
+            and priority_order_contracts.get("passing_priority_count") == priority_order_contracts.get("priority_count")
+            and priority_order_contracts.get("missing_priority_count") == 0
+            and priority_order_contracts.get("document_order_matches") is True,
+            "Priority-order items are preserved in docs/tooling.md and mapped to executable evidence in dependency order.",
+            "docs/tooling.md#priority-order",
+            priority_order_contracts,
+        ),
     )
     text_renderer = _tooling_audit_text_renderer_contract()
     checks = checks + (
@@ -6674,6 +6714,53 @@ def _tooling_audit_contributor_task_contracts(**evidence: dict) -> dict:
     }
 
 
+def _tooling_audit_priority_order_contracts(root: Path, **evidence: dict) -> dict:
+    priorities = (
+        _priority_contract("shared_parser_and_semantic_model", "Shared parser and semantic model.", evidence["semantic"].get("ok") is True and evidence["symbol_coverage"].get("missing") == (), evidence["semantic"].get("format")),
+        _priority_contract("diagnostic_registry_and_linter", "Diagnostic registry and linter.", evidence["diagnostics"].get("ok") is True and evidence["diagnostic_fixtures"].get("ok") is True and evidence["lint"].get("ok") is True, evidence["diagnostics"].get("format")),
+        _priority_contract("formatter", "Formatter.", evidence["formatter_contract"].get("ok") is True, evidence["formatter_contract"].get("format")),
+        _priority_contract("cli_json_contracts", "CLI JSON contracts.", evidence["dsl_language_cli"].get("ok") is True and evidence["cli_help_surface"].get("ok") is True and evidence["validate_generate_cli"].get("ok") is True, evidence["dsl_language_cli"].get("format")),
+        _priority_contract("graph_and_explain_tooling", "Graph and explain tooling.", evidence["graphs"].get("ok") is True and evidence["graph_cli"].get("ok") is True and evidence["graph_suite_cli"].get("ok") is True and evidence["explain_cli"].get("ok") is True, evidence["graphs"].get("format")),
+        _priority_contract("language_server", "Language server.", evidence["lsp"].get("ok") is True and evidence["lsp_rpc"].get("ok") is True and evidence["lsp_stdio"].get("ok") is True, evidence["lsp"].get("format")),
+        _priority_contract("vscode_and_monaco_integration", "VS Code and Monaco integration.", evidence["vscode"].get("ok") is True and evidence["studio"].get("ok") is True, evidence["studio"].get("format")),
+        _priority_contract("migration_planner", "Migration planner.", evidence["migration_cli"].get("ok") is True and evidence["migration_text_renderer"].get("ok") is True, evidence["migration_cli"].get("format")),
+        _priority_contract("natural_language_dsl_diff_planner", "Natural-language DSL diff planner.", evidence["nl_plan_contract"].get("ok") is True and evidence["nl_plan_cli"].get("ok") is True, evidence["nl_plan_contract"].get("format")),
+        _priority_contract("package_and_release_verifiers", "Package and release verifiers.", evidence["release"].get("ok") is True and evidence["package"].get("ok") is True and evidence["package_verify_cli"].get("ok") is True, evidence["package_verify_cli"].get("format")),
+    )
+    docs_text = (root / "docs" / "tooling.md").read_text(encoding="utf-8")
+    section = docs_text.split("## Priority Order", 1)[1]
+    documented_items = tuple(
+        match.group(1).strip()
+        for match in re.finditer(r"^\d+\.\s+(.+)$", section, flags=re.M)
+    )
+    expected_items = tuple(item["label"] for item in priorities)
+    missing = tuple(item["priority"] for item in priorities if not item["ok"])
+    return {
+        "format": "appgen.priority-order-contract-audit.v1",
+        "ok": not missing and documented_items == expected_items,
+        "priority_count": len(priorities),
+        "passing_priority_count": sum(1 for item in priorities if item["ok"]),
+        "missing_priority_count": len(missing),
+        "missing_priorities": missing,
+        "priorities": priorities,
+        "priority_ids": tuple(item["priority"] for item in priorities),
+        "documented_item_count": len(documented_items),
+        "documented_items": documented_items,
+        "expected_items": expected_items,
+        "document_order_matches": documented_items == expected_items,
+        "source_of_truth": "docs/tooling.md#priority-order",
+    }
+
+
+def _priority_contract(priority: str, label: str, ok: bool, evidence_format: str | None) -> dict:
+    return {
+        "priority": priority,
+        "label": label,
+        "ok": bool(ok),
+        "evidence_format": evidence_format,
+    }
+
+
 def _contributor_task(group: str, task: str, ok: bool, evidence_format: str | None) -> dict:
     return {
         "group": group,
@@ -6834,6 +6921,16 @@ def _tooling_audit_implementation_phases(**evidence: dict) -> dict:
                     == evidence["contributor_task_contracts"].get("task_count")
                     and evidence["contributor_task_contracts"].get("missing_task_count") == 0,
                     "evidence_format": evidence["contributor_task_contracts"].get("format"),
+                },
+                {
+                    "id": "priority_order_contracts",
+                    "ok": evidence["priority_order_contracts"].get("ok") is True
+                    and evidence["priority_order_contracts"].get("priority_count") == 10
+                    and evidence["priority_order_contracts"].get("passing_priority_count")
+                    == evidence["priority_order_contracts"].get("priority_count")
+                    and evidence["priority_order_contracts"].get("missing_priority_count") == 0
+                    and evidence["priority_order_contracts"].get("document_order_matches") is True,
+                    "evidence_format": evidence["priority_order_contracts"].get("format"),
                 },
             ),
         ),

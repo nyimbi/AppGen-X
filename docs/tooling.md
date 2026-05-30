@@ -2013,6 +2013,12 @@ Advanced tasks:
 
 ## Priority Order
 
+Priority order is also executable release evidence. The aggregate tooling audit
+embeds `appgen.priority-order-contract-audit.v1` through
+`priority_order_contracts`; it proves the numbered list below stays in the
+documented order and each priority has a passing evidence format before later
+tooling is counted on top of an unstable foundation.
+
 1. Shared parser and semantic model.
 2. Diagnostic registry and linter.
 3. Formatter.
