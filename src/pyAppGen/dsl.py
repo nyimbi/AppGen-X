@@ -6090,6 +6090,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and package_verify_cli.get("manifest_target_count") == 5
             and package_verify_cli.get("missing_manifest_target_count") == 0
             and package_verify_cli.get("handoff_artifact_count", 0) >= 25
+            and package_verify_cli.get("missing_handoff_artifact_count") == 0
             and package_verify_cli.get("release_evidence_report_count") == 5
             and package_verify_cli.get("missing_release_report_count") == 0
             and package_verify_cli.get("missing_release_graph_kind_count") == 0
@@ -6141,6 +6142,11 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                 "manifest_formats": package_verify_cli.get("manifest_formats"),
                 "handoff_artifact_count": package_verify_cli.get("handoff_artifact_count"),
                 "handoff_counts_by_target": package_verify_cli.get("handoff_counts_by_target"),
+                "required_handoff_artifacts_by_target": package_verify_cli.get("required_handoff_artifacts_by_target"),
+                "handoff_artifacts_by_target": package_verify_cli.get("handoff_artifacts_by_target"),
+                "missing_handoff_artifacts_by_target": package_verify_cli.get("missing_handoff_artifacts_by_target"),
+                "missing_handoff_artifact_count": package_verify_cli.get("missing_handoff_artifact_count"),
+                "missing_handoff_artifacts": package_verify_cli.get("missing_handoff_artifacts"),
                 "readiness_matrix": package_verify_cli.get("readiness_matrix"),
                 "readiness_checks_by_target": package_verify_cli.get("readiness_checks_by_target"),
                 "readiness_check_count": package_verify_cli.get("readiness_check_count"),
@@ -12957,6 +12963,34 @@ def _tooling_audit_package_verify_cli(tmp: Path, source: str) -> dict:
     desktop_handoff = tuple(desktop_manifest.get("handoff_artifacts", ()))
     pbc_handoff = tuple(pbc_manifest.get("handoff_artifacts", ()))
     deployment_handoff = tuple(deployment_manifest.get("handoff_artifacts", ()))
+    handoff_artifacts_by_target = {
+        "web": web_handoff,
+        "mobile": mobile_handoff,
+        "desktop": desktop_handoff,
+        "pbc": pbc_handoff,
+        "deployment": deployment_handoff,
+    }
+    required_handoff_artifacts_by_target = {
+        "web": ("routes", "forms", "handlers", "smoke_tests"),
+        "mobile": (
+            "mobile_metadata",
+            "signing_posture",
+            "offline_policy",
+            "permissions",
+            "screen_density",
+            "smoke_launch",
+        ),
+        "desktop": (
+            "desktop_metadata",
+            "installer_profile",
+            "startup_assets",
+            "menus",
+            "context_menus",
+            "smoke_launch",
+        ),
+        "pbc": ("manifest", "contracts", "owned_schema", "registration", "release_evidence"),
+        "deployment": ("units", "health_checks", "environment", "resource_hints", "topology_graph"),
+    }
     evidence_graph_suite = evidence_payload.get("evidence_bundle", {}).get("graph_suite", {})
     cases = (
         {
@@ -12996,7 +13030,7 @@ def _tooling_audit_package_verify_cli(tmp: Path, source: str) -> dict:
             and web_manifest.get("handler_targets_resolve") is True
             and web_manifest.get("smoke_tests_declared") is True
             and web_manifest.get("smoke_entrypoint") == "web.smoke"
-            and {"routes", "forms", "handlers", "smoke_tests"} <= set(web_handoff)
+            and set(required_handoff_artifacts_by_target["web"]) <= set(web_handoff)
             and mobile_manifest.get("artifact_class") == "mobile_application"
             and mobile_manifest.get("package_metadata_exists") is True
             and mobile_manifest.get("signing_posture_declared") is True
@@ -13005,8 +13039,7 @@ def _tooling_audit_package_verify_cli(tmp: Path, source: str) -> dict:
             and mobile_manifest.get("screens_fit_target_density") is True
             and mobile_manifest.get("smoke_launch_path_exists") is True
             and mobile_manifest.get("smoke_entrypoint") == "mobile.launch"
-            and {"mobile_metadata", "signing_posture", "offline_policy", "permissions", "screen_density", "smoke_launch"}
-            <= set(mobile_handoff)
+            and set(required_handoff_artifacts_by_target["mobile"]) <= set(mobile_handoff)
             and desktop_manifest.get("artifact_class") == "desktop_application"
             and desktop_manifest.get("package_metadata_exists") is True
             and desktop_manifest.get("installer_posture_declared") is True
@@ -13014,13 +13047,12 @@ def _tooling_audit_package_verify_cli(tmp: Path, source: str) -> dict:
             and desktop_manifest.get("menus_bind_to_handlers") is True
             and desktop_manifest.get("smoke_launch_path_exists") is True
             and desktop_manifest.get("smoke_entrypoint") == "desktop.launch"
-            and {"desktop_metadata", "installer_profile", "startup_assets", "menus", "context_menus", "smoke_launch"}
-            <= set(desktop_handoff)
+            and set(required_handoff_artifacts_by_target["desktop"]) <= set(desktop_handoff)
             and pbc_manifest.get("artifact_class") == "packaged_business_capability"
-            and {"manifest", "contracts", "owned_schema", "registration", "release_evidence"} <= set(pbc_handoff)
+            and set(required_handoff_artifacts_by_target["pbc"]) <= set(pbc_handoff)
             and pbc_manifest.get("side_effect_free_registration") is True
             and deployment_manifest.get("artifact_class") == "deployment_plan"
-            and {"units", "health_checks", "environment", "resource_hints", "topology_graph"} <= set(deployment_handoff)
+            and set(required_handoff_artifacts_by_target["deployment"]) <= set(deployment_handoff)
             and deployment_manifest.get("units_declared") is True
             and deployment_manifest.get("health_checks_declared") is True
             and deployment_manifest.get("environment_variables_named") is True
@@ -13105,6 +13137,15 @@ def _tooling_audit_package_verify_cli(tmp: Path, source: str) -> dict:
         "pbc": len(pbc_handoff),
         "deployment": len(deployment_handoff),
     }
+    missing_handoff_artifacts_by_target = {
+        target: tuple(artifact for artifact in required if artifact not in set(handoff_artifacts_by_target[target]))
+        for target, required in required_handoff_artifacts_by_target.items()
+    }
+    missing_handoff_artifacts = tuple(
+        f"{target}.{artifact}"
+        for target, artifacts in missing_handoff_artifacts_by_target.items()
+        for artifact in artifacts
+    )
     manifest_formats = {
         target: manifest_by_target[target].get("format")
         for target in expected_targets
@@ -13171,6 +13212,7 @@ def _tooling_audit_package_verify_cli(tmp: Path, source: str) -> dict:
         "format": "appgen.package-verify-cli-audit.v1",
         "ok": all(case["ok"] for case in cases)
         and not missing_manifest_targets
+        and not missing_handoff_artifacts
         and not missing_release_reports
         and not missing_release_graph_kinds
         and not missing_release_graph_formats,
@@ -13196,6 +13238,11 @@ def _tooling_audit_package_verify_cli(tmp: Path, source: str) -> dict:
             for items in (web_handoff, mobile_handoff, desktop_handoff, pbc_handoff, deployment_handoff)
         ),
         "handoff_counts_by_target": handoff_counts_by_target,
+        "required_handoff_artifacts_by_target": required_handoff_artifacts_by_target,
+        "handoff_artifacts_by_target": handoff_artifacts_by_target,
+        "missing_handoff_artifacts_by_target": missing_handoff_artifacts_by_target,
+        "missing_handoff_artifact_count": len(missing_handoff_artifacts),
+        "missing_handoff_artifacts": missing_handoff_artifacts,
         "readiness_matrix": readiness_matrix,
         "readiness_checks_by_target": readiness_checks_by_target,
         "readiness_check_count": readiness_check_count,

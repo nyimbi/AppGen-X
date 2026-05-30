@@ -3385,6 +3385,49 @@ def test_package_cli_audit_proves_all_target_handoff_contracts(tmp_path: Path) -
     assert report["readiness_matrix"]["desktop"]["smoke_entrypoint"] is True
     assert report["readiness_matrix"]["pbc"]["handoff_contracts_present"] is True
     assert report["readiness_matrix"]["deployment"]["topology_declared"] is True
+    assert report["missing_handoff_artifact_count"] == 0
+    assert report["missing_handoff_artifacts"] == ()
+    assert report["missing_handoff_artifacts_by_target"] == {
+        "web": (),
+        "mobile": (),
+        "desktop": (),
+        "pbc": (),
+        "deployment": (),
+    }
+    assert report["required_handoff_artifacts_by_target"]["web"] == ("routes", "forms", "handlers", "smoke_tests")
+    assert report["required_handoff_artifacts_by_target"]["mobile"] == (
+        "mobile_metadata",
+        "signing_posture",
+        "offline_policy",
+        "permissions",
+        "screen_density",
+        "smoke_launch",
+    )
+    assert report["required_handoff_artifacts_by_target"]["desktop"] == (
+        "desktop_metadata",
+        "installer_profile",
+        "startup_assets",
+        "menus",
+        "context_menus",
+        "smoke_launch",
+    )
+    assert report["required_handoff_artifacts_by_target"]["pbc"] == (
+        "manifest",
+        "contracts",
+        "owned_schema",
+        "registration",
+        "release_evidence",
+    )
+    assert report["required_handoff_artifacts_by_target"]["deployment"] == (
+        "units",
+        "health_checks",
+        "environment",
+        "resource_hints",
+        "topology_graph",
+    )
+    assert set(report["required_handoff_artifacts_by_target"]["desktop"]) <= set(
+        report["handoff_artifacts_by_target"]["desktop"]
+    )
     assert set(manifest_case["release_evidence_reports"]) == {"web", "mobile", "desktop", "pbc", "deployment"}
     assert manifest_case["web_artifact_class"] == "web_application"
     assert manifest_case["release_graph_suite_format"] == "appgen.graph-suite-report.v1"
@@ -6364,6 +6407,32 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert package_manifest_check["detail"]["manifest_formats"]["web"] == "appgen.package-manifest.v1"
     assert package_manifest_check["detail"]["handoff_artifact_count"] >= 25
     assert package_manifest_check["detail"]["handoff_counts_by_target"]["mobile"] >= 6
+    assert package_manifest_check["detail"]["missing_handoff_artifact_count"] == 0
+    assert package_manifest_check["detail"]["missing_handoff_artifacts"] == ()
+    assert package_manifest_check["detail"]["missing_handoff_artifacts_by_target"] == {
+        "web": (),
+        "mobile": (),
+        "desktop": (),
+        "pbc": (),
+        "deployment": (),
+    }
+    assert package_manifest_check["detail"]["required_handoff_artifacts_by_target"]["web"] == (
+        "routes",
+        "forms",
+        "handlers",
+        "smoke_tests",
+    )
+    assert package_manifest_check["detail"]["required_handoff_artifacts_by_target"]["desktop"] == (
+        "desktop_metadata",
+        "installer_profile",
+        "startup_assets",
+        "menus",
+        "context_menus",
+        "smoke_launch",
+    )
+    assert set(package_manifest_check["detail"]["required_handoff_artifacts_by_target"]["deployment"]) <= set(
+        package_manifest_check["detail"]["handoff_artifacts_by_target"]["deployment"]
+    )
     assert package_manifest_check["detail"]["readiness_check_count"] == 29
     assert package_manifest_check["detail"]["passing_readiness_check_count"] == (
         package_manifest_check["detail"]["readiness_check_count"]

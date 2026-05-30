@@ -1073,12 +1073,17 @@ targets, manifest target coverage, missing manifest targets, manifest formats,
 handoff counts by target, release-evidence report counts, missing release
 reports, and release graph kind/format gaps so package failures identify the
 missing target handoff directly.
+For package handoff artifacts, the audit reports required, emitted, and missing
+artifact names by target. This prevents a package from passing because it has
+the right number of handoff entries while omitting a named contract such as
+`desktop.context_menus`, `mobile.smoke_launch`, or
+`deployment.topology_graph`.
 It also publishes a target readiness matrix for web, mobile, desktop, PBC, and
 deployment handoffs, including the named readiness checks for smoke entrypoints,
 signing/offline posture, installer/startup metadata, PBC registration, and
 deployment topology. The aggregate `package_manifest_handoff_contracts` gate
-fails when any readiness check is missing and reports the exact
-`target.check_name` gaps.
+fails when any required handoff artifact or readiness check is missing and
+reports the exact `target.artifact_name` and `target.check_name` gaps.
 The default text output for both `appgen verify` and `appgen package` summarizes
 the release verifier report format, selected targets, written artifacts,
 the `appgen.release-evidence-bundle.v1` bundle format and
