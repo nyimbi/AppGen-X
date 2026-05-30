@@ -6354,7 +6354,7 @@ def test_designer_sync_text_renderer_contract_proves_round_trip_log_markers() ->
     assert report["dsl_diff_line_count"] == 2
     assert report["matrix_line_count"] == 1
     assert report["operation_line_count"] == 1
-    assert report["case_line_count"] == 3
+    assert report["case_line_count"] == 7
     assert report["check_line_count"] == 2
     assert report["passing_check_line_count"] == 2
     assert report["failing_check_line_count"] == 0
@@ -6367,11 +6367,15 @@ def test_designer_sync_text_renderer_contract_proves_round_trip_log_markers() ->
         "visual-edit accepted=True round_trip=True changed=database_designer,form_designer diff_lines=2",
         "dsl-diff +  sync_note: string",
         "dsl-diff +  Main: sync_note",
-        "visual-edit-matrix ok=True cases=3 gaps=0",
-        "visual-edit-operations add_field, add_component, add_flow_transition",
-        "visual-edit-case database_add_field",
-        "visual-edit-case form_add_component",
-        "visual-edit-case workflow_add_transition",
+        "visual-edit-matrix ok=True cases=7 gaps=0",
+        "visual-edit-operations add_field, add_component, add_flow_transition, add_pbc_include, add_package, add_deployment_unit",
+        "visual-edit-case database_designer_add_field",
+        "visual-edit-case form_designer_add_component",
+        "visual-edit-case workflow_designer_add_transition",
+        "visual-edit-case pbc_composition_designer_add_include",
+        "visual-edit-case package_designer_add_package",
+        "visual-edit-case deployment_designer_add_unit",
+        "visual-edit-case form_designer_reject_invalid_binding",
         "ok projection_refresh",
     } <= set(report["required_fragments"])
 
