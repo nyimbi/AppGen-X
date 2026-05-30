@@ -358,3 +358,41 @@ def smoke_test():
         "cards": cards,
         "side_effects": (),
     }
+
+# Improve1 service ticketing control UI extension.
+from .service_ticketing_control import improve1_service_ticketing_control_contract as _improve1_service_ticketing_control_contract
+
+_SERVICE_CONTROL_BASE_UI_CONTRACT = service_ticketing_ui_contract
+_SERVICE_CONTROL_BASE_RENDER_WORKBENCH = service_ticketing_render_workbench
+
+
+def service_ticketing_ui_contract() -> dict:
+    ui = dict(_SERVICE_CONTROL_BASE_UI_CONTRACT())
+    control = _improve1_service_ticketing_control_contract()
+    ui.update({
+        "ok": ui.get("ok") is True and control["ok"],
+        "service_ticketing_control_contract": control,
+        "service_ticketing_control_panels": tuple(item["evidence"]["ui_surface"] for item in control["capabilities"]),
+        "service_ticketing_control_service_actions": tuple(item["evidence"]["service_api"] for item in control["capabilities"]),
+        "stream_engine_picker_visible": False,
+    })
+    return ui
+
+
+def service_ticketing_render_workbench(*args, **kwargs) -> dict:
+    if not args and "state" not in kwargs:
+        args = (_appgen_smoke_state(),)
+    if "tenant" not in kwargs:
+        kwargs["tenant"] = "default"
+    if "principal_permissions" not in kwargs:
+        contract = service_ticketing_ui_contract()
+        kwargs["principal_permissions"] = tuple(dict.fromkeys(contract.get("action_permissions", {}).values()))
+    workbench = dict(_SERVICE_CONTROL_BASE_RENDER_WORKBENCH(*args, **kwargs))
+    control = _improve1_service_ticketing_control_contract()
+    workbench.update({
+        "ok": workbench.get("ok") is True and control["ok"],
+        "service_ticketing_control_panels": tuple(item["evidence"]["ui_surface"] for item in control["capabilities"]),
+        "service_ticketing_control_service_actions": tuple(item["evidence"]["service_api"] for item in control["capabilities"]),
+        "service_ticketing_control_agent_tools": tuple(f"service_ticketing.skills.{item['slug']}" for item in control["capabilities"]),
+    })
+    return workbench
