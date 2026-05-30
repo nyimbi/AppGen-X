@@ -2537,6 +2537,10 @@ def test_lsp_stdio_transport_audit_exercises_editor_requests() -> None:
     assert audit["notification_count"] >= 2
     assert audit["method_count"] >= 1
     assert audit["diagnostic_publication_count"] >= 2
+    assert audit["changed_source_differs"] is True
+    assert audit["changed_diagnostic_count"] >= 1
+    assert audit["changed_error_count"] >= 1
+    assert {"AGX0401", "AGX0402"} & set(audit["changed_diagnostic_codes"])
     assert audit["completion_response_count"] >= 1
     assert audit["workspace_symbol_response_count"] >= 1
     assert audit["shutdown_response_count"] >= 1

@@ -8202,6 +8202,9 @@ def _tooling_audit_lsp_stdio_transport(source: str) -> dict:
     input_stream = io.BytesIO()
     output_stream = io.BytesIO()
     completion_position = _tooling_lsp_position(source, "Invoice")
+    changed_source = source.replace("Main: customer.name, total", "Main: missing_field, total")
+    if changed_source == source:
+        changed_source = source + "\nview BrokenForm for MissingTable { Main: id }\n"
     messages = (
         {"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}},
         {
@@ -8211,19 +8214,19 @@ def _tooling_audit_lsp_stdio_transport(source: str) -> dict:
         },
         {
             "jsonrpc": "2.0",
-            "method": "textDocument/didChange",
-            "params": {
-                "textDocument": {"uri": uri, "version": 2},
-                "contentChanges": ({"text": source},),
-            },
-        },
-        {
-            "jsonrpc": "2.0",
             "id": 2,
             "method": "textDocument/completion",
             "params": {"textDocument": {"uri": uri}, "position": completion_position},
         },
         {"jsonrpc": "2.0", "id": 3, "method": "workspace/symbol", "params": {"query": "Invoice"}},
+        {
+            "jsonrpc": "2.0",
+            "method": "textDocument/didChange",
+            "params": {
+                "textDocument": {"uri": uri, "version": 2},
+                "contentChanges": ({"text": changed_source},),
+            },
+        },
         {"jsonrpc": "2.0", "id": 4, "method": "shutdown"},
         {"jsonrpc": "2.0", "method": "exit"},
     )
@@ -8244,6 +8247,12 @@ def _tooling_audit_lsp_stdio_transport(source: str) -> dict:
     diagnostic_publication_count = sum(
         1 for response in responses if response.get("method") == "textDocument/publishDiagnostics"
     )
+    diagnostic_publications = tuple(
+        response for response in responses if response.get("method") == "textDocument/publishDiagnostics"
+    )
+    changed_diagnostics = tuple(diagnostic_publications[-1].get("params", {}).get("diagnostics", ())) if diagnostic_publications else ()
+    changed_diagnostic_codes = tuple(item.get("code") for item in changed_diagnostics)
+    changed_error_count = sum(1 for item in changed_diagnostics if item.get("severity") == 1)
     completion_response_count = sum(
         1
         for response in responses
@@ -8264,6 +8273,8 @@ def _tooling_audit_lsp_stdio_transport(source: str) -> dict:
         and diagnostic_publication_count >= 2
         and completion_response_count >= 1
         and workspace_symbol_response_count >= 1
+        and changed_error_count >= 1
+        and any(code in {"AGX0401", "AGX0402"} for code in changed_diagnostic_codes)
         and shutdown_response_count >= 1
         and not missing_response_ids,
         "exit_code": exit_code,
@@ -8281,6 +8292,10 @@ def _tooling_audit_lsp_stdio_transport(source: str) -> dict:
         "methods": tuple(response.get("method") for response in responses if response.get("method")),
         "ids": tuple(response.get("id") for response in responses if "id" in response),
         "diagnostic_publication_count": diagnostic_publication_count,
+        "changed_source_differs": changed_source != source,
+        "changed_diagnostic_count": len(changed_diagnostics),
+        "changed_error_count": changed_error_count,
+        "changed_diagnostic_codes": changed_diagnostic_codes,
         "completion_response_count": completion_response_count,
         "workspace_symbol_response_count": workspace_symbol_response_count,
         "shutdown_response_count": shutdown_response_count,

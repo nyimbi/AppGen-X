@@ -1190,8 +1190,12 @@ returning an initialize response.
 The stdio audit reports request-message, response, id-response, notification,
 method, diagnostic-publication, total-message, notification-message,
 expected-id, missing-response-id, completion-response, workspace-symbol-response,
-and shutdown-response counts so framed transport coverage remains measurable
-separately from in-process JSON-RPC handling.
+changed-source, changed-diagnostic, changed-error, changed-diagnostic-code, and
+shutdown-response counts so framed transport coverage remains measurable
+separately from in-process JSON-RPC handling. The changed-diagnostic evidence is
+required so `didChange` cannot pass by only echoing a publish notification; it
+must prove that the in-memory buffer was updated and re-linted through the
+shared semantic model.
 Without `--json`, `appgen lsp <file>` prints a concise service summary with
 the `appgen.lsp-service.v1` envelope format, semantic-model format as
 `semantic_format=...`, diagnostic
