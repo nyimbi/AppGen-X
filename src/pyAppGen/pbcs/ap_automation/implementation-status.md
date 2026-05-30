@@ -29,3 +29,10 @@
 ## Remaining risk
 
 - Validation is using direct `python3` execution because `pytest` is not installed in this worktree environment.
+
+## 2026-05-30 Domain Behavior Traceability Slice
+
+- Expanded `tests/test_domain_behavior.py` with executable route, repository, assistant, owned-boundary, and release-evidence checks.
+- Updated `IMPROVE1_TRACEABILITY.md` so all 50 improve1 rows cite `tests/test_domain_behavior.py` as direct domain evidence.
+- Updated `improve1_capabilities.py` so every executable feature plan carries the domain behavior test artifact.
+- Validation: `/Volumes/Media/src/pjs/appgen/.venv/bin/pytest src/pyAppGen/pbcs/ap_automation/tests`.

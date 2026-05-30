@@ -4,9 +4,14 @@ from __future__ import annotations
 
 import pytest
 
+from .. import agent
+from .. import release_evidence
+from .. import routes
 from .. import runtime
 from ..services import ApAutomationExecutionService
 from ..services import execution_service_manifest
+from ..repository import ApAutomationRepository
+from ..repository import build_demo_state
 from ..ui import ap_automation_render_workbench
 from ..ui import ap_automation_ui_contract
 
@@ -276,6 +281,65 @@ def test_ap_event_retry_dead_letter_statement_reconciliation_and_ui_surfaces():
     assert "invoice_capture" in rendered["data_entry_forms"]
     assert "payment_release_wizard" in rendered["guided_flows"]
     assert {"capture_invoice", "execute_payment", "receive_event"} <= set(manifest["operations"])
+
+
+
+def test_ap_agent_routes_repository_and_release_surfaces_are_executable():
+    state = build_demo_state(include_release=True)
+    repository = ApAutomationRepository()
+
+    snapshot = repository.tenant_snapshot(state, "tenant_repo")
+    invoice_persist = repository.persist_plan("ap_automation_invoice", {"invoice_id": "inv_repo"})
+    blocked_persist = repository.persist_plan("gl_core_journal_entry", {"journal_id": "bad"})
+    route_validation = routes.validate_api_route_contracts()
+    route_dispatch = routes.dispatch_route(
+        "POST",
+        "/api/pbc/ap_automation/ap/invoices",
+        {"invoice_id": "inv-route", "tenant": "tenant_repo"},
+    )
+    skills = agent.agent_skill_manifest()
+    chatbot = agent.chatbot_interface_contract()
+    document_plan = agent.document_instruction_plan(
+        "Supplier invoice SUP-77 for Repository Vendor Ltd",
+        "Capture invoice, validate tax, and prepare a governed payment release plan.",
+    )
+    crud_plan = agent.datastore_crud_plan(
+        "create",
+        table="ap_automation_invoice",
+        payload={"invoice_id": "inv-agent", "vendor_id": "vendor_repo"},
+    )
+    blocked_crud = agent.datastore_crud_plan("update", table="treasury_cash_position", payload={"amount": 100})
+    contribution = agent.composed_agent_contribution()
+    release_validation = release_evidence.validate_release_evidence()
+    release_smoke = release_evidence.smoke_test()
+
+    assert snapshot["ok"] is True
+    assert snapshot["record_counts"]["vendors"] == 1
+    assert snapshot["record_counts"]["invoices"] == 1
+    assert snapshot["workbench"]["format"] == "appgen.ap-automation-workbench-view.v1"
+    assert snapshot["workbench"]["configuration_bound"] is True
+    assert invoice_persist["ok"] is True
+    assert invoice_persist["database_backends"] == ("postgresql", "mysql", "mariadb")
+    assert blocked_persist["ok"] is False
+    assert blocked_persist["statement"] == "rejected_non_owned_table"
+    assert route_validation["ok"] is True
+    assert all(contract["stream_engine_picker_visible"] is False for contract in route_validation["contracts"])
+    assert all(contract["shared_table_access"] is False for contract in route_validation["contracts"])
+    assert route_dispatch["ok"] is True
+    assert route_dispatch["result"]["operation_contract"]["event_contract"] == "AppGen-X"
+    assert route_dispatch["result"]["side_effects"] == ()
+    assert skills["ok"] is True
+    assert chatbot["ok"] is True
+    assert document_plan["ok"] is True
+    assert "command_ap_invoices" in document_plan["candidate_operations"]
+    assert crud_plan["ok"] is True
+    assert crud_plan["requires_confirmation"] is True
+    assert crud_plan["event_contract"] == "AppGen-X"
+    assert blocked_crud["ok"] is False
+    assert contribution["ok"] is True
+    assert "ap_automation_crud" in contribution["dsl_tools"]
+    assert release_validation["ok"] is True
+    assert release_smoke["ok"] is True
 
 
 def test_ap_configuration_rejects_forbidden_eventing_and_non_ordinary_backends():
