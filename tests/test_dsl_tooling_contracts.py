@@ -3880,7 +3880,19 @@ def test_tooling_implementation_phase_audit_maps_phase_exit_criteria_to_evidence
         nl_plan_cli=ok("appgen.nl-plan-cli-audit.v1"),
         release=ok("appgen.release-verifier-report.v1"),
         package=ok("appgen.release-verifier-report.v1"),
-        package_verify_cli=ok("appgen.package-verify-cli-audit.v1"),
+        package_verify_cli={
+            **ok("appgen.package-verify-cli-audit.v1"),
+            "target_count": 5,
+            "manifest_count": 5,
+            "handoff_artifact_count": 25,
+        },
+        release_text_renderer={
+            **ok("appgen.release-verifier-text-renderer.v1"),
+            "release_line_count": 2,
+            "graph_line_count": 3,
+            "target_status_line_count": 2,
+            "artifact_line_count": 2,
+        },
     )
 
     assert report["format"] == "appgen.tooling-implementation-phase-audit.v1"
@@ -3915,6 +3927,8 @@ def test_tooling_implementation_phase_audit_maps_phase_exit_criteria_to_evidence
         "studio_semantic_bridge",
         "frontend_browser_smoke_bridges",
         "release_and_package_verifiers",
+        "package_manifest_handoff_contracts",
+        "release_text_evidence_contracts",
     }
 
 
@@ -4033,6 +4047,8 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
         "frontend_interaction_audit_bridge",
         "cli_usage_failure_contracts",
         "package_and_release_verifiers",
+        "package_manifest_handoff_contracts",
+        "release_text_evidence_contracts",
         "parser_golden_and_drift_gates",
         "tooling_doc_anchor_integrity",
         "non_goal_policy_guards",
@@ -4507,6 +4523,44 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert manifest_case["desktop_smoke_entrypoint"] == "desktop.launch"
     assert manifest_case["pbc_artifact_class"] == "packaged_business_capability"
     assert manifest_case["deployment_artifact_class"] == "deployment_plan"
+    package_manifest_check = next(check for check in report["checks"] if check["id"] == "package_manifest_handoff_contracts")
+    assert package_manifest_check["detail"]["format"] == "appgen.package-verify-cli-audit.v1"
+    assert package_manifest_check["detail"]["target_count"] == 5
+    assert package_manifest_check["detail"]["manifest_count"] == 5
+    assert package_manifest_check["detail"]["handoff_artifact_count"] >= 25
+    assert set(package_manifest_check["detail"]["release_evidence_reports"]) == {
+        "web",
+        "mobile",
+        "desktop",
+        "pbc",
+        "deployment",
+    }
+    assert package_manifest_check["detail"]["release_graph_suite_format"] == "appgen.graph-suite-report.v1"
+    assert set(package_manifest_check["detail"]["release_graph_formats"]) == {"json", "mermaid", "dot"}
+    assert package_manifest_check["detail"]["web"]["artifact_class"] == "web_application"
+    assert package_manifest_check["detail"]["web"]["app_build_contract"] is True
+    assert package_manifest_check["detail"]["web"]["forms_bind_valid_fields"] is True
+    assert package_manifest_check["detail"]["mobile"]["artifact_class"] == "mobile_application"
+    assert package_manifest_check["detail"]["mobile"]["signing_posture_declared"] is True
+    assert package_manifest_check["detail"]["mobile"]["offline_policy_declared"] is True
+    assert package_manifest_check["detail"]["desktop"]["artifact_class"] == "desktop_application"
+    assert package_manifest_check["detail"]["desktop"]["installer_posture_declared"] is True
+    assert package_manifest_check["detail"]["desktop"]["menus_bind_to_handlers"] is True
+    assert package_manifest_check["detail"]["pbc"]["artifact_class"] == "packaged_business_capability"
+    assert package_manifest_check["detail"]["pbc"]["side_effect_free_registration"] is True
+    assert package_manifest_check["detail"]["deployment"]["artifact_class"] == "deployment_plan"
+    assert package_manifest_check["detail"]["deployment"]["secret_values_absent"] is True
+    assert package_manifest_check["detail"]["deployment"]["topology_graph_connected"] is True
+    release_text_check = next(check for check in report["checks"] if check["id"] == "release_text_evidence_contracts")
+    assert release_text_check["detail"]["format"] == "appgen.release-verifier-text-renderer.v1"
+    assert release_text_check["detail"]["release_line_count"] == 2
+    assert release_text_check["detail"]["graph_line_count"] == 3
+    assert release_text_check["detail"]["target_status_line_count"] == 2
+    assert release_text_check["detail"]["passing_target_line_count"] == 1
+    assert release_text_check["detail"]["failing_target_line_count"] == 1
+    assert release_text_check["detail"]["blocking_gap_line_count"] == 1
+    assert release_text_check["detail"]["artifact_line_count"] == 2
+    assert release_text_check["detail"]["json_fallback"] is False
     migration_check = next(check for check in report["checks"] if check["id"] == "migration_detection_coverage")
     assert migration_check["detail"]["cli"]["format"] == "appgen.migration-cli-audit.v1"
     assert migration_check["detail"]["cli"]["ok"] is True

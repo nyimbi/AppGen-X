@@ -1018,6 +1018,13 @@ graph-line, target-status-line, passing-target-line, failing-target-line,
 blocking-gap-line, and artifact-line counts so release logs can prove package
 handoff evidence did not lose target status, graph-suite context, or written
 artifact paths.
+The aggregate tooling audit also exposes package handoff and release text as
+separate gates. `package_manifest_handoff_contracts` proves the written web,
+mobile, desktop, PBC, and deployment manifests carry target-specific handoff
+metadata, graph-suite evidence, and downstream-builder readiness booleans.
+`release_text_evidence_contracts` proves the human release log retains release,
+graph-suite, target-status, blocking-gap, and artifact markers without falling
+back to raw JSON.
 
 ### `appgen component-publish`
 

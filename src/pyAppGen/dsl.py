@@ -4355,6 +4355,8 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
     lsp_stdio = _tooling_audit_lsp_stdio_transport(source)
     cli_help_surface = _tooling_audit_cli_help_surface(root)
     package_artifact_names = tuple(Path(item["path"]).name for item in package.get("written_artifacts", ()))
+    package_verify_cases = {case.get("case"): case for case in package_verify_cli.get("cases", ())}
+    package_manifest_case = package_verify_cases.get("package_writes_target_manifests", {})
     implementation_phases = _tooling_audit_implementation_phases(
         semantic=semantic,
         symbol_coverage=symbol_coverage,
@@ -4403,6 +4405,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
         release=release,
         package=package,
         package_verify_cli=package_verify_cli,
+        release_text_renderer=release_text_renderer,
     )
 
     checks = (
@@ -4786,6 +4789,117 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                 "cli": package_verify_cli,
                 "text_renderer": release_text_renderer,
                 "invalid_target": package_invalid_target,
+            },
+        ),
+        _tooling_audit_check(
+            "package_manifest_handoff_contracts",
+            package_verify_cli["ok"]
+            and package_verify_cli.get("target_count") == 5
+            and package_verify_cli.get("manifest_count") == 5
+            and package_verify_cli.get("handoff_artifact_count", 0) >= 25
+            and set(package_manifest_case.get("release_evidence_reports", ())) == {"web", "mobile", "desktop", "pbc", "deployment"}
+            and package_manifest_case.get("release_graph_suite_format") == "appgen.graph-suite-report.v1"
+            and set(package_manifest_case.get("release_graph_formats", ())) == set(GRAPH_TEXT_FORMATS)
+            and package_manifest_case.get("web_artifact_class") == "web_application"
+            and package_manifest_case.get("web_app_build_contract") is True
+            and package_manifest_case.get("web_routes_declared") is True
+            and package_manifest_case.get("web_forms_bind_valid_fields") is True
+            and package_manifest_case.get("web_handler_targets_resolve") is True
+            and package_manifest_case.get("web_smoke_tests_declared") is True
+            and package_manifest_case.get("mobile_package_metadata_exists") is True
+            and package_manifest_case.get("mobile_signing_posture_declared") is True
+            and package_manifest_case.get("mobile_offline_policy_declared") is True
+            and package_manifest_case.get("mobile_permissions_explained") is True
+            and package_manifest_case.get("mobile_smoke_launch_path_exists") is True
+            and package_manifest_case.get("desktop_package_metadata_exists") is True
+            and package_manifest_case.get("desktop_installer_posture_declared") is True
+            and package_manifest_case.get("desktop_startup_assets_declared") is True
+            and package_manifest_case.get("desktop_menus_bind_to_handlers") is True
+            and package_manifest_case.get("desktop_smoke_launch_path_exists") is True
+            and package_manifest_case.get("pbc_artifact_class") == "packaged_business_capability"
+            and package_manifest_case.get("pbc_side_effect_free_registration") is True
+            and package_manifest_case.get("deployment_artifact_class") == "deployment_plan"
+            and package_manifest_case.get("deployment_units_declared") is True
+            and package_manifest_case.get("deployment_health_checks_declared") is True
+            and package_manifest_case.get("deployment_environment_variables_named") is True
+            and package_manifest_case.get("deployment_secret_values_absent") is True
+            and package_manifest_case.get("deployment_resource_hints_present") is True
+            and package_manifest_case.get("deployment_topology_graph_connected") is True,
+            "Package manifests expose stable handoff metadata for web, mobile, desktop, PBC, and deployment builders.",
+            "docs/tooling.md#appgen-package",
+            {
+                "format": package_verify_cli.get("format"),
+                "target_count": package_verify_cli.get("target_count"),
+                "manifest_count": package_verify_cli.get("manifest_count"),
+                "handoff_artifact_count": package_verify_cli.get("handoff_artifact_count"),
+                "release_evidence_reports": package_manifest_case.get("release_evidence_reports"),
+                "release_graph_suite_format": package_manifest_case.get("release_graph_suite_format"),
+                "release_graph_formats": package_manifest_case.get("release_graph_formats"),
+                "web": {
+                    "artifact_class": package_manifest_case.get("web_artifact_class"),
+                    "handoff_artifacts": package_manifest_case.get("web_handoff_artifacts"),
+                    "app_build_contract": package_manifest_case.get("web_app_build_contract"),
+                    "routes_declared": package_manifest_case.get("web_routes_declared"),
+                    "forms_bind_valid_fields": package_manifest_case.get("web_forms_bind_valid_fields"),
+                    "handler_targets_resolve": package_manifest_case.get("web_handler_targets_resolve"),
+                    "smoke_tests_declared": package_manifest_case.get("web_smoke_tests_declared"),
+                },
+                "mobile": {
+                    "artifact_class": package_manifest_case.get("mobile_artifact_class"),
+                    "handoff_artifacts": package_manifest_case.get("mobile_handoff_artifacts"),
+                    "package_metadata_exists": package_manifest_case.get("mobile_package_metadata_exists"),
+                    "signing_posture_declared": package_manifest_case.get("mobile_signing_posture_declared"),
+                    "offline_policy_declared": package_manifest_case.get("mobile_offline_policy_declared"),
+                    "permissions_explained": package_manifest_case.get("mobile_permissions_explained"),
+                    "smoke_launch_path_exists": package_manifest_case.get("mobile_smoke_launch_path_exists"),
+                },
+                "desktop": {
+                    "artifact_class": package_manifest_case.get("desktop_artifact_class"),
+                    "handoff_artifacts": package_manifest_case.get("desktop_handoff_artifacts"),
+                    "package_metadata_exists": package_manifest_case.get("desktop_package_metadata_exists"),
+                    "installer_posture_declared": package_manifest_case.get("desktop_installer_posture_declared"),
+                    "startup_assets_declared": package_manifest_case.get("desktop_startup_assets_declared"),
+                    "menus_bind_to_handlers": package_manifest_case.get("desktop_menus_bind_to_handlers"),
+                    "smoke_launch_path_exists": package_manifest_case.get("desktop_smoke_launch_path_exists"),
+                },
+                "pbc": {
+                    "artifact_class": package_manifest_case.get("pbc_artifact_class"),
+                    "handoff_artifacts": package_manifest_case.get("pbc_handoff_artifacts"),
+                    "side_effect_free_registration": package_manifest_case.get("pbc_side_effect_free_registration"),
+                },
+                "deployment": {
+                    "artifact_class": package_manifest_case.get("deployment_artifact_class"),
+                    "handoff_artifacts": package_manifest_case.get("deployment_handoff_artifacts"),
+                    "units_declared": package_manifest_case.get("deployment_units_declared"),
+                    "health_checks_declared": package_manifest_case.get("deployment_health_checks_declared"),
+                    "environment_variables_named": package_manifest_case.get("deployment_environment_variables_named"),
+                    "secret_values_absent": package_manifest_case.get("deployment_secret_values_absent"),
+                    "resource_hints_present": package_manifest_case.get("deployment_resource_hints_present"),
+                    "topology_graph_connected": package_manifest_case.get("deployment_topology_graph_connected"),
+                },
+            },
+        ),
+        _tooling_audit_check(
+            "release_text_evidence_contracts",
+            release_text_renderer["ok"]
+            and release_text_renderer.get("release_line_count", 0) >= 2
+            and release_text_renderer.get("graph_line_count", 0) >= 3
+            and release_text_renderer.get("target_status_line_count", 0) >= 2
+            and release_text_renderer.get("blocking_gap_line_count", 0) >= 1
+            and release_text_renderer.get("artifact_line_count", 0) >= 2
+            and release_text_renderer.get("json_fallback") is False,
+            "Release verifier text evidence preserves release, graph-suite, target status, blocking-gap, and artifact markers without JSON parsing.",
+            "docs/tooling.md#appgen-package",
+            {
+                "format": release_text_renderer.get("format"),
+                "release_line_count": release_text_renderer.get("release_line_count"),
+                "graph_line_count": release_text_renderer.get("graph_line_count"),
+                "target_status_line_count": release_text_renderer.get("target_status_line_count"),
+                "passing_target_line_count": release_text_renderer.get("passing_target_line_count"),
+                "failing_target_line_count": release_text_renderer.get("failing_target_line_count"),
+                "blocking_gap_line_count": release_text_renderer.get("blocking_gap_line_count"),
+                "artifact_line_count": release_text_renderer.get("artifact_line_count"),
+                "json_fallback": release_text_renderer.get("json_fallback"),
             },
         ),
         _tooling_audit_check(
@@ -5465,6 +5579,23 @@ def _tooling_audit_implementation_phases(**evidence: dict) -> dict:
                         evidence["package"].get("format"),
                         evidence["package_verify_cli"].get("format"),
                     ),
+                },
+                {
+                    "id": "package_manifest_handoff_contracts",
+                    "ok": evidence["package_verify_cli"].get("ok") is True
+                    and evidence["package_verify_cli"].get("target_count") == 5
+                    and evidence["package_verify_cli"].get("manifest_count") == 5
+                    and evidence["package_verify_cli"].get("handoff_artifact_count", 0) >= 25,
+                    "evidence_format": evidence["package_verify_cli"].get("format"),
+                },
+                {
+                    "id": "release_text_evidence_contracts",
+                    "ok": evidence["release_text_renderer"].get("ok") is True
+                    and evidence["release_text_renderer"].get("release_line_count", 0) >= 2
+                    and evidence["release_text_renderer"].get("graph_line_count", 0) >= 3
+                    and evidence["release_text_renderer"].get("target_status_line_count", 0) >= 2
+                    and evidence["release_text_renderer"].get("artifact_line_count", 0) >= 2,
+                    "evidence_format": evidence["release_text_renderer"].get("format"),
                 },
             ),
         ),
