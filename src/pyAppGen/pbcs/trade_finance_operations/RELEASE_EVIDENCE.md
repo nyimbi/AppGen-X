@@ -1,12 +1,37 @@
 # Release Evidence - Trade Finance Operations
 
-Package directory: `pbcs/trade_finance_operations`.
+Directory: `pbcs/trade_finance_operations`
 
-This PBC includes owned schema, migration DDL, models, services, routes, events, handlers, UI workbench surfaces, agent skills, permissions, configuration, seed data, package metadata, side-effect-free registration, and focused package tests.
+Generated checks:
+- stable_manifest
+- source_package_directory
+- owned_schema_only
+- migration_artifact
+- model_artifact
+- domain_capability_depth
+- workflow_coverage
+- policy_control_coverage
+- automation_loop_coverage
+- analytics_coverage
+- service_commands
+- api_routes
+- event_outbox_inbox
+- typed_emitted_events
+- typed_consumed_events
+- idempotent_handlers
+- retry_dead_letter_policy
+- ui_fragments
+- permissions
+- configuration_schema
+- seed_data
+- self_registration_metadata
+- forms_wizards_controls
+- standalone_workflows
+- release_evidence_pack
+- contract_tests
 
-## Evidence
-
-- Release Evidence: schema, service, route, event, handler, UI, agent, and governance contracts are materialized.
-- Owned datastore boundary: every owned table starts with `trade_finance_operations_` and cross-PBC collaboration uses AppGen-X events or declared APIs.
-- Event contract: AppGen-X outbox/inbox with retry and dead-letter evidence.
-- Package tests: `tests/test_contract.py` validates schema/service/release, event contracts, side-effect-free registration, routes, governance, and idempotent handlers.
+Verification snapshot:
+- `python3 -m compileall src/pyAppGen/pbcs/trade_finance_operations` -> success
+- `PYTHONPATH=src python3 - <<'PY' ... direct test function runner ... PY` -> 13 focused test functions executed without assertion failures
+- `PYTHONPATH=src:src/pyAppGen/pbcs/trade_finance_operations/_audit_vendor python3 - <<'PY' ... focused trade_finance_operations repo audits ... PY` -> source, source-runtime-tests, package-local-assurance, specification, agent, implementation, implemented-capability, and generation all returned `True`
+- `git diff --check` -> clean
