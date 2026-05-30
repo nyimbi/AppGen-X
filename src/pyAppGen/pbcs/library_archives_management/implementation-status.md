@@ -20,3 +20,9 @@
 
 - MCP LSP diagnostics were unavailable in this session because the code-intel backend returned `404 Not Found`, so validation relied on compile/import checks and pytest instead of tool-backed file diagnostics.
 - The service and route layers remain contract-oriented rather than full persistence-backed standalone infrastructure; this slice composes executable domain-deep package surfaces on top of that existing package pattern.
+
+## Improve1 Library Control Implementation
+
+- Added `library_control.py` as the executable, side-effect-free control contract for all 50 improve1 library and archives features.
+- Added package-local domain behavior tests proving owned tables, UI surfaces, AppGen-X service routes, agent approval boundaries, datastore backend constraints, event topic constraints, and negative repository-operation paths.
+- Runtime, UI, release evidence, and traceability now expose the library control contract and feature-specific evidence for cataloging, accessioning, circulation, preservation, digitization, rights, reading room operations, agents, controls, analytics, seed scenarios, and release gates.

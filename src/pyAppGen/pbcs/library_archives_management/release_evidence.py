@@ -198,3 +198,29 @@ def smoke_test() -> dict:
         "validation": validation,
         "side_effects": (),
     }
+
+
+# Improve1 library control release extension.
+from .library_control import improve1_library_control_contract
+
+_LIBRARY_ARCHIVES_MANAGEMENT_BASE_RELEASE_READINESS_MANIFEST = release_readiness_manifest
+_LIBRARY_ARCHIVES_MANAGEMENT_BASE_VALIDATE_RELEASE_EVIDENCE = validate_release_evidence
+
+def release_readiness_manifest():
+    manifest = dict(_LIBRARY_ARCHIVES_MANAGEMENT_BASE_RELEASE_READINESS_MANIFEST())
+    control = improve1_library_control_contract()
+    checks = tuple(manifest.get("checks", ())) + ({"id": "improve1_library_control", "ok": control["ok"]},)
+    manifest["checks"] = checks
+    manifest["ok"] = bool(manifest.get("ok")) and control["ok"]
+    manifest["sections"] = tuple(dict.fromkeys(tuple(manifest.get("sections", ())) + ("improve1_library_control", "improve1_traceability")))
+    manifest["library_control"] = control
+    manifest["blocking_gaps"] = tuple(manifest.get("blocking_gaps", ())) + tuple(control.get("blocking_gaps", ()))
+    return manifest
+
+def validate_release_evidence():
+    validation = dict(_LIBRARY_ARCHIVES_MANAGEMENT_BASE_VALIDATE_RELEASE_EVIDENCE())
+    control = improve1_library_control_contract()
+    validation["ok"] = bool(validation.get("ok")) and control["ok"]
+    validation["library_control"] = control
+    validation["failed_checks"] = tuple(validation.get("failed_checks", ())) + tuple(control.get("blocking_gaps", ()))
+    return validation
