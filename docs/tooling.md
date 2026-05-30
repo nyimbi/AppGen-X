@@ -1546,6 +1546,11 @@ verify quick-fix coverage without expanding every case. It also reports
 case ids, failing-case names, expected-text match counts, forbidden-text removal
 counts, and lint-format counts so regressions can be traced to the exact
 quick-fix family and whether the patch, cleanup, or lint handoff failed.
+It publishes required, observed, and missing case ids; expected text by case;
+expected-text matched cases; forbidden text by case; forbidden-removed cases;
+changed cases; applied-edit cases; lint-format cases; and lint-passing cases.
+The aggregate gate fails when any named quick-fix case loses its edit, expected
+text, cleanup, lint report, lint pass, changed status, or required action id.
 The top-level tooling audit publishes three separate release gates for this
 surface: `lsp_quick_fix_coverage_contracts` proves required quick-fix families
 apply as linted DSL patches; `lsp_quick_fix_cli_contracts` proves the CLI has

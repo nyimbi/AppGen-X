@@ -2625,16 +2625,46 @@ def test_lsp_code_action_cli_audit_covers_required_agent_facing_quick_fixes(tmp_
     assert report["failing_case_count"] == 0
     assert report["failing_cases"] == ()
     assert report["case_ids"] == report["observed_action_ids"]
+    assert report["required_case_ids"] == report["required_action_ids"]
+    assert report["observed_case_ids"] == report["observed_action_ids"]
+    assert report["missing_case_count"] == 0
+    assert report["missing_case_ids"] == ()
     assert report["required_action_count"] == len(report["required_action_ids"])
     assert report["observed_action_count"] == len(report["observed_action_ids"])
     assert report["missing_required_action_count"] == 0
     assert report["applied_edit_count"] >= report["case_count"]
+    assert report["applied_edit_cases"] == report["required_case_ids"]
+    assert report["missing_applied_edit_case_count"] == 0
+    assert report["missing_applied_edit_cases"] == ()
     assert report["expected_text_case_count"] == report["case_count"]
+    assert report["expected_text_matched_cases"] == report["required_case_ids"]
+    assert report["missing_expected_text_case_count"] == 0
+    assert report["missing_expected_text_cases"] == ()
+    assert report["expected_text_by_case"]["create_missing_table"] == "table Missing"
+    assert report["expected_text_by_case"]["replace_secret_literal_with_env"] == "api_key: OPENAI_API_KEY"
     assert report["forbidden_removed_case_count"] == report["case_count"]
+    assert report["forbidden_removed_cases"] == report["required_case_ids"]
+    assert report["missing_forbidden_removed_case_count"] == 0
+    assert report["missing_forbidden_removed_cases"] == ()
+    assert report["forbidden_text_by_case"]["replace_secret_literal_with_env"] == ('api_key: "sk-secret"',)
+    assert report["forbidden_text_by_case"]["remove_invalid_runtime_picker_fields"] == (
+        "runtime:",
+        "stream:",
+        "backend:",
+    )
     assert report["lint_format_case_count"] == report["case_count"]
+    assert report["lint_format_cases"] == report["required_case_ids"]
+    assert report["missing_lint_format_case_count"] == 0
+    assert report["missing_lint_format_cases"] == ()
     assert report["lint_passing_case_count"] == report["case_count"]
+    assert report["lint_passing_cases"] == report["required_case_ids"]
+    assert report["missing_lint_passing_case_count"] == 0
+    assert report["missing_lint_passing_cases"] == ()
     assert report["lint_failing_case_count"] == 0
     assert report["changed_case_count"] == report["case_count"]
+    assert report["changed_cases"] == report["required_case_ids"]
+    assert report["missing_changed_case_count"] == 0
+    assert report["missing_changed_cases"] == ()
     assert report["unchanged_case_count"] == 0
     assert report["blocking_gap_count"] == 0
     assert report["blocking_gaps"] == ()
@@ -5948,12 +5978,31 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
         quick_fix_cli["detail"]["application_required_action_ids"]
     )
     assert quick_fix_cli["detail"]["cli"]["missing_required_action_count"] == 0
+    assert quick_fix_cli["detail"]["cli"]["missing_case_count"] == 0
     assert quick_fix_cli["detail"]["cli"]["failing_case_count"] == 0
     assert quick_fix_cli["detail"]["cli"]["failing_cases"] == ()
+    assert quick_fix_cli["detail"]["cli"]["required_case_ids"] == quick_fix_cli["detail"]["cli"]["required_action_ids"]
+    assert quick_fix_cli["detail"]["cli"]["observed_case_ids"] == quick_fix_cli["detail"]["cli"]["observed_action_ids"]
     assert quick_fix_cli["detail"]["cli"]["changed_case_count"] == quick_fix_cli["detail"]["cli"]["case_count"]
+    assert quick_fix_cli["detail"]["cli"]["changed_cases"] == quick_fix_cli["detail"]["cli"]["required_case_ids"]
+    assert quick_fix_cli["detail"]["cli"]["missing_changed_case_count"] == 0
     assert quick_fix_cli["detail"]["cli"]["expected_text_case_count"] == quick_fix_cli["detail"]["cli"]["case_count"]
+    assert quick_fix_cli["detail"]["cli"]["expected_text_matched_cases"] == quick_fix_cli["detail"]["cli"][
+        "required_case_ids"
+    ]
+    assert quick_fix_cli["detail"]["cli"]["missing_expected_text_case_count"] == 0
     assert quick_fix_cli["detail"]["cli"]["forbidden_removed_case_count"] == quick_fix_cli["detail"]["cli"]["case_count"]
+    assert quick_fix_cli["detail"]["cli"]["forbidden_removed_cases"] == quick_fix_cli["detail"]["cli"][
+        "required_case_ids"
+    ]
+    assert quick_fix_cli["detail"]["cli"]["missing_forbidden_removed_case_count"] == 0
     assert quick_fix_cli["detail"]["cli"]["lint_format_case_count"] == quick_fix_cli["detail"]["cli"]["case_count"]
+    assert quick_fix_cli["detail"]["cli"]["lint_format_cases"] == quick_fix_cli["detail"]["cli"]["required_case_ids"]
+    assert quick_fix_cli["detail"]["cli"]["missing_lint_format_case_count"] == 0
+    assert quick_fix_cli["detail"]["cli"]["lint_passing_cases"] == quick_fix_cli["detail"]["cli"]["required_case_ids"]
+    assert quick_fix_cli["detail"]["cli"]["missing_lint_passing_case_count"] == 0
+    assert quick_fix_cli["detail"]["cli"]["applied_edit_cases"] == quick_fix_cli["detail"]["cli"]["required_case_ids"]
+    assert quick_fix_cli["detail"]["cli"]["missing_applied_edit_case_count"] == 0
     assert quick_fix_cli["detail"]["cli"]["blocking_gap_count"] == 0
     quick_fix_text = next(check for check in report["checks"] if check["id"] == "lsp_quick_fix_text_contracts")
     assert quick_fix_text["ok"] is True

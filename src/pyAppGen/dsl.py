@@ -5827,14 +5827,21 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             == tuple(code_action_apply_audit.get("required_action_ids", ()))
             and lsp_apply_cli.get("passing_case_count") == lsp_apply_cli.get("case_count")
             and lsp_apply_cli.get("failing_case_count") == 0
+            and lsp_apply_cli.get("missing_case_count") == 0
             and lsp_apply_cli.get("missing_required_action_count") == 0
             and lsp_apply_cli.get("applied_edit_count", 0) >= lsp_apply_cli.get("case_count", 0)
+            and lsp_apply_cli.get("missing_applied_edit_case_count") == 0
             and lsp_apply_cli.get("expected_text_case_count") == lsp_apply_cli.get("case_count")
+            and lsp_apply_cli.get("missing_expected_text_case_count") == 0
             and lsp_apply_cli.get("forbidden_removed_case_count") == lsp_apply_cli.get("case_count")
+            and lsp_apply_cli.get("missing_forbidden_removed_case_count") == 0
             and lsp_apply_cli.get("lint_format_case_count") == lsp_apply_cli.get("case_count")
+            and lsp_apply_cli.get("missing_lint_format_case_count") == 0
             and lsp_apply_cli.get("lint_passing_case_count") == lsp_apply_cli.get("case_count")
+            and lsp_apply_cli.get("missing_lint_passing_case_count") == 0
             and lsp_apply_cli.get("lint_failing_case_count") == 0
             and lsp_apply_cli.get("changed_case_count") == lsp_apply_cli.get("case_count")
+            and lsp_apply_cli.get("missing_changed_case_count") == 0
             and lsp_apply_cli.get("unchanged_case_count") == 0
             and lsp_apply_cli.get("blocking_gap_count") == 0,
             "The appgen lsp --apply-code-action CLI remains at parity with the in-process quick-fix contract for agent and editor integrations.",
@@ -10437,26 +10444,80 @@ package WebPackage { target: web; smoke: launch }
             }
         )
     observed_action_ids = tuple(case["case"] for case in cases)
+    required_case_ids = required_action_ids
+    missing_case_ids = tuple(case_id for case_id in required_case_ids if case_id not in observed_action_ids)
     missing_required_action_ids = tuple(action_id for action_id in required_action_ids if action_id not in observed_action_ids)
+    expected_text_by_case = {action_id: expected_text for action_id, _filename, _source, expected_text, _forbidden in case_specs}
+    expected_text_matched_cases = tuple(case["case"] for case in cases if case["expected_matched"])
+    missing_expected_text_cases = tuple(
+        case_id for case_id in required_case_ids if case_id not in expected_text_matched_cases
+    )
+    forbidden_text_by_case = {
+        action_id: forbidden_text for action_id, _filename, _source, _expected_text, forbidden_text in case_specs
+    }
+    forbidden_removed_cases = tuple(case["case"] for case in cases if case["forbidden_removed"])
+    missing_forbidden_removed_cases = tuple(
+        case_id for case_id in required_case_ids if case_id not in forbidden_removed_cases
+    )
+    changed_cases = tuple(case["case"] for case in cases if case["changed"])
+    missing_changed_cases = tuple(case_id for case_id in required_case_ids if case_id not in changed_cases)
+    lint_format_cases = tuple(case["case"] for case in cases if case["lint_format"] == "appgen.lint-report.v1")
+    missing_lint_format_cases = tuple(case_id for case_id in required_case_ids if case_id not in lint_format_cases)
+    lint_passing_cases = tuple(case["case"] for case in cases if case["lint_ok"])
+    missing_lint_passing_cases = tuple(case_id for case_id in required_case_ids if case_id not in lint_passing_cases)
+    applied_edit_cases = tuple(case["case"] for case in cases if case["applied_edit_count"] > 0)
+    missing_applied_edit_cases = tuple(case_id for case_id in required_case_ids if case_id not in applied_edit_cases)
     failing_cases = tuple(case for case in cases if not case["ok"])
     return {
         "format": "appgen.lsp-code-action-cli-audit.v1",
-        "ok": all(case["ok"] for case in cases) and not missing_required_action_ids,
+        "ok": all(case["ok"] for case in cases)
+        and not missing_case_ids
+        and not missing_required_action_ids
+        and not missing_expected_text_cases
+        and not missing_forbidden_removed_cases
+        and not missing_changed_cases
+        and not missing_lint_format_cases
+        and not missing_lint_passing_cases
+        and not missing_applied_edit_cases,
         "case_count": len(cases),
         "passing_case_count": sum(1 for case in cases if case["ok"]),
         "failing_case_count": len(failing_cases),
         "failing_cases": tuple(case["case"] for case in failing_cases),
         "case_ids": observed_action_ids,
+        "required_case_ids": required_case_ids,
+        "observed_case_ids": observed_action_ids,
+        "missing_case_count": len(missing_case_ids),
+        "missing_case_ids": missing_case_ids,
         "required_action_count": len(required_action_ids),
         "observed_action_count": len(observed_action_ids),
         "missing_required_action_count": len(missing_required_action_ids),
         "applied_edit_count": sum(case["applied_edit_count"] for case in cases),
+        "applied_edit_cases": applied_edit_cases,
+        "missing_applied_edit_case_count": len(missing_applied_edit_cases),
+        "missing_applied_edit_cases": missing_applied_edit_cases,
         "expected_text_case_count": sum(1 for case in cases if case["expected_matched"]),
+        "expected_text_by_case": expected_text_by_case,
+        "expected_text_matched_cases": expected_text_matched_cases,
+        "missing_expected_text_case_count": len(missing_expected_text_cases),
+        "missing_expected_text_cases": missing_expected_text_cases,
         "forbidden_removed_case_count": sum(1 for case in cases if case["forbidden_removed"]),
+        "forbidden_text_by_case": forbidden_text_by_case,
+        "forbidden_removed_cases": forbidden_removed_cases,
+        "missing_forbidden_removed_case_count": len(missing_forbidden_removed_cases),
+        "missing_forbidden_removed_cases": missing_forbidden_removed_cases,
         "lint_format_case_count": sum(1 for case in cases if case["lint_format"] == "appgen.lint-report.v1"),
+        "lint_format_cases": lint_format_cases,
+        "missing_lint_format_case_count": len(missing_lint_format_cases),
+        "missing_lint_format_cases": missing_lint_format_cases,
         "lint_passing_case_count": sum(1 for case in cases if case["lint_ok"]),
+        "lint_passing_cases": lint_passing_cases,
+        "missing_lint_passing_case_count": len(missing_lint_passing_cases),
+        "missing_lint_passing_cases": missing_lint_passing_cases,
         "lint_failing_case_count": sum(1 for case in cases if not case["lint_ok"]),
         "changed_case_count": sum(1 for case in cases if case["changed"]),
+        "changed_cases": changed_cases,
+        "missing_changed_case_count": len(missing_changed_cases),
+        "missing_changed_cases": missing_changed_cases,
         "unchanged_case_count": sum(1 for case in cases if not case["changed"]),
         "cases": tuple(cases),
         "required_action_ids": required_action_ids,
