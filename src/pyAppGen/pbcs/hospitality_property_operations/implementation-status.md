@@ -25,3 +25,10 @@ Package-local uplift only. No global files, ledgers, shared generators, or sibli
 
 - The standalone app uses sqlite only as a package-local execution harness.
 - Deployment-facing package contracts remain on the owned PostgreSQL/MySQL/MariaDB boundary already declared by the PBC.
+
+## Improve1 hospitality control implementation
+
+- Added executable `hospitality_control.py` covering all 50 improve1 hotel operations capabilities with owned-table evidence, required evidence fields, AppGen-X event contract, and PostgreSQL/MySQL/MariaDB datastore boundaries.
+- Exposed the control contract through runtime release evidence, runtime capabilities, release readiness, validation, UI contract, and workbench rendering.
+- Added `tests/test_domain_behavior.py` to prove all 50 capabilities plus negative behavior for sellable room state, reservation guarantees, guest stay room history, inspection release, agent guardrails, boundary-safe projections, external master boundaries, cryptographic proofs, typed AppGen-X events, and arrival-to-room-ready release proof.
+- Regenerated `IMPROVE1_TRACEABILITY.md` so each row maps feature 1-50 to `hospitality_control.py`, UI, service/API, package tests, and release evidence.

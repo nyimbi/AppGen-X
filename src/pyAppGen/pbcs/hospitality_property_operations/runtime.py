@@ -347,3 +347,38 @@ def hospitality_property_operations_runtime_smoke():
 
 
 hospitality_property_operations_execute_domain_operation = execute_domain_operation
+
+
+# Improve1 hospitality hotel control extension.
+from .hospitality_control import improve1_hospitality_control_contract as hospitality_property_operations_improve1_hospitality_control_contract
+
+_HOSPITALITY_PROPERTY_OPERATIONS_BASE_RUNTIME_CAPABILITIES = hospitality_property_operations_runtime_capabilities
+_HOSPITALITY_PROPERTY_OPERATIONS_BASE_RELEASE_EVIDENCE = hospitality_property_operations_build_release_evidence
+
+
+def hospitality_property_operations_build_release_evidence():
+    evidence = dict(_HOSPITALITY_PROPERTY_OPERATIONS_BASE_RELEASE_EVIDENCE())
+    hospitality_control = hospitality_property_operations_improve1_hospitality_control_contract()
+    checks = tuple(evidence.get('checks', ())) + (
+        {'id': 'improve1_hospitality_control', 'ok': hospitality_control['ok']},
+        {'id': 'arrival_to_room_ready_release', 'ok': hospitality_control['capability_count'] == 50 and hospitality_control['event_contract'] == 'AppGen-X'},
+    )
+    return {**evidence, 'ok': evidence.get('ok') is True and all(check['ok'] for check in checks), 'checks': checks, 'hospitality_control': hospitality_control, 'blocking_gaps': tuple(check for check in checks if not check['ok'])}
+
+
+def hospitality_property_operations_runtime_capabilities():
+    runtime = dict(_HOSPITALITY_PROPERTY_OPERATIONS_BASE_RUNTIME_CAPABILITIES())
+    hospitality_control = hospitality_property_operations_improve1_hospitality_control_contract()
+    return {
+        **runtime,
+        'ok': runtime.get('ok') is True and hospitality_control['ok'],
+        'hospitality_control': hospitality_control,
+        'improve1_capabilities': hospitality_control['capabilities'],
+        'operations': tuple(dict.fromkeys(tuple(runtime.get('operations', ())) + ('improve1_hospitality_control_contract', 'evaluate_hospitality_control'))),
+        'owned_tables': tuple(dict.fromkeys(tuple(runtime.get('owned_tables', ())) + tuple(hospitality_control['owned_tables']))),
+        'allowed_database_backends': hospitality_control['allowed_database_backends'],
+        'event_contract': hospitality_control['event_contract'],
+        'required_event_topic': hospitality_control['required_event_topic'],
+        'stream_engine_picker_visible': False,
+        'side_effects': (),
+    }

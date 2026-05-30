@@ -174,3 +174,32 @@ def smoke_test() -> dict:
         and detail["ok"],
         "side_effects": (),
     }
+
+
+# Improve1 hospitality hotel UI control extension.
+from .hospitality_control import improve1_hospitality_control_contract as hospitality_property_operations_improve1_hospitality_control_contract
+
+_HOSPITALITY_PROPERTY_OPERATIONS_BASE_UI_CONTRACT = hospitality_property_operations_ui_contract
+_HOSPITALITY_PROPERTY_OPERATIONS_BASE_RENDER_WORKBENCH = hospitality_property_operations_render_workbench
+
+
+def hospitality_property_operations_ui_contract() -> dict:
+    base = dict(_HOSPITALITY_PROPERTY_OPERATIONS_BASE_UI_CONTRACT())
+    hospitality_control = hospitality_property_operations_improve1_hospitality_control_contract()
+    control_panels = tuple(item['evidence']['ui_surface'] for item in hospitality_control['capabilities'])
+    service_actions = tuple(item['evidence']['service_api'] for item in hospitality_control['capabilities'])
+    full_surface = dict(base.get('full_capability_surface', {}))
+    full_surface.update({
+        'hospitality_control_panels': control_panels,
+        'hospitality_control_service_actions': service_actions,
+        'hospitality_control_tables': hospitality_control['owned_tables'],
+        'hospitality_control_agent_tools': tuple(f"hospitality_property_operations.agent.{item['slug']}" for item in hospitality_control['capabilities']),
+    })
+    return {**base, 'ok': base.get('ok') is True and hospitality_control['ok'], 'full_capability_surface': full_surface, 'hospitality_control_contract': hospitality_control, 'hospitality_control_panels': control_panels, 'hospitality_control_service_actions': service_actions, 'side_effects': ()}
+
+
+def hospitality_property_operations_render_workbench(view: dict | None = None) -> dict:
+    base = dict(_HOSPITALITY_PROPERTY_OPERATIONS_BASE_RENDER_WORKBENCH(view=view))
+    hospitality_control = hospitality_property_operations_improve1_hospitality_control_contract()
+    panels = tuple(item['evidence']['ui_surface'] for item in hospitality_control['capabilities'])
+    return {**base, 'ok': base.get('ok') is True and hospitality_control['ok'], 'hospitality_control_panels': panels, 'hospitality_control_service_actions': tuple(item['evidence']['service_api'] for item in hospitality_control['capabilities']), 'agent_tools': tuple(f"hospitality_property_operations.agent.{item['slug']}" for item in hospitality_control['capabilities']), 'side_effects': ()}
