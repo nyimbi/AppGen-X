@@ -1715,6 +1715,22 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
     assert "hover_handler_target_depth" in {check["check"] for check in audit["checks"]}
     assert "hover_catalog_diagnostic_depth" in {check["check"] for check in audit["checks"]}
     assert "workspace_symbol_catalog_result_depth" in {check["check"] for check in audit["checks"]}
+    assert audit["definition_context_count"] == 5
+    assert audit["passing_definition_context_count"] == audit["definition_context_count"]
+    assert audit["missing_definition_context_count"] == 0
+    assert audit["missing_definition_contexts"] == ()
+    assert set(audit["definition_context_names"]) == {
+        "pbc_include",
+        "api_event_target",
+        "deployment_health_target",
+        "deployment_resource_target",
+        "deployment_env_target",
+    }
+    assert all(audit["definition_context_matches"].values())
+    assert audit["definition_context_expected_lines"] == audit["definition_context_observed_lines"]
+    definition_check = next(check for check in audit["checks"] if check["check"] == "enterprise_definition_context")
+    assert definition_check["detail"]["missing_definition_contexts"] == ()
+    assert definition_check["detail"]["expected_lines"] == definition_check["detail"]["observed_lines"]
     assert audit["workspace_symbol_catalog_query_count"] == 2
     assert audit["workspace_symbol_catalog_passing_query_count"] == audit["workspace_symbol_catalog_query_count"]
     assert audit["workspace_symbol_catalog_missing_query_count"] == 0
@@ -5524,6 +5540,24 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     )
     assert "gl_core" in lsp_navigation_check["detail"]["workspace_symbol_catalog"]["pbc_keys"]
     assert "JournalPosted" in lsp_navigation_check["detail"]["workspace_symbol_catalog"]["contract_names"]
+    assert lsp_navigation_check["detail"]["definition_context"]["format"] == "appgen.lsp-json-rpc-audit.v1"
+    assert lsp_navigation_check["detail"]["definition_context"]["context_count"] == 5
+    assert lsp_navigation_check["detail"]["definition_context"]["passing_context_count"] == (
+        lsp_navigation_check["detail"]["definition_context"]["context_count"]
+    )
+    assert lsp_navigation_check["detail"]["definition_context"]["missing_context_count"] == 0
+    assert lsp_navigation_check["detail"]["definition_context"]["missing_contexts"] == ()
+    assert set(lsp_navigation_check["detail"]["definition_context"]["context_names"]) == {
+        "pbc_include",
+        "api_event_target",
+        "deployment_health_target",
+        "deployment_resource_target",
+        "deployment_env_target",
+    }
+    assert all(lsp_navigation_check["detail"]["definition_context"]["matches"].values())
+    assert lsp_navigation_check["detail"]["definition_context"]["expected_lines"] == (
+        lsp_navigation_check["detail"]["definition_context"]["observed_lines"]
+    )
     assert lsp_navigation_check["detail"]["text_renderer"]["format"] == "appgen.lsp-service-text-renderer.v1"
     assert lsp_navigation_check["detail"]["text_renderer"]["service_count_line_count"] == 1
     assert lsp_navigation_check["detail"]["text_renderer"]["completion_line_count"] >= 1

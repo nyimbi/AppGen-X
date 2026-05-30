@@ -5483,6 +5483,8 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and lsp_rpc.get("workspace_symbol_catalog_missing_query_count") == 0
             and lsp_rpc.get("workspace_symbol_catalog_pbc_result_count", 0) >= 1
             and lsp_rpc.get("workspace_symbol_catalog_contract_result_count", 0) >= 1
+            and lsp_rpc.get("missing_definition_context_count") == 0
+            and lsp_rpc.get("passing_definition_context_count") == lsp_rpc.get("definition_context_count")
             and lsp_text_renderer["ok"]
             and lsp_text_renderer.get("service_count_line_count", 0) >= 1
             and lsp_text_renderer.get("completion_line_count", 0) >= 1
@@ -5544,6 +5546,17 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                     "contract_uris": lsp_rpc.get("workspace_symbol_catalog_contract_uris"),
                     "pbc_keys": lsp_rpc.get("workspace_symbol_catalog_pbc_keys"),
                     "contract_names": lsp_rpc.get("workspace_symbol_catalog_contract_names"),
+                },
+                "definition_context": {
+                    "format": lsp_rpc.get("format"),
+                    "context_names": lsp_rpc.get("definition_context_names"),
+                    "context_count": lsp_rpc.get("definition_context_count"),
+                    "passing_context_count": lsp_rpc.get("passing_definition_context_count"),
+                    "missing_context_count": lsp_rpc.get("missing_definition_context_count"),
+                    "missing_contexts": lsp_rpc.get("missing_definition_contexts"),
+                    "expected_lines": lsp_rpc.get("definition_context_expected_lines"),
+                    "observed_lines": lsp_rpc.get("definition_context_observed_lines"),
+                    "matches": lsp_rpc.get("definition_context_matches"),
                 },
                 "text_renderer": {
                     "format": lsp_text_renderer.get("format"),
@@ -9171,18 +9184,79 @@ deploy Production {
         },
         documents,
     )
+    deployment_resource_definition_responses, _ = lsp_server_handle_message(
+        {
+            "jsonrpc": "2.0",
+            "id": 61,
+            "method": "textDocument/definition",
+            "params": {
+                "textDocument": {"uri": definition_context_uri},
+                "position": context_position("resource SubmitInvoice", len("resource ")),
+            },
+        },
+        documents,
+    )
+    deployment_env_definition_responses, _ = lsp_server_handle_message(
+        {
+            "jsonrpc": "2.0",
+            "id": 62,
+            "method": "textDocument/definition",
+            "params": {
+                "textDocument": {"uri": definition_context_uri},
+                "position": context_position("env SubmitInvoice", len("env ")),
+            },
+        },
+        documents,
+    )
     pbc_result = pbc_definition_responses[0].get("result", {}) if pbc_definition_responses else {}
     event_result = event_definition_responses[0].get("result", {}) if event_definition_responses else {}
     deployment_result = deployment_definition_responses[0].get("result", {}) if deployment_definition_responses else {}
+    deployment_resource_result = (
+        deployment_resource_definition_responses[0].get("result", {})
+        if deployment_resource_definition_responses
+        else {}
+    )
+    deployment_env_result = (
+        deployment_env_definition_responses[0].get("result", {}) if deployment_env_definition_responses else {}
+    )
+    definition_expected_lines = {
+        "pbc_include": definition_context_source.count("\n", 0, definition_context_source.index("pbc gl_core")),
+        "api_event_target": definition_context_source.count(
+            "\n", 0, definition_context_source.index("event JournalPosted")
+        ),
+        "deployment_health_target": definition_context_source.count(
+            "\n", 0, definition_context_source.index("unit SubmitInvoice")
+        ),
+        "deployment_resource_target": definition_context_source.count(
+            "\n", 0, definition_context_source.index("unit SubmitInvoice")
+        ),
+        "deployment_env_target": definition_context_source.count(
+            "\n", 0, definition_context_source.index("unit SubmitInvoice")
+        ),
+    }
+    definition_observed_lines = {
+        "pbc_include": pbc_result.get("range", {}).get("start", {}).get("line"),
+        "api_event_target": event_result.get("range", {}).get("start", {}).get("line"),
+        "deployment_health_target": deployment_result.get("range", {}).get("start", {}).get("line"),
+        "deployment_resource_target": deployment_resource_result.get("range", {}).get("start", {}).get("line"),
+        "deployment_env_target": deployment_env_result.get("range", {}).get("start", {}).get("line"),
+    }
+    definition_context_matches = {
+        name: definition_observed_lines.get(name) == expected_line
+        for name, expected_line in definition_expected_lines.items()
+    }
+    missing_definition_contexts = tuple(
+        name for name, ok in definition_context_matches.items() if not ok
+    )
     checks.append(
         _release_check(
             "enterprise_definition_context",
-            pbc_result.get("range", {}).get("start", {}).get("line")
-            == definition_context_source.count("\n", 0, definition_context_source.index("pbc gl_core"))
-            and event_result.get("range", {}).get("start", {}).get("line")
-            == definition_context_source.count("\n", 0, definition_context_source.index("event JournalPosted"))
-            and deployment_result.get("range", {}).get("start", {}).get("line")
-            == definition_context_source.count("\n", 0, definition_context_source.index("unit SubmitInvoice")),
+            not missing_definition_contexts,
+            detail={
+                "expected_lines": definition_expected_lines,
+                "observed_lines": definition_observed_lines,
+                "missing_definition_contexts": missing_definition_contexts,
+            },
         )
     )
 
@@ -9373,6 +9447,14 @@ audit ReferenceAudit {
             for item in catalog_pbc_matches
         ),
         "workspace_symbol_catalog_contract_names": tuple(item.get("name") for item in catalog_contract_matches),
+        "definition_context_expected_lines": definition_expected_lines,
+        "definition_context_observed_lines": definition_observed_lines,
+        "definition_context_matches": definition_context_matches,
+        "definition_context_names": tuple(definition_context_matches),
+        "definition_context_count": len(definition_context_matches),
+        "passing_definition_context_count": sum(1 for ok in definition_context_matches.values() if ok),
+        "missing_definition_contexts": missing_definition_contexts,
+        "missing_definition_context_count": len(missing_definition_contexts),
         "lexical_reference_scope_ok": lexical_reference_scope_ok,
         "reference_scope_location_count": len(reference_scope_locations),
         "reference_scope_expected_line_count": len(expected_reference_lines),

@@ -1371,6 +1371,12 @@ For ordinary DSL declarations, definition is context-aware: a token used as an
 API/event contract target or deployment health/resource/env target resolves to
 the event or deployment-unit declaration even when an operation or field has the
 same name.
+The JSON-RPC audit reports this through `enterprise_definition_context` with
+named contexts for PBC includes, API/event targets, deployment health targets,
+deployment resource targets, and deployment environment targets. It publishes
+expected line numbers, observed line numbers, passing/missing context counts,
+and missing context names, and the aggregate `lsp_navigation_completion_contracts`
+gate requires all definition contexts to resolve to their intended declarations.
 Reference search also includes those read-only catalog indexes. When a user or
 agent asks for references to a PBC key or catalog API/event contract,
 `textDocument/references` returns ordinary workspace occurrences plus the
