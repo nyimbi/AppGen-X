@@ -23,3 +23,9 @@ Implemented a package-local standalone one-PBC livestock herd management slice.
   to a live HTTP server or external database in this scope.
 - Validation depends on local Python import and targeted test execution, not a
   full repo-wide suite.
+
+## Improve1 Livestock Control Implementation
+
+- Added `livestock_control.py` as the executable, side-effect-free control contract for all 50 improve1 livestock herd features.
+- Added package-local domain behavior tests proving owned tables, UI surfaces, AppGen-X service routes, agent approval boundaries, datastore backend constraints, event topic constraints, and negative herd-operation paths.
+- Runtime, UI, release evidence, and traceability now expose the livestock control contract and feature-specific evidence for animal identity, health, biosecurity, breeding, feed, movements, welfare, sustainability, tasks, agents, eventing, audit packets, data quality, release smokes, and cross-PBC boundaries.

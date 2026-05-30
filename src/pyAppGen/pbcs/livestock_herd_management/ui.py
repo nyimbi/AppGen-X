@@ -99,3 +99,32 @@ def smoke_test():
     rendered = livestock_herd_management_render_workbench()
     standalone = livestock_herd_management_standalone_app_contract()
     return {'ok': livestock_herd_management_ui_contract()['ok'] and rendered['ok'] and standalone['ok'], 'rendered': rendered, 'standalone': standalone, 'side_effects': ()}
+
+
+# Improve1 livestock control UI extension.
+from .livestock_control import improve1_livestock_control_contract
+
+_LIVESTOCK_HERD_MANAGEMENT_BASE_UI_CONTRACT = livestock_herd_management_ui_contract
+_LIVESTOCK_HERD_MANAGEMENT_BASE_RENDER_WORKBENCH = livestock_herd_management_render_workbench
+
+def livestock_herd_management_ui_contract():
+    ui = dict(_LIVESTOCK_HERD_MANAGEMENT_BASE_UI_CONTRACT())
+    control = improve1_livestock_control_contract()
+    panels = tuple(item["evidence"]["ui_surface"] for item in control["capabilities"])
+    service_actions = tuple(item["evidence"]["service_api"] for item in control["capabilities"])
+    ui["ok"] = bool(ui.get("ok")) and control["ok"] and len(panels) == 50
+    ui["livestock_control_contract"] = control["format"]
+    ui["livestock_control_panels"] = panels
+    ui["livestock_control_service_actions"] = service_actions
+    ui["full_capability_surface"] = dict(ui.get("full_capability_surface", {}))
+    ui["full_capability_surface"]["improve1_livestock_panels"] = panels
+    ui["full_capability_surface"]["improve1_livestock_agent_tools"] = tuple(f"livestock_agent.{item['slug']}" for item in control["capabilities"])
+    return ui
+
+def livestock_herd_management_render_workbench():
+    workbench = dict(_LIVESTOCK_HERD_MANAGEMENT_BASE_RENDER_WORKBENCH())
+    control = improve1_livestock_control_contract()
+    workbench["ok"] = bool(workbench.get("ok")) and control["ok"]
+    workbench["livestock_control_panels"] = tuple(item["evidence"]["ui_surface"] for item in control["capabilities"])
+    workbench["livestock_control_agent_tools"] = tuple(f"livestock_agent.{item['slug']}" for item in control["capabilities"])
+    return workbench
