@@ -23,3 +23,9 @@ including:
 
 - `python` was not available on PATH; validation used `python3`.
 - Global `pytest` was unavailable in this worktree environment, so focused tests were executed through a package-local Python harness instead.
+
+## Improve1 land development control implementation
+
+Implemented executable improve1 coverage for all 50 land and real estate development capabilities in `land_control.py`. The contract adds owned per-feature control tables, AppGen-X eventing constraints, PostgreSQL/MySQL/MariaDB datastore allowlists, declared API/event dependencies, per-feature UI panels and service routes, and negative-path domain findings for parcel identity, assemblage control, survey/title conflicts, environmental diligence, zoning rules, entitlement dependencies, jurisdiction calendars, closing gates, land options, feasibility economics, infrastructure capacity, permit completeness, agency comments, obligations, fees, public-benefit compliance, handoff packets, supplier readiness, utility relocation, financing covenants, sales/lease release, deadline engines, risk heatmaps, critical path, counterfactuals, appeals, cockpits, agent document/task/memo/packet flows, cross-PBC handlers, audit-proof evidence packs, archive gates, and portfolio feedback.
+
+Runtime, UI, release evidence, and traceability surfaces now expose the land control contract, and `tests/test_domain_behavior.py` executes all 50 controls plus representative negative-path checks for domain readiness gates and PBC boundary rules.

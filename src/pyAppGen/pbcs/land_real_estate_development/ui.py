@@ -96,3 +96,39 @@ def smoke_test() -> dict:
         ),
         "side_effects": (),
     }
+
+
+# Improve1 land control UI extension.
+from .land_control import improve1_land_control_contract as _improve1_land_control_contract
+
+_LAND_REAL_ESTATE_DEVELOPMENT_BASE_UI_CONTRACT = land_real_estate_development_ui_contract
+_LAND_REAL_ESTATE_DEVELOPMENT_BASE_RENDER_WORKBENCH = land_real_estate_development_render_workbench
+
+
+def land_real_estate_development_ui_contract() -> dict:
+    ui = dict(_LAND_REAL_ESTATE_DEVELOPMENT_BASE_UI_CONTRACT())
+    land_control = _improve1_land_control_contract()
+    panels = tuple(item["evidence"]["ui_surface"] for item in land_control["capabilities"])
+    service_actions = tuple(item["evidence"]["service_api"] for item in land_control["capabilities"])
+    ui.update({
+        "ok": ui.get("ok") is True and land_control["ok"],
+        "land_control_contract": land_control,
+        "land_control_panels": panels,
+        "land_control_service_actions": service_actions,
+        "stream_engine_picker_visible": False,
+    })
+    ui.setdefault("full_capability_surface", {})
+    ui["full_capability_surface"] = dict(ui["full_capability_surface"], land_control_panels=panels, land_control_service_actions=service_actions)
+    return ui
+
+
+def land_real_estate_development_render_workbench() -> dict:
+    workbench = dict(_LAND_REAL_ESTATE_DEVELOPMENT_BASE_RENDER_WORKBENCH())
+    land_control = _improve1_land_control_contract()
+    workbench.update({
+        "ok": workbench.get("ok") is True and land_control["ok"],
+        "land_control_panels": tuple(item["evidence"]["ui_surface"] for item in land_control["capabilities"]),
+        "land_control_service_actions": tuple(item["evidence"]["service_api"] for item in land_control["capabilities"]),
+        "land_control_agent_tools": tuple(f"land_real_estate_development.skills.{item['slug']}" for item in land_control["capabilities"]),
+    })
+    return workbench

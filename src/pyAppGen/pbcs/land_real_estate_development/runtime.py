@@ -267,3 +267,49 @@ def land_real_estate_development_runtime_smoke():
     }
 
 land_real_estate_development_execute_domain_operation = execute_domain_operation
+
+
+# Improve1 land control extension.
+from .land_control import (
+    LAND_CONTROL_ALLOWED_DATABASE_BACKENDS,
+    LAND_CONTROL_OWNED_TABLES,
+    LAND_CONTROL_REQUIRED_EVENT_TOPIC,
+    improve1_land_control_contract as land_real_estate_development_improve1_land_control_contract,
+)
+
+_LAND_REAL_ESTATE_DEVELOPMENT_BASE_RUNTIME_CAPABILITIES = land_real_estate_development_runtime_capabilities
+_LAND_REAL_ESTATE_DEVELOPMENT_BASE_RELEASE_EVIDENCE = land_real_estate_development_build_release_evidence
+
+
+def land_real_estate_development_build_release_evidence():
+    evidence = dict(_LAND_REAL_ESTATE_DEVELOPMENT_BASE_RELEASE_EVIDENCE())
+    land_control = land_real_estate_development_improve1_land_control_contract()
+    checks = tuple(evidence.get("checks", ())) + (
+        {"id": "improve1_land_control", "ok": land_control["ok"]},
+        {"id": "land_development_release_pack", "ok": land_control["capability_count"] == 50},
+    )
+    evidence.update({
+        "land_control": land_control,
+        "checks": checks,
+        "blocking_gaps": tuple(check for check in checks if check.get("ok") is not True),
+    })
+    evidence["ok"] = not evidence["blocking_gaps"]
+    return evidence
+
+
+def land_real_estate_development_runtime_capabilities():
+    runtime = dict(_LAND_REAL_ESTATE_DEVELOPMENT_BASE_RUNTIME_CAPABILITIES())
+    land_control = land_real_estate_development_improve1_land_control_contract()
+    runtime.update({
+        "ok": runtime.get("ok") is True and land_control["ok"],
+        "land_control": land_control,
+        "improve1_capabilities": land_control["capabilities"],
+        "operations": tuple(dict.fromkeys(tuple(runtime.get("operations", ())) + ("improve1_land_control_contract", "evaluate_land_control"))),
+        "owned_tables": LAND_CONTROL_OWNED_TABLES,
+        "allowed_database_backends": LAND_CONTROL_ALLOWED_DATABASE_BACKENDS,
+        "database_backends": LAND_CONTROL_ALLOWED_DATABASE_BACKENDS,
+        "required_event_topic": LAND_CONTROL_REQUIRED_EVENT_TOPIC,
+        "event_contract": "AppGen-X",
+        "stream_engine_picker_visible": False,
+    })
+    return runtime

@@ -105,3 +105,54 @@ def smoke_test() -> dict:
         "ok": release_readiness_manifest()["ok"] and validate_release_evidence()["ok"],
         "side_effects": (),
     }
+
+
+# Improve1 land control release evidence extension.
+from .land_control import improve1_land_control_contract as _land_control_contract
+
+_LAND_REAL_ESTATE_DEVELOPMENT_BASE_BUILD_RELEASE_EVIDENCE = build_release_evidence
+_LAND_REAL_ESTATE_DEVELOPMENT_BASE_RELEASE_READINESS_MANIFEST = release_readiness_manifest
+_LAND_REAL_ESTATE_DEVELOPMENT_BASE_VALIDATE_RELEASE_EVIDENCE = validate_release_evidence
+
+
+def build_release_evidence() -> dict:
+    evidence = dict(_LAND_REAL_ESTATE_DEVELOPMENT_BASE_BUILD_RELEASE_EVIDENCE())
+    land_control = _land_control_contract()
+    checks = tuple(evidence.get("checks", ())) + (
+        {"id": "land_control_contract", "ok": land_control["ok"]},
+        {"id": "land_control_traceability", "ok": land_control["capability_count"] == 50},
+    )
+    evidence.update({
+        "land_control": land_control,
+        "land_development_controls": tuple(item["evidence"] for item in land_control["capabilities"]),
+        "checks": checks,
+        "blocking_gaps": tuple(check for check in checks if check.get("ok") is not True),
+    })
+    evidence["ok"] = not evidence["blocking_gaps"]
+    return evidence
+
+
+def release_readiness_manifest() -> dict:
+    manifest = dict(_LAND_REAL_ESTATE_DEVELOPMENT_BASE_RELEASE_READINESS_MANIFEST())
+    evidence = build_release_evidence()
+    manifest.update({
+        "ok": evidence["ok"],
+        "evidence": evidence,
+        "sections": tuple(dict.fromkeys(tuple(manifest.get("sections", ())) + ("land_control", "improve1_traceability"))),
+        "blocking_gaps": evidence["blocking_gaps"],
+    })
+    return manifest
+
+
+def validate_release_evidence() -> dict:
+    base = dict(_LAND_REAL_ESTATE_DEVELOPMENT_BASE_VALIDATE_RELEASE_EVIDENCE())
+    evidence = build_release_evidence()
+    land_control = evidence["land_control"]
+    failed = tuple(check for check in evidence["checks"] if check.get("ok") is not True)
+    base.update({
+        "ok": base.get("ok") is True and evidence["ok"] and land_control["ok"] and not failed,
+        "failed_checks": tuple(base.get("failed_checks", ())) + failed,
+        "boundary_gaps": tuple(base.get("boundary_gaps", ())),
+        "land_control": land_control,
+    })
+    return base
