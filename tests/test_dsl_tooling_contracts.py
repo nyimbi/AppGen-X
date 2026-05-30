@@ -4660,6 +4660,12 @@ def test_diagnostics_text_renderer_contract_proves_catalog_and_fixture_log_marke
     assert report["required_fragment_count"] == len(report["required_fragments"])
     assert report["missing_fragment_count"] == 0
     assert report["marker_line_count"] >= 8
+    assert report["summary_line_count"] == 2
+    assert report["required_code_line_count"] == 3
+    assert report["covered_fixture_line_count"] == 3
+    assert report["covered_code_line_count"] == 2
+    assert report["missing_code_line_count"] == 1
+    assert report["blocking_gap_line_count"] == 1
     assert report["missing_fragments"] == ()
     assert report["json_fallback"] is False
     assert report["text_prefix"].startswith(

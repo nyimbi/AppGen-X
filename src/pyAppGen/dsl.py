@@ -3137,6 +3137,13 @@ def _diagnostics_text_renderer_contract() -> dict:
         "fail AGX9000: missing fixture",
     )
     missing = tuple(fragment for fragment in required_fragments if fragment not in text)
+    lines = tuple(line for line in text.splitlines() if line.strip())
+    summary_lines = tuple(line for line in lines if line.startswith(("diagnostics ", "diagnostics-audit ")))
+    required_code_lines = tuple(line for line in lines if line.startswith("required-code "))
+    covered_fixture_lines = tuple(line for line in lines if line.startswith("covered-fixture-code "))
+    covered_code_lines = tuple(line for line in lines if line.startswith("covered-code "))
+    missing_code_lines = tuple(line for line in lines if line.startswith("missing-code "))
+    gap_lines = tuple(line for line in lines if line.startswith("fail "))
     return {
         "format": "appgen.diagnostics-text-renderer.v1",
         "ok": not missing and not text.lstrip().startswith("{"),
@@ -3147,6 +3154,12 @@ def _diagnostics_text_renderer_contract() -> dict:
         ),
         "required_fragments": required_fragments,
         "missing_fragments": missing,
+        "summary_line_count": len(summary_lines),
+        "required_code_line_count": len(required_code_lines),
+        "covered_fixture_line_count": len(covered_fixture_lines),
+        "covered_code_line_count": len(covered_code_lines),
+        "missing_code_line_count": len(missing_code_lines),
+        "blocking_gap_line_count": len(gap_lines),
         "json_fallback": text.lstrip().startswith("{"),
         "text_prefix": text[:240],
     }

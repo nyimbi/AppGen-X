@@ -676,7 +676,11 @@ covered diagnostic codes as `covered-code ...` lines and missing diagnostic
 codes as `missing-code ...` lines. `appgen.diagnostics-text-renderer.v1` is embedded in the
 tooling audit to prove both diagnostic text summaries keep required-code,
 covered-fixture, missing-code, and blocking-gap evidence visible without JSON
-parsing. `appgen drift`
+parsing. The renderer contract reports summary-line, required-code-line,
+covered-fixture-line, covered-code-line, missing-code-line, and
+blocking-gap-line counts so diagnostic release logs prove catalog coverage,
+fixture coverage, missing diagnostic coverage, and blocking fixture gaps.
+`appgen drift`
 summarizes the
 `appgen.semantic-drift-audit.v1` format, semantic-model format as
 `semantic_format=...`, drift surfaces,
