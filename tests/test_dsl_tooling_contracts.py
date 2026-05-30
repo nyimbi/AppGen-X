@@ -1119,7 +1119,11 @@ def test_nl_plan_contract_audit_covers_supported_edit_operations_and_rejections(
     assert audit["accepted_case_count"] == len(audit["required_edit_operations"])
     assert audit["rejected_case_count"] == 1
     assert audit["required_operation_count"] == len(audit["required_edit_operations"])
+    assert set(audit["observed_operation_kinds"]) >= set(audit["required_edit_operations"])
     assert audit["observed_operation_kind_count"] >= audit["required_operation_count"]
+    assert audit["observed_operation_kind_count"] == len(audit["observed_operation_kinds"])
+    assert audit["missing_required_operation_kinds"] == ()
+    assert audit["missing_required_operation_kind_count"] == 0
     assert audit["token_budget_case_count"] == audit["case_count"]
     assert set(audit["required_edit_operations"]) <= {
         "add_table",
@@ -1152,6 +1156,7 @@ def test_nl_plan_contract_audit_covers_supported_edit_operations_and_rejections(
         "add_agent_skill_permission",
         "reject_unsupported",
     } <= case_ids
+    assert audit["blocking_gap_count"] == 0
     assert audit["blocking_gaps"] == ()
 
 
@@ -5995,10 +6000,19 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
         nl_operation_check["detail"]["required_edit_operations"]
     )
     assert nl_operation_check["detail"]["rejected_case_count"] == 1
+    assert set(nl_operation_check["detail"]["observed_operation_kinds"]) >= set(
+        nl_operation_check["detail"]["required_edit_operations"]
+    )
     assert nl_operation_check["detail"]["observed_operation_kind_count"] >= (
         nl_operation_check["detail"]["required_operation_count"]
     )
+    assert nl_operation_check["detail"]["observed_operation_kind_count"] == len(
+        nl_operation_check["detail"]["observed_operation_kinds"]
+    )
+    assert nl_operation_check["detail"]["missing_required_operation_kinds"] == ()
+    assert nl_operation_check["detail"]["missing_required_operation_kind_count"] == 0
     assert nl_operation_check["detail"]["token_budget_case_count"] == nl_operation_check["detail"]["case_count"]
+    assert nl_operation_check["detail"]["blocking_gap_count"] == 0
     assert nl_operation_check["detail"]["blocking_gaps"] == ()
     nl_cli_agent_check = next(check for check in report["checks"] if check["id"] == "natural_language_cli_agent_contracts")
     assert nl_cli_agent_check["detail"]["format"] == "appgen.nl-plan-cli-audit.v1"

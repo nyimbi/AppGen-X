@@ -5612,7 +5612,9 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and nl_plan_contract.get("rejected_case_count") >= 1
             and nl_plan_contract.get("observed_operation_kind_count", 0)
             >= nl_plan_contract.get("required_operation_count", 0)
+            and nl_plan_contract.get("missing_required_operation_kind_count") == 0
             and nl_plan_contract.get("token_budget_case_count") == nl_plan_contract.get("case_count")
+            and nl_plan_contract.get("blocking_gap_count") == 0
             and not nl_plan_contract.get("blocking_gaps")
             and all(
                 case.get("accepted") is False
@@ -5634,9 +5636,13 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                 "accepted_case_count": nl_plan_contract.get("accepted_case_count"),
                 "rejected_case_count": nl_plan_contract.get("rejected_case_count"),
                 "required_operation_count": nl_plan_contract.get("required_operation_count"),
+                "observed_operation_kinds": nl_plan_contract.get("observed_operation_kinds"),
                 "observed_operation_kind_count": nl_plan_contract.get("observed_operation_kind_count"),
+                "missing_required_operation_kinds": nl_plan_contract.get("missing_required_operation_kinds"),
+                "missing_required_operation_kind_count": nl_plan_contract.get("missing_required_operation_kind_count"),
                 "token_budget_case_count": nl_plan_contract.get("token_budget_case_count"),
                 "required_edit_operations": nl_plan_contract.get("required_edit_operations"),
+                "blocking_gap_count": nl_plan_contract.get("blocking_gap_count"),
                 "blocking_gaps": nl_plan_contract.get("blocking_gaps"),
             },
         ),
@@ -12960,6 +12966,21 @@ def nl_plan_contract_audit_dsl(text: str, *, source_name: str | None = None) -> 
         ("reject_unsupported", "Replace the runtime with hand-written generated code outside the DSL", False, "unsupported"),
     )
     cases = []
+    required_edit_operations = (
+        "add_table",
+        "add_field",
+        "add_relationship",
+        "add_view_section",
+        "add_component_placement",
+        "add_handler",
+        "add_operation",
+        "add_rule",
+        "add_flow_transition",
+        "add_pbc_include",
+        "add_api_event_contract",
+        "add_package_deployment_unit",
+        "add_agent_skill_permission",
+    )
     for case_id, prompt, should_accept, expected_kind in case_specs:
         plan = nl_plan_dsl(source, source_name=source_name, prompt=prompt)
         operation_kinds = tuple(operation.get("kind") for operation in plan.get("edit_operations", ()))
@@ -12990,35 +13011,30 @@ def nl_plan_contract_audit_dsl(text: str, *, source_name: str | None = None) -> 
                 "token_budget_note_count": len(plan.get("token_budget_notes", ())),
             }
         )
+    observed_operation_kinds = tuple(
+        sorted({operation_kind for case in cases for operation_kind in case["operation_kinds"] if operation_kind})
+    )
+    missing_required_operation_kinds = tuple(
+        operation_kind for operation_kind in required_edit_operations if operation_kind not in observed_operation_kinds
+    )
+    blocking_gaps = tuple(case["id"] for case in cases if not case["ok"])
     return {
         "format": "appgen.nl-plan-contract-audit.v1",
-        "ok": all(case["ok"] for case in cases),
+        "ok": not blocking_gaps and not missing_required_operation_kinds,
         "case_count": len(cases),
         "passing_case_count": sum(1 for case in cases if case["ok"]),
         "accepted_case_count": sum(1 for case in cases if case["accepted"]),
         "rejected_case_count": sum(1 for case in cases if not case["accepted"]),
-        "required_operation_count": 13,
-        "observed_operation_kind_count": len(
-            {operation_kind for case in cases for operation_kind in case["operation_kinds"]}
-        ),
+        "required_operation_count": len(required_edit_operations),
+        "observed_operation_kinds": observed_operation_kinds,
+        "observed_operation_kind_count": len(observed_operation_kinds),
+        "missing_required_operation_kinds": missing_required_operation_kinds,
+        "missing_required_operation_kind_count": len(missing_required_operation_kinds),
         "token_budget_case_count": sum(1 for case in cases if case["token_budget_note_count"] > 0),
         "cases": tuple(cases),
-        "required_edit_operations": (
-            "add_table",
-            "add_field",
-            "add_relationship",
-            "add_view_section",
-            "add_component_placement",
-            "add_handler",
-            "add_operation",
-            "add_rule",
-            "add_flow_transition",
-            "add_pbc_include",
-            "add_api_event_contract",
-            "add_package_deployment_unit",
-            "add_agent_skill_permission",
-        ),
-        "blocking_gaps": tuple(case["id"] for case in cases if not case["ok"]),
+        "required_edit_operations": required_edit_operations,
+        "blocking_gap_count": len(blocking_gaps),
+        "blocking_gaps": blocking_gaps,
     }
 
 

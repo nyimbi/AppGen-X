@@ -1750,8 +1750,9 @@ requests produce DSL patches, lint results, migration previews, generated test
 plans, and token-budget notes, and verifies that out-of-DSL requests are
 rejected with `AGX1201` instead of generating code. The contract audit reports
 case, passing-case, accepted-case, rejected-case, required-operation,
-observed-operation-kind, and token-budget-case counts so the natural-language
-development vector stays measurable before the CLI layer is involved.
+observed-operation-kind, missing-required-operation-kind, token-budget-case,
+and blocking-gap counts so the natural-language development vector stays
+measurable before the CLI layer is involved.
 The aggregate tooling audit exposes this proof independently as
 `natural_language_operation_contracts`. That gate fails when any documented
 operation cannot be represented as DSL, accepted requests omit patch, lint,
