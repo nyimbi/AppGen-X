@@ -4471,7 +4471,14 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     )
     assert section_coverage_check["detail"]["missing_section_count"] == 0
     assert section_coverage_check["detail"]["missing_sections"] == ()
+    assert section_coverage_check["detail"]["required_subsection_count"] == 40
+    assert section_coverage_check["detail"]["covered_subsection_count"] == (
+        section_coverage_check["detail"]["required_subsection_count"]
+    )
+    assert section_coverage_check["detail"]["missing_subsection_count"] == 0
+    assert section_coverage_check["detail"]["missing_subsections"] == ()
     assert section_coverage_check["detail"]["stale_mapping_count"] == 0
+    assert section_coverage_check["detail"]["stale_subsection_mapping_count"] == 0
     assert {
         "goals",
         "core-architecture",
@@ -4479,6 +4486,12 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
         "implementation-phases",
         "priority-order",
     } <= set(section_coverage_check["detail"]["covered_sections"])
+    assert {
+        "appgen-lint",
+        "code-actions",
+        "parser-golden-audit",
+        "phase-6-migration-natural-language-and-release-verifiers",
+    } <= set(section_coverage_check["detail"]["covered_subsections"])
     vscode_check = next(check for check in report["checks"] if check["id"] == "vscode_extension_surface")
     assert vscode_check["detail"]["checks"]["diagnostics_collection"] is True
     assert vscode_check["detail"]["checks"]["cli_command_contracts"] is True

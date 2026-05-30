@@ -6108,8 +6108,12 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and section_coverage.get("required_section_count") == 18
             and section_coverage.get("covered_section_count") == section_coverage.get("required_section_count")
             and section_coverage.get("missing_section_count") == 0
-            and section_coverage.get("stale_mapping_count") == 0,
-            "Every major docs/tooling.md section is mapped to at least one executable tooling-audit gate.",
+            and section_coverage.get("required_subsection_count") == 40
+            and section_coverage.get("covered_subsection_count") == section_coverage.get("required_subsection_count")
+            and section_coverage.get("missing_subsection_count") == 0
+            and section_coverage.get("stale_mapping_count") == 0
+            and section_coverage.get("stale_subsection_mapping_count") == 0,
+            "Every major docs/tooling.md section and concrete subsection is mapped to at least one executable tooling-audit gate.",
             "docs/tooling.md#appgen-tooling-audit",
             section_coverage,
         ),
@@ -6445,6 +6449,10 @@ def _tooling_audit_section_coverage(root: Path, checks: Iterable[dict]) -> dict:
         _heading_anchor(match.group(1)): match.group(1)
         for match in re.finditer(r"^##\s+(.+)$", docs_text, flags=re.M)
     }
+    subsection_headings = {
+        _heading_anchor(match.group(1)): match.group(1)
+        for match in re.finditer(r"^###\s+(.+)$", docs_text, flags=re.M)
+    }
     required = {
         "goals": ("shared_semantic_model", "implementation_phase_exit_criteria"),
         "non-goals": ("non_goal_policy_guards",),
@@ -6499,33 +6507,114 @@ def _tooling_audit_section_coverage(root: Path, checks: Iterable[dict]) -> dict:
         "contributor-task-breakdown": ("contributor_task_breakdown_contracts",),
         "priority-order": ("priority_order_contracts",),
     }
+    required_subsections = {
+        "proposed-modules": ("module_boundaries",),
+        "symbol-table": ("shared_semantic_model",),
+        "table-model": ("shared_semantic_model",),
+        "view-model": ("shared_semantic_model", "ide_visual_designer_round_trip"),
+        "workflow-model": ("shared_semantic_model", "graph_rendering_contracts"),
+        "pbc-and-composition-model": ("pbc_manifest_catalog_commands", "pbc_publish_side_effect_contracts"),
+        "diagnostic-code-ranges": ("diagnostic_registry_and_fixtures",),
+        "required-diagnostics": ("diagnostic_catalog_fixture_contracts",),
+        "diagnostic-example": ("diagnostic_catalog_fixture_contracts",),
+        "linter-inputs": ("lint_directory_and_strict_profiles", "lint_cli_directory_contracts"),
+        "linter-outputs": ("lint_directory_and_strict_profiles", "lint_cli_directory_contracts"),
+        "linter-rules-by-domain": ("lint_cli_directory_contracts",),
+        "formatting-rules": ("formatter_idempotent", "formatter_write_organize_contracts"),
+        "formatter-output": ("formatter_write_organize_contracts",),
+        "appgen-lint": ("lint_cli_directory_contracts", "cli_usage_failure_contracts"),
+        "appgen-format": ("formatter_write_organize_contracts",),
+        "appgen-validate": ("validate_target_contracts",),
+        "appgen-generate": ("generate_artifact_policy_contracts",),
+        "appgen-graph": ("graph_rendering_contracts",),
+        "appgen-graph-suite": ("graph_rendering_contracts",),
+        "appgen-explain": ("explain_cli_contracts",),
+        "appgen-doctor": ("doctor_cli_text_contracts",),
+        "appgen-tooling-audit": ("tooling_audit_text_renderer", "tooling_doc_anchor_integrity"),
+        "appgen-package": ("package_manifest_handoff_contracts", "release_text_evidence_contracts"),
+        "appgen-component-publish": ("component_publish_catalog_contracts",),
+        "appgen-pbc": ("pbc_manifest_catalog_commands", "pbc_publish_side_effect_contracts"),
+        "appgen-nl-plan": ("natural_language_cli_agent_contracts",),
+        "capabilities": ("language_server_core_features", "lsp_navigation_completion_contracts"),
+        "completion-sources": ("lsp_navigation_completion_contracts",),
+        "code-actions": (
+            "lsp_quick_fix_application",
+            "lsp_quick_fix_coverage_contracts",
+            "lsp_quick_fix_cli_contracts",
+            "lsp_quick_fix_text_contracts",
+        ),
+        "vs-code-extension": ("vscode_extension_surface",),
+        "appgen-x-studio-monaco": (
+            "studio_semantic_service",
+            "frontend_semantic_service_bridge",
+            "frontend_interaction_audit_bridge",
+        ),
+        "parser-golden-audit": ("parser_golden_fixture_contracts",),
+        "phase-0-inventory-and-stabilization": ("implementation_phase_exit_criteria",),
+        "phase-1-shared-semantic-model-mvp": ("implementation_phase_exit_criteria",),
+        "phase-2-linter-and-formatter": ("implementation_phase_exit_criteria",),
+        "phase-3-cli-and-graph-tooling": ("implementation_phase_exit_criteria",),
+        "phase-4-language-server": ("implementation_phase_exit_criteria",),
+        "phase-5-ide-and-visual-designer-integration": ("implementation_phase_exit_criteria",),
+        "phase-6-migration-natural-language-and-release-verifiers": ("implementation_phase_exit_criteria",),
+    }
     check_ids = {check.get("id") for check in checks}
+    coverage_check_ids = check_ids | {
+        "tooling_section_coverage_contracts",
+        "tooling_audit_text_renderer",
+        "tooling_doc_anchor_integrity",
+    }
     missing_headings = tuple(section for section in required if section not in headings)
     missing_gate_sections = tuple(
-        section for section, gate_ids in required.items() if section in headings and not set(gate_ids) <= check_ids
+        section for section, gate_ids in required.items() if section in headings and not set(gate_ids) <= coverage_check_ids
+    )
+    missing_subsection_headings = tuple(section for section in required_subsections if section not in subsection_headings)
+    missing_gate_subsections = tuple(
+        section
+        for section, gate_ids in required_subsections.items()
+        if section in subsection_headings and not set(gate_ids) <= coverage_check_ids
     )
     stale_mappings = tuple(
         {
             "section": section,
-            "missing_gates": tuple(gate_id for gate_id in gate_ids if gate_id not in check_ids),
+            "missing_gates": tuple(gate_id for gate_id in gate_ids if gate_id not in coverage_check_ids),
         }
         for section, gate_ids in required.items()
-        if any(gate_id not in check_ids for gate_id in gate_ids)
+        if any(gate_id not in coverage_check_ids for gate_id in gate_ids)
+    )
+    stale_subsection_mappings = tuple(
+        {
+            "section": section,
+            "missing_gates": tuple(gate_id for gate_id in gate_ids if gate_id not in coverage_check_ids),
+        }
+        for section, gate_ids in required_subsections.items()
+        if any(gate_id not in coverage_check_ids for gate_id in gate_ids)
     )
     missing_sections = tuple(dict.fromkeys((*missing_headings, *missing_gate_sections)))
+    missing_subsections = tuple(dict.fromkeys((*missing_subsection_headings, *missing_gate_subsections)))
     covered_sections = tuple(section for section in required if section not in missing_sections)
+    covered_subsections = tuple(section for section in required_subsections if section not in missing_subsections)
     return {
         "format": "appgen.tooling-section-coverage-audit.v1",
-        "ok": not missing_sections and not stale_mappings,
+        "ok": not missing_sections and not missing_subsections and not stale_mappings and not stale_subsection_mappings,
         "required_section_count": len(required),
         "covered_section_count": len(covered_sections),
         "missing_section_count": len(missing_sections),
         "required_sections": tuple(required),
         "covered_sections": covered_sections,
         "missing_sections": missing_sections,
+        "required_subsection_count": len(required_subsections),
+        "covered_subsection_count": len(covered_subsections),
+        "missing_subsection_count": len(missing_subsections),
+        "required_subsections": tuple(required_subsections),
+        "covered_subsections": covered_subsections,
+        "missing_subsections": missing_subsections,
         "stale_mapping_count": len(stale_mappings),
         "stale_mappings": stale_mappings,
+        "stale_subsection_mapping_count": len(stale_subsection_mappings),
+        "stale_subsection_mappings": stale_subsection_mappings,
         "heading_count": len(headings),
+        "subsection_heading_count": len(subsection_headings),
         "source_of_truth": "docs/tooling.md",
     }
 

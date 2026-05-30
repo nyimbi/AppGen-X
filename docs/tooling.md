@@ -979,8 +979,9 @@ this document. The same audit extracts every `appgen.*.v1` contract format
 named in this document and reports missing runtime or test references, so a
 documented contract cannot silently drift into prose-only status. The audit
 renderer also embeds `appgen.tooling-section-coverage-audit.v1` through the
-`tooling_section_coverage_contracts` gate, proving every major `##` section in
-this specification has at least one top-level executable audit gate.
+`tooling_section_coverage_contracts` gate, proving every major `##` section and
+every concrete `###` subsection in this specification has at least one executable
+audit gate.
 The text
 renderer must include embedded audit format names such as
 `appgen.non-goal-policy-audit.v1` and
