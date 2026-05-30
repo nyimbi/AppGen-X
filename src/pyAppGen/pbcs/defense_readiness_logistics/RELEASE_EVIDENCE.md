@@ -1,12 +1,25 @@
 # Release Evidence - Defense Readiness Logistics
 
-Package directory: `pbcs/defense_readiness_logistics`.
+Package directory: `src/pyAppGen/pbcs/defense_readiness_logistics`
 
-This PBC includes owned schema, migration DDL, models, services, routes, events, handlers, UI workbench surfaces, agent skills, permissions, configuration, seed data, package metadata, side-effect-free registration, and focused package tests.
+## Evidence Summary
 
-## Evidence
+- Schema, models, and `migrations/001_initial.sql` now describe the same owned domain tables and domain-specific columns.
+- Services execute real standalone commands and workflows instead of placeholder operation manifests.
+- Routes dispatch to live service operations for readiness, assets, supply, maintenance, deployment release, and the workbench.
+- AppGen-X outbox, inbox, and dead-letter contracts are explicit and covered by focused tests.
+- Workbench, forms, wizards, controls, assistant skills, rules, parameters, and seed data are all represented in release evidence.
+- End-to-end package smoke covers readiness validation, asset registration, maintenance projection, supply scoring, fuel sufficiency, deployment kit validation, movement release, mission capability, and deployment release.
 
-- Release Evidence: schema, service, route, event, handler, UI, agent, and governance contracts are materialized.
-- Owned datastore boundary: every owned table starts with `defense_readiness_logistics_` and cross-PBC collaboration uses AppGen-X events or declared APIs.
-- Event contract: AppGen-X outbox/inbox with retry and dead-letter evidence.
-- Package tests: `tests/test_contract.py` validates schema/service/release, event contracts, side-effect-free registration, routes, governance, and idempotent handlers.
+## Validation Commands
+
+```bash
+python3 -m py_compile src/pyAppGen/pbcs/defense_readiness_logistics/*.py src/pyAppGen/pbcs/defense_readiness_logistics/tests/*.py
+uv run --with pytest pytest -q src/pyAppGen/pbcs/defense_readiness_logistics/tests
+python3 -m pyAppGen.pbcs.defense_readiness_logistics.tests.test_alignment
+```
+
+## Bounded Gaps
+
+- Database execution remains package-local and deterministic; it does not open a live PostgreSQL/MySQL/MariaDB connection during package tests.
+- External PBC collaboration is still represented through declared APIs and AppGen-X event contracts only.
