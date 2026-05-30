@@ -5,6 +5,8 @@ from __future__ import annotations
 from copy import deepcopy
 import hashlib
 
+from .energy_grid_control import ENERGY_GRID_CONTROL_CAPABILITIES, improve1_energy_grid_control_contract
+
 PBC_KEY = "energy_grid_operations"
 PBC_LABEL = "Energy Grid Operations"
 ENERGY_GRID_OPERATIONS_ALLOWED_DATABASE_BACKENDS = ("postgresql", "mysql", "mariadb")
@@ -1653,6 +1655,7 @@ def energy_grid_operations_verify_owned_table_boundary(references: tuple[str, ..
 
 
 def energy_grid_operations_build_release_evidence() -> dict:
+    energy_grid_control = improve1_energy_grid_control_contract()
     checks = (
         {"id": "owned_tables_prefixed", "ok": all(table.startswith(f"{PBC_KEY}_") for table in ENERGY_GRID_OPERATIONS_OWNED_TABLES)},
         {"id": "schema_models_present", "ok": bool(energy_grid_operations_build_schema_contract()["models"])},
@@ -1661,6 +1664,7 @@ def energy_grid_operations_build_release_evidence() -> dict:
         {"id": "permissions_present", "ok": bool(energy_grid_operations_permissions_contract()["permission_set"])},
         {"id": "rule_catalog_present", "ok": bool(RULE_DEFINITIONS)},
         {"id": "parameter_catalog_present", "ok": bool(PARAMETER_DEFINITIONS)},
+        {"id": "energy_grid_improve1_control_contract", "ok": energy_grid_control["ok"]},
     )
     blocking_gaps = tuple(check for check in checks if not check["ok"])
     return {
@@ -1673,6 +1677,7 @@ def energy_grid_operations_build_release_evidence() -> dict:
         "service": energy_grid_operations_build_service_contract(),
         "api": energy_grid_operations_build_api_contract(),
         "permissions": energy_grid_operations_permissions_contract(),
+        "energy_grid_control": energy_grid_control,
         "side_effects": (),
     }
 
@@ -1688,7 +1693,8 @@ def energy_grid_operations_runtime_capabilities() -> dict:
         "allowed_database_backends": ENERGY_GRID_OPERATIONS_ALLOWED_DATABASE_BACKENDS,
         "standard_features": ENERGY_GRID_OPERATIONS_STANDARD_FEATURE_KEYS,
         "capabilities": ENERGY_GRID_OPERATIONS_RUNTIME_CAPABILITY_KEYS,
-        "operations": SUPPORT_OPERATIONS + DOMAIN_OPERATIONS + QUERY_OPERATIONS,
+        "improve1_energy_grid_control_capabilities": tuple(capability.slug for capability in ENERGY_GRID_CONTROL_CAPABILITIES),
+        "operations": SUPPORT_OPERATIONS + DOMAIN_OPERATIONS + QUERY_OPERATIONS + ("improve1_energy_grid_control_contract",),
         "database_backends": ENERGY_GRID_OPERATIONS_ALLOWED_DATABASE_BACKENDS,
         "event_contract": "AppGen-X",
         "stream_engine_picker_visible": False,
@@ -1794,6 +1800,7 @@ def energy_grid_operations_runtime_smoke() -> dict:
         {"envelope": {"event_type": "PolicyChanged", "event_id": "policy_smoke", "payload": {"tenant": "tenant_smoke", "policy_version": "grid-policy-2026.06"}}},
     )
     workbench = energy_grid_operations_build_workbench_view(event["state"], {"tenant": "tenant_smoke"})
+    energy_grid_control = improve1_energy_grid_control_contract()
     boundary = energy_grid_operations_verify_owned_table_boundary(ENERGY_GRID_OPERATIONS_OWNED_TABLES + ("foreign_table",))
     checks = (
         {"id": "configure_runtime", "ok": configured["ok"]},
@@ -1808,11 +1815,13 @@ def energy_grid_operations_runtime_smoke() -> dict:
         {"id": "receive_event", "ok": event["ok"]},
         {"id": "build_workbench_view", "ok": workbench["ok"] and workbench["asset_count"] >= 1},
         {"id": "owned_boundary_rejects_foreign_table", "ok": boundary["ok"] is False},
+        {"id": "improve1_energy_grid_control_contract", "ok": energy_grid_control["ok"]},
     )
     return {
         "format": "appgen.energy-grid-operations-runtime-smoke.v2",
         "ok": all(check["ok"] for check in checks),
         "checks": checks,
+        "checks_by_id": {check["id"]: check["ok"] for check in checks},
         "configuration": configured,
         "asset": asset,
         "switching": switching,
@@ -1820,6 +1829,7 @@ def energy_grid_operations_runtime_smoke() -> dict:
         "outage": outage,
         "event": event,
         "workbench": workbench,
+        "energy_grid_control": energy_grid_control,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
         "side_effects": (),
     }

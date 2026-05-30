@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from .domain_depth import domain_capability_surface_contract
+from .energy_grid_control import improve1_energy_grid_control_contract
 from .runtime import (
     DEFAULT_CONFIGURATION,
     ENERGY_GRID_OPERATIONS_ALLOWED_DATABASE_BACKENDS,
@@ -174,6 +175,7 @@ def energy_grid_operations_ui_contract() -> dict:
         "wizards": energy_grid_operations_wizard_catalog(),
         "controls": energy_grid_operations_control_catalog(),
         "standalone_app": energy_grid_operations_standalone_app_contract(),
+        "energy_grid_control_contract": improve1_energy_grid_control_contract(),
         "configuration_editor": {
             "required_fields": tuple(DEFAULT_CONFIGURATION),
             "allowed_database_backends": ENERGY_GRID_OPERATIONS_ALLOWED_DATABASE_BACKENDS,
@@ -205,7 +207,10 @@ def energy_grid_operations_ui_contract() -> dict:
             "required_event_topic": ENERGY_GRID_OPERATIONS_REQUIRED_EVENT_TOPIC,
             "shared_table_access": False,
         },
-        "full_capability_surface": domain_capability_surface_contract(),
+        "full_capability_surface": {
+            **domain_capability_surface_contract(),
+            "energy_grid_control_panels": tuple(item["evidence"]["ui_surface"] for item in improve1_energy_grid_control_contract()["capabilities"]),
+        },
         "permission_contract": permissions,
         "side_effects": (),
     }

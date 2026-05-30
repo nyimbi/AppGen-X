@@ -25,9 +25,11 @@ def _artifact_paths() -> tuple[dict, ...]:
         "implementation-status.md",
         "RELEASE_EVIDENCE.md",
         "standalone.py",
+        "energy_grid_control.py",
         "migrations/001_initial.sql",
         "tests/test_contract.py",
         "tests/test_standalone.py",
+        "tests/test_domain_behavior.py",
     )
     return tuple({"artifact": artifact, "exists": (_PACKAGE_DIR / artifact).exists()} for artifact in artifacts)
 
