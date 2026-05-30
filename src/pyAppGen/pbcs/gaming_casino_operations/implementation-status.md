@@ -29,3 +29,10 @@ Implemented.
 - The standalone app remains package-local and in-memory; repo-wide composition was not expanded.
 - Eventing remains AppGen-X only and the stream-engine picker stays hidden.
 - Package tests were executed through a direct Python harness fallback because `pytest` is unavailable in the local interpreter and no repo virtualenv exists in this worktree.
+
+## Improve1 casino control implementation
+
+- Added `casino_control.py` as the executable control contract for all 50 casino-floor capabilities.
+- Each capability maps to owned patron, table, slot, session, payout, responsible-gaming, compliance, policy, parameter, extension, control, governed-model, and AppGen-X runtime surfaces.
+- Runtime, UI, and release evidence expose casino controls without stream-engine picker leakage and keep datastore backends limited to PostgreSQL/MySQL/MariaDB.
+- Domain behavior tests cover positive execution for all 50 capabilities plus negative guardrails for enrollment, restrictions, table close, inventory dual control, slot approvals, jackpot evidence, custody, self-exclusion, surveillance boundaries, policy history, idempotency, agent guardrails, external boundaries, proof chains, release evidence, tenant isolation, authority, offline replay, and release rehearsals.

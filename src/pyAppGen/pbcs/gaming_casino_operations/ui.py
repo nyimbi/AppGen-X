@@ -165,3 +165,23 @@ def smoke_test() -> dict[str, Any]:
         "ok": contract["ok"] and blueprint["ok"] and rendered["ok"],
         "side_effects": (),
     }
+
+
+from .casino_control import improve1_casino_control_contract
+
+_gaming_casino_operations_base_ui_contract = gaming_casino_operations_ui_contract
+_gaming_casino_operations_base_render_workbench = gaming_casino_operations_render_workbench
+
+def gaming_casino_operations_ui_contract() -> dict[str, Any]:
+    ui = _gaming_casino_operations_base_ui_contract()
+    control = improve1_casino_control_contract()
+    surface = dict(ui.get('full_capability_surface', {}))
+    surface['casino_control_panels'] = tuple(item['evidence']['ui_surface'] for item in control['capabilities'])
+    surface['casino_control_service_actions'] = tuple(item['evidence']['service_api'] for item in control['capabilities'])
+    surface['casino_control_tables'] = control['owned_tables']
+    return {**ui, 'ok': ui.get('ok') is True and control['ok'], 'full_capability_surface': surface, 'casino_control_contract': control, 'side_effects': ()}
+
+def gaming_casino_operations_render_workbench() -> dict[str, Any]:
+    workbench = _gaming_casino_operations_base_render_workbench()
+    control = improve1_casino_control_contract()
+    return {**workbench, 'ok': workbench.get('ok') is True and control['ok'], 'casino_control_panels': tuple(item['evidence']['ui_surface'] for item in control['capabilities']), 'casino_control_service_actions': tuple(item['evidence']['service_api'] for item in control['capabilities']), 'side_effects': ()}

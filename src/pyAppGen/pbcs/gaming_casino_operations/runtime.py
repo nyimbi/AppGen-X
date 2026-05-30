@@ -1621,3 +1621,23 @@ def gaming_casino_operations_execute_domain_operation(state: dict[str, Any], ope
     result = handler(state, payload)
     result["operation_plan"] = build_domain_operation_plan(operation, payload)
     return result
+
+
+from .casino_control import improve1_casino_control_contract as gaming_casino_operations_improve1_casino_control_contract
+
+_gaming_casino_operations_base_build_release_evidence = gaming_casino_operations_build_release_evidence
+_gaming_casino_operations_base_runtime_capabilities = gaming_casino_operations_runtime_capabilities
+
+def gaming_casino_operations_build_release_evidence() -> dict[str, Any]:
+    evidence = _gaming_casino_operations_base_build_release_evidence()
+    control = gaming_casino_operations_improve1_casino_control_contract()
+    checks = tuple(evidence.get('checks', ())) + ({'id': 'improve1_casino_control', 'ok': control['ok']},)
+    generated = dict(evidence.get('generated_artifacts', {}))
+    generated['casino_control'] = {'capability_count': control['capability_count'], 'owned_tables': control['owned_tables'], 'event_contract': control['event_contract'], 'required_event_topic': control['required_event_topic']}
+    return {**evidence, 'ok': evidence.get('ok') is True and control['ok'], 'checks': checks, 'generated_artifacts': generated, 'casino_control': control, 'blocking_gaps': tuple(evidence.get('blocking_gaps', ())) + tuple(control.get('blocking_gaps', ())), 'side_effects': ()}
+
+def gaming_casino_operations_runtime_capabilities() -> dict[str, Any]:
+    runtime = _gaming_casino_operations_base_runtime_capabilities()
+    control = gaming_casino_operations_improve1_casino_control_contract()
+    operations = tuple(runtime.get('operations', ())) + ('improve1_casino_control_contract',)
+    return {**runtime, 'ok': runtime.get('ok') is True and control['ok'], 'operations': operations, 'casino_control': control, 'improve1_capabilities': tuple(item['slug'] for item in control['capabilities']), 'owned_tables': tuple(dict.fromkeys(tuple(runtime.get('owned_tables', ())) + tuple(control['owned_tables']))), 'allowed_database_backends': control['allowed_database_backends'], 'event_contract': control['event_contract'], 'stream_engine_picker_visible': False, 'side_effects': ()}

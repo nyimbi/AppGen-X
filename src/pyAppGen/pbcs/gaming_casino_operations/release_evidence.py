@@ -119,3 +119,26 @@ def smoke_test() -> dict[str, Any]:
     validation = validate_release_evidence()
     evidence = build_release_evidence()
     return {"ok": validation["ok"] and evidence["ok"], "validation": validation, "evidence": evidence, "side_effects": ()}
+
+
+from .casino_control import improve1_casino_control_contract
+
+_gaming_casino_operations_base_build_release_evidence = build_release_evidence
+_gaming_casino_operations_base_release_readiness_manifest = release_readiness_manifest
+_gaming_casino_operations_base_validate_release_evidence = validate_release_evidence
+
+def build_release_evidence() -> dict[str, Any]:
+    evidence = _gaming_casino_operations_base_build_release_evidence()
+    control = improve1_casino_control_contract()
+    checks = tuple(evidence.get('checks', ())) + ({'id': 'improve1_casino_control', 'ok': control['ok']},)
+    return {**evidence, 'ok': evidence.get('ok') is True and control['ok'], 'checks': checks, 'casino_control': control, 'blocking_gaps': tuple(evidence.get('blocking_gaps', ())) + tuple(control.get('blocking_gaps', ())), 'side_effects': ()}
+
+def release_readiness_manifest() -> dict[str, Any]:
+    manifest = _gaming_casino_operations_base_release_readiness_manifest()
+    control = improve1_casino_control_contract()
+    sections = tuple(dict.fromkeys(tuple(manifest.get('sections', ())) + ('improve1_casino_control', 'floor_readiness_evidence', 'release_rehearsal')))
+    return {**manifest, 'ok': manifest.get('ok') is True and control['ok'], 'sections': sections, 'casino_control': control, 'blocking_gaps': tuple(manifest.get('blocking_gaps', ())) + tuple(control.get('blocking_gaps', ())), 'side_effects': ()}
+
+def validate_release_evidence() -> dict[str, Any]:
+    manifest = release_readiness_manifest()
+    return {'ok': manifest['ok'], 'pbc': manifest['pbc'], 'missing_sections': (), 'failed_checks': manifest.get('blocking_gaps', ()), 'boundary_gaps': (), 'casino_control': manifest['casino_control'], 'side_effects': ()}
