@@ -13,6 +13,7 @@ from . import seed_data
 from . import service_contract
 from . import schema_contract
 from . import ui
+from .search_control import improve1_search_control_contract
 
 
 PBC_KEY = "enterprise_search_vector"
@@ -50,6 +51,7 @@ def build_release_evidence():
     event_manifest = events.event_contract_manifest()
     seed_manifest = seed_data.seed_plan()
     agent_manifest = agent.composed_agent_contribution()
+    search_control = improve1_search_control_contract()
     migration_tables = _migration_tables()
     docs = _doc_status()
     required_tables = tuple(table["owned_table"] for table in schema.get("tables", ()))
@@ -68,6 +70,10 @@ def build_release_evidence():
         {"id": "agent_contribution", "ok": agent_manifest.get("ok") is True},
         {"id": "seed_bundle", "ok": seed_manifest.get("ok") is True},
         {"id": "documentation_coverage", "ok": not docs["missing"]},
+        {
+            "id": "search_improve1_control_contract",
+            "ok": search_control["ok"],
+        },
         {
             "id": "no_shared_table_access",
             "ok": schema.get("shared_table_access") is False and service.get("shared_table_access") is False,
@@ -88,6 +94,7 @@ def build_release_evidence():
         "events": event_manifest,
         "agent": agent_manifest,
         "seed": seed_manifest,
+        "search_control": search_control,
         "migration_artifact": {
             "path": "migrations/001_initial.sql",
             "table_count": len(migration_tables),
@@ -105,7 +112,7 @@ def release_readiness_manifest():
     evidence = build_release_evidence()
     sections = tuple(
         name
-        for name in ("schema", "service", "api", "permissions", "ui", "events", "agent", "seed")
+        for name in ("schema", "service", "api", "permissions", "ui", "events", "agent", "seed", "search_control")
         if isinstance(evidence.get(name), dict)
     )
     checks = tuple(evidence.get("checks", ()))
@@ -116,7 +123,7 @@ def release_readiness_manifest():
         "sections": sections,
         "checks": checks,
         "blocking_gaps": tuple(evidence.get("blocking_gaps", ())),
-        "required_sections": ("schema", "service", "api", "permissions", "ui", "events"),
+        "required_sections": ("schema", "service", "api", "permissions", "ui", "events", "search_control"),
         "side_effects": (),
     }
 

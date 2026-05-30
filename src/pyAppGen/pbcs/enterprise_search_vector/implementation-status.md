@@ -33,3 +33,7 @@ dynamic release evidence, and expanded focused tests.
   currently lacks a usable `pytest` installation.
 - The package remains intentionally side-effect-free; the standalone app
   manifest plans runtime behavior rather than performing external I/O.
+
+## 2026-05-30 improve1 Search-Control Execution Slice
+
+All 50 enterprise search/vector improve1 backlog features are now bound to `search_control.py`, with package-local evaluations for owned tables, declared API/event dependencies, UI panels, service/API routes, AppGen-X eventing, PostgreSQL/MySQL/MariaDB datastore boundaries, release evidence, and focused domain behavior tests.

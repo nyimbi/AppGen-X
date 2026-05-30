@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from .runtime import ENTERPRISE_SEARCH_VECTOR_ALLOWED_DATABASE_BACKENDS
 from .runtime import ENTERPRISE_SEARCH_VECTOR_OWNED_TABLES
+from .search_control import improve1_search_control_contract
 
 
 ENTERPRISE_SEARCH_VECTOR_UI_FRAGMENT_KEYS = (
@@ -280,6 +281,10 @@ def enterprise_search_vector_ui_contract() -> dict:
         "wizards": blueprint["wizards"],
         "controls": blueprint["controls"],
         "workflow_board": blueprint["workflow_board"],
+        "search_control_contract": improve1_search_control_contract(),
+        "full_capability_surface": {
+            "search_control_panels": tuple(item["evidence"]["ui_surface"] for item in improve1_search_control_contract()["capabilities"]),
+        },
     }
 
 
@@ -344,6 +349,10 @@ def _view_counts(state: dict, tenant: str) -> dict:
         "ready_document_count": sum(1 for item in docs if item.get("embedding_job_id")),
         "outbox_count": len(state.get("outbox", ())),
         "dead_letter_count": len(state.get("dead_letter", ())),
+        "search_control_contract": improve1_search_control_contract(),
+        "full_capability_surface": {
+            "search_control_panels": tuple(item["evidence"]["ui_surface"] for item in improve1_search_control_contract()["capabilities"]),
+        },
         "binding_evidence": {
             "configuration": bool(state.get("configuration", {}).get("ok")),
             "rules": tuple(sorted(state.get("rules", {}))),
