@@ -18,3 +18,17 @@ The PBC owns airport operating records: gate assignments, stand allocations, slo
 ## Known Gaps
 
 The implementation is side-effect-free and package-local. It proves generated-app contracts, workflows, and release evidence, but it does not run against live airport feeds, a live web server, or real PostgreSQL/MySQL/MariaDB instances in this slice.
+
+## improve1 Full Traceability Evidence
+
+- Current slice branch: `pbc/improve1-full-traceability`.
+- Domain behavior evidence: `tests/test_domain_behavior.py`.
+- Matrix binding: every row in `IMPROVE1_TRACEABILITY.md` now names `tests/test_domain_behavior.py` alongside the existing contract and standalone app tests.
+- Capability registry binding: every feature in `improve1_capabilities.py` now includes `tests/test_domain_behavior.py` in `test_artifacts`.
+- Behavioral coverage: gate/stand compatibility decisions, no-compatible-stand rejection, turnaround milestone critical paths, remote bussing, deicing queues, A-CDM slot reconciliation, baggage contingency, passenger-flow capacity breaches, gate-change impact approval, go-live drill gaps, idempotent inbox handling, dead-letter retry evidence, owned schema extension rejection, service/query execution, route dispatch, UI rendering, assistant document/CRUD plans, overlap guardrails, standalone app coverage, release evidence, and domain-depth operation execution.
+
+## Verification Log
+
+- Passed: `/Volumes/Media/src/pjs/appgen/.venv/bin/pytest src/pyAppGen/pbcs/airport_operations_management/tests` (23 passed).
+- Passed: improve1 traceability/capability/runtime sweep (877 passed).
+- Passed: `git diff --check -- src/pyAppGen/pbcs`.
