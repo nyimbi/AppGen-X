@@ -7,6 +7,7 @@ from .domain_depth import DOMAIN_PARAMETERS
 from .domain_depth import DOMAIN_RULES
 from .domain_depth import domain_capability_surface_contract
 from .forms import energy_trading_risk_form_catalog
+from .trading_control import improve1_trading_control_contract
 from .forms import energy_trading_risk_get_form
 from .wizards import energy_trading_risk_plan_wizard
 from .wizards import energy_trading_risk_wizard_catalog
@@ -76,6 +77,7 @@ def energy_trading_risk_ui_contract():
         "wizards": energy_trading_risk_wizard_catalog()["wizards"],
         "controls": energy_trading_risk_control_catalog()["controls"],
         "app_shell": energy_trading_risk_single_pbc_app_ui_contract(),
+        "trading_control_contract": improve1_trading_control_contract(),
         "full_capability_surface": {
             "operation_actions": DOMAIN_OPERATIONS,
             "rule_editors": DOMAIN_RULES,
@@ -84,6 +86,7 @@ def energy_trading_risk_ui_contract():
             "table_browsers": DOMAIN_OWNED_TABLES,
             "edge_case_queues": DOMAIN_EDGE_CASES,
             "agent_tools": tuple(f"{PBC_KEY}_skills.{op}" for op in DOMAIN_OPERATIONS),
+            "trading_control_panels": tuple(item["evidence"]["ui_surface"] for item in improve1_trading_control_contract()["capabilities"]),
             "navigation_sections": (
                 "overview",
                 "trade_capture",

@@ -23,6 +23,7 @@ from .risk_engine import evaluate_nomination_submission
 from .risk_engine import evaluate_price_curve_submission
 from .risk_engine import evaluate_schedule_submission
 from .risk_engine import evaluate_trade_capture
+from .trading_control import TRADING_CONTROL_CAPABILITIES, improve1_trading_control_contract
 
 PBC_KEY = "energy_trading_risk"
 PACKAGE_DIR = Path(__file__).resolve().parent
@@ -545,6 +546,7 @@ def energy_trading_risk_build_api_contract():
 
 
 def energy_trading_risk_build_release_evidence():
+    trading_control = improve1_trading_control_contract()
     checks = (
         {"id": "schema_models_migrations", "ok": True},
         {"id": "service_api_events", "ok": True},
@@ -553,10 +555,11 @@ def energy_trading_risk_build_release_evidence():
         {"id": "trade_capture_safety_case", "ok": True},
         {"id": "exposure_bucket_workbench", "ok": True},
         {"id": "single_pbc_app_usability", "ok": True},
+        {"id": "trading_improve1_control_contract", "ok": trading_control["ok"]},
     )
     return {
         "format": "appgen.energy-trading-risk-release-evidence.v1",
-        "ok": True,
+        "ok": not any(check["ok"] is not True for check in checks),
         "pbc": PBC_KEY,
         "checks": checks,
         "generated_artifacts": {
@@ -572,6 +575,7 @@ def energy_trading_risk_build_release_evidence():
             "forms": energy_trading_risk_build_api_contract()["forms"],
             "wizards": energy_trading_risk_build_api_contract()["wizards"],
             "controls": energy_trading_risk_build_api_contract()["controls"],
+            "trading_control": trading_control,
             "implementation_docs": ("implementation-plan.md", "README.md", "implementation-status.md"),
         },
         "docs_present": {
@@ -580,7 +584,7 @@ def energy_trading_risk_build_release_evidence():
             "implementation-status.md": PACKAGE_DIR.joinpath("implementation-status.md").exists(),
             "RELEASE_EVIDENCE.md": PACKAGE_DIR.joinpath("RELEASE_EVIDENCE.md").exists(),
         },
-        "blocking_gaps": (),
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }
 
 
@@ -681,7 +685,8 @@ def energy_trading_risk_runtime_capabilities():
         "allowed_database_backends": ENERGY_TRADING_RISK_ALLOWED_DATABASE_BACKENDS,
         "standard_features": ENERGY_TRADING_RISK_STANDARD_FEATURE_KEYS,
         "capabilities": ENERGY_TRADING_RISK_RUNTIME_CAPABILITY_KEYS,
-        "operations": operations,
+        "operations": operations + ("improve1_trading_control_contract",),
+        "improve1_trading_control_capabilities": tuple(capability.slug for capability in TRADING_CONTROL_CAPABILITIES),
         "smoke": smoke,
         "world_class_domain_depth": domain,
         "database_backends": ENERGY_TRADING_RISK_ALLOWED_DATABASE_BACKENDS,
@@ -799,6 +804,7 @@ def energy_trading_risk_runtime_smoke():
     schema = energy_trading_risk_build_schema_contract()
     service = energy_trading_risk_build_service_contract()
     release = energy_trading_risk_build_release_evidence()
+    trading_control = improve1_trading_control_contract()
     workbench_query = energy_trading_risk_query_workbench(settlement["state"], {"tenant": "tenant-smoke"})
     workbench = energy_trading_risk_build_workbench_view()
     boundary = energy_trading_risk_verify_owned_table_boundary(("trade_position", "foreign_table"))
@@ -823,11 +829,13 @@ def energy_trading_risk_runtime_smoke():
         {"id": "build_workbench_view", "ok": workbench["ok"]},
         {"id": "owned_boundary_rejects_foreign_table", "ok": boundary["ok"] is False},
         {"id": "domain_depth", "ok": domain["ok"]},
+        {"id": "improve1_trading_control_contract", "ok": trading_control["ok"]},
     ) + tuple({"id": capability, "ok": True} for capability in ENERGY_TRADING_RISK_RUNTIME_CAPABILITY_KEYS)
     return {
         "format": "appgen.energy-trading-risk-runtime-smoke.v1",
         "ok": all(check["ok"] for check in checks),
         "checks": checks,
+        "checks_by_id": {check["id"]: check["ok"] for check in checks},
         "configuration": cfg,
         "limit": limit,
         "curve": curve,
@@ -838,6 +846,7 @@ def energy_trading_risk_runtime_smoke():
         "schema": schema,
         "service": service,
         "release": release,
+        "trading_control": trading_control,
         "state": settlement["state"],
         "side_effects": (),
     }

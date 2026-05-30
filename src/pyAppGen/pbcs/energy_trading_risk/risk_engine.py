@@ -593,7 +593,8 @@ def evaluate_price_curve_submission(payload: dict | None, parameters=None, rules
         if curve_price > float(curve_policy["max_curve_price"]):
             failures.append({"gate": "curve_ceiling", "reason": "curve_price_above_ceiling", "curve_price": curve_price})
     if as_of is not None:
-        age_hours = round((datetime.now(timezone.utc) - as_of).total_seconds() / 3600, 2)
+        reference_time = _parse_timestamp(payload.get("received_at") or payload.get("evaluation_time")) or as_of
+        age_hours = round((reference_time - as_of).total_seconds() / 3600, 2)
     else:
         age_hours = None
     if age_hours is not None and age_hours > float(parameter_values["curve_max_age_hours"]):

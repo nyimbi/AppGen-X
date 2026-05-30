@@ -65,3 +65,7 @@ Covered checks:
 - Stream-engine picker visibility remains disabled.
 - Shared-table access remains disabled.
 - Validation used stdlib `unittest` because that is the package-local runner already available in the workspace shell.
+
+## 2026-05-30 improve1 Trading-Control Execution Slice
+
+Added package-local `trading_control.py` as executable improve1 proof for all 50 energy trading and risk backlog features: trade capture safety, amendment/cancel lineage, exposure buckets, valuation calendars, nomination cutoff governance, nomination/schedule reconciliation, schedule feasibility, imbalance exposure, market curve quality and gap fill, MTM/P&L explain, VaR and stress governance, limit hierarchy and pre-book checks, breach cases, credit exposure, collateral/margin, contract terms, confirmations, settlement validation/holds, timezone and conversion controls, physical-financial hedge linkage, basis and liquidity risk, market/policy event boundaries, API idempotency, dead-letter replay, trader/risk/scheduling/credit workbenches, assistant skills, dual control, override evidence, valuation release pack, owned-boundary proof, event schema evidence, resilience drills, and trade-to-settlement release control. Runtime, UI, and release evidence now expose this contract, and `tests/test_domain_behavior.py` verifies positive coverage plus unsafe trade, stale market data, cutoff, settlement, boundary, agent, override, release, event, resilience, and end-to-end guardrails.

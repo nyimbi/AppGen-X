@@ -14,6 +14,7 @@ from .runtime import energy_trading_risk_build_release_evidence
 from .runtime import energy_trading_risk_build_schema_contract
 from .runtime import energy_trading_risk_build_service_contract
 from .runtime import energy_trading_risk_permissions_contract
+from .trading_control import improve1_trading_control_contract
 
 PBC_KEY = "energy_trading_risk"
 PACKAGE_DIR = Path(__file__).parent
@@ -34,6 +35,7 @@ def build_release_evidence() -> dict:
         "wizards": wizards.energy_trading_risk_wizard_catalog(),
         "controls": controls.energy_trading_risk_control_catalog(),
         "assistant": agent.composed_agent_contribution(),
+        "trading_control": improve1_trading_control_contract(),
         "docs_present": {
             "README.md": PACKAGE_DIR.joinpath("README.md").exists(),
             "implementation-plan.md": PACKAGE_DIR.joinpath("implementation-plan.md").exists(),
@@ -51,7 +53,7 @@ def release_readiness_manifest() -> dict:
     evidence = build_release_evidence()
     sections = tuple(
         name
-        for name in ("schema", "service", "api", "permissions", "ui", "forms", "wizards", "controls", "assistant")
+        for name in ("schema", "service", "api", "permissions", "ui", "forms", "wizards", "controls", "assistant", "trading_control")
         if isinstance(evidence.get(name), dict)
     )
     checks = tuple(evidence.get("checks", ()))
@@ -64,7 +66,7 @@ def release_readiness_manifest() -> dict:
         "sections": sections,
         "checks": checks,
         "blocking_gaps": blocking_gaps,
-        "required_sections": ("schema", "service", "api", "permissions", "ui", "forms", "wizards", "controls", "assistant"),
+        "required_sections": ("schema", "service", "api", "permissions", "ui", "forms", "wizards", "controls", "assistant", "trading_control"),
         "docs_present": docs_present,
         "side_effects": (),
     }
@@ -82,6 +84,7 @@ def validate_release_evidence() -> dict:
     wizard_catalog = evidence.get("wizards", {})
     control_catalog = evidence.get("controls", {})
     assistant = evidence.get("assistant", {})
+    trading_control = evidence.get("trading_control", {})
     required_command_methods = {"command_trade_position", "command_nomination", "command_market_price_curve", "command_exposure_limit"}
     boundary_gaps = tuple(
         gap
@@ -93,6 +96,7 @@ def validate_release_evidence() -> dict:
             ("missing_wizards", not wizard_catalog.get("ok")),
             ("missing_controls", not control_catalog.get("ok")),
             ("missing_assistant", not assistant.get("ok")),
+            ("missing_trading_control", not trading_control.get("ok")),
         )
         if failed
     )
