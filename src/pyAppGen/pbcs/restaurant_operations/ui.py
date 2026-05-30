@@ -185,3 +185,34 @@ def restaurant_operations_render_workbench(workbench: dict | None = None, *, ten
 def smoke_test():
     render = restaurant_operations_render_workbench({'summary_cards': ({'key': 'reservations', 'value': 2},), 'analytics': {'net_sales': 44.0}, 'governed_previews': ({'preview_id': 'pv1'},), 'kds': {'lanes': {'queued': ({'order_id': 'ord1'},)}}})
     return {'ok': restaurant_operations_ui_contract()['ok'] and restaurant_operations_standalone_workbench_blueprint()['ok'] and render['ok'], 'render': render, 'side_effects': ()}
+
+# Improve1 restaurant operations control UI extension.
+from .restaurant_operations_control import improve1_restaurant_operations_control_contract as _improve1_restaurant_operations_control_contract
+
+_RESTAURANT_CONTROL_BASE_UI_CONTRACT = restaurant_operations_ui_contract
+_RESTAURANT_CONTROL_BASE_RENDER_WORKBENCH = restaurant_operations_render_workbench
+
+
+def restaurant_operations_ui_contract() -> dict:
+    ui = dict(_RESTAURANT_CONTROL_BASE_UI_CONTRACT())
+    control = _improve1_restaurant_operations_control_contract()
+    ui.update({
+        "ok": ui.get("ok") is True and control["ok"],
+        "restaurant_operations_control_contract": control,
+        "restaurant_operations_control_panels": tuple(item["evidence"]["ui_surface"] for item in control["capabilities"]),
+        "restaurant_operations_control_service_actions": tuple(item["evidence"]["service_api"] for item in control["capabilities"]),
+        "stream_engine_picker_visible": False,
+    })
+    return ui
+
+
+def restaurant_operations_render_workbench(*args, **kwargs) -> dict:
+    workbench = dict(_RESTAURANT_CONTROL_BASE_RENDER_WORKBENCH(*args, **kwargs))
+    control = _improve1_restaurant_operations_control_contract()
+    workbench.update({
+        "ok": workbench.get("ok") is True and control["ok"],
+        "restaurant_operations_control_panels": tuple(item["evidence"]["ui_surface"] for item in control["capabilities"]),
+        "restaurant_operations_control_service_actions": tuple(item["evidence"]["service_api"] for item in control["capabilities"]),
+        "restaurant_operations_control_agent_tools": tuple(f"restaurant_operations.skills.{item['slug']}" for item in control["capabilities"]),
+    })
+    return workbench
