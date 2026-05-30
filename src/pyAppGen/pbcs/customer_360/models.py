@@ -1750,30 +1750,45 @@ class Customer360StandaloneStore:
         data = dict(payload.get("payload") or {})
         if not event_id or not event_type:
             return {"ok": False, "reason": "missing_event_identity"}
-        duplicate = self._query_one(
-            "SELECT event_id, status FROM customer_360_appgen_inbox_event WHERE event_id = ?",
+        existing = self._query_one(
+            "SELECT event_id, status, attempts FROM customer_360_appgen_inbox_event WHERE event_id = ?",
             (event_id,),
         )
-        if duplicate:
-            return {"ok": True, "duplicate": True, "event_id": event_id, "status": duplicate["status"]}
+        if existing and existing["status"] == "processed":
+            return {"ok": True, "duplicate": True, "event_id": event_id, "status": existing["status"]}
         now = _standalone_timestamp()
+        attempts = int(existing["attempts"]) + 1 if existing else 1
+        retry_limit = 3
         if event_type not in _STANDALONE_ALLOWED_CONSUMED_EVENTS or not data:
-            dead_letter = {
+            status = "dead_letter" if attempts >= retry_limit else "retrying"
+            inbox = {
                 "event_id": event_id,
                 "event_type": event_type,
-                "failure_reason": "unsupported_or_missing_payload",
+                "handler": f"handle_{str(event_type).lower()}",
                 "payload": _standalone_json(data),
-                "attempts": 1,
-                "failed_at": now,
+                "attempts": attempts,
+                "status": status,
+                "processed_at": now,
             }
-            self._upsert("customer_360_dead_letter_event", "event_id", dead_letter)
-            return {"ok": False, "duplicate": False, "status": "dead_letter", "event": dead_letter}
+            self._upsert("customer_360_appgen_inbox_event", "event_id", inbox)
+            if status == "dead_letter":
+                dead_letter = {
+                    "event_id": event_id,
+                    "event_type": event_type,
+                    "failure_reason": "unsupported_or_missing_payload",
+                    "payload": _standalone_json(data),
+                    "attempts": attempts,
+                    "failed_at": now,
+                }
+                self._upsert("customer_360_dead_letter_event", "event_id", dead_letter)
+                return {"ok": False, "duplicate": False, "status": "dead_letter", "event": dead_letter, "attempts": attempts}
+            return {"ok": False, "duplicate": False, "status": "retrying", "event": inbox, "attempts": attempts}
         inbox = {
             "event_id": event_id,
             "event_type": event_type,
             "handler": f"handle_{event_type.lower()}",
             "payload": _standalone_json(data),
-            "attempts": 1,
+            "attempts": attempts,
             "status": "processed",
             "processed_at": now,
         }
@@ -1793,7 +1808,7 @@ class Customer360StandaloneStore:
                 },
                 emit_outbox=False,
             )
-        return {"ok": True, "duplicate": False, "status": "processed", "event_id": event_id}
+        return {"ok": True, "duplicate": False, "status": "processed", "event_id": event_id, "attempts": attempts}
 
     def build_timeline(self, profile_id: str) -> dict:
         touchpoints = self._query_all(
