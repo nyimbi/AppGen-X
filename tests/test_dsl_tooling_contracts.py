@@ -4430,6 +4430,31 @@ def test_doctor_report_checks_parser_catalog_generator_and_ide_hooks() -> None:
 
     assert report["format"] == "appgen.doctor-report.v1"
     assert report["ok"] is True
+    assert report["required_check_ids"] == (
+        "grammar_file",
+        "generated_parser",
+        "parser_sync",
+        "parser_golden_fixtures",
+        "directory_lint_input",
+        "python_package_import",
+        "sqlalchemy_import",
+        "pbc_catalog",
+        "template_writers",
+        "generator_backends",
+        "lsp_semantic_service",
+        "cli_alias_contract",
+        "lsp_completion_coverage",
+        "semantic_symbol_coverage",
+        "lsp_symbol_coverage",
+        "module_boundaries",
+        "studio_semantic_service",
+        "vscode_extension_surface",
+    )
+    assert report["observed_check_ids"] == report["required_check_ids"]
+    assert report["missing_required_check_count"] == 0
+    assert report["missing_required_check_ids"] == ()
+    assert report["missing_detail_format_check_count"] == 0
+    assert report["missing_detail_format_checks"] == ()
     assert {
         "grammar_file",
         "generated_parser",
@@ -4449,6 +4474,9 @@ def test_doctor_report_checks_parser_catalog_generator_and_ide_hooks() -> None:
     } <= {check["check"] for check in report["checks"]}
     alias_check = next(check for check in report["checks"] if check["check"] == "cli_alias_contract")
     assert alias_check["detail"]["report_format"] == "appgen.cli-alias-contract.v1"
+    assert report["required_detail_formats_by_check"]["cli_alias_contract"] == "appgen.cli-alias-contract.v1"
+    assert report["required_detail_formats_by_check"]["parser_golden_fixtures"] == "appgen.parser-golden-audit.v1"
+    assert report["required_detail_formats_by_check"]["vscode_extension_surface"] == "appgen.vscode-extension-audit.v1"
     assert alias_check["detail"]["commands"] == ("appgen", "apg")
     assert alias_check["detail"]["shared_target"] == "pyAppGen.__main__:main"
     assert alias_check["detail"]["module_dispatches_tooling"] is True
@@ -6668,6 +6696,11 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert doctor_gate["detail"]["doctor"]["format"] == "appgen.doctor-report.v1"
     assert doctor_gate["detail"]["doctor"]["check_count"] >= 15
     assert doctor_gate["detail"]["doctor"]["blocking_gap_count"] == 0
+    assert doctor_gate["detail"]["doctor"]["observed_check_ids"] == doctor_gate["detail"]["doctor"]["required_check_ids"]
+    assert doctor_gate["detail"]["doctor"]["missing_required_check_count"] == 0
+    assert doctor_gate["detail"]["doctor"]["missing_required_check_ids"] == ()
+    assert doctor_gate["detail"]["doctor"]["missing_detail_format_check_count"] == 0
+    assert doctor_gate["detail"]["doctor"]["missing_detail_format_checks"] == ()
     assert {
         "parser_golden_fixtures",
         "directory_lint_input",
@@ -6679,6 +6712,16 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert doctor_gate["detail"]["text_renderer"]["format"] == "appgen.doctor-text-renderer.v1"
     assert doctor_gate["detail"]["text_renderer"]["check_line_count"] >= 8
     assert doctor_gate["detail"]["text_renderer"]["detail_format_line_count"] >= 8
+    assert doctor_gate["detail"]["text_renderer"]["emitted_check_ids"] == doctor_gate["detail"]["text_renderer"][
+        "required_check_ids"
+    ]
+    assert doctor_gate["detail"]["text_renderer"]["missing_check_id_count"] == 0
+    assert doctor_gate["detail"]["text_renderer"]["missing_check_ids"] == ()
+    assert doctor_gate["detail"]["text_renderer"]["emitted_detail_formats_by_check"] == doctor_gate["detail"][
+        "text_renderer"
+    ]["required_detail_formats_by_check"]
+    assert doctor_gate["detail"]["text_renderer"]["missing_detail_format_check_count"] == 0
+    assert doctor_gate["detail"]["text_renderer"]["missing_detail_format_checks"] == ()
     assert doctor_gate["detail"]["text_renderer"]["json_fallback"] is False
     assert doctor_gate["detail"]["cli"]["doctor_check_count"] >= 15
     package_check = next(check for check in report["checks"] if check["id"] == "package_and_release_verifiers")
@@ -7569,6 +7612,23 @@ def test_doctor_text_renderer_contract_proves_check_and_detail_format_markers() 
     assert report["missing_fragment_count"] == 0
     assert report["check_line_count"] == 8
     assert report["detail_format_line_count"] == 8
+    assert report["required_check_ids"] == (
+        "parser_golden_fixtures",
+        "lsp_completion_coverage",
+        "semantic_symbol_coverage",
+        "lsp_symbol_coverage",
+        "cli_alias_contract",
+        "module_boundaries",
+        "studio_semantic_service",
+        "vscode_extension_surface",
+    )
+    assert report["emitted_check_ids"] == report["required_check_ids"]
+    assert report["missing_check_id_count"] == 0
+    assert report["missing_check_ids"] == ()
+    assert report["required_detail_formats_by_check"]["module_boundaries"] == "appgen.module-boundary-audit.v1"
+    assert report["emitted_detail_formats_by_check"] == report["required_detail_formats_by_check"]
+    assert report["missing_detail_format_check_count"] == 0
+    assert report["missing_detail_format_checks"] == ()
     assert report["missing_fragments"] == ()
     assert report["json_fallback"] is False
     assert report["text_prefix"].startswith("doctor failed: format=appgen.doctor-report.v1 checks=8")

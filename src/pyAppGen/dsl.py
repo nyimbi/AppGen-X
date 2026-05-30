@@ -3588,6 +3588,31 @@ def _doctor_text_renderer_contract() -> dict:
         "ok vscode_extension_surface detail_format=appgen.vscode-extension-audit.v1: VS Code extension scaffold declares the AppGen-X language, commands, and LSP providers.",
     )
     missing = tuple(fragment for fragment in required_fragments if fragment not in text)
+    required_check_ids = tuple(check["check"] for check in payload["checks"])
+    emitted_check_ids = tuple(
+        line.split()[1]
+        for line in text.splitlines()
+        if (line.startswith("ok ") or line.startswith("fail ")) and len(line.split()) >= 2
+    )
+    missing_check_ids = tuple(check_id for check_id in required_check_ids if check_id not in emitted_check_ids)
+    required_detail_formats_by_check = {
+        check["check"]: check.get("detail", {}).get("report_format")
+        for check in payload["checks"]
+        if check.get("detail", {}).get("report_format")
+    }
+    emitted_detail_formats_by_check = {}
+    for line in text.splitlines():
+        if not (line.startswith("ok ") or line.startswith("fail ")):
+            continue
+        parts = line.split()
+        if len(parts) < 3 or not parts[2].startswith("detail_format="):
+            continue
+        emitted_detail_formats_by_check[parts[1]] = parts[2].removeprefix("detail_format=").rstrip(":")
+    missing_detail_format_checks = tuple(
+        check_id
+        for check_id, detail_format in required_detail_formats_by_check.items()
+        if emitted_detail_formats_by_check.get(check_id) != detail_format
+    )
     counts = _text_renderer_contract_counts(
         text,
         required_fragments,
@@ -3600,6 +3625,14 @@ def _doctor_text_renderer_contract() -> dict:
         **counts,
         "check_line_count": counts["marker_line_count"],
         "detail_format_line_count": sum(1 for line in text.splitlines() if "detail_format=appgen." in line),
+        "required_check_ids": required_check_ids,
+        "emitted_check_ids": emitted_check_ids,
+        "missing_check_id_count": len(missing_check_ids),
+        "missing_check_ids": missing_check_ids,
+        "required_detail_formats_by_check": required_detail_formats_by_check,
+        "emitted_detail_formats_by_check": emitted_detail_formats_by_check,
+        "missing_detail_format_check_count": len(missing_detail_format_checks),
+        "missing_detail_format_checks": missing_detail_format_checks,
         "required_fragments": required_fragments,
         "missing_fragments": missing,
         "json_fallback": text.lstrip().startswith("{"),
@@ -4377,10 +4410,47 @@ def doctor_report_dsl() -> dict:
             },
         ),
     )
+    required_check_ids = (
+        "grammar_file",
+        "generated_parser",
+        "parser_sync",
+        "parser_golden_fixtures",
+        "directory_lint_input",
+        "python_package_import",
+        "sqlalchemy_import",
+        "pbc_catalog",
+        "template_writers",
+        "generator_backends",
+        "lsp_semantic_service",
+        "cli_alias_contract",
+        "lsp_completion_coverage",
+        "semantic_symbol_coverage",
+        "lsp_symbol_coverage",
+        "module_boundaries",
+        "studio_semantic_service",
+        "vscode_extension_surface",
+    )
+    observed_check_ids = tuple(check["check"] for check in checks)
+    missing_required_check_ids = tuple(check_id for check_id in required_check_ids if check_id not in observed_check_ids)
+    required_detail_formats_by_check = {
+        check["check"]: check.get("detail", {}).get("report_format")
+        for check in checks
+        if check.get("detail", {}).get("report_format")
+    }
+    missing_detail_format_checks = tuple(
+        check_id for check_id, detail_format in required_detail_formats_by_check.items() if not detail_format
+    )
     return {
         "format": "appgen.doctor-report.v1",
         "ok": all(check["ok"] for check in checks),
         "checks": checks,
+        "required_check_ids": required_check_ids,
+        "observed_check_ids": observed_check_ids,
+        "missing_required_check_count": len(missing_required_check_ids),
+        "missing_required_check_ids": missing_required_check_ids,
+        "required_detail_formats_by_check": required_detail_formats_by_check,
+        "missing_detail_format_check_count": len(missing_detail_format_checks),
+        "missing_detail_format_checks": missing_detail_format_checks,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }
 
@@ -6707,6 +6777,8 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and not doctor.get("blocking_gaps")
             and len(doctor.get("checks", ())) >= 15
             and all(check.get("ok") is True for check in doctor.get("checks", ()))
+            and doctor.get("missing_required_check_count") == 0
+            and doctor.get("missing_detail_format_check_count") == 0
             and {
                 "parser_golden_fixtures",
                 "directory_lint_input",
@@ -6722,6 +6794,8 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and doctor_text_renderer["ok"]
             and doctor_text_renderer.get("check_line_count", 0) >= 8
             and doctor_text_renderer.get("detail_format_line_count", 0) >= 8
+            and doctor_text_renderer.get("missing_check_id_count") == 0
+            and doctor_text_renderer.get("missing_detail_format_check_count") == 0
             and doctor_text_renderer.get("json_fallback") is False
             and test_strategy_cli["ok"]
             and test_strategy_cli.get("doctor_check_count", 0) >= 15,
@@ -6733,11 +6807,26 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                     "check_count": len(doctor.get("checks", ())),
                     "blocking_gap_count": len(doctor.get("blocking_gaps", ())),
                     "check_ids": tuple(check.get("check") for check in doctor.get("checks", ())),
+                    "required_check_ids": doctor.get("required_check_ids"),
+                    "observed_check_ids": doctor.get("observed_check_ids"),
+                    "missing_required_check_count": doctor.get("missing_required_check_count"),
+                    "missing_required_check_ids": doctor.get("missing_required_check_ids"),
+                    "required_detail_formats_by_check": doctor.get("required_detail_formats_by_check"),
+                    "missing_detail_format_check_count": doctor.get("missing_detail_format_check_count"),
+                    "missing_detail_format_checks": doctor.get("missing_detail_format_checks"),
                 },
                 "text_renderer": {
                     "format": doctor_text_renderer.get("format"),
                     "check_line_count": doctor_text_renderer.get("check_line_count"),
                     "detail_format_line_count": doctor_text_renderer.get("detail_format_line_count"),
+                    "required_check_ids": doctor_text_renderer.get("required_check_ids"),
+                    "emitted_check_ids": doctor_text_renderer.get("emitted_check_ids"),
+                    "missing_check_id_count": doctor_text_renderer.get("missing_check_id_count"),
+                    "missing_check_ids": doctor_text_renderer.get("missing_check_ids"),
+                    "required_detail_formats_by_check": doctor_text_renderer.get("required_detail_formats_by_check"),
+                    "emitted_detail_formats_by_check": doctor_text_renderer.get("emitted_detail_formats_by_check"),
+                    "missing_detail_format_check_count": doctor_text_renderer.get("missing_detail_format_check_count"),
+                    "missing_detail_format_checks": doctor_text_renderer.get("missing_detail_format_checks"),
                     "marker_line_count": doctor_text_renderer.get("marker_line_count"),
                     "json_fallback": doctor_text_renderer.get("json_fallback"),
                 },

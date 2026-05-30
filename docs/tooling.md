@@ -986,12 +986,15 @@ doctor text logs keep check status, blocking-gap counts, and embedded
 `detail_format=...` evidence visible without JSON parsing. The renderer
 contract also reports required-fragment, check-line, and detail-format-line
 counts so release evidence can prove the text summary preserved every expected
-status and embedded audit marker.
+status and embedded audit marker. It also reports required, emitted, and missing
+doctor check ids plus required and emitted detail formats by check, so a missing
+doctor readiness check or embedded audit marker fails by name instead of only
+changing an aggregate line count.
 The aggregate tooling audit exposes this proof independently as
 `doctor_cli_text_contracts`. That gate fails when doctor stops proving parser,
 package import, catalog, template writer, backend, semantic-model, alias, LSP,
 Studio, or editor-extension readiness, or when text output hides embedded audit
-format markers.
+format markers or named doctor checks.
 
 ### `appgen tooling-audit`
 
