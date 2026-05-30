@@ -4683,8 +4683,24 @@ def test_tooling_implementation_phase_audit_maps_phase_exit_criteria_to_evidence
     assert report["phase_count"] == len(report["phases"])
     assert report["passing_phase_count"] == report["phase_count"]
     assert report["phase_ids"] == tuple(phase["id"] for phase in report["phases"])
+    assert report["exit_criterion_counts_by_phase"] == {
+        phase["id"]: len(phase["exit_criteria"])
+        for phase in report["phases"]
+    }
+    assert report["passing_exit_criterion_counts_by_phase"] == {
+        phase["id"]: sum(1 for criterion in phase["exit_criteria"] if criterion["ok"])
+        for phase in report["phases"]
+    }
+    assert report["missing_exit_criterion_counts_by_phase"] == {
+        phase["id"]: len(phase["missing_exit_criteria"])
+        for phase in report["phases"]
+    }
+    assert set(report["exit_criterion_counts_by_phase"]) == set(report["phase_ids"])
     assert report["exit_criterion_count"] == sum(len(phase["exit_criteria"]) for phase in report["phases"])
     assert report["passing_exit_criterion_count"] == report["exit_criterion_count"]
+    assert sum(report["exit_criterion_counts_by_phase"].values()) == report["exit_criterion_count"]
+    assert sum(report["passing_exit_criterion_counts_by_phase"].values()) == report["passing_exit_criterion_count"]
+    assert sum(report["missing_exit_criterion_counts_by_phase"].values()) == report["missing_exit_criterion_count"]
     assert report["exit_criterion_ids"] == tuple(
         criterion["id"] for phase in report["phases"] for criterion in phase["exit_criteria"]
     )

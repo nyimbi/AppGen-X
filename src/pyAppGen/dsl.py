@@ -7617,12 +7617,27 @@ def _tooling_audit_implementation_phases(**evidence: dict) -> dict:
         for item in phases
         for criterion_id in item["missing_exit_criteria"]
     )
+    exit_criterion_counts_by_phase = {
+        item["id"]: len(item["exit_criteria"])
+        for item in phases
+    }
+    passing_exit_criterion_counts_by_phase = {
+        item["id"]: sum(1 for criterion in item["exit_criteria"] if criterion["ok"])
+        for item in phases
+    }
+    missing_exit_criterion_counts_by_phase = {
+        item["id"]: len(item["missing_exit_criteria"])
+        for item in phases
+    }
     return {
         "format": "appgen.tooling-implementation-phase-audit.v1",
         "ok": not missing,
         "phase_count": len(phases),
         "passing_phase_count": sum(1 for item in phases if item["ok"]),
         "phase_ids": phase_ids,
+        "exit_criterion_counts_by_phase": exit_criterion_counts_by_phase,
+        "passing_exit_criterion_counts_by_phase": passing_exit_criterion_counts_by_phase,
+        "missing_exit_criterion_counts_by_phase": missing_exit_criterion_counts_by_phase,
         "exit_criterion_count": sum(len(item["exit_criteria"]) for item in phases),
         "passing_exit_criterion_count": sum(
             1 for item in phases for criterion in item["exit_criteria"] if criterion["ok"]
